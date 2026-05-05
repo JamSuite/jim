@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# tests/__NAME__.sh — Tests for __SCRIPT_PATH__
+#
+# Conventions: see skills/meta-test/scripts/testlib.sh header (canonical).
+#
+# HOW TO RUN
+#   bash tests/__NAME__.sh                  # every case in this file
+#   bash skills/meta-test/scripts/run.sh    # this file alongside every other tests/*.sh
+#
+
+set -uo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
+
+SCRIPT___NAME__="$REPO_ROOT/__SCRIPT_PATH__"
+
+# ─── Section: Per-script invoker ─────────────────────────────────────────────
+
+# run___NAME__ <args...>
+#   Invoke the script-under-test; capture stdout, stderr, and exit code into
+#   the globals OUT, ERR, RC. Same shape as run/run_jimfile in sibling files.
+run___NAME__() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(bash "$SCRIPT___NAME__" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# ─── Section: Test cases ─────────────────────────────────────────────────────
+
+# AC: smoke — replace this placeholder with a real assertion.
+case___NAME___smoke() {
+  assert_eq "smoke placeholder" "0" "0"
+}
+
+# ─── Section: Standalone-runnable tail ───────────────────────────────────────
+#
+# This file works two ways:
+#   1. bash tests/__NAME__.sh        → runs only this file's cases (standalone).
+#   2. bash skills/meta-test/scripts/run.sh
+#                                    → sources this file alongside every other
+#                                      tests/*.sh and runs the union of cases.
+#
+# How the dual-mode works:
+#   ${BASH_SOURCE[0]} is the file bash is currently reading.
+#   ${0} is the file bash was invoked with.
+#   They match ONLY when this file is run directly. When the aggregate runner
+#   sources us, BASH_SOURCE[0] is this file but $0 is run.sh — they diverge.
+#   So the block below runs the cases only on direct invocation; otherwise it
+#   stays silent and lets the aggregate runner decide what to dispatch.
+#
+# DO NOT "tidy" this into something simpler — $BASH_SOURCE (no index) and
+# ${BASH_SOURCE} behave subtly differently in older bash and break aggregate
+# runs.
+#
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  if [[ ! -e "$SCRIPT___NAME__" ]]; then
+    echo "NOTE: script under test not found at $SCRIPT___NAME__ — every test will fail."
+  fi
+  FILTER="${1:-}"
+  run_discovered_cases
+fi

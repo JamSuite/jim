@@ -39,12 +39,22 @@ jim/
 │   │   └── scripts/
 │   │       └── jimfile.sh   # exists/slug/date/next-id/path/glob; shells out to jimconf.sh
 │   ├── meta-skill/          # /jim:meta-skill — create/update jim skills
-│   └── meta-agent/          # /jim:meta-agent — create/update jim agents
-├── tests/                   # Developer-only; not loaded by Claude Code
-│   └── run.sh               # Plain-bash test runner for jimconf.sh + jimfile.sh (zero deps)
+│   ├── meta-agent/          # /jim:meta-agent — create/update jim agents
+│   └── meta-test/           # /jim:meta-test — scaffold and run bash tests (007)
+│       ├── SKILL.md
+│       ├── assets/
+│       │   └── test-file.sh.tmpl   # Per-script test scaffold template (__NAME__, __SCRIPT_PATH__)
+│       └── scripts/
+│           ├── testlib.sh          # Shared framework: globals, asserts, fixtures, reporter
+│           ├── run.sh              # Aggregate runner: sources testlib + every tests/*.sh
+│           └── metatest.sh         # Dispatcher: scaffold/add/run subcommands
+├── tests/                   # Developer-only; not loaded by Claude Code (per-script test files only)
+│   ├── jimconf.sh           # Per-script tests for skills/conf/scripts/jimconf.sh (executable)
+│   ├── jimfile.sh           # Per-script tests for skills/file/scripts/jimfile.sh (executable)
+│   └── metatest.sh          # Per-script tests for skills/meta-test/scripts/metatest.sh (executable)
 ├── docs/
 │   ├── specs/               # Spec groups with numbered spec directories
-│   │   └── jim/             # Specs for jim's own development (001–008)
+│   │   └── jim/             # Specs for jim's own development (001–009)
 │   ├── prior-art/           # Reference material from other projects (gitignored downloads)
 │   └── notes/               # Personal development notes
 ├── VISION.md                # Product vision — problem, solution, audience, north star
@@ -81,6 +91,7 @@ flowchart TD
     subgraph "Meta Skills"
         MS["/jim:meta-skill"]
         MA["/jim:meta-agent"]
+        MT["/jim:meta-test"]
     end
 
     subgraph Agents
@@ -105,7 +116,7 @@ flowchart TD
 
     U --> VIS & ROAD & ARCH & BRAIN
     U --> SPEC & RES & PLAN & BUILD & DEBUG
-    U --> MS & MA
+    U --> MS & MA & MT
 
     VIS & ROAD & BRAIN --> PM
     ARCH --> ARCHITECT
@@ -113,7 +124,7 @@ flowchart TD
     RES --> RESEARCHER
     PLAN --> ARCHITECT
     BUILD & DEBUG --> CODER
-    MS & MA --> META
+    MS & MA & MT --> META
 
     PM --> VDOC & RDOC & SDOC & BDOC
     ARCHITECT --> ADOC & PDOC
@@ -205,10 +216,11 @@ Skills are SKILL.md files inside `skills/{name}/` directories, optionally accomp
 ## Development & Testing
 
 - **Setup:** Clone the repository and configure it as a Claude Code plugin
-- **Run tests:** `bash tests/run.sh` — plain-bash runner for `skills/conf/scripts/jimconf.sh`. Filter by name: `bash tests/run.sh defaults` runs only matching cases. Zero third-party dependencies.
-- **Test framework:** Hand-rolled bash runner at `tests/run.sh`. Inline heredoc fixtures, per-test `mktemp` sandbox, no shared state.
-- **Test conventions:** Tests live under `tests/` and are not loaded by Claude Code (which reads only `skills/` and `agents/`). LLM-interpreted skill prompts are validated by checklist; deterministic scripts are validated by `tests/run.sh`.
-- **Linting / formatting:** N/A — markdown + bash. Consistency enforced by templates in `skills/*/assets/` and the documentation discipline rules at the top of `tests/run.sh` and `skills/conf/scripts/jimconf.sh`.
+- **Run tests:** `bash tests/run.sh` runs every case across every test file. Per-script files are also runnable standalone: `bash tests/jimconf.sh`, `bash tests/jimfile.sh`. Substring filter preserved: `bash tests/run.sh defaults`. Zero third-party dependencies.
+- **Test framework:** Hand-rolled multi-file bash framework. `tests/testlib.sh` holds shared infrastructure (globals, asserts, fixtures, reporter); each per-script test file (`tests/jimconf.sh`, `tests/jimfile.sh`, …) sources it and contributes `case_*` functions. The reporter discovers cases by function-name convention (`declare -F | awk '$3 ~ /^case_/'`) — no `TESTS=()` registration array. Inline heredoc fixtures, per-runner `mktemp` sandbox, single trap-based cleanup.
+- **Adding tests:** To add cases for a new script, create `tests/<name>.sh` (executable), source `testlib.sh`, define a `run_<name>` invoker plus `case_<name>_*` functions, and append the standalone-runnable tail. The aggregate runner picks it up automatically. Full 3-step recipe in `tests/run.sh` header.
+- **Test conventions:** Tests live under `tests/` and are not loaded by Claude Code (which reads only `skills/` and `agents/`). LLM-interpreted skill prompts are validated by checklist; deterministic scripts are validated by the test suite.
+- **Linting / formatting:** N/A — markdown + bash. Consistency enforced by templates in `skills/*/assets/` and the documentation discipline rules at the top of `tests/testlib.sh`, `tests/run.sh`, and `skills/conf/scripts/jimconf.sh`.
 
 ## Plugin Conventions
 
@@ -248,7 +260,8 @@ Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/script
 - **The `/jim:conf` skill** (`skills/conf/SKILL.md`) is a thin user-facing wrapper around the same script for human introspection (`/jim:conf list`, `/jim:conf get specs`, etc.). It carries no `agent:` binding because there is no LLM reasoning to delegate.
 - **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for the six configurable paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`). Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code).
 - **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding).
-- **Tests:** `bash tests/run.sh` covers both scripts' CLI surfaces, defaults, parse robustness, and the `-c <path>` flag. Filter by name substring: `bash tests/run.sh jimfile` runs only the `case_jimfile_*` cases.
+- **Tests:** Per-script test files at `tests/jimconf.sh`, `tests/jimfile.sh`, and `tests/metatest.sh` cover each script's CLI surface, defaults, parse robustness, and (where applicable) the `-c <path>` flag. The shared framework lives at `skills/meta-test/scripts/testlib.sh` and the aggregate runner at `skills/meta-test/scripts/run.sh`, so the meta-test skill owns its toolchain (per spec 007). Per-script files source the relocated lib via a `BASH_SOURCE`-relative path (`source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"`). Run all via `bash skills/meta-test/scripts/run.sh` (or `/jim:meta-test run`), run a single script standalone via `bash tests/jimconf.sh` / `bash tests/jimfile.sh` / `bash tests/metatest.sh`. Filter by name substring still works: `bash skills/meta-test/scripts/run.sh jimfile` (or `/jim:meta-test run jimfile`).
+- **Test scaffolding (`metatest.sh`).** Third script under `skills/meta-test/scripts/`. Three subcommands — `scaffold <name>` (create `tests/<name>.sh` from `assets/test-file.sh.tmpl`), `add <name> <case>` (append a `case_<name>_<case>()` stub), `run [name]` (invoke runner, standalone path preferred for one-file). The user-facing `/jim:meta-test` skill (`skills/meta-test/SKILL.md`) wraps the dispatcher with per-action gating: scaffold requires an approved spec+plan for the script-under-test (mirrors `meta-skill`/`meta-agent`); add and run are ungated.
 
 ### Progressive Disclosure
 

@@ -57,6 +57,8 @@ A secondary concern surfaced during scoping: this is jim's second piece of execu
 - [ ] Skills and agents that today use prose for any of the six categories listed in the Problem Statement become *eligible* to migrate to `/jim:file`. Whether all of them migrate in the same PR sequence is the architect's call (this spec does not mandate full migration in v1).
 - [ ] All existing self-hosted specs (001–007) and current jim behavior continue to work whether or not `/jim:file` adoption has happened — migration is purely additive and reversible.
 - [ ] Tests live alongside jim's existing test infrastructure (`tests/`), follow the same zero-dependency and strict-documentation conventions established by 007, and verify the full operation surface plus its edge cases.
+
+> **Note (added by spec 007):** The shared `testlib.sh` and aggregate `run.sh` referenced above have moved into `skills/meta-test/scripts/` per spec 007's lib-location decision. The per-script test file `tests/jimfile.sh` stays in `tests/` and sources the relocated lib via a `BASH_SOURCE`-relative path. Run with `bash skills/meta-test/scripts/run.sh` (or `/jim:meta-test run`); future test additions should be scaffolded via `/jim:meta-test add jimfile <case_name>`. See `docs/specs/jim/007-meta-test/` for canonical conventions.
 - [ ] Documentation explains the operation surface, the user-facing inspection commands, the contract (resolution only, no I/O), and the migration story for existing skills.
 - [ ] Before this spec is marked complete, the build phase demonstrates that at least one consuming skill has migrated end-to-end (e.g., `/jim:spec` ID assignment, or `/jim:debug` filename construction) and produces correct output. The verification method is the architect's choice.
 

@@ -34,7 +34,7 @@ description: >
   @jim:meta is for jim plugin components only, not application features.
   </commentary>
   </example>
-skills: [meta-skill, meta-agent]
+skills: [meta-skill, meta-agent, meta-test]
 tools: [Agent(pm, architect, researcher), Read, Write, Edit, Glob, Grep]
 model: sonnet
 ---

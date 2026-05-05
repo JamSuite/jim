@@ -65,6 +65,8 @@ A single bash resolver script (`skills/conf/scripts/jimconf.sh`) reads `jimconf.
 - **Why:** Tests run via a one-line CLI command; wrapping in a skill adds machinery (SKILL.md, frontmatter, agent binding) without solving a real problem. If/when CI integration, convention enforcement, or test-result reporting is needed, a future spec can add `/jim:meta-test` purely additively.
 - **Rejected — `/jim:meta-test` in v1:** YAGNI. The skill would add maintenance burden without immediate user value.
 
+> **Note (added by spec 007):** The deferral above has been resolved — spec 007 introduces `/jim:meta-test` as the meta skill for scaffolding and running jim's bash-script tests. As part of that work, `tests/run.sh` and `tests/testlib.sh` were relocated to `skills/meta-test/scripts/`; `tests/jimconf.sh` was updated to source the relocated lib via a `BASH_SOURCE`-relative path. Run jimconf tests with `bash tests/jimconf.sh` (standalone) or `bash skills/meta-test/scripts/run.sh` (aggregate). Future jimconf test cases should be appended via `/jim:meta-test add jimconf <case_name>`.
+
 ### 6. Caching / resolution timing
 
 - **Chosen:** No caching. Each `!`-injection call re-runs the script. The script reads `jimconf.toml` once per invocation.

@@ -64,6 +64,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:brainstorm` | Freeform ideation — exploratory notes | `@jim:pm` | `brainstorms/{YYYYMMDD}-{topic}.md` |
 | `/jim:meta-skill` | Create/update a jim plugin skill from spec | `@jim:meta` | `jim/skills/{name}/SKILL.md` |
 | `/jim:meta-agent` | Create/update a jim plugin agent from spec | `@jim:meta` | `jim/agents/{name}.md` |
+| `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite | `@jim:meta` | `jim/tests/{name}.sh` |
 
 ---
 
@@ -191,10 +192,19 @@ jim/
 │   │   └── references/
 │   │       └── skill-standards.md
 │   │
-│   └── meta-agent/
-│       ├── SKILL.md             # → /jim:meta-agent
-│       └── references/
-│           └── agent-standards.md
+│   ├── meta-agent/
+│   │   ├── SKILL.md             # → /jim:meta-agent
+│   │   └── references/
+│   │       └── agent-standards.md
+│   │
+│   └── meta-test/
+│       ├── SKILL.md             # → /jim:meta-test
+│       ├── assets/
+│       │   └── test-file.sh.tmpl
+│       └── scripts/
+│           ├── testlib.sh       # Shared test framework (asserts, fixtures, reporter)
+│           ├── run.sh           # Aggregate runner (sources testlib + every tests/*.sh)
+│           └── metatest.sh      # Dispatcher (scaffold | add | run subcommands)
 │
 ├── docs/
 │   └── workflow.md              # This file — the SDLC process itself
@@ -211,7 +221,7 @@ jim/
 | `@jim:researcher` | Codebase investigation and technical landscape research | `/jim:research`, invoked by PM or architect |
 | `@jim:coder` | TDD implementation, debugging | `/jim:build`, `/jim:debug` |
 | `@jim:reviewer` | Quality gate *(not yet implemented)* | TBD |
-| `@jim:meta` | Plugin development — builds skills and agents | `/jim:meta-skill`, `/jim:meta-agent` |
+| `@jim:meta` | Plugin development — builds skills, agents, and bash tests | `/jim:meta-skill`, `/jim:meta-agent`, `/jim:meta-test` |
 
 ### Agent ↔ Skill Composition
 
@@ -285,6 +295,7 @@ description: Plugin developer. Creates and updates jim skills and agents
 skills:
   - meta-skill
   - meta-agent
+  - meta-test
 tools: Read, Write, Edit, Glob, Grep
 ---
 ```
@@ -393,7 +404,10 @@ Jim can develop itself through its own SDLC. Skills and agents for the plugin ar
 /jim:plan          → plan the skill's structure and content (optional)
 /jim:meta-skill    → build the skill from spec + plan
 /jim:meta-agent    → build the agent from spec + plan
+/jim:meta-test     → scaffold tests for a new jim bash script, append cases, or run the suite
 ```
+
+For jim's deterministic bash scripts (`skills/*/scripts/*.sh`), `/jim:meta-test scaffold <name>` produces `tests/<name>.sh` from a template that already encodes every framework convention (case-naming, source pattern, mktemp sandbox, standalone-runnable tail). Add new cases via `/jim:meta-test add <name> <case_name>` and run via `/jim:meta-test run [name]`. Plan-gating mirrors `/jim:meta-skill` and `/jim:meta-agent` — scaffold requires an approved spec+plan for the script-under-test; add and run are ungated.
 
 Jim's own specs live in `docs/specs/jim/` as a group. Jim's strategic docs (`VISION.md`, `ARCHITECTURE.md`, `ROADMAP.md`) live at the plugin root.
 

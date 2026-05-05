@@ -79,6 +79,8 @@ A bash script (`skills/file/scripts/jimfile.sh`) exposes deterministic file/path
 - **Rejected — parallel `tests/run-jimfile.sh`:** Creates a second runner with no shared state; CI/dev workflows have to run both.
 - **Rejected — bats-core / shunit2 / pytest:** Inherits 007's zero-third-party-deps decision.
 
+> **Note (added by spec 007):** Decision 9's "extend `tests/run.sh`" has evolved — `tests/run.sh` and `tests/testlib.sh` have been relocated into `skills/meta-test/scripts/` per spec 007. The `case_jimfile_*` cases in `tests/jimfile.sh` stay where they are; the source line was updated to reach the relocated lib via a `BASH_SOURCE`-relative path. Run jimfile tests with `bash tests/jimfile.sh` (standalone) or `bash skills/meta-test/scripts/run.sh jimfile` (filter via aggregate runner). Future jimfile test cases should be appended via `/jim:meta-test add jimfile <case_name>`.
+
 ### 10. ARCHITECTURE.md update — bundled in this PR set, additive
 
 - **Chosen:** Update `ARCHITECTURE.md` in the same PR sequence: add `skills/file/` to the project tree (one block), extend the Scripting Layer subsection with one paragraph noting the second script and the inter-script composition pattern.

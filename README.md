@@ -49,6 +49,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, next-id, path, glob) |
 | `/jim:meta-skill` | Build a jim plugin skill from spec |
 | `/jim:meta-agent` | Build a jim plugin agent from spec |
+| `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite |
 
 ## Agents
 
@@ -136,13 +137,20 @@ Jim builds itself using its own workflow. Jim's specs live in [`docs/specs/jim/`
 
 ### Running tests
 
-The resolver scripts (`skills/conf/scripts/jimconf.sh` and `skills/file/scripts/jimfile.sh`) are covered by a plain-bash test runner with zero third-party dependencies:
+Jim's bash scripts (`jimconf.sh`, `jimfile.sh`, `metatest.sh`) are covered by a plain-bash test suite with zero third-party dependencies. The shared framework and aggregate runner live under `skills/meta-test/scripts/`; per-script test files live in `tests/` and source the relocated lib via a `BASH_SOURCE`-relative path.
 
 ```bash
-bash tests/run.sh                  # all tests
-bash tests/run.sh defaults         # jimconf cases — filter by name substring
-bash tests/run.sh jimfile          # jimfile cases only
+/jim:meta-test run                          # via the skill — every case across every file
+/jim:meta-test run jimfile                  # via the skill — only jimfile (standalone path)
+
+bash skills/meta-test/scripts/run.sh        # direct — every case across every file
+bash skills/meta-test/scripts/run.sh jimfile  # direct — filter by case-name substring
+bash tests/jimconf.sh                       # standalone — only jimconf cases
+bash tests/jimfile.sh                       # standalone — only jimfile cases
+bash tests/metatest.sh                      # standalone — only metatest cases
 ```
 
-Tests live under `tests/` and are not loaded by Claude Code — they are a developer-only artifact.
+Shared infrastructure (asserts, fixtures, reporter) lives in `skills/meta-test/scripts/testlib.sh`; per-script test files source it. Test discovery is by function-name convention — any function named `case_*` is a test. To add a new test file, use `/jim:meta-test scaffold <name>` (or see the recipe in the `testlib.sh` header).
+
+Tests live under `tests/` (per-script files only) and are not loaded by Claude Code — they are a developer-only artifact.
 
