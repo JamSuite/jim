@@ -320,6 +320,46 @@ case_jimfile_honors_jimconf_overrides() {
   assert_eq   "honors override" "custom/debug-dir/${today}-topic.md" "$OUT"
 }
 
+# AC: get delegates to jimconf.sh and resolves the documented default
+# Skills always call jimfile.sh; jimfile chains internally to jimconf.
+case_jimfile_get_default_vision() {
+  local dir actual
+  dir=$(empty_dir get_default)
+  actual=$(cd "$dir" && bash "$SCRIPT_JIMFILE" get vision)
+  assert_eq "vision default" "VISION.md" "$actual"
+}
+
+# AC: get with -c forwards the override to jimconf.sh
+case_jimfile_get_honors_override() {
+  local cfg
+  cfg=$(fixture get-override.toml 'architecture_path = "docs/arch.md"')
+  run_jimfile -c "$cfg" get architecture
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "architecture override" "docs/arch.md" "$OUT"
+}
+
+# AC: get pre_commit resolves the new key (default)
+case_jimfile_get_pre_commit_default() {
+  local dir actual
+  dir=$(empty_dir get_pre_commit)
+  actual=$(cd "$dir" && bash "$SCRIPT_JIMFILE" get pre_commit)
+  assert_eq "pre_commit default" "./pre-commit.sh" "$actual"
+}
+
+# AC: get with no key argument exits 2 (malformed invocation)
+case_jimfile_get_missing_arg_exits_2() {
+  run_jimfile get
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: get with an unknown key bubbles up jimconf's exit-1
+case_jimfile_get_unknown_key_exits_1() {
+  run_jimfile get bogus_key
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

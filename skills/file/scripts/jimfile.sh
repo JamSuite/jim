@@ -18,6 +18,8 @@
 #
 # CLI SUMMARY
 #   bash jimfile.sh exists <path>                     "yes" | "no" on stdout
+#   bash jimfile.sh get <key>                         resolve a configured doc path
+#                                                     (delegates to jimconf.sh)
 #   bash jimfile.sh slug <topic>                      kebab-case slug
 #   bash jimfile.sh date                              today as YYYYMMDD
 #   bash jimfile.sh next-id <group>                   next zero-padded spec id
@@ -128,6 +130,15 @@ cmd_exists() {
   else
     echo "no"
   fi
+}
+
+cmd_get() {
+  local cli_key="${1:-}"
+  if [[ -z "$cli_key" ]]; then
+    echo "error: 'get' requires a key argument" >&2
+    return 2
+  fi
+  jimconf_get "$cli_key"
 }
 
 cmd_slug() {
@@ -314,6 +325,7 @@ usage() {
   cat >&2 <<'USAGE'
 usage:
   jimfile.sh exists <path>                      "yes" or "no"
+  jimfile.sh get <key>                          resolve a configured doc path
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh next-id <group>                    next zero-padded spec id
@@ -347,6 +359,7 @@ main() {
   shift
   case "$subcmd" in
     exists)  cmd_exists  "$@" ;;
+    get)     cmd_get     "$@" ;;
     slug)    cmd_slug    "$@" ;;
     date)    cmd_date ;;
     next-id) cmd_next_id "$@" ;;

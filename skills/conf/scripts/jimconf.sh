@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -53,6 +53,7 @@ default_for() {
     roadmap)      echo "ROADMAP.md" ;;
     brainstorms)  echo "docs/brainstorms" ;;
     debug)        echo "docs/debug" ;;
+    pre_commit)   echo "./pre-commit.sh" ;;
     *) return 1 ;;
   esac
 }

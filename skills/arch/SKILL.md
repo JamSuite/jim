@@ -21,28 +21,32 @@ Use `$ARGUMENTS` to determine scope:
 
 | Input | Behavior |
 | :--- | :--- |
-| Empty | Create or update !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` at the project root |
-| Directory path | Create or update !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` inside that directory |
+| Empty | Create or update the resolved architecture path (default: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) |
+| Directory path | Create or update the architecture file inside that directory, using the filename portion of the resolved architecture path |
 
 ## Process
 
 ### 1. Establish scope
 
-Determine the target path from `$ARGUMENTS`. Set the target file as `{directory}/`!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture`.
+Resolve the configured architecture path: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`.
+
+If `$ARGUMENTS` is empty, that *is* the target path. If `$ARGUMENTS` is a directory, the target is `{$ARGUMENTS}/<filename portion of the resolved path>`.
 
 ### 2. Read the vision doc as upstream context
 
-Check for !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vision` at the project root.
-
-- **Exists:** Read it fully. The architecture serves the vision — where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
-- **Missing:** Proceed without it. Note its absence in the Overview if you generate a new file.
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+  READ FILE — the architecture serves the vision; where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
+ELSE
+  Proceed without it. Note its absence in the Overview if you generate a new file.
+END IF
 
 ### 3. Check for existing ARCHITECTURE.md
 
-Look for !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` at the target path.
-
-- **Exists:** This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write.
-- **Missing:** Generate a new document from `assets/architecture-template.md`.
+IF (the target path from §1) EXISTS THEN
+  This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write.
+ELSE
+  Generate a new document from `assets/architecture-template.md`.
+END IF
 
 ### 4. Scan the codebase
 

@@ -110,6 +110,13 @@ flowchart TD
   6. **Freshness** — explicitly addresses current mechanics (no stale assumptions)
   7. **Spec Alignment** — frontmatter `spec:` field points to the correct spec
 
+### 10. Scripting layer is a validation concern, not a build concern
+
+- **Chosen:** Both meta-skill and meta-agent gain validation-checklist bullets for the scripting layer (when present). meta-skill validates `scripts/` content + `!`-injection integrity + gate-idiom usage; meta-agent validates only gate-idiom usage in prose. Neither skill *authors* scripts — `meta-test` already owns scaffolding via `/jim:meta-test scaffold`.
+- **Why:** When 001-meta was originally written jim had no `scripts/` directory anywhere. Specs 007/008/009 introduced the scripting layer after the fact (see research.md → "Scripting Layer in jim plugin components"). The cross-platform research confirms bash is the canonical scripting language and the genuine LCD across coding-agent platforms (Claude Code, Codex CLI, Gemini CLI, Cursor, Aider). meta is the constitution-validator for jim plugin components, so it now must check that script-bearing skills conform to CLAUDE.md (security/portability) and that in-prompt logic gates use the BASIC-style idiom canonicalized in ARCHITECTURE.md → Plugin Conventions → Logic-Flow Conventions.
+- **Where the substance lives:** meta does not re-state the rules. CLAUDE.md owns script security/portability; ARCHITECTURE.md owns composition + the bash-vs-prompt decision rule + the BASIC-style gate idiom. The spec amendment in "Scripting Layer (optional)" (under Standards Applied) points at those canonical homes; the validation checklist references them.
+- **Rejected:** A new `/jim:meta-script` skill. Scripts are an *artifact* of skills, not a top-level component type — meta-skill already governs the skill they live in. Also rejected: folding script authoring into meta-skill's build flow. meta-test already owns scaffolding; duplicating that into meta-skill would violate the duplicate-logic anti-pattern.
+
 ## File Manifest
 
 | # | Component | File Path | Action | Notes |
@@ -189,6 +196,9 @@ Write the meta-skill SKILL.md with:
   - Description includes triggering conditions (when to use, not just what it does)
   - Instructions use imperative form
   - No anti-patterns (personality soup, permission creep, instruction shadowing, duplicate logic)
+  - Scripting layer: if `scripts/` exists, every script conforms to CLAUDE.md (no `set -e`, no third-party deps, no `source` of user data, `BASH_SOURCE`-relative composition for inter-script calls)
+  - Logic-flow idiom: in-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom from ARCHITECTURE.md → Plugin Conventions → Logic-Flow Conventions (no invented variants)
+  - `!`-injection integrity: every script referenced by an `!`bash …`` block in the SKILL.md body actually exists at the cited path
 - Differential update instructions: if SKILL.md already exists, read it first, summarize proposed changes, use Edit not Write
 - Reference to WORKFLOW.md for SDLC context
 
@@ -219,6 +229,7 @@ Write the meta-agent SKILL.md with:
   - Description includes triggering conditions
   - Tools list follows least privilege
   - No anti-patterns (personality soup, permission creep, instruction shadowing, duplicate logic)
+  - Logic-flow idiom: any in-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom from ARCHITECTURE.md → Plugin Conventions → Logic-Flow Conventions. Agents do not ship `scripts/` — script-conformance is a meta-skill concern only.
 - Differential update instructions: same read-first-then-Edit approach
 - Reference to WORKFLOW.md for SDLC context
 

@@ -30,10 +30,13 @@ Use `$ARGUMENTS` as the idea or name hint.
 
 ### 2. Read strategic context
 
-Read these files from the project root if they exist:
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+  READ FILE — locked constraint. Do not re-litigate strategic decisions.
+END IF
 
-- !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vision` — locked constraint. Do not re-litigate strategic decisions.
-- !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` — locked constraint. Technical invariants are not negotiable.
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
+  READ FILE — locked constraint. Technical invariants are not negotiable.
+END IF
 
 If either is missing, note it conversationally ("I notice there's no vision doc yet — you might want to create one to anchor future specs") and proceed. Never block on their absence.
 
@@ -41,7 +44,7 @@ Read `references/spec-types.md` for type guidance, anti-patterns, and status lif
 
 ### 3. Check existing specs
 
-Glob !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs` to identify existing groups and specs.
+List existing specs in every group via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs` to identify existing groups and specs.
 
 - If `$ARGUMENTS` matches an existing spec name, ask: "Update the existing spec, or create a new one?"
 - Identify the target group. If ambiguous, suggest a noun-based group name or ask.

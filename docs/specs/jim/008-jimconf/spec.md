@@ -40,6 +40,7 @@ A third design driver, surfaced during planning: the configuration *file* should
   - ROADMAP.md (default: `ROADMAP.md`)
   - Brainstorms directory (default: `docs/brainstorms/`)
   - Debug reports directory (default: `docs/debug/`)
+  - Pre-commit script (default: `./pre-commit.sh`) — added 2026-05-05 by the file-resolver-conventions refactor (`docs/brainstorms/20260505-file-resolver-conventions-audit.md`). Resolves the path-where-it-would-live; consumers wrap calls in an existence gate at the skill layer, so a missing file is silently skipped.
 - [ ] When no `jimconf.{ext}` file exists at the project root, every skill behaves identically to its current behavior — zero-config baseline is preserved.
 - [ ] When a `jimconf.{ext}` file exists but only specifies a subset of keys, the specified keys override the defaults and unspecified keys retain the defaults (layered/partial override).
 - [ ] Skills that read or produce these documents resolve the path through the configuration layer rather than assuming the default.

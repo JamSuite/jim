@@ -44,6 +44,7 @@ A secondary concern surfaced during scoping: this is jim's second piece of execu
 
 - [ ] A utility surface exposes, at minimum, the following operations:
   - **Existence check** for a given path. Returns a deterministic indication of present/absent.
+  - **Configured-path resolution** (`get <key>`) — added 2026-05-05 by the file-resolver-conventions refactor (`docs/brainstorms/20260505-file-resolver-conventions-audit.md`). Delegates to `jimconf.sh get <key>` so skills and agents have a single entry point and never need to call jimconf directly.
   - **Next spec ID** for a given group, in 3-digit zero-padded form, computed from the canonical specs directory.
   - **Canonical artifact path** for a new spec, plan, research, debug, or brainstorm — with date prefix or ID injected as required by the artifact type.
   - **Topic slug normalization** — given a free-form topic string, produce the kebab-case slug used in date-prefixed filenames.

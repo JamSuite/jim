@@ -44,7 +44,7 @@ The scaffold action creates a new test file. **Plan-gating discipline matches `/
 
 `<name>` is the basename of both the script-under-test (e.g., `jimsomething` → `skills/<feature>/scripts/jimsomething.sh`) and the test file to scaffold (`tests/jimsomething.sh`).
 
-**Gate 1 — Spec:** Search `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/jim/` for a spec whose plan creates `skills/<feature>/scripts/<name>.sh`. The spec frontmatter must have `status: approved`. If no approved spec exists, spawn `@jim:pm` via the Agent tool to create one (or tell the user to run `/jim:spec` if pm is unavailable). Stop execution.
+**Gate 1 — Spec:** Search the `jim` group via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs jim` for a spec whose plan creates `skills/<feature>/scripts/<name>.sh`. The spec frontmatter must have `status: approved`. If no approved spec exists, spawn `@jim:pm` via the Agent tool to create one (or tell the user to run `/jim:spec` if pm is unavailable). Stop execution.
 
 **Gate 2 — Research:** Read `research.md` from the spec directory. Confirm it exists and `status:` is `Active` (or `Needs PM Review` / `Needs Architect Review` that the user has acknowledged). If research is missing, spawn `@jim:researcher` (or tell the user to run `/jim:research`). Stop execution.
 

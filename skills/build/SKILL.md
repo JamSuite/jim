@@ -89,7 +89,10 @@ Then read the next unchecked task and repeat.
 
 After all tasks are marked `[x]`:
 
-1. Run `./pre-commit.sh` via Bash. Show the full output.
+1. IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`) EXISTS THEN DO:
+   1. Run it via Bash.
+   2. Show the full output.
+   DONE
 2. Report results to the user and ask: "Should I mark the plan status as `complete`?"
 3. STOP. Wait for the human to confirm. Do not proceed to the next SDLC phase, do not auto-invoke review. Update the plan frontmatter to `status: complete` only after explicit confirmation.
 

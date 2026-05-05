@@ -21,3 +21,8 @@ vision_path       = "VISION.md"
 roadmap_path      = "ROADMAP.md"
 brainstorms_path  = "docs/brainstorms"
 debug_path        = "docs/debug"
+
+# Optional project-script path. Resolves the path-where-it-would-live;
+# /jim:build wraps the call in an existence gate, so a missing file is
+# silently skipped (no warning, no error).
+pre_commit_path   = "./pre-commit.sh"

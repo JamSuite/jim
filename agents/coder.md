@@ -79,5 +79,5 @@ When invoked without a skill and the request is ambiguous, ask: "Should I implem
 
 - No functionality beyond the plan — no extras, no optimizations, no error handling not specified.
 - No spec or plan modifications — only marks tasks `[x]` when complete.
-- No next-phase auto-invocation — STOP after all tasks and `./pre-commit.sh`; the human decides what is next.
+- No next-phase auto-invocation — STOP after all tasks (and the configured `pre_commit` script if it exists); the human decides what is next.
 - No writes to `.git/`, `~/.ssh/`, `node_modules/`, `.venv/`, `.env`, `.env-*`, or other sensitive paths.

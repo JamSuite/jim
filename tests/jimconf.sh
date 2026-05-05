@@ -45,7 +45,8 @@ case_no_config_returns_defaults() {
               "vision:VISION.md" \
               "roadmap:ROADMAP.md" \
               "brainstorms:docs/brainstorms" \
-              "debug:docs/debug"; do
+              "debug:docs/debug" \
+              "pre_commit:./pre-commit.sh"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -62,13 +63,15 @@ architecture_path = "docs/arch.md"
 vision_path = "docs/vision.md"
 roadmap_path = "docs/roadmap.md"
 brainstorms_path = "docs/brainstorms-dir"
-debug_path = "docs/debug-dir"')
+debug_path = "docs/debug-dir"
+pre_commit_path = "scripts/pre-commit"')
   run -c "$cfg" get specs;        assert_eq "specs"        "my/specs"             "$OUT"
   run -c "$cfg" get architecture; assert_eq "architecture" "docs/arch.md"         "$OUT"
   run -c "$cfg" get vision;       assert_eq "vision"       "docs/vision.md"       "$OUT"
   run -c "$cfg" get roadmap;      assert_eq "roadmap"      "docs/roadmap.md"      "$OUT"
   run -c "$cfg" get brainstorms;  assert_eq "brainstorms"  "docs/brainstorms-dir" "$OUT"
   run -c "$cfg" get debug;        assert_eq "debug"        "docs/debug-dir"       "$OUT"
+  run -c "$cfg" get pre_commit;   assert_eq "pre_commit"   "scripts/pre-commit"   "$OUT"
 }
 
 # AC: partial override layered over defaults (spec AC #3)
@@ -90,21 +93,22 @@ case_unknown_key_exits_with_error() {
   assert_nonempty "stderr explains"  "$ERR"
 }
 
-# AC: list emits all 6 keys as KEY=VALUE pairs (one line each)
-case_list_outputs_all_six_keys() {
+# AC: list emits every configured key as KEY=VALUE pairs (one line each)
+case_list_outputs_all_keys() {
   local cfg
   cfg=$(fixture list-defaults.toml '')
   run -c "$cfg" list
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"  "6" "$line_count"
+  assert_eq    "list line count"  "7" "$line_count"
   assert_match "specs line"        '^specs=docs/specs$'              "$OUT"
   assert_match "architecture line" '^architecture=ARCHITECTURE\.md$' "$OUT"
   assert_match "vision line"       '^vision=VISION\.md$'             "$OUT"
   assert_match "roadmap line"      '^roadmap=ROADMAP\.md$'           "$OUT"
   assert_match "brainstorms line"  '^brainstorms=docs/brainstorms$'  "$OUT"
   assert_match "debug line"        '^debug=docs/debug$'              "$OUT"
+  assert_match "pre_commit line"   '^pre_commit=\./pre-commit\.sh$'  "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -112,7 +116,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -150,7 +154,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still 6 lines" "6" "$line_count"
+  assert_eq "list still emits all keys" "7" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -176,6 +180,24 @@ case_dash_c_missing_path_falls_through_to_defaults() {
   assert_eq   "default specs"  "docs/specs" "$OUT"
   run -c "$TMP_BASE/no-such-file.toml" path
   assert_eq   "missing path empty" "" "$OUT"
+}
+
+# AC: pre_commit key resolves to ./pre-commit.sh by default
+# Project-script default — every consumer wraps this in an exists gate at the
+# skill layer, so the resolver returns the path unconditionally.
+case_pre_commit_default() {
+  local dir actual
+  dir=$(empty_dir pre_commit_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get pre_commit)
+  assert_eq "pre_commit default" "./pre-commit.sh" "$actual"
+}
+
+# AC: pre_commit override via jimconf.toml
+case_pre_commit_overridden() {
+  local cfg
+  cfg=$(fixture pre_commit-override.toml 'pre_commit_path = "ci/pre-commit.bash"')
+  run -c "$cfg" get pre_commit
+  assert_eq "pre_commit overridden" "ci/pre-commit.bash" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

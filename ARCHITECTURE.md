@@ -37,7 +37,7 @@ jim/
 │   ├── file/                # /jim:file — file/path operation surface (008)
 │   │   ├── SKILL.md
 │   │   └── scripts/
-│   │       └── jimfile.sh   # exists/slug/date/next-id/path/glob; shells out to jimconf.sh
+│   │       └── jimfile.sh   # exists/get/slug/date/next-id/path/glob; shells out to jimconf.sh
 │   ├── meta-skill/          # /jim:meta-skill — create/update jim skills
 │   ├── meta-agent/          # /jim:meta-agent — create/update jim agents
 │   └── meta-test/           # /jim:meta-test — scaffold and run bash tests (007)
@@ -255,13 +255,73 @@ Conventions that govern how jim's agents, skills, and tools interact with Claude
 
 Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/scripts/jimconf.sh` resolves project-level path overrides for jim's strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.sh` — extends the layer with deterministic file/path operations.
 
-- **Single resolver, many consumers.** Every consuming skill (`vision`, `roadmap`, `arch`, `plan`, `spec`, `research`, `brainstorm`, `debug`, `meta-skill`, `meta-agent`) references the same script via Claude Code's `!`-injection primitive: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get <key>` ``. The output replaces the placeholder in the skill body before the LLM reads it, so the resolved path lands in the prompt deterministically.
+- **Single resolver, many consumers.** Every consuming skill (`vision`, `roadmap`, `arch`, `plan`, `spec`, `research`, `brainstorm`, `debug`, `meta-skill`, `meta-agent`, `build`) references the resolver via Claude Code's `!`-injection primitive: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get <key>` ``. The output replaces the placeholder in the skill body before the LLM reads it, so the resolved path lands in the prompt deterministically. **Skills and agents always call `jimfile.sh`, never `jimconf.sh` directly** — `jimfile.sh` chains internally to `jimconf.sh` for any operation that needs a configured path.
 - **`${CLAUDE_PLUGIN_ROOT}` is the documented plugin-root substitution** — see `code.claude.com/docs/en/plugins-reference#environment-variables`. It resolves to the plugin's installation directory regardless of which skill consumes the script.
 - **The `/jim:conf` skill** (`skills/conf/SKILL.md`) is a thin user-facing wrapper around the same script for human introspection (`/jim:conf list`, `/jim:conf get specs`, etc.). It carries no `agent:` binding because there is no LLM reasoning to delegate.
-- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for the six configurable paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`). Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code).
-- **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding).
+- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for the seven configurable paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`, `pre_commit_path`). Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code). The `pre_commit_path` default (`./pre-commit.sh`) is the *path-where-it-would-live*; consumers always wrap calls in an existence gate at the skill layer, so a missing file is silently skipped.
+- **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, configured-path resolution (`get <key>`, delegates to `jimconf.sh`), slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding).
 - **Tests:** Per-script test files at `tests/jimconf.sh`, `tests/jimfile.sh`, and `tests/metatest.sh` cover each script's CLI surface, defaults, parse robustness, and (where applicable) the `-c <path>` flag. The shared framework lives at `skills/meta-test/scripts/testlib.sh` and the aggregate runner at `skills/meta-test/scripts/run.sh`, so the meta-test skill owns its toolchain (per spec 007). Per-script files source the relocated lib via a `BASH_SOURCE`-relative path (`source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"`). Run all via `bash skills/meta-test/scripts/run.sh` (or `/jim:meta-test run`), run a single script standalone via `bash tests/jimconf.sh` / `bash tests/jimfile.sh` / `bash tests/metatest.sh`. Filter by name substring still works: `bash skills/meta-test/scripts/run.sh jimfile` (or `/jim:meta-test run jimfile`).
 - **Test scaffolding (`metatest.sh`).** Third script under `skills/meta-test/scripts/`. Three subcommands — `scaffold <name>` (create `tests/<name>.sh` from `assets/test-file.sh.tmpl`), `add <name> <case>` (append a `case_<name>_<case>()` stub), `run [name]` (invoke runner, standalone path preferred for one-file). The user-facing `/jim:meta-test` skill (`skills/meta-test/SKILL.md`) wraps the dispatcher with per-action gating: scaffold requires an approved spec+plan for the script-under-test (mirrors `meta-skill`/`meta-agent`); add and run are ungated.
+
+### Bash-vs-Prompt Decision Rule
+
+When deciding whether logic should live in a bash script or in a skill/agent prompt, apply the following heuristic. Bash is jim's canonical scripting language — confirmed as the genuine LCD across coding-agent platforms (see `docs/specs/jim/001-meta/research.md` → "Scripting Layer in jim plugin components"). Bash needs no runtime declaration; anything else (Python, JS) would require declaring `compatibility:` and would fail in environments lacking the runtime — including Anthropic's own default Claude Code devcontainer.
+
+| Use a bash script when… | Use a prompt when… |
+|---|---|
+| The task is **deterministic** (same input → same output, no judgment). | The task requires **judgment, synthesis, or rationale** (interview, design tradeoff, validation reasoning). |
+| The cost in tokens or latency through the LLM would be 10–1000× higher than a script. | Tokens/latency are dominated by the LLM's reasoning, not the mechanical step. |
+| The result is **verifiable** by exit code or string compare. | The result is qualitative ("is this spec well-scoped?"). |
+| The operation can fail loudly and recoverably (exit 1, empty string). | The operation needs graceful degradation or a conversational fallback. |
+
+Examples that fit the rule (anchors): `skills/conf/scripts/jimconf.sh` (config parsing), `skills/file/scripts/jimfile.sh` (existence checks, slug, next-id, glob, path resolution), `skills/meta-test/scripts/*.sh` (deterministic test execution). Counter-examples that rightly stay in prompts: the `/jim:spec` interview, the `meta-skill`/`meta-agent` 7-point research spot-check, design tradeoff reasoning in `/jim:plan`.
+
+### Logic-Flow Conventions
+
+In-prompt existence/absence gates around `!`-injected paths use a small BASIC-flavored keyword set. The control flow is shorthand; the actions inside each block stay in plain English. The keyword set is locked — anything fancier reverts to English.
+
+| Keyword              | Meaning                                  |
+| -------------------- | ---------------------------------------- |
+| `IF (X) EXISTS THEN` | path X is on disk                        |
+| `IF (X) ABSENT THEN` | path X is not on disk                    |
+| `THEN` …             | inline single-action form                |
+| `THEN DO:` … `DONE`  | block form for multi-step actions        |
+| `ELSE` …             | optional alternative branch              |
+| `END IF`             | closes the block                         |
+
+No loops, no variables, no `WHILE`, no `RETURN`. The body of each block is natural-language imperatives — the *control flow* is the only shorthand.
+
+**Inline single-action form:**
+
+```
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+  READ FILE — locked constraint. Do not re-litigate strategic decisions.
+END IF
+```
+
+**Multi-step block form with ELSE:**
+
+```
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
+  READ FILE — treat every architectural invariant as a locked constraint.
+ELSE
+  Note the absence in the Constitution Check section. Proceed without constraints.
+END IF
+```
+
+**Where the idiom helps:**
+- Existence-gated reads (most common — strategic doc lookups, optional config files).
+- Existence-gated executes (e.g., a `pre_commit_path` script that's absent in most projects).
+- Either/or branches based on file presence.
+
+**Where it does *not* help (revert to English):**
+- Multi-condition logic (and/or chains).
+- Loops over globbed results — use English + a `jimfile.sh glob` call.
+- Anything where the action is more than ~3 numbered steps — use a named subsection in English.
+
+**Markdown rendering:** the inline single-action form is safe outside fences. The multi-step `THEN DO:` … `DONE` form should be wrapped in a fenced `text` block so the numbered list keeps predictable indentation.
+
+This idiom is enforced by `meta-skill` and `meta-agent` validation checklists — invented variants (`WHEN ... PRESENT`, `IF FILE ... DO`, etc.) are a validation failure.
 
 ### Progressive Disclosure
 

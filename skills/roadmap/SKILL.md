@@ -24,22 +24,25 @@ Use `$ARGUMENTS` as a hint for what the user wants to add or update. If empty, s
 
 ### 2. Read context
 
-Read !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vision` from the project root if it exists — for strategic alignment.
-
-If missing, note: "No vision doc yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+  READ FILE — for strategic alignment.
+ELSE
+  Note: "No vision doc yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
+END IF
 
 ### 3. Search for linkable specs
 
-Glob !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/**/*.md to find existing specs. Grep frontmatter `title:` fields to build a list of linkable candidates. Hold this list — when the user mentions a deliverable that matches a known spec, offer the link.
+List existing specs via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs`. For each spec directory returned, Grep its `spec.md` frontmatter `title:` to build a list of linkable candidates. Hold this list — when the user mentions a deliverable that matches a known spec, offer the link.
 
-Do not Read full spec contents — Glob and Grep only. This prevents context overflow in repos with many specs.
+Do not Read full spec contents — glob and grep only. This prevents context overflow in repos with many specs.
 
 ### 4. Check for existing ROADMAP.md
 
-Read !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get roadmap` from the project root.
-
-- **Exists:** Differential update. Read existing content. Summarize the current state to the user. Ask what they want to change — add items, move items between buckets, update version anchors, refine objectives.
-- **Does not exist:** Fresh creation. Proceed to interview.
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`) EXISTS THEN
+  Differential update. Read existing content. Summarize the current state to the user. Ask what they want to change — add items, move items between buckets, update version anchors, refine objectives.
+ELSE
+  Fresh creation. Proceed to interview.
+END IF
 
 ### 5. Interview
 
@@ -69,7 +72,7 @@ The roadmap is a strategic communication tool, not a backlog. Push back when it 
 
 Read `assets/roadmap-template.md`. Fill buckets with interview results. Set "Last updated" to today's date. Keep it concise.
 
-Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get roadmap` at the project root.
+Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`.
 
 ### 8. Silent self-check
 

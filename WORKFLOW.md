@@ -383,7 +383,7 @@ agent: meta
 
 **Tidy First:** Structural changes (renames, extractions, moves) are never mixed with behavioral changes (new functionality) in the same commit.
 
-**Gate:** All tests pass. `./pre-commit.sh` is green.
+**Gate:** All tests pass. The configured `pre_commit` script (default `./pre-commit.sh`, configurable via `jimconf.toml`) is green if present; absent means the gate is a no-op.
 
 ### `/jim:review` *(not yet implemented)*
 

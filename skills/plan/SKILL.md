@@ -50,10 +50,11 @@ Check for `research.md` in the same directory as the spec.
 
 ### 3. Check the architecture doc
 
-Look for !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` at the project root (and at the target directory if planning a subdirectory).
-
-- **Exists:** Read it. Treat every architectural invariant as a locked constraint. No design decision may violate these without explicit user approval.
-- **Missing:** Note the absence in the Constitution Check section of the plan. Proceed without constraints.
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
+  READ FILE — treat every architectural invariant as a locked constraint. No design decision may violate these without explicit user approval.
+ELSE
+  Note the absence in the Constitution Check section of the plan. Proceed without constraints.
+END IF
 
 ### 4. Check for an existing plan
 
@@ -94,7 +95,7 @@ Populate all sections from the template:
 10. **Out of Scope** — explicit deferrals
 11. **Open Questions** — unresolved items
 
-Write to `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/{group}/{id}-{name}/plan.md`. Status stays `draft`.
+Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path plan <group> <id> <name>`. Status stays `draft`.
 
 ### 7. Self-check
 
