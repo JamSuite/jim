@@ -7,6 +7,7 @@ description: >
   for building application code or non-jim agents.
 agent: meta
 argument-hint: "[agent-name]"
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:meta-agent
@@ -19,9 +20,9 @@ Create or update a jim plugin agent (`agents/{name}.md`) from an approved spec a
 
 ### 1. Pass three gates before building
 
-Use `$ARGUMENTS` as a hint for the agent name. Search `docs/specs/jim/` for a matching approved spec (`status: approved` in frontmatter), or ask the user which spec to build from.
+Use `$ARGUMENTS` as a hint for the agent name. Search `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/jim/` for a matching approved spec (`status: approved` in frontmatter), or ask the user which spec to build from.
 
-**Gate 1 — Spec:** Locate an approved spec in `docs/specs/jim/`. If no approved spec exists, spawn `@jim:pm` via the Agent tool to create one. If the pm agent is not available, tell the user to run `/jim:spec` instead.
+**Gate 1 — Spec:** Locate an approved spec in `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/jim/`. If no approved spec exists, spawn `@jim:pm` via the Agent tool to create one. If the pm agent is not available, tell the user to run `/jim:spec` instead.
 
 **Gate 2 — Research Quality:** Read `research.md` from the spec directory. Evaluate it against this 7-point spot-check:
 

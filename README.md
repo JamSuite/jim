@@ -45,6 +45,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:roadmap` | Create/update execution roadmap |
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
+| `/jim:conf` | Inspect resolved jim configuration paths |
 | `/jim:meta-skill` | Build a jim plugin skill from spec |
 | `/jim:meta-agent` | Build a jim plugin agent from spec |
 
@@ -77,9 +78,52 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 
 That's it — Jim's slash commands and agents are now available in your session.
 
+## Configuration
+
+Jim works with **zero configuration** — every skill defaults to the conventional paths (`docs/specs/`, `ARCHITECTURE.md`, etc.). To adopt jim into a project that already uses different document locations, drop a `jimconf.toml` at the project root and override only the keys you need.
+
+Copy the shipped template to start:
+
+```bash
+cp jimconf.toml.example jimconf.toml
+```
+
+Supported keys (all optional — omitted keys keep their defaults):
+
+| Key | Default | Used by |
+|-----|---------|---------|
+| `specs_path` | `docs/specs` | `/jim:spec`, `/jim:plan`, `/jim:research`, `/jim:meta-skill`, `/jim:meta-agent`, `/jim:roadmap` |
+| `architecture_path` | `ARCHITECTURE.md` | `/jim:arch`, `/jim:plan`, `/jim:vision`, `/jim:research`, `/jim:spec` |
+| `vision_path` | `VISION.md` | `/jim:vision`, `/jim:roadmap`, `/jim:arch`, `/jim:spec`, `/jim:research`, `/jim:brainstorm` |
+| `roadmap_path` | `ROADMAP.md` | `/jim:roadmap`, `/jim:brainstorm` |
+| `brainstorms_path` | `docs/brainstorms` | `/jim:brainstorm` |
+| `debug_path` | `docs/debug` | `/jim:debug` |
+
+> **Manual migration rule.** Changing a configured path does **not** move existing files. If you point `architecture_path` at a new location, you are responsible for moving (or recreating) the file at the new path. Jim never relocates artifacts on a config change.
+
+Inspect what jim resolves with `/jim:conf`:
+
+```
+/jim:conf list                              # active project config
+/jim:conf get specs                         # one key
+/jim:conf path                              # which file is active
+/jim:conf -c jimconf.toml.example list      # see the shipped defaults
+```
+
 ## How to develop for Jim
 
 See [`WORKFLOW.md`](./WORKFLOW.md) for the full SDLC process.
 
 Jim builds itself using its own workflow. Jim's specs live in [`docs/specs/jim/`](docs/specs/jim/).
+
+### Running tests
+
+The resolver script in `skills/conf/scripts/jimconf.sh` is covered by a plain-bash test runner with zero third-party dependencies:
+
+```bash
+bash tests/run.sh                  # all tests
+bash tests/run.sh defaults         # filter by name substring
+```
+
+Tests live under `tests/` and are not loaded by Claude Code — they are a developer-only artifact.
 

@@ -30,17 +30,24 @@ jim/
 │   ├── roadmap/             # /jim:roadmap — execution milestones
 │   ├── arch/                # /jim:arch — architecture document generation
 │   ├── brainstorm/          # /jim:brainstorm — freeform ideation capture
+│   ├── conf/                # /jim:conf — config inspector + shared resolver script
+│   │   ├── SKILL.md
+│   │   └── scripts/
+│   │       └── jimconf.sh   # Shared bash resolver — !-injected by every consuming skill
 │   ├── meta-skill/          # /jim:meta-skill — create/update jim skills
 │   └── meta-agent/          # /jim:meta-agent — create/update jim agents
+├── tests/                   # Developer-only; not loaded by Claude Code
+│   └── run.sh               # Plain-bash test runner for jimconf.sh (zero deps)
 ├── docs/
 │   ├── specs/               # Spec groups with numbered spec directories
-│   │   └── jim/             # Specs for jim's own development (001–006)
+│   │   └── jim/             # Specs for jim's own development (001–007)
 │   ├── prior-art/           # Reference material from other projects (gitignored downloads)
 │   └── notes/               # Personal development notes
 ├── VISION.md                # Product vision — problem, solution, audience, north star
 ├── ROADMAP.md               # Execution sequence
 ├── WORKFLOW.md              # The SDLC process definition — commands, artifacts, philosophy
 ├── CLAUDE.md                # Claude Code project instructions
+├── jimconf.toml.example     # Example project-level path overrides; users copy to jimconf.toml
 └── README.md                # Project readme
 ```
 
@@ -179,9 +186,9 @@ Skills are SKILL.md files inside `skills/{name}/` directories, optionally accomp
 
 - **Runtime:** Claude Code plugin — no standalone runtime. Requires Claude Code CLI with plugin support.
 - **Entry point:** `.claude-plugin/plugin.json` — Claude Code discovers and loads the plugin from this manifest
-- **Configuration:** `.claude/settings.local.json` for permission allowlists. No other configuration files.
+- **Configuration:** `.claude/settings.local.json` for permission allowlists. Optional `jimconf.toml` at the project root for path overrides (see Plugin Conventions → Scripting Layer).
 - **Distribution:** Git repository. Users install by cloning/adding the repo as a Claude Code plugin.
-- **Environment requirements:** Claude Code CLI. No build step, no dependencies, no package manager — pure markdown.
+- **Environment requirements:** Claude Code CLI plus a POSIX shell (`bash`) for the resolver in `skills/conf/scripts/`. The plugin is markdown-first with a minimal scripting layer; no build step, no package manager, no third-party dependencies.
 
 ## Security Considerations
 
@@ -194,10 +201,10 @@ Skills are SKILL.md files inside `skills/{name}/` directories, optionally accomp
 ## Development & Testing
 
 - **Setup:** Clone the repository and configure it as a Claude Code plugin
-- **Run tests:** No automated test suite — jim is a pure-markdown plugin with no executable code
-- **Test framework:** N/A
-- **Test conventions:** Jim validates its own output through validation checklists embedded in each skill's process section
-- **Linting / formatting:** N/A — markdown only. Consistency enforced by templates in `skills/*/assets/`
+- **Run tests:** `bash tests/run.sh` — plain-bash runner for `skills/conf/scripts/jimconf.sh`. Filter by name: `bash tests/run.sh defaults` runs only matching cases. Zero third-party dependencies.
+- **Test framework:** Hand-rolled bash runner at `tests/run.sh`. Inline heredoc fixtures, per-test `mktemp` sandbox, no shared state.
+- **Test conventions:** Tests live under `tests/` and are not loaded by Claude Code (which reads only `skills/` and `agents/`). LLM-interpreted skill prompts are validated by checklist; deterministic scripts are validated by `tests/run.sh`.
+- **Linting / formatting:** N/A — markdown + bash. Consistency enforced by templates in `skills/*/assets/` and the documentation discipline rules at the top of `tests/run.sh` and `skills/conf/scripts/jimconf.sh`.
 
 ## Plugin Conventions
 
@@ -227,6 +234,16 @@ Conventions that govern how jim's agents, skills, and tools interact with Claude
 - **`Agent(name1, name2)` syntax** in the `tools` field restricts which subagents an agent can spawn. Example: `tools: [Read, Write, Edit, Glob, Grep, Agent(pm, architect, researcher)]`.
 - **One level only.** Subagents cannot nest — parent → child works, parent → child → grandchild does not. This is a Claude Code platform constraint.
 - **Fresh context.** Subagents start with only the prompt passed via the Agent tool, not the parent's conversation history.
+
+### Scripting Layer
+
+Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/scripts/jimconf.sh` resolves project-level path overrides for jim's strategic and SDLC documents.
+
+- **Single resolver, many consumers.** Every consuming skill (`vision`, `roadmap`, `arch`, `plan`, `spec`, `research`, `brainstorm`, `debug`, `meta-skill`, `meta-agent`) references the same script via Claude Code's `!`-injection primitive: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get <key>` ``. The output replaces the placeholder in the skill body before the LLM reads it, so the resolved path lands in the prompt deterministically.
+- **`${CLAUDE_PLUGIN_ROOT}` is the documented plugin-root substitution** — see `code.claude.com/docs/en/plugins-reference#environment-variables`. It resolves to the plugin's installation directory regardless of which skill consumes the script.
+- **The `/jim:conf` skill** (`skills/conf/SKILL.md`) is a thin user-facing wrapper around the same script for human introspection (`/jim:conf list`, `/jim:conf get specs`, etc.). It carries no `agent:` binding because there is no LLM reasoning to delegate.
+- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for the six configurable paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`). Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code).
+- **Tests:** `bash tests/run.sh` covers the script's CLI surface, defaults, parse robustness, and the `-c <path>` flag.
 
 ### Progressive Disclosure
 

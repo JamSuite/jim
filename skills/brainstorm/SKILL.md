@@ -8,6 +8,7 @@ description: >
   (/jim:spec) or strategic document (/jim:vision, /jim:roadmap).
 agent: pm
 argument-hint: "[topic]"
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:brainstorm
@@ -24,11 +25,11 @@ Use `$ARGUMENTS` as the topic for the brainstorm file. If empty, ask: "What do y
 
 ### 2. Read context (light)
 
-Quickly read VISION.md and ROADMAP.md if they exist. Don't discuss them — hold them as context so end-of-session routing is informed.
+Quickly read !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vision` and !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get roadmap` if they exist. Don't discuss them — hold them as context so end-of-session routing is informed.
 
 ### 3. Create the brainstorm file
 
-Create `docs/brainstorms/{YYYYMMDD}-{topic}.md`. Use today's date and a topic slug (lowercase, hyphens, no spaces). Create the `docs/brainstorms/` directory if it doesn't exist.
+Create `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get brainstorms`/{YYYYMMDD}-{topic}.md`. Use today's date and a topic slug (lowercase, hyphens, no spaces). Create the brainstorms directory if it doesn't exist.
 
 Write the initial content:
 

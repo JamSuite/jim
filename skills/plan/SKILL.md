@@ -8,6 +8,7 @@ description: >
   (/jim:research), or code implementation (/jim:build).
 agent: architect
 argument-hint: "[spec-path]"
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:plan
@@ -47,9 +48,9 @@ Check for `research.md` in the same directory as the spec.
 
 **Peer Feedback in research:** If research.md contains a Peer Feedback section with plan invalidation signals, address each one explicitly in the plan — accept, reject with rationale, or flag for the user to decide.
 
-### 3. Check ARCHITECTURE.md
+### 3. Check the architecture doc
 
-Look for `ARCHITECTURE.md` at the project root (and at the target directory if planning a subdirectory).
+Look for !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` at the project root (and at the target directory if planning a subdirectory).
 
 - **Exists:** Read it. Treat every architectural invariant as a locked constraint. No design decision may violate these without explicit user approval.
 - **Missing:** Note the absence in the Constitution Check section of the plan. Proceed without constraints.
@@ -93,7 +94,7 @@ Populate all sections from the template:
 10. **Out of Scope** — explicit deferrals
 11. **Open Questions** — unresolved items
 
-Write to `docs/specs/{group}/{id}-{name}/plan.md`. Status stays `draft`.
+Write to `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/{group}/{id}-{name}/plan.md`. Status stays `draft`.
 
 ### 7. Self-check
 

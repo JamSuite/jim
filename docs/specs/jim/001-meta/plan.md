@@ -194,7 +194,7 @@ Write the meta-skill SKILL.md with:
 
 **Verify:**
 ```bash
-test -f /home/adri/projects/JamSuite/repos/jim/skills/meta-skill/SKILL.md && head -10 /home/adri/projects/JamSuite/repos/jim/skills/meta-skill/SKILL.md | grep -q "name: meta-skill" && wc -l < /home/adri/projects/JamSuite/repos/jim/skills/meta-skill/SKILL.md | awk '{exit ($1 > 500)}'
+test -f skills/meta-skill/SKILL.md && head -10 skills/meta-skill/SKILL.md | grep -q "name: meta-skill" && wc -l < skills/meta-skill/SKILL.md | awk '{exit ($1 > 500)}'
 ```
 
 ### Task 2: Create `jim/skills/meta-agent/SKILL.md`
@@ -224,7 +224,7 @@ Write the meta-agent SKILL.md with:
 
 **Verify:**
 ```bash
-test -f /home/adri/projects/JamSuite/repos/jim/skills/meta-agent/SKILL.md && head -10 /home/adri/projects/JamSuite/repos/jim/skills/meta-agent/SKILL.md | grep -q "name: meta-agent" && wc -l < /home/adri/projects/JamSuite/repos/jim/skills/meta-agent/SKILL.md | awk '{exit ($1 > 500)}'
+test -f skills/meta-agent/SKILL.md && head -10 skills/meta-agent/SKILL.md | grep -q "name: meta-agent" && wc -l < skills/meta-agent/SKILL.md | awk '{exit ($1 > 500)}'
 ```
 
 ### Task 3: Write `jim/agents/meta.md`
@@ -245,7 +245,7 @@ Contents:
 
 **Verify:**
 ```bash
-head -10 /home/adri/projects/JamSuite/repos/jim/agents/meta.md | grep -q "name: meta" && head -10 /home/adri/projects/JamSuite/repos/jim/agents/meta.md | grep -q "skills:.*meta-skill.*meta-agent\|skills: \[meta-skill, meta-agent\]"
+head -10 agents/meta.md | grep -q "name: meta" && head -10 agents/meta.md | grep -q "skills:.*meta-skill.*meta-agent\|skills: \[meta-skill, meta-agent\]"
 ```
 
 ### Task 4: Cross-validate all three artifacts
@@ -262,7 +262,7 @@ Read all three files and verify:
 
 **Verify:**
 ```bash
-grep -q "agent: meta" /home/adri/projects/JamSuite/repos/jim/skills/meta-skill/SKILL.md && grep -q "agent: meta" /home/adri/projects/JamSuite/repos/jim/skills/meta-agent/SKILL.md && grep -q "meta-skill" /home/adri/projects/JamSuite/repos/jim/agents/meta.md && grep -q "meta-agent" /home/adri/projects/JamSuite/repos/jim/agents/meta.md && echo "Cross-validation passed"
+grep -q "agent: meta" skills/meta-skill/SKILL.md && grep -q "agent: meta" skills/meta-agent/SKILL.md && grep -q "meta-skill" agents/meta.md && grep -q "meta-agent" agents/meta.md && echo "Cross-validation passed"
 ```
 
 ## Dependencies

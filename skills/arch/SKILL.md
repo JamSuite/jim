@@ -8,6 +8,7 @@ description: >
   for implementation (/jim:build).
 agent: architect
 argument-hint: "[directory-path]"
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:arch
@@ -20,25 +21,25 @@ Use `$ARGUMENTS` to determine scope:
 
 | Input | Behavior |
 | :--- | :--- |
-| Empty | Create or update `ARCHITECTURE.md` at the project root |
-| Directory path | Create or update `ARCHITECTURE.md` inside that directory |
+| Empty | Create or update !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` at the project root |
+| Directory path | Create or update !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` inside that directory |
 
 ## Process
 
 ### 1. Establish scope
 
-Determine the target path from `$ARGUMENTS`. Set the target file as `{directory}/ARCHITECTURE.md`.
+Determine the target path from `$ARGUMENTS`. Set the target file as `{directory}/`!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture`.
 
-### 2. Read VISION.md as upstream context
+### 2. Read the vision doc as upstream context
 
-Check for `VISION.md` at the project root.
+Check for !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vision` at the project root.
 
 - **Exists:** Read it fully. The architecture serves the vision — where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
 - **Missing:** Proceed without it. Note its absence in the Overview if you generate a new file.
 
 ### 3. Check for existing ARCHITECTURE.md
 
-Look for `ARCHITECTURE.md` at the target path.
+Look for !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` at the target path.
 
 - **Exists:** This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write.
 - **Missing:** Generate a new document from `assets/architecture-template.md`.

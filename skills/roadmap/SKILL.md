@@ -7,6 +7,7 @@ description: >
   direction (/jim:vision), technical architecture (/jim:arch), or scoping
   individual work items (/jim:spec).
 agent: pm
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:roadmap
@@ -23,19 +24,19 @@ Use `$ARGUMENTS` as a hint for what the user wants to add or update. If empty, s
 
 ### 2. Read context
 
-Read VISION.md from the project root if it exists — for strategic alignment.
+Read !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vision` from the project root if it exists — for strategic alignment.
 
-If missing, note: "No VISION.md yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
+If missing, note: "No vision doc yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
 
 ### 3. Search for linkable specs
 
-Glob `docs/specs/**/*.md` to find existing specs. Grep frontmatter `title:` fields to build a list of linkable candidates. Hold this list — when the user mentions a deliverable that matches a known spec, offer the link.
+Glob !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/**/*.md to find existing specs. Grep frontmatter `title:` fields to build a list of linkable candidates. Hold this list — when the user mentions a deliverable that matches a known spec, offer the link.
 
 Do not Read full spec contents — Glob and Grep only. This prevents context overflow in repos with many specs.
 
 ### 4. Check for existing ROADMAP.md
 
-Read ROADMAP.md from the project root.
+Read !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get roadmap` from the project root.
 
 - **Exists:** Differential update. Read existing content. Summarize the current state to the user. Ask what they want to change — add items, move items between buckets, update version anchors, refine objectives.
 - **Does not exist:** Fresh creation. Proceed to interview.
@@ -68,7 +69,7 @@ The roadmap is a strategic communication tool, not a backlog. Push back when it 
 
 Read `assets/roadmap-template.md`. Fill buckets with interview results. Set "Last updated" to today's date. Keep it concise.
 
-Write to `ROADMAP.md` at the project root.
+Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get roadmap` at the project root.
 
 ### 8. Silent self-check
 

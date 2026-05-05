@@ -7,6 +7,7 @@ description: >
   the project is and isn't. Do not use for technical architecture (/jim:arch),
   execution sequencing (/jim:roadmap), or scoping individual work items (/jim:spec).
 agent: pm
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:vision
@@ -23,13 +24,13 @@ Use `$ARGUMENTS` as a project name or topic hint. If empty, ask: "What project o
 
 ### 2. Read context
 
-Read ARCHITECTURE.md from the project root if it exists — it's a locked constraint. Don't contradict technical decisions already made.
+Read !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get architecture` from the project root if it exists — it's a locked constraint. Don't contradict technical decisions already made.
 
-If missing, note conversationally: "No ARCHITECTURE.md yet — you might want to create one after this." Do not block.
+If missing, note conversationally: "No architecture doc yet — you might want to create one after this." Do not block.
 
 ### 3. Check for existing VISION.md
 
-Read VISION.md from the project root.
+Read !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vision` from the project root.
 
 - **Exists:** This is a differential update. Read the content. Tell the user: "I see an existing VISION.md. I'll walk through each section and suggest changes based on our conversation." Identify which sections are well-defined vs. which need work.
 - **Does not exist:** Fresh creation. Proceed to interview.
@@ -72,7 +73,7 @@ Walk through the remaining 5 template sections in order. For each section:
 
 Read `assets/vision-template.md`. Fill each section with interview results. Keep it concise — the goal is clarity of direction, not exhaustive documentation.
 
-Write to `VISION.md` at the project root.
+Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vision` at the project root.
 
 ### 7. Silent self-check
 
