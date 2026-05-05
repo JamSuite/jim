@@ -32,7 +32,7 @@ Use `$ARGUMENTS` to determine what to diagnose:
 Read the error, description, or file provided. If the failure references a spec or plan, find and read those files for context — they clarify the intended behavior.
 
 Look for related files:
-- Check `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get debug`/` for prior debug reports on the same topic.
+- Check existing debug reports for prior diagnoses of the same topic: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob debug`
 - Glob and Grep the codebase for the failing component, test file, or error message.
 
 ### 2. Diagnose the failure
@@ -46,10 +46,7 @@ Analyze in this order:
 
 ### 3. Generate the debug report
 
-Determine the report filename: `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get debug`/{YYYYMMDD}-{topic}.md`
-
-- `{YYYYMMDD}` — today's date
-- `{topic}` — 2-4 word kebab-case description of the failure (e.g., `auth-token-expiry`, `build-verify-timeout`)
+Determine the report filename: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"`
 
 Read `assets/debug-template.md` and fill every section:
 
@@ -59,12 +56,12 @@ Read `assets/debug-template.md` and fill every section:
 - **Affected Specs/Plans** — any spec or plan linked to the failure (enables `origin:` field in future bug specs)
 - **Recommended Next Step** — choose one: direct fix (Option A), plan update (Option B), or spec update via `/jim:spec` (Option C). If the diagnosis reveals a fundamental flaw in the original requirements, Option C is the right choice — advise using `/jim:spec` to open a bug spec capturing the correct behavior.
 
-Write the report to `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get debug`/{YYYYMMDD}-{topic}.md`. Create the debug directory if it does not exist.
+Write the report to the path resolved above. Create the debug directory if it does not exist.
 
 ### 4. Present and stop
 
 Show the completed report. Tell the user:
-- The report is at `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get debug`/{YYYYMMDD}-{topic}.md`.
+- The report path (resolved in step 3 via `/jim:file path debug`).
 - It can be referenced via the `origin:` field in a future bug spec.
 - The recommended next step and why.
 

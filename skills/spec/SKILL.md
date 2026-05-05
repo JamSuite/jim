@@ -113,7 +113,13 @@ No confidence scores. No numeric thresholds. The question is structural: "Can I 
 
 ### 8. Generate spec.md
 
-Now assign the ID: Glob `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/{group}/*/` to find existing IDs. Pick `max(existing IDs) + 1`, zero-padded to 3 digits. If no existing specs in the group, start at `001`.
+Now assign the ID. Run via Bash, substituting the target group:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id <group>
+```
+
+The script returns the next zero-padded 3-digit ID (max existing + 1, or `001` if the group is empty). Gaps in the sequence are not reclaimed.
 
 Read `assets/spec-template.md`. Generate the spec:
 
@@ -125,7 +131,13 @@ Read `assets/spec-template.md`. Generate the spec:
 - For bugs, ensure acceptance criteria includes "Regression test covers the reported scenario."
 - For refactors, ensure acceptance criteria includes "Existing tests pass without modification."
 
-Write the spec to `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs`/{group}/{00X}-{name}/spec.md`.
+Resolve the spec write path via Bash, substituting the resolved group, ID, and name:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>
+```
+
+Write the spec to that path.
 
 ### 9. Silent self-check
 

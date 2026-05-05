@@ -2,7 +2,7 @@
 title: "File and path utilities for jim's skills and agents"
 spec: "docs/specs/jim/008-jimfile/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # 008 jimfile — Plan
@@ -251,40 +251,40 @@ TDD-ordered: tests first (red), implementation (green), then propagation across 
 1. [x] **Extend `tests/run.sh` with `case_jimfile_*` cases (red phase).** Add a sibling global `SCRIPT_JIMFILE="$REPO_ROOT/skills/file/scripts/jimfile.sh"` and a `run_jimfile <args...>` helper (mirroring the existing `run` but invoking `$SCRIPT_JIMFILE`). Add a "script under test not found" check for `$SCRIPT_JIMFILE` matching the existing one for `$SCRIPT`. Then add ~30 cases covering: `exists` (yes/no/missing-arg), `slug` (basic/collapse-dashes/strip-leading-trailing/path-traversal-safe/reject-empty/reject-dot-dotdot/length-cap), `date` (YYYYMMDD format), `next-id` (empty group/existing/with-gaps/zero-padding), `path spec/plan/research/debug/brainstorm` (basic + collision for date-prefixed kinds), `glob specs/debug/brainstorms` (filtered + unfiltered), `kinds`, and error paths (unknown-subcommand/unknown-kind), and `case_jimfile_honors_jimconf_overrides` (writes a fixture `jimconf.toml` overriding `debug_path`, runs `path debug foo` via the `-c` flag, asserts the override is honored). Each case begins with `# AC: <spec AC>` comment per the existing discipline. Use the existing `fixture`/`empty_dir`/`assert_*` helpers; add cases to the `TESTS` array. Do NOT modify `case_*` cases from 007.
    **Verify:** `bash tests/run.sh jimfile; test $? -ne 0`  *(must fail because script doesn't exist yet — confirms red phase)*
 
-2. [ ] **Create `skills/file/scripts/jimfile.sh`** implementing the full CLI from Interface Contracts. Mirror `jimconf.sh`'s discipline: file header docblock, named section banners (Globals → Validation → Slug/date helpers → Subcommand handlers → Argument dispatch → Implementation notes), per-helper docblocks, `set -uo pipefail`, single `main "$@"` at file end. Internal call to `jimconf.sh` uses `JIMCONF="$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts/jimconf.sh"`. Pass through the optional `-c <path>` flag to `jimconf.sh` invocations so tests can stub overrides. Make script executable (`chmod +x`).
+2. [x] **Create `skills/file/scripts/jimfile.sh`** implementing the full CLI from Interface Contracts. Mirror `jimconf.sh`'s discipline: file header docblock, named section banners (Globals → Validation → Slug/date helpers → Subcommand handlers → Argument dispatch → Implementation notes), per-helper docblocks, `set -uo pipefail`, single `main "$@"` at file end. Internal call to `jimconf.sh` uses `JIMCONF="$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts/jimconf.sh"`. Pass through the optional `-c <path>` flag to `jimconf.sh` invocations so tests can stub overrides. Make script executable (`chmod +x`).
    **Verify:** `bash tests/run.sh jimfile`  *(all jimfile cases pass)*
 
-3. [ ] **Smoke-test the script outside the runner.** Confirm date format, slug, and one path operation produce expected output without `-c`.
+3. [x] **Smoke-test the script outside the runner.** Confirm date format, slug, and one path operation produce expected output without `-c`.
    **Verify:** `bash skills/file/scripts/jimfile.sh date | grep -Eq '^[0-9]{8}$' && test "$(bash skills/file/scripts/jimfile.sh slug 'Auth Token Expiry')" = "auth-token-expiry" && bash skills/file/scripts/jimfile.sh kinds | grep -q '^debug$'`
 
-4. [ ] **Cross-agent portability smoke test.** Confirm the script runs without a TTY and produces the same output. Catches accidental `read -p` / `isatty` regressions per the cross-agent hygiene rule.
+4. [x] **Cross-agent portability smoke test.** Confirm the script runs without a TTY and produces the same output. Catches accidental `read -p` / `isatty` regressions per the cross-agent hygiene rule.
    **Verify:** `bash -c 'bash skills/file/scripts/jimfile.sh date' < /dev/null | grep -Eq '^[0-9]{8}$'`
 
-5. [ ] **Re-run the full test suite** to confirm `case_jimfile_*` did not regress any `case_*` cases from 007.
+5. [x] **Re-run the full test suite** to confirm `case_jimfile_*` did not regress any `case_*` cases from 007.
    **Verify:** `bash tests/run.sh`
 
-6. [ ] **Create `skills/file/SKILL.md`** with frontmatter (`name: file`, `description`, `argument-hint`, `allowed-tools: Bash(bash *)`) — **no `agent:` field**. Body `!`-injects the script with `$ARGUMENTS`. YAML frontmatter is the very first content (no leading H1) per cross-agent hygiene.
+6. [x] **Create `skills/file/SKILL.md`** with frontmatter (`name: file`, `description`, `argument-hint`, `allowed-tools: Bash(bash *)`) — **no `agent:` field**. Body `!`-injects the script with `$ARGUMENTS`. YAML frontmatter is the very first content (no leading H1) per cross-agent hygiene.
    **Verify:** `head -n 1 skills/file/SKILL.md | grep -q '^---$' && grep -q '^name: file$' skills/file/SKILL.md && grep -q 'jimfile.sh' skills/file/SKILL.md && ! grep -q '^agent:' skills/file/SKILL.md`
 
-7. [ ] **Migrate `skills/debug/SKILL.md`** — replace the prior-debug-reports glob (L35) with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob debug``, and replace the report filename construction at L49, L62, L67 with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"``. Existence-check prose ("Look for related files") stays. Topic-slug prose ("2-4 word kebab-case description") becomes redundant — remove it; the script enforces the rule.
+7. [x] **Migrate `skills/debug/SKILL.md`** — replace the prior-debug-reports glob (L35) with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob debug``, and replace the report filename construction at L49, L62, L67 with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"``. Existence-check prose ("Look for related files") stays. Topic-slug prose ("2-4 word kebab-case description") becomes redundant — remove it; the script enforces the rule.
    **Verify:** `grep -q 'jimfile.sh path debug' skills/debug/SKILL.md && grep -q 'jimfile.sh glob debug' skills/debug/SKILL.md && ! grep -q '2-4 word kebab-case' skills/debug/SKILL.md`
 
-8. [ ] **Migrate `skills/brainstorm/SKILL.md`** — replace the brainstorm filename construction at L32 with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path brainstorm "$ARGUMENTS"``. Slug prose ("lowercase, hyphens, no spaces") becomes redundant — remove it.
+8. [x] **Migrate `skills/brainstorm/SKILL.md`** — replace the brainstorm filename construction at L32 with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path brainstorm "$ARGUMENTS"``. Slug prose ("lowercase, hyphens, no spaces") becomes redundant — remove it.
    **Verify:** `grep -q 'jimfile.sh path brainstorm' skills/brainstorm/SKILL.md && ! grep -q 'lowercase, hyphens, no spaces' skills/brainstorm/SKILL.md`
 
-9. [ ] **Migrate `skills/spec/SKILL.md`** — replace the next-ID prose at L116 with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id <group>``, and replace the spec write path at L128 with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>``. The existing specs glob at L44 already uses `jimconf.sh get specs` — leave it (different concern: directory resolution, not artifact discovery). After migration, the LLM still selects `<group>` and `<name>` from interview context; the script computes `<id>` and assembles the path.
+9. [x] **Migrate `skills/spec/SKILL.md`** — replace the next-ID prose at L116 with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id <group>``, and replace the spec write path at L128 with `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>``. The existing specs glob at L44 already uses `jimconf.sh get specs` — leave it (different concern: directory resolution, not artifact discovery). After migration, the LLM still selects `<group>` and `<name>` from interview context; the script computes `<id>` and assembles the path.
    **Verify:** `grep -q 'jimfile.sh next-id' skills/spec/SKILL.md && grep -q 'jimfile.sh path spec' skills/spec/SKILL.md && ! grep -E 'max\(existing IDs\) ?\+ ?1' skills/spec/SKILL.md`
 
-10. [ ] **Update `ARCHITECTURE.md`** — under the project tree (L33-L38 area), add a `skills/file/` block beneath `skills/conf/` mirroring its shape. In the Plugin Conventions → Scripting Layer subsection (L238-L246), add one paragraph noting the second script (`jimfile.sh`), its operation surface (existence/slug/date/next-id/path/glob), and the `BASH_SOURCE`-relative inter-script composition.
+10. [x] **Update `ARCHITECTURE.md`** — under the project tree (L33-L38 area), add a `skills/file/` block beneath `skills/conf/` mirroring its shape. In the Plugin Conventions → Scripting Layer subsection (L238-L246), add one paragraph noting the second script (`jimfile.sh`), its operation surface (existence/slug/date/next-id/path/glob), and the `BASH_SOURCE`-relative inter-script composition.
     **Verify:** `grep -q 'skills/file/' ARCHITECTURE.md && grep -q 'jimfile' ARCHITECTURE.md && grep -q 'BASH_SOURCE' ARCHITECTURE.md`
 
-11. [ ] **Update `README.md`** — add a brief paragraph (within or adjacent to the Configuration section) describing `/jim:file`: what it does, the operation surface, and the relationship to `/jim:conf`. Mention `bash tests/run.sh jimfile` as the test-filter command.
+11. [x] **Update `README.md`** — add a brief paragraph (within or adjacent to the Configuration section) describing `/jim:file`: what it does, the operation surface, and the relationship to `/jim:conf`. Mention `bash tests/run.sh jimfile` as the test-filter command.
     **Verify:** `grep -q '/jim:file' README.md || grep -q 'jimfile' README.md`
 
-12. [ ] **Re-run the full test suite end-to-end after all skill migrations.** Confirms migrated skill bodies don't break any test (skills aren't test-loaded, but defense-in-depth) and that test discovery still finds every case.
+12. [x] **Re-run the full test suite end-to-end after all skill migrations.** Confirms migrated skill bodies don't break any test (skills aren't test-loaded, but defense-in-depth) and that test discovery still finds every case.
     **Verify:** `bash tests/run.sh`
 
-13. [ ] **Manual non-default-layout walkthrough (spec AC #11).** In a scratch directory, set up a project with `jimconf.toml` overriding `debug_path`, `brainstorms_path`, and `specs_path` to non-default locations. Run `/jim:debug` (creates a debug report at the configured location), `/jim:brainstorm` (same for brainstorms), and `/jim:spec` (creates a spec at the configured specs dir with a correctly-incremented ID). Confirm all three artifacts land at the configured paths and that ID assignment is correct against an existing 002-foo, 005-bar layout. Document the walkthrough output in a brief debug-archive note.
+13. [x] **Manual non-default-layout walkthrough (spec AC #11).** In a scratch directory, set up a project with `jimconf.toml` overriding `debug_path`, `brainstorms_path`, and `specs_path` to non-default locations. Run `/jim:debug` (creates a debug report at the configured location), `/jim:brainstorm` (same for brainstorms), and `/jim:spec` (creates a spec at the configured specs dir with a correctly-incremented ID). Confirm all three artifacts land at the configured paths and that ID assignment is correct against an existing 002-foo, 005-bar layout. Document the walkthrough output in a brief debug-archive note.
     **Verify:** `test -f docs/debug/$(date +%Y%m%d)*-jimfile-walkthrough.md`  *(walkthrough note exists in debug archive — coder writes it as part of this task)*
 
 ## Requirements Coverage Summary

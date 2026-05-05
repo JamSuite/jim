@@ -46,6 +46,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
 | `/jim:conf` | Inspect resolved jim configuration paths |
+| `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, next-id, path, glob) |
 | `/jim:meta-skill` | Build a jim plugin skill from spec |
 | `/jim:meta-agent` | Build a jim plugin agent from spec |
 
@@ -110,6 +111,23 @@ Inspect what jim resolves with `/jim:conf`:
 /jim:conf -c jimconf.toml.example list      # see the shipped defaults
 ```
 
+### File/path operations — `/jim:file`
+
+`/jim:conf` resolves *where* a configured doc lives. `/jim:file` is its sibling for *operations against those locations* — the deterministic surface jim's skills use to compute filenames and look up artifacts. Backed by `skills/file/scripts/jimfile.sh`, which shells out to `jimconf.sh` so every `/jim:conf` override is honored automatically.
+
+```
+/jim:file exists docs/specs/jim/008-jimfile/spec.md   # "yes" or "no"
+/jim:file slug "Auth Token Expiry"                    # auth-token-expiry
+/jim:file date                                        # YYYYMMDD
+/jim:file next-id jim                                 # next zero-padded spec ID
+/jim:file path spec jim 008 jimfile                   # canonical spec path
+/jim:file path debug "auth bug"                       # date-prefixed debug path
+/jim:file glob specs jim                              # every spec in the jim group
+/jim:file kinds                                       # valid artifact kinds
+```
+
+Path-and-name resolution only — the script never reads, writes, or deletes files. Slug normalization, the `.`/`..` reject, and the 64-char cap are enforced by the script (security boundary).
+
 ## How to develop for Jim
 
 See [`WORKFLOW.md`](./WORKFLOW.md) for the full SDLC process.
@@ -118,11 +136,12 @@ Jim builds itself using its own workflow. Jim's specs live in [`docs/specs/jim/`
 
 ### Running tests
 
-The resolver script in `skills/conf/scripts/jimconf.sh` is covered by a plain-bash test runner with zero third-party dependencies:
+The resolver scripts (`skills/conf/scripts/jimconf.sh` and `skills/file/scripts/jimfile.sh`) are covered by a plain-bash test runner with zero third-party dependencies:
 
 ```bash
 bash tests/run.sh                  # all tests
-bash tests/run.sh defaults         # filter by name substring
+bash tests/run.sh defaults         # jimconf cases — filter by name substring
+bash tests/run.sh jimfile          # jimfile cases only
 ```
 
 Tests live under `tests/` and are not loaded by Claude Code — they are a developer-only artifact.

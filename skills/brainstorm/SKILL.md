@@ -29,7 +29,9 @@ Quickly read !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get vis
 
 ### 3. Create the brainstorm file
 
-Create `!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get brainstorms`/{YYYYMMDD}-{topic}.md`. Use today's date and a topic slug (lowercase, hyphens, no spaces). Create the brainstorms directory if it doesn't exist.
+Resolve the brainstorm filename: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path brainstorm "$ARGUMENTS"`
+
+Create the file at the resolved path. Create the brainstorms directory if it doesn't exist.
 
 Write the initial content:
 

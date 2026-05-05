@@ -34,13 +34,17 @@ jim/
 │   │   ├── SKILL.md
 │   │   └── scripts/
 │   │       └── jimconf.sh   # Shared bash resolver — !-injected by every consuming skill
+│   ├── file/                # /jim:file — file/path operation surface (008)
+│   │   ├── SKILL.md
+│   │   └── scripts/
+│   │       └── jimfile.sh   # exists/slug/date/next-id/path/glob; shells out to jimconf.sh
 │   ├── meta-skill/          # /jim:meta-skill — create/update jim skills
 │   └── meta-agent/          # /jim:meta-agent — create/update jim agents
 ├── tests/                   # Developer-only; not loaded by Claude Code
-│   └── run.sh               # Plain-bash test runner for jimconf.sh (zero deps)
+│   └── run.sh               # Plain-bash test runner for jimconf.sh + jimfile.sh (zero deps)
 ├── docs/
 │   ├── specs/               # Spec groups with numbered spec directories
-│   │   └── jim/             # Specs for jim's own development (001–007)
+│   │   └── jim/             # Specs for jim's own development (001–008)
 │   ├── prior-art/           # Reference material from other projects (gitignored downloads)
 │   └── notes/               # Personal development notes
 ├── VISION.md                # Product vision — problem, solution, audience, north star
@@ -237,13 +241,14 @@ Conventions that govern how jim's agents, skills, and tools interact with Claude
 
 ### Scripting Layer
 
-Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/scripts/jimconf.sh` resolves project-level path overrides for jim's strategic and SDLC documents.
+Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/scripts/jimconf.sh` resolves project-level path overrides for jim's strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.sh` — extends the layer with deterministic file/path operations.
 
 - **Single resolver, many consumers.** Every consuming skill (`vision`, `roadmap`, `arch`, `plan`, `spec`, `research`, `brainstorm`, `debug`, `meta-skill`, `meta-agent`) references the same script via Claude Code's `!`-injection primitive: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get <key>` ``. The output replaces the placeholder in the skill body before the LLM reads it, so the resolved path lands in the prompt deterministically.
 - **`${CLAUDE_PLUGIN_ROOT}` is the documented plugin-root substitution** — see `code.claude.com/docs/en/plugins-reference#environment-variables`. It resolves to the plugin's installation directory regardless of which skill consumes the script.
 - **The `/jim:conf` skill** (`skills/conf/SKILL.md`) is a thin user-facing wrapper around the same script for human introspection (`/jim:conf list`, `/jim:conf get specs`, etc.). It carries no `agent:` binding because there is no LLM reasoning to delegate.
 - **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for the six configurable paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`). Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code).
-- **Tests:** `bash tests/run.sh` covers the script's CLI surface, defaults, parse robustness, and the `-c <path>` flag.
+- **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding).
+- **Tests:** `bash tests/run.sh` covers both scripts' CLI surfaces, defaults, parse robustness, and the `-c <path>` flag. Filter by name substring: `bash tests/run.sh jimfile` runs only the `case_jimfile_*` cases.
 
 ### Progressive Disclosure
 
