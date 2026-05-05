@@ -1,11 +1,11 @@
 ---
 title: "Project-level configuration for jim document paths"
-spec: "docs/specs/jim/007-jimconf/spec.md"
+spec: "docs/specs/jim/008-jimconf/spec.md"
 type: feature
 status: complete
 ---
 
-# 007 jimconf — Plan
+# 008 jimconf — Plan
 
 ## Overview
 

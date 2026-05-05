@@ -1,5 +1,5 @@
 ---
-spec: "docs/specs/jim/008-jimfile/spec.md"
+spec: "docs/specs/jim/009-jimfile/spec.md"
 status: Active
 date: "2026-05-04"
 ---
@@ -137,7 +137,7 @@ Non-interactive bash (`bash -c '...' < /dev/null`); no PLUGIN_ROOT inside script
 - **VISION.md.** Reduces drift, lowers token cost, tightens institutional memory (one tested codepath replaces 41 prose patterns). Honors "Not a black box" — `/jim:file` is a slash command, fully introspectable. Cross-agent hygiene aligns with Phase 3 trajectory without claiming to deliver it.
 - **ARCHITECTURE.md.** All constraints honored. Skills directory pattern preserved. Test conventions preserved. No-write-to-protected-paths preserved. Scripting Layer subsection (added by 007) extends naturally.
 
-No locked constraints violated. No `plan.md` exists yet for 008 (no plan-invalidation check needed).
+No locked constraints violated. No `plan.md` exists yet for 009 (no plan-invalidation check needed).
 
 ## Peer Feedback
 

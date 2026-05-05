@@ -1,11 +1,11 @@
 ---
 title: "File and path utilities for jim's skills and agents"
-spec: "docs/specs/jim/008-jimfile/spec.md"
+spec: "docs/specs/jim/009-jimfile/spec.md"
 type: feature
 status: complete
 ---
 
-# 008 jimfile — Plan
+# 009 jimfile — Plan
 
 ## Overview
 

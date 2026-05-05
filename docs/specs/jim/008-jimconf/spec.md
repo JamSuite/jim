@@ -2,11 +2,11 @@
 title: "Project-level configuration for jim document paths"
 type: feature
 group: "jim"
-id: "007"
+id: "008"
 status: approved
 ---
 
-# 007 Project-level configuration for jim document paths
+# 008 Project-level configuration for jim document paths
 
 ## Overview
 Introduce a project-level configuration file (`jimconf.{ext}`) that lets a project override the hard-coded paths jim uses to locate its strategic and SDLC documents, so jim can be adopted into projects with existing or non-default documentation layouts.
@@ -67,10 +67,10 @@ The following are deliberately excluded from this spec to keep v1 tight. Several
 The following questions are deliberately deferred to `/jim:research` and `/jim:plan`, per the user's framing during scoping. Each is a HOW question, not a WHAT question, and should not gate spec approval.
 
 - [x] ~~Config file format.~~ → **Resolved in plan (Decision 2):** TOML, flat top-level `KEY = "value"` lines. Valid TOML (real parser will accept) AND parseable with `grep | cut | tr` — zero external dependencies.
-- [x] ~~Config file naming — visibility and extension.~~ → **Resolved in plan (Decision 2):** `jimconf.toml` at project root. Visible file, single extension, no dots in the base name. See `docs/specs/jim/007-jimconf/plan.md`.
+- [x] ~~Config file naming — visibility and extension.~~ → **Resolved in plan (Decision 2):** `jimconf.toml` at project root. Visible file, single extension, no dots in the base name. See `docs/specs/jim/008-jimconf/plan.md`.
 - [x] ~~Prompt-to-config interface.~~ → **Resolved in plan (Decisions 1 + 3):** option (c) — a single bash script at `skills/conf/scripts/jimconf.sh` invoked from each consuming skill via Claude Code's `` !`<command>` `` injection primitive. A standalone `/jim:conf` skill exists as a thin user-facing wrapper for inspection/debugging.
 - [x] ~~Whether jim should introduce executable code at all.~~ → **Resolved in plan (Decision 8 + Constitution Check):** yes, a minimal scripting layer is admitted. ARCHITECTURE.md L181/L183 ("pure markdown — no build step, no dependencies, no package manager") is updated as part of the same plan PR sequence (Task 17) to reflect the new "markdown + minimal scripting layer" reality.
-- [x] ~~Prior art survey.~~ → **Resolved in `research.md`:** comprehensive survey of Anthropic-shipped plugins (`plugin-settings`, `commit-commands`, `feature-dev`), community plugins (`claude-mem`, `arc-kit`, `anilcancakir/claude-code-plugins`), cross-agent landscape (Codex, Gemini CLI, Cursor, Cline, Aider, AGENTS.md), and bash/TOML parsing patterns. See `docs/specs/jim/007-jimconf/research.md`.
+- [x] ~~Prior art survey.~~ → **Resolved in `research.md`:** comprehensive survey of Anthropic-shipped plugins (`plugin-settings`, `commit-commands`, `feature-dev`), community plugins (`claude-mem`, `arc-kit`, `anilcancakir/claude-code-plugins`), cross-agent landscape (Codex, Gemini CLI, Cursor, Cline, Aider, AGENTS.md), and bash/TOML parsing patterns. See `docs/specs/jim/008-jimconf/research.md`.
 - [x] ~~Config resolution timing and caching.~~ → **Resolved in plan (Decision 6):** no caching. Each `!`-injection re-runs the script. Consistency within a single skill run is guaranteed by `!`-injection's once-per-invocation execution model.
 - [x] ~~Automated testing strategy for jim's first executable code.~~ → **Resolved in plan (Decision 4):** plain-bash test runner at `tests/run.sh` with **zero third-party dependencies** (no bats, no shunit2, no pytest). Run via `bash tests/run.sh`. Tests live in `tests/` at repo root and are inert at runtime — Claude Code only loads `skills/` and `agents/`. Strict documentation discipline enforced: file header docblock, named section banners, per-helper docblocks, per-test-case AC mapping comments, no clever bash, maintenance notes block.
 - [x] ~~Strategic-alignment confirmation — ROADMAP placement of configuration work~~ → User has decided to pull configuration support forward from the **Later** bucket. ROADMAP.md should be updated separately (via `/jim:roadmap`) to reflect the new sequencing.

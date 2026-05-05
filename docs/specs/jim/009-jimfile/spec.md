@@ -2,11 +2,11 @@
 title: "File and path utilities for jim's skills and agents"
 type: feature
 group: "jim"
-id: "008"
+id: "009"
 status: approved
 ---
 
-# 008 File and path utilities for jim's skills and agents
+# 009 File and path utilities for jim's skills and agents
 
 ## Overview
 Introduce a project-level utility (`/jim:file`) — a thin user-facing skill backed by a shared script — that replaces in-prose file/path operations across jim's skills and agents with a single deterministic call surface, reducing token cost, eliminating duplicated logic, and making the SDLC pipeline faster and more reliable.

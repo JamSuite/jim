@@ -1,5 +1,5 @@
 ---
-spec: "docs/specs/jim/007-jimconf/spec.md"
+spec: "docs/specs/jim/008-jimconf/spec.md"
 status: Active
 date: "2026-05-04"
 ---
@@ -114,7 +114,7 @@ Decisions belong to the architect; this section presents options with trade-offs
 - Visible file; mirrors `package.json`, `Cargo.toml`, `tsconfig.json`.
 - Cross-agent-neutral — not under `.claude/` or any agent's dotdir.
 - The user explicitly ruled out a `.jim/` directory ("the whole point is to make where we store documents more flexible") and ruled out `docs/jim/jimconf.toml` (circular — `docs/` itself is configurable).
-- One canonical location. Multi-location lookup is deferred to a future `/jim:file` skill (already out-of-scope per spec 007); that's where directory-walk semantics belong.
+- One canonical location. Multi-location lookup is deferred to a future `/jim:file` skill (already out-of-scope per spec 008); that's where directory-walk semantics belong.
 
 **Format:** flat `KEY = "value"` lines.
 
@@ -174,5 +174,5 @@ Add `skills/conf/scripts/jimconf.sh` (or `.py`). Skills invoke via:
 
 → **For PM (advisory, not blocking):** Several spec Open Questions are now substantially answered by research and may be closeable in a spec update before plan starts:
 - *Format / naming:* `jimconf.toml` at project root with flat `KEY = "value"` (valid TOML + bash-grep-parseable). User has decided `.jim/` is out, `docs/jim/jimconf.toml` is circular, `.claude/jim.local.md` couples to one agent.
-- *Multi-location lookup:* explicitly punted to the future `/jim:file` skill (already out-of-scope per spec 007). Recommend reinforcing this in spec 007's Out of Scope to give `/jim:file` a concrete future deliverable to anchor on.
+- *Multi-location lookup:* explicitly punted to the future `/jim:file` skill (already out-of-scope per spec 008). Recommend reinforcing this in spec 008's Out of Scope to give `/jim:file` a concrete future deliverable to anchor on.
 - *Cross-agent portability:* a goal raised in conversation but not yet in the spec. Worth adding to the Problem Statement or Open Questions so the architect knows to weigh it.
