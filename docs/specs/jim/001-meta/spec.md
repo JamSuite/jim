@@ -140,7 +140,7 @@ Agents do not ship `scripts/` — skills do. Agents may reference scripts via `!
 - [ ] Differential update: if SKILL.md already exists, refines rather than overwrites. Summarises changes before applying.
 - [ ] Scripting layer: if `scripts/` exists, every script conforms to CLAUDE.md (no `set -e`, no third-party deps, no `source` of user data, `BASH_SOURCE`-relative composition).
 - [ ] Logic-flow idiom: in-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom documented in ARCHITECTURE.md → Plugin Conventions → Logic-Flow Conventions (no invented variants).
-- [ ] `!`-injection integrity: every script referenced by an `!`bash …`` block in the SKILL.md body actually exists at the cited path.
+- [ ] `!`-injection conforms to ARCHITECTURE.md → Plugin Conventions → Substitution Conventions (sigil discipline, script integrity, eager-vs-deferred timing — substance lives in the canonical doc, this AC just defers).
 
 ### /jim:meta-agent
 - [ ] Given an approved spec + plan + research, produces `jim/agents/{name}.md` with correct frontmatter (name, description, tools, model).

@@ -58,7 +58,11 @@ After all three gates pass, note the spec's acceptance criteria and the plan's f
 
 ### Invoke the dispatcher
 
-`!`bash ${CLAUDE_SKILL_DIR}/scripts/metatest.sh scaffold $ARGUMENTS`
+Run the scaffold action via Bash:
+
+```
+bash ${CLAUDE_SKILL_DIR}/scripts/metatest.sh scaffold <name>
+```
 
 Show the dispatcher's stdout to the user. The output names the file created and the placeholders the user must edit (specifically `__SCRIPT_PATH__` defaults to `skills/CHANGEME/scripts/<name>.sh` — the user replaces `CHANGEME` with the actual feature directory).
 
@@ -76,7 +80,11 @@ The add-case action appends a single test-case stub to an existing test file. No
 
 ### Invoke the dispatcher
 
-`!`bash ${CLAUDE_SKILL_DIR}/scripts/metatest.sh add $ARGUMENTS`
+Run the add action via Bash:
+
+```
+bash ${CLAUDE_SKILL_DIR}/scripts/metatest.sh add <name> <case_name>
+```
 
 Show the dispatcher's stdout to the user. The appended stub has a `# AC: TODO — describe the spec acceptance criterion this case verifies.` comment — the coder updates this with the matching AC reference before writing real assertions.
 
@@ -91,7 +99,13 @@ The run action invokes the test runner. No gating — running tests is read-only
 
 ### Invoke the dispatcher
 
-`!`bash ${CLAUDE_SKILL_DIR}/scripts/metatest.sh run $ARGUMENTS`
+Run the test runner via Bash:
+
+```
+bash ${CLAUDE_SKILL_DIR}/scripts/metatest.sh run [name]
+```
+
+(Omit `[name]` for the aggregate runner; pass it for a single file.)
 
 Show the dispatcher's stdout to the user verbatim — the runner's PASS/FAIL output is the relevant signal. The exit code propagates from the underlying runner; non-zero means at least one test failed and the user should investigate.
 

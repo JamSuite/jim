@@ -103,6 +103,7 @@ If the skill ships a `scripts/` directory (bash only — see `CLAUDE.md` and `AR
 - [ ] Every script conforms to `CLAUDE.md`: no `set -e`, no third-party deps (POSIX shell only — `grep`, `sed`, `cut`, `tr`, `awk`, `find`, `sort`, `head`), no `source` or `eval` of user-supplied data, `BASH_SOURCE`-relative composition for inter-script calls (not `${CLAUDE_PLUGIN_ROOT}`, which only substitutes in skill content, not script bodies).
 - [ ] In-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom from `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (`IF (X) EXISTS THEN ... END IF`, `IF (X) ABSENT THEN`, `THEN DO: 1. ... DONE`, `ELSE`). No invented variants — anything fancier reverts to plain English.
 - [ ] `!`-injection integrity: every script referenced by an `!`bash …`` block in the SKILL.md body actually exists at the cited path.
+- [ ] `!`-injection inputs are known at slash-command load time. Calls that depend on a value gathered during the conversation — the LLM asking the user, dispatching to one of several sub-actions, etc. — live in a fenced bash block instead, run by the LLM after the value is resolved (see `ARCHITECTURE.md` → Substitution Conventions, "Eager vs. deferred timing").
 - [ ] Script *authoring* belongs to `/jim:meta-test scaffold`, not to this skill — meta-skill validates, meta-test scaffolds.
 
 **Anti-patterns — any of these is a failure:**

@@ -46,7 +46,11 @@ Analyze in this order:
 
 ### 3. Generate the debug report
 
-Determine the report filename: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"`
+Determine the report filename via Bash, substituting the topic gathered in step 1:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug <topic>
+```
 
 Read `assets/debug-template.md` and fill every section:
 

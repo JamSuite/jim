@@ -37,7 +37,11 @@ END IF
 
 ### 3. Create the brainstorm file
 
-Resolve the brainstorm filename: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path brainstorm "$ARGUMENTS"`
+Resolve the brainstorm filename via Bash, substituting the topic from step 1:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path brainstorm <topic>
+```
 
 Create the file at the resolved path. Create the brainstorms directory if it doesn't exist.
 
