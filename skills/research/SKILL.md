@@ -8,6 +8,7 @@ description: >
   or spec creation (/jim:spec).
 agent: researcher
 argument-hint: "[spec-path | brainstorm-path | directory | topic]"
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:research
@@ -32,7 +33,11 @@ Use `$ARGUMENTS` to determine the research target and mode:
 
 ### 2. Determine output location
 
-- **Spec path input:** Output to `docs/specs/{group}/{id}-{name}/research.md` (same directory as the spec).
+- **Spec path input:** Resolve the research write path (same directory as the spec):
+
+      bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path research <group> <id> <name>
+
+  Write the research to that path.
 - **Everything else:** Suggest a location and confirm with the user before writing:
   - If a related spec exists, suggest its directory.
   - Otherwise suggest `docs/research/{YYYYMMDD}-{topic}.md`.
@@ -89,7 +94,15 @@ Conditional phase. Triggered only after Phase 0 completes.
 
 Mandatory phase — always runs.
 
-1. Read VISION.md and ARCHITECTURE.md if they exist. Treat them as locked constraints.
+1. Read strategic constraints, if present:
+
+   IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+     READ FILE — locked constraint.
+   END IF
+
+   IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
+     READ FILE — locked constraint.
+   END IF
 2. Produce an explicit alignment statement: "This approach aligns with [strategic goal] and follows the [architectural pattern]" — or flag divergence conversationally.
 3. If strategic docs are missing, note their absence. Don't block on it.
 4. If research recommendations contradict a locked constraint, raise it as a Peer Feedback item for the PM.

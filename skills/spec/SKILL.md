@@ -7,6 +7,7 @@ description: >
   use for technical planning (/jim:plan) or implementation (/jim:build).
 agent: pm
 argument-hint: "[idea-or-name]"
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:spec
@@ -29,18 +30,21 @@ Use `$ARGUMENTS` as the idea or name hint.
 
 ### 2. Read strategic context
 
-Read these files from the project root if they exist:
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+  READ FILE — locked constraint. Do not re-litigate strategic decisions.
+END IF
 
-- **VISION.md** — locked constraint. Do not re-litigate strategic decisions.
-- **ARCHITECTURE.md** — locked constraint. Technical invariants are not negotiable.
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
+  READ FILE — locked constraint. Technical invariants are not negotiable.
+END IF
 
-If either is missing, note it conversationally ("I notice there's no VISION.md yet — you might want to create one to anchor future specs") and proceed. Never block on their absence.
+If either is missing, note it conversationally ("I notice there's no vision doc yet — you might want to create one to anchor future specs") and proceed. Never block on their absence.
 
 Read `references/spec-types.md` for type guidance, anti-patterns, and status lifecycle.
 
 ### 3. Check existing specs
 
-Glob `docs/specs/` to identify existing groups and specs.
+List existing specs in every group via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs` to identify existing groups and specs.
 
 - If `$ARGUMENTS` matches an existing spec name, ask: "Update the existing spec, or create a new one?"
 - Identify the target group. If ambiguous, suggest a noun-based group name or ask.
@@ -112,7 +116,13 @@ No confidence scores. No numeric thresholds. The question is structural: "Can I 
 
 ### 8. Generate spec.md
 
-Now assign the ID: Glob `docs/specs/{group}/*/` to find existing IDs. Pick `max(existing IDs) + 1`, zero-padded to 3 digits. If no existing specs in the group, start at `001`.
+Now assign the ID. Run via Bash, substituting the target group:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id <group>
+```
+
+The script returns the next zero-padded 3-digit ID (max existing + 1, or `001` if the group is empty). Gaps in the sequence are not reclaimed.
 
 Read `assets/spec-template.md`. Generate the spec:
 
@@ -124,14 +134,20 @@ Read `assets/spec-template.md`. Generate the spec:
 - For bugs, ensure acceptance criteria includes "Regression test covers the reported scenario."
 - For refactors, ensure acceptance criteria includes "Existing tests pass without modification."
 
-Write the spec to `docs/specs/{group}/{00X}-{name}/spec.md`.
+Resolve the spec write path:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>
+```
+
+Write the spec to that path.
 
 ### 9. Silent self-check
 
 Before presenting, validate the draft against:
 
 1. **Anti-patterns** — Check all 6 from `references/spec-types.md`. Any violation → auto-correct.
-2. **Locked constraints** — If VISION.md or ARCHITECTURE.md exist, verify the spec doesn't contradict them.
+2. **Locked constraints** — If the vision and architecture docs exist, verify the spec doesn't contradict them.
 3. **Type-section completeness** — Verify all required sections for the detected type are present and populated.
 
 If the self-check finds issues, fix them inline. Do not tell the user about the self-check — just present a clean draft.

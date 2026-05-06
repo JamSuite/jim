@@ -30,17 +30,38 @@ jim/
 │   ├── roadmap/             # /jim:roadmap — execution milestones
 │   ├── arch/                # /jim:arch — architecture document generation
 │   ├── brainstorm/          # /jim:brainstorm — freeform ideation capture
+│   ├── conf/                # /jim:conf — config inspector + shared resolver script
+│   │   ├── SKILL.md
+│   │   └── scripts/
+│   │       └── jimconf.sh   # Shared bash resolver — !-injected by every consuming skill
+│   ├── file/                # /jim:file — file/path operation surface (008)
+│   │   ├── SKILL.md
+│   │   └── scripts/
+│   │       └── jimfile.sh   # exists/get/slug/date/next-id/path/glob; shells out to jimconf.sh
 │   ├── meta-skill/          # /jim:meta-skill — create/update jim skills
-│   └── meta-agent/          # /jim:meta-agent — create/update jim agents
+│   ├── meta-agent/          # /jim:meta-agent — create/update jim agents
+│   └── meta-test/           # /jim:meta-test — scaffold and run bash tests (007)
+│       ├── SKILL.md
+│       ├── assets/
+│       │   └── test-file.sh.tmpl   # Per-script test scaffold template (__NAME__, __SCRIPT_PATH__)
+│       └── scripts/
+│           ├── testlib.sh          # Shared framework: globals, asserts, fixtures, reporter
+│           ├── run.sh              # Aggregate runner: sources testlib + every tests/*.sh
+│           └── metatest.sh         # Dispatcher: scaffold/add/run subcommands
+├── tests/                   # Developer-only; not loaded by Claude Code (per-script test files only)
+│   ├── jimconf.sh           # Per-script tests for skills/conf/scripts/jimconf.sh (executable)
+│   ├── jimfile.sh           # Per-script tests for skills/file/scripts/jimfile.sh (executable)
+│   └── metatest.sh          # Per-script tests for skills/meta-test/scripts/metatest.sh (executable)
 ├── docs/
 │   ├── specs/               # Spec groups with numbered spec directories
-│   │   └── jim/             # Specs for jim's own development (001–006)
+│   │   └── jim/             # Specs for jim's own development (001–009)
 │   ├── prior-art/           # Reference material from other projects (gitignored downloads)
 │   └── notes/               # Personal development notes
 ├── VISION.md                # Product vision — problem, solution, audience, north star
 ├── ROADMAP.md               # Execution sequence
 ├── WORKFLOW.md              # The SDLC process definition — commands, artifacts, philosophy
 ├── CLAUDE.md                # Claude Code project instructions
+├── jimconf.toml.example     # Example project-level path overrides; users copy to jimconf.toml
 └── README.md                # Project readme
 ```
 
@@ -70,6 +91,7 @@ flowchart TD
     subgraph "Meta Skills"
         MS["/jim:meta-skill"]
         MA["/jim:meta-agent"]
+        MT["/jim:meta-test"]
     end
 
     subgraph Agents
@@ -94,7 +116,7 @@ flowchart TD
 
     U --> VIS & ROAD & ARCH & BRAIN
     U --> SPEC & RES & PLAN & BUILD & DEBUG
-    U --> MS & MA
+    U --> MS & MA & MT
 
     VIS & ROAD & BRAIN --> PM
     ARCH --> ARCHITECT
@@ -102,7 +124,7 @@ flowchart TD
     RES --> RESEARCHER
     PLAN --> ARCHITECT
     BUILD & DEBUG --> CODER
-    MS & MA --> META
+    MS & MA & MT --> META
 
     PM --> VDOC & RDOC & SDOC & BDOC
     ARCHITECT --> ADOC & PDOC
@@ -179,9 +201,9 @@ Skills are SKILL.md files inside `skills/{name}/` directories, optionally accomp
 
 - **Runtime:** Claude Code plugin — no standalone runtime. Requires Claude Code CLI with plugin support.
 - **Entry point:** `.claude-plugin/plugin.json` — Claude Code discovers and loads the plugin from this manifest
-- **Configuration:** `.claude/settings.local.json` for permission allowlists. No other configuration files.
+- **Configuration:** `.claude/settings.local.json` for permission allowlists. Optional `jimconf.toml` at the project root for path overrides (see Plugin Conventions → Scripting Layer).
 - **Distribution:** Git repository. Users install by cloning/adding the repo as a Claude Code plugin.
-- **Environment requirements:** Claude Code CLI. No build step, no dependencies, no package manager — pure markdown.
+- **Environment requirements:** Claude Code CLI plus a POSIX shell (`bash`) for the resolver in `skills/conf/scripts/`. The plugin is markdown-first with a minimal scripting layer; no build step, no package manager, no third-party dependencies.
 
 ## Security Considerations
 
@@ -194,10 +216,11 @@ Skills are SKILL.md files inside `skills/{name}/` directories, optionally accomp
 ## Development & Testing
 
 - **Setup:** Clone the repository and configure it as a Claude Code plugin
-- **Run tests:** No automated test suite — jim is a pure-markdown plugin with no executable code
-- **Test framework:** N/A
-- **Test conventions:** Jim validates its own output through validation checklists embedded in each skill's process section
-- **Linting / formatting:** N/A — markdown only. Consistency enforced by templates in `skills/*/assets/`
+- **Run tests:** `bash tests/run.sh` runs every case across every test file. Per-script files are also runnable standalone: `bash tests/jimconf.sh`, `bash tests/jimfile.sh`. Substring filter preserved: `bash tests/run.sh defaults`. Zero third-party dependencies.
+- **Test framework:** Hand-rolled multi-file bash framework. `tests/testlib.sh` holds shared infrastructure (globals, asserts, fixtures, reporter); each per-script test file (`tests/jimconf.sh`, `tests/jimfile.sh`, …) sources it and contributes `case_*` functions. The reporter discovers cases by function-name convention (`declare -F | awk '$3 ~ /^case_/'`) — no `TESTS=()` registration array. Inline heredoc fixtures, per-runner `mktemp` sandbox, single trap-based cleanup.
+- **Adding tests:** To add cases for a new script, create `tests/<name>.sh` (executable), source `testlib.sh`, define a `run_<name>` invoker plus `case_<name>_*` functions, and append the standalone-runnable tail. The aggregate runner picks it up automatically. Full 3-step recipe in `tests/run.sh` header.
+- **Test conventions:** Tests live under `tests/` and are not loaded by Claude Code (which reads only `skills/` and `agents/`). LLM-interpreted skill prompts are validated by checklist; deterministic scripts are validated by the test suite.
+- **Linting / formatting:** N/A — markdown + bash. Consistency enforced by templates in `skills/*/assets/` and the documentation discipline rules at the top of `tests/testlib.sh`, `tests/run.sh`, and `skills/conf/scripts/jimconf.sh`.
 
 ## Plugin Conventions
 
@@ -227,6 +250,96 @@ Conventions that govern how jim's agents, skills, and tools interact with Claude
 - **`Agent(name1, name2)` syntax** in the `tools` field restricts which subagents an agent can spawn. Example: `tools: [Read, Write, Edit, Glob, Grep, Agent(pm, architect, researcher)]`.
 - **One level only.** Subagents cannot nest — parent → child works, parent → child → grandchild does not. This is a Claude Code platform constraint.
 - **Fresh context.** Subagents start with only the prompt passed via the Agent tool, not the parent's conversation history.
+
+### Scripting Layer
+
+Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/scripts/jimconf.sh` resolves project-level path overrides for jim's strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.sh` — extends the layer with deterministic file/path operations.
+
+- **Single resolver, many consumers.** Every consuming skill (`vision`, `roadmap`, `arch`, `plan`, `spec`, `research`, `brainstorm`, `debug`, `meta-skill`, `meta-agent`, `build`) references the resolver via Claude Code's `!`-injection primitive: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` ``. The output replaces the placeholder in the skill body before the LLM reads it, so the resolved path lands in the prompt deterministically. **Skills and agents always call `jimfile.sh`, never `jimconf.sh` directly** — `jimfile.sh` chains internally to `jimconf.sh` for any operation that needs a configured path.
+- **`${CLAUDE_PLUGIN_ROOT}` is the documented plugin-root substitution** — see `code.claude.com/docs/en/plugins-reference#environment-variables`. It resolves to the plugin's installation directory regardless of which skill consumes the script.
+- **The `/jim:conf` skill** (`skills/conf/SKILL.md`) is a thin user-facing wrapper around the same script for human introspection (`/jim:conf list`, `/jim:conf get specs`, etc.). It carries no `agent:` binding because there is no LLM reasoning to delegate.
+- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for the seven configurable paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`, `pre_commit_path`). Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code). The `pre_commit_path` default (`./pre-commit.sh`) is the *path-where-it-would-live*; consumers always wrap calls in an existence gate at the skill layer, so a missing file is silently skipped.
+- **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, configured-path resolution (`get <key>`, delegates to `jimconf.sh`), slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding).
+- **Tests:** Per-script test files at `tests/jimconf.sh`, `tests/jimfile.sh`, and `tests/metatest.sh` cover each script's CLI surface, defaults, parse robustness, and (where applicable) the `-c <path>` flag. The shared framework lives at `skills/meta-test/scripts/testlib.sh` and the aggregate runner at `skills/meta-test/scripts/run.sh`, so the meta-test skill owns its toolchain (per spec 007). Per-script files source the relocated lib via a `BASH_SOURCE`-relative path (`source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"`). Run all via `bash skills/meta-test/scripts/run.sh` (or `/jim:meta-test run`), run a single script standalone via `bash tests/jimconf.sh` / `bash tests/jimfile.sh` / `bash tests/metatest.sh`. Filter by name substring still works: `bash skills/meta-test/scripts/run.sh jimfile` (or `/jim:meta-test run jimfile`).
+- **Test scaffolding (`metatest.sh`).** Third script under `skills/meta-test/scripts/`. Three subcommands — `scaffold <name>` (create `tests/<name>.sh` from `assets/test-file.sh.tmpl`), `add <name> <case>` (append a `case_<name>_<case>()` stub), `run [name]` (invoke runner, standalone path preferred for one-file). The user-facing `/jim:meta-test` skill (`skills/meta-test/SKILL.md`) wraps the dispatcher with per-action gating: scaffold requires an approved spec+plan for the script-under-test (mirrors `meta-skill`/`meta-agent`); add and run are ungated.
+
+### Bash-vs-Prompt Decision Rule
+
+When deciding whether logic should live in a bash script or in a skill/agent prompt, apply the following heuristic. Bash is jim's canonical scripting language — confirmed as the genuine LCD across coding-agent platforms (see `docs/specs/jim/001-meta/research.md` → "Scripting Layer in jim plugin components"). Bash needs no runtime declaration; anything else (Python, JS) would require declaring `compatibility:` and would fail in environments lacking the runtime — including Anthropic's own default Claude Code devcontainer.
+
+| Use a bash script when… | Use a prompt when… |
+|---|---|
+| The task is **deterministic** (same input → same output, no judgment). | The task requires **judgment, synthesis, or rationale** (interview, design tradeoff, validation reasoning). |
+| The cost in tokens or latency through the LLM would be 10–1000× higher than a script. | Tokens/latency are dominated by the LLM's reasoning, not the mechanical step. |
+| The result is **verifiable** by exit code or string compare. | The result is qualitative ("is this spec well-scoped?"). |
+| The operation can fail loudly and recoverably (exit 1, empty string). | The operation needs graceful degradation or a conversational fallback. |
+
+Examples that fit the rule (anchors): `skills/conf/scripts/jimconf.sh` (config parsing), `skills/file/scripts/jimfile.sh` (existence checks, slug, next-id, glob, path resolution), `skills/meta-test/scripts/*.sh` (deterministic test execution). Counter-examples that rightly stay in prompts: the `/jim:spec` interview, the `meta-skill`/`meta-agent` 7-point research spot-check, design tradeoff reasoning in `/jim:plan`.
+
+### Logic-Flow Conventions
+
+In-prompt existence/absence gates around `!`-injected paths use a small BASIC-flavored keyword set. The control flow is shorthand; the actions inside each block stay in plain English. The keyword set is locked — anything fancier reverts to English.
+
+| Keyword              | Meaning                                  |
+| -------------------- | ---------------------------------------- |
+| `IF (X) EXISTS THEN` | path X is on disk                        |
+| `IF (X) ABSENT THEN` | path X is not on disk                    |
+| `THEN` …             | inline single-action form                |
+| `THEN DO:` … `DONE`  | block form for multi-step actions        |
+| `ELSE` …             | optional alternative branch              |
+| `END IF`             | closes the block                         |
+
+No loops, no variables, no `WHILE`, no `RETURN`. The body of each block is natural-language imperatives — the *control flow* is the only shorthand.
+
+**Inline single-action form:**
+
+```
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+  READ FILE — locked constraint. Do not re-litigate strategic decisions.
+END IF
+```
+
+**Multi-step block form with ELSE:**
+
+```
+IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
+  READ FILE — treat every architectural invariant as a locked constraint.
+ELSE
+  Note the absence in the Constitution Check section. Proceed without constraints.
+END IF
+```
+
+**Where the idiom helps:**
+- Existence-gated reads (most common — strategic doc lookups, optional config files).
+- Existence-gated executes (e.g., a `pre_commit_path` script that's absent in most projects).
+- Either/or branches based on file presence.
+
+**Where it does *not* help (revert to English):**
+- Multi-condition logic (and/or chains).
+- Loops over globbed results — use English + a `jimfile.sh glob` call.
+- Anything where the action is more than ~3 numbered steps — use a named subsection in English.
+
+**Markdown rendering:** the inline single-action form is safe outside fences. The multi-step `THEN DO:` … `DONE` form should be wrapped in a fenced `text` block so the numbered list keeps predictable indentation.
+
+This idiom is enforced by `meta-skill` and `meta-agent` validation checklists — invented variants (`WHEN ... PRESENT`, `IF FILE ... DO`, etc.) are a validation failure.
+
+### Substitution Conventions
+
+Three sigils, three meanings. Mixing them is a validation failure.
+
+| Sigil | Resolved by | Where it appears | Example |
+| --- | --- | --- | --- |
+| `<lower>` | LLM, before running the command | fenced bash blocks in SKILL.md | `path plan <group> <id> <name>` |
+| `{lower}` | template generator | `assets/*.md` body | `title: "{title}"` |
+| `$UPPER` / `${UPPER}` | shell, eagerly | inside `` !`…` `` injection | `"$ARGUMENTS"`, `${CLAUDE_PLUGIN_ROOT}` |
+
+**Rules:**
+
+- `<lower>` placeholders **must** live in a fenced code block, never inside `` !`…` ``. The `!`-injection primitive tokenizes the bash for permission checks at load time, and unquoted angle brackets fail the parser with "Unrecognized redirect shape". The hard-fail-on-load is intentional — it surfaces misuse immediately. Canonical call-site shape: see `skills/spec/SKILL.md`.
+- `$UPPER` is reserved for real shell expansion. Only `$ARGUMENTS`, `$CLAUDE_PLUGIN_ROOT`, and `$CLAUDE_SKILL_DIR` are recognized; do not invent new shell-style names for LLM substitution (they would silently expand to empty inside `!`-injection).
+- `{lower}` is for static template files under `assets/`; the SKILL.md prose tells the LLM how to fill them when rendering the template.
+- **Script integrity:** every script referenced by an `` !`bash …` `` block must exist at the cited path. Eager injection runs the command at slash-command load time; a missing script breaks loading before the LLM sees the body.
+- **Eager vs. deferred timing.** `!`-injection runs once, at slash-command load. Its inputs must be known at that point — stable paths from config, `$ARGUMENTS` when the skill *requires* one. If a value is only known after the LLM reads the body (because it asks the user, dispatches to one of several sub-actions, etc.), the call belongs in a fenced bash block instead — the LLM substitutes the value and runs the bash itself. Examples: `skills/brainstorm/SKILL.md` step 3 (topic gathered from user), `skills/meta-test/SKILL.md` (subcommand chosen at runtime).
 
 ### Progressive Disclosure
 

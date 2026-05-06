@@ -111,6 +111,19 @@ model: sonnet              # default; opus only if justified
   - Instruction shadowing (repeating rules already in CLAUDE.md or WORKFLOW.md)
   - Duplicate logic (same instructions in 3+ places → extract to shared skill)
 
+### Scripting Layer (optional)
+
+*Added 2026-05-05 — see `research.md` "Scripting Layer in jim plugin components" for the cross-platform evidence.*
+
+Skills MAY ship a `scripts/` directory containing deterministic bash tooling. Bash is the canonical scripting language for jim — confirmed as the genuine LCD across Claude Code, Codex CLI, Gemini CLI, Cursor, and Aider. The detailed rules live in canonical conventions docs; this spec only acknowledges them and defers:
+
+- **Security and portability** — `CLAUDE.md` (no `set -e`, no third-party deps, no `source` of user data, `BASH_SOURCE`-relative composition for inter-script calls).
+- **Composition and runtime** — `ARCHITECTURE.md` → Plugin Conventions → Scripting Layer (`!`-injection from skill bodies, `${CLAUDE_PLUGIN_ROOT}` substitution, sibling-script chaining, configurable paths via `jimconf.toml`).
+- **Bash-vs-prompt decision rule** — `ARCHITECTURE.md` → Plugin Conventions → Scripting Layer (when to offload deterministic logic to a script vs. keep it in the prompt).
+- **In-prompt logic-flow gates** — `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (the BASIC-style `IF (X) EXISTS THEN ... END IF` idiom for existence-gated reads/executes around `!`-injected paths).
+
+Agents do not ship `scripts/` — skills do. Agents may reference scripts via `!`-injection in prose, but the canonical home is the skill that owns the script.
+
 ## Acceptance Criteria
 
 ### /jim:meta-skill
@@ -125,6 +138,9 @@ model: sonnet              # default; opus only if justified
 - [ ] If spec exists but no plan, delegates to `@jim:architect` and stops.
 - [ ] If research.md is missing or fails quality spot-check, delegates to `@jim:researcher` with details of what's missing.
 - [ ] Differential update: if SKILL.md already exists, refines rather than overwrites. Summarises changes before applying.
+- [ ] Scripting layer: if `scripts/` exists, every script conforms to CLAUDE.md (no `set -e`, no third-party deps, no `source` of user data, `BASH_SOURCE`-relative composition).
+- [ ] Logic-flow idiom: in-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom documented in ARCHITECTURE.md → Plugin Conventions → Logic-Flow Conventions (no invented variants).
+- [ ] `!`-injection conforms to ARCHITECTURE.md → Plugin Conventions → Substitution Conventions (sigil discipline, script integrity, eager-vs-deferred timing — substance lives in the canonical doc, this AC just defers).
 
 ### /jim:meta-agent
 - [ ] Given an approved spec + plan + research, produces `jim/agents/{name}.md` with correct frontmatter (name, description, tools, model).
@@ -137,6 +153,7 @@ model: sonnet              # default; opus only if justified
 - [ ] If spec exists but no plan, delegates to `@jim:architect` and stops.
 - [ ] If research.md is missing or fails quality spot-check, delegates to `@jim:researcher` with details of what's missing.
 - [ ] Differential update: if agent file already exists, refines rather than overwrites. Summarises changes before applying.
+- [ ] Logic-flow idiom: any in-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom documented in ARCHITECTURE.md → Plugin Conventions → Logic-Flow Conventions (no invented variants). Agents do not ship `scripts/` — script-conformance is a meta-skill concern.
 
 ### @jim:meta Agent
 - [ ] `jim/agents/meta.md` exists with valid frontmatter (name, description, skills, tools, model).

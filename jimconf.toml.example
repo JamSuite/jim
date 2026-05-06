@@ -1,0 +1,28 @@
+# jimconf.toml — project-level path overrides for the jim plugin.
+#
+# Copy this file to `jimconf.toml` at your project root and edit the
+# values you want to override. Any key you omit keeps its default.
+#
+# IMPORTANT: changing a value here does NOT move existing files. If you
+# point `architecture_path` at a new location, you are responsible for
+# moving (or recreating) ARCHITECTURE.md at the new path. jim never
+# rewrites or relocates files based on a config change.
+#
+# Format: flat top-level `KEY = "value"` lines. Comments start with #.
+# Nested TOML tables and arrays are silently ignored — flat config only.
+#
+# Inspect what jim will resolve from this file:
+#   /jim:conf list                     # active project config
+#   /jim:conf -c jimconf.toml.example list   # see the shipped defaults
+
+specs_path        = "docs/specs"
+architecture_path = "ARCHITECTURE.md"
+vision_path       = "VISION.md"
+roadmap_path      = "ROADMAP.md"
+brainstorms_path  = "docs/brainstorms"
+debug_path        = "docs/debug"
+
+# Optional project-script path. Resolves the path-where-it-would-live;
+# /jim:build wraps the call in an existence gate, so a missing file is
+# silently skipped (no warning, no error).
+pre_commit_path   = "./pre-commit.sh"

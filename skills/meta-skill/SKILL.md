@@ -7,6 +7,7 @@ description: >
   building application code or non-jim skills.
 agent: meta
 argument-hint: "[skill-name]"
+allowed-tools: Bash(bash *)
 ---
 
 # /jim:meta-skill
@@ -19,9 +20,9 @@ Create or update a jim plugin skill (`skills/{name}/SKILL.md`) from an approved 
 
 ### 1. Pass three gates before building
 
-Use `$ARGUMENTS` as a hint for the skill name. Search `docs/specs/jim/` for a matching approved spec (`status: approved` in frontmatter), or ask the user which spec to build from.
+Use `$ARGUMENTS` as a hint for the skill name. List candidate specs via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs jim`, then grep each spec.md frontmatter for `status: approved` to find a match. If no clear match, ask the user which spec to build from.
 
-**Gate 1 — Spec:** Locate an approved spec in `docs/specs/jim/`. If no approved spec exists, spawn `@jim:pm` via the Agent tool to create one. If the pm agent is not available, tell the user to run `/jim:spec` instead.
+**Gate 1 — Spec:** Locate an approved spec under the `jim` group via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs jim`. If no approved spec exists, spawn `@jim:pm` via the Agent tool to create one. If the pm agent is not available, tell the user to run `/jim:spec` instead.
 
 **Gate 2 — Research Quality:** Read `research.md` from the spec directory. Evaluate it against this 7-point spot-check:
 
@@ -94,6 +95,16 @@ Work through this checklist before presenting the artifact. Fix failures inline 
 - [ ] SKILL.md body ≤ 500 lines
 - [ ] Any `references/` file >300 lines has a table of contents
 - [ ] Instructions use imperative form
+
+**Scripting Layer (when present)**
+
+If the skill ships a `scripts/` directory (bash only — see `CLAUDE.md` and `ARCHITECTURE.md` → Plugin Conventions → Scripting Layer for the rules):
+
+- [ ] Every script conforms to `CLAUDE.md`: no `set -e`, no third-party deps (POSIX shell only — `grep`, `sed`, `cut`, `tr`, `awk`, `find`, `sort`, `head`), no `source` or `eval` of user-supplied data, `BASH_SOURCE`-relative composition for inter-script calls (not `${CLAUDE_PLUGIN_ROOT}`, which only substitutes in skill content, not script bodies).
+- [ ] In-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom from `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (`IF (X) EXISTS THEN ... END IF`, `IF (X) ABSENT THEN`, `THEN DO: 1. ... DONE`, `ELSE`). No invented variants — anything fancier reverts to plain English.
+- [ ] `!`-injection integrity: every script referenced by an `!`bash …`` block in the SKILL.md body actually exists at the cited path.
+- [ ] `!`-injection inputs are known at slash-command load time. Calls that depend on a value gathered during the conversation — the LLM asking the user, dispatching to one of several sub-actions, etc. — live in a fenced bash block instead, run by the LLM after the value is resolved (see `ARCHITECTURE.md` → Substitution Conventions, "Eager vs. deferred timing").
+- [ ] Script *authoring* belongs to `/jim:meta-test scaffold`, not to this skill — meta-skill validates, meta-test scaffolds.
 
 **Anti-patterns — any of these is a failure:**
 - [ ] No personality soup ("I am here to help you...")

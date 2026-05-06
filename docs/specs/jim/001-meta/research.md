@@ -1,6 +1,8 @@
 ---
 spec: docs/specs/jim/001-meta/spec.md
 type: prior-art
+status: Needs Architect Review
+date: 2026-05-05
 ---
 
 # Research: @jim:meta, /jim:meta-skill, /jim:meta-agent
@@ -364,6 +366,94 @@ When `@jim:meta` validates a produced artifact, it should check:
 - [ ] No anti-patterns
 
 ---
+
+## Scripting Layer in jim plugin components
+
+*Added 2026-05-05 as a differential update — origin: `docs/brainstorms/20260505-bash-scripts-in-meta.md`.*
+
+When 001-meta was written, jim had no `scripts/` directory anywhere — skills were pure prompts. That changed with specs 007 (`meta-test`), 008 (`jimconf`), and 009 (`jimfile`), which introduced bash scripts under `skills/{name}/scripts/`. This section documents the cross-platform evidence justifying bash as the canonical scripting language, the runtime-assumption findings behind the choice, and the decision rule for offloading work from a prompt to a script.
+
+### Per-platform support matrix
+
+How major coding-agent platforms handle bash scripts in plugin/skill packages, as of 2026:
+
+| Platform | Skills/plugins surface | Bash in `scripts/` | Other runtimes | Source |
+|---|---|---|---|---|
+| **Claude Code** (Anthropic) | `<plugin>/skills/<name>/SKILL.md` + `scripts/` | ✅ native — Claude reads SKILL.md and runs scripts via bash | Python, JS (via `compatibility:` declaration) | `code.claude.com/docs/en/skills` |
+| **Codex CLI** (OpenAI) | Adopts SKILL.md open standard; `scripts/` optional in skill dir | ✅ via the open-standard `scripts/` dir | Underspecified — Codex docs defer to agent implementation; "Prefer instructions over scripts unless deterministic" | `developers.openai.com/codex/skills` |
+| **Gemini CLI** (Google) | TOML custom commands; extensions bundle commands/MCP/skills/hooks | ✅ via `!{...}` shell injection in TOML body | bash on Linux/macOS, PowerShell on Windows | `geminicli.com/docs/cli/custom-commands` |
+| **Cursor** (Cursor 2.5 plugins) | `.cursor/commands/` (Markdown) + plugin marketplace bundling skills/hooks/rules | ✅ — hooks are documented as "custom scripts that let you observe and control agent behavior" | VS Code extension ecosystem (separate surface) | `cursor.com/blog/marketplace` |
+| **Aider** | In-chat `/`-commands + CLI composability | ✅ — designed to be wrapped in shell scripts via `aider --message` | — (no native `skills/` dir; agent skills consumption is via shell composition) | `aider.chat/docs/scripting.html` |
+
+### Why bash is the genuine LCD
+
+Three converging signals from the open standard and the platforms that implement it:
+
+1. **The spec treats bash as the unstated default.** The Agent Skills Open Standard (`agentskills.io/specification`) lists `scripts/` as optional and notes: *"Supported languages depend on the agent implementation. Common options include Python, Bash, and JavaScript."* Anything beyond bash must be declared explicitly via the optional `compatibility:` frontmatter field (e.g. `compatibility: Requires Python 3.14+ and uv`). The spec adds: *"Most skills do not need the compatibility field"* — which positions bash as the baseline that requires no declaration.
+
+2. **Bash is the meta-runtime that launches everything else.** From the open-standard runtime model: *"When a Skill is triggered, Claude uses bash to read SKILL.md from the filesystem... If those instructions reference other files, Claude reads those files too using additional bash commands. When instructions mention executable scripts, Claude runs them via bash."* Even Python and JS scripts in `scripts/` are invoked *via* bash (e.g. `python3 scripts/process.py`). So bash is present in every supported environment by construction; everything else is opt-in.
+
+3. **Cross-platform reality converges on bash.** All five platforms surveyed support bash in some form. Gemini CLI is the only one that distinguishes platforms — `bash` on Linux/macOS, `powershell.exe` on Windows — but bash remains the Unix baseline. Cursor's hooks are documented as "custom scripts" without restriction. Codex CLI adopts the SKILL.md spec verbatim. Aider composes with shell scripts as a first-class extensibility model.
+
+### The Python-in-devcontainer mystery — resolved
+
+The brainstorm flagged a side-question (§A2): how do Anthropic's Python-based skills (e.g., `pdf-processing`, `skill-creator`) work in devcontainers without Python? Answer: **they don't, by default.** Per [anthropics/claude-code#21613](https://github.com/anthropics/claude-code/issues/21613) and Anthropic's own [`devcontainer-features`](https://github.com/anthropics/devcontainer-features), the official Claude Code devcontainer is Node.js 20 only — no Python virtualenv, `pip install` fails on `externally-managed-environment`. To run Python skills, users must add the Python devcontainer feature explicitly.
+
+This is the practical evidence behind the `compatibility:` field being opt-in: skills that need Python *must* declare the requirement because it's not assumed. Bash needs no such declaration because it *is* assumed — the agent uses it to invoke SKILL.md and every script in the first place.
+
+**Implication for jim:** picking bash for the scripting layer was the correct call. Adopting Python or JS as jim's canonical scripting language would have made jim skills fail in any environment that didn't pre-install the runtime — including Anthropic's own default devcontainer.
+
+### Decision rule — bash script vs. prompt
+
+Heuristic for skill authors deciding where logic should live:
+
+| Use a bash script when… | Use a prompt when… |
+|---|---|
+| The task is **deterministic** (same input → same output, no judgment). | The task requires **judgment, synthesis, or rationale** (interview, design tradeoff, validation reasoning). |
+| The cost in tokens or latency through the LLM would be 10–1000× higher than a script. | Tokens/latency are dominated by the LLM's reasoning, not the mechanical step. |
+| The result is **verifiable** by exit code or string compare. | The result is qualitative ("is this spec well-scoped?"). |
+| The operation can fail loudly and recoverably (exit 1, empty string). | The operation needs graceful degradation or a conversational fallback. |
+
+Existing jim scripts that fit the rule (anchors): `skills/conf/scripts/jimconf.sh` (deterministic config parsing), `skills/file/scripts/jimfile.sh` (file/path ops — exists, slug, next-id, glob, path), `skills/meta-test/scripts/*.sh` (test execution).
+
+Counter-examples that rightly stay in prompts: the `/jim:spec` interview, research adequacy checks (the 7-point spot-check is judgment), design tradeoff reasoning in `/jim:plan`.
+
+The canonical home for this rule and its companion BASIC-style logic-flow idiom (sibling brainstorm `20260505-file-resolver-conventions-audit.md`) is `ARCHITECTURE.md` → Plugin Conventions, per the brainstorm's D2.
+
+### Alignment
+
+This research aligns with VISION.md → Roadmap Trajectory Phase 3 (cross-agent integration with Codex / Gemini CLI / other coding agents): bash-as-LCD is what makes that integration plausible without per-platform rewrites. It also aligns with ARCHITECTURE.md → Plugin Conventions → Scripting Layer, which already states *"no build step, no package manager, no third-party dependencies"* — the LCD finding is the empirical justification for that posture.
+
+### Sources
+
+Tier 1 (canonical):
+- `agentskills.io/specification` — Agent Skills open standard
+- `code.claude.com/docs/en/skills` — Claude Code skills reference
+- `github.com/anthropics/skills` — Anthropic's official skills repo
+
+Tier 2 (per-platform):
+- `developers.openai.com/codex/skills` — Codex CLI agent skills
+- `geminicli.com/docs/cli/custom-commands` — Gemini CLI custom commands
+- `geminicli.com/docs/extensions` — Gemini CLI extensions framework
+- `cursor.com/blog/marketplace` — Cursor 2.5 plugin marketplace
+- `aider.chat/docs/scripting.html` — Aider scripting model
+
+Tier 3 (Python-in-devcontainer thread):
+- `github.com/anthropics/claude-code/issues/21613` — feature request for Python in official devcontainer
+- `github.com/anthropics/devcontainer-features` — Anthropic's devcontainer features (Python is opt-in)
+
+## Peer Feedback
+
+*Added 2026-05-05.*
+
+### For the Architect (plan delta)
+
+The current `plan.md` for 001-meta does not include validation logic for the scripting layer (`scripts/` directories) or the BASIC-style logic-flow gate idiom. Per `docs/brainstorms/20260505-bash-scripts-in-meta.md` "Files to change" #3, the plan must be amended:
+
+- (a) Add a new design decision covering the scripting layer's place in meta's validation flow.
+- (b) Extend Task 1 (`skills/meta-skill/SKILL.md`) and Task 2 (`skills/meta-agent/SKILL.md`) checklists with script-conformance and gate-idiom validation bullets, so the plan's task list and verify commands match the amended spec.
+
+This is not an invalidation of prior plan content — the original decisions (model: sonnet, second-person voice, differential updates, etc.) all stand. It's an additive amendment driven by the scripting layer that emerged after 001-meta was written.
 
 ## What We're Building On vs. Reinventing
 
