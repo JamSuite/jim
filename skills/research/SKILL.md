@@ -33,7 +33,11 @@ Use `$ARGUMENTS` to determine the research target and mode:
 
 ### 2. Determine output location
 
-- **Spec path input:** Output to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path research <group> <id> <name>` (same directory as the spec).
+- **Spec path input:** Resolve the research write path (same directory as the spec):
+
+      bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path research <group> <id> <name>
+
+  Write the research to that path.
 - **Everything else:** Suggest a location and confirm with the user before writing:
   - If a related spec exists, suggest its directory.
   - Otherwise suggest `docs/research/{YYYYMMDD}-{topic}.md`.

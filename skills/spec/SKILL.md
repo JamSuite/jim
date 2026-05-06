@@ -134,7 +134,7 @@ Read `assets/spec-template.md`. Generate the spec:
 - For bugs, ensure acceptance criteria includes "Regression test covers the reported scenario."
 - For refactors, ensure acceptance criteria includes "Existing tests pass without modification."
 
-Resolve the spec write path via Bash, substituting the resolved group, ID, and name:
+Resolve the spec write path:
 
 ```
 bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>

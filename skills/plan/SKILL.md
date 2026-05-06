@@ -95,7 +95,11 @@ Populate all sections from the template:
 10. **Out of Scope** — explicit deferrals
 11. **Open Questions** — unresolved items
 
-Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path plan <group> <id> <name>`. Status stays `draft`.
+Resolve the plan write path:
+
+    bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path plan <group> <id> <name>
+
+Write the plan to that path. Status stays `draft`.
 
 ### 7. Self-check
 
