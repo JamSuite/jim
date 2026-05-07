@@ -22,7 +22,19 @@ roadmap_path      = "ROADMAP.md"
 brainstorms_path  = "docs/brainstorms"
 debug_path        = "docs/debug"
 
-# Optional project-script path. Resolves the path-where-it-would-live;
-# /jim:build wraps the call in an existence gate, so a missing file is
-# silently skipped (no warning, no error).
-pre_commit_path   = "./pre-commit.sh"
+# Optional project-script path for the per-commit gate. Resolves the
+# path-where-it-would-live; /jim:build wraps the call in an existence
+# gate, so a missing file is silently skipped (no warning, no error).
+pre_commit_path        = "./pre-commit.sh"
+
+# Optional project-script path for the pre-completion gate. Runs once
+# at the end of /jim:build (replaces the per-commit gate's invocation
+# at completion). Same existence-gated semantics as pre_commit_path.
+pre_completion_path    = "./pre-completion.sh"
+
+# Enforcement flags for the gates above. When "true", a missing script
+# at the configured path halts the build instead of being skipped
+# silently. Double-quoted string booleans — "true" enables, anything
+# else (including the default "false") disables.
+require_pre_commit     = "false"
+require_pre_completion = "false"
