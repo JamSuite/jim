@@ -111,8 +111,13 @@ After all tasks are marked `[x]`:
      When !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_pre_completion` resolves to "true", STOP with: "Required pre-completion script not found at !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_completion`." Otherwise, skip silently.
    END IF
    ```
-2. Report results to the user and ask: "Should I mark the plan status as `complete`?"
-3. STOP. Wait for the human to confirm. Do not proceed to the next SDLC phase, do not auto-invoke review. Update the plan frontmatter to `status: complete` only after explicit confirmation.
+2. Run the arch feedback step:
+
+   IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
+     Invoke `/jim:arch` to run a differential update.
+   END IF
+3. Report results to the user and ask: "Should I mark the plan status as `complete`?"
+4. STOP. Wait for the human to confirm. Do not proceed to the next SDLC phase, do not auto-invoke review. Update the plan frontmatter to `status: complete` only after explicit confirmation.
 
 ## Scope Discipline
 
