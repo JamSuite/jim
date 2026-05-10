@@ -77,9 +77,11 @@ Fill each section from scan findings:
 
 ### 6. Present and stop
 
-Show the completed document (or summarize changes for a differential update). List which sections changed and which sections had no findings.
+Resolve the auto-apply flag: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get auto_arch_feedback`.
 
-Ask: "Does this look accurate? Any sections to refine?"
+When the flag resolves to `"true"`, apply the proposed update via Edit and summarize what was applied. Do not prompt for confirmation.
+
+Otherwise, show the completed document (or summarize changes for a differential update). List which sections changed and which sections had no findings. Ask: "Does this look accurate? Any sections to refine?"
 
 Do not proceed to the next phase.
 
