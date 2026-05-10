@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -53,7 +53,10 @@ default_for() {
     roadmap)      echo "ROADMAP.md" ;;
     brainstorms)  echo "docs/brainstorms" ;;
     debug)        echo "docs/debug" ;;
-    pre_commit)   echo "./pre-commit.sh" ;;
+    pre_commit)             echo "./pre-commit.sh" ;;
+    pre_completion)         echo "./pre-completion.sh" ;;
+    require_pre_commit)     echo "false" ;;
+    require_pre_completion) echo "false" ;;
     *) return 1 ;;
   esac
 }
@@ -85,7 +88,12 @@ parse_value() {
 #   otherwise the documented default.
 resolve() {
   local file="$1" cli_key="$2"
-  local toml_key="${cli_key}_path"
+  local toml_key
+  if [[ "$cli_key" == require_* ]]; then
+    toml_key="$cli_key"
+  else
+    toml_key="${cli_key}_path"
+  fi
   local value=""
   if [[ -f "$file" ]]; then
     value="$(parse_value "$file" "$toml_key")"

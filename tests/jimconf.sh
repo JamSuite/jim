@@ -46,7 +46,10 @@ case_no_config_returns_defaults() {
               "roadmap:ROADMAP.md" \
               "brainstorms:docs/brainstorms" \
               "debug:docs/debug" \
-              "pre_commit:./pre-commit.sh"; do
+              "pre_commit:./pre-commit.sh" \
+              "pre_completion:./pre-completion.sh" \
+              "require_pre_commit:false" \
+              "require_pre_completion:false"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -64,14 +67,20 @@ vision_path = "docs/vision.md"
 roadmap_path = "docs/roadmap.md"
 brainstorms_path = "docs/brainstorms-dir"
 debug_path = "docs/debug-dir"
-pre_commit_path = "scripts/pre-commit"')
-  run -c "$cfg" get specs;        assert_eq "specs"        "my/specs"             "$OUT"
-  run -c "$cfg" get architecture; assert_eq "architecture" "docs/arch.md"         "$OUT"
-  run -c "$cfg" get vision;       assert_eq "vision"       "docs/vision.md"       "$OUT"
-  run -c "$cfg" get roadmap;      assert_eq "roadmap"      "docs/roadmap.md"      "$OUT"
-  run -c "$cfg" get brainstorms;  assert_eq "brainstorms"  "docs/brainstorms-dir" "$OUT"
-  run -c "$cfg" get debug;        assert_eq "debug"        "docs/debug-dir"       "$OUT"
-  run -c "$cfg" get pre_commit;   assert_eq "pre_commit"   "scripts/pre-commit"   "$OUT"
+pre_commit_path = "scripts/pre-commit"
+pre_completion_path = "scripts/pre-completion"
+require_pre_commit = "true"
+require_pre_completion = "true"')
+  run -c "$cfg" get specs;                  assert_eq "specs"                  "my/specs"               "$OUT"
+  run -c "$cfg" get architecture;           assert_eq "architecture"           "docs/arch.md"           "$OUT"
+  run -c "$cfg" get vision;                 assert_eq "vision"                 "docs/vision.md"         "$OUT"
+  run -c "$cfg" get roadmap;                assert_eq "roadmap"                "docs/roadmap.md"        "$OUT"
+  run -c "$cfg" get brainstorms;            assert_eq "brainstorms"            "docs/brainstorms-dir"   "$OUT"
+  run -c "$cfg" get debug;                  assert_eq "debug"                  "docs/debug-dir"         "$OUT"
+  run -c "$cfg" get pre_commit;             assert_eq "pre_commit"             "scripts/pre-commit"     "$OUT"
+  run -c "$cfg" get pre_completion;         assert_eq "pre_completion"         "scripts/pre-completion" "$OUT"
+  run -c "$cfg" get require_pre_commit;     assert_eq "require_pre_commit"     "true"                   "$OUT"
+  run -c "$cfg" get require_pre_completion; assert_eq "require_pre_completion" "true"                   "$OUT"
 }
 
 # AC: partial override layered over defaults (spec AC #3)
@@ -101,14 +110,17 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"  "7" "$line_count"
-  assert_match "specs line"        '^specs=docs/specs$'              "$OUT"
-  assert_match "architecture line" '^architecture=ARCHITECTURE\.md$' "$OUT"
-  assert_match "vision line"       '^vision=VISION\.md$'             "$OUT"
-  assert_match "roadmap line"      '^roadmap=ROADMAP\.md$'           "$OUT"
-  assert_match "brainstorms line"  '^brainstorms=docs/brainstorms$'  "$OUT"
-  assert_match "debug line"        '^debug=docs/debug$'              "$OUT"
-  assert_match "pre_commit line"   '^pre_commit=\./pre-commit\.sh$'  "$OUT"
+  assert_eq    "list line count"             "10" "$line_count"
+  assert_match "specs line"                   '^specs=docs/specs$'                     "$OUT"
+  assert_match "architecture line"            '^architecture=ARCHITECTURE\.md$'        "$OUT"
+  assert_match "vision line"                  '^vision=VISION\.md$'                    "$OUT"
+  assert_match "roadmap line"                 '^roadmap=ROADMAP\.md$'                  "$OUT"
+  assert_match "brainstorms line"             '^brainstorms=docs/brainstorms$'         "$OUT"
+  assert_match "debug line"                   '^debug=docs/debug$'                     "$OUT"
+  assert_match "pre_commit line"              '^pre_commit=\./pre-commit\.sh$'         "$OUT"
+  assert_match "pre_completion line"          '^pre_completion=\./pre-completion\.sh$' "$OUT"
+  assert_match "require_pre_commit line"      '^require_pre_commit=false$'             "$OUT"
+  assert_match "require_pre_completion line"  '^require_pre_completion=false$'         "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -116,7 +128,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -154,7 +166,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "7" "$line_count"
+  assert_eq "list still emits all keys" "10" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -198,6 +210,59 @@ case_pre_commit_overridden() {
   cfg=$(fixture pre_commit-override.toml 'pre_commit_path = "ci/pre-commit.bash"')
   run -c "$cfg" get pre_commit
   assert_eq "pre_commit overridden" "ci/pre-commit.bash" "$OUT"
+}
+
+# AC: pre_completion key resolves to ./pre-completion.sh by default
+# Project-script default for the completion-gate hook — every consumer wraps
+# this in an exists gate at the skill layer, so the resolver returns the
+# path unconditionally.
+case_pre_completion_default() {
+  local dir actual
+  dir=$(empty_dir pre_completion_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get pre_completion)
+  assert_eq "pre_completion default" "./pre-completion.sh" "$actual"
+}
+
+# AC: pre_completion override via jimconf.toml
+case_pre_completion_overridden() {
+  local cfg
+  cfg=$(fixture pre_completion-override.toml 'pre_completion_path = "ci/full-suite.bash"')
+  run -c "$cfg" get pre_completion
+  assert_eq "pre_completion overridden" "ci/full-suite.bash" "$OUT"
+}
+
+# AC: require_pre_commit defaults to "false"
+# Flag key — TOML name equals CLI name (no _path suffix); resolved via
+# the require_* prefix dispatch in resolve().
+case_require_pre_commit_default() {
+  local dir actual
+  dir=$(empty_dir require_pre_commit_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get require_pre_commit)
+  assert_eq "require_pre_commit default" "false" "$actual"
+}
+
+# AC: require_pre_commit override via jimconf.toml ("true" enables enforcement)
+case_require_pre_commit_overridden() {
+  local cfg
+  cfg=$(fixture require_pre_commit-override.toml 'require_pre_commit = "true"')
+  run -c "$cfg" get require_pre_commit
+  assert_eq "require_pre_commit overridden" "true" "$OUT"
+}
+
+# AC: require_pre_completion defaults to "false"
+case_require_pre_completion_default() {
+  local dir actual
+  dir=$(empty_dir require_pre_completion_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get require_pre_completion)
+  assert_eq "require_pre_completion default" "false" "$actual"
+}
+
+# AC: require_pre_completion override via jimconf.toml
+case_require_pre_completion_overridden() {
+  local cfg
+  cfg=$(fixture require_pre_completion-override.toml 'require_pre_completion = "true"')
+  run -c "$cfg" get require_pre_completion
+  assert_eq "require_pre_completion overridden" "true" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
