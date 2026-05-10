@@ -251,6 +251,14 @@ Conventions that govern how jim's agents, skills, and tools interact with Claude
 - **One level only.** Subagents cannot nest — parent → child works, parent → child → grandchild does not. This is a Claude Code platform constraint.
 - **Fresh context.** Subagents start with only the prompt passed via the Agent tool, not the parent's conversation history.
 
+### Skill-to-Skill Invocation
+
+Skills can invoke other skills by name in their prose body. The LLM running the parent skill uses Claude Code's built-in `Skill` tool to load and execute the named skill within the same conversation.
+
+- **Same-agent execution.** The agent that invoked the parent skill executes the invoked skill's body. The `agent:` frontmatter on the invoked skill is documentation (per "Skill Invocation"), not runtime routing.
+- **Use sparingly.** Skill-to-skill invocation crosses domain framings (e.g., the coder's `/jim:build` invoking the architect's `/jim:arch`). Appropriate when the work flows naturally — post-build documentation refresh, post-spec research kickoff. Not a substitute for explicit user handoffs when domain separation matters more than convenience.
+- **Anchor by name.** Use the full `/jim:<skill>` form in prose. Don't inline the invoked skill's logic.
+
 ### Scripting Layer
 
 Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/scripts/jimconf.sh` resolves project-level path overrides for jim's strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.sh` — extends the layer with deterministic file/path operations.
