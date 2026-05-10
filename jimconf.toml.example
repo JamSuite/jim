@@ -38,3 +38,8 @@ pre_completion_path    = "./pre-completion.sh"
 # else (including the default "false") disables.
 require_pre_commit     = "false"
 require_pre_completion = "false"
+
+# Auto-apply flag for the post-build ARCHITECTURE.md feedback loop. When
+# "true", /jim:arch skips its user-confirmation prompt and writes the
+# proposed update directly. Default "false" preserves human review.
+auto_arch_feedback     = "false"
