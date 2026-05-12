@@ -2,7 +2,7 @@
 title: "Architect Agent and Skills"
 spec: docs/specs/jim/005-architect/spec.md
 type: feature
-status: draft
+status: complete
 ---
 
 # 005 Architect Agent and Skills — Plan

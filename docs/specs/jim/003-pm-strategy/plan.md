@@ -1,7 +1,7 @@
 ---
 spec: docs/specs/jim/003-pm-strategy/spec.md
 type: feature
-status: draft
+status: complete
 ---
 
 # Plan: PM Strategic Skills — /jim:vision, /jim:roadmap, /jim:brainstorm

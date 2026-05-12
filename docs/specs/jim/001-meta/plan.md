@@ -1,7 +1,7 @@
 ---
 spec: docs/specs/jim/001-meta/spec.md
 type: feature
-status: draft
+status: complete
 ---
 
 # Plan: @jim:meta Agent + /jim:meta-skill and /jim:meta-agent Skills

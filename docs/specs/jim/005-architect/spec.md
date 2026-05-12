@@ -3,7 +3,7 @@ title: "Architect Agent and Skills"
 type: feature
 group: jim
 id: "005"
-status: draft
+status: approved
 origin:
   - docs/prior-art/V1SDLC/v1-agent-architect.md
   - docs/prior-art/V1SDLC/V1-PLAN_TEMPLATE.md
