@@ -49,7 +49,8 @@ case_no_config_returns_defaults() {
               "pre_commit:./pre-commit.sh" \
               "pre_completion:./pre-completion.sh" \
               "require_pre_commit:false" \
-              "require_pre_completion:false"; do
+              "require_pre_completion:false" \
+              "auto_arch_feedback:false"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -70,7 +71,8 @@ debug_path = "docs/debug-dir"
 pre_commit_path = "scripts/pre-commit"
 pre_completion_path = "scripts/pre-completion"
 require_pre_commit = "true"
-require_pre_completion = "true"')
+require_pre_completion = "true"
+auto_arch_feedback = "true"')
   run -c "$cfg" get specs;                  assert_eq "specs"                  "my/specs"               "$OUT"
   run -c "$cfg" get architecture;           assert_eq "architecture"           "docs/arch.md"           "$OUT"
   run -c "$cfg" get vision;                 assert_eq "vision"                 "docs/vision.md"         "$OUT"
@@ -81,6 +83,7 @@ require_pre_completion = "true"')
   run -c "$cfg" get pre_completion;         assert_eq "pre_completion"         "scripts/pre-completion" "$OUT"
   run -c "$cfg" get require_pre_commit;     assert_eq "require_pre_commit"     "true"                   "$OUT"
   run -c "$cfg" get require_pre_completion; assert_eq "require_pre_completion" "true"                   "$OUT"
+  run -c "$cfg" get auto_arch_feedback;     assert_eq "auto_arch_feedback"     "true"                   "$OUT"
 }
 
 # AC: partial override layered over defaults (spec AC #3)
