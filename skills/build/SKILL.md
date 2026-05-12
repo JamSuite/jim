@@ -71,7 +71,7 @@ For each unchecked `[ ]` task in `plan.md`, in order:
 - Run the pre-commit gate before the commit lands:
 
   SET pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`
-  SET require_pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_pre_commit`
+  SET require_pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_pre_commit`
 
   IF pre_commit EXISTS THEN
     1. Run the script via Bash and show the full output.
@@ -104,7 +104,7 @@ After all tasks are marked `[x]`:
 1. Run the pre-completion gate:
 
    SET pre_completion = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_completion`
-   SET require_pre_completion = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_pre_completion`
+   SET require_pre_completion = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_pre_completion`
 
    IF pre_completion EXISTS THEN
      1. Run the script via Bash and show the full output.
