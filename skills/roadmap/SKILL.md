@@ -72,7 +72,7 @@ The roadmap is a strategic communication tool, not a backlog. Push back when it 
 
 Read `assets/roadmap-template.md`. Fill buckets with interview results. Set "Last updated" to today's date. Keep it concise.
 
-Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`.
+Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path roadmap`.
 
 ### 8. Silent self-check
 

@@ -21,14 +21,14 @@ Use `$ARGUMENTS` to determine scope:
 
 | Input | Behavior |
 | :--- | :--- |
-| Empty | Create or update the resolved architecture path (default: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) |
+| Empty | Create or update the resolved architecture path (default: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path architecture`) |
 | Directory path | Create or update the architecture file inside that directory, using the filename portion of the resolved architecture path |
 
 ## Process
 
 ### 1. Establish scope
 
-Resolve the configured architecture path: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`.
+Resolve the configured architecture path: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path architecture`.
 
 If `$ARGUMENTS` is empty, that *is* the target path. If `$ARGUMENTS` is a directory, the target is `{$ARGUMENTS}/<filename portion of the resolved path>`.
 

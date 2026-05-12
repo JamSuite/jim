@@ -76,7 +76,7 @@ Walk through the remaining 5 template sections in order. For each section:
 
 Read `assets/vision-template.md`. Fill each section with interview results. Keep it concise — the goal is clarity of direction, not exhaustive documentation.
 
-Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`.
+Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path vision`.
 
 ### 7. Silent self-check
 
