@@ -2,7 +2,7 @@
 title: "Post-build ARCHITECTURE.md feedback loop"
 spec: "spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # 013 Post-build ARCHITECTURE.md feedback loop — Plan
