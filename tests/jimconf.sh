@@ -265,6 +265,16 @@ case_require_pre_completion_overridden() {
   assert_eq "require_pre_completion overridden" "true" "$OUT"
 }
 
+# AC: auto_arch_feedback defaults to "false"
+# Flag key — TOML name equals CLI name (no _path suffix); resolved via
+# the auto_* prefix dispatch in resolve().
+case_auto_arch_feedback_default() {
+  local dir actual
+  dir=$(empty_dir auto_arch_feedback_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get auto_arch_feedback)
+  assert_eq "auto_arch_feedback default" "false" "$actual"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
