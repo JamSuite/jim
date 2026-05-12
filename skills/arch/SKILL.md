@@ -79,7 +79,13 @@ Fill each section from scan findings:
 
 Show the completed document (or summarize changes for a differential update). List which sections changed and which sections had no findings.
 
-Ask: "Does this look accurate? Any sections to refine?"
+SET auto_arch_feedback = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get auto_arch_feedback`
+
+IF auto_arch_feedback == "true" THEN
+  Write the proposed update directly to the configured architecture path. Summarize which sections were added, changed, or preserved.
+ELSE
+  Present the diff and ask: "Does this look accurate? Any sections to refine?" Wait for confirmation.
+ENDIF
 
 Do not proceed to the next phase.
 
