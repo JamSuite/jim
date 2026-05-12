@@ -90,7 +90,7 @@ parse_value() {
 resolve() {
   local file="$1" cli_key="$2"
   local toml_key
-  if [[ "$cli_key" == require_* ]]; then
+  if [[ "$cli_key" == require_* || "$cli_key" == auto_* ]]; then
     toml_key="$cli_key"
   else
     toml_key="${cli_key}_path"
