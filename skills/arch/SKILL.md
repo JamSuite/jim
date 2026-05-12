@@ -34,11 +34,9 @@ If `$ARGUMENTS` is empty, that *is* the target path. If `$ARGUMENTS` is a direct
 
 ### 2. Read the vision doc as upstream context
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-  READ FILE — the architecture serves the vision; where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
-ELSE
-  Proceed without it. Note its absence in the Overview if you generate a new file.
-END IF
+READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — the architecture serves the vision; where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
+
+If absent, proceed without it. Note its absence in the Overview if you generate a new file.
 
 ### 3. Check for existing ARCHITECTURE.md
 

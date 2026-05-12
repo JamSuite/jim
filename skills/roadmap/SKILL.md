@@ -24,11 +24,9 @@ Use `$ARGUMENTS` as a hint for what the user wants to add or update. If empty, s
 
 ### 2. Read context
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-  READ FILE — for strategic alignment.
-ELSE
-  Note: "No vision doc yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
-END IF
+READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — for strategic alignment.
+
+If absent, note: "No vision doc yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
 
 ### 3. Search for linkable specs
 
@@ -38,11 +36,13 @@ Do not Read full spec contents — glob and grep only. This prevents context ove
 
 ### 4. Check for existing ROADMAP.md
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`) EXISTS THEN
+SET roadmap_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`
+
+IF roadmap_doc EXISTS THEN
   Differential update. Read existing content. Summarize the current state to the user. Ask what they want to change — add items, move items between buckets, update version anchors, refine objectives.
 ELSE
   Fresh creation. Proceed to interview.
-END IF
+ENDIF
 
 ### 5. Interview
 

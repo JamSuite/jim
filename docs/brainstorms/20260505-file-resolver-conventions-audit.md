@@ -83,18 +83,15 @@ No loops, no variables, no `WHILE`, no `RETURN`.
 **Rewrite — single-action, inline (`skills/spec/SKILL.md:34-38`):**
 
 ```
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-  READ FILE — locked constraint. Do not re-litigate strategic decisions.
-END IF
+READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — locked constraint. Do not re-litigate strategic decisions.
 ```
 
 **Rewrite — multi-step + ELSE (`skills/build/SKILL.md:92`, after D4):**
 
 ```
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`) EXISTS THEN DO:
+DO_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`:
   1. Run it via Bash.
   2. Show the full output.
-DONE
 ```
 
 ## Audit — file:line map

@@ -122,7 +122,7 @@ Work through this checklist before presenting the artifact. Fix failures inline 
 
 Agents do not ship `scripts/` — that's a meta-skill concern. But agent bodies sometimes reference paths or describe gated behavior. Where they do:
 
-- [ ] Any in-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom from `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (`IF (X) EXISTS THEN ... END IF`, `IF (X) ABSENT THEN`, `THEN DO: 1. ... DONE`, `ELSE`). No invented variants.
+- [ ] Any in-prompt existence/absence gates around `!`-injected paths use one of the directive forms from `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (`READ_IF_EXISTS`, `RUN_IF_EXISTS`, `DO_IF_EXISTS`, `SET` + paren-free `IF X EXISTS THEN … ELSE IF X == "value" THEN … ENDIF`). No `!`-injection slot inside `(...)`; every slot is bare-line, preceded by an allowed directive prefix, or the right-hand side of a `SET` assignment. The retired `IF (X) EXISTS THEN` BASIC idiom is an anti-pattern — silent suppression. No invented variants, no `DO:` / `DONE` / two-word `END IF` from the heavier interim form.
 
 **Anti-patterns — any of these is a failure:**
 - [ ] No personality soup ("I am an AI assistant here to help...")

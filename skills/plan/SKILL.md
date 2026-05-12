@@ -50,11 +50,9 @@ Check for `research.md` in the same directory as the spec.
 
 ### 3. Check the architecture doc
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
-  READ FILE — treat every architectural invariant as a locked constraint. No design decision may violate these without explicit user approval.
-ELSE
-  Note the absence in the Constitution Check section of the plan. Proceed without constraints.
-END IF
+READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture` — treat every architectural invariant as a locked constraint. No design decision may violate these without explicit user approval.
+
+If absent, note this in the Constitution Check section of the plan. Proceed without constraints.
 
 ### 4. Check for an existing plan
 

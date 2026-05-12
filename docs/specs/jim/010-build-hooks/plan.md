@@ -107,16 +107,18 @@ fi
 Both gates share this exact shape (substitute `pre_commit` / `pre_completion` and the corresponding `require_*` key, plus the gate name in the halt message):
 
 ```text
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get <gate-key>`) EXISTS THEN DO:
+SET pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get <gate-key>`
+SET require_pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_<gate-key>`
+
+IF pre_commit EXISTS THEN
   1. Run the script via Bash and show the full output.
   2. STOP and wait for human guidance if the exit code is non-zero.
-   DONE
-ELSE
-  When !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_<gate-key>` resolves to "true", STOP with: "Required <gate-name> script not found at !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get <gate-key>`." Otherwise, skip silently.
-END IF
+ELSE IF require_pre_commit == "true" THEN
+  STOP with: "Required <gate-name> script not found at pre_commit."
+ENDIF
 ```
 
-`<gate-key>` and `<gate-name>` are written-out at each call site (literal text, not LLM substitution) — the BASIC `IF EXISTS` requires the resolved path inside the parens at the call site itself.
+`<gate-key>` and `<gate-name>` are written-out at each call site (literal text, not LLM substitution). The `SET` directive hoists the `!`-injection onto a paren-free surface so the subsequent `IF` block can branch on the bound name.
 
 ## Data Flow
 

@@ -96,13 +96,9 @@ Mandatory phase — always runs.
 
 1. Read strategic constraints, if present:
 
-   IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-     READ FILE — locked constraint.
-   END IF
+   READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — locked constraint.
 
-   IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
-     READ FILE — locked constraint.
-   END IF
+   READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture` — locked constraint.
 2. Produce an explicit alignment statement: "This approach aligns with [strategic goal] and follows the [architectural pattern]" — or flag divergence conversationally.
 3. If strategic docs are missing, note their absence. Don't block on it.
 4. If research recommendations contradict a locked constraint, raise it as a Peer Feedback item for the PM.

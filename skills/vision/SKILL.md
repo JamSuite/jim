@@ -24,19 +24,19 @@ Use `$ARGUMENTS` as a project name or topic hint. If empty, ask: "What project o
 
 ### 2. Read context
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
-  READ FILE — locked constraint. Don't contradict technical decisions already made.
-ELSE
-  Note conversationally: "No architecture doc yet — you might want to create one after this." Do not block.
-END IF
+READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture` — locked constraint. Don't contradict technical decisions already made.
+
+If absent, note conversationally: "No architecture doc yet — you might want to create one after this." Do not block.
 
 ### 3. Check for existing VISION.md
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+
+IF vision_doc EXISTS THEN
   This is a differential update. Read the content. Tell the user: "I see an existing VISION.md. I'll walk through each section and suggest changes based on our conversation." Identify which sections are well-defined vs. which need work.
 ELSE
   Fresh creation. Proceed to interview.
-END IF
+ENDIF
 
 ### 4. Problem Statement & Solution Statement — wordsmith mode
 

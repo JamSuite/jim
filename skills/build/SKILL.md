@@ -69,15 +69,15 @@ For each unchecked `[ ]` task in `plan.md`, in order:
 - See `references/tdd-guide.md` — Commit Discipline section.
 - Run the pre-commit gate before the commit lands:
 
-  ```text
-  IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`) EXISTS THEN DO:
+  SET pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`
+  SET require_pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_pre_commit`
+
+  IF pre_commit EXISTS THEN
     1. Run the script via Bash and show the full output.
     2. STOP and wait for human guidance if the exit code is non-zero.
-     DONE
-  ELSE
-    When !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_pre_commit` resolves to "true", STOP with: "Required pre-commit script not found at !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`." Otherwise, skip silently.
-  END IF
-  ```
+  ELSE IF require_pre_commit == "true" THEN
+    STOP with: "Required pre-commit script not found at pre_commit."
+  ENDIF
 
 **Verify**
 - Run the task's `**Verify:**` command from the plan via Bash. Show the output.
@@ -102,15 +102,15 @@ After all tasks are marked `[x]`:
 
 1. Run the pre-completion gate:
 
-   ```text
-   IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_completion`) EXISTS THEN DO:
+   SET pre_completion = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_completion`
+   SET require_pre_completion = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_pre_completion`
+
+   IF pre_completion EXISTS THEN
      1. Run the script via Bash and show the full output.
      2. STOP and wait for human guidance if the exit code is non-zero.
-      DONE
-   ELSE
-     When !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_pre_completion` resolves to "true", STOP with: "Required pre-completion script not found at !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_completion`." Otherwise, skip silently.
-   END IF
-   ```
+   ELSE IF require_pre_completion == "true" THEN
+     STOP with: "Required pre-completion script not found at pre_completion."
+   ENDIF
 2. Report results to the user and ask: "Should I mark the plan status as `complete`?"
 3. STOP. Wait for the human to confirm. Do not proceed to the next SDLC phase, do not auto-invoke review. Update the plan frontmatter to `status: complete` only after explicit confirmation.
 
