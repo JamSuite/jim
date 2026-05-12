@@ -225,6 +225,58 @@ case_jimfile_path_brainstorm_collision_appends_2() {
   assert_eq "appended -2" "$brain/${today}-foo-2.md" "$OUT"
 }
 
+# AC: path <key> (single-arg) returns the documented default (D3)
+case_jimfile_path_key_returns_configured_path() {
+  local dir actual
+  dir=$(empty_dir path_key_default)
+  actual=$(cd "$dir" && bash "$SCRIPT_JIMFILE" path vision)
+  assert_eq "vision default" "VISION.md" "$actual"
+}
+
+# AC: path <key> (single-arg) honors a /jim:conf override (D3)
+case_jimfile_path_key_honors_override() {
+  local cfg
+  cfg=$(fixture path-key-override.toml 'vision_path = "docs/VISION.md"')
+  run_jimfile -c "$cfg" path vision
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "vision override" "docs/VISION.md" "$OUT"
+}
+
+# AC: path <key> returns the configured path regardless of disk existence (D3 write-target use case)
+case_jimfile_path_key_returns_path_even_if_missing() {
+  local cfg
+  cfg=$(fixture path-key-missing.toml 'architecture_path = "nowhere/ARCH.md"')
+  run_jimfile -c "$cfg" path architecture
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "architecture path (missing file)" "nowhere/ARCH.md" "$OUT"
+}
+
+# AC: arity dispatch — `path debug` (no further args) returns the configured debug dir (D3)
+case_jimfile_path_debug_no_arg_returns_dir() {
+  local cfg
+  cfg=$(fixture path-debug-no-arg.toml 'debug_path = "docs/debug"')
+  run_jimfile -c "$cfg" path debug
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "debug dir" "docs/debug" "$OUT"
+}
+
+# AC: arity dispatch — `path debug <topic>` still produces collision-resolved topic path (D3 regression guard)
+case_jimfile_path_debug_with_topic_still_works() {
+  local cfg today
+  cfg=$(fixture path-debug-with-topic.toml 'debug_path = "docs/debug"')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" path debug "Topic Idea"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "debug topic path" "docs/debug/${today}-topic-idea.md" "$OUT"
+}
+
+# AC: path <unknown_key> (single-arg) bubbles up jimconf's unknown-key error
+case_jimfile_path_unknown_key_exits_1() {
+  run_jimfile path bogus_key
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
 # AC: glob specs without filter lists every spec dir across groups
 case_jimfile_glob_specs_unfiltered() {
   local specs cfg
