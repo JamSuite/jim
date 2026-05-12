@@ -18,8 +18,10 @@
 #
 # CLI SUMMARY
 #   bash jimfile.sh exists <path>                     "yes" | "no" on stdout
-#   bash jimfile.sh get <key>                         resolve a configured doc path
-#                                                     (delegates to jimconf.sh)
+#   bash jimfile.sh get <key>                         configured path *if it exists*
+#                                                     on disk, else empty string
+#                                                     (delegates to jimconf.sh,
+#                                                     then existence-checks)
 #   bash jimfile.sh slug <topic>                      kebab-case slug
 #   bash jimfile.sh date                              today as YYYYMMDD
 #   bash jimfile.sh next-id <group>                   next zero-padded spec id
@@ -141,7 +143,15 @@ cmd_get() {
     echo "error: 'get' requires a key argument" >&2
     return 2
   fi
-  jimconf_get "$cli_key"
+  local resolved rc
+  resolved="$(jimconf_get "$cli_key")"
+  rc=$?
+  if (( rc != 0 )); then
+    return $rc
+  fi
+  if [[ -n "$resolved" && -e "$resolved" ]]; then
+    printf '%s\n' "$resolved"
+  fi
 }
 
 cmd_slug() {
@@ -338,7 +348,8 @@ usage() {
   cat >&2 <<'USAGE'
 usage:
   jimfile.sh exists <path>                      "yes" or "no"
-  jimfile.sh get <key>                          resolve a configured doc path
+  jimfile.sh get <key>                          configured path if it exists,
+                                                else empty string
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh next-id <group>                    next zero-padded spec id
