@@ -40,11 +40,13 @@ If absent, proceed without it. Note its absence in the Overview if you generate 
 
 ### 3. Check for existing ARCHITECTURE.md
 
-IF (the target path from §1) EXISTS THEN
-  This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write.
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+
+IF arch_doc EXISTS THEN
+  This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write. (When `$ARGUMENTS` is a directory, the target is `{$ARGUMENTS}/<filename portion of arch_doc>`; the differential-update treatment still applies if a file exists at the target.)
 ELSE
   Generate a new document from `assets/architecture-template.md`.
-END IF
+ENDIF
 
 ### 4. Scan the codebase
 

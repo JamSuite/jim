@@ -2,8 +2,10 @@
 title: "Replace IF-wrap pseudocode with a directive vocabulary for !-injection gates"
 spec: "docs/specs/jim/011-directive-vocabulary/spec.md"
 type: refactor
-status: complete
+status: in-progress
 ---
+
+> **2026-05-12 reopen:** Tasks 24–25 added to close two gaps discovered during 013-arch-feedback-loop research: (a) `skills/arch/SKILL.md:43–47` was missed by the original 12-slot `!`-injection-in-parens inventory because its parens hold prose, not a substitution slot — the form itself is still the retired BASIC anti-pattern; (b) the "Historical artifacts" AC's forensic-annotation requirement was silently skipped on three documents. See spec §"Historical-annotation hygiene" and §"Original repro must clear" for the extended ACs.
 
 # 011 Replace IF-wrap pseudocode with a directive vocabulary — Plan
 
@@ -67,6 +69,14 @@ Convention-first refactor: rewrite the `ARCHITECTURE.md` Logic-Flow / Substituti
 - **Why:** DoD § 10 — "Each task changes one thing and verifies one thing." Per-slot grep-Verify commands give the coder a precise pass/fail for each AC line. Two-slot tasks remain where the slots are stacked on consecutive lines with shared context (`spec:33,37`, `brainstorm:30,34`, `research:99,103`) — splitting those further produces redundant edits.
 - **Rejected:** One task per file — would conceal individual AC failures behind a coarse Verify and make a single typo in slot N invisible until the file-level grep happens to hit it.
 
+### 9. `arch/SKILL.md:43–47` (added 2026-05-12) — `SET arch_doc` + lean `IF arch_doc EXISTS THEN … ELSE … ENDIF`, not a `target` name
+
+- **Chosen:** Bind the architecture path with `SET arch_doc = !\`bash …get architecture\`` directly inside step 3 (not a global hoist into step 1). Use `IF arch_doc EXISTS THEN … ELSE … ENDIF`. Preserve the `$ARGUMENTS=directory` nuance from step 1 as a parenthetical inside the THEN body ("When `$ARGUMENTS` is a directory, the target is `{$ARGUMENTS}/<filename portion of arch_doc>`; the differential-update treatment still applies if a file exists at the target.").
+- **Why:** Symmetric with `vision_doc` (`vision/SKILL.md:35`), `roadmap_doc` (`roadmap/SKILL.md:41`), and the spec-013 `arch_doc` binding in the build-skill arch-feedback step — one canonical name for the resolved architecture path across the codebase. Local SET keeps step 3 self-contained; step 1 retains its current shape (a bare substitution serving the argument-routing prose), which avoids cascading edits and a wider blast radius. The `$ARGUMENTS=directory` case stays as prose because the actual write-target derivation involves conditional logic the directive vocabulary doesn't try to express.
+- **Rejected:** `SET target = …` — would diverge from the rest of the codebase's `<doc>_doc` naming and obscure that the bound value *is* the configured architecture path.
+- **Rejected:** Hoist `SET arch_doc` into step 1 — would force step 1's argument-routing table prose to switch from "the resolved architecture path" to "`arch_doc`", adding scope without clearer semantics. The substitution at line 31 stays as-is.
+- **Rejected:** Leave the BASIC form because no `!`-injection lives in the parens (substitution-safe) — addressed in spec §"Historical-annotation hygiene" rationale: the post-011 directive table does not include `IF (X) EXISTS THEN ... END IF` in any form, prose-paren or slot-paren. Using it anywhere new is outside the convention.
+
 ## Constitution Check
 
 **ARCHITECTURE.md status:** Present — constraints noted below.
@@ -95,7 +105,8 @@ Convention-first refactor: rewrite the `ARCHITECTURE.md` Logic-Flow / Substituti
 | Vision skill — Differential update gate | `skills/vision/SKILL.md` (line 35) | Update | `SET vision_doc = …` + lean paren-free `IF vision_doc EXISTS THEN … ELSE … ENDIF` (Decision 3). |
 | Roadmap skill — Read context | `skills/roadmap/SKILL.md` (line 27) | Update | `READ_IF_EXISTS` + prose note (Decision 2). |
 | Roadmap skill — Differential update gate | `skills/roadmap/SKILL.md` (line 41) | Update | `SET roadmap_doc = …` + lean paren-free `IF roadmap_doc EXISTS THEN … ELSE … ENDIF` (Decision 3). |
-| Arch skill | `skills/arch/SKILL.md` (line 37) | Update | `READ_IF_EXISTS` + prose note (Decision 2). |
+| Arch skill — vision-doc read (step 2) | `skills/arch/SKILL.md` (line 37) | Update | `READ_IF_EXISTS` + prose note (Decision 2). |
+| Arch skill — ARCHITECTURE.md existence gate (step 3) | `skills/arch/SKILL.md` (lines 41–47) | Update *(added 2026-05-12)* | `SET arch_doc = !\`bash …get architecture\`` + lean paren-free `IF arch_doc EXISTS THEN … ELSE … ENDIF`. Substitution-safe paren-wrap of prose; missed by the original 12-slot inventory. See Decision 9. |
 | Build skill — pre-commit gate | `skills/build/SKILL.md` (lines 72–80) | Update | Drop fenced `text` wrapper (stylistic — matrix N ✅; user chose drop per Decision 4 reframe). `SET pre_commit = …` + `SET require_pre_commit = …` + lean paren-free `IF pre_commit EXISTS THEN … ELSE IF require_pre_commit == "true" THEN … ENDIF` (Decisions 3, 4). |
 | Build skill — pre-completion gate | `skills/build/SKILL.md` (lines 105–113) | Update | Same shape as pre-commit gate with `pre_completion` / `require_pre_completion` keys (Decisions 3, 4). |
 | Research skill — Alignment Validation reads | `skills/research/SKILL.md` (lines 99,103) | Update | Two `READ_IF_EXISTS` lines at current 3-space indent (Decision 5). |
@@ -277,6 +288,21 @@ flowchart LR
 23. [x] Existing tests pass without modification — refactor type's mandatory gate. Run the meta-test runner and confirm exit zero across `jimconf.sh`, `jimfile.sh`, `metatest.sh`.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
+### Phase 4 — Reopen extension (added 2026-05-12)
+
+*Tasks 24–25 close gaps discovered during 013-arch-feedback-loop research. Same one-PR bundle conceptually; if this lands as a follow-up commit on top of the original 011 PR, that's acceptable — the spec's "no partial rollout" guarantee applies to user-visible behavior, and both tasks below are within the spec 011 convention they're closing.*
+
+24. [x] Migrate `skills/arch/SKILL.md:41–47` (Step 3 — ARCHITECTURE.md existence gate). Replace the BASIC `IF (the target path from §1) EXISTS THEN ... ELSE ... END IF` block with `SET arch_doc = !\`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture\`` followed by a lean paren-free `IF arch_doc EXISTS THEN … ELSE … ENDIF` block. Preserve the existing THEN/ELSE bodies verbatim. Append the `$ARGUMENTS=directory` parenthetical to the THEN body so the original step-1 target-derivation prose is honored. (Decision 9)
+    **Verify:** `` ! grep -nE 'IF \(|END IF' skills/arch/SKILL.md && grep -F 'SET arch_doc' skills/arch/SKILL.md && grep -F 'IF arch_doc EXISTS THEN' skills/arch/SKILL.md && grep -F 'ENDIF' skills/arch/SKILL.md ``
+
+25. [x] Historical-artifact annotation pass. Add a one-line "Superseded by spec 011 — see `ARCHITECTURE.md` → Logic-Flow Conventions" annotation to each of:
+    - `docs/brainstorms/20260505-file-resolver-conventions-audit.md` — near the D1 decision body (around line 43) and/or above the "Gate convention" keyword table (around line 67). One annotation is sufficient if it covers both regions visually.
+    - `docs/brainstorms/20260505-bash-scripts-in-meta.md` — near the references to the BASIC dialect (around lines 76 and 189). One annotation is sufficient if placed near the first reference.
+    - `docs/specs/jim/001-meta/spec.md` — adjacent to line 123 (or its containing bullet). The annotation closes the spec 011 "Historical artifacts" AC for forensic descriptions.
+    
+    Bodies are preserved verbatim. No rewriting; the annotation is the entire change per file.
+    **Verify:** `` grep -l 'Superseded by spec 011' docs/brainstorms/20260505-file-resolver-conventions-audit.md docs/brainstorms/20260505-bash-scripts-in-meta.md docs/specs/jim/001-meta/spec.md ``
+
 ## Requirements Coverage Summary
 
 | Spec Acceptance Criterion | Addressed In Task(s) |
@@ -287,6 +313,7 @@ flowchart LR
 | `skills/vision/SKILL.md:27` → `READ_IF_EXISTS`; `:35` → `SET vision_doc` + paren-free IF | Tasks 8, 9 |
 | `skills/roadmap/SKILL.md:27` → `READ_IF_EXISTS`; `:41` → `SET roadmap_doc` + paren-free IF | Tasks 10, 11 |
 | `skills/arch/SKILL.md:37` → `READ_IF_EXISTS` | Task 12 |
+| `skills/arch/SKILL.md:43–47` → `SET arch_doc` + lean paren-free IF | Task 24 *(added 2026-05-12)* |
 | `skills/build/SKILL.md:73,106` → `DO_IF_EXISTS` (preserve numbered-list step number) | Tasks 13, 14 (uses `SET` + paren-free `IF … THEN DO:` per Decision 3; outer numbered-step context preserved) |
 | `skills/research/SKILL.md:99,103` → `READ_IF_EXISTS` (indented per matrix Z) | Task 15 |
 | ARCHITECTURE.md → Substitution Conventions adds "wrapper sensitivity" rule | Task 1 |
@@ -304,6 +331,10 @@ flowchart LR
 | Equivalent spot-check for `/jim:spec`, `/jim:research`, `/jim:vision`, `/jim:roadmap`, `/jim:brainstorm`, `/jim:arch`, `/jim:build` | Tasks 6–15 + Task 22 (per-file grep proves no literal remains; one-line grep against loaded transcript is satisfied by Task 22's exit-zero loop) |
 | Existing tests pass without modification (`bash skills/meta-test/scripts/run.sh`) | Task 23 |
 | One bundled commit/PR (no partial rollout) | Delivery shape — internal commits sequenced per Decision 1; PR remains the one rollout unit |
+| `skills/arch/SKILL.md` has no remaining BASIC `IF (X) EXISTS THEN ... END IF` (paren-free check) | Task 24 *(added 2026-05-12)* |
+| `docs/brainstorms/20260505-file-resolver-conventions-audit.md` carries "Superseded by spec 011" annotation | Task 25 *(added 2026-05-12)* |
+| `docs/brainstorms/20260505-bash-scripts-in-meta.md` carries "Superseded by spec 011" annotation | Task 25 *(added 2026-05-12)* |
+| `docs/specs/jim/001-meta/spec.md` line 123 carries "Superseded by spec 011" annotation | Task 25 *(added 2026-05-12)* |
 
 Every spec AC has at least one task. No `[NEEDS CLARIFICATION]` markers — all open questions from research were resolved in the Design Decisions section.
 

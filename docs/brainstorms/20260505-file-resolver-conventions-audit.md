@@ -42,6 +42,8 @@ the job — and decide whether a shorthand convention for "if file exists
 
 ## Decisions
 
+> **Superseded by spec 011 (2026-05-12)** — D1 below adopted the BASIC `IF (X) EXISTS THEN ... END IF` idiom, which was later retired by spec 011 in favor of the directive vocabulary (`READ_IF_EXISTS`, `RUN_IF_EXISTS`, `DO_IF_EXISTS`, `SET`) and a lean paren-free `IF X EXISTS THEN … ELSE … ENDIF` block. See `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions for the current convention. D1 + the Gate-convention keyword table below are preserved as a forensic record of the original decision.
+
 - **D1.** Adopt the BASIC-flavored gate idiom: `IF (…) EXISTS THEN …
   END IF`, with `ELSE` and `THEN DO: 1. … DONE` variants. See §"Gate
   convention" for the keyword table.

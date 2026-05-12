@@ -28,6 +28,8 @@ All line numbers verified against current file state.
 
 **`skills/arch/SKILL.md:37`** — IF-WRAP with ELSE under `### 2. Read the vision doc as upstream context` (lines 35–41). Bare line; ELSE body is "Proceed without it." Migration: `READ_IF_EXISTS` with note.
 
+**`skills/arch/SKILL.md:43–47`** *(added 2026-05-12 — missed by the original 12-slot inventory)* — BASIC `IF (X) EXISTS THEN ... ELSE ... END IF` block under `### 3. Check for existing ARCHITECTURE.md`. The parens contain prose ("the target path from §1"), **not** an `!`-injection slot, so the substitution defect does not fire — the slot was invisible to the debug report's grep (which scanned for `!`-injection-in-parens specifically). The form itself, however, is the retired BASIC anti-pattern: parens around the condition + two-word `END IF`. Migration: `SET arch_doc = !\`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture\`` + lean paren-free `IF arch_doc EXISTS THEN … ELSE … ENDIF`. The `$ARGUMENTS=directory` nuance from step 1 is preserved as a parenthetical inside the THEN body.
+
 **`skills/build/SKILL.md:73`** — IF-WRAP slot at line 73 inside a stylistic ` ```text … ``` ` fence (lines 72–80). The outer numbered step context is the prose at line 70. Matrix N ✅ (2026-05-12 rerun) confirms fences do **not** affect substitution; the slot was singly broken (paren-wrap only). The migration replaces the IF-WRAP with the lean `SET` + paren-free `IF pre_commit EXISTS THEN … ELSE IF require_pre_commit == "true" THEN … ENDIF` form per Decision 4 reframe. The fence is stylistic and may be kept or dropped — the user chose drop during the 2026-05-12 lean-form refinement session.
 
 **`skills/build/SKILL.md:106`** — IF-WRAP slot at line 106 inside a second ` ```text … ``` ` fence (lines 105–113), under `### 5. Completion gate`. Same structure as line 73; same migration approach with `pre_completion` / `require_pre_completion` keys.
@@ -92,6 +94,18 @@ Grep for `IF (!` across `docs/specs/**/*.md`, `docs/specs/**/*.md` (plan + resea
 All debug-doc occurrences are inside fenced code blocks or inline-code spans that document the bug; they are the forensic record. The spec requires the body to be preserved verbatim and only a footer appended.
 
 No hits found in `docs/specs/jim/*/spec.md` or `docs/specs/jim/*/research.md` other than the single plan.md hit above.
+
+### Inventory blind-spot: substitution-safe paren-wrap (added 2026-05-12)
+
+The debug report's twelve-slot inventory (rows #3–#14) was assembled by grepping for `IF (!` — `!`-injection inside parens specifically. Any BASIC `IF (X) EXISTS THEN ... END IF` block whose `X` is *prose* (not an `!`-injection slot) was invisible to that grep. One production site fell into this blind spot:
+
+- `skills/arch/SKILL.md:43–47` — `IF (the target path from §1) EXISTS THEN ... END IF`. The paren contents reference a name resolved in step 1, not a `!`-injection. Substitution-safe (no defect fires), but uses the retired BASIC form (parens + two-word `END IF`) that the post-011 directive vocabulary replaces.
+
+The convention codification ACs covered this implicitly (the directive table at `ARCHITECTURE.md:283–289` does not include `IF (X) EXISTS THEN ... END IF` in any form, so its use is outside the post-011 convention regardless of the paren contents). The repro-spot-check AC at `spec.md:64` did not — it greps only for `IF (!\`bash …\`)`. The extended AC adds an `arch/SKILL.md` paren-free check (`grep -nE 'IF \(|END IF'` returns zero) to close the gap.
+
+### Annotation gap in historical artifacts
+
+Original spec 011 tasks 18 and 19 migrated the two "Rewrite" examples in `docs/brainstorms/20260505-file-resolver-conventions-audit.md` (lines 86 + 94). The same brainstorm's D1 decision body (lines 43–47) and Gate-convention keyword table (lines 67–81), the sibling brainstorm `docs/brainstorms/20260505-bash-scripts-in-meta.md` (lines 76, 189), and `docs/specs/jim/001-meta/spec.md:123` were left without the "superseded by spec 011" annotation that spec 011's "Historical artifacts" AC calls for. These are forensic mentions (descriptions of historical decisions / planning prescriptions), not active prescriptions, so the body is preserved — but the annotation closes the AC.
 
 ### Test framework conventions
 

@@ -38,6 +38,7 @@ Retire the BASIC-style `IF (X) EXISTS THEN ... END IF` idiom — which silently 
   - [ ] `skills/vision/SKILL.md:27` → `READ_IF_EXISTS`; `:35` → `SET vision_doc = …` + paren-free `IF vision_doc EXISTS THEN ... ELSE ... ENDIF`
   - [ ] `skills/roadmap/SKILL.md:27` → `READ_IF_EXISTS`; `:41` → `SET roadmap_doc = …` + paren-free `IF roadmap_doc EXISTS THEN ... ELSE ... ENDIF`
   - [ ] `skills/arch/SKILL.md:37` → `READ_IF_EXISTS`
+  - [ ] `skills/arch/SKILL.md:43–47` → `SET arch_doc = …` + lean paren-free `IF arch_doc EXISTS THEN … ELSE … ENDIF` (added 2026-05-12 — substitution-safe paren-wrap of prose; missed by the original 12-slot `!`-injection-in-parens inventory but uses the retired BASIC form)
   - [ ] `skills/build/SKILL.md:73,106` → `SET pre_commit` + `SET require_pre_commit` (or `pre_completion` / `require_pre_completion`) + lean `IF pre_commit EXISTS THEN ... ELSE IF require_pre_commit == "true" THEN ... ENDIF` block
   - [ ] `skills/research/SKILL.md:99,103` → `READ_IF_EXISTS` (un-indent under the numbered step or keep indented per matrix Z result)
 
@@ -62,6 +63,12 @@ Retire the BASIC-style `IF (X) EXISTS THEN ... END IF` idiom — which silently 
 **Original repro must clear**
 - [ ] Launching `/jim:plan docs/specs/jim/<any approved spec>/spec.md` in a fresh Claude Code session loads `skills/plan/SKILL.md` with the `!`-injection slot at line 53 resolved to the real ARCHITECTURE.md path (no literal `IF (!\`bash …\`)` text in the loaded body).
 - [ ] Equivalent spot-check for `/jim:spec`, `/jim:research`, `/jim:vision`, `/jim:roadmap`, `/jim:brainstorm`, `/jim:arch`, `/jim:build`: no literal `IF (!\`bash …\`)` text in the loaded skill body. (One-line grep against the loaded transcript suffices.)
+- [ ] `skills/arch/SKILL.md` has no remaining BASIC `IF (X) EXISTS THEN ... END IF` shape, including the prose-in-parens variant: `grep -nE 'IF \(|END IF' skills/arch/SKILL.md` returns zero matches.
+
+**Historical-annotation hygiene (closing the AC at §"Historical artifacts" that was silently skipped in the original 011 execution)**
+- [ ] `docs/brainstorms/20260505-file-resolver-conventions-audit.md` carries a one-line "Superseded by spec 011" annotation near the D1 decision body and/or the "Gate convention" keyword table. Body preserved verbatim.
+- [ ] `docs/brainstorms/20260505-bash-scripts-in-meta.md` carries the same annotation near its references to the BASIC dialect (lines 76, 189). Body preserved verbatim.
+- [ ] `docs/specs/jim/001-meta/spec.md` line 123 (or its containing bullet) carries the same annotation. Body preserved verbatim.
 
 **Mandatory for refactor type**
 - [ ] Existing tests pass without modification (`bash skills/meta-test/scripts/run.sh` exits zero on `jimconf.sh`, `jimfile.sh`, `metatest.sh`).

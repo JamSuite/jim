@@ -120,7 +120,7 @@ Skills MAY ship a `scripts/` directory containing deterministic bash tooling. Ba
 - **Security and portability** — `CLAUDE.md` (no `set -e`, no third-party deps, no `source` of user data, `BASH_SOURCE`-relative composition for inter-script calls).
 - **Composition and runtime** — `ARCHITECTURE.md` → Plugin Conventions → Scripting Layer (`!`-injection from skill bodies, `${CLAUDE_PLUGIN_ROOT}` substitution, sibling-script chaining, configurable paths via `jimconf.toml`).
 - **Bash-vs-prompt decision rule** — `ARCHITECTURE.md` → Plugin Conventions → Scripting Layer (when to offload deterministic logic to a script vs. keep it in the prompt).
-- **In-prompt logic-flow gates** — `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (the BASIC-style `IF (X) EXISTS THEN ... END IF` idiom for existence-gated reads/executes around `!`-injected paths).
+- **In-prompt logic-flow gates** — `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (the BASIC-style `IF (X) EXISTS THEN ... END IF` idiom for existence-gated reads/executes around `!`-injected paths). *Superseded by spec 011 (2026-05-12): the BASIC idiom was retired in favor of the directive vocabulary + lean paren-free `IF` block. The reference above is preserved as a forensic record of the original spec.*
 
 Agents do not ship `scripts/` — skills do. Agents may reference scripts via `!`-injection in prose, but the canonical home is the skill that owns the script.
 
