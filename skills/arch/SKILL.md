@@ -8,7 +8,7 @@ description: >
   for implementation (/jim:build).
 agent: architect
 argument-hint: "[directory-path]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:arch

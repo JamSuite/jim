@@ -7,7 +7,7 @@ description: >
   the `-c <path>` flag. Do not use for setting paths — there is no
   write surface; users edit `jimconf.toml` directly.
 argument-hint: "[get <key> | list | path | keys] (optional: -c <path>)"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimconf.sh *)
 ---
 
 # /jim:conf

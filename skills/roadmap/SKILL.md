@@ -7,7 +7,7 @@ description: >
   direction (/jim:vision), technical architecture (/jim:arch), or scoping
   individual work items (/jim:spec).
 agent: pm
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:roadmap

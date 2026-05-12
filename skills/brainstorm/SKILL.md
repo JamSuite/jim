@@ -8,7 +8,7 @@ description: >
   (/jim:spec) or strategic document (/jim:vision, /jim:roadmap).
 agent: pm
 argument-hint: "[topic]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:brainstorm

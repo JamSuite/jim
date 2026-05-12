@@ -8,7 +8,7 @@ description: >
   artifacts. Do not use for setting paths — there is no write surface;
   users edit `jimconf.toml` directly via /jim:conf.
 argument-hint: "<exists|get|slug|date|next-id|path|glob|kinds> [args]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimfile.sh *)
 ---
 
 # /jim:file

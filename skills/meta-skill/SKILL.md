@@ -7,7 +7,7 @@ description: >
   building application code or non-jim skills.
 agent: meta
 argument-hint: "[skill-name]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:meta-skill
@@ -109,6 +109,7 @@ If the skill ships a `scripts/` directory (bash only — see `CLAUDE.md` and `AR
 **Anti-patterns — any of these is a failure:**
 - [ ] No personality soup ("I am here to help you...")
 - [ ] No permission creep (tools beyond what the skill actually needs)
+- [ ] `allowed-tools` declares the exact script path(s) the skill `!`-injects or runs via fenced bash blocks — using `${CLAUDE_PLUGIN_ROOT}/skills/<name>/scripts/<file>.sh` for cross-skill calls or `${CLAUDE_SKILL_DIR}/scripts/<file>.sh` for own-skill calls. A bare `Bash(bash *)` is a validation failure. Do **not** declare `Read(${CLAUDE_SKILL_DIR}/...)` clauses for skills that delegate work to a subagent — those grants don't propagate across the skill→subagent boundary and are misleading documentation. (See `ARCHITECTURE.md` → Permission Conventions for the verified scope.)
 - [ ] No instruction shadowing (repeating rules already in WORKFLOW.md)
 - [ ] No duplicate logic (same instructions in 3+ places → extract to a shared skill)
 

@@ -7,7 +7,7 @@ description: >
   for building application code or non-jim agents.
 agent: meta
 argument-hint: "[agent-name]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:meta-agent

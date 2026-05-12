@@ -7,7 +7,7 @@ description: >
   the project is and isn't. Do not use for technical architecture (/jim:arch),
   execution sequencing (/jim:roadmap), or scoping individual work items (/jim:spec).
 agent: pm
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:vision

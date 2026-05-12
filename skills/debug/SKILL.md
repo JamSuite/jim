@@ -8,7 +8,7 @@ description: >
   handles it) or when the failure is a spec/plan gap (/jim:spec or /jim:plan).
 agent: coder
 argument-hint: "[failure-description | error-output | file-path]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:debug
