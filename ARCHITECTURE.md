@@ -239,6 +239,7 @@ Conventions that govern how jim's agents, skills, and tools interact with Claude
 - **Description is the trigger surface.** Skill descriptions are always in Claude's context. The full SKILL.md body loads only when the skill is invoked. Write descriptions that answer *what* and *when* — vague descriptions cause undertriggering.
 - **`$ARGUMENTS` substitution.** When a user types `/jim:spec my-feature`, the string `my-feature` replaces `$ARGUMENTS` in the SKILL.md body. Skills use the `argument-hint` frontmatter field to document expected arguments.
 - **The `agent:` field in skill frontmatter is a Claude Code routing mechanism that activates only when paired with `context: fork`.** Jim omits `context: fork`, so at runtime the field is a no-op and serves only as documentation — the skill body runs inline in the main thread, and routing into a subagent happens because the skill's instructions (and the named agent's `description` examples) direct Claude to spawn `@jim:<agent>` via the Agent tool.
+- **Skill-to-skill invocation uses the `Skill(name)` permission token in `allowed-tools` and the Skill tool in the body** — e.g., `/jim:build` declares `Skill(jim:arch)` and invokes `/jim:arch` from step 5.2. The called skill's body runs inline in the same main thread (no fork), so the caller's `allowed-tools` covers nested tool calls inside the invoked skill. Use the namespaced form (`Skill(jim:<name>)`) for least-privilege; bare `Skill` is a wildcard and is avoided.
 
 ### Agent Invocation
 
