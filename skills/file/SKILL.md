@@ -20,8 +20,9 @@ Run jim's file/path resolver:
 ## Examples
 
 - `/jim:file exists docs/specs/jim/008-jimfile/spec.md` — `yes` or `no`
-- `/jim:file get vision` — resolved path for the configured vision doc
-- `/jim:file get pre_commit` — resolved path for the configured pre-commit script
+- `/jim:file get vision` — configured vision-doc path *if the file exists on disk*, else empty
+- `/jim:file get pre_commit` — configured pre-commit script path *if it exists*, else empty
+- `/jim:file path vision` — configured vision-doc path regardless of existence (write-target form)
 - `/jim:file slug "Auth Token Expiry"` — kebab-case slug
 - `/jim:file date` — today as `YYYYMMDD`
 - `/jim:file next-id jim` — next zero-padded spec ID for the `jim` group
@@ -34,14 +35,25 @@ Run jim's file/path resolver:
 
 ## Convention for skill and agent authors
 
-**Skills and agents always call `jimfile.sh`, never `jimconf.sh` directly.**
-`jimfile.sh` chains internally to `jimconf.sh` for any operation that needs
-a configured path (`get`, `next-id`, `path`, `glob`). The user-facing
-`/jim:conf` skill remains for human inspection of the underlying config —
-it is not a programmatic surface for skill bodies.
+**Skills and agents call `jimfile.sh` for file operations (existence checks,
+path resolution, glob discovery) and `jimconf.sh` directly for raw config
+values (`require_pre_commit`, `require_pre_completion`, `auto_arch_feedback`).**
+`jimfile.sh` chains internally to `jimconf.sh` for path-typed keys; value-typed
+keys go to `jimconf.sh` directly because they're flags, not paths, and
+existence-checking them is meaningless.
+
+For path keys, `jimfile.sh get <key>` returns the configured path *only if
+the file exists on disk*, else empty string. Use `jimfile.sh path <key>`
+(single-arg form) when you want the configured path regardless of existence
+— the write-target use case for `arch` / `vision` / `roadmap`.
+
+The user-facing `/jim:conf` skill remains for human inspection of the
+underlying config; the programmatic surface for value keys is
+`jimconf.sh get <key>` invoked inline in skill bodies.
 
 For existence-gated reads and executes, wrap `jimfile.sh get …` calls in
-the BASIC-flavored gate idiom (see `ARCHITECTURE.md` → Plugin Conventions).
+the directive vocabulary (see `ARCHITECTURE.md` → Plugin Conventions →
+Logic-Flow Conventions).
 
 ## Notes
 
