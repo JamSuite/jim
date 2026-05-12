@@ -170,6 +170,38 @@ ELSE IF subst_bb_flag == "true" THEN
   STOP with: "Required script not found at subst_bb_path."
 ENDIF
 
+## Empty-substitution probes (spec 013 D8 no-op regression)
+
+The rows below verify that when an `!`-injection slot substitutes to the
+empty string (the new failure mode under spec 013 D2 — a path key whose
+configured file does not exist on disk), every directive in the family
+no-ops cleanly rather than triggering a spurious Read / Bash / wrong
+branch. Each row uses a unique sentinel marker in its surrounding prose
+so a human reader can tell what is expected at a glance.
+
+### CC — `READ_IF_EXISTS` with empty substitution (D8 probe)
+
+READ_IF_EXISTS !`echo` — sentinel SUBST_CC_READ_EMPTY-NOOP, expect no Read tool call.
+
+### DD — `RUN_IF_EXISTS` with empty substitution (D8 probe)
+
+RUN_IF_EXISTS !`echo` — sentinel SUBST_DD_RUN_EMPTY-NOOP, expect no Bash tool call.
+
+### EE — `DO_IF_EXISTS` with empty substitution (D8 probe)
+
+DO_IF_EXISTS !`echo`:
+  1. Sentinel SUBST_EE_DO_EMPTY-NOOP — this indented block should be skipped entirely.
+
+### FF — `SET` + `IF EXISTS` with empty substitution (D8 probe)
+
+SET ff_path = !`echo`
+
+IF ff_path EXISTS THEN
+  Sentinel SUBST_FF_SET_EMPTY-FIRED — should NOT be reached (ff_path is empty).
+ELSE
+  Sentinel SUBST_FF_SET_EMPTY-ELSE-OK — expected fall-through.
+ENDIF
+
 ## How to interpret
 
 After invoking this skill, scan the rendered body for each `SUBST_*`
@@ -200,3 +232,18 @@ they're LLM-interpreted prose, invisible to the preprocessor. If either
 AA or BB shows literal `` !`echo SUBST_*` `` for any of its four SET
 slots, the lean form is not safe and the convention must keep the heavier
 `DO:`/`DONE`/`END IF` shape.
+
+**The D2 path-or-empty semantics rely on rows CC–FF demonstrating
+empty-substitution no-op behavior** (spec 013 D8). Expected reading
+of the rendered body:
+
+- CC: sentinel `SUBST_CC_READ_EMPTY-NOOP` visible; **no Read tool call**.
+- DD: sentinel `SUBST_DD_RUN_EMPTY-NOOP` visible; **no Bash tool call**.
+- EE: sentinel `SUBST_EE_DO_EMPTY-NOOP` visible inside the indented
+  block; the block is **skipped entirely** (no actions taken).
+- FF: sentinel `SUBST_FF_SET_EMPTY-ELSE-OK` indicates the ELSE branch
+  fired; sentinel `SUBST_FF_SET_EMPTY-FIRED` must **not** be reached.
+
+If any CC–FF row triggers the gated action (Read / Bash / THEN branch)
+instead of no-op'ing, the directive vocabulary's empty-slot contract
+is broken and the production convention needs a different escape.
