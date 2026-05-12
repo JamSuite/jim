@@ -112,8 +112,15 @@ After all tasks are marked `[x]`:
    ELSE IF require_pre_completion == "true" THEN
      STOP with: "Required pre-completion script not found at pre_completion."
    ENDIF
-2. Report results to the user and ask: "Should I mark the plan status as `complete`?"
-3. STOP. Wait for the human to confirm. Do not proceed to the next SDLC phase, do not auto-invoke review. Update the plan frontmatter to `status: complete` only after explicit confirmation.
+2. Refresh ARCHITECTURE.md against the just-built code:
+
+   SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+
+   IF arch_doc EXISTS THEN
+     Invoke /jim:arch via the Skill tool to refresh ARCHITECTURE.md against the just-built code.
+   ENDIF
+3. Report results to the user and ask: "Should I mark the plan status as `complete`?"
+4. STOP. Wait for the human to confirm. Do not proceed to the next SDLC phase, do not auto-invoke review. Update the plan frontmatter to `status: complete` only after explicit confirmation.
 
 ## Scope Discipline
 
