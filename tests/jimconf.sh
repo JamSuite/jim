@@ -110,7 +110,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"             "10" "$line_count"
+  assert_eq    "list line count"             "11" "$line_count"
   assert_match "specs line"                   '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"            '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                  '^vision=VISION\.md$'                    "$OUT"
@@ -121,6 +121,7 @@ case_list_outputs_all_keys() {
   assert_match "pre_completion line"          '^pre_completion=\./pre-completion\.sh$' "$OUT"
   assert_match "require_pre_commit line"      '^require_pre_commit=false$'             "$OUT"
   assert_match "require_pre_completion line"  '^require_pre_completion=false$'         "$OUT"
+  assert_match "auto_arch_feedback line"      '^auto_arch_feedback=false$'             "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -128,7 +129,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -166,7 +167,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "10" "$line_count"
+  assert_eq "list still emits all keys" "11" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
