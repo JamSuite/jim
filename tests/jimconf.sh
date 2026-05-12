@@ -276,6 +276,14 @@ case_auto_arch_feedback_default() {
   assert_eq "auto_arch_feedback default" "false" "$actual"
 }
 
+# AC: auto_arch_feedback override via jimconf.toml ("true" enables auto-write)
+case_auto_arch_feedback_overridden() {
+  local cfg
+  cfg=$(fixture auto_arch_feedback-override.toml 'auto_arch_feedback = "true"')
+  run -c "$cfg" get auto_arch_feedback
+  assert_eq "auto_arch_feedback overridden" "true" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
