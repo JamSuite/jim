@@ -34,7 +34,10 @@ If `$ARGUMENTS` is empty, that *is* the target path. If `$ARGUMENTS` is a direct
 
 ### 2. Read the vision doc as upstream context
 
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — the architecture serves the vision; where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — the architecture serves the vision; where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
+ENDIF
 
 If absent, proceed without it. Note its absence in the Overview if you generate a new file.
 
@@ -42,7 +45,7 @@ If absent, proceed without it. Note its absence in the Overview if you generate 
 
 SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
 
-IF arch_doc EXISTS THEN
+IF arch_doc != "NOT_FOUND" THEN
   This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write. (When `$ARGUMENTS` is a directory, the target is `{$ARGUMENTS}/<filename portion of arch_doc>`; the differential-update treatment still applies if a file exists at the target.)
 ELSE
   Generate a new document from `assets/architecture-template.md`.

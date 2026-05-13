@@ -19,9 +19,10 @@
 # CLI SUMMARY
 #   bash jimfile.sh exists <path>                     "yes" | "no" on stdout
 #   bash jimfile.sh get <key>                         configured path *if it exists*
-#                                                     on disk, else empty string
-#                                                     (delegates to jimconf.sh,
-#                                                     then existence-checks)
+#                                                     on disk, else the literal
+#                                                     string "NOT_FOUND" (delegates
+#                                                     to jimconf.sh, then
+#                                                     existence-checks)
 #   bash jimfile.sh slug <topic>                      kebab-case slug
 #   bash jimfile.sh date                              today as YYYYMMDD
 #   bash jimfile.sh next-id <group>                   next zero-padded spec id
@@ -151,6 +152,8 @@ cmd_get() {
   fi
   if [[ -n "$resolved" && -e "$resolved" ]]; then
     printf '%s\n' "$resolved"
+  else
+    printf '%s\n' "NOT_FOUND"
   fi
 }
 
@@ -349,7 +352,7 @@ usage() {
 usage:
   jimfile.sh exists <path>                      "yes" or "no"
   jimfile.sh get <key>                          configured path if it exists,
-                                                else empty string
+                                                else literal "NOT_FOUND"
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh next-id <group>                    next zero-padded spec id

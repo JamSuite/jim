@@ -73,11 +73,11 @@ For each unchecked `[ ]` task in `plan.md`, in order:
   SET pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`
   SET require_pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_pre_commit`
 
-  IF pre_commit EXISTS THEN
+  IF pre_commit != "NOT_FOUND" THEN
     1. Run the script via Bash and show the full output.
     2. STOP and wait for human guidance if the exit code is non-zero.
   ELSE IF require_pre_commit == "true" THEN
-    STOP with: "Required pre-commit script not found at pre_commit."
+    STOP with: "Required pre-commit script not found (configured path absent)."
   ENDIF
 
 **Verify**
@@ -106,17 +106,17 @@ After all tasks are marked `[x]`:
    SET pre_completion = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_completion`
    SET require_pre_completion = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_pre_completion`
 
-   IF pre_completion EXISTS THEN
+   IF pre_completion != "NOT_FOUND" THEN
      1. Run the script via Bash and show the full output.
      2. STOP and wait for human guidance if the exit code is non-zero.
    ELSE IF require_pre_completion == "true" THEN
-     STOP with: "Required pre-completion script not found at pre_completion."
+     STOP with: "Required pre-completion script not found (configured path absent)."
    ENDIF
 2. Refresh ARCHITECTURE.md against the just-built code:
 
    SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
 
-   IF arch_doc EXISTS THEN
+   IF arch_doc != "NOT_FOUND" THEN
      Invoke /jim:arch via the Skill tool to refresh ARCHITECTURE.md against the just-built code.
    ENDIF
 3. Report results to the user and ask: "Should I mark the plan status as `complete`?"

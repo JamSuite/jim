@@ -27,9 +27,15 @@ Use `$ARGUMENTS` as the topic for the brainstorm file. If empty, ask: "What do y
 
 Hold these as context for end-of-session routing. Don't discuss them.
 
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — hold as context.
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — hold as context.
+ENDIF
 
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap` — hold as context.
+SET roadmap_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`
+IF roadmap_doc != "NOT_FOUND" THEN
+  Read roadmap_doc — hold as context.
+ENDIF
 
 ### 3. Create the brainstorm file
 

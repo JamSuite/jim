@@ -30,9 +30,15 @@ Use `$ARGUMENTS` as the idea or name hint.
 
 ### 2. Read strategic context
 
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — locked constraint. Do not re-litigate strategic decisions.
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — locked constraint. Do not re-litigate strategic decisions.
+ENDIF
 
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture` — locked constraint. Technical invariants are not negotiable.
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+IF arch_doc != "NOT_FOUND" THEN
+  Read arch_doc — locked constraint. Technical invariants are not negotiable.
+ENDIF
 
 If either is missing, note it conversationally ("I notice there's no vision doc yet — you might want to create one to anchor future specs") and proceed. Never block on their absence.
 

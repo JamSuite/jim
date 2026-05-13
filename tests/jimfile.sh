@@ -372,29 +372,29 @@ case_jimfile_honors_jimconf_overrides() {
   assert_eq   "honors override" "custom/debug-dir/${today}-topic.md" "$OUT"
 }
 
-# AC: get returns empty when the resolved path does not exist on disk (D2)
-case_jimfile_get_default_vision_empty_when_missing() {
+# AC: get returns the literal string NOT_FOUND when the resolved path does not exist on disk (D2-revised; spec 011 amendment 2026-05-13)
+case_jimfile_get_returns_not_found_when_file_missing() {
   local dir actual
-  dir=$(empty_dir get_default)
+  dir=$(empty_dir get_not_found)
   actual=$(cd "$dir" && bash "$SCRIPT_JIMFILE" get vision)
-  assert_eq "vision missing → empty" "" "$actual"
+  assert_eq "vision missing → NOT_FOUND" "NOT_FOUND" "$actual"
 }
 
-# AC: get with -c forwards the override; empty when override target missing (D2)
-case_jimfile_get_honors_override_empty_when_missing() {
+# AC: get with -c forwards the override; NOT_FOUND when override target missing (D2-revised)
+case_jimfile_get_honors_override_not_found_when_missing() {
   local cfg
   cfg=$(fixture get-override.toml 'architecture_path = "docs/arch.md"')
   run_jimfile -c "$cfg" get architecture
   assert_exit "rc" 0 "$RC"
-  assert_eq   "missing override → empty" "" "$OUT"
+  assert_eq   "missing override → NOT_FOUND" "NOT_FOUND" "$OUT"
 }
 
-# AC: get pre_commit returns empty when default ./pre-commit.sh does not exist (D2)
-case_jimfile_get_pre_commit_default_empty_when_missing() {
+# AC: get pre_commit returns NOT_FOUND when default ./pre-commit.sh does not exist (D2-revised)
+case_jimfile_get_pre_commit_default_not_found_when_missing() {
   local dir actual
   dir=$(empty_dir get_pre_commit)
   actual=$(cd "$dir" && bash "$SCRIPT_JIMFILE" get pre_commit)
-  assert_eq "pre_commit missing → empty" "" "$actual"
+  assert_eq "pre_commit missing → NOT_FOUND" "NOT_FOUND" "$actual"
 }
 
 # AC: get returns the resolved path when the file exists on disk (D2)
@@ -409,13 +409,13 @@ case_jimfile_get_returns_path_when_file_exists() {
   assert_eq   "vision present → path" "$target" "$OUT"
 }
 
-# AC: get returns empty when the resolved path is missing (D2)
-case_jimfile_get_returns_empty_when_file_missing() {
+# AC: get returns NOT_FOUND when the resolved path is missing under an explicit override (D2-revised)
+case_jimfile_get_returns_not_found_with_explicit_override() {
   local cfg
   cfg=$(fixture get-missing.toml 'vision_path = "/nonexistent/V.md"')
   run_jimfile -c "$cfg" get vision
   assert_exit "rc" 0 "$RC"
-  assert_eq   "vision missing → empty" "" "$OUT"
+  assert_eq   "vision missing → NOT_FOUND" "NOT_FOUND" "$OUT"
 }
 
 # AC: directory-typed path key — exists → returns dir path (D2 dir semantics)
@@ -428,13 +428,13 @@ case_jimfile_get_specs_dir_exists_returns_path() {
   assert_eq   "specs dir exists → path" "$specs" "$OUT"
 }
 
-# AC: directory-typed path key — missing → empty (D2 dir semantics)
-case_jimfile_get_specs_dir_missing_returns_empty() {
+# AC: directory-typed path key — missing → NOT_FOUND (D2-revised dir semantics)
+case_jimfile_get_specs_dir_missing_returns_not_found() {
   local cfg
   cfg=$(fixture get-specs-missing.toml 'specs_path = "/nonexistent/specs"')
   run_jimfile -c "$cfg" get specs
   assert_exit "rc" 0 "$RC"
-  assert_eq   "specs dir missing → empty" "" "$OUT"
+  assert_eq   "specs dir missing → NOT_FOUND" "NOT_FOUND" "$OUT"
 }
 
 # AC: directory-typed brainstorms key — exists → returns dir path
@@ -447,13 +447,13 @@ case_jimfile_get_brainstorms_dir_exists_returns_path() {
   assert_eq   "brainstorms dir exists → path" "$brain" "$OUT"
 }
 
-# AC: directory-typed brainstorms key — missing → empty
-case_jimfile_get_brainstorms_dir_missing_returns_empty() {
+# AC: directory-typed brainstorms key — missing → NOT_FOUND
+case_jimfile_get_brainstorms_dir_missing_returns_not_found() {
   local cfg
   cfg=$(fixture get-brain-missing.toml 'brainstorms_path = "/nonexistent/brain"')
   run_jimfile -c "$cfg" get brainstorms
   assert_exit "rc" 0 "$RC"
-  assert_eq   "brainstorms dir missing → empty" "" "$OUT"
+  assert_eq   "brainstorms dir missing → NOT_FOUND" "NOT_FOUND" "$OUT"
 }
 
 # AC: directory-typed debug key — exists → returns dir path
@@ -466,13 +466,13 @@ case_jimfile_get_debug_dir_exists_returns_path() {
   assert_eq   "debug dir exists → path" "$debug" "$OUT"
 }
 
-# AC: directory-typed debug key — missing → empty
-case_jimfile_get_debug_dir_missing_returns_empty() {
+# AC: directory-typed debug key — missing → NOT_FOUND
+case_jimfile_get_debug_dir_missing_returns_not_found() {
   local cfg
   cfg=$(fixture get-debug-missing.toml 'debug_path = "/nonexistent/debug"')
   run_jimfile -c "$cfg" get debug
   assert_exit "rc" 0 "$RC"
-  assert_eq   "debug dir missing → empty" "" "$OUT"
+  assert_eq   "debug dir missing → NOT_FOUND" "NOT_FOUND" "$OUT"
 }
 
 # AC: get with no key argument exits 2 (malformed invocation)

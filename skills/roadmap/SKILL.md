@@ -24,7 +24,10 @@ Use `$ARGUMENTS` as a hint for what the user wants to add or update. If empty, s
 
 ### 2. Read context
 
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — for strategic alignment.
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — for strategic alignment.
+ENDIF
 
 If absent, note: "No vision doc yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
 
@@ -38,7 +41,7 @@ Do not Read full spec contents — glob and grep only. This prevents context ove
 
 SET roadmap_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`
 
-IF roadmap_doc EXISTS THEN
+IF roadmap_doc != "NOT_FOUND" THEN
   Differential update. Read existing content. Summarize the current state to the user. Ask what they want to change — add items, move items between buckets, update version anchors, refine objectives.
 ELSE
   Fresh creation. Proceed to interview.

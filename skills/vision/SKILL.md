@@ -24,7 +24,10 @@ Use `$ARGUMENTS` as a project name or topic hint. If empty, ask: "What project o
 
 ### 2. Read context
 
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture` — locked constraint. Don't contradict technical decisions already made.
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+IF arch_doc != "NOT_FOUND" THEN
+  Read arch_doc — locked constraint. Don't contradict technical decisions already made.
+ENDIF
 
 If absent, note conversationally: "No architecture doc yet — you might want to create one after this." Do not block.
 
@@ -32,7 +35,7 @@ If absent, note conversationally: "No architecture doc yet — you might want to
 
 SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
 
-IF vision_doc EXISTS THEN
+IF vision_doc != "NOT_FOUND" THEN
   This is a differential update. Read the content. Tell the user: "I see an existing VISION.md. I'll walk through each section and suggest changes based on our conversation." Identify which sections are well-defined vs. which need work.
 ELSE
   Fresh creation. Proceed to interview.
