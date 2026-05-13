@@ -281,28 +281,35 @@ Examples that fit the rule (anchors): `skills/conf/scripts/jimconf.sh` (config p
 
 ### Logic-Flow Conventions
 
-In-prompt existence/absence gates around `!`-injected paths use a small directive vocabulary. Each directive is one line; the `!`-injection slot lives at the rightmost token of the line, outside any `(...)`. Genuine branching binds the slot with `SET` first, then uses a paren-free `IF` block — the slot never appears inside parens. This convention is forced by the wrapper-sensitivity rule in Substitution Conventions; see `docs/debug/20260512-skill-bash-substitution-wrappers.md` for the defect that prompted it.
+In-prompt existence/absence gates around `!`-injected paths use a sentinel-based vocabulary. The resolver (`jimfile.sh get <key>`) returns the literal string `NOT_FOUND` when a path-typed key resolves to a missing file. Gate logic binds the slot with `SET` first, then compares the bound name against `"NOT_FOUND"` in a paren-free `IF` block. The `!`-injection slot only ever appears as the right-hand side of a `SET` assignment — never inside `(...)`, never inside a predicate. This convention is forced by the wrapper-sensitivity rule in Substitution Conventions; see `docs/debug/20260512-skill-bash-substitution-wrappers.md` for the original silent-substitution defect and `docs/brainstorms/20260513-directive-vocab-exists-trap.md` for the EXISTS-trap defect that prompted the move to the sentinel form.
 
-| Directive                                       | Meaning                                                                                                                     |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `READ_IF_EXISTS <slot> — note`                  | one-line conditional read of a single path; trailing `— note` is plain prose explaining what to do with the file            |
-| `RUN_IF_EXISTS <slot> — note`                   | one-line conditional run of an executable gate; same shape as `READ_IF_EXISTS`, semantics differ                            |
-| `DO_IF_EXISTS <slot>:` + numbered list          | multi-step run gate; the directive line ends with `:` and the following lines are an indented numbered list                 |
-| `SET <name> = <slot>`                           | bind the `!`-injection result to a name for reuse on subsequent lines (the only way to reference a slot value twice)        |
-| `IF <name> EXISTS THEN … ENDIF`                 | branch on a previously-bound `SET <name>`; **paren-free** — no slot inside `(...)`; indentation under `THEN` is the block body; chain with `ELSE IF <name> == "value" THEN` for value comparisons; `ENDIF` (one word) terminates |
+| Form                                                            | Meaning                                                                                                                                                              |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SET <name> = !\`bash …\``                                      | bind the resolver's output (path-or-`NOT_FOUND`, or a raw value string for value keys) to a name for use in subsequent `IF` predicates                               |
+| `IF <name> != "NOT_FOUND" THEN` *(indented body)* `ENDIF`       | body runs if the bound path-typed name resolved to a real on-disk path                                                                                                |
+| `IF <name> == "true" THEN` *(indented body)* `ENDIF`            | body runs if the bound boolean-typed name is the string `"true"`                                                                                                     |
+| `ELSE IF <name> == "value" THEN` *(indented body)*              | mirror branch; chain after the leading `IF` for either string-equality predicate                                                                                      |
+| `ELSE` *(indented body)*                                        | optional fall-through; omit to make fall-through implicit (no branch fires = nothing happens)                                                                          |
+| `ENDIF`                                                         | one word; closes the chain                                                                                                                                            |
 
-No loops, no `WHILE`, no `RETURN`. The body of each block is natural-language imperatives — the *control flow* is the only shorthand. The `<slot>` token is always an `!`-injection slot such as `` !`bash ${CLAUDE_PLUGIN_ROOT}/...` ``.
+Indentation under each keyword is the block delimiter. No loops, no `WHILE`, no `RETURN`. Bodies are natural-language imperatives — the *control flow* is the only shorthand. The `!`-injection slot in a `SET` line is always a resolver call such as `` !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` ``.
 
-**Single-action read with optional fallback prose:**
-
-```
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` — locked constraint. Do not re-litigate strategic decisions.
-```
-
-If absence carries its own instruction, lift it to a standalone sentence underneath (it runs unconditionally — the LLM reads it whether the file existed or not, and the wording carries "if absent, …" naturally):
+**Single-action read:**
 
 ```
-READ_IF_EXISTS !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture` — locked constraint. Technical invariants are not negotiable.
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — locked constraint. Do not re-litigate strategic decisions.
+ENDIF
+```
+
+If absence carries its own instruction, lift it to a standalone sentence below the `ENDIF` (it runs unconditionally — the LLM reads it whether the file existed or not, and the wording carries "if absent, …" naturally):
+
+```
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+IF arch_doc != "NOT_FOUND" THEN
+  Read arch_doc — locked constraint. Technical invariants are not negotiable.
+ENDIF
 If absent, note the gap in the Constitution Check section and proceed without constraints.
 ```
 
@@ -311,7 +318,7 @@ If absent, note the gap in the Constitution Check section and proceed without co
 ```
 SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
 
-IF vision_doc EXISTS THEN
+IF vision_doc != "NOT_FOUND" THEN
   This is a differential update. Read the file and walk each section with the user.
 ELSE
   Fresh creation. Proceed to interview.
@@ -322,35 +329,37 @@ The multi-step variant indents a numbered list under `THEN`; chain `ELSE IF <nam
 
 ```
 SET pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`
-SET require_pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get require_pre_commit`
+SET require_pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_pre_commit`
 
-IF pre_commit EXISTS THEN
+IF pre_commit != "NOT_FOUND" THEN
   1. Run the script via Bash and show the full output.
   2. STOP and wait for human guidance if the exit code is non-zero.
 ELSE IF require_pre_commit == "true" THEN
-  STOP with: "Required pre-commit script not found at pre_commit."
+  STOP with: "Required pre-commit script not found (configured path absent)."
 ENDIF
 ```
 
-**Where the directive vocabulary helps:**
+**Where the sentinel vocabulary helps:**
 - Existence-gated reads (most common — strategic doc lookups, optional config files).
 - Existence-gated executes (e.g., a `pre_commit` script that's absent in most projects).
-- Either/or branches based on file presence (use `SET` + paren-free `IF`).
+- Either/or branches based on file presence or boolean config flags.
 
 **Where it does *not* help (revert to English):**
 - Multi-condition logic (and/or chains).
 - Loops over globbed results — use English + a `jimfile.sh glob` call.
-- Branches that aren't existence checks.
+- Branches that aren't string-equality comparisons.
 
-**Markdown rendering:** directives substitute correctly as bare lines, indented under numbered steps (3-space indent), and at the right-hand side of `SET` assignments. They do **not** substitute inside fenced code blocks (` ``` `, indented 4-space) or inline backticks — those wrappers suppress `!`-injection. Keep directives outside fences.
+**Markdown rendering:** `SET` lines substitute correctly as bare lines, indented under numbered steps (3-space indent — matrix Z ✅), and inside fenced or 4-space-indented code blocks (matrix N, O ✅). They do **not** substitute inside inline backticks (matrix P ❌). Keep `SET` lines outside inline-code.
 
 This idiom is enforced by `meta-skill` and `meta-agent` validation checklists — invented variants (`WHEN ... PRESENT`, `IF FILE ... DO`, `ASSERT_EXISTS`, `STOP_IF_MISSING`, etc.) are a validation failure.
 
-#### Anti-pattern: retired `IF (X) EXISTS THEN` BASIC idiom
+#### Anti-patterns
 
-The earlier convention wrapped `!`-injection slots in `IF (` … `) EXISTS THEN`. This shape silently fails: Claude Code's preprocessor does not recognize an `!`-injection slot when the slot is wrapped in `(...)` on the same line. The literal text reaches the LLM with backticks intact, no bash runs, and the gate evaluates against the unresolved substitution string rather than the real path. There is no error, no permission prompt, no log line — only wrong behavior downstream. See `docs/debug/20260512-skill-bash-substitution-wrappers.md` for the inventory of twelve production sites this defect produced and the matrix that characterized the wrapper-sensitivity boundary.
+Two retired shapes — both must be rewritten to the sentinel form above.
 
-Any line matching `IF (!\`bash …\`) EXISTS THEN` (or its `THEN DO:` variant) is a regression and must be rewritten to one of the directive forms above. The heavier interim form (`DO:` / `DONE` block markers, two-word `END IF`, explicit `Otherwise, skip silently` fall-through prose, verbose `When X resolves to "true"` comparisons) is also superseded — use the lean form: `ENDIF` (one word), indentation as block delimiter, `ELSE IF <name> == "value" THEN` chained branches, and implicit fall-through.
+**Tier 1: BASIC `IF (X) EXISTS THEN` paren-wrap** (silent substitution failure). The original convention wrapped `!`-injection slots in `IF (` … `) EXISTS THEN`. Claude Code's preprocessor does not recognize an `!`-injection slot when the slot is wrapped in `(...)` on the same line — the literal text reaches the LLM with backticks intact, no bash runs, and the gate evaluates against the unresolved substitution string rather than the real path. No error, no permission prompt, no log line — only wrong behavior downstream. See `docs/debug/20260512-skill-bash-substitution-wrappers.md` for the inventory of twelve production sites this defect produced.
+
+**Tier 2: EXISTS-family directive vocabulary** (semantic-layer leak; EXISTS-trap). The interim convention used `READ_IF_EXISTS <slot> — note`, `RUN_IF_EXISTS`, `DO_IF_EXISTS <slot>:` + numbered list, and `IF <name> EXISTS THEN … ENDIF`. The substitution layer worked (matrix U–Z, AA, BB ✅), but the literal word "EXISTS" in directive names primed the executing agent to defensively `test -e` / `test -f` on already-resolved paths — observed empirically on 2026-05-13 in both `/jim:build` and `/jim:spec` runs. The empty-RHS readback under D2's path-or-empty resolver (`SET pre_commit = ` with nothing after the `=`) compounded the issue by reading as syntactically incomplete. See `docs/brainstorms/20260513-directive-vocab-exists-trap.md` for the defect record. Any line matching `^(READ|RUN|DO)_IF_EXISTS`, `IF <name> EXISTS THEN`, or `IF (!\`bash …\`) EXISTS THEN` is a regression. The heavier interim shape (`DO:` / `DONE` block markers, two-word `END IF`, explicit `Otherwise, skip silently` fall-through prose, verbose `When X resolves to "true"` comparisons) is also superseded.
 
 ### Substitution Conventions
 

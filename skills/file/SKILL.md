@@ -20,8 +20,8 @@ Run jim's file/path resolver:
 ## Examples
 
 - `/jim:file exists docs/specs/jim/008-jimfile/spec.md` — `yes` or `no`
-- `/jim:file get vision` — configured vision-doc path *if the file exists on disk*, else empty
-- `/jim:file get pre_commit` — configured pre-commit script path *if it exists*, else empty
+- `/jim:file get vision` — configured vision-doc path *if the file exists on disk*, else the literal string `NOT_FOUND`
+- `/jim:file get pre_commit` — configured pre-commit script path *if it exists*, else the literal string `NOT_FOUND`
 - `/jim:file path vision` — configured vision-doc path regardless of existence (write-target form)
 - `/jim:file slug "Auth Token Expiry"` — kebab-case slug
 - `/jim:file date` — today as `YYYYMMDD`
@@ -43,17 +43,19 @@ keys go to `jimconf.sh` directly because they're flags, not paths, and
 existence-checking them is meaningless.
 
 For path keys, `jimfile.sh get <key>` returns the configured path *only if
-the file exists on disk*, else empty string. Use `jimfile.sh path <key>`
-(single-arg form) when you want the configured path regardless of existence
-— the write-target use case for `arch` / `vision` / `roadmap`.
+the file exists on disk*, else the literal string `NOT_FOUND`. Consumers
+gate downstream actions with `IF <name> != "NOT_FOUND" THEN …` after
+binding the call with `SET`. Use `jimfile.sh path <key>` (single-arg form)
+when you want the configured path regardless of existence — the
+write-target use case for `arch` / `vision` / `roadmap`.
 
 The user-facing `/jim:conf` skill remains for human inspection of the
 underlying config; the programmatic surface for value keys is
 `jimconf.sh get <key>` invoked inline in skill bodies.
 
 For existence-gated reads and executes, wrap `jimfile.sh get …` calls in
-the directive vocabulary (see `ARCHITECTURE.md` → Plugin Conventions →
-Logic-Flow Conventions).
+the `SET` + `IF <name> != "NOT_FOUND" THEN` form (see `ARCHITECTURE.md` →
+Plugin Conventions → Logic-Flow Conventions).
 
 ## Notes
 
