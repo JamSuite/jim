@@ -442,4 +442,4 @@ Once the matrix confirms the vocabulary works, `meta-skill` / `meta-agent` valid
 
 ---
 
-**Resolved by spec 011** — see `ARCHITECTURE.md` → Substitution Conventions and `ARCHITECTURE.md` → Logic-Flow Conventions.
+**Resolved by spec 011, amended 2026-05-13** per `docs/brainstorms/20260513-directive-vocab-exists-trap.md` — the original directive vocabulary that resolved this Tier 1 BASIC paren-wrap defect (`READ_IF_EXISTS` / `RUN_IF_EXISTS` / `DO_IF_EXISTS` / `IF X EXISTS THEN`) was itself superseded on 2026-05-13 to close a Tier 2 EXISTS-trap defect (directive names containing "EXISTS" primed defensive `test -e` re-checks on already-resolved paths). The post-amendment convention is the sentinel form `SET <name> = !\`bash …\`` + `IF <name> != "NOT_FOUND" THEN … ENDIF`. See `ARCHITECTURE.md` → Substitution Conventions and `ARCHITECTURE.md` → Logic-Flow Conventions.

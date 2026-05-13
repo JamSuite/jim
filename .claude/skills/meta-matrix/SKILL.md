@@ -170,14 +170,17 @@ ELSE IF subst_bb_flag == "true" THEN
   STOP with: "Required script not found at subst_bb_path."
 ENDIF
 
-## Empty-substitution probes (spec 013 D8 no-op regression)
+## Empty-substitution probes (spec 013 D8 — HISTORICAL; superseded 2026-05-13)
+
+> **Superseded by 2026-05-13 amendment to spec 011** — D2 was revised from path-or-empty to path-or-`NOT_FOUND`, retiring the EXISTS-family directive vocabulary entirely. Rows CC–FF below are no longer load-bearing; the new sentinel form is exercised by rows GG/HH below. Rows CC–FF preserved verbatim for forensic record.
 
 The rows below verify that when an `!`-injection slot substitutes to the
-empty string (the new failure mode under spec 013 D2 — a path key whose
-configured file does not exist on disk), every directive in the family
-no-ops cleanly rather than triggering a spurious Read / Bash / wrong
-branch. Each row uses a unique sentinel marker in its surrounding prose
-so a human reader can tell what is expected at a glance.
+empty string (the failure mode under the original spec 013 D2 — a path
+key whose configured file does not exist on disk), every directive in
+the family no-ops cleanly rather than triggering a spurious Read / Bash
+/ wrong branch. Each row uses a unique sentinel marker in its
+surrounding prose so a human reader can tell what is expected at a
+glance.
 
 ### CC — `READ_IF_EXISTS` with empty substitution (D8 probe)
 
@@ -200,6 +203,30 @@ IF ff_path EXISTS THEN
   Sentinel SUBST_FF_SET_EMPTY-FIRED — should NOT be reached (ff_path is empty).
 ELSE
   Sentinel SUBST_FF_SET_EMPTY-ELSE-OK — expected fall-through.
+ENDIF
+
+## Sentinel-based gate probes (spec 011 amendment 2026-05-13)
+
+The rows below verify the post-amendment sentinel form: `SET <name> = !\`bash …\`` + `IF <name> != "NOT_FOUND" THEN … ELSE … ENDIF`. The resolver now returns the literal string `NOT_FOUND` for missing path-typed keys (D2-revised). GG exercises the negative case (SET binds to `NOT_FOUND` → ELSE fires); HH exercises the positive case (SET binds to a resolved path → THEN fires). Both rows must pass for the sentinel form to be safe under the substitution layer.
+
+### GG — `SET x = NOT_FOUND` + `IF x != "NOT_FOUND" THEN … ELSE … ENDIF` (negative case)
+
+SET gg_path = !`echo NOT_FOUND`
+
+IF gg_path != "NOT_FOUND" THEN
+  Sentinel SUBST_GG_THEN_FIRED — should NOT be reached (gg_path is "NOT_FOUND").
+ELSE
+  Sentinel SUBST_GG_ELSE_OK — expected fall-through.
+ENDIF
+
+### HH — `SET x = /tmp/sentinel-hh-resolved-path` + `IF x != "NOT_FOUND" THEN … ELSE … ENDIF` (positive case)
+
+SET hh_path = !`echo /tmp/sentinel-hh-resolved-path`
+
+IF hh_path != "NOT_FOUND" THEN
+  Sentinel SUBST_HH_THEN_OK — expected; hh_path is /tmp/sentinel-hh-resolved-path.
+ELSE
+  Sentinel SUBST_HH_ELSE_FIRED — should NOT be reached.
 ENDIF
 
 ## How to interpret
@@ -233,17 +260,11 @@ AA or BB shows literal `` !`echo SUBST_*` `` for any of its four SET
 slots, the lean form is not safe and the convention must keep the heavier
 `DO:`/`DONE`/`END IF` shape.
 
-**The D2 path-or-empty semantics rely on rows CC–FF demonstrating
-empty-substitution no-op behavior** (spec 013 D8). Expected reading
-of the rendered body:
+**The D2-revised path-or-`NOT_FOUND` semantics rely on rows GG/HH** (spec 011 amendment 2026-05-13). Expected reading of the rendered body:
 
-- CC: sentinel `SUBST_CC_READ_EMPTY-NOOP` visible; **no Read tool call**.
-- DD: sentinel `SUBST_DD_RUN_EMPTY-NOOP` visible; **no Bash tool call**.
-- EE: sentinel `SUBST_EE_DO_EMPTY-NOOP` visible inside the indented
-  block; the block is **skipped entirely** (no actions taken).
-- FF: sentinel `SUBST_FF_SET_EMPTY-ELSE-OK` indicates the ELSE branch
-  fired; sentinel `SUBST_FF_SET_EMPTY-FIRED` must **not** be reached.
+- GG: sentinel `SUBST_GG_ELSE_OK` visible (ELSE branch fires); `SUBST_GG_THEN_FIRED` **not** reached.
+- HH: sentinel `SUBST_HH_THEN_OK` visible (THEN branch fires); `SUBST_HH_ELSE_FIRED` **not** reached.
 
-If any CC–FF row triggers the gated action (Read / Bash / THEN branch)
-instead of no-op'ing, the directive vocabulary's empty-slot contract
-is broken and the production convention needs a different escape.
+If either GG or HH evaluates the wrong branch, the sentinel form is not safe under the substitution layer and the amendment must be reconsidered before merging.
+
+**Rows CC–FF are historical** (spec 013 D8 empty-no-op contract). They are preserved verbatim for forensic record but are no longer load-bearing — D2 was revised to path-or-`NOT_FOUND` on 2026-05-13, retiring the empty-substitution contract entirely. If you are running this matrix after the 2026-05-13 amendment, GG/HH are the load-bearing rows; CC–FF outcomes are informational only.

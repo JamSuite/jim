@@ -58,7 +58,7 @@ A bash script (`skills/file/scripts/jimfile.sh`) exposes deterministic file/path
 - **Chosen:** `jimfile.sh exists <path>` prints `yes` or `no` to stdout, exits 0. Exit 2 if path arg is missing.
 - **Why:** `!`-injection captures stdout, not exit codes. The LLM consumes the stdout string. `yes`/`no` is the most explicit form — harder to misread than empty-string-means-missing.
 - **Rejected — exit-code-only:** LLM doesn't see exit codes through `!`-injection.
-- **Rejected — print path-or-empty:** More clever, easier to confuse with `path` subcommand output.
+- **Rejected — print path-or-empty:** More clever, easier to confuse with `path` subcommand output. *(Note: D2 of the 20260505 file-resolver brainstorm later adopted path-or-empty for `get` specifically, then the 2026-05-13 amendment to spec 011 replaced it with path-or-`NOT_FOUND` to close the EXISTS-trap. The original rejection rationale here applies to `exists` only.)*
 
 ### 7. Migration scope for v1 — three consumer skills
 

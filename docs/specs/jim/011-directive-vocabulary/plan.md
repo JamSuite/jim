@@ -7,6 +7,8 @@ status: in-progress
 
 > **2026-05-12 reopen:** Tasks 24–25 added to close two gaps discovered during 013-arch-feedback-loop research: (a) `skills/arch/SKILL.md:43–47` was missed by the original 12-slot `!`-injection-in-parens inventory because its parens hold prose, not a substitution slot — the form itself is still the retired BASIC anti-pattern; (b) the "Historical artifacts" AC's forensic-annotation requirement was silently skipped on three documents. See spec §"Historical-annotation hygiene" and §"Original repro must clear" for the extended ACs.
 
+> **2026-05-13 amendment:** The EXISTS-family directive vocabulary (`READ_IF_EXISTS` / `RUN_IF_EXISTS` / `DO_IF_EXISTS` / `IF X EXISTS THEN`) introduced by Phase 1–4 of this plan is itself superseded by a sentinel form: `SET <name> = !\`bash …\`` + `IF <name> != "NOT_FOUND" THEN … ENDIF`. The resolver (`skills/file/scripts/jimfile.sh cmd_get`) now returns the literal string `NOT_FOUND` when a path-typed key is missing on disk (D2-revised — reverses the path-or-empty semantics from commit `3fd1811`). Empirical `/jim:build` and `/jim:spec` runs on 2026-05-13 exposed an EXISTS-trap semantic-layer leak: directive names containing "EXISTS" primed defensive `test -e` / `test -f` re-checks on already-resolved paths. See `docs/brainstorms/20260513-directive-vocab-exists-trap.md` for the design rationale. **Tasks 1–25 below stayed `[x]` after their original execution** (they did the work as specified at the time); the new Phase 5 tasks 26–34 below re-migrate the same sites to the post-amendment shape. Decisions 2–5 and 9 are superseded; Decisions 1, 6, 7, 8 still apply. The bundled-PR delivery shape stays — the amendment lands as three additional internal commits on the same `refactor/directive-vocab` branch.
+
 # 011 Replace IF-wrap pseudocode with a directive vocabulary — Plan
 
 ## Overview
@@ -376,3 +378,68 @@ The 2026-05-12 rerun also surfaced two findings affecting the convention documen
 
 - **Matrix N ✅ (fenced code blocks do NOT suppress `!`-injection).** Contradicts the original "expected ❌" annotation on row N. The real suppressor is inline backticks (matrix P ❌), not fences (N ✅) or 4-space indented blocks (O ✅) or parens-around-non-slot (T ✅). The `build/SKILL.md:73,106` slots were singly broken (paren-wrap only); the surrounding `text` fences were stylistic, not structural. Decision 4 was reframed accordingly.
 - **Matrix T ✅ (parens around a non-slot expression do NOT suppress).** Confirms the rule is "no `!`-injection slot inside `(...)` on the same line as the slot itself", not "no `(...)` anywhere on lines that gate `!`-injection". The ARCHITECTURE.md rule-#6 wording reflects this scoping.
+
+### 2026-05-13 rerun (post-amendment, sentinel form)
+
+Pending — the GG/HH rows added in Phase 5 Task 30 are exercised after a quit-and-relaunch:
+
+| Pattern | Sentinel | Expected | Result | Date |
+| :--- | :--- | :--- | :--- | :--- |
+| GG — `SET x = NOT_FOUND` + `IF x != "NOT_FOUND"` (negative) | SUBST_GG_ELSE_OK visible; SUBST_GG_THEN_FIRED suppressed | ELSE branch fires | _pending rerun_ | _TBD_ |
+| HH — `SET x = /tmp/sentinel` + `IF x != "NOT_FOUND"` (positive) | SUBST_HH_THEN_OK visible; SUBST_HH_ELSE_FIRED suppressed | THEN branch fires | _pending rerun_ | _TBD_ |
+
+## Phase 5 — 2026-05-13 amendment tasks (sentinel-based gate convention)
+
+*Refactor type — same atomicity rules. Tasks 26–28 land in one structural Commit (conventions), Tasks 29–31 in one atomic behavioral Commit (resolver + 16 sites + tests), Tasks 32–34 in one structural Commit (docs/amendments/matrix/agent prose). Final gate: manual matrix rerun.*
+
+### Commit 1 — Structural (conventions land first)
+
+26. [x] Rewrite `ARCHITECTURE.md` → Logic-Flow Conventions (lines 282–353). Table swaps to `SET <name> = !\`bash …\`` / `IF <name> != "NOT_FOUND" THEN` / `ELSE IF <name> == "value" THEN` / `ELSE` / `ENDIF`. Worked examples rewrite to the new shape; pre-commit example STOP message rephrased to "configured path absent". Anti-pattern section becomes two-tier (Tier 1 BASIC paren-wrap; Tier 2 EXISTS-family). Cite `docs/brainstorms/20260513-directive-vocab-exists-trap.md`.
+    **Verify:** `grep -F 'SET ' ARCHITECTURE.md && grep -F '!= "NOT_FOUND"' ARCHITECTURE.md && grep -F '20260513-directive-vocab-exists-trap' ARCHITECTURE.md && ! grep -nE '^IF .* EXISTS THEN' ARCHITECTURE.md`
+
+27. [x] Update `skills/file/SKILL.md` prose (lines 23–24 examples, 45–48 Convention, 54 directive-vocab pointer). Flip "else empty string" → "else literal `NOT_FOUND`"; pointer language switches to the sentinel form.
+    **Verify:** `grep -F 'NOT_FOUND' skills/file/SKILL.md && ! grep -F 'else empty string' skills/file/SKILL.md`
+
+28. [x] Flip `skills/meta-skill/SKILL.md:104` and `skills/meta-agent/SKILL.md:125` to the sentinel form; flag EXISTS-family as Tier 2 anti-pattern alongside the existing Tier 1 BASIC callout.
+    **Verify:** `grep -F '!= "NOT_FOUND"' skills/meta-skill/SKILL.md && grep -F '!= "NOT_FOUND"' skills/meta-agent/SKILL.md && grep -F 'EXISTS-trap' skills/meta-skill/SKILL.md`
+
+### Commit 2 — Behavioral (atomic: resolver + 16 sites)
+
+29. [x] **RGR**: `skills/file/scripts/jimfile.sh cmd_get` returns the literal string `NOT_FOUND` when `[[ -n "$resolved" && -e "$resolved" ]]` is false.
+    - **Red**: scaffold `case_jimfile_get_returns_not_found_when_file_missing` asserting `NOT_FOUND`; run → fail.
+    - **Green**: add `else printf '%s\n' "NOT_FOUND"` branch in `cmd_get`; header docblock and `usage()` prose updated.
+    - **Refactor**: rename 6 existing `_empty_when_missing` cases → `_not_found_when_missing`; flip their assertions; renaming also disambiguates the new default-config case from the explicit-override case (`_returns_not_found_with_explicit_override`). Audit confirmed zero bash callers consume `get`'s output with `-n`/`-z` patterns under `skills/*/scripts/`.
+    **Verify:** `bash skills/meta-test/scripts/run.sh` exits 0 (84/84 pass).
+
+30. [x] Migrate 10 single-line `READ_IF_EXISTS` sites to three-line `SET + IF != "NOT_FOUND" THEN … ENDIF` blocks. Sites: `spec:33,35`, `plan:53`, `research:99,101` (preserve 3-space indent under numbered step 1), `brainstorm:30,32`, `arch:37`, `vision:27`, `roadmap:27`. "If absent, …" prose lifted to standalone sentence below `ENDIF` where present.
+    **Verify:** `! grep -rn '^READ_IF_EXISTS\|^   READ_IF_EXISTS\|RUN_IF_EXISTS\|DO_IF_EXISTS' skills/` returns zero matches.
+
+31. [x] Migrate 6 block sites `IF X EXISTS THEN` → `IF X != "NOT_FOUND" THEN`. Sites: `arch:48` (arch_doc), `vision:38` (vision_doc), `roadmap:44` (roadmap_doc), `build:76` (pre_commit), `build:109` (pre_completion), `build:119` (arch_doc post-build refresh). `ELSE IF require_* == "true" THEN` mirror branches unchanged. STOP messages at `build:80` and `build:113` rephrased so "configured path absent" doesn't read as the literal string `NOT_FOUND` being a path.
+    **Verify:** `! grep -rnE 'IF [a-z_]+ EXISTS THEN' skills/` returns zero matches.
+
+### Commit 3 — Structural (docs / amendments / fixture / agent prose)
+
+32. [x] Amend spec 011 (this spec + this plan): add 2026-05-13 amendment block at top; rewrite AC slot-by-slot mapping and Convention codification to the sentinel form; reframe Original-repro AC to grep for the EXISTS-family in addition to the BASIC shape; add the resolver-layer AC. Plan amendment appends Phase 5 (this section) and a placeholder Verification Log row for GG/HH. Frontmatter status stays `approved` / `in-progress`.
+    **Verify:** `grep -F '2026-05-13' docs/specs/jim/011-directive-vocabulary/spec.md docs/specs/jim/011-directive-vocabulary/plan.md`
+
+33. [x] Amend specs 008 and 009: 008 likely no-op (D7(c) wording is fine — confirmed; no path-or-empty references found outside the unrelated `path` verb). 009 `spec.md:65` flips "else empty string" → "else literal `NOT_FOUND`"; D8 reference flagged as no-longer-load-bearing. 009 `plan.md:61` gets a one-line trailing annotation. Annotate historical artifacts: 20260505 file-resolver-conventions-audit (D1, D2, D8, gate-table), 20260505 bash-scripts-in-meta (extend), 001-meta:123 (extend), 20260512 debug doc (extend footer).
+    **Verify:** `grep -F 'NOT_FOUND' docs/specs/jim/009-jimfile/spec.md && grep -l '2026-05-13' docs/brainstorms/20260505-file-resolver-conventions-audit.md docs/specs/jim/001-meta/spec.md docs/debug/20260512-skill-bash-substitution-wrappers.md`
+
+34. [x] Add meta-matrix probe rows GG (negative: SET=NOT_FOUND → ELSE fires) and HH (positive: SET=path → THEN fires) to `.claude/skills/meta-matrix/SKILL.md`. Mark CC–FF as historical / no-longer-load-bearing. Verify agent prose (`agents/coder.md:82` — defensible as-is; quick scan of pm/architect/researcher/meta — no EXISTS-family or empty-resolver references found; no edits needed).
+    **Verify:** `grep -F 'SUBST_GG' .claude/skills/meta-matrix/SKILL.md && grep -F 'SUBST_HH' .claude/skills/meta-matrix/SKILL.md && ! grep -rnE 'READ_IF_EXISTS|RUN_IF_EXISTS|DO_IF_EXISTS|IF [a-z_]+ EXISTS THEN' agents/`
+
+### Final gate — Manual matrix rerun (user-driven; requires quit-and-relaunch)
+
+35. [ ] Quit Claude Code, relaunch from the repo root, invoke `/meta-matrix`. Verify GG/HH sentinels read correctly (see expected rows above). Append dated results to the 2026-05-13 rerun Verification Log table. If either fails, halt the merge — the sentinel form is not safe under the substitution layer.
+
+## Superseded Design Decisions (from original Phase 1–4)
+
+The following original Design Decisions are superseded by the 2026-05-13 amendment. They retain forensic value (they describe the state at the time the original work landed) but no longer drive the codebase:
+
+- **Decision 2** (READ_IF_EXISTS + standalone prose fallback): superseded — every gate is now `SET + IF != "NOT_FOUND" THEN … ENDIF`; absence prose still goes below the ENDIF as a standalone sentence (mechanism unchanged, surrounding directive shape different).
+- **Decision 3** (`SET + IF X EXISTS THEN` for two-branch gates): superseded — predicate is now `IF X != "NOT_FOUND" THEN`.
+- **Decision 4** (build:73,106 fence handling): unaffected — fences were already dropped; this decision stays.
+- **Decision 5** (research:99,103 indent): unaffected — 3-space indent stays; the directive shape inside the indented block is just different now.
+- **Decision 9** (arch:43–47 SET + lean IF + arch_doc name): superseded for the predicate (`IF arch_doc EXISTS` → `IF arch_doc != "NOT_FOUND"`); naming convention (`arch_doc`) and binding location (inside step 3, not hoisted) stay.
+
+Decisions 1 (Tidy-First convention-first ordering inside the bundled PR), 6 (matrix lives in `.claude/skills/meta-matrix/`), 7 (ARCHITECTURE.md rule placement), and 8 (atomic-per-slot tasks) still apply.

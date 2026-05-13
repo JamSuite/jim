@@ -73,7 +73,7 @@ This is the rule that should land in `ARCHITECTURE.md` → Plugin Conventions �
 
 ### A4 — Cross-link to the BASIC-style logic-flow convention
 
-> **Superseded by spec 011 (2026-05-12)** — the BASIC-style dialect referenced here and prescribed in the §"Outcome" planning table below was retired in favor of the directive vocabulary + lean paren-free `IF` block. See `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions. The references below are preserved as a forensic record of the original cross-link.
+> **Superseded by spec 011 (2026-05-12; re-amended 2026-05-13)** — the BASIC-style dialect referenced here and prescribed in the §"Outcome" planning table below was retired in favor of (first) the directive vocabulary + lean paren-free `IF` block, and (then, on 2026-05-13) the sentinel form `SET … = !\`bash …\`` + `IF … != "NOT_FOUND" THEN`. See `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions and `docs/brainstorms/20260513-directive-vocab-exists-trap.md`. References below preserved as forensic record.
 
 There's an active sibling brainstorm at `docs/brainstorms/20260505-file-resolver-conventions-audit.md` proposing a small BASIC-style pseudocode dialect (`IF (...) EXISTS THEN ... END IF`, `IF (...) ABSENT THEN`, `THEN DO: 1. ... DONE`, `ELSE`) for in-prompt logic gates that wrap `!`bash …`` substitutions.
 

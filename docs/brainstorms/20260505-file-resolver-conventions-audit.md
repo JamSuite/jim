@@ -53,6 +53,8 @@ actually use them.
 
 ## Decisions
 
+> **Superseded by 2026-05-13 amendment to spec 011** (see `docs/brainstorms/20260513-directive-vocab-exists-trap.md`). The EXISTS-family directive vocabulary in D1 is retired in favor of a sentinel-based form: `SET <name> = !\`bash …\`` + `IF <name> != "NOT_FOUND" THEN`. D2's path-or-empty resolver shape is replaced with path-or-`NOT_FOUND` for path-typed keys. D8's empty-slot no-op contract is no longer load-bearing. D3, D4, D5, D6, D7(c) still apply. Bodies below preserved verbatim for forensic record.
+
 - **D1.** Adopt the directive vocabulary for existence gates:
   `READ_IF_EXISTS`, `RUN_IF_EXISTS`, `DO_IF_EXISTS` for single-action
   gates; `SET <name> = !\`bash …\`` + lean paren-free `IF <name>
@@ -126,6 +128,8 @@ won't work end-to-end until `get` returns path-or-empty. Run
 claude code plan mode with this brainstorm as origin.
 
 ## Gate convention
+
+> **Superseded** — see the head-of-Decisions annotation above. The post-amendment gate convention lives in `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions and uses the sentinel form `SET … = !\`bash …\`` + `IF … != "NOT_FOUND" THEN … ENDIF`. Table below preserved as forensic record of the interim shape that ran from spec 011 land (2026-05-12) through the 2026-05-13 amendment.
 
 Directive vocabulary covers single-action gates. The lean paren-free
 `IF` block carries genuine branching.
