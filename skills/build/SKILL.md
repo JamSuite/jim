@@ -7,7 +7,7 @@ description: >
   (/jim:research), or planning (/jim:plan).
 agent: coder
 argument-hint: "[spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Skill(jim:arch)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Skill(jim:arch)
 ---
 
 # /jim:build
