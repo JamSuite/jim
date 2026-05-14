@@ -48,7 +48,7 @@ All line numbers verified against current file state.
 
 ### Matrix fixture
 
-**`.claude/skills/subtest/SKILL.md`** — Current `name: subtest`, `description:` is a multi-line block describing the 26-pattern (A–Z) wrapper test. Patterns U–Z (lines 110–144) are present and test the proposed directive vocabulary:
+**The project-local `subtest` fixture under `.claude/` (its `SKILL.md`)** — Current `name: subtest`, `description:` is a multi-line block describing the 26-pattern (A–Z) wrapper test. (Relocated by spec 014 to the top-level `skills/meta-matrix/` family.) Patterns U–Z (lines 110–144) are present and test the proposed directive vocabulary:
 
 - U (line 120): `READ_IF_EXISTS !... — note`
 - V (line 124): `RUN_IF_EXISTS !... — note`
@@ -57,7 +57,7 @@ All line numbers verified against current file state.
 - Y (line 138): `1. READ_IF_EXISTS !... — note`
 - Z (line 144): indented `READ_IF_EXISTS !...` under a numbered step
 
-The spec says U–Z all return ✅ in the post-spec run. The spec also says this skill is renamed to `meta-matrix` (rename `.claude/skills/subtest/` → `.claude/skills/meta-matrix/`); the `name:` frontmatter key and `description:` block must be updated on rename. All 26 sentinel rows (A–Z) are preserved verbatim per the spec's acceptance criteria.
+The spec says U–Z all return ✅ in the post-spec run. The spec also says this skill is renamed to `meta-matrix` (project-local rename under `.claude/`: `subtest` → `meta-matrix`; later relocated by spec 014 to the top-level `skills/meta-matrix/` family); the `name:` frontmatter key and `description:` block must be updated on rename. All 26 sentinel rows (A–Z) are preserved verbatim per the spec's acceptance criteria.
 
 ### Debug report
 
@@ -131,7 +131,7 @@ Key observations for the architect:
 
 2. **Five of the 12 slots have ELSE branches; only two require `SET` + paren-free IF.** The two genuine two-branch cases (`vision/SKILL.md:35` and `roadmap/SKILL.md:41`) both carry data-loss risk on re-runs if left broken. These are highest-priority behavioral fixes. The other ELSE branches at `vision:27`, `roadmap:27`, and `arch:37` all have simple "note conversationally" ELSE bodies that can be dropped or kept as plain prose — they don't need the `SET` + paren-free `IF` pattern.
 
-3. **The matrix rename from `subtest` to `meta-matrix` has no code dependencies.** The rename is a directory move plus frontmatter text edit; no script references the path. However, the `ARCHITECTURE.md` reference to the fixture will be a new addition (currently `ARCHITECTURE.md` does not reference `.claude/skills/subtest/`), so the text change is additive.
+3. **The matrix rename from `subtest` to `meta-matrix` has no code dependencies.** The rename is a directory move plus frontmatter text edit; no script references the path. However, the `ARCHITECTURE.md` reference to the fixture will be a new addition (currently `ARCHITECTURE.md` does not reference the pre-rename `subtest` location under `.claude/`), so the text change is additive. (Spec 014 later relocated the fixture from `.claude/` to the top-level `skills/meta-matrix/` family.)
 
 4. **Historical artifacts: 3 copy-from examples must be rewritten; 8 forensic occurrences preserved.** The only spec/plan hit is `010-build-hooks/plan.md:110`. The two brainstorm hits are both inside fenced code blocks as design examples. None are forensic — all three must be updated to the directive vocabulary.
 

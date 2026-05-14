@@ -57,15 +57,15 @@ Conclusion: the Bash narrowing pass (Phase 1 of this spec) works as designed. Th
 - [ ] Existing tests pass without modification.
 
 ## Out of Scope
-- `.claude/skills/meta-matrix/SKILL.md` — substitution-regression fixture; its broad `Bash(echo *), Bash(bash -c *)` is intentional and must not be touched.
+- `.claude/skills/meta-matrix/SKILL.md` — substitution-regression fixture; its broad `Bash(echo *), Bash(bash -c *)` is intentional and must not be touched. (Sentinel fixture location updated by spec 014 — see `skills/meta-matrix/`.)
 - Upstream Anthropic enforcement bugs (issues #14956, #18837, #37683) — outside jim's control. Narrowing's value as documentation and trust-dialog blast-radius reduction stands regardless of upstream status.
 - Changes to the `!`-injection sites themselves — only the frontmatter `allowed-tools` declarations change. Bash commands the skills invoke stay byte-identical.
 - Restructuring `${CLAUDE_PLUGIN_ROOT}` vs `${CLAUDE_SKILL_DIR}` usage in skill bodies — the existing sigil choices are correct and remain.
 - A scripted bash-grep guard for `Bash(bash *)` regressions — the `meta-skill` LLM validation checklist is the chosen prevention mechanism, matching how every other SKILL.md convention is policed today.
 - `/jim:setup` skill (would generate a per-install `permissions.allow` snippet automatically) — deferred to a follow-up spec. The README documents the manual snippet path for now.
-- Automated empirical tests of Claude Code permission inheritance behavior — see Open Questions. The current `meta-matrix` fixture probes `!`-injection substitution under visual inspection, not permission-prompt behavior; a permissions regression surface would be a different kind of test.
+- Automated empirical tests of Claude Code permission inheritance behavior — see Open Questions. The current `meta-matrix` fixture probes `!`-injection substitution under visual inspection, not permission-prompt behavior; a permissions regression surface would be a different kind of test. (Sentinel fixture location updated by spec 014 — see `skills/meta-matrix/`.)
 - Inlining template/reference content into SKILL.md bodies via `!`-bash to eliminate the cross-boundary Read — considered and rejected: defeats the asset-separation design intent and grows resolved skill content at load time.
 - Restructuring jim to ship agents at project-level (instead of plugin-level) so they could declare `permissionMode: bypassPermissions` — rejected: `bypassPermissions` silences all prompts including dangerous Bash, which is a security smell; major distribution-model change.
 
 ## Open Questions
-- Should we add empirical regression tests (extending `meta-matrix` or in a new test surface) to verify the documented permission-inheritance behavior under future Claude Code versions? Deferred for now — flagged for a future spec.
+- Should we add empirical regression tests (extending `meta-matrix` or in a new test surface) to verify the documented permission-inheritance behavior under future Claude Code versions? Deferred for now — flagged for a future spec. (Sentinel fixture location updated by spec 014 — see `skills/meta-matrix/`.)

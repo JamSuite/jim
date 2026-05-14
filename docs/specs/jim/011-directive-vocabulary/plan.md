@@ -53,15 +53,17 @@ Convention-first refactor: rewrite the `ARCHITECTURE.md` Logic-Flow / Substituti
 - **Why:** Resolves spec § *Open Questions* item 1. Preserves the visual nesting (the two reads are sub-actions of step 1, conceptually). Un-indenting would visually collapse them with steps 2–4, which is misleading.
 - **Rejected:** Un-indent to top level — semantically valid (both forms work per matrix), but visually misrepresents the relationship to step 1.
 
-### 6. The matrix fixture lives in `.claude/skills/meta-matrix/` (not `skills/meta-matrix/`)
+### 6. The matrix fixture lives in a project-local directory (not top-level `skills/`) — SUPERSEDED by spec 014
 
-- **Chosen:** The rename is a project-local move: `.claude/skills/subtest/` → `.claude/skills/meta-matrix/`. The fixture does *not* graduate to a plugin skill under `skills/`.
-- **Why:** It is a manual regression probe, not a product feature. Plugin skills under `skills/` are part of jim's public surface; the matrix is a developer diagnostic and lives alongside other repo-local tooling under `.claude/`. The spec consistently uses the `.claude/skills/meta-matrix/` path; this decision just makes that explicit.
-- **Rejected:** Move to `skills/meta-matrix/` — would imply it ships to users of the jim plugin; it has no `name:`-shaped trigger purpose for end users.
+> **Superseded by spec 014.** The 011 decision below preserved as historical record. Spec 014 reverses Decision 6 — the matrix is promoted to the top-level `skills/meta-matrix/` family (dispatcher + four category sub-skills) so jim users can invoke `/jim:meta-matrix` in their own projects. Path strings in this Decision block have been amended in place by spec 014 to drop the old project-local locations; the conceptual reasoning is preserved verbatim.
+
+- **Chosen at 011 time:** The rename is a project-local move under `.claude/`: `subtest` → `meta-matrix`. The fixture does *not* graduate to a plugin skill under `skills/`.
+- **Why (at 011 time):** It is a manual regression probe, not a product feature. Plugin skills under `skills/` are part of jim's public surface; the matrix is a developer diagnostic and lived alongside other repo-local tooling under `.claude/`. The 011 spec consistently used a project-local path; this decision just made that explicit. (Reversed by spec 014 — the matrix is now a product feature for jim users debugging their own Claude Code installs.)
+- **Rejected at 011 time (now adopted by spec 014):** Move to `skills/meta-matrix/` — would imply it ships to users of the jim plugin. (Spec 014 chose exactly this; the "no `name:`-shaped trigger purpose for end users" reasoning no longer holds — the dispatcher exists for chain-all and category selection.)
 
 ### 7. ARCHITECTURE.md gets one new Substitution-Conventions rule, not a new section
 
-- **Chosen:** Add a sixth bullet ("Wrapper sensitivity") to the existing Substitution Conventions rules list (under the table at `ARCHITECTURE.md:336–342`). Add a one-line mention of `.claude/skills/meta-matrix/` as the manual regression fixture inside that same rule. The Logic-Flow Conventions section (lines 279–324) gets a wholesale rewrite — table swap + idiom anti-pattern callout — but stays as one section.
+- **Chosen:** Add a sixth bullet ("Wrapper sensitivity") to the existing Substitution Conventions rules list (under the table at `ARCHITECTURE.md:336–342`). Add a one-line mention of the matrix fixture (at 011-lock-in time under `.claude/`, relocated to `skills/meta-matrix/` by spec 014) as the manual regression fixture inside that same rule. The Logic-Flow Conventions section (lines 279–324) gets a wholesale rewrite — table swap + idiom anti-pattern callout — but stays as one section.
 - **Why:** Minimum surface-area change consistent with the spec's *Convention codification* ACs. A separate "Wrapper sensitivity" section would orphan a small rule; folding it as rule #6 reuses the existing pattern (numbered behavioral rules under the sigil table).
 - **Rejected:** Add a new "Preprocessor Quirks" section — would create a new top-level concept; the rule is properly part of Substitution Conventions because the sigil it affects is `!`.
 
@@ -96,7 +98,7 @@ Convention-first refactor: rewrite the `ARCHITECTURE.md` Logic-Flow / Substituti
 
 | Component | File Path | Action | Notes |
 | :--- | :--- | :--- | :--- |
-| Architecture — Substitution Conventions | `ARCHITECTURE.md` (lines 326–343) | Update | Add 6th bullet: "Wrapper sensitivity — `!`-injection slots must not appear inside `(...)` on the same line; the preprocessor silently leaves the literal text in place." Reference `.claude/skills/meta-matrix/` as the manual regression fixture; cite `docs/debug/20260512-skill-bash-substitution-wrappers.md`. |
+| Architecture — Substitution Conventions | `ARCHITECTURE.md` (lines 326–343) | Update | Add 6th bullet: "Wrapper sensitivity — `!`-injection slots must not appear inside `(...)` on the same line; the preprocessor silently leaves the literal text in place." Reference the matrix fixture (at 011 time under `.claude/`; relocated to `skills/meta-matrix/` by spec 014) as the manual regression fixture; cite `docs/debug/20260512-skill-bash-substitution-wrappers.md`. |
 | Architecture — Logic-Flow Conventions | `ARCHITECTURE.md` (lines 279–324) | Update | Replace BASIC keyword table with directive table (`READ_IF_EXISTS`, `RUN_IF_EXISTS`, `DO_IF_EXISTS`, `SET`, paren-free `IF … EXISTS THEN … ELSE … END IF`). Add explicit anti-pattern callout for retired `IF (X) EXISTS THEN`. Cite debug doc. |
 | Meta-skill checklist | `skills/meta-skill/SKILL.md` (line 104) | Update | Flip from "use the BASIC IF idiom" to "no `!`-injection slot inside `(...)`; every slot is bare-line, preceded by an allowed directive prefix, or the right-hand side of a `SET` assignment." |
 | Meta-agent checklist | `skills/meta-agent/SKILL.md` (line 125) | Update | Mirror the meta-skill change. |
@@ -112,8 +114,8 @@ Convention-first refactor: rewrite the `ARCHITECTURE.md` Logic-Flow / Substituti
 | Build skill — pre-commit gate | `skills/build/SKILL.md` (lines 72–80) | Update | Drop fenced `text` wrapper (stylistic — matrix N ✅; user chose drop per Decision 4 reframe). `SET pre_commit = …` + `SET require_pre_commit = …` + lean paren-free `IF pre_commit EXISTS THEN … ELSE IF require_pre_commit == "true" THEN … ENDIF` (Decisions 3, 4). |
 | Build skill — pre-completion gate | `skills/build/SKILL.md` (lines 105–113) | Update | Same shape as pre-commit gate with `pre_completion` / `require_pre_completion` keys (Decisions 3, 4). |
 | Research skill — Alignment Validation reads | `skills/research/SKILL.md` (lines 99,103) | Update | Two `READ_IF_EXISTS` lines at current 3-space indent (Decision 5). |
-| Matrix fixture — directory | `.claude/skills/subtest/` → `.claude/skills/meta-matrix/` | Move | `git mv` the directory; sentinel rows A–Z preserved verbatim inside SKILL.md. |
-| Matrix fixture — frontmatter | `.claude/skills/meta-matrix/SKILL.md` | Update | `name: meta-matrix`. Replace `description:` with the spec's "manual regression probe for the substitution convention" framing. |
+| Matrix fixture — directory | project-local rename under `.claude/`: `subtest` → `meta-matrix` (later promoted to top-level `skills/meta-matrix/` family by spec 014) | Move | `git mv` the directory at 011 time; sentinel rows A–Z preserved verbatim inside SKILL.md. |
+| Matrix fixture — frontmatter | the moved SKILL.md (project-local at 011 time; now `skills/meta-matrix/SKILL.md` family per spec 014) | Update | `name: meta-matrix`. Replace `description:` with the spec's "manual regression probe for the substitution convention" framing. |
 | Build-hooks plan history | `docs/specs/jim/010-build-hooks/plan.md` (line 110) | Update | Rewrite the gate template block (inside fenced `text`) to `DO_IF_EXISTS` directive syntax. Forensic phrase ("originally we used the BASIC IF") not present here — this is a copy-from example. |
 | File-resolver brainstorm — single-action example | `docs/brainstorms/20260505-file-resolver-conventions-audit.md` (line 86) | Update | Rewrite the fenced example to `READ_IF_EXISTS`. |
 | File-resolver brainstorm — multi-step example | `docs/brainstorms/20260505-file-resolver-conventions-audit.md` (line 94) | Update | Rewrite the fenced example to `DO_IF_EXISTS`. |
@@ -215,8 +217,8 @@ flowchart LR
 
 ### Phase 1 — Convention update (structural; lands first inside the PR)
 
-1. [x] Rewrite `ARCHITECTURE.md` → Substitution Conventions (lines 326–343) to add the new rule #6 ("Wrapper sensitivity — `!`-injection slots must not appear inside `(...)`; the preprocessor silently leaves literal text in place"). Inside that rule, reference `.claude/skills/meta-matrix/` as the manual regression fixture, with the instruction "quit and relaunch Claude Code from the repo root so the matrix skill is discovered at session start." Add a citation to `docs/debug/20260512-skill-bash-substitution-wrappers.md` as the source defect record.
-   **Verify:** `grep -F 'Wrapper sensitivity' ARCHITECTURE.md && grep -F '.claude/skills/meta-matrix' ARCHITECTURE.md && grep -F '20260512-skill-bash-substitution-wrappers' ARCHITECTURE.md`
+1. [x] Rewrite `ARCHITECTURE.md` → Substitution Conventions (lines 326–343) to add the new rule #6 ("Wrapper sensitivity — `!`-injection slots must not appear inside `(...)`; the preprocessor silently leaves literal text in place"). Inside that rule, reference the matrix fixture (at 011 time under `.claude/`; relocated to `skills/meta-matrix/` by spec 014) as the manual regression fixture, with the instruction "quit and relaunch Claude Code from the repo root so the matrix skill is discovered at session start." Add a citation to `docs/debug/20260512-skill-bash-substitution-wrappers.md` as the source defect record.
+   **Verify:** `grep -F 'Wrapper sensitivity' ARCHITECTURE.md && grep -F 'skills/meta-matrix/' ARCHITECTURE.md && grep -F '20260512-skill-bash-substitution-wrappers' ARCHITECTURE.md` (Verify command updated by spec 014 to grep for the relocated top-level path.)
 
 2. [x] Rewrite `ARCHITECTURE.md` → Logic-Flow Conventions (lines 279–324) — replace the `IF (X) EXISTS THEN` keyword table with the directive table (Interface Contracts § *Directive shapes*). Replace the two inline/multi-step examples with directive-form examples (`READ_IF_EXISTS … — note` and `SET name = … ` + paren-free `IF name EXISTS THEN DO: … ELSE … END IF`). Add an "Anti-pattern" subsection that explicitly calls out the retired `IF (X) EXISTS THEN` shape with a one-paragraph explanation of why it silently fails. Add the same debug-doc citation as task 1.
    **Verify:** `` grep -F 'READ_IF_EXISTS' ARCHITECTURE.md && grep -F 'DO_IF_EXISTS' ARCHITECTURE.md && grep -F 'Anti-pattern' ARCHITECTURE.md && ! grep -nE '^IF \(!`' ARCHITECTURE.md ``
@@ -266,8 +268,8 @@ flowchart LR
 
 ### Phase 3 — History migrations, matrix rename, debug footer, final gate (same PR, third commit)
 
-16. [x] Rename `.claude/skills/subtest/` → `.claude/skills/meta-matrix/`. Use `git mv` to preserve history. Update `name:` frontmatter from `subtest` to `meta-matrix` inside the moved `SKILL.md`. Rewrite `description:` to the spec's "manual regression probe for the substitution convention — quit and relaunch Claude Code so this skill is discovered at session start" framing. Sentinel rows A–Z stay verbatim.
-    **Verify:** `[ -f .claude/skills/meta-matrix/SKILL.md ] && [ ! -d .claude/skills/subtest ] && grep -F 'name: meta-matrix' .claude/skills/meta-matrix/SKILL.md && grep -c '^### [A-Z] —' .claude/skills/meta-matrix/SKILL.md | grep -qE '^2[5-6]$'`
+16. [x] Rename the project-local fixture under `.claude/`: `subtest` → `meta-matrix` (later relocated to top-level `skills/meta-matrix/` family by spec 014). Use `git mv` to preserve history. Update `name:` frontmatter from `subtest` to `meta-matrix` inside the moved `SKILL.md`. Rewrite `description:` to the spec's "manual regression probe for the substitution convention — quit and relaunch Claude Code so this skill is discovered at session start" framing. Sentinel rows A–Z stay verbatim.
+    **Verify:** Historic 011-era Verify command grepped the project-local path; spec 014 relocated the fixture, so the post-014 equivalent is: `[ -f skills/meta-matrix/SKILL.md ] && grep -F 'name: meta-matrix' skills/meta-matrix/SKILL.md` (sentinel-row counts now distribute across the four category sub-skills).
 
 17. [x] Rewrite the gate template example at `docs/specs/jim/010-build-hooks/plan.md:110`. Replace the IF-WRAP block (inside the existing fenced `text` block under `### skills/build/SKILL.md — gate block template`) with the `SET <slot>` + paren-free `IF <name> EXISTS THEN DO: … ELSE … END IF` shape (matching the production migration in task 13). Keep the fenced block — this is documentation prose, not LLM-loaded content; the fence is for visual rendering, not preprocessor input.
     **Verify:** `` ! grep -F 'IF (!`bash' docs/specs/jim/010-build-hooks/plan.md && grep -F 'SET pre_commit' docs/specs/jim/010-build-hooks/plan.md ``
@@ -323,7 +325,7 @@ flowchart LR
 | Both ARCHITECTURE.md sections cite the debug doc | Tasks 1, 2 |
 | `meta-skill/SKILL.md:104` flipped to directive-vocabulary rule | Task 3 |
 | `meta-agent/SKILL.md:125` mirrors meta-skill flip | Task 4 |
-| `.claude/skills/subtest/` renamed to `.claude/skills/meta-matrix/`; frontmatter updated; A–Z preserved verbatim | Task 16 |
+| Project-local fixture under `.claude/` renamed from `subtest` to `meta-matrix` at 011 time; later relocated to top-level `skills/meta-matrix/` family by spec 014; frontmatter updated; A–Z preserved verbatim | Task 16 |
 | ARCHITECTURE.md references meta-matrix as the manual regression fixture | Task 1 |
 | Matrix patterns U–Z return ✅; dated results recorded in plan | Task 21 |
 | `docs/specs/jim/010-build-hooks/plan.md:110` rewritten to directive vocabulary | Task 17 |
@@ -361,7 +363,7 @@ Every spec AC has at least one task. No `[NEEDS CLARIFICATION]` markers — all 
 
 ## Verification Log
 
-Post-migration manual matrix rerun. Claude Code was quit and relaunched from the repo root so `.claude/skills/meta-matrix/` is discovered at session start; `/meta-matrix` was invoked and the loaded body inspected for sentinels.
+Post-migration manual matrix rerun. Claude Code was quit and relaunched from the repo root so the meta-matrix skill is discovered at session start (at 011 time under `.claude/`; spec 014 later relocated it to `skills/meta-matrix/`); `/meta-matrix` was invoked and the loaded body inspected for sentinels.
 
 | Pattern | Sentinel | Result | Date |
 | :--- | :--- | :--- | :--- |
@@ -425,8 +427,8 @@ Pending — the GG/HH rows added in Phase 5 Task 30 are exercised after a quit-a
 33. [x] Amend specs 008 and 009: 008 likely no-op (D7(c) wording is fine — confirmed; no path-or-empty references found outside the unrelated `path` verb). 009 `spec.md:65` flips "else empty string" → "else literal `NOT_FOUND`"; D8 reference flagged as no-longer-load-bearing. 009 `plan.md:61` gets a one-line trailing annotation. Annotate historical artifacts: 20260505 file-resolver-conventions-audit (D1, D2, D8, gate-table), 20260505 bash-scripts-in-meta (extend), 001-meta:123 (extend), 20260512 debug doc (extend footer).
     **Verify:** `grep -F 'NOT_FOUND' docs/specs/jim/009-jimfile/spec.md && grep -l '2026-05-13' docs/brainstorms/20260505-file-resolver-conventions-audit.md docs/specs/jim/001-meta/spec.md docs/debug/20260512-skill-bash-substitution-wrappers.md`
 
-34. [x] Add meta-matrix probe rows GG (negative: SET=NOT_FOUND → ELSE fires) and HH (positive: SET=path → THEN fires) to `.claude/skills/meta-matrix/SKILL.md`. Mark CC–FF as historical / no-longer-load-bearing. Verify agent prose (`agents/coder.md:82` — defensible as-is; quick scan of pm/architect/researcher/meta — no EXISTS-family or empty-resolver references found; no edits needed).
-    **Verify:** `grep -F 'SUBST_GG' .claude/skills/meta-matrix/SKILL.md && grep -F 'SUBST_HH' .claude/skills/meta-matrix/SKILL.md && ! grep -rnE 'READ_IF_EXISTS|RUN_IF_EXISTS|DO_IF_EXISTS|IF [a-z_]+ EXISTS THEN' agents/`
+34. [x] Add meta-matrix probe rows GG (negative: SET=NOT_FOUND → ELSE fires) and HH (positive: SET=path → THEN fires) to the meta-matrix SKILL.md (at 011 time the project-local fixture under `.claude/`; relocated by spec 014 to `skills/meta-matrix-conditional-evaluation/SKILL.md`). Mark CC–FF as historical / no-longer-load-bearing. Verify agent prose (`agents/coder.md:82` — defensible as-is; quick scan of pm/architect/researcher/meta — no EXISTS-family or empty-resolver references found; no edits needed).
+    **Verify:** Historic 011-era Verify grepped the project-local path; post-014 equivalent: `grep -F 'SUBST_GG' skills/meta-matrix-conditional-evaluation/SKILL.md && grep -F 'SUBST_HH' skills/meta-matrix-conditional-evaluation/SKILL.md && ! grep -rnE 'READ_IF_EXISTS|RUN_IF_EXISTS|DO_IF_EXISTS|IF [a-z_]+ EXISTS THEN' agents/`
 
 ### Final gate — Manual matrix rerun (user-driven; requires quit-and-relaunch)
 
@@ -442,4 +444,4 @@ The following original Design Decisions are superseded by the 2026-05-13 amendme
 - **Decision 5** (research:99,103 indent): unaffected — 3-space indent stays; the directive shape inside the indented block is just different now.
 - **Decision 9** (arch:43–47 SET + lean IF + arch_doc name): superseded for the predicate (`IF arch_doc EXISTS` → `IF arch_doc != "NOT_FOUND"`); naming convention (`arch_doc`) and binding location (inside step 3, not hoisted) stay.
 
-Decisions 1 (Tidy-First convention-first ordering inside the bundled PR), 6 (matrix lives in `.claude/skills/meta-matrix/`), 7 (ARCHITECTURE.md rule placement), and 8 (atomic-per-slot tasks) still apply.
+Decisions 1 (Tidy-First convention-first ordering inside the bundled PR), 6 (matrix lives in a project-local fixture — SUPERSEDED by spec 014 which relocated it to `skills/meta-matrix/`), 7 (ARCHITECTURE.md rule placement), and 8 (atomic-per-slot tasks) still apply.

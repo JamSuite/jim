@@ -62,7 +62,7 @@ Authoritative source: `code.claude.com/docs/en/skills` and `…/permissions` (An
 
 Notes for the architect / PM:
 
-- **Out-of-scope but worth flagging:** `.claude/skills/meta-matrix/SKILL.md:10` (the substitution-regression fixture) uses `Bash(echo *), Bash(bash -c *)` — deliberately broad for testing. Leave it as-is.
+- **Out-of-scope but worth flagging:** `.claude/skills/meta-matrix/SKILL.md:10` (the substitution-regression fixture) uses `Bash(echo *), Bash(bash -c *)` — deliberately broad for testing. Leave it as-is. (Sentinel fixture location updated by spec 014 — the `allowed-tools` row now lives at `skills/meta-matrix-bash-invocation/SKILL.md`.)
 - **Frontmatter trivia.** `allowed-tools` accepts a space-separated string or a YAML list (docs § Frontmatter reference). Jim already uses the space-separated form; keep it consistent.
 - **Validation gate.** Add a one-line check to `meta-skill`'s validation checklist: "`allowed-tools` declares the exact script path(s) the skill injects or runs — no bare `Bash(bash *)`." This prevents regression.
 

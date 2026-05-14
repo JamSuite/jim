@@ -119,6 +119,7 @@ actually use them.
   `IF <name> EXISTS THEN` block (where `<name>` evaluates false).
   Matches the directive's intent ("skip silently if absent") and the
   matrix evidence for substituted values. Add a `meta-matrix` row
+  (Sentinel fixture location updated by spec 014 — see `skills/meta-matrix/`)
   that substitutes to *empty* (rather than a literal path) so the
   no-op behavior has a regression probe.
 
@@ -329,6 +330,7 @@ The next refactor spec ships these, in roughly this order:
   file-typed keys), but worth a test case to lock in the
   semantics.
 - **Empty-slot regression coverage.** Today's `meta-matrix`
+  (Sentinel fixture location updated by spec 014 — see `skills/meta-matrix/`)
   patterns substitute to non-empty literal paths and confirm
   `!`-injection fires. Under D2, the new failure mode is the
   substituted value being empty; the matrix needs a row that

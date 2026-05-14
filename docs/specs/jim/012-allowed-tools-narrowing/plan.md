@@ -86,7 +86,7 @@ Apply prefix-narrowed `Bash(...)` clauses to the `allowed-tools` line of every `
 | vision skill | `skills/vision/SKILL.md` | Update | Replace with P1; append R-A |
 | Architecture doc | `ARCHITECTURE.md` | Update | (a) Add `### Permission Conventions` subsection under Plugin Conventions; (b) extend it with a Read narrowing example covering own-skill assets/references; (c) extend Permission Creep anti-pattern entry |
 
-No files are created. No files outside `skills/` and `ARCHITECTURE.md` are touched. `.claude/skills/meta-matrix/SKILL.md` is explicitly **out of scope** per spec.
+No files are created. No files outside `skills/` and `ARCHITECTURE.md` are touched. `.claude/skills/meta-matrix/SKILL.md` is explicitly **out of scope** per spec. (Sentinel fixture location updated by spec 014 — see `skills/meta-matrix/`.)
 
 ## Interface Contracts
 
@@ -287,7 +287,7 @@ These tasks replace the Read-narrowing pass (tasks 11–20). The Read clauses ar
 
 ## Out of Scope
 
-- Editing `.claude/skills/meta-matrix/SKILL.md` — substitution-regression fixture; its broad `Bash(echo *), Bash(bash -c *)` is intentional.
+- Editing `.claude/skills/meta-matrix/SKILL.md` — substitution-regression fixture; its broad `Bash(echo *), Bash(bash -c *)` is intentional. (Sentinel fixture location updated by spec 014 — see `skills/meta-matrix/`.)
 - Modifying any `!`-injection site in skill bodies or any bash script under `skills/*/scripts/`.
 - Changing `${CLAUDE_PLUGIN_ROOT}` vs `${CLAUDE_SKILL_DIR}` choices in existing skill bodies.
 - A scripted bash-grep guard for `Bash(bash *)` regressions — the meta-skill LLM checklist is the chosen prevention surface.
