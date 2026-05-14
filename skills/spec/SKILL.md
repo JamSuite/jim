@@ -7,7 +7,7 @@ description: >
   use for technical planning (/jim:plan) or implementation (/jim:build).
 agent: pm
 argument-hint: "[idea-or-name]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:spec
@@ -30,13 +30,15 @@ Use `$ARGUMENTS` as the idea or name hint.
 
 ### 2. Read strategic context
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-  READ FILE — locked constraint. Do not re-litigate strategic decisions.
-END IF
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — locked constraint. Do not re-litigate strategic decisions.
+ENDIF
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
-  READ FILE — locked constraint. Technical invariants are not negotiable.
-END IF
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+IF arch_doc != "NOT_FOUND" THEN
+  Read arch_doc — locked constraint. Technical invariants are not negotiable.
+ENDIF
 
 If either is missing, note it conversationally ("I notice there's no vision doc yet — you might want to create one to anchor future specs") and proceed. Never block on their absence.
 

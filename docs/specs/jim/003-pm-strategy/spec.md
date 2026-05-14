@@ -3,7 +3,7 @@ title: "PM Strategic Skills: /jim:vision, /jim:roadmap, /jim:brainstorm"
 type: feature
 group: jim
 id: "003"
-status: draft
+status: approved
 ---
 
 # 003 PM Strategic Skills: /jim:vision, /jim:roadmap, /jim:brainstorm

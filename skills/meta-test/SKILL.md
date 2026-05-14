@@ -8,7 +8,7 @@ description: >
   validated by checklist, not bash assertions).
 agent: meta
 argument-hint: "<name> | add <name> <case_name> | run [name]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_SKILL_DIR}/scripts/metatest.sh *)
 ---
 
 # /jim:meta-test

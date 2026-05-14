@@ -1,7 +1,7 @@
 ---
 spec: docs/specs/jim/002-pm-core/spec.md
 type: feature
-status: draft
+status: complete
 ---
 
 # Plan: @jim:pm Agent + /jim:spec Skill

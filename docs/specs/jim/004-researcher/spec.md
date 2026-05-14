@@ -3,7 +3,7 @@ title: "Researcher Agent and Skill"
 type: feature
 group: "jim"
 id: "004"
-status: draft
+status: approved
 origin:
   - docs/prior-art/V1SDLC/v1-agent-researcher.md
   - docs/prior-art/V1SDLC/v1-researcher-skill.md

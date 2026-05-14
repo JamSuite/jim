@@ -7,7 +7,7 @@ description: >
   direction (/jim:vision), technical architecture (/jim:arch), or scoping
   individual work items (/jim:spec).
 agent: pm
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:roadmap
@@ -24,11 +24,12 @@ Use `$ARGUMENTS` as a hint for what the user wants to add or update. If empty, s
 
 ### 2. Read context
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-  READ FILE — for strategic alignment.
-ELSE
-  Note: "No vision doc yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
-END IF
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — for strategic alignment.
+ENDIF
+
+If absent, note: "No vision doc yet — consider running `/jim:vision` first to establish product direction. I'll proceed without it." Do not block.
 
 ### 3. Search for linkable specs
 
@@ -38,11 +39,13 @@ Do not Read full spec contents — glob and grep only. This prevents context ove
 
 ### 4. Check for existing ROADMAP.md
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`) EXISTS THEN
+SET roadmap_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`
+
+IF roadmap_doc != "NOT_FOUND" THEN
   Differential update. Read existing content. Summarize the current state to the user. Ask what they want to change — add items, move items between buckets, update version anchors, refine objectives.
 ELSE
   Fresh creation. Proceed to interview.
-END IF
+ENDIF
 
 ### 5. Interview
 
@@ -72,7 +75,7 @@ The roadmap is a strategic communication tool, not a backlog. Push back when it 
 
 Read `assets/roadmap-template.md`. Fill buckets with interview results. Set "Last updated" to today's date. Keep it concise.
 
-Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`.
+Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path roadmap`.
 
 ### 8. Silent self-check
 

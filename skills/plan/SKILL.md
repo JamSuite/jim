@@ -8,7 +8,7 @@ description: >
   (/jim:research), or code implementation (/jim:build).
 agent: architect
 argument-hint: "[spec-path]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:plan
@@ -50,11 +50,12 @@ Check for `research.md` in the same directory as the spec.
 
 ### 3. Check the architecture doc
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
-  READ FILE — treat every architectural invariant as a locked constraint. No design decision may violate these without explicit user approval.
-ELSE
-  Note the absence in the Constitution Check section of the plan. Proceed without constraints.
-END IF
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+IF arch_doc != "NOT_FOUND" THEN
+  Read arch_doc — treat every architectural invariant as a locked constraint. No design decision may violate these without explicit user approval.
+ENDIF
+
+If absent, note this in the Constitution Check section of the plan. Proceed without constraints.
 
 ### 4. Check for an existing plan
 

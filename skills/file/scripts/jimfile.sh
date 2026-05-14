@@ -18,11 +18,17 @@
 #
 # CLI SUMMARY
 #   bash jimfile.sh exists <path>                     "yes" | "no" on stdout
-#   bash jimfile.sh get <key>                         resolve a configured doc path
-#                                                     (delegates to jimconf.sh)
+#   bash jimfile.sh get <key>                         configured path *if it exists*
+#                                                     on disk, else the literal
+#                                                     string "NOT_FOUND" (delegates
+#                                                     to jimconf.sh, then
+#                                                     existence-checks)
 #   bash jimfile.sh slug <topic>                      kebab-case slug
 #   bash jimfile.sh date                              today as YYYYMMDD
 #   bash jimfile.sh next-id <group>                   next zero-padded spec id
+#   bash jimfile.sh path <key>                        configured path for <key>,
+#                                                     regardless of existence
+#                                                     (D3 — single-arg form)
 #   bash jimfile.sh path spec      <group> <id> <name>
 #   bash jimfile.sh path plan      <group> <id> <name>
 #   bash jimfile.sh path research  <group> <id> <name>
@@ -138,7 +144,17 @@ cmd_get() {
     echo "error: 'get' requires a key argument" >&2
     return 2
   fi
-  jimconf_get "$cli_key"
+  local resolved rc
+  resolved="$(jimconf_get "$cli_key")"
+  rc=$?
+  if (( rc != 0 )); then
+    return $rc
+  fi
+  if [[ -n "$resolved" && -e "$resolved" ]]; then
+    printf '%s\n' "$resolved"
+  else
+    printf '%s\n' "NOT_FOUND"
+  fi
 }
 
 cmd_slug() {
@@ -183,19 +199,29 @@ cmd_next_id() {
   printf '%03d\n' $(( max + 1 ))
 }
 
-# cmd_path <kind> <args...>
-#   Dispatch path resolution by artifact kind. Required arg shapes:
-#     spec     <group> <id> <name>
-#     plan     <group> <id> <name>
-#     research <group> <id> <name>
-#     debug     <topic>
-#     brainstorm <topic>
+# cmd_path <kind> <args...>  |  cmd_path <key>
+#   Two forms, dispatched by arity:
+#     Single-arg form (D3): `path <key>` returns the configured path for a
+#     jimconf key (delegates to jimconf.sh, regardless of disk existence).
+#     The only KINDS∩KEYS overlap is `debug`: `path debug` (no further args)
+#     takes the key form and returns the configured `debug` directory.
+#     Multi-arg form: `path <kind> <args...>` resolves a derived artifact path:
+#       spec     <group> <id> <name>
+#       plan     <group> <id> <name>
+#       research <group> <id> <name>
+#       debug      <topic>
+#       brainstorm <topic>
 cmd_path() {
-  local kind="${1:-}"
-  if [[ -z "$kind" ]]; then
-    echo "error: 'path' requires a kind argument" >&2
+  local first="${1:-}"
+  if [[ -z "$first" ]]; then
+    echo "error: 'path' requires a kind or key argument" >&2
     return 2
   fi
+  if [[ $# -eq 1 ]]; then
+    jimconf_get "$first"
+    return $?
+  fi
+  local kind="$first"
   shift
   if ! is_kind "$kind"; then
     echo "error: unknown kind '$kind' (valid: ${KINDS[*]})" >&2
@@ -325,10 +351,12 @@ usage() {
   cat >&2 <<'USAGE'
 usage:
   jimfile.sh exists <path>                      "yes" or "no"
-  jimfile.sh get <key>                          resolve a configured doc path
+  jimfile.sh get <key>                          configured path if it exists,
+                                                else literal "NOT_FOUND"
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh next-id <group>                    next zero-padded spec id
+  jimfile.sh path <key>                         configured path for <key>
   jimfile.sh path spec      <group> <id> <name>
   jimfile.sh path plan      <group> <id> <name>
   jimfile.sh path research  <group> <id> <name>

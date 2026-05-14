@@ -8,7 +8,7 @@ description: >
   (/jim:spec) or strategic document (/jim:vision, /jim:roadmap).
 agent: pm
 argument-hint: "[topic]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:brainstorm
@@ -27,13 +27,15 @@ Use `$ARGUMENTS` as the topic for the brainstorm file. If empty, ask: "What do y
 
 Hold these as context for end-of-session routing. Don't discuss them.
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-  READ FILE.
-END IF
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — hold as context.
+ENDIF
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`) EXISTS THEN
-  READ FILE.
-END IF
+SET roadmap_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get roadmap`
+IF roadmap_doc != "NOT_FOUND" THEN
+  Read roadmap_doc — hold as context.
+ENDIF
 
 ### 3. Create the brainstorm file
 

@@ -7,7 +7,7 @@ description: >
   building application code or non-jim skills.
 agent: meta
 argument-hint: "[skill-name]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:meta-skill
@@ -101,7 +101,7 @@ Work through this checklist before presenting the artifact. Fix failures inline 
 If the skill ships a `scripts/` directory (bash only — see `CLAUDE.md` and `ARCHITECTURE.md` → Plugin Conventions → Scripting Layer for the rules):
 
 - [ ] Every script conforms to `CLAUDE.md`: no `set -e`, no third-party deps (POSIX shell only — `grep`, `sed`, `cut`, `tr`, `awk`, `find`, `sort`, `head`), no `source` or `eval` of user-supplied data, `BASH_SOURCE`-relative composition for inter-script calls (not `${CLAUDE_PLUGIN_ROOT}`, which only substitutes in skill content, not script bodies).
-- [ ] In-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom from `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (`IF (X) EXISTS THEN ... END IF`, `IF (X) ABSENT THEN`, `THEN DO: 1. ... DONE`, `ELSE`). No invented variants — anything fancier reverts to plain English.
+- [ ] In-prompt existence/absence gates around `!`-injected paths use the sentinel form from `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions: `SET <name> = !\`bash …\`` followed by `IF <name> != "NOT_FOUND" THEN … ELSE IF <other> == "value" THEN … ENDIF`. No `!`-injection slot inside `(...)`; every slot is the right-hand side of a `SET` assignment. **Anti-patterns:** the retired `READ_IF_EXISTS` / `RUN_IF_EXISTS` / `DO_IF_EXISTS` / `IF X EXISTS THEN` family (EXISTS-trap — directive names containing "EXISTS" prime defensive `test -e` re-checks on already-resolved paths; see `docs/brainstorms/20260513-directive-vocab-exists-trap.md`); the prior BASIC `IF (X) EXISTS THEN` idiom (silent substitution failure when an `!`-injection slot is wrapped in parens); the heavier interim form (`DO:` / `DONE` block markers, two-word `END IF`, invented variants like `ASSERT_EXISTS` / `STOP_IF_MISSING`).
 - [ ] `!`-injection integrity: every script referenced by an `!`bash …`` block in the SKILL.md body actually exists at the cited path.
 - [ ] `!`-injection inputs are known at slash-command load time. Calls that depend on a value gathered during the conversation — the LLM asking the user, dispatching to one of several sub-actions, etc. — live in a fenced bash block instead, run by the LLM after the value is resolved (see `ARCHITECTURE.md` → Substitution Conventions, "Eager vs. deferred timing").
 - [ ] Script *authoring* belongs to `/jim:meta-test scaffold`, not to this skill — meta-skill validates, meta-test scaffolds.
@@ -109,6 +109,7 @@ If the skill ships a `scripts/` directory (bash only — see `CLAUDE.md` and `AR
 **Anti-patterns — any of these is a failure:**
 - [ ] No personality soup ("I am here to help you...")
 - [ ] No permission creep (tools beyond what the skill actually needs)
+- [ ] `allowed-tools` declares the exact script path(s) the skill `!`-injects or runs via fenced bash blocks — using `${CLAUDE_PLUGIN_ROOT}/skills/<name>/scripts/<file>.sh` for cross-skill calls or `${CLAUDE_SKILL_DIR}/scripts/<file>.sh` for own-skill calls. A bare `Bash(bash *)` is a validation failure. Do **not** declare `Read(${CLAUDE_SKILL_DIR}/...)` clauses for skills that delegate work to a subagent — those grants don't propagate across the skill→subagent boundary and are misleading documentation. (See `ARCHITECTURE.md` → Permission Conventions for the verified scope.)
 - [ ] No instruction shadowing (repeating rules already in WORKFLOW.md)
 - [ ] No duplicate logic (same instructions in 3+ places → extract to a shared skill)
 

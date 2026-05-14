@@ -48,6 +48,7 @@ A third design driver, surfaced during planning: the configuration *file* should
 - [ ] Documentation explains: how to create a `jimconf.{ext}` file, the supported keys with their defaults, and the rule that *changing a configured path does not move existing files — the user is responsible for moving artifacts manually*.
 - [ ] All existing jim self-hosted specs (001–006) continue to work without a `jimconf.{ext}` file present.
 - [ ] Before this spec is marked complete, the build phase demonstrates that jim works correctly against at least one non-default layout (e.g., ARCHITECTURE.md relocated to a subdirectory, specs directory renamed). The verification method — manual walkthrough, automated test, or other — is the architect's choice and should align with the testing strategy decided in the Open Questions below.
+- [ ] **Amended 2026-05-12 by spec 013 (D7(c)):** Skill bodies call `jimconf.sh get <key>` directly for value-typed config keys (`require_pre_commit`, `require_pre_completion`, `auto_arch_feedback`). jimconf remains the raw-value layer; the file-ops layer (`jimfile.sh`) does not wrap value keys, only path keys. The "skills always call jimfile, never jimconf" rule (per brainstorm D6) is scoped to file operations only.
 
 ## Out of Scope
 

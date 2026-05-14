@@ -1,7 +1,7 @@
 ---
 spec: docs/specs/jim/004-researcher/spec.md
 type: feature
-status: draft
+status: complete
 ---
 
 # Plan: Researcher Agent and Skill

@@ -7,7 +7,7 @@ description: >
   for building application code or non-jim agents.
 agent: meta
 argument-hint: "[agent-name]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:meta-agent
@@ -122,7 +122,7 @@ Work through this checklist before presenting the artifact. Fix failures inline 
 
 Agents do not ship `scripts/` — that's a meta-skill concern. But agent bodies sometimes reference paths or describe gated behavior. Where they do:
 
-- [ ] Any in-prompt existence/absence gates around `!`-injected paths use the BASIC-style idiom from `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions (`IF (X) EXISTS THEN ... END IF`, `IF (X) ABSENT THEN`, `THEN DO: 1. ... DONE`, `ELSE`). No invented variants.
+- [ ] Any in-prompt existence/absence gates around `!`-injected paths use the sentinel form from `ARCHITECTURE.md` → Plugin Conventions → Logic-Flow Conventions: `SET <name> = !\`bash …\`` followed by `IF <name> != "NOT_FOUND" THEN … ELSE IF <other> == "value" THEN … ENDIF`. No `!`-injection slot inside `(...)`; every slot is the right-hand side of a `SET` assignment. **Anti-patterns:** the retired `READ_IF_EXISTS` / `RUN_IF_EXISTS` / `DO_IF_EXISTS` / `IF X EXISTS THEN` family (EXISTS-trap — directive names containing "EXISTS" prime defensive `test -e` re-checks on already-resolved paths; see `docs/brainstorms/20260513-directive-vocab-exists-trap.md`); the prior BASIC `IF (X) EXISTS THEN` idiom (silent substitution failure when an `!`-injection slot is wrapped in parens); the heavier interim form (`DO:` / `DONE` block markers, two-word `END IF`, invented variants).
 
 **Anti-patterns — any of these is a failure:**
 - [ ] No personality soup ("I am an AI assistant here to help...")

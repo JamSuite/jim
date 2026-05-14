@@ -157,6 +157,8 @@ Skills are SKILL.md files inside `skills/{name}/` directories, optionally accomp
 - **Dependencies:** Skills reference their `assets/` templates and `references/` docs. Skills are bound to agents via the `agent` frontmatter field (documentation convention, not runtime routing).
 - **Key Constraints:** SKILL.md stays under 500 lines (progressive disclosure). Templates live in `assets/`, methodology in `references/`.
 
+The post-build arch-feedback loop closes the gap between code changes and the locked-constraint architecture document. `/jim:build` step 5.2 reads the configured architecture path; if it exists, `/jim:build` invokes `/jim:arch` via the Skill tool to refresh ARCHITECTURE.md against the just-built code. The trigger is existence-conditioned — when no architecture document is configured, the step is silently skipped. `/jim:arch` step 6 then branches on the `auto_arch_feedback` config flag (default `"false"`): `"true"` writes the update directly and summarizes changes; `"false"` runs the existing diff-and-confirm flow.
+
 ### Plugin Manifest
 
 - **Purpose:** Declares jim as a Claude Code plugin with name, version, and metadata
@@ -236,7 +238,8 @@ Conventions that govern how jim's agents, skills, and tools interact with Claude
 
 - **Description is the trigger surface.** Skill descriptions are always in Claude's context. The full SKILL.md body loads only when the skill is invoked. Write descriptions that answer *what* and *when* — vague descriptions cause undertriggering.
 - **`$ARGUMENTS` substitution.** When a user types `/jim:spec my-feature`, the string `my-feature` replaces `$ARGUMENTS` in the SKILL.md body. Skills use the `argument-hint` frontmatter field to document expected arguments.
-- **The `agent:` field in skill frontmatter is a jim documentation convention, not a Claude Code routing mechanism.** Claude Code only uses `agent:` natively when paired with `context: fork`. Jim uses it as metadata to record which agent runs the skill — routing happens because the skill's instructions direct Claude to the right agent.
+- **The `agent:` field in skill frontmatter is a Claude Code routing mechanism that activates only when paired with `context: fork`.** Jim omits `context: fork`, so at runtime the field is a no-op and serves only as documentation — the skill body runs inline in the main thread, and routing into a subagent happens because the skill's instructions (and the named agent's `description` examples) direct Claude to spawn `@jim:<agent>` via the Agent tool.
+- **Skill-to-skill invocation uses the `Skill(name)` permission token in `allowed-tools` and the Skill tool in the body** — e.g., `/jim:build` declares `Skill(jim:arch)` and invokes `/jim:arch` from step 5.2. The called skill's body runs inline in the same main thread (no fork), so the caller's `allowed-tools` covers nested tool calls inside the invoked skill. Use the namespaced form (`Skill(jim:<name>)`) for least-privilege; bare `Skill` is a wildcard and is avoided. The parent's `$ARGUMENTS` does **not** auto-forward to the called skill — the child's `$ARGUMENTS` is empty unless explicitly passed via the Skill tool's args parameter (empirically established by spec 014's S3 probe; see `docs/specs/jim/014-meta-matrix/plan.md` → Verification Log). **First-invocation trust prompt (empirical, 2026-05-14).** On the *first* invocation of a never-before-seen plugin skill in a workspace, Claude Code shows a "Use skill 'X'?" consent prompt regardless of `allowed-tools`. The "Yes, don't ask again for X in `<workspace>`" option persists workspace-scoped acceptance; subsequent invocations auto-approve. Confirmed empirically by spec 014's S4 probe. Whether the trigger is `context: fork` specifically or any new plugin skill is undetermined — see `docs/research/20260514-context-fork-permission-gate.md`.
 
 ### Agent Invocation
 
@@ -258,7 +261,7 @@ Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/script
 - **Single resolver, many consumers.** Every consuming skill (`vision`, `roadmap`, `arch`, `plan`, `spec`, `research`, `brainstorm`, `debug`, `meta-skill`, `meta-agent`, `build`) references the resolver via Claude Code's `!`-injection primitive: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` ``. The output replaces the placeholder in the skill body before the LLM reads it, so the resolved path lands in the prompt deterministically. **Skills and agents always call `jimfile.sh`, never `jimconf.sh` directly** — `jimfile.sh` chains internally to `jimconf.sh` for any operation that needs a configured path.
 - **`${CLAUDE_PLUGIN_ROOT}` is the documented plugin-root substitution** — see `code.claude.com/docs/en/plugins-reference#environment-variables`. It resolves to the plugin's installation directory regardless of which skill consumes the script.
 - **The `/jim:conf` skill** (`skills/conf/SKILL.md`) is a thin user-facing wrapper around the same script for human introspection (`/jim:conf list`, `/jim:conf get specs`, etc.). It carries no `agent:` binding because there is no LLM reasoning to delegate.
-- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for ten configurable keys: eight paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`, `pre_commit_path`, `pre_completion_path`) and two enforcement flags (`require_pre_commit`, `require_pre_completion`). Path keys append `_path` to the CLI key when looked up; flag keys (CLI keys starting with `require_`) map directly to the same TOML name without a suffix — the prefix is the dispatch convention in `resolve()`. Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code). The `pre_commit_path` and `pre_completion_path` defaults (`./pre-commit.sh`, `./pre-completion.sh`) are the *path-where-it-would-live*; consumers wrap calls in an existence gate at the skill layer, so a missing file is silently skipped unless the corresponding `require_*` flag is `"true"`.
+- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for eleven configurable keys: eight paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`, `pre_commit_path`, `pre_completion_path`), two enforcement flags (`require_pre_commit`, `require_pre_completion`) and one feedback-loop flag (`auto_arch_feedback`). Path keys append `_path` to the CLI key when looked up; flag keys (CLI keys starting with `require_` or `auto_`) map directly to the same TOML name without a suffix — both prefixes share the dispatch convention in `resolve()`. Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code). The `pre_commit_path` and `pre_completion_path` defaults (`./pre-commit.sh`, `./pre-completion.sh`) are the *path-where-it-would-live*; consumers wrap calls in an existence gate at the skill layer, so a missing file is silently skipped unless the corresponding `require_*` flag is `"true"`.
 - **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, configured-path resolution (`get <key>`, delegates to `jimconf.sh`), slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding).
 - **Tests:** Per-script test files at `tests/jimconf.sh`, `tests/jimfile.sh`, and `tests/metatest.sh` cover each script's CLI surface, defaults, parse robustness, and (where applicable) the `-c <path>` flag. The shared framework lives at `skills/meta-test/scripts/testlib.sh` and the aggregate runner at `skills/meta-test/scripts/run.sh`, so the meta-test skill owns its toolchain (per spec 007). Per-script files source the relocated lib via a `BASH_SOURCE`-relative path (`source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"`). Run all via `bash skills/meta-test/scripts/run.sh` (or `/jim:meta-test run`), run a single script standalone via `bash tests/jimconf.sh` / `bash tests/jimfile.sh` / `bash tests/metatest.sh`. Filter by name substring still works: `bash skills/meta-test/scripts/run.sh jimfile` (or `/jim:meta-test run jimfile`).
 - **Test scaffolding (`metatest.sh`).** Third script under `skills/meta-test/scripts/`. Three subcommands — `scaffold <name>` (create `tests/<name>.sh` from `assets/test-file.sh.tmpl`), `add <name> <case>` (append a `case_<name>_<case>()` stub), `run [name]` (invoke runner, standalone path preferred for one-file). The user-facing `/jim:meta-test` skill (`skills/meta-test/SKILL.md`) wraps the dispatcher with per-action gating: scaffold requires an approved spec+plan for the script-under-test (mirrors `meta-skill`/`meta-agent`); add and run are ungated.
@@ -278,50 +281,85 @@ Examples that fit the rule (anchors): `skills/conf/scripts/jimconf.sh` (config p
 
 ### Logic-Flow Conventions
 
-In-prompt existence/absence gates around `!`-injected paths use a small BASIC-flavored keyword set. The control flow is shorthand; the actions inside each block stay in plain English. The keyword set is locked — anything fancier reverts to English.
+In-prompt existence/absence gates around `!`-injected paths use a sentinel-based vocabulary. The resolver (`jimfile.sh get <key>`) returns the literal string `NOT_FOUND` when a path-typed key resolves to a missing file. Gate logic binds the slot with `SET` first, then compares the bound name against `"NOT_FOUND"` in a paren-free `IF` block. The `!`-injection slot only ever appears as the right-hand side of a `SET` assignment — never inside `(...)`, never inside a predicate. This convention is forced by the wrapper-sensitivity rule in Substitution Conventions; see `docs/debug/20260512-skill-bash-substitution-wrappers.md` for the original silent-substitution defect and `docs/brainstorms/20260513-directive-vocab-exists-trap.md` for the EXISTS-trap defect that prompted the move to the sentinel form.
 
-| Keyword              | Meaning                                  |
-| -------------------- | ---------------------------------------- |
-| `IF (X) EXISTS THEN` | path X is on disk                        |
-| `IF (X) ABSENT THEN` | path X is not on disk                    |
-| `THEN` …             | inline single-action form                |
-| `THEN DO:` … `DONE`  | block form for multi-step actions        |
-| `ELSE` …             | optional alternative branch              |
-| `END IF`             | closes the block                         |
+| Form                                                            | Meaning                                                                                                                                                              |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SET <name> = !\`bash …\``                                      | bind the resolver's output (path-or-`NOT_FOUND`, or a raw value string for value keys) to a name for use in subsequent `IF` predicates                               |
+| `IF <name> != "NOT_FOUND" THEN` *(indented body)* `ENDIF`       | body runs if the bound path-typed name resolved to a real on-disk path                                                                                                |
+| `IF <name> == "true" THEN` *(indented body)* `ENDIF`            | body runs if the bound boolean-typed name is the string `"true"`                                                                                                     |
+| `ELSE IF <name> == "value" THEN` *(indented body)*              | mirror branch; chain after the leading `IF` for either string-equality predicate                                                                                      |
+| `ELSE` *(indented body)*                                        | optional fall-through; omit to make fall-through implicit (no branch fires = nothing happens)                                                                          |
+| `ENDIF`                                                         | one word; closes the chain                                                                                                                                            |
 
-No loops, no variables, no `WHILE`, no `RETURN`. The body of each block is natural-language imperatives — the *control flow* is the only shorthand.
+Indentation under each keyword is the block delimiter. No loops, no `WHILE`, no `RETURN`. Bodies are natural-language imperatives — the *control flow* is the only shorthand. The `!`-injection slot in a `SET` line is always a resolver call such as `` !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` ``.
 
-**Inline single-action form:**
-
-```
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-  READ FILE — locked constraint. Do not re-litigate strategic decisions.
-END IF
-```
-
-**Multi-step block form with ELSE:**
+**Single-action read:**
 
 ```
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
-  READ FILE — treat every architectural invariant as a locked constraint.
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — locked constraint. Do not re-litigate strategic decisions.
+ENDIF
+```
+
+If absence carries its own instruction, lift it to a standalone sentence below the `ENDIF` (it runs unconditionally — the LLM reads it whether the file existed or not, and the wording carries "if absent, …" naturally):
+
+```
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+IF arch_doc != "NOT_FOUND" THEN
+  Read arch_doc — locked constraint. Technical invariants are not negotiable.
+ENDIF
+If absent, note the gap in the Constitution Check section and proceed without constraints.
+```
+
+**Multi-step gate with a real two-branch decision (data-loss-relevant cases):**
+
+```
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+
+IF vision_doc != "NOT_FOUND" THEN
+  This is a differential update. Read the file and walk each section with the user.
 ELSE
-  Note the absence in the Constitution Check section. Proceed without constraints.
-END IF
+  Fresh creation. Proceed to interview.
+ENDIF
 ```
 
-**Where the idiom helps:**
+The multi-step variant indents a numbered list under `THEN`; chain `ELSE IF <name> == "value" THEN` for value comparisons; no `DO:` / `DONE` markers, no fall-through prose — implicit when no branch fires:
+
+```
+SET pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get pre_commit`
+SET require_pre_commit = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_pre_commit`
+
+IF pre_commit != "NOT_FOUND" THEN
+  1. Run the script via Bash and show the full output.
+  2. STOP and wait for human guidance if the exit code is non-zero.
+ELSE IF require_pre_commit == "true" THEN
+  STOP with: "Required pre-commit script not found (configured path absent)."
+ENDIF
+```
+
+**Where the sentinel vocabulary helps:**
 - Existence-gated reads (most common — strategic doc lookups, optional config files).
-- Existence-gated executes (e.g., a `pre_commit_path` script that's absent in most projects).
-- Either/or branches based on file presence.
+- Existence-gated executes (e.g., a `pre_commit` script that's absent in most projects).
+- Either/or branches based on file presence or boolean config flags.
 
 **Where it does *not* help (revert to English):**
 - Multi-condition logic (and/or chains).
 - Loops over globbed results — use English + a `jimfile.sh glob` call.
-- Anything where the action is more than ~3 numbered steps — use a named subsection in English.
+- Branches that aren't string-equality comparisons.
 
-**Markdown rendering:** the inline single-action form is safe outside fences. The multi-step `THEN DO:` … `DONE` form should be wrapped in a fenced `text` block so the numbered list keeps predictable indentation.
+**Markdown rendering:** `SET` lines substitute correctly as bare lines, indented under numbered steps (3-space indent — matrix Z ✅), and inside fenced or 4-space-indented code blocks (matrix N, O ✅). They do **not** substitute inside inline backticks (matrix P ❌). Keep `SET` lines outside inline-code.
 
-This idiom is enforced by `meta-skill` and `meta-agent` validation checklists — invented variants (`WHEN ... PRESENT`, `IF FILE ... DO`, etc.) are a validation failure.
+This idiom is enforced by `meta-skill` and `meta-agent` validation checklists — invented variants (`WHEN ... PRESENT`, `IF FILE ... DO`, `ASSERT_EXISTS`, `STOP_IF_MISSING`, etc.) are a validation failure.
+
+#### Anti-patterns
+
+Two retired shapes — both must be rewritten to the sentinel form above.
+
+**Tier 1: BASIC `IF (X) EXISTS THEN` paren-wrap** (silent substitution failure). The original convention wrapped `!`-injection slots in `IF (` … `) EXISTS THEN`. Claude Code's preprocessor does not recognize an `!`-injection slot when the slot is wrapped in `(...)` on the same line — the literal text reaches the LLM with backticks intact, no bash runs, and the gate evaluates against the unresolved substitution string rather than the real path. No error, no permission prompt, no log line — only wrong behavior downstream. See `docs/debug/20260512-skill-bash-substitution-wrappers.md` for the inventory of twelve production sites this defect produced.
+
+**Tier 2: EXISTS-family directive vocabulary** (semantic-layer leak; EXISTS-trap). The interim convention used `READ_IF_EXISTS <slot> — note`, `RUN_IF_EXISTS`, `DO_IF_EXISTS <slot>:` + numbered list, and `IF <name> EXISTS THEN … ENDIF`. The substitution layer worked (matrix U–Z, AA, BB ✅), but the literal word "EXISTS" in directive names primed the executing agent to defensively `test -e` / `test -f` on already-resolved paths — observed empirically on 2026-05-13 in both `/jim:build` and `/jim:spec` runs. The empty-RHS readback under D2's path-or-empty resolver (`SET pre_commit = ` with nothing after the `=`) compounded the issue by reading as syntactically incomplete. See `docs/brainstorms/20260513-directive-vocab-exists-trap.md` for the defect record. Any line matching `^(READ|RUN|DO)_IF_EXISTS`, `IF <name> EXISTS THEN`, or `IF (!\`bash …\`) EXISTS THEN` is a regression. The heavier interim shape (`DO:` / `DONE` block markers, two-word `END IF`, explicit `Otherwise, skip silently` fall-through prose, verbose `When X resolves to "true"` comparisons) is also superseded.
 
 ### Substitution Conventions
 
@@ -340,6 +378,42 @@ Three sigils, three meanings. Mixing them is a validation failure.
 - `{lower}` is for static template files under `assets/`; the SKILL.md prose tells the LLM how to fill them when rendering the template.
 - **Script integrity:** every script referenced by an `` !`bash …` `` block must exist at the cited path. Eager injection runs the command at slash-command load time; a missing script breaks loading before the LLM sees the body.
 - **Eager vs. deferred timing.** `!`-injection runs once, at slash-command load. Its inputs must be known at that point — stable paths from config, `$ARGUMENTS` when the skill *requires* one. If a value is only known after the LLM reads the body (because it asks the user, dispatches to one of several sub-actions, etc.), the call belongs in a fenced bash block instead — the LLM substitutes the value and runs the bash itself. Examples: `skills/brainstorm/SKILL.md` step 3 (topic gathered from user), `skills/meta-test/SKILL.md` (subcommand chosen at runtime).
+- **Wrapper sensitivity.** An `!`-injection slot must not appear inside `(...)` on the same line — the preprocessor silently leaves the literal text in place, the bash never fires, and the LLM sees the raw backticks. This is a third failure mode of `!`-injection alongside the angle-bracket parser error and the missing-script load fault, but unlike those two it surfaces **no** error at load time. See `docs/debug/20260512-skill-bash-substitution-wrappers.md` for the source defect record. The retired BASIC `IF (X) EXISTS THEN` idiom is the canonical offender; it is replaced by the directive vocabulary documented in Logic-Flow Conventions. Manual regression fixture: the matrix skill family (dispatcher `skills/meta-matrix/` plus category sub-skills `skills/meta-matrix-bash-invocation/`, `skills/meta-matrix-variable-setting/`, `skills/meta-matrix-conditional-evaluation/`, `skills/meta-matrix-skill-invocation/`) — quit and relaunch Claude Code from the repo root so the matrix skill is discovered at session start, then invoke `/jim:meta-matrix` (no arg for chain-all, or `/jim:meta-matrix <category>` for one surface) and scan each sentinel for substitution vs. literal.
+- **Fence / inline-code substitution behavior.** `!`-injection fires inside ` ``` ` fenced code blocks and 4-space indented code blocks (matrix N, O ✅). Only inline backticks (`` ` ``) suppress (matrix P ❌). Authors wanting to display a literal `!`-injection slot in documentation prose must use inline-code, never a fence. Source: `docs/debug/20260512-skill-bash-substitution-wrappers.md` §Expanded Test Matrix.
+
+### Permission Conventions
+
+Every `skills/*/SKILL.md` `allowed-tools` clause must name the exact script path(s) the skill `!`-injects or runs via fenced bash blocks — never a bare `Bash(bash *)` wildcard. The path uses the same sigil the body uses for that call: `${CLAUDE_PLUGIN_ROOT}` for cross-skill invocations, `${CLAUDE_SKILL_DIR}` for own-skill invocations.
+
+**Cross-skill example** (skill body calls `${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh`):
+
+```yaml
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
+```
+
+**Own-skill example** (skill body calls `${CLAUDE_SKILL_DIR}/scripts/jimconf.sh`):
+
+```yaml
+allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimconf.sh *)
+```
+
+Frontmatter sigil substitution runs at the same load-time pass as body `!`-injection, so the `allowed-tools` clause must mirror each skill's actual call sites verbatim. A skill with two distinct call shapes (e.g. `meta-test` injects `jimfile.sh` cross-skill *and* runs `metatest.sh` own-skill via fenced blocks) needs two space-separated `Bash(...)` clauses, one per shape. The space between `bash` and the script path inside each clause is load-bearing — it anchors the word boundary that makes the prefix match script-specific instead of any `bash …` invocation. Adding a new `!`-injection or fenced bash call site to an existing SKILL.md body is also a frontmatter change — extend `allowed-tools` in the same edit. The `/jim:meta-skill` validation checklist enforces this on skill creation; refactors that bypass that flow must check by inspection. See Anti-Patterns → Permission Creep for the failure mode this convention prevents.
+
+**Scope of skill `allowed-tools`: main-thread execution only.** Skill `allowed-tools` grants apply to the skill body's execution in the conversation that invoked it (the main thread when a slash command fires). They do not propagate to subagents spawned by the skill via the Agent tool — subagents have independent permission scopes (per `code.claude.com/docs/en/sub-agents.md`: "Each subagent runs in its own context window with a custom system prompt, specific tool access, and independent permissions"). So `Read(...)` clauses in skill frontmatter only suppress prompts for reads that happen in the main thread; reads that happen inside a spawned subagent still surface a permission prompt regardless of what the skill declared.
+
+**Verified non-mechanisms (do not try):**
+
+- Subagent frontmatter has no `allowed-tools` field (sub-agents frontmatter table lists `tools`, `disallowedTools`, `permissionMode`, etc. — not `allowed-tools`).
+- The subagent `tools:` field accepts only bare tool names (`Read`, `Write`, `Bash`), not parameterized patterns like `Read(/path/**)`.
+- For plugin subagents specifically, the `permissionMode`, `hooks`, and `mcpServers` frontmatter fields are silently ignored (`sub-agents.md` L227–228: "For security reasons, plugin subagents do not support…"), so `permissionMode: bypassPermissions` cannot be used to silence prompts from a plugin-shipped agent.
+- The plugin manifest (`plugin.json` / `.claude-plugin/plugin.json`) does not accept a `permissions` field.
+- Plugin-shipped `settings.json` honors only the `agent` and `subagentStatusLine` keys; `permissions.allow` entries inside a plugin's settings are ignored.
+- The `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_SKILL_DIR}` sigils substitute inside hooks, monitors, MCP, and LSP configs — but **not** inside `permissions.allow` patterns.
+- Agent `skills:` preload injects the rendered SKILL.md body only; it does not include the skill's `assets/` or `references/` files.
+
+**The only working cross-boundary path: user-side `.claude/settings.json`.** Permission rules in the user's project-level (or user-level) `.claude/settings.json` are inherited by subagents (`sub-agents.md` L388: "Subagents inherit the permission context from the main conversation"). Plugin authors cannot ship these rules — each user must add them locally if they want to suppress the per-session subagent Read prompt. See `README.md` → Permissions for the snippet jim recommends.
+
+**Implication for jim's `allowed-tools` clauses:** the Bash narrowing above is fully effective (main-thread `!`-injection and fenced bash blocks run in the spawning thread, where skill `allowed-tools` applies). Read clauses for skills that delegate work to a subagent are **not** declared — they would be misleading documentation suggesting a working grant where there is none. See Anti-Patterns → Permission Creep.
 
 ### Progressive Disclosure
 
@@ -352,7 +426,7 @@ Three sigils, three meanings. Mixing them is a validation failure.
 These are documented failure modes from prior art research (`docs/specs/jim/001-meta/research.md`):
 
 - **Personality Soup:** "I am an AI assistant here to help" — use direct second-person voice instead ("You are the technical architect for jim").
-- **Permission Creep:** Write/Bash in a read-only agent's tool list — follow least privilege.
+- **Permission Creep:** Write/Bash in a read-only agent's tool list, or bare `Bash(bash *)` in a SKILL.md `allowed-tools` clause when the skill only injects a specific script — follow least privilege. See Permission Conventions for the narrowed shape. Conversely, do not declare `Read(${CLAUDE_SKILL_DIR}/...)` clauses in skill frontmatter for skills that delegate work to a subagent — those grants do not propagate across the skill→subagent boundary (verified scope, see Permission Conventions) and the clause is misleading documentation suggesting authorization where there is none.
 - **Instruction Shadowing:** Repeating rules already in CLAUDE.md — agents don't inherit CLAUDE.md, but skills that run in the main context do.
 - **Duplicate Logic:** Same instructions in 3+ agents — extract to a shared skill instead.
 

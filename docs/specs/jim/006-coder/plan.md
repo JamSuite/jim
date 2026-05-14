@@ -2,7 +2,7 @@
 title: "Coder Agent and Skills"
 spec: "docs/specs/jim/006-coder/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Coder Agent and Skills — Plan

@@ -129,6 +129,41 @@ Inspect what jim resolves with `/jim:conf`:
 
 Path-and-name resolution only — the script never reads, writes, or deletes files. Slug normalization, the `.`/`..` reject, and the 64-char cap are enforced by the script (security boundary).
 
+## Permissions
+
+When you invoke a jim slash command in a new Claude Code session, the spawned subagent (e.g. `@jim:architect` for `/jim:plan`) reads jim's bundled template (e.g. `skills/plan/assets/plan-template.md`) and Claude Code surfaces a Read permission prompt:
+
+```
+Read file
+  Read(/path/to/jim/skills/plan/assets/plan-template.md)
+Do you want to proceed?
+  1. Yes
+  2. Yes, allow reading from assets/ during this session
+```
+
+**Default behavior — pick option 2 once per session.** Choosing **"Yes, allow reading from assets/ during this session"** authorizes the read for the rest of the Claude Code session. Subsequent invocations of jim slash commands in the same session do not re-prompt. The prompt returns when you start a fresh session.
+
+### Zero-prompt setup (optional)
+
+To suppress the prompt entirely across sessions, add a `permissions.allow` block to your project's `.claude/settings.json` listing absolute paths to jim's `skills/*/assets/` and `skills/*/references/` directories. Replace `/absolute/path/to/jim` with the actual install path on your machine (find it with `realpath` on the directory containing `plugin.json`):
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(/absolute/path/to/jim/skills/*/assets/**)",
+      "Read(/absolute/path/to/jim/skills/*/references/**)"
+    ]
+  }
+}
+```
+
+Restart Claude Code after editing settings. Subagents inherit the parent session's permission rules, so the prompt is silenced for every jim skill that reads from its own bundled templates or methodology docs.
+
+### Why this is necessary
+
+Claude Code's documented permission model does not let a plugin ship pre-approved file access for its subagents. Skill frontmatter `allowed-tools` grants apply only to the skill's main-thread execution and do not propagate to spawned subagents; subagent frontmatter has no `allowed-tools` field; and plugin manifests/settings cannot declare permissions. The user-side `.claude/settings.json` is the only documented mechanism that survives the skill → subagent boundary. See `ARCHITECTURE.md` → Permission Conventions for the full verified-scope discussion, and the doc citations behind it. (A future jim release may add a `/jim:setup` helper to generate the snippet for your install path automatically.)
+
 ## How to develop for Jim
 
 See [`WORKFLOW.md`](./WORKFLOW.md) for the full SDLC process.

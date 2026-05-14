@@ -49,7 +49,8 @@ case_no_config_returns_defaults() {
               "pre_commit:./pre-commit.sh" \
               "pre_completion:./pre-completion.sh" \
               "require_pre_commit:false" \
-              "require_pre_completion:false"; do
+              "require_pre_completion:false" \
+              "auto_arch_feedback:false"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -70,7 +71,8 @@ debug_path = "docs/debug-dir"
 pre_commit_path = "scripts/pre-commit"
 pre_completion_path = "scripts/pre-completion"
 require_pre_commit = "true"
-require_pre_completion = "true"')
+require_pre_completion = "true"
+auto_arch_feedback = "true"')
   run -c "$cfg" get specs;                  assert_eq "specs"                  "my/specs"               "$OUT"
   run -c "$cfg" get architecture;           assert_eq "architecture"           "docs/arch.md"           "$OUT"
   run -c "$cfg" get vision;                 assert_eq "vision"                 "docs/vision.md"         "$OUT"
@@ -81,6 +83,7 @@ require_pre_completion = "true"')
   run -c "$cfg" get pre_completion;         assert_eq "pre_completion"         "scripts/pre-completion" "$OUT"
   run -c "$cfg" get require_pre_commit;     assert_eq "require_pre_commit"     "true"                   "$OUT"
   run -c "$cfg" get require_pre_completion; assert_eq "require_pre_completion" "true"                   "$OUT"
+  run -c "$cfg" get auto_arch_feedback;     assert_eq "auto_arch_feedback"     "true"                   "$OUT"
 }
 
 # AC: partial override layered over defaults (spec AC #3)
@@ -110,7 +113,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"             "10" "$line_count"
+  assert_eq    "list line count"             "11" "$line_count"
   assert_match "specs line"                   '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"            '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                  '^vision=VISION\.md$'                    "$OUT"
@@ -121,6 +124,7 @@ case_list_outputs_all_keys() {
   assert_match "pre_completion line"          '^pre_completion=\./pre-completion\.sh$' "$OUT"
   assert_match "require_pre_commit line"      '^require_pre_commit=false$'             "$OUT"
   assert_match "require_pre_completion line"  '^require_pre_completion=false$'         "$OUT"
+  assert_match "auto_arch_feedback line"      '^auto_arch_feedback=false$'             "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -128,7 +132,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -166,7 +170,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "10" "$line_count"
+  assert_eq "list still emits all keys" "11" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -263,6 +267,24 @@ case_require_pre_completion_overridden() {
   cfg=$(fixture require_pre_completion-override.toml 'require_pre_completion = "true"')
   run -c "$cfg" get require_pre_completion
   assert_eq "require_pre_completion overridden" "true" "$OUT"
+}
+
+# AC: auto_arch_feedback defaults to "false"
+# Flag key — TOML name equals CLI name (no _path suffix); resolved via
+# the auto_* prefix dispatch in resolve().
+case_auto_arch_feedback_default() {
+  local dir actual
+  dir=$(empty_dir auto_arch_feedback_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get auto_arch_feedback)
+  assert_eq "auto_arch_feedback default" "false" "$actual"
+}
+
+# AC: auto_arch_feedback override via jimconf.toml ("true" enables auto-write)
+case_auto_arch_feedback_overridden() {
+  local cfg
+  cfg=$(fixture auto_arch_feedback-override.toml 'auto_arch_feedback = "true"')
+  run -c "$cfg" get auto_arch_feedback
+  assert_eq "auto_arch_feedback overridden" "true" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

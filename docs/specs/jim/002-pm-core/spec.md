@@ -3,7 +3,7 @@ title: "@jim:pm Agent + /jim:spec Skill"
 type: feature
 group: jim
 id: "002"
-status: draft
+status: approved
 ---
 
 # 002 @jim:pm Agent + /jim:spec Skill

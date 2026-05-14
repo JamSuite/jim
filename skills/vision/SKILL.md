@@ -7,7 +7,7 @@ description: >
   the project is and isn't. Do not use for technical architecture (/jim:arch),
   execution sequencing (/jim:roadmap), or scoping individual work items (/jim:spec).
 agent: pm
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:vision
@@ -24,19 +24,22 @@ Use `$ARGUMENTS` as a project name or topic hint. If empty, ask: "What project o
 
 ### 2. Read context
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
-  READ FILE — locked constraint. Don't contradict technical decisions already made.
-ELSE
-  Note conversationally: "No architecture doc yet — you might want to create one after this." Do not block.
-END IF
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+IF arch_doc != "NOT_FOUND" THEN
+  Read arch_doc — locked constraint. Don't contradict technical decisions already made.
+ENDIF
+
+If absent, note conversationally: "No architecture doc yet — you might want to create one after this." Do not block.
 
 ### 3. Check for existing VISION.md
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+
+IF vision_doc != "NOT_FOUND" THEN
   This is a differential update. Read the content. Tell the user: "I see an existing VISION.md. I'll walk through each section and suggest changes based on our conversation." Identify which sections are well-defined vs. which need work.
 ELSE
   Fresh creation. Proceed to interview.
-END IF
+ENDIF
 
 ### 4. Problem Statement & Solution Statement — wordsmith mode
 
@@ -76,7 +79,7 @@ Walk through the remaining 5 template sections in order. For each section:
 
 Read `assets/vision-template.md`. Fill each section with interview results. Keep it concise — the goal is clarity of direction, not exhaustive documentation.
 
-Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`.
+Write to !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path vision`.
 
 ### 7. Silent self-check
 

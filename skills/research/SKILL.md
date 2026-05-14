@@ -8,7 +8,7 @@ description: >
   or spec creation (/jim:spec).
 agent: researcher
 argument-hint: "[spec-path | brainstorm-path | directory | topic]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 ---
 
 # /jim:research
@@ -96,13 +96,15 @@ Mandatory phase — always runs.
 
 1. Read strategic constraints, if present:
 
-   IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-     READ FILE — locked constraint.
-   END IF
+   SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+   IF vision_doc != "NOT_FOUND" THEN
+     Read vision_doc — locked constraint.
+   ENDIF
 
-   IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) EXISTS THEN
-     READ FILE — locked constraint.
-   END IF
+   SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+   IF arch_doc != "NOT_FOUND" THEN
+     Read arch_doc — locked constraint.
+   ENDIF
 2. Produce an explicit alignment statement: "This approach aligns with [strategic goal] and follows the [architectural pattern]" — or flag divergence conversationally.
 3. If strategic docs are missing, note their absence. Don't block on it.
 4. If research recommendations contradict a locked constraint, raise it as a Peer Feedback item for the PM.

@@ -8,7 +8,7 @@ description: >
   for implementation (/jim:build).
 agent: architect
 argument-hint: "[directory-path]"
-allowed-tools: Bash(bash *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *)
 ---
 
 # /jim:arch
@@ -21,32 +21,35 @@ Use `$ARGUMENTS` to determine scope:
 
 | Input | Behavior |
 | :--- | :--- |
-| Empty | Create or update the resolved architecture path (default: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`) |
+| Empty | Create or update the resolved architecture path (default: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path architecture`) |
 | Directory path | Create or update the architecture file inside that directory, using the filename portion of the resolved architecture path |
 
 ## Process
 
 ### 1. Establish scope
 
-Resolve the configured architecture path: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`.
+Resolve the configured architecture path: !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path architecture`.
 
 If `$ARGUMENTS` is empty, that *is* the target path. If `$ARGUMENTS` is a directory, the target is `{$ARGUMENTS}/<filename portion of the resolved path>`.
 
 ### 2. Read the vision doc as upstream context
 
-IF (!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`) EXISTS THEN
-  READ FILE — the architecture serves the vision; where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
-ELSE
-  Proceed without it. Note its absence in the Overview if you generate a new file.
-END IF
+SET vision_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision`
+IF vision_doc != "NOT_FOUND" THEN
+  Read vision_doc — the architecture serves the vision; where there is tension between the actual code and the stated vision, flag it rather than silently encoding the discrepancy into the architecture document.
+ENDIF
+
+If absent, proceed without it. Note its absence in the Overview if you generate a new file.
 
 ### 3. Check for existing ARCHITECTURE.md
 
-IF (the target path from §1) EXISTS THEN
-  This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write.
+SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
+
+IF arch_doc != "NOT_FOUND" THEN
+  This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write. (When `$ARGUMENTS` is a directory, the target is `{$ARGUMENTS}/<filename portion of arch_doc>`; the differential-update treatment still applies if a file exists at the target.)
 ELSE
   Generate a new document from `assets/architecture-template.md`.
-END IF
+ENDIF
 
 ### 4. Scan the codebase
 
@@ -79,7 +82,13 @@ Fill each section from scan findings:
 
 Show the completed document (or summarize changes for a differential update). List which sections changed and which sections had no findings.
 
-Ask: "Does this look accurate? Any sections to refine?"
+SET auto_arch_feedback = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_arch_feedback`
+
+IF auto_arch_feedback == "true" THEN
+  Write the proposed update directly to the configured architecture path. Summarize which sections were added, changed, or preserved.
+ELSE
+  Present the diff and ask: "Does this look accurate? Any sections to refine?" Wait for confirmation.
+ENDIF
 
 Do not proceed to the next phase.
 
