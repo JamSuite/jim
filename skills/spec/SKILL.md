@@ -7,7 +7,7 @@ description: >
   use for technical planning (/jim:plan) or implementation (/jim:build).
 agent: pm
 argument-hint: "[idea-or-name]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Skill(jim:spec-check)
 ---
 
 # /jim:spec
@@ -105,6 +105,14 @@ Ask 1-3 questions at a time. Never a wall of questions.
 - "This is getting broad — should we split off the search piece into its own spec?"
 - "That criterion sounds hard to test. Can we make it measurable?"
 
+**Technique: The Level-Up Method.** When the user surfaces a technical suggestion (function shape, library, file path, technology preference), do not embed it in an AC:
+
+1. **Intercept** — acknowledge the suggestion.
+2. **Ladder Up** — ask "What does this technology enable?" until you reach a functional requirement.
+3. **Bifurcate** — write the abstraction into the AC; record the technical proposal as an Implementation Insight in the spec's `## Research & Architecture Handoff` section with the deflection reason (Razor / Delegation / Story-Link / Constraint-Sourcing).
+
+**Technique: Scope-vs-original-ask flagging.** If a candidate AC, User Story, or Implementation Insight appears to extend beyond the user's original ask, raise it conversationally and defer the decision to the user. Scope is the user's call, not yours. (Extends the existing anti-pattern flagging technique by anchoring scope drift to what the user originally asked for.)
+
 **Technique: Strategic alignment.** If VISION.md exists and the idea seems to diverge from it, raise it as a conversation — never as a blocker:
 - "I notice the vision focuses on X, but this pulls toward Y. Intentional pivot, or should we scope differently?"
 
@@ -135,6 +143,7 @@ Read `assets/spec-template.md`. Generate the spec:
 - Fill Open Questions with any unresolved items from the interview.
 - For bugs, ensure acceptance criteria includes "Regression test covers the reported scenario."
 - For refactors, ensure acceptance criteria includes "Existing tests pass without modification."
+- **Research & Architecture Handoff** — conditional. Include the `## Research & Architecture Handoff` section *only* when Implementation Insights were surfaced during the interview via the Level-Up Method (Step 6). Each Insight follows the per-Insight sub-template in `assets/spec-template.md`. If no Insights were collected, strip the section entirely along with its comment marker (same convention as the `<!-- ... only -->` type markers).
 
 Resolve the spec write path:
 
@@ -144,19 +153,29 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id>
 
 Write the spec to that path.
 
-### 9. Silent self-check
+### 9. Socratic self-check
 
-Before presenting, validate the draft against:
+Before presenting, invoke `/jim:spec-check` against the just-written spec.md to run the Socratic audit.
 
-1. **Anti-patterns** — Check all 6 from `references/spec-types.md`. Any violation → auto-correct.
-2. **Locked constraints** — If the vision and architecture docs exist, verify the spec doesn't contradict them.
-3. **Type-section completeness** — Verify all required sections for the detected type are present and populated.
+1. **Invoke via the Skill tool.** Call `Skill(jim:spec-check)` and pass the resolved spec path as `args`. The called skill's body runs inline in the main thread (per `ARCHITECTURE.md` → Skill Invocation); `$ARGUMENTS` does not auto-forward, so the path must be passed explicitly.
+2. **Apply audit outcomes.** The audit returns structured outcomes — items deflected to Handoff (with probe + reason), External Constraints retained (with cited source), orphan ACs flagged, Connextra-failing stories flagged, and a `clean` / `residual` status.
+3. **Bounded retry (cap 3).** If the audit reports unresolved issues, re-run the relevant Bifurcate or source-attribution step inline and re-invoke `Skill(jim:spec-check)`. After 3 iterations, residual issues surface conversationally at Step 10.
+4. **Existing in-line checks remain.** The 7 anti-patterns from `references/spec-types.md` (Kitchen Sink, Vague Criteria, Solution Masquerading, Empty Out of Scope, Premature Tech, Wrong Type, Over-specification), locked-constraint compatibility with VISION.md / ARCHITECTURE.md, and type-section completeness still apply.
 
-If the self-check finds issues, fix them inline. Do not tell the user about the self-check — just present a clean draft.
+Do not narrate the audit. Apply corrections inline. Surface only the final deflection summary at Step 10.
 
 ### 10. Present and stop
 
 Show the draft to the user. Status is `draft`.
+
+Surface the audit outcomes conversationally — only the deflections and why, not the full interrogation:
+
+> "During validation, I moved N items to the Research & Architecture Handoff:
+> - 'X' — failed {probe} ({reason})
+> - 'Y' — failed {probe} ({reason})
+> Source-attributed: 'Z' — kept as External Constraint, sourced to {source}."
+
+These are your recommendations — the user has **final authority** over classifications, deflections, and source attributions. Offer to revert any deflection or override any classification before asking for approval.
 
 Ask: "Want to change anything, or should I mark this as approved?"
 
@@ -202,3 +221,9 @@ Before presenting any generated spec, verify:
 - [ ] No Empty Out of Scope
 - [ ] No Premature Tech (no DB schemas, API endpoints, library choices)
 - [ ] No Wrong Type (sections match the declared type)
+- [ ] No Over-specification (ACs are user-observable; type-aware calibration applied per `references/spec-types.md` #7)
+
+**Socratic DoD outcomes**
+- [ ] `## Research & Architecture Handoff` section is present iff Implementation Insights were collected during interview
+- [ ] Every AC has been Three-Tier classified (Functional / External Constraint / Implementation Detail) by `/jim:spec-check`
+- [ ] Every External Constraint cites a source from the Allowed Source list

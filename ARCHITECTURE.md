@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-05-15*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill to preserve consistency.
 
@@ -22,6 +22,7 @@ jim/
 │   └── meta.md              # @jim:meta — plugin developer (builds jim itself)
 ├── skills/                  # Skill definitions — one directory per skill
 │   ├── spec/                # /jim:spec — collaborative spec creation
+│   ├── spec-check/          # /jim:spec-check — Socratic DoD audit (invoked by /jim:spec Step 9)
 │   ├── plan/                # /jim:plan — implementation planning
 │   ├── research/            # /jim:research — codebase and landscape investigation
 │   ├── build/               # /jim:build — TDD red-green-refactor execution
@@ -152,12 +153,14 @@ Agents are markdown files (`agents/*.md`) that define personas with frontmatter 
 Skills are SKILL.md files inside `skills/{name}/` directories, optionally accompanied by `assets/` (templates) and `references/` (methodology docs).
 
 - **Purpose:** Provide the detailed process instructions that agents follow when a `/jim:{verb}` command is invoked
-- **Location:** `skills/` — 11 skill directories (spec, plan, research, build, debug, vision, roadmap, arch, brainstorm, meta-skill, meta-agent)
+- **Location:** `skills/` — 12 SDLC + strategic skill directories (spec, spec-check, plan, research, build, debug, vision, roadmap, arch, brainstorm, meta-skill, meta-agent) plus supporting skills (`conf/`, `file/`, `meta-test/`, `review/`, and the `meta-matrix*` probe family)
 - **Interfaces:** Frontmatter fields: `name`, `description`, `agent` (which agent runs this skill), `argument-hint`. Body contains step-by-step process, argument routing, validation checklists.
 - **Dependencies:** Skills reference their `assets/` templates and `references/` docs. Skills are bound to agents via the `agent` frontmatter field (documentation convention, not runtime routing).
 - **Key Constraints:** SKILL.md stays under 500 lines (progressive disclosure). Templates live in `assets/`, methodology in `references/`.
 
 The post-build arch-feedback loop closes the gap between code changes and the locked-constraint architecture document. `/jim:build` step 5.2 reads the configured architecture path; if it exists, `/jim:build` invokes `/jim:arch` via the Skill tool to refresh ARCHITECTURE.md against the just-built code. The trigger is existence-conditioned — when no architecture document is configured, the step is silently skipped. `/jim:arch` step 6 then branches on the `auto_arch_feedback` config flag (default `"false"`): `"true"` writes the update directly and summarizes changes; `"false"` runs the existing diff-and-confirm flow.
+
+A second canonical `Skill(jim:<name>)` invocation site is `/jim:spec` Step 9, which calls `Skill(jim:spec-check)` to run the Socratic DoD audit on the just-written `spec.md`. The audit returns structured outcomes (deflections, retained external constraints, orphan-AC flags) which `/jim:spec` applies inline under a bounded-retry cap of 3 iterations before surfacing a deflection summary at Step 10. The pattern matches `/jim:build` → `/jim:arch`: namespaced permission token in `allowed-tools`, Skill tool in body, target path passed explicitly as `args` because `$ARGUMENTS` does not auto-forward.
 
 ### Plugin Manifest
 
@@ -420,6 +423,7 @@ Frontmatter sigil substitution runs at the same load-time pass as body `!`-injec
 - **SKILL.md ≤ 500 lines.** Templates go in `assets/`, methodology docs in `references/`.
 - **Agent body ≤ 800 tokens.** Keep agent definitions tight — delegate detail to preloaded skills.
 - **`references/` files > 300 lines should have a ToC** at the top to help Claude find relevant sections without loading everything.
+- **Inlined-methodology exception.** The default is `skills/{name}/references/{name}-dod.md` (see `research-dod.md`). When the methodology has a single consumer *and* per-invocation permission-prompt friction on plugin-relative reference reads outweighs the standalone-reference benefit, inline it into the skill body instead — `skills/spec-check/SKILL.md` (per spec 015 DD#9) documents the canonical case. Combined size must still respect the 500-line ceiling. `research-dod.md` retains the standard pattern.
 
 ### Anti-Patterns
 

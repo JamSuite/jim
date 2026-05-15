@@ -109,6 +109,26 @@ Watch for these during the interview and self-check. Flag them conversationally 
 
 **Remedy:** Switch to the correct type. If user stories don't make sense, it's probably a bug. If there are no reproduction steps, it's probably a feature.
 
+### 7. Over-specification
+
+**What it looks like:** An AC names a function signature, file path, library, technology, or protocol as a required outcome. The technology-agnostic test fails — swapping the implementation (CLI ↔ Voice UI, Bash ↔ Rust) would invalidate the AC even though the underlying user need would be unchanged.
+
+**Example (verbatim from GitHub spec-kit `templates/commands/specify.md`, applies to `feature` and `bug` specs):**
+
+- "API response time is under 200ms" — reframe: *"Users see results instantly."*
+- "Database can handle 1000 TPS" — reframe to user-observable load behavior.
+- "React components render efficiently" — reframe to user-observable interaction quality.
+- "Redis cache hit rate above 80%" — reframe to user-observable latency or staleness behavior.
+
+**Calibration by spec type:** For `type: refactor` specs, the probe asks "does this AC trace to a `Refactor Rationale → Desired State` entry, and does it describe desired-state shape rather than migration procedure?" rather than the technology-agnostic test above. Paired example —
+
+- **Good (desired-state shape, passes):** *"`auth.rs` is split into `auth/token.rs` and `auth/session.rs`."*
+- **Bad (migration procedure, routes to Handoff):** *"Use `git mv` to move `auth.rs` then sed-rewrite the imports."*
+
+The first names what the codebase looks like after the refactor; the second prescribes how to get there. Procedure routes to Handoff regardless of spec type.
+
+**Remedy:** For `feature` / `bug` specs, apply the Level-Up Method — ladder the technical statement up to the user need it enables, write the abstraction into the AC, and route the technical proposal to the Research & Architecture Handoff section. For `refactor` specs, confirm the AC traces to a Refactor Rationale entry; if it describes procedure, move the procedural detail to Handoff and keep only the desired-state shape in the AC.
+
 ---
 
 ## Status Lifecycle
