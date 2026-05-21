@@ -7,7 +7,7 @@ description: >
   (/jim:research), or planning (/jim:plan).
 agent: coder
 argument-hint: "[spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Skill(jim:arch)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Skill(jim:arch) Skill(jim:sec)
 ---
 
 # /jim:build
@@ -37,13 +37,24 @@ Read `plan.md` from the spec directory. Check frontmatter `status:`.
 
 If `plan.md` is missing, stop and tell the user: "No plan.md found in [path]. Run /jim:plan first."
 
-### 2. Load context
+### 2. Security review gate (require_security / auto_security)
+
+SET require_security = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_security`
+SET auto_security    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_security`
+
+IF require_security == "true" OR auto_security == "true" THEN
+  Check the spec directory for `security.md` whose `reviewed_phases:` frontmatter array includes `plan`. If absent (no `security.md` at all) or only the `spec` phase is recorded, invoke `Skill(jim:sec)` with the spec directory as the `args` parameter. The called skill detects `plan.md` is present, applies the dual lens, runs routing per `require_security` vs `auto_security`, runs the loop if `require_security_loop` is set, and updates `security.md` so `reviewed_phases:` includes `plan`. If the called skill exits with the halt-error block (loop limit reached with unresolved findings), surface the error to the developer and halt `/jim:build` before any task body executes.
+ENDIF
+
+When neither gate flag is set, this step is skipped silently.
+
+### 3. Load context
 
 Read `spec.md` and `research.md` from the same directory. These provide the intent and constraints behind each task — the plan tells you *what*, the spec and research tell you *why*. Note the spec type (`feature`, `bug`, or `refactor`) — it governs Red phase behavior.
 
 If the plan is ambiguous (a task's intent is unclear or its Verify command is malformed), STOP. Report the ambiguous task and what's unclear. Wait for the human to update the plan before continuing.
 
-### 3. Execute the TDD loop
+### 4. Execute the TDD loop
 
 For each unchecked `[ ]` task in `plan.md`, in order:
 
@@ -89,7 +100,7 @@ For each unchecked `[ ]` task in `plan.md`, in order:
 
 Then read the next unchecked task and repeat.
 
-### 4. Type-specific behavior
+### 5. Type-specific behavior
 
 **Feature:** Standard Red-Green-Refactor. Red writes a new test for new behavior.
 
@@ -97,7 +108,7 @@ Then read the next unchecked task and repeat.
 
 **Refactor:** No Red phase. Existing tests must pass before AND after each structural change. One move at a time; re-run all tests between moves. If any move breaks tests, revert immediately.
 
-### 5. Completion gate
+### 6. Completion gate
 
 After all tasks are marked `[x]`:
 
