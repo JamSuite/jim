@@ -8,7 +8,7 @@ description: >
   (/jim:research), or code implementation (/jim:build).
 agent: architect
 argument-hint: "[spec-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Skill(jim:sec)
 ---
 
 # /jim:plan
@@ -36,7 +36,18 @@ Read the spec at the provided path. Check frontmatter `status:`.
 
 Note the spec's `type` (feature, bug, refactor), `title`, `id`, and `group` for later.
 
-### 2. Handle research
+### 2. Security review gate (require_security / auto_security)
+
+SET require_security = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_security`
+SET auto_security    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_security`
+
+IF require_security == "true" OR auto_security == "true" THEN
+  Check the spec directory for `security.md` whose `reviewed_phases:` frontmatter array includes `spec`. If absent or the array does not include `spec`, invoke `Skill(jim:sec)` with the spec directory as the `args` parameter. The called skill reads `require_security` / `auto_security` itself and selects user-in-loop or auto-route behavior, runs the loop if `require_security_loop` is set, and writes/updates `security.md`. If the called skill exits with the halt-error block (loop limit reached with unresolved findings), surface the error to the developer and halt `/jim:plan` before proceeding to Step 3.
+ENDIF
+
+When neither gate flag is set, this step is skipped silently and the conversational offer in Step 9 handles security review (default mode).
+
+### 3. Handle research
 
 Check for `research.md` in the same directory as the spec.
 
@@ -48,7 +59,7 @@ Check for `research.md` in the same directory as the spec.
 
 **Peer Feedback in research:** If research.md contains a Peer Feedback section with plan invalidation signals, address each one explicitly in the plan — accept, reject with rationale, or flag for the user to decide.
 
-### 3. Check the architecture doc
+### 4. Check the architecture doc
 
 SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
 IF arch_doc != "NOT_FOUND" THEN
@@ -57,14 +68,14 @@ ENDIF
 
 If absent, note this in the Constitution Check section of the plan. Proceed without constraints.
 
-### 4. Check for an existing plan
+### 5. Check for an existing plan
 
 Look for `plan.md` in the same directory as the spec.
 
 - **Exists:** This is a differential update. Read the existing plan fully. Summarize proposed changes to the user — what sections will change, what will be preserved — before writing anything. Use Edit, not Write.
 - **Missing:** Generate a new plan from `assets/plan-template.md`.
 
-### 5. Design
+### 6. Design
 
 Read `assets/plan-template.md` before designing. Follow its structure.
 
@@ -80,7 +91,7 @@ Read `assets/plan-template.md` before designing. Follow its structure.
 
 **Research gaps:** If the research lacks integration anchors needed for a key design decision, note it explicitly in Open Questions and mark the related task as `[NEEDS CLARIFICATION]`. You may also re-invoke the researcher for targeted follow-up if the gap is blocking.
 
-### 6. Write the plan
+### 7. Write the plan
 
 Populate all sections from the template:
 
@@ -102,11 +113,22 @@ Resolve the plan write path:
 
 Write the plan to that path. Status stays `draft`.
 
-### 7. Self-check
+### 8. Self-check
 
 Before presenting, read `references/plan-dod.md` and validate the plan against every checklist item. Fix any failures inline. Do not present a plan that fails the DoD.
 
-### 8. Present and stop
+### 9. Pre-approval security review offer (default mode only)
+
+SET require_security = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_security`
+SET auto_security    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_security`
+
+IF require_security != "true" AND auto_security != "true" THEN
+  Offer conversationally: "Want to run a security review of this plan before approving? (`/jim:sec`)" — if the developer accepts, run `/jim:sec` against the spec directory (with plan.md now present, the dual lens applies); otherwise proceed to the approval prompt at Step 10. Findings are advisory; the developer may approve regardless.
+ENDIF
+
+When either gate flag is set, skip the offer entirely — the gate at `/jim:build`'s start will handle plan-phase security review (per spec 016).
+
+### 10. Present and stop
 
 Show the completed plan. Summarize what was created or changed. If any `[NEEDS CLARIFICATION]` markers exist, surface them explicitly:
 
