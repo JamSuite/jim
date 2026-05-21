@@ -7,7 +7,7 @@ description: >
   use for technical planning (/jim:plan) or implementation (/jim:build).
 agent: pm
 argument-hint: "[idea-or-name]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Skill(jim:spec-check)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Skill(jim:spec-check)
 ---
 
 # /jim:spec
@@ -26,7 +26,7 @@ Use `$ARGUMENTS` as the idea or name hint.
 |-------|----------|
 | Empty | Ask the user what they want to scope |
 | String | Treat as idea seed — begin interview with it |
-| Path to existing spec | Enter differential update mode (step 11) |
+| Path to existing spec | Enter differential update mode (step 12) |
 
 ### 2. Read strategic context
 
@@ -162,9 +162,20 @@ Before presenting, invoke `/jim:spec-check` against the just-written spec.md to 
 3. **Bounded retry (cap 3).** If the audit reports unresolved issues, re-run the relevant Bifurcate or source-attribution step inline and re-invoke `Skill(jim:spec-check)`. After 3 iterations, residual issues surface conversationally at Step 10.
 4. **Existing in-line checks remain.** The 7 anti-patterns from `references/spec-types.md` (Kitchen Sink, Vague Criteria, Solution Masquerading, Empty Out of Scope, Premature Tech, Wrong Type, Over-specification), locked-constraint compatibility with VISION.md / ARCHITECTURE.md, and type-section completeness still apply.
 
-Do not narrate the audit. Apply corrections inline. Surface only the final deflection summary at Step 10.
+Do not narrate the audit. Apply corrections inline. Surface only the final deflection summary at Step 11.
 
-### 10. Present and stop
+### 10. Pre-approval security review offer (default mode only)
+
+SET require_security = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_security`
+SET auto_security    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_security`
+
+IF require_security != "true" AND auto_security != "true" THEN
+  Offer conversationally: "Want to run a security review before approving? (`/jim:sec`)" — if the developer accepts, run `/jim:sec` against the spec directory; otherwise proceed to the approval prompt at Step 11. Findings, if produced, are advisory; the developer may approve regardless.
+ENDIF
+
+When either gate flag is set, skip the offer entirely — the gate at `/jim:plan`'s start will handle the security review (per spec 016).
+
+### 11. Present and stop
 
 Show the draft to the user. Status is `draft`.
 
@@ -184,7 +195,7 @@ Ask: "Want to change anything, or should I mark this as approved?"
 
 Never auto-approve. Never set `approved` without explicit human confirmation.
 
-### 11. Differential update path
+### 12. Differential update path
 
 If `$ARGUMENTS` points to an existing spec, or if step 3 identified a name collision and the user chose to update:
 
