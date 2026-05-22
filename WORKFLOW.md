@@ -55,7 +55,8 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:plan` | Research codebase + break into atomic tasks | `@jim:architect` | `plan.md` |
 | `/jim:research` | Investigate codebase, external docs, and technical landscape | `@jim:researcher` | `research.md` |
 | `/jim:build` | TDD red-green-refactor + commit per task | `@jim:coder` | Tests + code |
-| `/jim:review` | Quality and security gate *(not yet implemented)* | `@jim:reviewer` | TBD |
+| `/jim:sec` | Design-time security analysis (hybrid freeform + STRIDE, conditional LINDDUN on PII) | `@jim:security` | `security.md` |
+| `/jim:review` | Post-build code review *(not yet implemented; `/jim:sec` covers design-time security review)* | `@jim:reviewer` | TBD |
 | `/jim:ship` | PR, deploy, update roadmap *(not yet implemented)* | TBD | Merged PR |
 | `/jim:vision` | Create/update project vision and strategy | `@jim:pm` | `VISION.md` |
 | `/jim:roadmap` | Create/update execution milestones and phase sequence | `@jim:pm` | `ROADMAP.md` |
@@ -79,6 +80,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | Roadmap | `ROADMAP.md` (project root) | Execution sequence — milestones, phase breakdowns, links to numbered specs with status | `/jim:roadmap` |
 | Spec | `docs/specs/{group}/{00X}-{name}/spec.md` | Work definition — requirements, acceptance criteria, spec type (feature/bug/refactor) | `/jim:spec` |
 | Plan | `docs/specs/{group}/{00X}-{name}/plan.md` | Implementation path — codebase research, atomic tasks, dependencies | `/jim:plan` |
+| Security Review | `docs/specs/{group}/{00X}-{name}/security.md` (spec-scoped) or `{security_adhoc_path}/{YYYYMMDD}-{slug}.md` (ad-hoc opt-in) | Design-time findings — severity, route, phase coverage; gates `/jim:plan` and `/jim:build` start when `require_security` / `auto_security` is set | `/jim:sec` |
 | Debug Report | `docs/debug/{YYYYMMDD}-{topic}.md` | Diagnosis — error analysis, root cause, references to affected specs | `/jim:debug` |
 | Brainstorm | `docs/brainstorms/{YYYYMMDD}-{topic}.md` | Exploratory notes — ideas, risks, options, may feed into specs | `/jim:brainstorm` |
 
@@ -129,6 +131,7 @@ jim/
 │   ├── architect.md             # → @jim:architect
 │   ├── researcher.md            # → @jim:researcher
 │   ├── coder.md                 # → @jim:coder
+│   ├── security.md              # → @jim:security
 │   ├── reviewer.md              # → @jim:reviewer
 │   └── meta.md                  # → @jim:meta
 │
@@ -182,6 +185,13 @@ jim/
 │   │   ├── SKILL.md             # → /jim:debug
 │   │   └── assets/
 │   │       └── debug-template.md
+│   │
+│   ├── sec/
+│   │   ├── SKILL.md             # → /jim:sec
+│   │   ├── assets/
+│   │   │   └── security-template.md
+│   │   └── references/
+│   │       └── security-dod.md
 │   │
 │   ├── brainstorm/
 │   │   └── SKILL.md             # → /jim:brainstorm
