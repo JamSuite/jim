@@ -70,6 +70,20 @@ flowchart LR
 
 - {Thing that might seem related but is not included}
 
+## Research & Architecture Handoff
+<!-- Optional — include only when Implementation Insights were surfaced during interview. Remove this section entirely otherwise. -->
+
+*Implementation insights surfaced during scoping. These are context for the architect — not requirements, not exclusions. Treat each as a starting point to evaluate, not a directive.*
+
+### Insight {N}: {short title}
+
+- **Relates to AC:** *"{paraphrased AC text}"* (AC #{N})
+- **Surfaced as:** {what the user or PM originally proposed}
+- **Levelled-up requirement (already in the ACs):** {how the user need was extracted}
+- **Deflection reason:** {Razor / Delegation / Story-Link / Constraint-Sourcing}
+- **Architect note:** {open consideration, alternatives worth weighing, risks}
+- **Routing hint:** {Architect to decide | Researcher to investigate | Candidate constraint pending sourcing}
+
 ## Open Questions
 {Unresolved questions. Write "None" if all questions resolved.}
 

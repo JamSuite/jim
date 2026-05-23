@@ -4,6 +4,32 @@
 
 Items here close obvious gaps in the existing SDLC loop, fix known bugs that create friction every session, or unblock decisions the user has been wanting for a while. Address before Tier 2.
 
+
+
+## HANDOFF BETWEEN SPEC AND PLAN
+
+- jim:plan made some choices without consulting me. 
+
+spec had: 
+
+- **Architect note:** Three viable options to weigh:
+  - **A — Inline replacement.** Replace the existing silent self-check inside `/jim:spec` with the Socratic DoD invocation. Simplest; tightly coupled to `/jim:spec`'s lifecycle. Cannot audit hand-edited or historical specs.
+  - **B — Dedicated `/jim:spec-check` skill.** A standalone skill invocable against any spec.md. Reusable for hand-edited specs, historical audits, and DoD development. Adds a new skill surface and an associated agent binding.
+  - **C — Hybrid.** Standalone `/jim:spec-check` skill that `/jim:spec` invokes at validation via `Skill(jim:spec-check)`. Same logic, two entry points. Uses jim's established skill-to-skill invocation pattern (see `ARCHITECTURE.md` → Skill Invocation, validated by spec 014).
+- **Routing hint:** Architect to decide.
+
+architect chose one option. I the user wanted a different option. architect never asked.
+
+How should the architect decide when to ask?  without being too nosy/annoying?  
+
+For the handoff... would subagents be a good option? What skill invocation would make the most sense if we want to start with a clean context? what if we wanted to start with the existing context?  how would the skill invocation best be implemented?
+
+For the handoff... does jim:plan and jim:research have adequate ability to figure out from the spec what issues it needs to address? how to consume any suggestions/flags/questions/tasks from the spec? how to make sure they all get done? 
+
+in my experience jim:research and jim:plan have already been good at finding what it needs to do from the spec. I'm not sure what if any improvements need to be made here. 
+
+I'm more concerned with the architect making shoot-from-the-hip decisions on important items but I'm not sure how to convey to it what items are important ?? (can that/should that be part of the spec process? I'd rather not manually have to instruct what's important or not but what would be the criteria for importance I have no idea)
+
 ## Task 0001: jim:issue
 
 **Origin:** Z_STUFF_TO_DO line 116 (build-time bugs have nowhere to go), plus the fact that `Z_STUFF_TO_DO` and `BACKLOG.md` are themselves acting as unstructured issue trackers today.
