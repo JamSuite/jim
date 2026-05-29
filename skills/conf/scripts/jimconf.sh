@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -58,6 +58,12 @@ default_for() {
     require_pre_commit)     echo "false" ;;
     require_pre_completion) echo "false" ;;
     auto_arch_feedback)     echo "false" ;;
+    require_security)            echo "false" ;;
+    auto_security)               echo "false" ;;
+    require_security_loop)       echo "false" ;;
+    require_security_loop_sev)   echo "critical" ;;
+    auto_security_loop_limit)    echo "5" ;;
+    security_adhoc)              echo "docs/security" ;;
     *) return 1 ;;
   esac
 }

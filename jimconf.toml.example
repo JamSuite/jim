@@ -44,3 +44,44 @@ require_pre_completion = "false"
 # ARCHITECTURE.md updates directly (bypassing the user-confirmation
 # prompt). Default "false" keeps the existing /jim:arch review step.
 auto_arch_feedback = "false"
+
+# --- Security review gates and behavior -----------------------------------
+
+# Hard-gate security review at phase boundaries. When "true":
+#   /jim:plan halts at its start until the spec has been reviewed
+#   (security.md present with reviewed_phases including "spec").
+#   /jim:build halts at its start until the plan has been reviewed
+#   (security.md present with reviewed_phases including "plan").
+# The gate produces the missing review by invoking /jim:sec; the developer
+# remains in the loop for routing decisions. Default "false".
+require_security          = "false"
+
+# Same gate semantics as require_security, but findings are routed to
+# spec.md or plan.md automatically without per-finding prompts. The
+# developer is not interrupted during the gate cycle. If both
+# require_security and auto_security are "true", auto_security takes
+# precedence (the more aggressive setting). Default "false".
+auto_security             = "false"
+
+# Repeat the gated security-review-and-routing cycle until the configured
+# severity threshold is clear (or the iteration limit is reached).
+# Default "false".
+require_security_loop     = "false"
+
+# Severity threshold for the loop's exit condition. When require_security_loop
+# is "true", the loop exits once no findings remain at or above this
+# severity. Values: "critical" | "notable" | "advisory". Default "critical".
+require_security_loop_sev = "critical"
+
+# Maximum iterations of the gated review-and-routing loop. When the limit
+# is reached with findings still present at or above require_security_loop_sev,
+# the workflow halts with an error listing the unresolved findings.
+# Integer-as-string. Default "5".
+auto_security_loop_limit  = "5"
+
+# Default base directory for ad-hoc /jim:sec file output when the
+# developer opts into writing findings during an ad-hoc review. The skill
+# writes to {security_adhoc_path}/{YYYYMMDD}-{slug}.md when accepted.
+# No file is written unless the developer accepts at the end-of-review
+# prompt. Default "docs/security".
+security_adhoc_path       = "docs/security"

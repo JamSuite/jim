@@ -44,6 +44,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:arch` | Create/update technical architecture |
 | `/jim:roadmap` | Create/update execution roadmap |
 | `/jim:debug` | Diagnose failures, produce debug report |
+| `/jim:sec` | Design-time security analysis of specs, plans, or arbitrary files; produces `security.md` |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
 | `/jim:conf` | Inspect resolved jim configuration paths |
 | `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, next-id, path, glob) |
@@ -58,6 +59,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `@jim:pm` | Specs, vision, roadmap, brainstorms |
 | `@jim:architect` | Plans, architecture |
 | `@jim:coder` | TDD builds, debugging |
+| `@jim:security` | Design-time security review of specs and plans |
 | `@jim:meta` | Plugin development — builds skills and agents |
 
 ## How to install
@@ -100,6 +102,17 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `roadmap_path` | `ROADMAP.md` | `/jim:roadmap`, `/jim:brainstorm` |
 | `brainstorms_path` | `docs/brainstorms` | `/jim:brainstorm` |
 | `debug_path` | `docs/debug` | `/jim:debug` |
+| `security_adhoc_path` | `docs/security` | `/jim:sec` (ad-hoc opt-in file output) |
+| `pre_commit_path` | `./pre-commit.sh` | `/jim:build` (per-commit hook) |
+| `pre_completion_path` | `./pre-completion.sh` | `/jim:build` (post-completion hook) |
+| `require_pre_commit` | `"false"` | `/jim:build` — when `"true"`, missing pre-commit script halts the build |
+| `require_pre_completion` | `"false"` | `/jim:build` — when `"true"`, missing pre-completion script halts the build |
+| `auto_arch_feedback` | `"false"` | `/jim:build` → `/jim:arch` — when `"true"`, ARCHITECTURE.md updates apply without confirmation |
+| `require_security` | `"false"` | `/jim:plan`, `/jim:build` — when `"true"`, next-phase start blocks until security review covers the prior phase; developer in the loop for routing |
+| `auto_security` | `"false"` | `/jim:plan`, `/jim:build` — same gate as `require_security`, but findings route automatically (no per-finding prompts) |
+| `require_security_loop` | `"false"` | `/jim:sec` — when `"true"`, repeat the review-and-routing cycle until the severity threshold clears or the iteration limit is reached |
+| `require_security_loop_sev` | `"critical"` | `/jim:sec` — severity threshold for the loop's exit condition (`"critical"` / `"notable"` / `"advisory"`) |
+| `auto_security_loop_limit` | `"5"` | `/jim:sec` — maximum iterations of the gated review-and-routing loop |
 
 > **Manual migration rule.** Changing a configured path does **not** move existing files. If you point `architecture_path` at a new location, you are responsible for moving (or recreating) the file at the new path. Jim never relocates artifacts on a config change.
 

@@ -50,7 +50,13 @@ case_no_config_returns_defaults() {
               "pre_completion:./pre-completion.sh" \
               "require_pre_commit:false" \
               "require_pre_completion:false" \
-              "auto_arch_feedback:false"; do
+              "auto_arch_feedback:false" \
+              "require_security:false" \
+              "auto_security:false" \
+              "require_security_loop:false" \
+              "require_security_loop_sev:critical" \
+              "auto_security_loop_limit:5" \
+              "security_adhoc:docs/security"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -72,18 +78,30 @@ pre_commit_path = "scripts/pre-commit"
 pre_completion_path = "scripts/pre-completion"
 require_pre_commit = "true"
 require_pre_completion = "true"
-auto_arch_feedback = "true"')
-  run -c "$cfg" get specs;                  assert_eq "specs"                  "my/specs"               "$OUT"
-  run -c "$cfg" get architecture;           assert_eq "architecture"           "docs/arch.md"           "$OUT"
-  run -c "$cfg" get vision;                 assert_eq "vision"                 "docs/vision.md"         "$OUT"
-  run -c "$cfg" get roadmap;                assert_eq "roadmap"                "docs/roadmap.md"        "$OUT"
-  run -c "$cfg" get brainstorms;            assert_eq "brainstorms"            "docs/brainstorms-dir"   "$OUT"
-  run -c "$cfg" get debug;                  assert_eq "debug"                  "docs/debug-dir"         "$OUT"
-  run -c "$cfg" get pre_commit;             assert_eq "pre_commit"             "scripts/pre-commit"     "$OUT"
-  run -c "$cfg" get pre_completion;         assert_eq "pre_completion"         "scripts/pre-completion" "$OUT"
-  run -c "$cfg" get require_pre_commit;     assert_eq "require_pre_commit"     "true"                   "$OUT"
-  run -c "$cfg" get require_pre_completion; assert_eq "require_pre_completion" "true"                   "$OUT"
-  run -c "$cfg" get auto_arch_feedback;     assert_eq "auto_arch_feedback"     "true"                   "$OUT"
+auto_arch_feedback = "true"
+require_security = "true"
+auto_security = "true"
+require_security_loop = "true"
+require_security_loop_sev = "notable"
+auto_security_loop_limit = "10"
+security_adhoc_path = "docs/sec-out"')
+  run -c "$cfg" get specs;                     assert_eq "specs"                     "my/specs"               "$OUT"
+  run -c "$cfg" get architecture;              assert_eq "architecture"              "docs/arch.md"           "$OUT"
+  run -c "$cfg" get vision;                    assert_eq "vision"                    "docs/vision.md"         "$OUT"
+  run -c "$cfg" get roadmap;                   assert_eq "roadmap"                   "docs/roadmap.md"        "$OUT"
+  run -c "$cfg" get brainstorms;               assert_eq "brainstorms"               "docs/brainstorms-dir"   "$OUT"
+  run -c "$cfg" get debug;                     assert_eq "debug"                     "docs/debug-dir"         "$OUT"
+  run -c "$cfg" get pre_commit;                assert_eq "pre_commit"                "scripts/pre-commit"     "$OUT"
+  run -c "$cfg" get pre_completion;            assert_eq "pre_completion"            "scripts/pre-completion" "$OUT"
+  run -c "$cfg" get require_pre_commit;        assert_eq "require_pre_commit"        "true"                   "$OUT"
+  run -c "$cfg" get require_pre_completion;    assert_eq "require_pre_completion"    "true"                   "$OUT"
+  run -c "$cfg" get auto_arch_feedback;        assert_eq "auto_arch_feedback"        "true"                   "$OUT"
+  run -c "$cfg" get require_security;          assert_eq "require_security"          "true"                   "$OUT"
+  run -c "$cfg" get auto_security;             assert_eq "auto_security"             "true"                   "$OUT"
+  run -c "$cfg" get require_security_loop;     assert_eq "require_security_loop"     "true"                   "$OUT"
+  run -c "$cfg" get require_security_loop_sev; assert_eq "require_security_loop_sev" "notable"                "$OUT"
+  run -c "$cfg" get auto_security_loop_limit;  assert_eq "auto_security_loop_limit"  "10"                     "$OUT"
+  run -c "$cfg" get security_adhoc;            assert_eq "security_adhoc"            "docs/sec-out"           "$OUT"
 }
 
 # AC: partial override layered over defaults (spec AC #3)
@@ -113,18 +131,24 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"             "11" "$line_count"
-  assert_match "specs line"                   '^specs=docs/specs$'                     "$OUT"
-  assert_match "architecture line"            '^architecture=ARCHITECTURE\.md$'        "$OUT"
-  assert_match "vision line"                  '^vision=VISION\.md$'                    "$OUT"
-  assert_match "roadmap line"                 '^roadmap=ROADMAP\.md$'                  "$OUT"
-  assert_match "brainstorms line"             '^brainstorms=docs/brainstorms$'         "$OUT"
-  assert_match "debug line"                   '^debug=docs/debug$'                     "$OUT"
-  assert_match "pre_commit line"              '^pre_commit=\./pre-commit\.sh$'         "$OUT"
-  assert_match "pre_completion line"          '^pre_completion=\./pre-completion\.sh$' "$OUT"
-  assert_match "require_pre_commit line"      '^require_pre_commit=false$'             "$OUT"
-  assert_match "require_pre_completion line"  '^require_pre_completion=false$'         "$OUT"
-  assert_match "auto_arch_feedback line"      '^auto_arch_feedback=false$'             "$OUT"
+  assert_eq    "list line count"                  "17" "$line_count"
+  assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
+  assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
+  assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
+  assert_match "roadmap line"                      '^roadmap=ROADMAP\.md$'                  "$OUT"
+  assert_match "brainstorms line"                  '^brainstorms=docs/brainstorms$'         "$OUT"
+  assert_match "debug line"                        '^debug=docs/debug$'                     "$OUT"
+  assert_match "pre_commit line"                   '^pre_commit=\./pre-commit\.sh$'         "$OUT"
+  assert_match "pre_completion line"               '^pre_completion=\./pre-completion\.sh$' "$OUT"
+  assert_match "require_pre_commit line"           '^require_pre_commit=false$'             "$OUT"
+  assert_match "require_pre_completion line"       '^require_pre_completion=false$'         "$OUT"
+  assert_match "auto_arch_feedback line"           '^auto_arch_feedback=false$'             "$OUT"
+  assert_match "require_security line"             '^require_security=false$'               "$OUT"
+  assert_match "auto_security line"                '^auto_security=false$'                  "$OUT"
+  assert_match "require_security_loop line"        '^require_security_loop=false$'          "$OUT"
+  assert_match "require_security_loop_sev line"    '^require_security_loop_sev=critical$'   "$OUT"
+  assert_match "auto_security_loop_limit line"     '^auto_security_loop_limit=5$'           "$OUT"
+  assert_match "security_adhoc line"               '^security_adhoc=docs/security$'         "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -132,7 +156,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -170,7 +194,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "11" "$line_count"
+  assert_eq "list still emits all keys" "17" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -285,6 +309,116 @@ case_auto_arch_feedback_overridden() {
   cfg=$(fixture auto_arch_feedback-override.toml 'auto_arch_feedback = "true"')
   run -c "$cfg" get auto_arch_feedback
   assert_eq "auto_arch_feedback overridden" "true" "$OUT"
+}
+
+# AC: require_security defaults to "false"
+# Workflow gate flag — TOML name equals CLI name (no _path suffix); resolved
+# via the require_* prefix dispatch in resolve(). When "true", /jim:plan and
+# /jim:build halt the workflow at their start until phase-level security
+# review is on file (spec 016).
+case_require_security_default() {
+  local dir actual
+  dir=$(empty_dir require_security_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get require_security)
+  assert_eq "require_security default" "false" "$actual"
+}
+
+# AC: require_security override via jimconf.toml
+case_require_security_overridden() {
+  local cfg
+  cfg=$(fixture require_security-override.toml 'require_security = "true"')
+  run -c "$cfg" get require_security
+  assert_eq "require_security overridden" "true" "$OUT"
+}
+
+# AC: auto_security defaults to "false"
+# Same gate as require_security but routes findings automatically without
+# per-finding prompts. Resolved via auto_* prefix dispatch.
+case_auto_security_default() {
+  local dir actual
+  dir=$(empty_dir auto_security_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get auto_security)
+  assert_eq "auto_security default" "false" "$actual"
+}
+
+# AC: auto_security override via jimconf.toml
+case_auto_security_overridden() {
+  local cfg
+  cfg=$(fixture auto_security-override.toml 'auto_security = "true"')
+  run -c "$cfg" get auto_security
+  assert_eq "auto_security overridden" "true" "$OUT"
+}
+
+# AC: require_security_loop defaults to "false"
+# Enables repeated review-and-routing cycles inside the gated workflow.
+case_require_security_loop_default() {
+  local dir actual
+  dir=$(empty_dir require_security_loop_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get require_security_loop)
+  assert_eq "require_security_loop default" "false" "$actual"
+}
+
+# AC: require_security_loop override via jimconf.toml
+case_require_security_loop_overridden() {
+  local cfg
+  cfg=$(fixture require_security_loop-override.toml 'require_security_loop = "true"')
+  run -c "$cfg" get require_security_loop
+  assert_eq "require_security_loop overridden" "true" "$OUT"
+}
+
+# AC: require_security_loop_sev defaults to "critical"
+# Severity threshold for the loop's exit condition. Conservative default per
+# plan Decision 12 — loop exits when no Critical-severity findings remain.
+case_require_security_loop_sev_default() {
+  local dir actual
+  dir=$(empty_dir require_security_loop_sev_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get require_security_loop_sev)
+  assert_eq "require_security_loop_sev default" "critical" "$actual"
+}
+
+# AC: require_security_loop_sev override via jimconf.toml
+case_require_security_loop_sev_overridden() {
+  local cfg
+  cfg=$(fixture require_security_loop_sev-override.toml 'require_security_loop_sev = "notable"')
+  run -c "$cfg" get require_security_loop_sev
+  assert_eq "require_security_loop_sev overridden" "notable" "$OUT"
+}
+
+# AC: auto_security_loop_limit defaults to "5"
+# Maximum iterations of the gated review-and-routing loop. Integer-as-string;
+# conservative default per plan Decision 12 prevents runaway loops.
+case_auto_security_loop_limit_default() {
+  local dir actual
+  dir=$(empty_dir auto_security_loop_limit_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get auto_security_loop_limit)
+  assert_eq "auto_security_loop_limit default" "5" "$actual"
+}
+
+# AC: auto_security_loop_limit override via jimconf.toml
+case_auto_security_loop_limit_overridden() {
+  local cfg
+  cfg=$(fixture auto_security_loop_limit-override.toml 'auto_security_loop_limit = "10"')
+  run -c "$cfg" get auto_security_loop_limit
+  assert_eq "auto_security_loop_limit overridden" "10" "$OUT"
+}
+
+# AC: security_adhoc defaults to "docs/security"
+# Path-typed key — CLI key `security_adhoc` resolves to TOML key
+# `security_adhoc_path` (via the default `${cli_key}_path` rule in resolve()).
+# Default base directory for ad-hoc /jim:sec opt-in file output.
+case_security_adhoc_default() {
+  local dir actual
+  dir=$(empty_dir security_adhoc_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get security_adhoc)
+  assert_eq "security_adhoc default" "docs/security" "$actual"
+}
+
+# AC: security_adhoc override via jimconf.toml
+case_security_adhoc_overridden() {
+  local cfg
+  cfg=$(fixture security_adhoc-override.toml 'security_adhoc_path = "docs/sec-out"')
+  run -c "$cfg" get security_adhoc
+  assert_eq "security_adhoc overridden" "docs/sec-out" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-05-15*
+*Last updated: 2026-05-21*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill to preserve consistency.
 
@@ -19,6 +19,7 @@ jim/
 │   ├── architect.md         # @jim:architect — technical architect
 │   ├── researcher.md        # @jim:researcher — codebase investigator
 │   ├── coder.md             # @jim:coder — TDD implementer
+│   ├── security.md          # @jim:security — design-time security analyst
 │   └── meta.md              # @jim:meta — plugin developer (builds jim itself)
 ├── skills/                  # Skill definitions — one directory per skill
 │   ├── spec/                # /jim:spec — collaborative spec creation
@@ -27,6 +28,12 @@ jim/
 │   ├── research/            # /jim:research — codebase and landscape investigation
 │   ├── build/               # /jim:build — TDD red-green-refactor execution
 │   ├── debug/               # /jim:debug — structured failure diagnosis
+│   ├── sec/                 # /jim:sec — design-time security analysis (016)
+│   │   ├── SKILL.md
+│   │   ├── assets/
+│   │   │   └── security-template.md   # security.md output structure
+│   │   └── references/
+│   │       └── security-dod.md        # Validation checklist for reviews
 │   ├── vision/              # /jim:vision — product vision and strategy
 │   ├── roadmap/             # /jim:roadmap — execution milestones
 │   ├── arch/                # /jim:arch — architecture document generation
@@ -87,6 +94,7 @@ flowchart TD
         PLAN["/jim:plan"]
         BUILD["/jim:build"]
         DEBUG["/jim:debug"]
+        SEC["/jim:sec"]
     end
 
     subgraph "Meta Skills"
@@ -100,6 +108,7 @@ flowchart TD
         ARCHITECT["@jim:architect"]
         RESEARCHER["@jim:researcher"]
         CODER["@jim:coder"]
+        SECURITY["@jim:security"]
         META["@jim:meta"]
     end
 
@@ -113,10 +122,11 @@ flowchart TD
         CODE["Tests + Code"]
         BDOC["brainstorm.md"]
         DDOC["debug report"]
+        SECDOC["security.md"]
     end
 
     U --> VIS & ROAD & ARCH & BRAIN
-    U --> SPEC & RES & PLAN & BUILD & DEBUG
+    U --> SPEC & RES & PLAN & BUILD & DEBUG & SEC
     U --> MS & MA & MT
 
     VIS & ROAD & BRAIN --> PM
@@ -125,12 +135,14 @@ flowchart TD
     RES --> RESEARCHER
     PLAN --> ARCHITECT
     BUILD & DEBUG --> CODER
+    SEC --> SECURITY
     MS & MA & MT --> META
 
     PM --> VDOC & RDOC & SDOC & BDOC
     ARCHITECT --> ADOC & PDOC
     RESEARCHER --> RESDOC
     CODER --> CODE & DDOC
+    SECURITY --> SECDOC
 
     ARCHITECT -.->|spawns| RESEARCHER
     META -.->|delegates| PM & ARCHITECT & RESEARCHER
@@ -143,7 +155,7 @@ flowchart TD
 Agents are markdown files (`agents/*.md`) that define personas with frontmatter metadata. Each agent declares its name, description, skill bindings, tool permissions, and model preference.
 
 - **Purpose:** Define the persona, responsibilities, and boundaries for each specialized role in the SDLC
-- **Location:** `agents/` — `pm.md` (L1–75), `architect.md` (L1–81), `researcher.md` (L1–84), `coder.md` (L1–84), `meta.md` (L1–64)
+- **Location:** `agents/` — `pm.md` (L1–75), `architect.md` (L1–81), `researcher.md` (L1–84), `coder.md` (L1–84), `security.md` (L1–86), `meta.md` (L1–64)
 - **Interfaces:** Frontmatter fields: `name`, `description`, `skills` (list), `tools` (list), `model` (string). Body contains persona instructions, context paths, core principles, process delegation, and constraints.
 - **Dependencies:** Each agent references its bound skills in `skills/`. Agents may spawn other agents via the `Agent()` tool declaration (e.g., architect and PM can spawn researcher; meta can spawn PM, architect, researcher).
 - **Key Constraints:** Agents do not cross domain boundaries — PM does not write code, coder does not modify specs, researcher does not make design decisions. All agents stop after producing an artifact and wait for human approval.
@@ -153,7 +165,7 @@ Agents are markdown files (`agents/*.md`) that define personas with frontmatter 
 Skills are SKILL.md files inside `skills/{name}/` directories, optionally accompanied by `assets/` (templates) and `references/` (methodology docs).
 
 - **Purpose:** Provide the detailed process instructions that agents follow when a `/jim:{verb}` command is invoked
-- **Location:** `skills/` — 12 SDLC + strategic skill directories (spec, spec-check, plan, research, build, debug, vision, roadmap, arch, brainstorm, meta-skill, meta-agent) plus supporting skills (`conf/`, `file/`, `meta-test/`, `review/`, and the `meta-matrix*` probe family)
+- **Location:** `skills/` — 13 SDLC + strategic skill directories (spec, spec-check, plan, research, build, debug, sec, vision, roadmap, arch, brainstorm, meta-skill, meta-agent) plus supporting skills (`conf/`, `file/`, `meta-test/`, `review/`, and the `meta-matrix*` probe family)
 - **Interfaces:** Frontmatter fields: `name`, `description`, `agent` (which agent runs this skill), `argument-hint`. Body contains step-by-step process, argument routing, validation checklists.
 - **Dependencies:** Skills reference their `assets/` templates and `references/` docs. Skills are bound to agents via the `agent` frontmatter field (documentation convention, not runtime routing).
 - **Key Constraints:** SKILL.md stays under 500 lines (progressive disclosure). Templates live in `assets/`, methodology in `references/`.
@@ -161,6 +173,8 @@ Skills are SKILL.md files inside `skills/{name}/` directories, optionally accomp
 The post-build arch-feedback loop closes the gap between code changes and the locked-constraint architecture document. `/jim:build` step 5.2 reads the configured architecture path; if it exists, `/jim:build` invokes `/jim:arch` via the Skill tool to refresh ARCHITECTURE.md against the just-built code. The trigger is existence-conditioned — when no architecture document is configured, the step is silently skipped. `/jim:arch` step 6 then branches on the `auto_arch_feedback` config flag (default `"false"`): `"true"` writes the update directly and summarizes changes; `"false"` runs the existing diff-and-confirm flow.
 
 A second canonical `Skill(jim:<name>)` invocation site is `/jim:spec` Step 9, which calls `Skill(jim:spec-check)` to run the Socratic DoD audit on the just-written `spec.md`. The audit returns structured outcomes (deflections, retained external constraints, orphan-AC flags) which `/jim:spec` applies inline under a bounded-retry cap of 3 iterations before surfacing a deflection summary at Step 10. The pattern matches `/jim:build` → `/jim:arch`: namespaced permission token in `allowed-tools`, Skill tool in body, target path passed explicitly as `args` because `$ARGUMENTS` does not auto-forward.
+
+The design-time security review (spec 016) introduces a third pair of `Skill(jim:<name>)` invocation sites at workflow gates: `/jim:plan` Step 2 and `/jim:build` Step 2. When `require_security` or `auto_security` is set in `jimconf.toml`, the gate at each phase reads `security.md` from the spec directory and checks the `reviewed_phases:` frontmatter array. `/jim:plan` requires `spec` in the array; `/jim:build` requires `plan`. When coverage is absent, the gate invokes `Skill(jim:sec)` with the spec directory as `args`. The called skill runs analysis (data classification → freeform expert review → STRIDE sweep → conditional LINDDUN sweep when PII / credentials / session data is present), routes findings (developer in the loop under `require_security`; auto-Edit under `auto_security`), and optionally loops via `require_security_loop` until `require_security_loop_sev` is clear or `auto_security_loop_limit` is reached. If the loop hits the limit with unresolved findings at the configured severity, `/jim:sec` exits non-zero with a structured halt-error block, and the calling phase halts cleanly. In default mode (neither flag set), `/jim:spec` and `/jim:plan` instead emit a conversational pre-approval offer at end of flow; the developer chooses whether to run `/jim:sec`, and findings are advisory.
 
 ### Plugin Manifest
 
@@ -264,7 +278,7 @@ Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/script
 - **Single resolver, many consumers.** Every consuming skill (`vision`, `roadmap`, `arch`, `plan`, `spec`, `research`, `brainstorm`, `debug`, `meta-skill`, `meta-agent`, `build`) references the resolver via Claude Code's `!`-injection primitive: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` ``. The output replaces the placeholder in the skill body before the LLM reads it, so the resolved path lands in the prompt deterministically. **Skills and agents always call `jimfile.sh`, never `jimconf.sh` directly** — `jimfile.sh` chains internally to `jimconf.sh` for any operation that needs a configured path.
 - **`${CLAUDE_PLUGIN_ROOT}` is the documented plugin-root substitution** — see `code.claude.com/docs/en/plugins-reference#environment-variables`. It resolves to the plugin's installation directory regardless of which skill consumes the script.
 - **The `/jim:conf` skill** (`skills/conf/SKILL.md`) is a thin user-facing wrapper around the same script for human introspection (`/jim:conf list`, `/jim:conf get specs`, etc.). It carries no `agent:` binding because there is no LLM reasoning to delegate.
-- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for eleven configurable keys: eight paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`, `pre_commit_path`, `pre_completion_path`), two enforcement flags (`require_pre_commit`, `require_pre_completion`) and one feedback-loop flag (`auto_arch_feedback`). Path keys append `_path` to the CLI key when looked up; flag keys (CLI keys starting with `require_` or `auto_`) map directly to the same TOML name without a suffix — both prefixes share the dispatch convention in `resolve()`. Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code). The `pre_commit_path` and `pre_completion_path` defaults (`./pre-commit.sh`, `./pre-completion.sh`) are the *path-where-it-would-live*; consumers wrap calls in an existence gate at the skill layer, so a missing file is silently skipped unless the corresponding `require_*` flag is `"true"`.
+- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for seventeen configurable keys: nine paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`, `pre_commit_path`, `pre_completion_path`, `security_adhoc_path`), four enforcement / behavior flags from prior specs (`require_pre_commit`, `require_pre_completion`, `auto_arch_feedback`), and five security-gate flags from spec 016 (`require_security`, `auto_security`, `require_security_loop`, `require_security_loop_sev`, `auto_security_loop_limit`). Path keys append `_path` to the CLI key when looked up; flag keys (CLI keys starting with `require_` or `auto_`) map directly to the same TOML name without a suffix — both prefixes share the dispatch convention in `resolve()`. Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code). The `pre_commit_path` and `pre_completion_path` defaults (`./pre-commit.sh`, `./pre-completion.sh`) are the *path-where-it-would-live*; consumers wrap calls in an existence gate at the skill layer, so a missing file is silently skipped unless the corresponding `require_*` flag is `"true"`. The security-loop flags use enum/integer values rather than booleans: `require_security_loop_sev` defaults to `"critical"` (one of `"critical"` / `"notable"` / `"advisory"`), and `auto_security_loop_limit` defaults to `"5"` — conservative caps that prevent runaway loops while preserving the developer's intent when looping is enabled.
 - **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, configured-path resolution (`get <key>`, delegates to `jimconf.sh`), slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding).
 - **Tests:** Per-script test files at `tests/jimconf.sh`, `tests/jimfile.sh`, and `tests/metatest.sh` cover each script's CLI surface, defaults, parse robustness, and (where applicable) the `-c <path>` flag. The shared framework lives at `skills/meta-test/scripts/testlib.sh` and the aggregate runner at `skills/meta-test/scripts/run.sh`, so the meta-test skill owns its toolchain (per spec 007). Per-script files source the relocated lib via a `BASH_SOURCE`-relative path (`source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"`). Run all via `bash skills/meta-test/scripts/run.sh` (or `/jim:meta-test run`), run a single script standalone via `bash tests/jimconf.sh` / `bash tests/jimfile.sh` / `bash tests/metatest.sh`. Filter by name substring still works: `bash skills/meta-test/scripts/run.sh jimfile` (or `/jim:meta-test run jimfile`).
 - **Test scaffolding (`metatest.sh`).** Third script under `skills/meta-test/scripts/`. Three subcommands — `scaffold <name>` (create `tests/<name>.sh` from `assets/test-file.sh.tmpl`), `add <name> <case>` (append a `case_<name>_<case>()` stub), `run [name]` (invoke runner, standalone path preferred for one-file). The user-facing `/jim:meta-test` skill (`skills/meta-test/SKILL.md`) wraps the dispatcher with per-action gating: scaffold requires an approved spec+plan for the script-under-test (mirrors `meta-skill`/`meta-agent`); add and run are ungated.
