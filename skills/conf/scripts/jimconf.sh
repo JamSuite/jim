@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -64,6 +64,7 @@ default_for() {
     require_security_loop_sev)   echo "critical" ;;
     auto_security_loop_limit)    echo "5" ;;
     security_adhoc)              echo "docs/security" ;;
+    issues)                      echo "./docs/issues/" ;;
     *) return 1 ;;
   esac
 }
@@ -105,6 +106,10 @@ resolve() {
   if [[ -f "$file" ]]; then
     value="$(parse_value "$file" "$toml_key")"
   fi
+  # Trim leading/trailing whitespace; treat all-whitespace as empty so
+  # configured-empty values fall through to the documented default
+  # (Finding 13 / spec 017 — defense against silent empty-path writes).
+  value="$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   if [[ -z "$value" ]]; then
     default_for "$cli_key"
   else

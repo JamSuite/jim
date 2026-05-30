@@ -131,7 +131,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "17" "$line_count"
+  assert_eq    "list line count"                  "18" "$line_count"
   assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
@@ -149,6 +149,7 @@ case_list_outputs_all_keys() {
   assert_match "require_security_loop_sev line"    '^require_security_loop_sev=critical$'   "$OUT"
   assert_match "auto_security_loop_limit line"     '^auto_security_loop_limit=5$'           "$OUT"
   assert_match "security_adhoc line"               '^security_adhoc=docs/security$'         "$OUT"
+  assert_match "issues line"                       '^issues=\./docs/issues/$'               "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -156,7 +157,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -194,7 +195,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "17" "$line_count"
+  assert_eq "list still emits all keys" "18" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -419,6 +420,17 @@ case_security_adhoc_overridden() {
   cfg=$(fixture security_adhoc-override.toml 'security_adhoc_path = "docs/sec-out"')
   run -c "$cfg" get security_adhoc
   assert_eq "security_adhoc overridden" "docs/sec-out" "$OUT"
+}
+
+# AC: issues defaults to "./docs/issues/" (spec 017 AC-P2)
+# Path-typed key — CLI key `issues` resolves to TOML key `issues_path` via the
+# default `${cli_key}_path` rule in resolve(). Default storage location for
+# discovery-artifact issue files captured via /jim:issue.
+case_issues_default() {
+  local dir actual
+  dir=$(empty_dir issues_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issues)
+  assert_eq "issues default" "./docs/issues/" "$actual"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
