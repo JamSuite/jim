@@ -433,6 +433,49 @@ case_issues_default() {
   assert_eq "issues default" "./docs/issues/" "$actual"
 }
 
+# AC: issues override via jimconf.toml (spec 017 AC-P2)
+case_issues_overridden() {
+  local cfg
+  cfg=$(fixture issues-override.toml 'issues_path = "docs/findings"')
+  run -c "$cfg" get issues
+  assert_eq "issues overridden" "docs/findings" "$OUT"
+}
+
+# AC: issues with empty-string configured value falls through to default
+# (spec 017 security.md Finding 13 — defense against silent empty-path writes).
+case_issues_empty_string_falls_through_to_default() {
+  local cfg
+  cfg=$(fixture issues-empty.toml 'issues_path = ""')
+  run -c "$cfg" get issues
+  assert_eq "empty → default" "./docs/issues/" "$OUT"
+}
+
+# AC: issues with whitespace-only configured value falls through to default
+# (spec 017 security.md Finding 13 — whitespace counts as empty after trim).
+case_issues_whitespace_only_falls_through_to_default() {
+  local cfg
+  cfg=$(fixture issues-whitespace.toml 'issues_path = "   "')
+  run -c "$cfg" get issues
+  assert_eq "whitespace → default" "./docs/issues/" "$OUT"
+}
+
+# AC: issues with no config file at all falls through to default
+case_issues_no_config_file() {
+  run -c "$TMP_BASE/never-existed.toml" get issues
+  assert_exit "rc" 0 "$RC"
+  assert_eq "missing config → default" "./docs/issues/" "$OUT"
+}
+
+# AC: issues survives commented config (parse-robustness regression guard)
+case_issues_tolerates_comments() {
+  local cfg
+  cfg=$(fixture issues-comments.toml '# default storage location
+issues_path = "docs/my-issues"
+# trailing comment')
+  run -c "$cfg" get issues
+  assert_eq "value past comments" "docs/my-issues" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
