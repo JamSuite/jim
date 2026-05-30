@@ -242,6 +242,141 @@ case_issues_render_empty_summary_line() {
   assert_match "single-line summary" 'Open: 0.*Closed: 0' "$OUT"
 }
 
+# AC: clusters group issues by origin (AC-R1)
+case_issues_render_clusters_by_origin() {
+  local dir
+  dir=$(empty_dir render_origin)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+origin: docs/specs/jim/016-sec/'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+origin: docs/specs/jim/016-sec/'
+  write_issue "$dir" "20260530-c" 'title: "C"
+status: open
+origin: docs/brainstorms/x.md'
+  run_render "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "origin group sec"   'docs/specs/jim/016-sec/.*2' "$OUT"
+  assert_match "origin group brain" 'docs/brainstorms/x.md.*1'  "$OUT"
+}
+
+# AC: clusters group issues by label (AC-R1)
+case_issues_render_clusters_by_label() {
+  local dir
+  dir=$(empty_dir render_label)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+labels: [auth, security]'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+labels: [auth, middleware]'
+  run_render "$dir"
+  assert_match "label auth count"     'auth.*2'     "$OUT"
+  assert_match "label security count" 'security.*1' "$OUT"
+}
+
+# AC: blocking section orders by outgoing 'blocks' count desc (AC-R1)
+case_issues_render_blocking_ordered_by_count() {
+  local dir
+  dir=$(empty_dir render_blocking)
+  # 'mega' blocks 3 issues; 'small' blocks 1 issue.
+  write_issue "$dir" "20260530-mega" 'title: "Mega"
+status: open
+relations:
+  blocks: [20260530-x, 20260530-y, 20260530-z]
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "20260530-small" 'title: "Small"
+status: open
+relations:
+  blocks: [20260530-x]
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "20260530-x" 'title: "X"
+status: open
+relations:
+  blocks: []
+  depends-on: [20260530-mega, 20260530-small]
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "20260530-y" 'title: "Y"
+status: open
+relations:
+  blocks: []
+  depends-on: [20260530-mega]
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "20260530-z" 'title: "Z"
+status: open
+relations:
+  blocks: []
+  depends-on: [20260530-mega]
+  related-to: []
+  duplicates: []'
+  run_render "$dir"
+  assert_exit "rc" 0 "$RC"
+  # 'mega' must come before 'small' in the blocking section.
+  local mega_line small_line
+  mega_line=$(echo "$OUT" | grep -n '^  20260530-mega' | head -n 1 | cut -d: -f1)
+  small_line=$(echo "$OUT" | grep -n '^  20260530-small' | head -n 1 | cut -d: -f1)
+  if [[ -z "$mega_line" || -z "$small_line" || "$mega_line" -ge "$small_line" ]]; then
+    CURRENT_FAILED=1
+    echo "    [blocking order] mega line=$mega_line small line=$small_line (expected mega < small)"
+  fi
+  assert_match "mega blocks 3 issues"  'blocks 3 issues' "$OUT"
+  assert_match "small blocks 1 issues" 'blocks 1 issues' "$OUT"
+}
+
+# AC: integrity warnings from INDEX.md surface in the render output (DD #7)
+case_issues_render_surfaces_integrity_warnings() {
+  local dir
+  dir=$(empty_dir render_warnings)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+relations:
+  blocks: [20260530-b]
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  run_render "$dir"
+  assert_match "warning surfaced" 'Integrity Warnings' "$OUT"
+  assert_match "warning content"  'has no inverse'     "$OUT"
+}
+
+# AC: render is read-only — does not mutate the issue collection (AC-R3)
+# Verify: the set of files in the issues dir before and after render is
+# the same (apart from INDEX.md which the defensive index.sh call may touch).
+case_issues_render_is_read_only_for_issue_files() {
+  local dir
+  dir=$(empty_dir render_readonly)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open'
+  local before_hash
+  before_hash=$(find "$dir" -type f -name '*.md' ! -name 'INDEX.md' -exec md5sum {} + | sort | md5sum)
+  run_render "$dir"
+  local after_hash
+  after_hash=$(find "$dir" -type f -name '*.md' ! -name 'INDEX.md' -exec md5sum {} + | sort | md5sum)
+  assert_eq "issue files unchanged" "$before_hash" "$after_hash"
+}
+
+# AC: render includes the issues directory in its header
+case_issues_render_header_names_dir() {
+  local dir
+  dir=$(empty_dir render_header)
+  run_render "$dir"
+  assert_match "header has dir" "Issue Collection — $dir" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

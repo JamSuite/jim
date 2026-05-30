@@ -123,7 +123,11 @@ main() {
         label_count[$lab]=$(( ${label_count[$lab]:-0} + 1 ))
       done
     fi
-  done < <(awk '/^## Issues$/,/^## /{ if (/^- `/) print }' "$index_file")
+  done < <(awk '
+    /^## Issues$/ { in_section=1; next }
+    /^## / && in_section { in_section=0 }
+    in_section && /^- `/ { print }
+  ' "$index_file")
 
   printf '  By origin\n'
   if (( ${#origin_count[@]} == 0 )); then
@@ -160,7 +164,11 @@ main() {
     edge_tgt="${BASH_REMATCH[2]}"
     blocks_out[$edge_src]=$(( ${blocks_out[$edge_src]:-0} + 1 ))
     blocks_targets[$edge_src]="${blocks_targets[$edge_src]:-} $edge_tgt"
-  done < <(awk '/^## Graph$/,/^## /{ if (/^- `/) print }' "$index_file")
+  done < <(awk '
+    /^## Graph$/ { in_section=1; next }
+    /^## / && in_section { in_section=0 }
+    in_section && /^- `/ { print }
+  ' "$index_file")
 
   if (( ${#blocks_out[@]} == 0 )); then
     printf '  _No blocking edges._\n\n'
