@@ -21,6 +21,7 @@ vision_path       = "VISION.md"
 roadmap_path      = "ROADMAP.md"
 brainstorms_path  = "docs/brainstorms"
 debug_path        = "docs/debug"
+issues_path       = "./docs/issues/"
 
 # Optional project-script path for the per-commit gate. Resolves the
 # path-where-it-would-live; /jim:build wraps the call in an existence
