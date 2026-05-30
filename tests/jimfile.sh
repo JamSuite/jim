@@ -343,9 +343,10 @@ case_jimfile_kinds_outputs_valid_kinds() {
   assert_match "research"   '^research$'   "$OUT"
   assert_match "debug"      '^debug$'      "$OUT"
   assert_match "brainstorm" '^brainstorm$' "$OUT"
+  assert_match "issue"      '^issue$'      "$OUT"
   local lines
   lines=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "5 kinds" "5" "$lines"
+  assert_eq "6 kinds" "6" "$lines"
 }
 
 # AC: unknown subcommand exits 2 with stderr explanation
@@ -487,6 +488,19 @@ case_jimfile_get_unknown_key_exits_1() {
   run_jimfile get bogus_key
   assert_exit     "rc" 1 "$RC"
   assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue <slug> returns <issues_dir>/<slug>.md (spec 017 AC-P1)
+# Pure path composition; does not touch the filesystem. Slug must pass
+# AC-C7 validation (alphanumeric + dash); see case_jimfile_path_issue_*
+# rejection cases for invalid-slug behavior.
+case_jimfile_path_issue_basic() {
+  local issues cfg
+  issues=$(empty_dir issues_basic)
+  cfg=$(fixture path-issue-basic.toml "issues_path = \"$issues\"")
+  run_jimfile -c "$cfg" path issue 20260530-test-slug
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "issue path" "$issues/20260530-test-slug.md" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

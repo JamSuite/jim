@@ -51,6 +51,11 @@
 #
 
 set -uo pipefail
+# LC_ALL=C ensures locale-independent behavior for `tr` case folding, regex
+# character class matching, and date formatting. Without this, locales like
+# Turkish produce non-deterministic slugs (dotless ı / dotted İ are not ASCII
+# i/I). Spec 017 security.md Finding 11.
+export LC_ALL=C
 
 # ─── Section: Globals ────────────────────────────────────────────────────────
 
@@ -59,7 +64,7 @@ set -uo pipefail
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
 
 # Valid artifact kinds. Drives `path <kind>` validation and `kinds` output.
-readonly KINDS=(spec plan research debug brainstorm)
+readonly KINDS=(spec plan research debug brainstorm issue)
 
 # Optional -c <path> override for jimconf.toml. Empty when not supplied.
 CONFIG_FILE=""
@@ -121,6 +126,24 @@ normalize_slug() {
 #   prefixes on debug and brainstorm filenames.
 today_yyyymmdd() {
   date +%Y%m%d
+}
+
+# is_valid_slug <slug>
+#   AC-C7 validation: slug must be lowercase alnum + dash only, alnum-start,
+#   non-empty. Rejects path separators (/, \), '..', leading dot, control
+#   characters, and any other non-conforming input. Errors go to stderr;
+#   stdout stays empty. Spec 017 security.md Finding 1 + Finding 2.
+is_valid_slug() {
+  local slug="$1"
+  if [[ -z "$slug" ]]; then
+    echo "error: slug rejected — empty" >&2
+    return 1
+  fi
+  if [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "error: slug rejected — '$slug' (allowed: ^[a-z0-9][a-z0-9-]*$)" >&2
+    return 1
+  fi
+  return 0
 }
 
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
@@ -237,6 +260,18 @@ cmd_path() {
       local specs_root
       specs_root="$(jimconf_get specs)"
       printf '%s/%s/%s-%s/%s.md\n' "$specs_root" "$group" "$id" "$name" "$kind"
+      ;;
+    issue)
+      local slug="${1:-}"
+      if [[ -z "$slug" ]]; then
+        echo "error: 'path issue' requires <slug>" >&2
+        return 2
+      fi
+      is_valid_slug "$slug" || return 1
+      local dir
+      dir="$(jimconf_get issues)"
+      dir="${dir%/}"
+      printf '%s/%s.md\n' "$dir" "$slug"
       ;;
     debug|brainstorm)
       local topic="${1:-}"
