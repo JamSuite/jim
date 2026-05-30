@@ -233,6 +233,15 @@ status: open'
   assert_eq "no tmp leftover" "0" "$tmp_files"
 }
 
+# AC: render.sh on an empty dir prints "Open: 0 · Closed: 0" summary line (AC-R1, R2)
+case_issues_render_empty_summary_line() {
+  local dir
+  dir=$(empty_dir render_empty)
+  run_render "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "single-line summary" 'Open: 0.*Closed: 0' "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
