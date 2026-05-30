@@ -2,7 +2,7 @@
 title: "Issue Tracking — Local Files (v1)"
 spec: "spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Issue Tracking — Local Files (v1) — Plan
