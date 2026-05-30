@@ -40,9 +40,14 @@ run_render() {
 
 # ─── Section: Test cases ─────────────────────────────────────────────────────
 
-# AC: smoke — replace this placeholder with a real assertion.
-case_issues_smoke() {
-  assert_eq "smoke placeholder" "0" "0"
+# AC: index.sh on an empty dir writes INDEX.md with zero counts (spec 017 AC-I1, AC-R2)
+case_issues_index_empty_dir() {
+  local dir
+  dir=$(empty_dir index_empty)
+  run_index "$dir"
+  assert_exit "rc"            0          "$RC"
+  assert_match "summary open"   "Open: 0"   "$(cat "$dir/INDEX.md")"
+  assert_match "summary closed" "Closed: 0" "$(cat "$dir/INDEX.md")"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
