@@ -194,11 +194,27 @@ cmd_date() {
 }
 
 cmd_next_id() {
-  local group="${1:-}"
-  if [[ -z "$group" ]]; then
-    echo "error: 'next-id' requires a group argument" >&2
+  local first="${1:-}"
+  if [[ -z "$first" ]]; then
+    echo "error: 'next-id' requires an argument" >&2
     return 2
   fi
+  # Dispatch by first arg: 'issue' takes a subject and returns a
+  # date-prefixed slug; everything else is treated as a spec group name
+  # (existing numeric-id behavior).
+  if [[ "$first" == "issue" ]]; then
+    local subject="${2:-}"
+    if [[ -z "$subject" ]]; then
+      echo "error: 'next-id issue' requires <subject>" >&2
+      return 2
+    fi
+    local slug today
+    slug="$(normalize_slug "$subject")" || return 1
+    today="$(today_yyyymmdd)"
+    printf '%s-%s\n' "$today" "$slug"
+    return 0
+  fi
+  local group="$first"
   local specs_root group_dir max=0
   specs_root="$(jimconf_get specs)"
   group_dir="$specs_root/$group"

@@ -503,6 +503,15 @@ case_jimfile_path_issue_basic() {
   assert_eq   "issue path" "$issues/20260530-test-slug.md" "$OUT"
 }
 
+# AC: next-id issue <subject> returns YYYYMMDD-normalized-slug (spec 017 AC-C6, AC-C7)
+case_jimfile_next_id_issue_basic() {
+  run_jimfile next-id issue "Auth Bug"
+  local today
+  today=$(date +%Y%m%d)
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "next-id issue" "$today-auth-bug" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
