@@ -257,7 +257,15 @@ cmd_path() {
     return 2
   fi
   if [[ $# -eq 1 ]]; then
-    jimconf_get "$first"
+    # Single-arg form: caller wants the configured path for the named key.
+    # Translate kind→cli_key for the 'issue' kind whose jimconf key is
+    # 'issues' (singular kind → plural collection). Mirrors the existing
+    # multi-arg path-issue handler; analogous to path debug (no topic).
+    if [[ "$first" == "issue" ]]; then
+      jimconf_get issues
+    else
+      jimconf_get "$first"
+    fi
     return $?
   fi
   local kind="$first"

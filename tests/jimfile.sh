@@ -512,6 +512,117 @@ case_jimfile_next_id_issue_basic() {
   assert_eq   "next-id issue" "$today-auth-bug" "$OUT"
 }
 
+# AC: path issue rejects path-traversal in slug (security.md Finding 1)
+case_jimfile_path_issue_rejects_path_traversal() {
+  run_jimfile path issue "../etc/passwd"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects literal '..' slug (security.md Finding 1)
+case_jimfile_path_issue_rejects_dotdot() {
+  run_jimfile path issue ".."
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects slug containing slash (security.md Finding 1)
+case_jimfile_path_issue_rejects_slash() {
+  run_jimfile path issue "foo/bar"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects slug with backslash (security.md Finding 1)
+case_jimfile_path_issue_rejects_backslash() {
+  run_jimfile path issue 'foo\bar'
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects slug with leading dot (security.md Finding 1)
+case_jimfile_path_issue_rejects_leading_dot() {
+  run_jimfile path issue ".hidden"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects slug with uppercase characters (AC-C7 — lowercase only)
+case_jimfile_path_issue_rejects_uppercase() {
+  run_jimfile path issue "AUTH-bug"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue (no slug) returns the configured issues_path
+# Single-arg form mirrors `path debug` — returns the directory, not an error.
+case_jimfile_path_issue_no_arg_returns_dir() {
+  local cfg
+  cfg=$(fixture path-issue-no-arg.toml 'issues_path = "docs/issues"')
+  run_jimfile -c "$cfg" path issue
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "issues dir" "docs/issues" "$OUT"
+}
+
+# AC: path issue honors configured issues_path (AC-P2)
+case_jimfile_path_issue_honors_override() {
+  local cfg
+  cfg=$(fixture path-issue-override.toml 'issues_path = "docs/my-findings"')
+  run_jimfile -c "$cfg" path issue 20260530-x
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "issue path with override" "docs/my-findings/20260530-x.md" "$OUT"
+}
+
+# AC: path issue strips trailing slash from issues_path
+case_jimfile_path_issue_strips_trailing_slash() {
+  local cfg
+  cfg=$(fixture path-issue-trail.toml 'issues_path = "docs/issues/"')
+  run_jimfile -c "$cfg" path issue 20260530-y
+  assert_eq "no double slash" "docs/issues/20260530-y.md" "$OUT"
+}
+
+# AC: next-id issue with no subject exits 2 (malformed invocation)
+case_jimfile_next_id_issue_missing_subject_exits_2() {
+  run_jimfile next-id issue
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: next-id issue rejects subject that normalizes to empty (e.g., "!!!")
+case_jimfile_next_id_issue_rejects_invalid_subject() {
+  run_jimfile next-id issue "!!!"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: next-id issue normalizes subject with special characters (AC-C7)
+case_jimfile_next_id_issue_normalizes_special_chars() {
+  run_jimfile next-id issue "Foo, Bar & Baz?!"
+  local today
+  today=$(date +%Y%m%d)
+  assert_eq "normalized" "$today-foo-bar-baz" "$OUT"
+}
+
+# AC: next-id issue strips dotdot in subject (path-safety in slug step)
+case_jimfile_next_id_issue_handles_dotdot_in_subject() {
+  run_jimfile next-id issue "../../etc/passwd"
+  local today
+  today=$(date +%Y%m%d)
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "no traversal in slug" "$today-etc-passwd" "$OUT"
+}
+
+# AC: existing next-id <group> behavior is preserved (regression guard)
+# 'issue' as a kind-arg should not break group-name dispatch for other groups.
+case_jimfile_next_id_group_still_works() {
+  local specs cfg
+  specs=$(empty_dir specs_issue_regression)
+  mkdir -p "$specs/jim/001-a"
+  cfg=$(fixture next-issue-regression.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id jim
+  assert_eq "002 from existing group" "002" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
