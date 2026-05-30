@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-05-21*
+*Last updated: 2026-05-30*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill to preserve consistency.
 
@@ -38,6 +38,15 @@ jim/
 │   ├── roadmap/             # /jim:roadmap — execution milestones
 │   ├── arch/                # /jim:arch — architecture document generation
 │   ├── brainstorm/          # /jim:brainstorm — freeform ideation capture
+│   ├── issue/               # /jim:issue — discovery-artifact capture (017)
+│   │   ├── SKILL.md
+│   │   └── assets/
+│   │       └── issue-template.md      # YAML-frontmatter template
+│   ├── issues/              # /jim:issues — trend view + INDEX.md generator (017)
+│   │   ├── SKILL.md
+│   │   └── scripts/
+│   │       ├── index.sh                # Frontmatter scan → INDEX.md (atomic)
+│   │       └── render.sh               # INDEX.md → trend view to stdout
 │   ├── conf/                # /jim:conf — config inspector + shared resolver script
 │   │   ├── SKILL.md
 │   │   └── scripts/
@@ -59,10 +68,14 @@ jim/
 ├── tests/                   # Developer-only; not loaded by Claude Code (per-script test files only)
 │   ├── jimconf.sh           # Per-script tests for skills/conf/scripts/jimconf.sh (executable)
 │   ├── jimfile.sh           # Per-script tests for skills/file/scripts/jimfile.sh (executable)
+│   ├── issues.sh            # Per-script tests for skills/issues/scripts/{index,render}.sh (executable)
 │   └── metatest.sh          # Per-script tests for skills/meta-test/scripts/metatest.sh (executable)
 ├── docs/
 │   ├── specs/               # Spec groups with numbered spec directories
-│   │   └── jim/             # Specs for jim's own development (001–009)
+│   │   └── jim/             # Specs for jim's own development (001–017)
+│   ├── issues/              # Discovery-artifact capture (per spec 017)
+│   │   ├── INDEX.md         # Auto-generated index — regenerated on every /jim:issue write
+│   │   └── YYYYMMDD-slug.md # One markdown file per issue
 │   ├── prior-art/           # Reference material from other projects (gitignored downloads)
 │   └── notes/               # Personal development notes
 ├── VISION.md                # Product vision — problem, solution, audience, north star
@@ -97,6 +110,11 @@ flowchart TD
         SEC["/jim:sec"]
     end
 
+    subgraph "Discovery Skills"
+        ISSUE["/jim:issue"]
+        ISSUES["/jim:issues"]
+    end
+
     subgraph "Meta Skills"
         MS["/jim:meta-skill"]
         MA["/jim:meta-agent"]
@@ -123,10 +141,12 @@ flowchart TD
         BDOC["brainstorm.md"]
         DDOC["debug report"]
         SECDOC["security.md"]
+        IDOC["docs/issues/* + INDEX.md"]
     end
 
     U --> VIS & ROAD & ARCH & BRAIN
     U --> SPEC & RES & PLAN & BUILD & DEBUG & SEC
+    U --> ISSUE & ISSUES
     U --> MS & MA & MT
 
     VIS & ROAD & BRAIN --> PM
@@ -136,13 +156,15 @@ flowchart TD
     PLAN --> ARCHITECT
     BUILD & DEBUG --> CODER
     SEC --> SECURITY
+    ISSUE --> PM
     MS & MA & MT --> META
 
-    PM --> VDOC & RDOC & SDOC & BDOC
+    PM --> VDOC & RDOC & SDOC & BDOC & IDOC
     ARCHITECT --> ADOC & PDOC
     RESEARCHER --> RESDOC
     CODER --> CODE & DDOC
     SECURITY --> SECDOC
+    ISSUES -.->|reads| IDOC
 
     ARCHITECT -.->|spawns| RESEARCHER
     META -.->|delegates| PM & ARCHITECT & RESEARCHER
@@ -165,7 +187,7 @@ Agents are markdown files (`agents/*.md`) that define personas with frontmatter 
 Skills are SKILL.md files inside `skills/{name}/` directories, optionally accompanied by `assets/` (templates) and `references/` (methodology docs).
 
 - **Purpose:** Provide the detailed process instructions that agents follow when a `/jim:{verb}` command is invoked
-- **Location:** `skills/` — 13 SDLC + strategic skill directories (spec, spec-check, plan, research, build, debug, sec, vision, roadmap, arch, brainstorm, meta-skill, meta-agent) plus supporting skills (`conf/`, `file/`, `meta-test/`, `review/`, and the `meta-matrix*` probe family)
+- **Location:** `skills/` — 15 SDLC + strategic + discovery skill directories (spec, spec-check, plan, research, build, debug, sec, vision, roadmap, arch, brainstorm, issue, issues, meta-skill, meta-agent) plus supporting skills (`conf/`, `file/`, `meta-test/`, `review/`, and the `meta-matrix*` probe family)
 - **Interfaces:** Frontmatter fields: `name`, `description`, `agent` (which agent runs this skill), `argument-hint`. Body contains step-by-step process, argument routing, validation checklists.
 - **Dependencies:** Skills reference their `assets/` templates and `references/` docs. Skills are bound to agents via the `agent` frontmatter field (documentation convention, not runtime routing).
 - **Key Constraints:** SKILL.md stays under 500 lines (progressive disclosure). Templates live in `assets/`, methodology in `references/`.
@@ -195,7 +217,7 @@ The design-time security review (spec 016) introduces a third pair of `Skill(jim
 ### Spec Archive
 
 - **Purpose:** Living development artifacts — specs, research, and plans organized by group and sequential ID
-- **Location:** `docs/specs/{group}/{00X}-{name}/` — currently `docs/specs/jim/001-meta/` through `006-coder/`
+- **Location:** `docs/specs/{group}/{00X}-{name}/` — currently `docs/specs/jim/001-meta/` through `017-issue-tracking/`
 - **Interfaces:** Each spec directory contains up to three files: `spec.md`, `research.md`, `plan.md`
 - **Dependencies:** Produced by PM (spec), researcher (research), and architect (plan) agents
 - **Key Constraints:** IDs are 3-digit zero-padded, sequential within each group. Groups are noun-based directories. Specs must be `approved` before plans can be created.
@@ -208,6 +230,7 @@ The design-time security review (spec 016) introduces a third pair of `Skill(jim
 | Strategic Docs | Markdown files | Project root (`VISION.md`, `ROADMAP.md`, `ARCHITECTURE.md`) | Project-level strategy and constraints | PM, Architect |
 | Brainstorms | Markdown files | `docs/brainstorms/` | Freeform ideation capture | PM |
 | Debug Reports | Markdown files | `docs/debug/` | Structured failure diagnosis | Coder |
+| Issue Collection | Markdown files | `docs/issues/` (configurable via `issues_path`) | Discovery-artifact capture per spec 017; one file per issue plus auto-generated `INDEX.md` regenerated on every `/jim:issue` write | PM (via `/jim:issue`); `/jim:issues` for read view |
 
 ## External Integrations
 
@@ -235,7 +258,7 @@ The design-time security review (spec 016) introduces a third pair of `Skill(jim
 ## Development & Testing
 
 - **Setup:** Clone the repository and configure it as a Claude Code plugin
-- **Run tests:** `bash tests/run.sh` runs every case across every test file. Per-script files are also runnable standalone: `bash tests/jimconf.sh`, `bash tests/jimfile.sh`. Substring filter preserved: `bash tests/run.sh defaults`. Zero third-party dependencies.
+- **Run tests:** `bash skills/meta-test/scripts/run.sh` runs every case across every test file. Per-script files are also runnable standalone: `bash tests/jimconf.sh`, `bash tests/jimfile.sh`, `bash tests/issues.sh`. Substring filter preserved: `bash skills/meta-test/scripts/run.sh defaults`. Zero third-party dependencies.
 - **Test framework:** Hand-rolled multi-file bash framework. `tests/testlib.sh` holds shared infrastructure (globals, asserts, fixtures, reporter); each per-script test file (`tests/jimconf.sh`, `tests/jimfile.sh`, …) sources it and contributes `case_*` functions. The reporter discovers cases by function-name convention (`declare -F | awk '$3 ~ /^case_/'`) — no `TESTS=()` registration array. Inline heredoc fixtures, per-runner `mktemp` sandbox, single trap-based cleanup.
 - **Adding tests:** To add cases for a new script, create `tests/<name>.sh` (executable), source `testlib.sh`, define a `run_<name>` invoker plus `case_<name>_*` functions, and append the standalone-runnable tail. The aggregate runner picks it up automatically. Full 3-step recipe in `tests/run.sh` header.
 - **Test conventions:** Tests live under `tests/` and are not loaded by Claude Code (which reads only `skills/` and `agents/`). LLM-interpreted skill prompts are validated by checklist; deterministic scripts are validated by the test suite.
@@ -278,8 +301,9 @@ Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/script
 - **Single resolver, many consumers.** Every consuming skill (`vision`, `roadmap`, `arch`, `plan`, `spec`, `research`, `brainstorm`, `debug`, `meta-skill`, `meta-agent`, `build`) references the resolver via Claude Code's `!`-injection primitive: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get vision` ``. The output replaces the placeholder in the skill body before the LLM reads it, so the resolved path lands in the prompt deterministically. **Skills and agents always call `jimfile.sh`, never `jimconf.sh` directly** — `jimfile.sh` chains internally to `jimconf.sh` for any operation that needs a configured path.
 - **`${CLAUDE_PLUGIN_ROOT}` is the documented plugin-root substitution** — see `code.claude.com/docs/en/plugins-reference#environment-variables`. It resolves to the plugin's installation directory regardless of which skill consumes the script.
 - **The `/jim:conf` skill** (`skills/conf/SKILL.md`) is a thin user-facing wrapper around the same script for human introspection (`/jim:conf list`, `/jim:conf get specs`, etc.). It carries no `agent:` binding because there is no LLM reasoning to delegate.
-- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for seventeen configurable keys: nine paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`, `pre_commit_path`, `pre_completion_path`, `security_adhoc_path`), four enforcement / behavior flags from prior specs (`require_pre_commit`, `require_pre_completion`, `auto_arch_feedback`), and five security-gate flags from spec 016 (`require_security`, `auto_security`, `require_security_loop`, `require_security_loop_sev`, `auto_security_loop_limit`). Path keys append `_path` to the CLI key when looked up; flag keys (CLI keys starting with `require_` or `auto_`) map directly to the same TOML name without a suffix — both prefixes share the dispatch convention in `resolve()`. Missing file or missing keys silently fall through to defaults — zero-config is preserved. The resolver never `source`s the file (security model: user config is data, not code). The `pre_commit_path` and `pre_completion_path` defaults (`./pre-commit.sh`, `./pre-completion.sh`) are the *path-where-it-would-live*; consumers wrap calls in an existence gate at the skill layer, so a missing file is silently skipped unless the corresponding `require_*` flag is `"true"`. The security-loop flags use enum/integer values rather than booleans: `require_security_loop_sev` defaults to `"critical"` (one of `"critical"` / `"notable"` / `"advisory"`), and `auto_security_loop_limit` defaults to `"5"` — conservative caps that prevent runaway loops while preserving the developer's intent when looping is enabled.
-- **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, configured-path resolution (`get <key>`, delegates to `jimconf.sh`), slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding).
+- **Config file:** optional `jimconf.toml` at the project root. Flat `KEY = "value"` lines for eighteen configurable keys: ten paths (`specs_path`, `architecture_path`, `vision_path`, `roadmap_path`, `brainstorms_path`, `debug_path`, `pre_commit_path`, `pre_completion_path`, `security_adhoc_path`, `issues_path`), four enforcement / behavior flags from prior specs (`require_pre_commit`, `require_pre_completion`, `auto_arch_feedback`), and five security-gate flags from spec 016 (`require_security`, `auto_security`, `require_security_loop`, `require_security_loop_sev`, `auto_security_loop_limit`). Path keys append `_path` to the CLI key when looked up; flag keys (CLI keys starting with `require_` or `auto_`) map directly to the same TOML name without a suffix — both prefixes share the dispatch convention in `resolve()`. Missing file or missing keys silently fall through to defaults — zero-config is preserved. As of spec 017, `resolve()` also trims leading/trailing whitespace from parsed values and treats all-whitespace as empty, so configured whitespace-only values fall through to the documented default (defense against silent empty-path writes — `security.md` Finding 13). The resolver never `source`s the file (security model: user config is data, not code). The `pre_commit_path` and `pre_completion_path` defaults (`./pre-commit.sh`, `./pre-completion.sh`) are the *path-where-it-would-live*; consumers wrap calls in an existence gate at the skill layer, so a missing file is silently skipped unless the corresponding `require_*` flag is `"true"`. The security-loop flags use enum/integer values rather than booleans: `require_security_loop_sev` defaults to `"critical"` (one of `"critical"` / `"notable"` / `"advisory"`), and `auto_security_loop_limit` defaults to `"5"` — conservative caps that prevent runaway loops while preserving the developer's intent when looping is enabled.
+- **File/path operations (`jimfile.sh`).** Sibling script under `skills/file/scripts/` exposing existence checks, configured-path resolution (`get <key>`, delegates to `jimconf.sh`), slug normalization, today's date, next spec ID, canonical artifact paths (spec/plan/research/debug/brainstorm/issue), glob discovery, and the valid-kinds list. Skills consume it via the same `!`-injection pattern: ``!`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path debug "$ARGUMENTS"` ``. `jimfile.sh` shells out to `jimconf.sh` internally to honor `/jim:conf` overrides — the call uses a `BASH_SOURCE`-relative path (`../../conf/scripts/jimconf.sh`) so the inter-script composition travels with the plugin tree across cross-agent install scopes (e.g., `.agents/skills/`) where `${CLAUDE_PLUGIN_ROOT}` does not apply. The `/jim:file` skill (`skills/file/SKILL.md`) is the user-facing wrapper, mirroring `/jim:conf`'s shape (no `agent:` binding). As of spec 017, `jimfile.sh` carries `export LC_ALL=C` in its preamble (locale-independent behavior for `tr`, regex, and `date` operations — `security.md` Finding 11), an `is_valid_slug` validator for AC-C7-conformant inputs, and the `issue` kind with two operations: `path issue <slug>` (pure path composition against `issues_path`, slug must pass AC-C7 validation) and `next-id issue <subject>` (returns `YYYYMMDD-<normalized-slug>`).
+- **Issue collection scripts (`skills/issues/scripts/`).** Two deterministic scripts own the issue-tracking write/read split. `index.sh` reads `<issues_dir>/*.md`, parses frontmatter line-orientedly (frontmatter-bounded scan; nested `relations:` parsed via `awk` 2-space-indent state machine; bidirectional integrity checks via `RELATION_INVERSE`), extracts validated wikilinks from issue bodies, and writes `INDEX.md` atomically via `tmp + mv` with `trap`-based cleanup. Failure preserves the previous `INDEX.md` unchanged. `render.sh` defensively re-invokes `index.sh`, then parses the resulting `INDEX.md` to emit a human-friendly trend view (Open/Closed summary, clusters by origin and label, top-N blocking by outgoing `blocks` edges, integrity-warnings passthrough). Both scripts use `set -uo pipefail; export LC_ALL=C` and resolve their target dir from `jimconf.sh get issues` when no argument is passed. `/jim:issue` invokes `index.sh` post-write (eager regen, AC-I2); `/jim:issues` invokes `render.sh` (which calls `index.sh` defensively).
 - **Tests:** Per-script test files at `tests/jimconf.sh`, `tests/jimfile.sh`, and `tests/metatest.sh` cover each script's CLI surface, defaults, parse robustness, and (where applicable) the `-c <path>` flag. The shared framework lives at `skills/meta-test/scripts/testlib.sh` and the aggregate runner at `skills/meta-test/scripts/run.sh`, so the meta-test skill owns its toolchain (per spec 007). Per-script files source the relocated lib via a `BASH_SOURCE`-relative path (`source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"`). Run all via `bash skills/meta-test/scripts/run.sh` (or `/jim:meta-test run`), run a single script standalone via `bash tests/jimconf.sh` / `bash tests/jimfile.sh` / `bash tests/metatest.sh`. Filter by name substring still works: `bash skills/meta-test/scripts/run.sh jimfile` (or `/jim:meta-test run jimfile`).
 - **Test scaffolding (`metatest.sh`).** Third script under `skills/meta-test/scripts/`. Three subcommands — `scaffold <name>` (create `tests/<name>.sh` from `assets/test-file.sh.tmpl`), `add <name> <case>` (append a `case_<name>_<case>()` stub), `run [name]` (invoke runner, standalone path preferred for one-file). The user-facing `/jim:meta-test` skill (`skills/meta-test/SKILL.md`) wraps the dispatcher with per-action gating: scaffold requires an approved spec+plan for the script-under-test (mirrors `meta-skill`/`meta-agent`); add and run are ungated.
 
@@ -294,7 +318,7 @@ When deciding whether logic should live in a bash script or in a skill/agent pro
 | The result is **verifiable** by exit code or string compare. | The result is qualitative ("is this spec well-scoped?"). |
 | The operation can fail loudly and recoverably (exit 1, empty string). | The operation needs graceful degradation or a conversational fallback. |
 
-Examples that fit the rule (anchors): `skills/conf/scripts/jimconf.sh` (config parsing), `skills/file/scripts/jimfile.sh` (existence checks, slug, next-id, glob, path resolution), `skills/meta-test/scripts/*.sh` (deterministic test execution). Counter-examples that rightly stay in prompts: the `/jim:spec` interview, the `meta-skill`/`meta-agent` 7-point research spot-check, design tradeoff reasoning in `/jim:plan`.
+Examples that fit the rule (anchors): `skills/conf/scripts/jimconf.sh` (config parsing), `skills/file/scripts/jimfile.sh` (existence checks, slug, next-id, glob, path resolution), `skills/meta-test/scripts/*.sh` (deterministic test execution), `skills/issues/scripts/index.sh` and `render.sh` (frontmatter scan + atomic write, INDEX.md parse + trend view rendering). Counter-examples that rightly stay in prompts: the `/jim:spec` interview, the `/jim:issue` confirm-or-edit moment with scrub reminder, the `meta-skill`/`meta-agent` 7-point research spot-check, design tradeoff reasoning in `/jim:plan`.
 
 ### Logic-Flow Conventions
 
