@@ -55,10 +55,10 @@ Compose a full draft populating these fields from conversation context:
 - **status** — always `open` for new captures.
 - **priority** — your judgment, choosing from `low | medium | high | critical`. Default to `medium` when context is thin.
 - **labels** — short kebab-case tags inferred from context (e.g., `auth`, `parser`, `flake`). One or more; leave `[]` if nothing strongly applies.
-- **relations** — leave the four typed lists empty for new captures unless the conversation explicitly references another issue slug.
+- **relations** — frontmatter is the canonical structural channel. Populate `blocks` / `depends-on` / `duplicates` here when explicitly known (no other channel carries these types). For `related-to`, either populate the frontmatter list (a structural assertion that obliges the target to reciprocate) **or** drop `[[…]]` wikilinks in the body (an inline prose cross-reference). Both surface as edges in the index Graph; the index dedupes per `(source, type, target)`, so dual-channel authorship produces one edge, not two. For new captures with no explicit cross-reference, leave the four typed lists empty.
 - **created / updated** — today's date (YYYY-MM-DD).
 - **origin** — relative path to the source artifact when knowable (the spec / plan / brainstorm / research / debug file the discovery surfaced from). For free-form conversation captures with no clear source artifact, use `conversation` as the origin sentinel.
-- **body** — concise prose description. May contain `[[other-issue-slug]]` wikilinks for cross-references. Do **not** embed copy-pasted conversation chunks containing secrets — paraphrase.
+- **body** — concise prose description. Wikilinks `[[other-issue-slug]]` alias to `related-to` edges at index time; they are treated as one-way "see also" pointers, so only frontmatter `related-to` triggers the bidirectional integrity check. Do **not** embed copy-pasted conversation chunks containing secrets — paraphrase.
 
 ### 4. Compute the canonical slug and write path
 

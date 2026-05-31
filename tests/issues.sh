@@ -164,6 +164,127 @@ status: open' ""
   assert_match "wikilink edge" 'a` --related-to--> `20260530-b' "$idx"
 }
 
+# AC: edge dedup across channels — frontmatter related-to + body wikilink to
+# the same target produce a single Graph edge (handoff Change 1).
+case_issues_index_dedup_across_channels() {
+  local dir
+  dir=$(empty_dir index_dedup_channels)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+relations:
+  blocks: []
+  depends-on: []
+  related-to: [20260530-b]
+  duplicates: []' "See [[20260530-b]] for context."
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+relations:
+  blocks: []
+  depends-on: []
+  related-to: [20260530-a]
+  duplicates: []' ""
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local idx ab_count ba_count
+  idx="$(cat "$dir/INDEX.md")"
+  ab_count=$(printf '%s\n' "$idx" | grep -c -- '`20260530-a` --related-to--> `20260530-b`')
+  ba_count=$(printf '%s\n' "$idx" | grep -c -- '`20260530-b` --related-to--> `20260530-a`')
+  assert_eq "a→b edge appears once" "1" "$ab_count"
+  assert_eq "b→a edge appears once" "1" "$ba_count"
+}
+
+# AC: edge dedup within body — a wikilink repeated in prose produces one edge
+# (handoff Change 1).
+case_issues_index_dedup_within_body() {
+  local dir
+  dir=$(empty_dir index_dedup_body)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' "First mention [[20260530-b]]. Second mention [[20260530-b]] again."
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open' ""
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local idx ab_count
+  idx="$(cat "$dir/INDEX.md")"
+  ab_count=$(printf '%s\n' "$idx" | grep -c -- '`20260530-a` --related-to--> `20260530-b`')
+  assert_eq "duplicate wikilinks collapse to one edge" "1" "$ab_count"
+}
+
+# AC: bidirectional scope — wikilinks are one-way; A's [[B]] alone does not
+# require B to reference A (handoff Change 2).
+case_issues_index_bidirectional_wikilink_one_way() {
+  local dir
+  dir=$(empty_dir index_bidir_wl)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' "Mentions [[20260530-b]]."
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open' ""
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  # Edge renders (Graph contains the wikilink-derived edge)
+  assert_match "wikilink edge renders" 'a` --related-to--> `20260530-b' "$idx"
+  # But no integrity warning fires for the missing back-edge
+  if printf '%s\n' "$idx" | grep -q 'has no inverse'; then
+    CURRENT_FAILED=1
+    echo "    [wikilink should not trigger integrity warning]"
+    printf '%s\n' "$idx" | grep 'has no inverse' | sed 's/^/      /'
+  fi
+}
+
+# AC: bidirectional scope — a frontmatter related-to assertion without
+# reciprocation does fire a warning (handoff Change 2 negative case).
+case_issues_index_bidirectional_frontmatter_warns() {
+  local dir
+  dir=$(empty_dir index_bidir_fm)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+relations:
+  blocks: []
+  depends-on: []
+  related-to: [20260530-b]
+  duplicates: []'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "fm assertion warns" '`20260530-a` --related-to--> `20260530-b` has no inverse' "$idx"
+}
+
+# AC: distinct edge types between the same pair are both preserved — a
+# frontmatter `blocks: [B]` and a body `[[B]]` produce two edges (blocks and
+# related-to), not one (handoff Change 1 sanity).
+case_issues_index_distinct_types_preserved() {
+  local dir
+  dir=$(empty_dir index_distinct_types)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+relations:
+  blocks: [20260530-b]
+  depends-on: []
+  related-to: []
+  duplicates: []' "Also see [[20260530-b]]."
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+relations:
+  blocks: []
+  depends-on: [20260530-a]
+  related-to: []
+  duplicates: []' ""
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "blocks edge present"     'a` --blocks--> `20260530-b'     "$idx"
+  assert_match "related-to edge present" 'a` --related-to--> `20260530-b' "$idx"
+}
+
 # AC: malformed wikilink content is dropped from graph (AC-I4, security.md Finding 2)
 # A '[[../../etc/passwd]]' or '[[INVALID/SLUG]]' must not become a graph edge.
 case_issues_index_malformed_wikilink_dropped() {

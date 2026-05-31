@@ -17,6 +17,19 @@
 #   the first two ^---$ lines; nested `relations:` is parsed via awk with
 #   2-space indent tracking (DD #11). Atomic write via tmp + mv (DD #12).
 #
+#   Edge provenance is tracked via two parallel maps:
+#     outgoing_fm[$slug]  — edges asserted in the frontmatter relations:
+#                           block. The bidirectional integrity check walks
+#                           this on both sides — wikilinks do not satisfy
+#                           a frontmatter-asserted obligation.
+#     outgoing_all[$slug] — frontmatter edges UNION body wikilink edges,
+#                           deduped per (source, type, target). The Graph
+#                           section renders from this so dual-channel
+#                           authorship produces a single edge.
+#   Frontmatter is the canonical structural channel; body wikilinks are a
+#   one-way "see also" convenience that alias to related-to for graph
+#   purposes.
+#
 # CLI SUMMARY
 #   bash index.sh [<issues_dir>]
 #     issues_dir default: jimconf.sh get issues
@@ -187,8 +200,14 @@ main() {
 
   # Build per-issue map: slug → "<status>\t<priority>\t<title>\t<origin>".
   declare -A meta_status meta_priority meta_title meta_origin meta_labels
-  # Adjacency: slug → "<type>:<target> <type>:<target> ..." (space-separated)
-  declare -A outgoing
+  # Adjacency maps: slug → "<type>:<target> <type>:<target> ..." (space-separated).
+  #   outgoing_fm  — frontmatter relations only (drives bidirectional check).
+  #   outgoing_all — frontmatter + body wikilinks, deduped per
+  #                  (source, type, target) (drives Graph render).
+  declare -A outgoing_fm outgoing_all
+  # Dedup key for outgoing_all: "<slug>|<type>|<target>".
+  declare -A seen_all
+  seen_all[__sentinel__]=1; unset 'seen_all[__sentinel__]'
 
   for f in "${files_sorted[@]}"; do
     local slug
@@ -226,16 +245,27 @@ main() {
       open_count=$((open_count + 1))
     fi
 
-    # Build outgoing edges: from frontmatter relations + body wikilinks.
-    local edges=""
-    local rel_line type target
+    # Build outgoing edges.
+    #   Frontmatter relations populate BOTH outgoing_fm and outgoing_all
+    #   (the bidirectional check walks fm; render walks all).
+    #   Body wikilinks populate ONLY outgoing_all — they are one-way
+    #   "see also" pointers per the design call (handoff:
+    #   docs/notes/jim-issue-relations-handoff.md), so they do not
+    #   trigger or satisfy bidirectional integrity warnings.
+    local edges_fm="" edges_all=""
+    local type target key
     while IFS=$'\t' read -r type target; do
       [[ -z "$type" || -z "$target" ]] && continue
       if ! is_valid_slug "$target"; then
         warnings_section+="- \`$slug\`: invalid relation target \`$target\` (type $type).\n"
         continue
       fi
-      edges+="$type:$target "
+      edges_fm+="$type:$target "
+      key="$slug|$type|$target"
+      if [[ -z "${seen_all[$key]:-}" ]]; then
+        seen_all[$key]=1
+        edges_all+="$type:$target "
+      fi
     done < <(parse_relations "$fm")
 
     local wl
@@ -245,25 +275,31 @@ main() {
         warnings_section+="- \`$slug\`: malformed wikilink \`[[${wl}]]\` ignored.\n"
         continue
       fi
-      edges+="related-to:$wl "
+      key="$slug|related-to|$wl"
+      if [[ -z "${seen_all[$key]:-}" ]]; then
+        seen_all[$key]=1
+        edges_all+="related-to:$wl "
+      fi
     done < <(parse_wikilinks_from_body "$f")
 
-    outgoing[$slug]="${edges% }"
+    outgoing_fm[$slug]="${edges_fm% }"
+    outgoing_all[$slug]="${edges_all% }"
   done
 
   # Bidirectional integrity check (DD #7).
-  # For each outgoing edge A --type--> B, if type has an inverse, check that
-  # B has an inverse edge back to A. Report mismatches as warnings.
+  # For each FRONTMATTER outgoing edge A --type--> B, if type has an inverse,
+  # check that B has an inverse FRONTMATTER edge back to A. Wikilinks do not
+  # participate on either side: a wikilink does not trigger a warning, and a
+  # wikilink in B does not satisfy a frontmatter assertion in A.
   local s edge etype etarget inverse
   for s in "${slugs_seen[@]}"; do
-    for edge in ${outgoing[$s]:-}; do
+    for edge in ${outgoing_fm[$s]:-}; do
       etype="${edge%%:*}"
       etarget="${edge#*:}"
       inverse="${RELATION_INVERSE[$etype]:-}"
       [[ -z "$inverse" ]] && continue
-      # Check if target's outgoing contains inverse:source
       local found=0
-      for back in ${outgoing[$etarget]:-}; do
+      for back in ${outgoing_fm[$etarget]:-}; do
         if [[ "$back" == "$inverse:$s" ]]; then
           found=1
           break
@@ -285,9 +321,9 @@ main() {
     issues_section+="$row"$'\n'
   done
 
-  # Render Graph section
+  # Render Graph section (from deduped union of frontmatter + wikilink edges).
   for s in "${slugs_seen[@]}"; do
-    for edge in ${outgoing[$s]:-}; do
+    for edge in ${outgoing_all[$s]:-}; do
       local etype etarget
       etype="${edge%%:*}"
       etarget="${edge#*:}"

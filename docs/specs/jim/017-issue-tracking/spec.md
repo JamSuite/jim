@@ -50,7 +50,7 @@ The vision (`VISION.md`, recently updated) explicitly carves out *discovery arti
 
 - [ ] `docs/issues/INDEX.md` is auto-generated and lists every issue in the collection with title, status, priority, labels, and origin. Agents can navigate the collection by reading the index alone — no per-file scan needed for routine lookup.
 - [ ] The index regenerates on every `/jim:issue` write so that consumers (both `/jim:issues` and agents reading the index directly) always see current data.
-- [ ] Wiki-style links of the form `[[other-issue-slug]]` in an issue body, **and** entries in the frontmatter `relations:` map, both surface as edges in the index's graph view.
+- [ ] Wiki-style links of the form `[[other-issue-slug]]` in an issue body, **and** entries in the frontmatter `relations:` map, both surface as edges in the index's graph view. Frontmatter is the canonical structural channel; body wikilinks alias to `related-to` edges. The graph dedupes per `(source, type, target)` so dual-channel authorship produces one edge. Bidirectional integrity is checked against frontmatter relations only — body wikilinks are one-way "see also" pointers that do not trigger or satisfy reciprocation warnings.
 - [ ] Wiki-link content (the text between `[[` and `]]`) must match the slug normalization rule. Malformed link content is treated as plain prose, not a graph edge — graph resolution does not follow path-shaped or otherwise out-of-format link content.
 
 **Path and config**
