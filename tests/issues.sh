@@ -258,12 +258,13 @@ relations:
   assert_match "fm assertion warns" '`20260530-a` --related-to--> `20260530-b` has no inverse' "$idx"
 }
 
-# AC: distinct edge types between the same pair are both preserved — a
-# frontmatter `blocks: [B]` and a body `[[B]]` produce two edges (blocks and
-# related-to), not one (handoff Change 1 sanity).
-case_issues_index_distinct_types_preserved() {
+# AC: typed frontmatter `blocks` absorbs a same-target body wikilink — the
+# typed edge implies related-to, so the wikilink-derived shadow is suppressed.
+# Replaces the earlier distinct_types_preserved case which asserted the
+# pre-absorption behavior (both edges rendered).
+case_issues_index_typed_blocks_absorbs_wikilink() {
   local dir
-  dir=$(empty_dir index_distinct_types)
+  dir=$(empty_dir index_absorb_blocks)
   write_issue "$dir" "20260530-a" 'title: "A"
 status: open
 relations:
@@ -281,8 +282,95 @@ relations:
   run_index "$dir"
   local idx
   idx="$(cat "$dir/INDEX.md")"
-  assert_match "blocks edge present"     'a` --blocks--> `20260530-b'     "$idx"
-  assert_match "related-to edge present" 'a` --related-to--> `20260530-b' "$idx"
+  assert_match "blocks edge present" 'a` --blocks--> `20260530-b' "$idx"
+  if printf '%s\n' "$idx" | grep -q -- '`20260530-a` --related-to--> `20260530-b`'; then
+    CURRENT_FAILED=1
+    echo "    [related-to shadow should be absorbed under typed blocks]"
+  fi
+}
+
+# AC: typed frontmatter `depends-on` absorbs a same-target body wikilink.
+case_issues_index_typed_depends_on_absorbs_wikilink() {
+  local dir
+  dir=$(empty_dir index_absorb_dependson)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+relations:
+  blocks: []
+  depends-on: [20260530-b]
+  related-to: []
+  duplicates: []' "Inherits behavior from [[20260530-b]]."
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+relations:
+  blocks: [20260530-a]
+  depends-on: []
+  related-to: []
+  duplicates: []' ""
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "depends-on edge present" 'a` --depends-on--> `20260530-b' "$idx"
+  if printf '%s\n' "$idx" | grep -q -- '`20260530-a` --related-to--> `20260530-b`'; then
+    CURRENT_FAILED=1
+    echo "    [related-to shadow should be absorbed under typed depends-on]"
+  fi
+}
+
+# AC: typed frontmatter `duplicates` absorbs a same-target body wikilink.
+case_issues_index_typed_duplicates_absorbs_wikilink() {
+  local dir
+  dir=$(empty_dir index_absorb_duplicates)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: [20260530-b]' "Same as [[20260530-b]]."
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []' ""
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "duplicates edge present" 'a` --duplicates--> `20260530-b' "$idx"
+  if printf '%s\n' "$idx" | grep -q -- '`20260530-a` --related-to--> `20260530-b`'; then
+    CURRENT_FAILED=1
+    echo "    [related-to shadow should be absorbed under typed duplicates]"
+  fi
+}
+
+# AC: typed absorption is per-target — a body wikilink to a DIFFERENT slug
+# than the typed relation still emits its related-to edge.
+case_issues_index_absorption_does_not_overreach() {
+  local dir
+  dir=$(empty_dir index_absorb_scope)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+relations:
+  blocks: [20260530-b]
+  depends-on: []
+  related-to: []
+  duplicates: []' "Also see [[20260530-c]] for related context."
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open
+relations:
+  blocks: []
+  depends-on: [20260530-a]
+  related-to: []
+  duplicates: []' ""
+  write_issue "$dir" "20260530-c" 'title: "C"
+status: open' ""
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "blocks edge present"            'a` --blocks--> `20260530-b'     "$idx"
+  assert_match "unrelated wikilink edge intact" 'a` --related-to--> `20260530-c' "$idx"
 }
 
 # AC: malformed wikilink content is dropped from graph (AC-I4, security.md Finding 2)

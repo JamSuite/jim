@@ -30,6 +30,15 @@
 #   one-way "see also" convenience that alias to related-to for graph
 #   purposes.
 #
+#   Typed-relation absorption: when a typed frontmatter relation (blocks /
+#   depends-on / duplicates) and a body wikilink both point to the same
+#   target, the wikilink is absorbed — the typed edge already implies the
+#   related-to relationship more precisely, so emitting a related-to
+#   shadow alongside the typed edge carries no additional information. To
+#   express both a typed relation AND an explicit related-to to the same
+#   target, populate both frontmatter buckets — explicit structured
+#   author intent is never absorbed.
+#
 # CLI SUMMARY
 #   bash index.sh [<issues_dir>]
 #     issues_dir default: jimconf.sh get issues
@@ -208,6 +217,11 @@ main() {
   # Dedup key for outgoing_all: "<slug>|<type>|<target>".
   declare -A seen_all
   seen_all[__sentinel__]=1; unset 'seen_all[__sentinel__]'
+  # Typed-target coverage: "<slug>|<target>" → 1 when a non-related-to
+  # frontmatter edge from <slug> covers <target>. Body wikilinks to a
+  # covered target are absorbed (no related-to shadow emitted).
+  declare -A typed_target_for
+  typed_target_for[__sentinel__]=1; unset 'typed_target_for[__sentinel__]'
 
   for f in "${files_sorted[@]}"; do
     local slug
@@ -266,6 +280,11 @@ main() {
         seen_all[$key]=1
         edges_all+="$type:$target "
       fi
+      # Typed (non-related-to) frontmatter edges absorb same-target
+      # wikilinks: the typed relation already implies related-to.
+      if [[ "$type" != "related-to" ]]; then
+        typed_target_for["$slug|$target"]=1
+      fi
     done < <(parse_relations "$fm")
 
     local wl
@@ -275,6 +294,9 @@ main() {
         warnings_section+="- \`$slug\`: malformed wikilink \`[[${wl}]]\` ignored.\n"
         continue
       fi
+      # Absorption: a typed frontmatter edge to this target already
+      # implies related-to — skip the wikilink-derived shadow.
+      [[ -n "${typed_target_for[$slug|$wl]:-}" ]] && continue
       key="$slug|related-to|$wl"
       if [[ -z "${seen_all[$key]:-}" ]]; then
         seen_all[$key]=1
