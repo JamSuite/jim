@@ -148,6 +148,19 @@ parse_relations() {
 #   Read the body (everything after the second ^---$ line); extract candidate
 #   wikilinks via grep regex; emit one slug per line for each VALID candidate.
 #   Invalid candidates are silently dropped (treated as prose per AC-I4).
+#
+#   Fenced code blocks are excluded from extraction — tokens like `[[B]]` in
+#   a ```bash example or shell conditionals like `[[ "$x" != "y" ]]` are
+#   code, not prose cross-references, and must not produce edges or
+#   malformed-wikilink warnings. Fence delimiters are runs of ≥3 backticks
+#   or ≥3 tildes (per CommonMark). A close requires a run of the same
+#   character ≥ the opening run length, allowing quad-backtick wrappers
+#   to nest triple-backtick examples without false toggling.
+#
+#   Inline code spans (single-backtick `…`) are also stripped before
+#   wikilink matching. Tokens like the prose `[[B]]` (inside `…`) and
+#   shell conditionals like `[[ "$x" != "y" ]]` quoted inline are code,
+#   not graph claims.
 parse_wikilinks_from_body() {
   local file="$1"
   awk '
@@ -155,8 +168,44 @@ parse_wikilinks_from_body() {
       count++
       if (count >= 2) { in_body = 1; next }
     }
-    in_body { print }
+    !in_body { next }
+    {
+      line = $0
+      sub(/^[[:space:]]*/, "", line)
+      if (!in_fence) {
+        # Opening fence: leading whitespace + run of ≥3 backticks or tildes.
+        if (length(line) >= 3) {
+          first = substr(line, 1, 1)
+          if (first == "`" || first == "~") {
+            n = 0
+            while (substr(line, n + 1, 1) == first) n++
+            if (n >= 3) {
+              in_fence = 1
+              fence_char = first
+              fence_len = n
+              next
+            }
+          }
+        }
+        print
+        next
+      }
+      # In fence: close requires same char repeated ≥ fence_len with only
+      # whitespace after (per CommonMark). Otherwise skip.
+      n = 0
+      while (substr(line, n + 1, 1) == fence_char) n++
+      if (n >= fence_len) {
+        rest = substr(line, n + 1)
+        sub(/[[:space:]]*$/, "", rest)
+        if (rest == "") {
+          in_fence = 0
+          next
+        }
+      }
+      next
+    }
   ' "$file" \
+    | sed -E 's/`[^`]*`//g' \
     | grep -oE '\[\[[^][]+\]\]' \
     | sed -E 's/^\[\[|\]\]$//g'
 }

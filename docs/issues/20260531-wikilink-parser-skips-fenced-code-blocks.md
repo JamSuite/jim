@@ -1,7 +1,7 @@
 ---
 id: 20260531-wikilink-parser-skips-fenced-code-blocks
 title: "Wikilink Parser Should Skip Fenced Code Blocks"
-status: open
+status: closed
 priority: low
 labels: [issues-system, index-graph, parser, refinement]
 relations:
@@ -97,7 +97,9 @@ Edge cases to consider:
   exercise it.
 - **Inline code spans.** `` `[[X]]` `` would still match today.
   Suppressing within inline backticks is a stricter version of the
-  same fix; consider in a follow-on if it surfaces.
+  same fix; consider in a follow-on if it surfaces. (Update: handled in
+  the same commit — see the inline-span stripping sed step downstream of
+  the fence-skipping awk in `parse_wikilinks_from_body`.)
 
 ### Tests to add (jim:meta-test)
 

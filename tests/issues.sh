@@ -373,6 +373,190 @@ status: open' ""
   assert_match "unrelated wikilink edge intact" 'a` --related-to--> `20260530-c' "$idx"
 }
 
+# AC: wikilink-shaped tokens inside a triple-backtick fenced code block are
+# not treated as wikilinks — no edge, no malformed-wikilink warning.
+case_issues_index_wikilink_in_backtick_fence_ignored() {
+  local dir
+  dir=$(empty_dir index_fence_backtick)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' '```
+# Example showing [[B]] inside a code fence.
+A --related-to--> B          ← from [[B]] in A body
+```'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open' ""
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  if printf '%s\n' "$idx" | grep -q -- 'a` --related-to--> `20260530-b'; then
+    CURRENT_FAILED=1
+    echo "    [fenced [[B]] should not produce a graph edge]"
+  fi
+  if printf '%s\n' "$idx" | grep -q 'malformed wikilink'; then
+    CURRENT_FAILED=1
+    echo "    [fenced wikilink-shaped token should not emit a warning]"
+  fi
+}
+
+# AC: wikilink-shaped tokens inside a tilde-fenced code block are also skipped.
+case_issues_index_wikilink_in_tilde_fence_ignored() {
+  local dir
+  dir=$(empty_dir index_fence_tilde)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' '~~~
+[[B]] inside a tilde fence
+~~~'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open' ""
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  if printf '%s\n' "$idx" | grep -q -- 'a` --related-to--> `20260530-b'; then
+    CURRENT_FAILED=1
+    echo "    [fenced [[B]] should not produce a graph edge (tilde fence)]"
+  fi
+}
+
+# AC: prose wikilinks outside fences still work even when fences appear in
+# the same body — fence handling is scoped.
+case_issues_index_prose_wikilink_alongside_fence() {
+  local dir
+  dir=$(empty_dir index_fence_mixed)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' 'Cross-reference [[20260530-b]] in prose.
+
+```
+But [[20260530-c]] inside this fence should not produce an edge.
+```'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open' ""
+  write_issue "$dir" "20260530-c" 'title: "C"
+status: open' ""
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "prose wikilink edge present" 'a` --related-to--> `20260530-b' "$idx"
+  if printf '%s\n' "$idx" | grep -q -- 'a` --related-to--> `20260530-c'; then
+    CURRENT_FAILED=1
+    echo "    [fenced [[C]] should not produce a graph edge]"
+  fi
+}
+
+# AC: shell bash conditional `[[ "$x" != "y" ]]` inside a fenced code block
+# does not emit a malformed-wikilink warning (the original false positive
+# motivating this fix — see docs/issues/20260531-wikilink-parser-skips-fenced-code-blocks.md).
+case_issues_index_shell_conditional_in_fence_no_warning() {
+  local dir
+  dir=$(empty_dir index_fence_shell)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' '```bash
+if [[ "$type" != "related-to" ]]; then
+  do_something
+fi
+```'
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  if printf '%s\n' "$idx" | grep -q 'malformed wikilink'; then
+    CURRENT_FAILED=1
+    echo "    [shell [[ … ]] conditional inside fence should not warn]"
+    printf '%s\n' "$idx" | grep 'malformed wikilink' | sed 's/^/      /'
+  fi
+}
+
+# AC: nested fences — a quad-backtick wrapper around a triple-backtick
+# example parses correctly (the inner ``` does not close the outer ````).
+# This is the markdown-spec rule: a close requires a run of the same char ≥
+# the opening run length.
+case_issues_index_nested_fence_parses_correctly() {
+  local dir
+  dir=$(empty_dir index_fence_nested)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' '````
+```
+[[B]] inside a nested triple-backtick fence should be suppressed.
+```
+````
+
+But [[20260530-b]] in prose after the nested fence is a real wikilink.'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open' ""
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  if printf '%s\n' "$idx" | grep -q -- 'a` --related-to--> `b\b'; then
+    CURRENT_FAILED=1
+    echo "    [inner-fence [[B]] should not produce a graph edge]"
+  fi
+  assert_match "prose wikilink after nested fence" 'a` --related-to--> `20260530-b' "$idx"
+}
+
+# AC: wikilink-shaped tokens inside inline backtick spans are stripped — a
+# prose mention like `[[B]]` (single-backtick code) is inline code, not a
+# graph claim. No edge, no malformed-wikilink warning.
+case_issues_index_wikilink_in_inline_backticks_ignored() {
+  local dir
+  dir=$(empty_dir index_inline_backtick)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' "Authors who write `[[B]]` in prose are documenting wikilink syntax, not asserting an edge."
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open' ""
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  if printf '%s\n' "$idx" | grep -q -- 'a` --related-to--> `20260530-b'; then
+    CURRENT_FAILED=1
+    echo "    [inline-backtick [[B]] should not produce a graph edge]"
+  fi
+  if printf '%s\n' "$idx" | grep -q 'malformed wikilink'; then
+    CURRENT_FAILED=1
+    echo "    [inline-backtick wikilink-shape should not warn]"
+  fi
+}
+
+# AC: a shell conditional `[[ "$x" != "y" ]]` quoted in an inline backtick
+# span does not emit a malformed-wikilink warning even when not inside a
+# fenced block.
+case_issues_index_shell_conditional_in_inline_backticks_no_warning() {
+  local dir
+  dir=$(empty_dir index_inline_shell)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' 'The conditional `[[ "$x" != "y" ]]` is bash, not a wikilink.'
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  if printf '%s\n' "$idx" | grep -q 'malformed wikilink'; then
+    CURRENT_FAILED=1
+    echo "    [inline-backtick shell conditional should not warn]"
+    printf '%s\n' "$idx" | grep 'malformed wikilink' | sed 's/^/      /'
+  fi
+}
+
+# AC: a line with both a bare prose wikilink AND a wikilink-shape inside
+# inline backticks produces an edge only for the bare one. Inline-span
+# stripping is scoped to backtick-delimited regions.
+case_issues_index_mixed_inline_and_bare_wikilink() {
+  local dir
+  dir=$(empty_dir index_mixed_inline)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open' 'See [[20260530-b]] for context, but ignore `[[20260530-c]]` which is just example syntax.'
+  write_issue "$dir" "20260530-b" 'title: "B"
+status: open' ""
+  write_issue "$dir" "20260530-c" 'title: "C"
+status: open' ""
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "bare wikilink edge present" 'a` --related-to--> `20260530-b' "$idx"
+  if printf '%s\n' "$idx" | grep -q -- 'a` --related-to--> `20260530-c'; then
+    CURRENT_FAILED=1
+    echo "    [inline-backtick [[C]] should not produce a graph edge]"
+  fi
+}
+
 # AC: malformed wikilink content is dropped from graph (AC-I4, security.md Finding 2)
 # A '[[../../etc/passwd]]' or '[[INVALID/SLUG]]' must not become a graph edge.
 case_issues_index_malformed_wikilink_dropped() {
