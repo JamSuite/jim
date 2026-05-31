@@ -22,7 +22,7 @@ The current dedup key in `skills/issues/scripts/index.sh` is
 `(source, type, target)`. So `A --blocks--> B` and `A --related-to--> B`
 are distinct edges and both render in the Graph section. An author who
 writes `blocks: [B]` in frontmatter AND drops `[[B]]` in body prose
-(e.g. "Blocks [[B]] (sequence 6 of 6).") produces two edges — a typed
+(e.g. "Blocks `[[B]]` (sequence 6 of 6).") produces two edges — a typed
 structural one and a related-to shadow. Likewise for `depends-on` and
 `duplicates` paired with a same-target wikilink.
 

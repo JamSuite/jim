@@ -18,4 +18,4 @@
 
 ## Integrity Warnings
 
-- `20260531-typed-frontmatter-relations-absorb-same-target-body-wikilinks`: malformed wikilink `[[B]]` ignored.
+_None._
