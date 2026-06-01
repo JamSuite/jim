@@ -476,6 +476,31 @@ issues_path = "docs/my-issues"
   assert_eq "value past comments" "docs/my-issues" "$OUT"
 }
 
+# AC: issue_capture defaults to "true" (spec 018 CFG-1)
+# Bare-name boolean flag — TOML key is `issue_capture` (no _path suffix and
+# no auto_/require_ prefix). The bare-name reflects that the default
+# behavior keeps the human in the loop: surfacing presents a choice, not an
+# automated action. Resolved via a special-case in resolve() per spec 018
+# DD #1. Default `"true"` enables end-of-phase candidate batches across the
+# 7 surfacing skills out-of-the-box.
+case_issue_capture_default() {
+  local dir actual
+  dir=$(empty_dir issue_capture_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_capture)
+  assert_eq "issue_capture default" "true" "$actual"
+}
+
+# AC: issue_capture override via jimconf.toml (spec 018 CFG-1)
+# Captures the silent-no-op failure mode the researcher's Peer Feedback
+# flagged: without the resolve() bare-name special-case, the dispatch
+# would look up `issue_capture_path` and silently return the default.
+case_issue_capture_overridden() {
+  local cfg
+  cfg=$(fixture issue_capture-override.toml 'issue_capture = "false"')
+  run -c "$cfg" get issue_capture
+  assert_eq "issue_capture overridden" "false" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
