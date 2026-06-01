@@ -86,3 +86,25 @@ auto_security_loop_limit  = "5"
 # No file is written unless the developer accepts at the end-of-review
 # prompt. Default "docs/security".
 security_adhoc_path       = "docs/security"
+
+# --- Issue tracking workflow integration (spec 018) -----------------------
+
+# Master switch for end-of-phase candidate batch surfacing across the 7
+# surfacing skills (/jim:spec, /jim:research, /jim:plan, /jim:build,
+# /jim:brainstorm, /jim:debug, /jim:sec). When "true" (the default),
+# each skill presents a batch of candidate issues at the conclusion of
+# its run before its final approval/STOP step. When "false", no batch
+# surfaces and ad-hoc /jim:issue is the only capture path. The bare
+# (non-auto_-prefixed) name reflects that the default behavior keeps the
+# human in the loop: surfacing presents a choice, not an automated
+# action. Uncomment to override the default.
+# issue_capture = "true"
+
+# Quiet auto-file mode for the candidate batch. When "true" AND
+# issue_capture is also "true", the batch is filed without prompting:
+# every candidate is written silently, the user sees a one-line summary,
+# and review happens later via /jim:issues. When "false" (the default),
+# the batch prompts per the batch UX (file all / skip all / per-row
+# file/edit/skip). auto_issue_file = "true" with issue_capture = "false"
+# is a no-op. Uncomment to enable.
+# auto_issue_file = "false"
