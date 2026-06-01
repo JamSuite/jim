@@ -501,6 +501,26 @@ case_issue_capture_overridden() {
   assert_eq "issue_capture overridden" "false" "$OUT"
 }
 
+# AC: auto_issue_file defaults to "false" (spec 018 CFG-2)
+# Flag key — TOML name equals CLI name (no _path suffix); resolved via the
+# auto_* prefix dispatch in resolve(). Default "false" preserves the
+# default-interactive batch UX; flipping to "true" enables quiet auto-file
+# mode (no prompt; per-row write at workflow speed).
+case_auto_issue_file_default() {
+  local dir actual
+  dir=$(empty_dir auto_issue_file_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get auto_issue_file)
+  assert_eq "auto_issue_file default" "false" "$actual"
+}
+
+# AC: auto_issue_file override via jimconf.toml (spec 018 CFG-2)
+case_auto_issue_file_overridden() {
+  local cfg
+  cfg=$(fixture auto_issue_file-override.toml 'auto_issue_file = "true"')
+  run -c "$cfg" get auto_issue_file
+  assert_eq "auto_issue_file overridden" "true" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
