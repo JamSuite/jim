@@ -762,6 +762,91 @@ status: open'
   assert_eq "issue files unchanged" "$before_hash" "$after_hash"
 }
 
+# AC: origin-lint — path-shaped origin that resolves on disk produces no warning
+# (spec 018 OL-1). Resolution is PWD-relative: the script honors the invoking
+# CWD as project root. Test cds into a fake project root before invoking
+# index.sh so origin paths can resolve from there.
+case_issues_index_origin_lint_path_resolves() {
+  local root
+  root=$(empty_dir lint_origin_resolves)
+  mkdir -p "$root/docs/issues" "$root/docs/specs/jim/017"
+  printf 'spec content\n' > "$root/docs/specs/jim/017/spec.md"
+  write_issue "$root/docs/issues" "20260530-a" 'title: "A"
+status: open
+created: 2026-05-30
+origin: docs/specs/jim/017/spec.md'
+  ( cd "$root" && bash "$SCRIPT_INDEX" "docs/issues" )
+  local idx
+  idx="$(cat "$root/docs/issues/INDEX.md")"
+  if printf '%s\n' "$idx" | grep -q '20260530-a.*origin path does not resolve'; then
+    CURRENT_FAILED=1
+    echo "    [resolving origin path should not produce a warning]"
+    printf '%s\n' "$idx" | grep 'origin path does not resolve' | sed 's/^/      /'
+  fi
+}
+
+# AC: origin-lint — path-shaped origin that does NOT resolve surfaces a warning
+# with the slug, the broken path, and the created date (spec 018 OL-1, OL-3).
+case_issues_index_origin_lint_path_missing() {
+  local root
+  root=$(empty_dir lint_origin_missing)
+  mkdir -p "$root/docs/issues"
+  write_issue "$root/docs/issues" "20260530-b" 'title: "B"
+status: open
+created: 2026-05-30
+origin: docs/specs/jim/999/spec.md'
+  ( cd "$root" && bash "$SCRIPT_INDEX" "docs/issues" )
+  local idx
+  idx="$(cat "$root/docs/issues/INDEX.md")"
+  assert_match "missing origin warning"   '`20260530-b`.*origin path does not resolve' "$idx"
+  assert_match "warning names path"       'docs/specs/jim/999/spec.md'                 "$idx"
+  assert_match "warning includes created" '2026-05-30'                                 "$idx"
+}
+
+# AC: origin-lint — non-path-shaped tokens (no `/`) are exempt and produce no
+# warning (spec 018 OL-1). Default tokens like `conversation` and `external`.
+case_issues_index_origin_lint_non_path_exempt() {
+  local root
+  root=$(empty_dir lint_origin_nonpath)
+  mkdir -p "$root/docs/issues"
+  write_issue "$root/docs/issues" "20260530-c" 'title: "C"
+status: open
+created: 2026-05-30
+origin: conversation'
+  write_issue "$root/docs/issues" "20260530-d" 'title: "D"
+status: open
+created: 2026-05-30
+origin: external'
+  ( cd "$root" && bash "$SCRIPT_INDEX" "docs/issues" )
+  local idx
+  idx="$(cat "$root/docs/issues/INDEX.md")"
+  if printf '%s\n' "$idx" | grep -q 'origin path does not resolve'; then
+    CURRENT_FAILED=1
+    echo "    [non-path origin tokens should be exempt]"
+    printf '%s\n' "$idx" | grep 'origin path does not resolve' | sed 's/^/      /'
+  fi
+}
+
+# AC: origin-lint — broken origin does not block file write/index (spec 018 OL-2)
+# Issue with non-resolving origin is still written, indexed, counted in Open,
+# and rendered in the Issues section. The lint produces a warning, never a
+# fatal error or blocked write.
+case_issues_index_origin_lint_does_not_block_write() {
+  local root
+  root=$(empty_dir lint_origin_noblock)
+  mkdir -p "$root/docs/issues"
+  write_issue "$root/docs/issues" "20260530-e" 'title: "Broken provenance"
+status: open
+created: 2026-05-30
+origin: docs/removed/file.md'
+  ( cd "$root" && bash "$SCRIPT_INDEX" "docs/issues" )
+  local idx
+  idx="$(cat "$root/docs/issues/INDEX.md")"
+  assert_match "open count includes broken-origin issue" 'Open: 1'              "$idx"
+  assert_match "issue surfaces in Issues section"        '`20260530-e`'         "$idx"
+  assert_match "warning still fires"                     'origin path does not resolve' "$idx"
+}
+
 # AC: render includes the issues directory in its header
 case_issues_render_header_names_dir() {
   local dir
