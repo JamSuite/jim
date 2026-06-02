@@ -2,7 +2,7 @@
 title: "Issue Tracking — Workflow Integration (v2)"
 spec: "spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Issue Tracking — Workflow Integration (v2) — Plan
