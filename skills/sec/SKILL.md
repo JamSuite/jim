@@ -158,7 +158,7 @@ For each issue identified across the freeform review, STRIDE sweep, LINDDUN swee
 - **Severity:** Critical (design flaw — will create a vulnerability) | Notable (gap to address before build) | Advisory (hardening opportunity).
 - **Description:** What the issue is — specific, not vague.
 - **Suggestion:** Concrete actionable recommendation.
-- **Route:** Spec (requirements gap) | Plan (design flaw).
+- **Route:** Spec (requirements gap) | Plan (design flaw) | Issue (out-of-scope follow-on; materialized as a candidate at end-of-run per spec 018 WS-5).
 - **Relates to:** AC #N, User Story #N, or section name when applicable (omit in ad-hoc mode if no source to cite).
 
 Order findings by severity (Critical first).
