@@ -257,7 +257,7 @@ main() {
   local slugs_seen=()
 
   # Build per-issue map: slug → "<status>\t<priority>\t<title>\t<origin>".
-  declare -A meta_status meta_priority meta_title meta_origin meta_labels
+  declare -A meta_status meta_priority meta_title meta_origin meta_labels meta_created
   # Adjacency maps: slug → "<type>:<target> <type>:<target> ..." (space-separated).
   #   outgoing_fm  — frontmatter relations only (drives bidirectional check).
   #   outgoing_all — frontmatter + body wikilinks, deduped per
@@ -288,12 +288,13 @@ main() {
       continue
     fi
 
-    local status priority title origin labels
+    local status priority title origin labels created
     status="$(parse_simple_field "$fm" status)"
     priority="$(parse_simple_field "$fm" priority)"
     title="$(parse_simple_field "$fm" title)"
     origin="$(parse_simple_field "$fm" origin)"
     labels="$(parse_simple_field "$fm" labels)"
+    created="$(parse_simple_field "$fm" created)"
     [[ -z "$status" ]] && status="open"
 
     meta_status[$slug]="$status"
@@ -301,6 +302,7 @@ main() {
     meta_title[$slug]="$title"
     meta_origin[$slug]="$origin"
     meta_labels[$slug]="$labels"
+    meta_created[$slug]="$created"
 
     if [[ "$status" == "closed" ]]; then
       closed_count=$((closed_count + 1))
@@ -355,6 +357,33 @@ main() {
 
     outgoing_fm[$slug]="${edges_fm% }"
     outgoing_all[$slug]="${edges_all% }"
+  done
+
+  # Origin-lint second pass (spec 018 OL-1, OL-2, OL-3).
+  # For each indexed slug whose origin field is path-shaped (contains '/'),
+  # validate that the path resolves against the script's invoking CWD (PWD-
+  # relative resolution; matches the rest of jim's bash conventions and
+  # Claude Code's project-root-as-CWD invariant). Non-path-shaped tokens
+  # (e.g., `conversation`, `external`) are silently exempt. Broken paths
+  # produce an integrity warning naming slug, path, and created date — the
+  # warning never blocks the file from being indexed or rendered.
+  #
+  # Under `set -u`, access meta_origin via ${meta_origin[$slug]-} and
+  # continue when the value is empty — issues without an `origin:` field
+  # are common (early adoption, hand-authored fixtures) and the lint pass
+  # must not crash on them. (Spec 018 security review Finding 9.)
+  local origin_value origin_created
+  for s in "${slugs_seen[@]}"; do
+    origin_value="${meta_origin[$s]-}"
+    [[ -z "$origin_value" ]] && continue
+    case "$origin_value" in
+      */*)
+        if [[ ! -e "$origin_value" ]]; then
+          origin_created="${meta_created[$s]-}"
+          warnings_section+="- \`$s\` origin path does not resolve: $origin_value (created $origin_created)\n"
+        fi
+        ;;
+    esac
   done
 
   # Bidirectional integrity check (DD #7).
