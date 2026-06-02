@@ -48,7 +48,7 @@ date: "{YYYY-MM-DD}"
 - **Severity:** Critical | Notable | Advisory
 - **Description:** {What the issue is — specific, not vague}
 - **Suggestion:** {Concrete actionable recommendation — what to add, change, or specify}
-- **Route:** Spec | Plan
+- **Route:** Spec | Plan | Issue
 - **Relates to:** {AC #N | User Story #N | section name}
 
 <!-- The `Relates to:` line is omitted when no applicable source can be cited
@@ -104,6 +104,13 @@ date: "{YYYY-MM-DD}"
 
 ### Plan amendments
 - {Finding N: suggested change to plan}
+
+### Candidate issues
+<!-- Findings routed to `Issue` materialize as candidates in /jim:sec's
+     end-of-phase batch (spec 018 WS-5). The candidate's body is the
+     finding's description + suggestion; priority maps from severity
+     (Critical→critical, Notable→high, Advisory→medium). -->
+- {Finding N: paraphrased text, materialized as a candidate at end-of-run}
 
 <!-- If no findings route: replace section with
      "No routing required — all findings are informational." -->
