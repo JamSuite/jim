@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# tests/issues.sh — Tests for skills/issues/scripts/index.sh and render.sh
+# tests/issues.sh — Tests for skills/issue/scripts/index.sh and render.sh
 #
 # Conventions: see skills/meta-test/scripts/testlib.sh header (canonical).
 #
@@ -14,8 +14,8 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 
-SCRIPT_INDEX="$REPO_ROOT/skills/issues/scripts/index.sh"
-SCRIPT_RENDER="$REPO_ROOT/skills/issues/scripts/render.sh"
+SCRIPT_INDEX="$REPO_ROOT/skills/issue/scripts/index.sh"
+SCRIPT_RENDER="$REPO_ROOT/skills/issue/scripts/render.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 

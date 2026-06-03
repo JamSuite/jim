@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# skills/issues/scripts/index.sh — Generate INDEX.md for a jim issue collection.
+# skills/issue/scripts/index.sh — Generate INDEX.md for a jim issue collection.
 #
 # PURPOSE
 #   Scan an issues directory, parse the markdown frontmatter and body for every

@@ -3,7 +3,7 @@ name: issue
 description: Capture a discovery from the current conversation as a structured markdown issue file under docs/issues/. Use when the user invokes /jim:issue, says "file an issue for this", or otherwise asks to save out-of-scope work surfaced during the jim workflow.
 agent: pm
 argument-hint: "[subject]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issues/scripts/index.sh *), Bash(mkdir *), Read, Write, Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *), Bash(mkdir *), Read, Write, Edit
 ---
 
 Base directory for this skill: ${CLAUDE_SKILL_DIR}
@@ -98,7 +98,7 @@ On `file`:
 2. Write the issue file to the resolved path using the Write tool.
 3. Regenerate `INDEX.md` so the new issue is immediately discoverable:
    ```
-   bash ${CLAUDE_PLUGIN_ROOT}/skills/issues/scripts/index.sh
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh
    ```
 4. Report briefly: "Filed as `YYYYMMDD-slug`." and stop. Do not advance the SDLC workflow.
 

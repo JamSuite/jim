@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# skills/issues/scripts/render.sh — Trend view over the jim issue collection.
+# skills/issue/scripts/render.sh — Trend view over the jim issue collection.
 #
 # PURPOSE
 #   /jim:issues read-side wrapper. Runs index.sh defensively, then reads the

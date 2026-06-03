@@ -16,4 +16,4 @@ origin: {origin}
 
 ## Description
 
-{body — may reference other issues via [[other-issue-slug]] wikilinks. Body content is parsed line-orientedly by skills/issues/scripts/index.sh; only structured wikilinks become graph edges, malformed link content is treated as prose (AC-I4).}
+{body — may reference other issues via [[other-issue-slug]] wikilinks. Body content is parsed line-orientedly by skills/issue/scripts/index.sh; only structured wikilinks become graph edges, malformed link content is treated as prose (AC-I4).}

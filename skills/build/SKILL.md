@@ -7,7 +7,7 @@ description: >
   (/jim:research), or planning (/jim:plan).
 agent: coder
 argument-hint: "[spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issues/scripts/index.sh *) Bash(mkdir *) Skill(jim:arch) Skill(jim:sec) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(mkdir *) Skill(jim:arch) Skill(jim:sec) Read Write Edit
 ---
 
 # /jim:build
@@ -169,7 +169,7 @@ After all tasks are marked `[x]`:
      - Ensure the issues directory exists: `mkdir -p "$(dirname <path>)"`.
      - Write the file at the resolved path using the spec 017 issue template (frontmatter + body).
    AFTER the per-candidate loop completes, regenerate INDEX.md ONCE:
-     - `bash ${CLAUDE_PLUGIN_ROOT}/skills/issues/scripts/index.sh`.
+     - `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`.
    Emit a one-line summary: `"Filed N of M candidates (K skipped: #i — <reason>; #j — <reason>). See INDEX.md."` Skipped candidates are referenced by row index, never by title (spec 018 § Out of Scope — title content may include conversation context that the trusted developer should not have re-exposed in terminal logs).
 
    ELSE apply the INTERACTIVE PATH:
@@ -188,7 +188,7 @@ After all tasks are marked `[x]`:
 
    Wait for the developer's response.
 
-   - ON bulk `file all`: FOR each checked row, resolve slug + path and write the file (no per-row regen). AFTER the loop, regenerate INDEX.md ONCE via `bash ${CLAUDE_PLUGIN_ROOT}/skills/issues/scripts/index.sh`. Emit `"Filed N candidates. See INDEX.md."`
+   - ON bulk `file all`: FOR each checked row, resolve slug + path and write the file (no per-row regen). AFTER the loop, regenerate INDEX.md ONCE via `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`. Emit `"Filed N candidates. See INDEX.md."`
    - ON bulk `skip all`: discard all rows.
    - ON per-row override:
      - `f` (file) — resolve slug + path, write the file, regenerate INDEX.md once for the row.
