@@ -623,6 +623,38 @@ case_jimfile_next_id_group_still_works() {
   assert_eq "002 from existing group" "002" "$OUT"
 }
 
+# AC: next-num issue returns 1 when no issue carries a num: field (spec 019 DD #5)
+case_jimfile_nextnum_empty_returns_1() {
+  local issues cfg
+  issues=$(empty_dir nextnum_empty)
+  cfg=$(fixture nextnum-empty.toml "issues_path = \"$issues\"")
+  run_jimfile -c "$cfg" next-num issue
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "next-num empty dir" "1" "$OUT"
+}
+
+# AC: next-num issue returns max(num)+1 across the collection (spec 019 DD #5)
+# Files without a num: line are ignored; INDEX.md (no num:) is ignored too.
+case_jimfile_nextnum_returns_max_plus_one() {
+  local issues cfg
+  issues=$(empty_dir nextnum_max)
+  printf -- '---\nnum: 3\nstatus: open\n---\nbody\n' > "$issues/20260101-a.md"
+  printf -- '---\nnum: 7\nstatus: open\n---\nbody\n' > "$issues/20260102-b.md"
+  printf -- '---\nstatus: open\n---\nno num here\n'  > "$issues/20260103-c.md"
+  printf -- '# INDEX\n- nothing\n'                   > "$issues/INDEX.md"
+  cfg=$(fixture nextnum-max.toml "issues_path = \"$issues\"")
+  run_jimfile -c "$cfg" next-num issue
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "next-num max+1" "8" "$OUT"
+}
+
+# AC: next-num requires the 'issue' kind (malformed invocation)
+case_jimfile_nextnum_requires_issue_kind() {
+  run_jimfile next-num
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
