@@ -645,7 +645,7 @@ status: open'
 case_issues_render_empty_summary_line() {
   local dir
   dir=$(empty_dir render_empty)
-  run_render "$dir"
+  run_render stats "$dir"
   assert_exit "rc" 0 "$RC"
   assert_match "single-line summary" 'Open: 0.*Closed: 0' "$OUT"
 }
@@ -663,7 +663,7 @@ origin: docs/specs/jim/016-sec/'
   write_issue "$dir" "20260530-c" 'title: "C"
 status: open
 origin: docs/brainstorms/x.md'
-  run_render "$dir"
+  run_render stats "$dir"
   assert_exit "rc" 0 "$RC"
   assert_match "origin group sec"   'docs/specs/jim/016-sec/.*2' "$OUT"
   assert_match "origin group brain" 'docs/brainstorms/x.md.*1'  "$OUT"
@@ -679,7 +679,7 @@ labels: [auth, security]'
   write_issue "$dir" "20260530-b" 'title: "B"
 status: open
 labels: [auth, middleware]'
-  run_render "$dir"
+  run_render stats "$dir"
   assert_match "label auth count"     'auth.*2'     "$OUT"
   assert_match "label security count" 'security.*1' "$OUT"
 }
@@ -724,7 +724,7 @@ relations:
   depends-on: [20260530-mega]
   related-to: []
   duplicates: []'
-  run_render "$dir"
+  run_render stats "$dir"
   assert_exit "rc" 0 "$RC"
   # 'mega' must come before 'small' in the blocking section.
   local mega_line small_line
@@ -756,7 +756,7 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []'
-  run_render "$dir"
+  run_render stats "$dir"
   assert_match "warning surfaced" 'Integrity Warnings' "$OUT"
   assert_match "warning content"  'has no inverse'     "$OUT"
 }
@@ -771,7 +771,7 @@ case_issues_render_is_read_only_for_issue_files() {
 status: open'
   local before_hash
   before_hash=$(find "$dir" -type f -name '*.md' ! -name 'INDEX.md' -exec md5sum {} + | sort | md5sum)
-  run_render "$dir"
+  run_render stats "$dir"
   local after_hash
   after_hash=$(find "$dir" -type f -name '*.md' ! -name 'INDEX.md' -exec md5sum {} + | sort | md5sum)
   assert_eq "issue files unchanged" "$before_hash" "$after_hash"
@@ -866,7 +866,7 @@ origin: docs/removed/file.md'
 case_issues_render_header_names_dir() {
   local dir
   dir=$(empty_dir render_header)
-  run_render "$dir"
+  run_render stats "$dir"
   assert_match "header has dir" "Issue Collection — $dir" "$OUT"
 }
 
@@ -977,6 +977,187 @@ status: open'
   run_index "$dir"
   assert_exit "rc" 0 "$RC"
   assert_match "slug present" '`20260530-bar`' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: `render.sh help` lists the subcommands (spec 019)
+case_issues_render_help_lists_subcommands() {
+  run_render help
+  assert_exit "rc" 0 "$RC"
+  assert_match "lists add"   'add'   "$OUT"
+  assert_match "lists list"  'list'  "$OUT"
+  assert_match "lists stats" 'stats' "$OUT"
+  assert_match "lists show"  'show'  "$OUT"
+}
+
+# AC: `render.sh stats` includes a by-priority breakdown (spec 019)
+case_issues_render_stats_by_priority() {
+  local dir
+  dir=$(empty_dir render_stats_prio)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+priority: high
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-b" 'title: "B"
+status: open
+priority: low
+num: 2
+created: 2026-01-02'
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "by priority header" 'By priority' "$OUT"
+  assert_match "high counted"       'high'        "$OUT"
+}
+
+# AC: `render.sh list` shows the ordinal column (spec 019)
+case_issues_render_list_shows_num() {
+  local dir
+  dir=$(empty_dir render_list_num)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+priority: high
+num: 7
+created: 2026-01-01'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "ordinal shown" '#?7\b' "$OUT"
+  assert_match "slug shown"    '20260101-a' "$OUT"
+}
+
+# AC: `render.sh list` groups by status by default (spec 019)
+case_issues_render_list_grouped_by_status() {
+  local dir
+  dir=$(empty_dir render_list_group)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-b" 'title: "B"
+status: closed
+num: 2
+created: 2026-01-02'
+  run_render list "$dir"
+  assert_match "open group header"   'open'   "$OUT"
+  assert_match "closed group header" 'closed' "$OUT"
+}
+
+# AC: `render.sh list <status>` filters to that status (spec 019)
+case_issues_render_list_filter_status() {
+  local dir
+  dir=$(empty_dir render_list_filter)
+  write_issue "$dir" "20260101-a" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-b" 'title: "Bravo"
+status: closed
+num: 2
+created: 2026-01-02'
+  run_render list open "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "open issue present"  'Alpha' "$OUT"
+  assert_eq    "closed issue absent" "" "$(printf '%s' "$OUT" | grep -c 'Bravo' | sed 's/^0$//')"
+}
+
+# AC: `render.sh list <bad-filter>` errors rather than pattern-matching (Finding 3)
+case_issues_render_list_unknown_filter_errors() {
+  local dir
+  dir=$(empty_dir render_list_badfilter)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  run_render list "bogusfilter" "$dir"
+  assert_exit     "rc nonzero"      1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: an unrecognized issue_list_group config value falls back to default (Finding 5)
+case_issues_render_list_bad_group_config_falls_back() {
+  local dir cwd
+  dir=$(empty_dir render_list_badgroup)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  cwd=$(empty_dir render_list_badgroup_cwd)
+  printf 'issue_list_group = "bogus"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit "rc" 0 "$RC"
+  assert_match "still lists the issue" '20260101-a' "$OUT"
+}
+
+# AC: `render.sh show <num>` resolves by ordinal (spec 019)
+case_issues_render_show_by_num() {
+  local dir
+  dir=$(empty_dir render_show_num)
+  write_issue "$dir" "20260101-a" 'title: "Alpha Issue"
+status: open
+num: 42
+created: 2026-01-01' "## Description
+
+The body text."
+  run_render show 42 "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "title shown" 'Alpha Issue' "$OUT"
+  assert_match "body shown"  'The body text' "$OUT"
+}
+
+# AC: `render.sh show <substring>` resolves a unique slug match (spec 019)
+case_issues_render_show_by_substring() {
+  local dir
+  dir=$(empty_dir render_show_sub)
+  write_issue "$dir" "20260101-credential-leak" 'title: "Cred Leak"
+status: open
+num: 1
+created: 2026-01-01' "body"
+  run_render show credential "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "resolved by substring" 'Cred Leak' "$OUT"
+}
+
+# AC: `render.sh show <ambiguous>` lists candidates instead of guessing (spec 019)
+case_issues_render_show_ambiguous_lists() {
+  local dir
+  dir=$(empty_dir render_show_ambig)
+  write_issue "$dir" "20260101-auth-a" 'title: "Auth A"
+status: open
+num: 1
+created: 2026-01-01' "body"
+  write_issue "$dir" "20260102-auth-b" 'title: "Auth B"
+status: open
+num: 2
+created: 2026-01-02' "body"
+  run_render show auth "$dir"
+  assert_match "lists first candidate"  '20260101-auth-a' "$OUT"
+  assert_match "lists second candidate" '20260102-auth-b' "$OUT"
+}
+
+# AC: `render.sh show <nomatch>` reports no match (spec 019)
+case_issues_render_show_not_found() {
+  local dir
+  dir=$(empty_dir render_show_none)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01' "body"
+  run_render show zzz-nonexistent "$dir"
+  assert_match "no-match message" 'no issue' "$OUT"
+}
+
+# AC: `render.sh show` resolves only against the known set — no path traversal (Finding 1)
+case_issues_render_show_path_traversal_safe() {
+  local dir
+  dir=$(empty_dir render_show_traversal)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01' "body"
+  run_render show "../../../../etc/passwd" "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "reports no match"        'no issue' "$OUT"
+  assert_eq    "no /etc/passwd contents" "" "$(printf '%s' "$OUT" | grep -c 'root:' | sed 's/^0$//')"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
