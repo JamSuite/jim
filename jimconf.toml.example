@@ -103,8 +103,21 @@ security_adhoc_path       = "docs/security"
 # Quiet auto-file mode for the candidate batch. When "true" AND
 # issue_capture is also "true", the batch is filed without prompting:
 # every candidate is written silently, the user sees a one-line summary,
-# and review happens later via /jim:issues. When "false" (the default),
+# and review happens later via /jim:issue list. When "false" (the default),
 # the batch prompts per the batch UX (file all / skip all / per-row
 # file/edit/skip). auto_issue_file = "true" with issue_capture = "false"
 # is a no-op. Uncomment to enable.
 # auto_issue_file = "false"
+
+# --- Issue list view (spec 019) -------------------------------------------
+
+# Default view for `/jim:issue list`. An explicit filter argument
+# (e.g. `/jim:issue list open`) overrides the configured default per call.
+# Unrecognized values fall back to the documented default.
+#   issue_list_group : how rows are grouped — status | priority | origin | none
+#   issue_list_sort  : sort within each group — date | priority | num
+#   issue_list_cols  : comma-separated columns from
+#                      num,date,priority,status,slug,labels,title
+# issue_list_group = "status"
+# issue_list_sort  = "date"
+# issue_list_cols  = "num,date,priority,slug"
