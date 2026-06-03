@@ -176,77 +176,77 @@ flowchart LR
 
 ### Foundation — config layer
 
-1. [ ] **Add `issue_list_*` cases to `tests/jimconf.sh`.** Extend `case_no_config_returns_defaults` (L39) with the three defaults and `case_full_config_returns_overrides` (L70) with overrides. The override case fails before task 2 (resolver appends `_path`).
+1. [x] **Add `issue_list_*` cases to `tests/jimconf.sh`.** Extend `case_no_config_returns_defaults` (L39) with the three defaults and `case_full_config_returns_overrides` (L70) with overrides. The override case fails before task 2 (resolver appends `_path`).
    **Verify:** `bash /mnt/src/jim/tests/jimconf.sh full_config_returns_overrides 2>&1 | grep -q FAIL`
 
-2. [ ] **Extend `jimconf.sh`: `KEYS`, `default_for()`, `resolve()`.** Add the three keys (L42), default arms (L48–72: `status` / `date` / `num,date,priority,slug`), and an `issue_list_*` prefix arm in `resolve()` (L99–125) returning the bare name.
+2. [x] **Extend `jimconf.sh`: `KEYS`, `default_for()`, `resolve()`.** Add the three keys (L42), default arms (L48–72: `status` / `date` / `num,date,priority,slug`), and an `issue_list_*` prefix arm in `resolve()` (L99–125) returning the bare name.
    **Verify:** `bash /mnt/src/jim/tests/jimconf.sh && bash /mnt/src/jim/skills/conf/scripts/jimconf.sh get issue_list_group | grep -qx status`
 
 ### Foundation — ordinal resolver
 
-3. [ ] **Add `next-num issue` to `jimfile.sh` with tests.** Max-scan of `num:` across `<issues_dir>/*.md`, print max+1 (1 if none). Add `case_jimfile_nextnum_*` to `tests/jimfile.sh` (empty dir → 1; mixed nums → max+1).
+3. [x] **Add `next-num issue` to `jimfile.sh` with tests.** Max-scan of `num:` across `<issues_dir>/*.md`, print max+1 (1 if none). Add `case_jimfile_nextnum_*` to `tests/jimfile.sh` (empty dir → 1; mixed nums → max+1).
    **Verify:** `bash /mnt/src/jim/tests/jimfile.sh nextnum`
 
 ### Structural — relocate scripts, delete `skills/issues/`
 
-4. [ ] **Relocate `index.sh` + `render.sh` to `skills/issue/scripts/`; delete `skills/issues/` entirely; repoint every reference.** `git mv` the two scripts; fix their internal `$HERE`/`INDEX_SCRIPT` refs if needed; delete `skills/issues/SKILL.md` and the now-empty dir; repoint the 21 `skills/issues/scripts/index.sh` occurrences in the seven 018 batch protocols (1 `allowed-tools` + 2 body sites each, research §6); repoint the `skills/issue/SKILL.md` existing `index.sh` ref; fix the script `source` paths in `tests/issues.sh`. Behavior unchanged — pure move + rewire. **Depends on nothing; do before script-internal edits so all later work is at the new path.**
+4. [x] **Relocate `index.sh` + `render.sh` to `skills/issue/scripts/`; delete `skills/issues/` entirely; repoint every reference.** `git mv` the two scripts; fix their internal `$HERE`/`INDEX_SCRIPT` refs if needed; delete `skills/issues/SKILL.md` and the now-empty dir; repoint the 21 `skills/issues/scripts/index.sh` occurrences in the seven 018 batch protocols (1 `allowed-tools` + 2 body sites each, research §6); repoint the `skills/issue/SKILL.md` existing `index.sh` ref; fix the script `source` paths in `tests/issues.sh`. Behavior unchanged — pure move + rewire. **Depends on nothing; do before script-internal edits so all later work is at the new path.**
    **Verify:** `! grep -rIn 'skills/issues/' /mnt/src/jim/skills /mnt/src/jim/tests && test -f /mnt/src/jim/skills/issue/scripts/render.sh && test ! -e /mnt/src/jim/skills/issues && bash /mnt/src/jim/skills/meta-test/scripts/run.sh`
 
 ### `index.sh` — num parsing
 
-5. [ ] **Add `num:` + `created` to `tests/issues.sh` index cases.** Assert a numbered issue's `num` and `created` appear in the regenerated `## Issues` row; an un-numbered issue does not crash the parse.
+5. [x] **Add `num:` + `created` to `tests/issues.sh` index cases.** Assert a numbered issue's `num` and `created` appear in the regenerated `## Issues` row; an un-numbered issue does not crash the parse.
    **Verify:** `bash /mnt/src/jim/tests/issues.sh index 2>&1 | grep -q FAIL`
 
-6. [ ] **Parse `num:` in `index.sh`; emit `num`+`created` in `## Issues` rows.** `meta_num[$slug]="$(parse_simple_field "$fm" num)"` in the main loop (L290–297); extend the row format (L415–420). Access under `set -u` with `${meta_num[$slug]-}`.
+6. [x] **Parse `num:` in `index.sh`; emit `num`+`created` in `## Issues` rows.** `meta_num[$slug]="$(parse_simple_field "$fm" num)"` in the main loop (L290–297); extend the row format (L415–420). Access under `set -u` with `${meta_num[$slug]-}`.
    **Verify:** `bash /mnt/src/jim/tests/issues.sh index`
 
 ### Backfill — one-shot migration script
 
-7. [ ] **Add `backfill.sh` cases to `tests/issues.sh`.** Cover: assigns ordinals by created order; idempotent second run is a no-op (prints nothing, exit 0); preserves body + relations + other frontmatter; continues from existing max; partial content never corrupted (atomic write).
+7. [x] **Add `backfill.sh` cases to `tests/issues.sh`.** Cover: assigns ordinals by created order; idempotent second run is a no-op (prints nothing, exit 0); preserves body + relations + other frontmatter; continues from existing max; partial content never corrupted (atomic write).
    **Verify:** `bash /mnt/src/jim/tests/issues.sh backfill 2>&1 | grep -q FAIL`
 
-8. [ ] **Create `skills/issue/scripts/backfill.sh`.** Preamble `set -uo pipefail; export LC_ALL=C`. Collect unnumbered issues, sort by `created:`, assign sequential `num:` continuing from max via per-file `tmp + mv` (`trap` cleanup). Idempotent; one-line notice only when N>0. Standalone — not referenced by any verb.
+8. [x] **Create `skills/issue/scripts/backfill.sh`.** Preamble `set -uo pipefail; export LC_ALL=C`. Collect unnumbered issues, sort by `created:`, assign sequential `num:` continuing from max via per-file `tmp + mv` (`trap` cleanup). Idempotent; one-line notice only when N>0. Standalone — not referenced by any verb.
    **Verify:** `bash /mnt/src/jim/tests/issues.sh backfill && bash -n /mnt/src/jim/skills/issue/scripts/backfill.sh`
 
 ### `render.sh` — dispatcher
 
-9. [ ] **Add `render.sh` dispatch cases to `tests/issues.sh`.** `stats` (counts incl. by-priority + blocking); `list` default + `list <filter>` + unknown-filter error; unrecognized `issue_list_group`/`issue_list_sort`/`issue_list_cols` config value → falls back to default (no error, no mis-sort) per Finding 5; `show` by num / slug / unique-prefix / ambiguous(list) / none; `show ../../etc/passwd` and other path-shaped input → no match, no file read outside issues dir; `help` lists subcommands; read verbs write no issue files.
+9. [x] **Add `render.sh` dispatch cases to `tests/issues.sh`.** `stats` (counts incl. by-priority + blocking); `list` default + `list <filter>` + unknown-filter error; unrecognized `issue_list_group`/`issue_list_sort`/`issue_list_cols` config value → falls back to default (no error, no mis-sort) per Finding 5; `show` by num / slug / unique-prefix / ambiguous(list) / none; `show ../../etc/passwd` and other path-shaped input → no match, no file read outside issues dir; `help` lists subcommands; read verbs write no issue files.
    **Verify:** `bash /mnt/src/jim/tests/issues.sh render 2>&1 | grep -q FAIL`
 
-10. [ ] **Restructure `render.sh` into a `case` dispatcher.** Implement `stats` (current output + by-priority), `list` (group/sort/cols from config + closed-set validation of filter, columns, group, and sort with fall-back-to-default on unrecognized config values), `show` (resolve against INDEX known set per Interface Contract; never compose a path from raw input), `help`. Keep defensive `index.sh` regen first.
+10. [x] **Restructure `render.sh` into a `case` dispatcher.** Implement `stats` (current output + by-priority), `list` (group/sort/cols from config + closed-set validation of filter, columns, group, and sort with fall-back-to-default on unrecognized config values), `show` (resolve against INDEX known set per Interface Contract; never compose a path from raw input), `help`. Keep defensive `index.sh` regen first.
     **Verify:** `bash /mnt/src/jim/tests/issues.sh render`
 
-11. [ ] **Run full meta-test suite — no regressions.**
+11. [x] **Run full meta-test suite — no regressions.**
     **Verify:** `bash /mnt/src/jim/skills/meta-test/scripts/run.sh`
 
 ### Skill consolidation
 
-12. [ ] **Add `num: {num}` to `skills/issue/assets/issue-template.md`.**
+12. [x] **Add `num: {num}` to `skills/issue/assets/issue-template.md`.**
     **Verify:** `grep -qE '^num:' /mnt/src/jim/skills/issue/assets/issue-template.md`
 
-13. [ ] **Rewrite `skills/issue/SKILL.md` for subcommand dispatch.** First-token dispatch (`add`→capture, `list`/`stats`/`show`→`render.sh` verbatim, empty→`render.sh help`, unknown→error+help); `add` calls `next-num issue` to stamp `num:`; preserve Step 7 untrusted-content discipline; add the `skills/issue/scripts/render.sh` + `index.sh` `allowed-tools` clauses; add `num:` to the validation checklist; update `argument-hint`. Does **not** reference `backfill.sh` (migration is out-of-band).
+13. [x] **Rewrite `skills/issue/SKILL.md` for subcommand dispatch.** First-token dispatch (`add`→capture, `list`/`stats`/`show`→`render.sh` verbatim, empty→`render.sh help`, unknown→error+help); `add` calls `next-num issue` to stamp `num:`; preserve Step 7 untrusted-content discipline; add the `skills/issue/scripts/render.sh` + `index.sh` `allowed-tools` clauses; add `num:` to the validation checklist; update `argument-hint`. Does **not** reference `backfill.sh` (migration is out-of-band).
     **Verify:** `grep -qE 'scripts/render\.sh' /mnt/src/jim/skills/issue/SKILL.md && grep -qE 'next-num issue' /mnt/src/jim/skills/issue/SKILL.md && grep -qE 'untrusted-issue-content' /mnt/src/jim/skills/issue/SKILL.md && ! grep -q 'backfill' /mnt/src/jim/skills/issue/SKILL.md`
 
 ### Pointers & user docs
 
-14. [ ] **Update `jimconf.toml.example`.** Add commented `issue_list_*` examples after the issue-tracking section; change L108 `/jim:issues` → `/jim:issue list`.
+14. [x] **Update `jimconf.toml.example`.** Add commented `issue_list_*` examples after the issue-tracking section; change L108 `/jim:issues` → `/jim:issue list`.
     **Verify:** `grep -qE '^#?\s*issue_list_group' /mnt/src/jim/jimconf.toml.example && ! grep -q '/jim:issues' /mnt/src/jim/jimconf.toml.example`
 
-15. [ ] **Update `skills/sec/assets/security-template.md`** L113 `/jim:issues` → `/jim:issue list`.
+15. [x] **Update `skills/sec/assets/security-template.md`** L113 `/jim:issues` → `/jim:issue list`.
     **Verify:** `! grep -q '/jim:issues' /mnt/src/jim/skills/sec/assets/security-template.md`
 
-16. [ ] **Repo-wide `/jim:issues` sweep; update user docs + document the migration.** Grep the repo for `/jim:issues`; update `WORKFLOW.md` / `README.md` references to the new surface; add a one-time-backfill migration note (run `backfill.sh` once after upgrading, before creating new issues). (Spec/plan/research/issue artifacts under `docs/` are historical record — leave them.)
+16. [x] **Repo-wide `/jim:issues` sweep; update user docs + document the migration.** Grep the repo for `/jim:issues`; update `WORKFLOW.md` / `README.md` references to the new surface; add a one-time-backfill migration note (run `backfill.sh` once after upgrading, before creating new issues). (Spec/plan/research/issue artifacts under `docs/` are historical record — leave them.)
     **Verify:** `! grep -rIn '/jim:issues' /mnt/src/jim/skills /mnt/src/jim/WORKFLOW.md /mnt/src/jim/README.md`
 
 ### Migration, smoke & validation
 
-17. [ ] **Run the one-time backfill migration against this repo's collection.** Execute `backfill.sh` once against `docs/issues/` so jim's own issues get ordinals (up-front, before any new `add`). Filed-issue changes are committed as administrative housekeeping.
+17. [x] **Run the one-time backfill migration against this repo's collection.** Execute `backfill.sh` once against `docs/issues/` so jim's own issues get ordinals (up-front, before any new `add`). Filed-issue changes are committed as administrative housekeeping.
     **Verify:** `bash /mnt/src/jim/skills/issue/scripts/backfill.sh /mnt/src/jim/docs/issues; grep -lqE '^num:' /mnt/src/jim/docs/issues/20260603-*.md`
 
-18. [ ] **End-to-end smoke (manual).** In a temp issues dir: `backfill.sh` numbers an un-numbered collection with an announcement and is a no-op on re-run; `render.sh list` shows the `#num` column; `list open` filters; `show <num>`, `show <slug-prefix>` resolve; `show ../../etc/passwd` reports no match; `stats` shows counts incl. by-priority; `render.sh help` lists subcommands; an `add` stamps a new `num:`.
+18. [x] **End-to-end smoke (manual).** In a temp issues dir: `backfill.sh` numbers an un-numbered collection with an announcement and is a no-op on re-run; `render.sh list` shows the `#num` column; `list open` filters; `show <num>`, `show <slug-prefix>` resolve; `show ../../etc/passwd` reports no match; `stats` shows counts incl. by-priority; `render.sh help` lists subcommands; an `add` stamps a new `num:`.
     **Verify:** `bash /mnt/src/jim/skills/issue/scripts/render.sh list /mnt/src/jim/docs/issues | grep -qE '#[0-9]+'`
 
-19. [ ] **Final full meta-test suite.**
+19. [x] **Final full meta-test suite.**
     **Verify:** `bash /mnt/src/jim/skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
