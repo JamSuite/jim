@@ -855,6 +855,34 @@ case_issues_render_header_names_dir() {
   assert_match "header has dir" "Issue Collection — $dir" "$OUT"
 }
 
+# AC: index surfaces num: and created: in the Issues row (spec 019)
+case_issues_index_num_and_created_surface() {
+  local dir
+  dir=$(empty_dir index_num)
+  write_issue "$dir" "20260530-foo" 'title: "Foo"
+status: open
+priority: high
+num: 5
+created: 2026-05-30'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "num surfaces"     'num: 5'            "$idx"
+  assert_match "created surfaces" 'created: 2026-05-30' "$idx"
+}
+
+# AC: an issue without a num: field does not crash the index (spec 019)
+case_issues_index_missing_num_no_crash() {
+  local dir
+  dir=$(empty_dir index_nonum)
+  write_issue "$dir" "20260530-bar" 'title: "Bar"
+status: open'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "slug present" '`20260530-bar`' "$(cat "$dir/INDEX.md")"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
