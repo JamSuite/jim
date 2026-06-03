@@ -1190,6 +1190,51 @@ created: 2026-01-01'
   assert_eq "num-desc tiebreak (#3 < #2 < #1)" "yes" "$order_ok"
 }
 
+# AC: issue_list_order = "asc" flips the sort direction (spec 019 follow-up).
+# With num sort + asc, the lowest ordinal (#1) appears before the highest (#3).
+case_issues_render_list_order_asc() {
+  local dir cwd
+  dir=$(empty_dir render_list_order)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260103-c" 'title: "C"
+status: open
+num: 3
+created: 2026-01-03'
+  cwd=$(empty_dir render_list_order_cwd)
+  printf 'issue_list_sort = "num"\nissue_list_order = "asc"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit "rc" 0 "$RC"
+  local l1 l3 order_ok="no"
+  l1=$(printf '%s\n' "$OUT" | grep -n '20260101-a' | head -1 | cut -d: -f1)
+  l3=$(printf '%s\n' "$OUT" | grep -n '20260103-c' | head -1 | cut -d: -f1)
+  if [[ -n "$l1" && -n "$l3" ]] && (( l1 < l3 )); then order_ok="yes"; fi
+  assert_eq "ascending: #1 before #3" "yes" "$order_ok"
+}
+
+# AC: default issue_list_order is descending — highest ordinal first.
+case_issues_render_list_order_desc_default() {
+  local dir
+  dir=$(empty_dir render_list_order_def)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260103-c" 'title: "C"
+status: open
+num: 3
+created: 2026-01-03'
+  run_render list "$dir"
+  local l1 l3 order_ok="no"
+  l1=$(printf '%s\n' "$OUT" | grep -n '20260101-a' | head -1 | cut -d: -f1)
+  l3=$(printf '%s\n' "$OUT" | grep -n '20260103-c' | head -1 | cut -d: -f1)
+  if [[ -n "$l1" && -n "$l3" ]] && (( l3 < l1 )); then order_ok="yes"; fi
+  assert_eq "descending default: #3 before #1" "yes" "$order_ok"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
