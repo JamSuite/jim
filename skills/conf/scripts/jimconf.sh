@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -67,6 +67,9 @@ default_for() {
     issues)                      echo "./docs/issues/" ;;
     issue_capture)               echo "true" ;;
     auto_issue_file)             echo "false" ;;
+    issue_list_group)            echo "status" ;;
+    issue_list_sort)             echo "date" ;;
+    issue_list_cols)             echo "num,date,priority,slug" ;;
     *) return 1 ;;
   esac
 }
@@ -99,12 +102,12 @@ parse_value() {
 resolve() {
   local file="$1" cli_key="$2"
   local toml_key
-  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" ]]; then
-    # Bare-name boolean flag keys (no _path suffix). The auto_*/require_*
-    # prefixes signal automated/mandatory behaviors; issue_capture is a
-    # human-in-the-loop feature flag whose default behavior keeps the
-    # human in the loop (presents a choice, not an automated action) —
-    # hence the bare name. Per spec 018 DD #1.
+  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* ]]; then
+    # Bare-name keys (no _path suffix). The auto_*/require_* prefixes signal
+    # automated/mandatory behaviors; issue_capture is a human-in-the-loop
+    # feature flag (spec 018 DD #1); the issue_list_* family configures the
+    # default `/jim:issue list` view (group/sort/cols) and is neither a path
+    # nor a toggle (spec 019 DD #9). All resolve to their bare TOML name.
     toml_key="$cli_key"
   else
     toml_key="${cli_key}_path"
