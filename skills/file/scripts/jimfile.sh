@@ -238,6 +238,35 @@ cmd_next_id() {
   printf '%03d\n' $(( max + 1 ))
 }
 
+# cmd_next_num <kind>
+#   For 'issue': scan the configured issues directory for top-level `num:`
+#   frontmatter fields and print max+1 (or 1 when none carry a num). The
+#   display ordinal is decentralized — duplicates across branches are
+#   accepted as non-fatal (spec 019 DD #5). Reads num: only; never mutates.
+cmd_next_num() {
+  local kind="${1:-}"
+  if [[ "$kind" != "issue" ]]; then
+    echo "error: 'next-num' requires the 'issue' kind" >&2
+    return 2
+  fi
+  local dir max=0 f n
+  dir="$(jimconf_get issues)"
+  dir="${dir%/}"
+  if [[ -d "$dir" ]]; then
+    for f in "$dir"/*.md; do
+      [[ -f "$f" ]] || continue
+      n="$(grep -E '^num:[[:space:]]*[0-9]+' "$f" 2>/dev/null \
+        | head -n 1 \
+        | sed -E 's/^num:[[:space:]]*([0-9]+).*/\1/')"
+      [[ "$n" =~ ^[0-9]+$ ]] || continue
+      if (( n > max )); then
+        max=$n
+      fi
+    done
+  fi
+  printf '%d\n' $(( max + 1 ))
+}
+
 # cmd_path <kind> <args...>  |  cmd_path <key>
 #   Two forms, dispatched by arity:
 #     Single-arg form (D3): `path <key>` returns the configured path for a
@@ -415,6 +444,7 @@ usage:
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh next-id <group>                    next zero-padded spec id
+  jimfile.sh next-num issue                     next display ordinal (max+1)
   jimfile.sh path <key>                         configured path for <key>
   jimfile.sh path spec      <group> <id> <name>
   jimfile.sh path plan      <group> <id> <name>
@@ -449,7 +479,8 @@ main() {
     get)     cmd_get     "$@" ;;
     slug)    cmd_slug    "$@" ;;
     date)    cmd_date ;;
-    next-id) cmd_next_id "$@" ;;
+    next-id)  cmd_next_id  "$@" ;;
+    next-num) cmd_next_num "$@" ;;
     path)    cmd_path    "$@" ;;
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
