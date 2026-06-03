@@ -339,7 +339,10 @@ cmd_list() {
   sort_rows() {
     case "$sort" in
       num)  sort -t$'\t' -k2,2nr ;;
-      date) sort -t$'\t' -k5,5r ;;
+      # Date descending; ties (coarse day-resolution created: dates) break by
+      # num descending so a same-day batch stays in a monotonic ordinal order
+      # rather than collapsing to slug-alphabetical.
+      date) sort -t$'\t' -k5,5r -k2,2nr ;;
       priority)
         awk -F'\t' 'BEGIN{r["critical"]=0;r["high"]=1;r["medium"]=2;r["low"]=3}
           {k=($4 in r)?r[$4]:9; print k"\t"$0}' \
