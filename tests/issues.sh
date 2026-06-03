@@ -1045,18 +1045,18 @@ created: 2026-01-02'
 case_issues_render_list_filter_status() {
   local dir
   dir=$(empty_dir render_list_filter)
-  write_issue "$dir" "20260101-a" 'title: "Alpha"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
 status: open
 num: 1
 created: 2026-01-01'
-  write_issue "$dir" "20260102-b" 'title: "Bravo"
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
 status: closed
 num: 2
 created: 2026-01-02'
   run_render list open "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_match "open issue present"  'Alpha' "$OUT"
-  assert_eq    "closed issue absent" "" "$(printf '%s' "$OUT" | grep -c 'Bravo' | sed 's/^0$//')"
+  assert_match "open issue present"  '20260101-alpha' "$OUT"
+  assert_eq    "closed issue absent" "" "$(printf '%s' "$OUT" | grep -c '20260102-bravo' | sed 's/^0$//')"
 }
 
 # AC: `render.sh list <bad-filter>` errors rather than pattern-matching (Finding 3)
