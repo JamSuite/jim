@@ -1,5 +1,6 @@
 ---
 id: {YYYYMMDD}-{slug}
+num: {num}
 title: "{title}"
 status: open
 priority: {priority}
