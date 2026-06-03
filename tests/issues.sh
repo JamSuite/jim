@@ -1160,6 +1160,36 @@ created: 2026-01-01' "body"
   assert_eq    "no /etc/passwd contents" "" "$(printf '%s' "$OUT" | grep -c 'root:' | sed 's/^0$//')"
 }
 
+# AC: under the default date sort, same-date rows break by num descending,
+# not slug-alphabetical (spec 019 follow-up — coarse created: dates tie). The
+# slugs are chosen so alphabetical order (alpha, mango, zebra) differs from
+# num-descending order (mango#3, alpha#2, zebra#1).
+case_issues_render_list_date_tiebreak_by_num() {
+  local dir
+  dir=$(empty_dir render_list_tiebreak)
+  write_issue "$dir" "20260101-zebra" 'title: "Z"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260101-alpha" 'title: "A"
+status: open
+num: 2
+created: 2026-01-01'
+  write_issue "$dir" "20260101-mango" 'title: "M"
+status: open
+num: 3
+created: 2026-01-01'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  local l_mango l_alpha l_zebra order_ok="no"
+  l_mango=$(printf '%s\n' "$OUT" | grep -n '20260101-mango' | head -1 | cut -d: -f1)
+  l_alpha=$(printf '%s\n' "$OUT" | grep -n '20260101-alpha' | head -1 | cut -d: -f1)
+  l_zebra=$(printf '%s\n' "$OUT" | grep -n '20260101-zebra' | head -1 | cut -d: -f1)
+  if [[ -n "$l_mango" && -n "$l_alpha" && -n "$l_zebra" ]] \
+     && (( l_mango < l_alpha && l_alpha < l_zebra )); then order_ok="yes"; fi
+  assert_eq "num-desc tiebreak (#3 < #2 < #1)" "yes" "$order_ok"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
