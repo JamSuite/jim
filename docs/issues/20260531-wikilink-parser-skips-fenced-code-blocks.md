@@ -1,4 +1,5 @@
 ---
+num: 3
 id: 20260531-wikilink-parser-skips-fenced-code-blocks
 title: "Wikilink Parser Should Skip Fenced Code Blocks"
 status: closed

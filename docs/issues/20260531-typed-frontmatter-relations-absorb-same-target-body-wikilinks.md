@@ -1,4 +1,5 @@
 ---
+num: 2
 id: 20260531-typed-frontmatter-relations-absorb-same-target-body-wikilinks
 title: "Typed Frontmatter Relations Absorb Same-Target Body Wikilinks"
 status: closed

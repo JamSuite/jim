@@ -1,4 +1,5 @@
 ---
+num: 1
 id: 20260530-smoke-test
 title: "End-to-end smoke test"
 status: open

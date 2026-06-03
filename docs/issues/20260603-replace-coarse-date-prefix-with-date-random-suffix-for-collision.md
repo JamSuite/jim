@@ -1,4 +1,5 @@
 ---
+num: 6
 id: 20260603-replace-coarse-date-prefix-with-date-random-suffix-for-collision
 title: "Replace coarse date prefix with date+random suffix for collision-safe issue ids"
 status: open

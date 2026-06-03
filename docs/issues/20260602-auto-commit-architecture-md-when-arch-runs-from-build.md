@@ -1,4 +1,5 @@
 ---
+num: 4
 id: 20260602-auto-commit-architecture-md-when-arch-runs-from-build
 title: "Auto-commit ARCHITECTURE.md when /jim:arch runs from /jim:build"
 status: open
