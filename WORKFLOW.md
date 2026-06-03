@@ -63,6 +63,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:arch` | Create/update technical architecture | `@jim:architect` | `ARCHITECTURE.md` |
 | `/jim:debug` | Diagnose failures, produce report for spec/plan cycle | `@jim:coder` | `debug/{YYYYMMDD}-{topic}.md` |
 | `/jim:brainstorm` | Freeform ideation — exploratory notes | `@jim:pm` | `brainstorms/{YYYYMMDD}-{topic}.md` |
+| `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list [filter]` / `stats` / `show <id>`; bare → help) | `@jim:pm` | `issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` |
 | `/jim:meta-skill` | Create/update a jim plugin skill from spec | `@jim:meta` | `jim/skills/{name}/SKILL.md` |
 | `/jim:meta-agent` | Create/update a jim plugin agent from spec | `@jim:meta` | `jim/agents/{name}.md` |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite | `@jim:meta` | `jim/tests/{name}.sh` |
@@ -83,6 +84,21 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | Security Review | `docs/specs/{group}/{00X}-{name}/security.md` (spec-scoped) or `{security_adhoc_path}/{YYYYMMDD}-{slug}.md` (ad-hoc opt-in) | Design-time findings — severity, route, phase coverage; gates `/jim:plan` and `/jim:build` start when `require_security` / `auto_security` is set | `/jim:sec` |
 | Debug Report | `docs/debug/{YYYYMMDD}-{topic}.md` | Diagnosis — error analysis, root cause, references to affected specs | `/jim:debug` |
 | Brainstorm | `docs/brainstorms/{YYYYMMDD}-{topic}.md` | Exploratory notes — ideas, risks, options, may feed into specs | `/jim:brainstorm` |
+| Issue | `docs/issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` (configurable via `issues_path`) | Discovery artifacts surfaced during the workflow — one markdown file per issue with a display ordinal (`num`), `open`/`closed` status, typed relations, and an auto-generated index | `/jim:issue` |
+
+### Discovery capture (`/jim:issue`)
+
+`/jim:issue` is a single command with subcommands:
+
+- **`add <subject>`** — capture one discovery from the current conversation as a structured markdown file (single confirm-or-edit moment with a sensitive-content scrub reminder). New issues get a `num:` display ordinal automatically.
+- **`list [filter]`** — terse, grouped, configurable enumeration; an optional `open`/`closed`/`critical`/`high`/`medium`/`low` filter scopes the view. Defaults are set via the `issue_list_group` / `issue_list_sort` / `issue_list_cols` keys in `jimconf.toml`.
+- **`stats`** — counts (open/closed, by priority, by label, by origin) plus blocking analysis.
+- **`show <id>`** — open one issue by its ordinal number, slug, or a slug prefix.
+- bare **`/jim:issue`** — print the subcommand help.
+
+Issues are also surfaced automatically at the end of each SDLC phase as a candidate batch (per spec 018), gated by `issue_capture`. Close an issue by editing its `status:` field directly.
+
+**One-time migration (`backfill.sh`).** Spec 019 added the `num:` ordinal. Existing collections created before 019 are numbered once by running `bash skills/issue/scripts/backfill.sh` against the issues directory — it assigns ordinals in `created:`-date order, is idempotent, and writes each file atomically. Run it once, up-front, before creating new issues. New issues never need it.
 
 ### Plugin Artifacts (Jim developing Jim)
 

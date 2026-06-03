@@ -46,6 +46,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:sec` | Design-time security analysis of specs, plans, or arbitrary files; produces `security.md` |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
+| `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show`) |
 | `/jim:conf` | Inspect resolved jim configuration paths |
 | `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, next-id, path, glob) |
 | `/jim:meta-skill` | Build a jim plugin skill from spec |
@@ -113,6 +114,12 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `require_security_loop` | `"false"` | `/jim:sec` — when `"true"`, repeat the review-and-routing cycle until the severity threshold clears or the iteration limit is reached |
 | `require_security_loop_sev` | `"critical"` | `/jim:sec` — severity threshold for the loop's exit condition (`"critical"` / `"notable"` / `"advisory"`) |
 | `auto_security_loop_limit` | `"5"` | `/jim:sec` — maximum iterations of the gated review-and-routing loop |
+| `issues_path` | `./docs/issues/` | `/jim:issue` and the 7 end-of-phase candidate batches — issue collection location |
+| `issue_capture` | `"true"` | end-of-phase candidate batch across the 7 surfacing skills; `"false"` disables surfacing |
+| `auto_issue_file` | `"false"` | candidate batch — when `"true"` (with `issue_capture` `"true"`), candidates file without prompting |
+| `issue_list_group` | `"status"` | `/jim:issue list` — default grouping (`status` / `priority` / `origin` / `none`) |
+| `issue_list_sort` | `"date"` | `/jim:issue list` — default sort within groups (`date` / `priority` / `num`) |
+| `issue_list_cols` | `"num,date,priority,slug"` | `/jim:issue list` — default columns (any of `num,date,priority,status,slug,labels,title`) |
 
 > **Manual migration rule.** Changing a configured path does **not** move existing files. If you point `architecture_path` at a new location, you are responsible for moving (or recreating) the file at the new path. Jim never relocates artifacts on a config change.
 
