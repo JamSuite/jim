@@ -16,6 +16,7 @@ source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 
 SCRIPT_INDEX="$REPO_ROOT/skills/issue/scripts/index.sh"
 SCRIPT_RENDER="$REPO_ROOT/skills/issue/scripts/render.sh"
+SCRIPT_BACKFILL="$REPO_ROOT/skills/issue/scripts/backfill.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -36,6 +37,20 @@ run_render() {
   OUT="$(bash "$SCRIPT_RENDER" "$@" 2> "$err_file")"
   RC=$?
   ERR="$(cat "$err_file")"
+}
+
+run_backfill() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(bash "$SCRIPT_BACKFILL" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# num_of <dir> <slug>
+#   Echo the num: value from an issue file, or empty if absent.
+num_of() {
+  grep -E '^num:[[:space:]]*[0-9]+' "$1/$2.md" 2>/dev/null \
+    | head -n 1 | sed -E 's/^num:[[:space:]]*([0-9]+).*/\1/'
 }
 
 # ─── Section: Test cases ─────────────────────────────────────────────────────
@@ -853,6 +868,87 @@ case_issues_render_header_names_dir() {
   dir=$(empty_dir render_header)
   run_render "$dir"
   assert_match "header has dir" "Issue Collection — $dir" "$OUT"
+}
+
+# AC: backfill assigns ordinals in created-date ascending order (spec 019 DD #6)
+case_issues_backfill_assigns_by_created_order() {
+  local dir
+  dir=$(empty_dir backfill_order)
+  write_issue "$dir" "20260102-late" 'title: "Late"
+status: open
+created: 2026-01-02'
+  write_issue "$dir" "20260101-early" 'title: "Early"
+status: open
+created: 2026-01-01'
+  run_backfill "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "early gets 1" "1" "$(num_of "$dir" 20260101-early)"
+  assert_eq "late gets 2"  "2" "$(num_of "$dir" 20260102-late)"
+}
+
+# AC: backfill continues numbering from the existing max (spec 019 DD #6)
+case_issues_backfill_continues_from_max() {
+  local dir
+  dir=$(empty_dir backfill_max)
+  write_issue "$dir" "20260103-has" 'title: "Has"
+status: open
+num: 5
+created: 2026-01-03'
+  write_issue "$dir" "20260104-needs" 'title: "Needs"
+status: open
+created: 2026-01-04'
+  run_backfill "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "existing num untouched" "5" "$(num_of "$dir" 20260103-has)"
+  assert_eq "new continues from max" "6" "$(num_of "$dir" 20260104-needs)"
+}
+
+# AC: backfill is idempotent — a fully-numbered collection is a silent no-op
+case_issues_backfill_idempotent() {
+  local dir
+  dir=$(empty_dir backfill_idem)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  run_backfill "$dir"
+  assert_exit "rc"           0  "$RC"
+  assert_eq   "no-op output" "" "$OUT"
+  assert_eq   "num unchanged" "1" "$(num_of "$dir" 20260101-a)"
+}
+
+# AC: backfill preserves all other file content (spec 019 DD #6)
+case_issues_backfill_preserves_content() {
+  local dir
+  dir=$(empty_dir backfill_preserve)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+labels: [bug, auth]
+created: 2026-01-01' '## Description
+
+Body line with a [[20260101-b]] wikilink.'
+  run_backfill "$dir"
+  local content
+  content="$(cat "$dir/20260101-a.md")"
+  assert_match "num added"      '^num:[[:space:]]*1'         "$content"
+  assert_match "title kept"     'title: "A"'                 "$content"
+  assert_match "labels kept"    'labels: \[bug, auth\]'      "$content"
+  assert_match "body kept"      'Body line with a'           "$content"
+  assert_match "wikilink kept"  '20260101-b'                 "$content"
+}
+
+# AC: backfill announces the count when it assigns ordinals (spec 019 DD #6)
+case_issues_backfill_announces_count() {
+  local dir
+  dir=$(empty_dir backfill_announce)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+created: 2026-01-01'
+  write_issue "$dir" "20260102-b" 'title: "B"
+status: open
+created: 2026-01-02'
+  run_backfill "$dir"
+  assert_match "announces 2" 'Assigned display numbers to 2' "$OUT"
 }
 
 # AC: index surfaces num: and created: in the Issues row (spec 019)
