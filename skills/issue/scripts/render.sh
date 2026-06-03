@@ -293,9 +293,10 @@ cmd_list() {
   printf 'Issues — %s\n\n' "$dir"
   [[ -f "$index_file" ]] || { printf '_No issues._\n'; return 0; }
 
-  local group sort cols
+  local group sort cols order
   group="$(cfg_validated issue_list_group status status priority origin none)"
   sort="$(cfg_validated issue_list_sort date date priority num)"
+  order="$(cfg_validated issue_list_order desc desc asc)"
   cols="$(bash "$JIMCONF" get issue_list_cols 2>/dev/null)"
   # Validate every column token; fall back to the default set on any unknown.
   local _c _ok=1 _carr
@@ -334,19 +335,22 @@ cmd_list() {
       ;;
   esac
 
-  # sort key for `sort` command on the row TSV:
-  #   date → field 5 (created) desc; num → field 2 desc; priority → custom rank.
+  # sort key for `sort` command on the row TSV. `order` (desc default | asc)
+  #   flips the primary direction; same-day ties always break by num in the
+  #   primary direction so a batch stays monotonic.
+  #     date → field 5 (created); num → field 2; priority → severity rank.
+  local rflag="r"           # desc → reverse
+  [[ "$order" == "asc" ]] && rflag=""
   sort_rows() {
     case "$sort" in
-      num)  sort -t$'\t' -k2,2nr ;;
-      # Date descending; ties (coarse day-resolution created: dates) break by
-      # num descending so a same-day batch stays in a monotonic ordinal order
-      # rather than collapsing to slug-alphabetical.
-      date) sort -t$'\t' -k5,5r -k2,2nr ;;
+      num)  sort -t$'\t' -k2,2n${rflag} ;;
+      date) sort -t$'\t' -k5,5${rflag} -k2,2n${rflag} ;;
       priority)
+        # Rank critical=0 … low=3. desc (default) = most severe first
+        # (ascending rank); asc = least severe first (descending rank).
         awk -F'\t' 'BEGIN{r["critical"]=0;r["high"]=1;r["medium"]=2;r["low"]=3}
           {k=($4 in r)?r[$4]:9; print k"\t"$0}' \
-          | sort -t$'\t' -k1,1n | cut -f2-
+          | sort -t$'\t' -k1,1n${rflag} | cut -f2-
         ;;
       *) cat ;;
     esac
