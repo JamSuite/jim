@@ -118,6 +118,8 @@ security_adhoc_path       = "docs/security"
 #   issue_list_sort  : sort within each group — date | priority | num
 #   issue_list_cols  : comma-separated columns from
 #                      num,date,priority,status,slug,labels,title
+#   issue_list_order : sort direction — desc (default) | asc
 # issue_list_group = "status"
 # issue_list_sort  = "date"
 # issue_list_cols  = "num,date,priority,slug"
+# issue_list_order = "desc"

@@ -120,6 +120,7 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `issue_list_group` | `"status"` | `/jim:issue list` — default grouping (`status` / `priority` / `origin` / `none`) |
 | `issue_list_sort` | `"date"` | `/jim:issue list` — default sort within groups (`date` / `priority` / `num`) |
 | `issue_list_cols` | `"num,date,priority,slug"` | `/jim:issue list` — default columns (any of `num,date,priority,status,slug,labels,title`) |
+| `issue_list_order` | `"desc"` | `/jim:issue list` — sort direction (`desc` = newest/highest first, `asc`) |
 
 > **Manual migration rule.** Changing a configured path does **not** move existing files. If you point `architecture_path` at a new location, you are responsible for moving (or recreating) the file at the new path. Jim never relocates artifacts on a config change.
 
