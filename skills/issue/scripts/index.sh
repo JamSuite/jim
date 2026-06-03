@@ -257,7 +257,7 @@ main() {
   local slugs_seen=()
 
   # Build per-issue map: slug → "<status>\t<priority>\t<title>\t<origin>".
-  declare -A meta_status meta_priority meta_title meta_origin meta_labels meta_created
+  declare -A meta_status meta_priority meta_title meta_origin meta_labels meta_created meta_num
   # Adjacency maps: slug → "<type>:<target> <type>:<target> ..." (space-separated).
   #   outgoing_fm  — frontmatter relations only (drives bidirectional check).
   #   outgoing_all — frontmatter + body wikilinks, deduped per
@@ -288,13 +288,14 @@ main() {
       continue
     fi
 
-    local status priority title origin labels created
+    local status priority title origin labels created num
     status="$(parse_simple_field "$fm" status)"
     priority="$(parse_simple_field "$fm" priority)"
     title="$(parse_simple_field "$fm" title)"
     origin="$(parse_simple_field "$fm" origin)"
     labels="$(parse_simple_field "$fm" labels)"
     created="$(parse_simple_field "$fm" created)"
+    num="$(parse_simple_field "$fm" num)"
     [[ -z "$status" ]] && status="open"
 
     meta_status[$slug]="$status"
@@ -303,6 +304,7 @@ main() {
     meta_origin[$slug]="$origin"
     meta_labels[$slug]="$labels"
     meta_created[$slug]="$created"
+    meta_num[$slug]="$num"
 
     if [[ "$status" == "closed" ]]; then
       closed_count=$((closed_count + 1))
@@ -415,7 +417,9 @@ main() {
   for s in "${slugs_seen[@]}"; do
     local row
     row="- \`$s\` — ${meta_title[$s]:-(untitled)} · status: ${meta_status[$s]:-open}"
+    [[ -n "${meta_num[$s]:-}" ]]      && row+=" · num: ${meta_num[$s]}"
     [[ -n "${meta_priority[$s]:-}" ]] && row+=" · priority: ${meta_priority[$s]}"
+    [[ -n "${meta_created[$s]:-}" ]]  && row+=" · created: ${meta_created[$s]}"
     [[ -n "${meta_labels[$s]:-}" ]]   && row+=" · labels: ${meta_labels[$s]}"
     [[ -n "${meta_origin[$s]:-}" ]]   && row+=" · origin: ${meta_origin[$s]}"
     issues_section+="$row"$'\n'
