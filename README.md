@@ -46,7 +46,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:sec` | Design-time security analysis of specs, plans, or arbitrary files; produces `security.md` |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
-| `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show`) |
+| `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show` / `insights`) — `insights` is an LLM analysis (convergence, sequencing, parallel-work) run by a read-only subagent |
 | `/jim:conf` | Inspect resolved jim configuration paths |
 | `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, next-id, next-num, path, glob) |
 | `/jim:meta-skill` | Build a jim plugin skill from spec |
