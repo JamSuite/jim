@@ -160,6 +160,7 @@ jim issue — capture & review discovery artifacts
   list [status|priority]  terse list, grouped by status (default)
   stats                   counts + clustering
   show <id>               view a single issue (by number, slug, or prefix)
+  insights                LLM analysis: convergence, sequencing, parallel work
 
   Issues live in the configured issues directory. Close one by editing its
   `status:` field directly.
