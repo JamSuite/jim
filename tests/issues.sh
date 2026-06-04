@@ -1423,6 +1423,13 @@ relations:
   fi
 }
 
+# AC-T10 (spec 020): the help view lists the insights verb.
+case_issues_render_help_lists_insights() {
+  run_render help
+  assert_exit "rc" 0 "$RC"
+  assert_match "help lists insights" 'insights' "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
