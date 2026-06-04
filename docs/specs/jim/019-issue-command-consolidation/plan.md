@@ -2,7 +2,7 @@
 title: "Issue Command Consolidation — subcommand surface"
 spec: "docs/specs/jim/019-issue-command-consolidation/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Issue Command Consolidation — subcommand surface — Plan
