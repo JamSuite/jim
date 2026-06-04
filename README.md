@@ -48,7 +48,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
 | `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show`) |
 | `/jim:conf` | Inspect resolved jim configuration paths |
-| `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, next-id, path, glob) |
+| `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, next-id, next-num, path, glob) |
 | `/jim:meta-skill` | Build a jim plugin skill from spec |
 | `/jim:meta-agent` | Build a jim plugin agent from spec |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite |
@@ -142,6 +142,7 @@ Inspect what jim resolves with `/jim:conf`:
 /jim:file slug "Auth Token Expiry"                    # auth-token-expiry
 /jim:file date                                        # YYYYMMDD
 /jim:file next-id jim                                 # next zero-padded spec ID
+/jim:file next-num issue                              # next issue display ordinal
 /jim:file path spec jim 008 jimfile                   # canonical spec path
 /jim:file path debug "auth bug"                       # date-prefixed debug path
 /jim:file glob specs jim                              # every spec in the jim group
