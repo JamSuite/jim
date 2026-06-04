@@ -1382,6 +1382,47 @@ created: 2026-01-02'
   assert_match "issue b listed" '20260102-b' "$OUT"
 }
 
+# AC-T4/T5 (spec 020): insights-graph emits the graph-isolated open set and
+# blocking out-degree. Isolation = an open issue in no blocks/depends-on edge.
+case_issues_render_insights_graph_isolation_and_blocking() {
+  local dir
+  dir=$(empty_dir insights_graph)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+created: 2026-01-01
+relations:
+  blocks: [20260101-b]
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "20260101-b" 'title: "B"
+status: open
+created: 2026-01-01
+relations:
+  blocks: []
+  depends-on: [20260101-a]
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "20260101-c" 'title: "C"
+status: open
+created: 2026-01-01
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  run_render insights-graph "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "c is isolated"     'ISOLATED 20260101-c'   "$OUT"
+  assert_match "a blocking degree" 'BLOCKING 1 20260101-a' "$OUT"
+  if printf '%s\n' "$OUT" | grep -q 'ISOLATED 20260101-a'; then
+    CURRENT_FAILED=1; echo "    [a has a blocks edge; must not be ISOLATED]"
+  fi
+  if printf '%s\n' "$OUT" | grep -q 'ISOLATED 20260101-b'; then
+    CURRENT_FAILED=1; echo "    [b is a blocks target; must not be ISOLATED]"
+  fi
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
