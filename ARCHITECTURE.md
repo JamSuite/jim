@@ -39,7 +39,7 @@ jim/
 │   ├── arch/                # /jim:arch — architecture document generation
 │   ├── brainstorm/          # /jim:brainstorm — freeform ideation capture
 │   ├── issue/               # /jim:issue — capture + review, one command (017+019)
-│   │   ├── SKILL.md          #   subcommands: add / list / stats / show / help
+│   │   ├── SKILL.md          #   subcommands: add / list / stats / show / insights / help
 │   │   ├── assets/
 │   │   │   └── issue-template.md      # YAML-frontmatter template (incl. num ordinal)
 │   │   └── scripts/
@@ -126,6 +126,7 @@ flowchart TD
         CODER["@jim:coder"]
         SECURITY["@jim:security"]
         META["@jim:meta"]
+        ANALYST["@jim:issue-analyst<br/>(read-only)"]
     end
 
     subgraph Artifacts
@@ -164,6 +165,8 @@ flowchart TD
     SECURITY --> SECDOC
 
     ISSUE -.->|reads| IDOC
+    ISSUE -.->|insights: dispatches| ANALYST
+    ANALYST -.->|reads| IDOC
     ARCHITECT -.->|spawns| RESEARCHER
     META -.->|delegates| PM & ARCHITECT & RESEARCHER
 ```
