@@ -1423,6 +1423,18 @@ relations:
   fi
 }
 
+# spec 020: insights-graph degrades cleanly on an empty collection — no
+# ISOLATED/BLOCKING lines, exit 0. Characterizes the edge of the task-1 helper.
+case_issues_render_insights_graph_empty_dir() {
+  local dir
+  dir=$(empty_dir insights_graph_empty)
+  run_render insights-graph "$dir"
+  assert_exit "rc" 0 "$RC"
+  if [[ -n "$OUT" ]]; then
+    CURRENT_FAILED=1; echo "    [empty collection should produce no graph facts, got: $OUT]"
+  fi
+}
+
 # AC-T10 (spec 020): the help view lists the insights verb.
 case_issues_render_help_lists_insights() {
   run_render help
