@@ -1346,6 +1346,42 @@ created: 2026-05-30'
   assert_match "full title with colon" 'Auth: token refresh fails' "$(cat "$dir/INDEX.md")"
 }
 
+# AC: all four issue_list_* config keys are honored together when resolved
+# from a single jimconf invocation (perf refactor: one `jimconf.sh list` blob
+# instead of four `get` calls). Setting group, sort, order, and cols at once
+# must take effect on the same run — guards the blob-parse against dropping or
+# mis-splitting any key.
+case_issues_render_list_all_config_keys_from_blob() {
+  local dir cwd
+  dir=$(empty_dir render_blob_cfg)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+priority: high
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-b" 'title: "B"
+status: open
+priority: low
+num: 2
+created: 2026-01-02'
+  cwd=$(empty_dir render_blob_cfg_cwd)
+  printf 'issue_list_group = "priority"\nissue_list_sort = "num"\nissue_list_order = "asc"\nissue_list_cols = "num,slug"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit "rc" 0 "$RC"
+  # group=priority → priority-valued group headers, not status ("open")
+  assert_match "grouped by priority (high)" 'high \(1\)' "$OUT"
+  assert_match "grouped by priority (low)"  'low \(1\)'  "$OUT"
+  # cols="num,slug" → the date column is dropped (no created date in output)
+  if printf '%s\n' "$OUT" | grep -q '2026-01-01'; then
+    CURRENT_FAILED=1
+    echo "    [cols=num,slug should drop the date column, but a date appeared]"
+  fi
+  # both issues still listed
+  assert_match "issue a listed" '20260101-a' "$OUT"
+  assert_match "issue b listed" '20260102-b' "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

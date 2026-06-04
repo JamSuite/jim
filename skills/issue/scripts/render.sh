@@ -105,13 +105,12 @@ is_filter_token() {
   in_list "$1" "${STATUS_TOKENS[@]}" "${PRIORITY_TOKENS[@]}"
 }
 
-# cfg_validated <key> <default> <allowed...>
-#   Resolve a jimconf key; return it only if it is in the allowed set,
-#   otherwise fall back to <default> (security 019 Finding 5).
+# cfg_validated <value> <default> <allowed...>
+#   Return <value> if it is a member of the allowed set, otherwise fall back
+#   to <default> (security 019 Finding 5). The caller resolves <value> from
+#   the single config blob (see cmd_list) — this validates, it does not fetch.
 cfg_validated() {
-  local key="$1" def="$2"; shift 2
-  local val
-  val="$(bash "$JIMCONF" get "$key" 2>/dev/null)"
+  local val="$1" def="$2"; shift 2
   if in_list "$val" "$@"; then
     printf '%s' "$val"
   else
@@ -286,16 +285,19 @@ cmd_stats() {
 # ─── Section: list ───────────────────────────────────────────────────────────
 
 # format_row <cols-csv> <slug> <num> <status> <priority> <created> <labels> <title>
+#   Fixed-width columns are formatted with `printf -v` (into a scratch var)
+#   rather than `out+=$(printf …)` — the latter forks a subshell per column per
+#   row, which dominates list cost on larger collections.
 format_row() {
   local cols="$1" slug="$2" num="$3" status="$4" prio="$5" created="$6" labels="$7" title="$8"
-  local out="" c
+  local out="" c pad
   IFS=',' read -ra _cols <<< "$cols"
   for c in "${_cols[@]}"; do
     case "$c" in
-      num)      out+=$(printf '#%-5s' "${num}") ;;
-      date)     out+=$(printf '%-12s' "$created") ;;
-      priority) out+=$(printf '%-9s' "$prio") ;;
-      status)   out+=$(printf '%-8s' "$status") ;;
+      num)      printf -v pad '#%-5s' "$num";     out+=$pad ;;
+      date)     printf -v pad '%-12s' "$created"; out+=$pad ;;
+      priority) printf -v pad '%-9s' "$prio";     out+=$pad ;;
+      status)   printf -v pad '%-8s' "$status";   out+=$pad ;;
       slug)     out+="$slug " ;;
       title)    out+="$title " ;;
       labels)   out+="[$labels] " ;;
@@ -322,11 +324,20 @@ cmd_list() {
   printf 'Issues — %s\n\n' "$dir"
   [[ -f "$index_file" ]] || { printf '_No issues._\n'; return 0; }
 
-  local group sort cols order
-  group="$(cfg_validated issue_list_group status status priority origin none)"
-  sort="$(cfg_validated issue_list_sort date date priority num)"
-  order="$(cfg_validated issue_list_order desc desc asc)"
-  cols="$(bash "$JIMCONF" get issue_list_cols 2>/dev/null)"
+  # Resolve all issue_list_* config in ONE jimconf invocation. jimconf has no
+  # batch `get`, but `list` emits every key=value (defaults already applied) in
+  # a single process; parsing that blob into an assoc array is pure bash, so
+  # the four keys cost one fork total instead of one external process each.
+  local group sort cols order cfg_blob _k _v
+  local -A _cfg=()
+  cfg_blob="$(bash "$JIMCONF" list 2>/dev/null)"
+  while IFS='=' read -r _k _v; do
+    [[ -n "$_k" ]] && _cfg["$_k"]="$_v"
+  done <<< "$cfg_blob"
+  group="$(cfg_validated "${_cfg[issue_list_group]:-}" status status priority origin none)"
+  sort="$(cfg_validated "${_cfg[issue_list_sort]:-}" date date priority num)"
+  order="$(cfg_validated "${_cfg[issue_list_order]:-}" desc desc asc)"
+  cols="${_cfg[issue_list_cols]:-}"
   # Validate every column token; fall back to the default set on any unknown.
   local _c _ok=1 _carr
   IFS=',' read -ra _carr <<< "$cols"
@@ -387,14 +398,19 @@ cmd_list() {
 
   local gv printed_any=0
   for gv in "${group_values[@]}"; do
-    local group_rows=() r rstatus
+    local group_rows=() r rstatus rprio
     for r in "${rows[@]}"; do
       if [[ "$gv" == "__all__" ]]; then
         group_rows+=("$r")
       else
+        # Split the TAB-packed row in-shell (read is a builtin — no subshell)
+        # rather than forking `printf | cut` per row per group value. Fields:
+        # slug \t num \t status \t prio \t created \t labels \t title; status
+        # and prio are always populated, so no IFS-collapse on those columns.
+        IFS=$'\t' read -r _ _ rstatus rprio _ <<< "$r"
         case "$group" in
-          status)   [[ "$(printf '%s' "$r" | cut -f3)" == "$gv" ]] && group_rows+=("$r") ;;
-          priority) [[ "$(printf '%s' "$r" | cut -f4)" == "$gv" ]] && group_rows+=("$r") ;;
+          status)   [[ "$rstatus" == "$gv" ]] && group_rows+=("$r") ;;
+          priority) [[ "$rprio"   == "$gv" ]] && group_rows+=("$r") ;;
         esac
       fi
     done
