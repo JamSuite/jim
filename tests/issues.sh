@@ -1235,6 +1235,117 @@ created: 2026-01-03'
   assert_eq "descending default: #3 before #1" "yes" "$order_ok"
 }
 
+# AC: index.sh leaves INDEX.md as the newest entry in the issues dir so the
+# render staleness gate can trust it. The atomic mv preserves the tmp file's
+# (earlier) mtime, leaving the directory entry newer than INDEX.md; index.sh
+# must touch INDEX.md as its final step to restore the invariant.
+case_issues_index_leaves_index_as_newest_entry() {
+  local dir
+  dir=$(empty_dir index_newest)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+num: 1
+created: 2026-05-30'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  # The dir entry must NOT be newer than INDEX.md (else add/delete detection
+  # would false-positive on every read).
+  if [[ "$dir" -nt "$dir/INDEX.md" ]]; then
+    CURRENT_FAILED=1
+    echo "    [dir entry is newer than INDEX.md — staleness gate would always regen]"
+  fi
+  # No issue file may be newer than INDEX.md either.
+  local newer
+  newer="$(find "$dir" -maxdepth 1 -name '*.md' ! -name INDEX.md -newer "$dir/INDEX.md" 2>/dev/null | head -n1)"
+  assert_eq "no issue file newer than index" "" "$newer"
+}
+
+# AC: a fresh INDEX.md is reused, not regenerated, on a read verb (perf).
+# We append a sentinel that index.sh would never emit; a `list` over a fresh
+# index must leave the sentinel intact (proving the rebuild was skipped).
+case_issues_render_reuses_fresh_index() {
+  local dir
+  dir=$(empty_dir render_fresh)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+num: 1
+created: 2026-05-30'
+  run_index "$dir"
+  printf '\n<!-- SENTINEL-FRESH-INDEX -->\n' >> "$dir/INDEX.md"
+  # Ensure INDEX.md is the newest entry so the gate sees a fresh index.
+  touch "$dir/INDEX.md"
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "issue still listed" '20260530-a' "$OUT"
+  if ! grep -q 'SENTINEL-FRESH-INDEX' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [fresh index was regenerated — sentinel lost; rebuild not skipped]"
+  fi
+}
+
+# AC: editing an issue file (newer mtime than INDEX.md) makes the index stale,
+# so a read verb regenerates it and reflects the edit.
+case_issues_render_regenerates_on_edited_issue() {
+  local dir
+  dir=$(empty_dir render_edited)
+  write_issue "$dir" "20260530-a" 'title: "Original Title"
+status: open
+num: 1
+created: 2026-05-30'
+  run_index "$dir"
+  printf '<!-- SENTINEL-STALE -->\n' >> "$dir/INDEX.md"
+  # Rewrite the issue with a newer mtime than INDEX.md.
+  sleep 1
+  write_issue "$dir" "20260530-a" 'title: "Edited Title"
+status: open
+num: 1
+created: 2026-05-30'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  # Regen must have fired: the stale sentinel is gone from the rebuilt index.
+  if grep -q 'SENTINEL-STALE' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [edited issue did not trigger regen — stale sentinel survived]"
+  fi
+}
+
+# AC: adding an issue file after the index was built (dir entry newer than
+# INDEX.md) makes the index stale, so a read verb regenerates and surfaces it.
+case_issues_render_regenerates_on_added_issue() {
+  local dir
+  dir=$(empty_dir render_added)
+  write_issue "$dir" "20260530-a" 'title: "A"
+status: open
+num: 1
+created: 2026-05-30'
+  run_index "$dir"
+  touch "$dir/INDEX.md"
+  # Add a brand-new issue without regenerating the index.
+  sleep 1
+  write_issue "$dir" "20260531-b" 'title: "Brand New"
+status: open
+num: 2
+created: 2026-05-31'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "added issue surfaces" '20260531-b' "$OUT"
+}
+
+# AC: a title containing a colon is extracted whole — the scalar-field parser
+# strips only the leading `key:` prefix, not at every colon (fork-collapse
+# rewrite must preserve parse_simple_field semantics).
+case_issues_index_title_with_colon_preserved() {
+  local dir
+  dir=$(empty_dir index_colon_title)
+  write_issue "$dir" "20260530-a" 'title: "Auth: token refresh fails"
+status: open
+num: 1
+created: 2026-05-30'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "full title with colon" 'Auth: token refresh fails' "$(cat "$dir/INDEX.md")"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

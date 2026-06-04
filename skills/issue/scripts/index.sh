@@ -97,15 +97,40 @@ extract_frontmatter() {
   ' "$file"
 }
 
-# parse_simple_field <frontmatter-content> <field-name>
-#   Print the value of a top-level scalar field like `title: "..."` or
-#   `status: open`. Strips surrounding double quotes. Empty if missing.
-parse_simple_field() {
-  local fm="$1" field="$2"
-  printf '%s\n' "$fm" \
-    | grep -E "^${field}:" \
-    | head -n 1 \
-    | sed -E "s/^${field}:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
+# parse_scalar_fields <frontmatter-content>
+#   Extract every top-level scalar field we care about in a SINGLE awk pass and
+#   emit them ONE PER LINE in a fixed order:
+#     status, priority, title, origin, labels, created, num
+#   This replaces seven per-field `grep|head|sed` pipelines (~28 forks per
+#   issue) with one awk invocation. One field per line (not TAB-joined) so the
+#   caller can read empty fields back without IFS-whitespace collapsing
+#   consecutive delimiters. Semantics match the prior parse_simple_field: only
+#   top-level keys (no leading indent) match, the first occurrence wins,
+#   leading `key:` and surrounding whitespace are stripped, and a single leading
+#   and trailing double quote are removed independently (so `"Foo: bar"` →
+#   `Foo: bar` and an unquoted `[a, b]` is preserved verbatim). Indented
+#   `relations:` children never match the no-indent key pattern.
+parse_scalar_fields() {
+  printf '%s\n' "$1" | awk '
+    /^[a-z_-]+:/ {
+      key = $0
+      sub(/:.*$/, "", key)
+      if (key != "status" && key != "priority" && key != "title" &&
+          key != "origin" && key != "labels" && key != "created" &&
+          key != "num") next
+      if (key in seen) next
+      seen[key] = 1
+      val = $0
+      sub(/^[^:]*:[[:space:]]*/, "", val)   # strip "key:" + leading whitespace
+      sub(/[[:space:]]+$/, "", val)         # strip trailing whitespace
+      sub(/^"/, "", val); sub(/"$/, "", val) # strip one leading + trailing quote
+      f[key] = val
+    }
+    END {
+      print f["status"]; print f["priority"]; print f["title"]
+      print f["origin"]; print f["labels"]; print f["created"]; print f["num"]
+    }
+  '
 }
 
 # parse_relations <frontmatter-content>
@@ -289,13 +314,15 @@ main() {
     fi
 
     local status priority title origin labels created num
-    status="$(parse_simple_field "$fm" status)"
-    priority="$(parse_simple_field "$fm" priority)"
-    title="$(parse_simple_field "$fm" title)"
-    origin="$(parse_simple_field "$fm" origin)"
-    labels="$(parse_simple_field "$fm" labels)"
-    created="$(parse_simple_field "$fm" created)"
-    num="$(parse_simple_field "$fm" num)"
+    {
+      IFS= read -r status
+      IFS= read -r priority
+      IFS= read -r title
+      IFS= read -r origin
+      IFS= read -r labels
+      IFS= read -r created
+      IFS= read -r num
+    } < <(parse_scalar_fields "$fm")
     [[ -z "$status" ]] && status="open"
 
     meta_status[$slug]="$status"
@@ -473,6 +500,11 @@ main() {
     return 1
   }
   trap - EXIT INT TERM
+  # The mv preserves the tmp file's (earlier) mtime, so the directory entry it
+  # just rewrote is left newer than INDEX.md. Bump INDEX.md to now so it is the
+  # newest entry in the dir — render.sh's staleness gate relies on this to tell
+  # a freshly built index from one invalidated by an added/removed/edited file.
+  touch "$dir/$INDEX_FILENAME"
   return 0
 }
 

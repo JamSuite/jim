@@ -4,8 +4,11 @@
 #
 # PURPOSE
 #   The bash dispatcher behind the deterministic /jim:issue verbs. Every
-#   verb regenerates INDEX.md defensively, then reads it (and, for `show`,
-#   the resolved issue file) and emits a human-friendly view to stdout.
+#   verb regenerates INDEX.md only when it is stale (missing, or an issue
+#   file was added/removed/edited — see ensure_index), then reads it (and,
+#   for `show`, the resolved issue file) and emits a human-friendly view to
+#   stdout. A fresh index is reused as-is, so a read over an unchanged
+#   collection costs a stat-based staleness check rather than a full rescan.
 #   Read-only with respect to issue content (AC-R3) — only index.sh's regen
 #   writes, and it writes INDEX.md, not issue files.
 #
@@ -56,9 +59,35 @@ resolve_dir() {
   printf '%s\n' "${dir%/}"
 }
 
-# ensure_index <dir> — defensive INDEX.md regen; tolerant of failure.
+# index_is_stale <dir> <index_file>
+#   Return 0 (stale → regen) when INDEX.md is missing, an issue file was
+#   edited (a .md file is newer than the index), or one was added/removed
+#   (the directory entry is newer than the index). index.sh touches INDEX.md
+#   as its final step, so a freshly built index is the newest entry in the
+#   dir and none of these fire. Return 1 (fresh → reuse) otherwise.
+index_is_stale() {
+  local dir="$1" index_file="$2"
+  [[ -f "$index_file" ]] || return 0
+  # dir entry newer than index → a file was added or removed (mv/rm/create
+  # all bump the directory mtime; an in-place edit does not).
+  [[ "$dir" -nt "$index_file" ]] && return 0
+  # any issue file newer than index → an issue was edited in place. Capture
+  # find's output rather than piping to `grep -q` so a SIGPIPE-on-find exit
+  # cannot trip `set -o pipefail`.
+  local newer
+  newer="$(find "$dir" -maxdepth 1 -name '*.md' ! -name "$INDEX_FILENAME" -newer "$index_file" 2>/dev/null | head -n1)"
+  [[ -n "$newer" ]] && return 0
+  return 1
+}
+
+# ensure_index <dir> — regen INDEX.md only when stale; tolerant of failure.
+#   A fresh index is reused as-is, turning a read verb from a full directory
+#   rescan (one process per scalar field per issue) into a single stat-based
+#   staleness check. Regen still fires whenever an issue is added, removed, or
+#   edited, so reads never serve a stale view.
 ensure_index() {
   local dir="$1"
+  index_is_stale "$dir" "$dir/$INDEX_FILENAME" || return 0
   if [[ -x "$INDEX_SCRIPT" || -r "$INDEX_SCRIPT" ]]; then
     bash "$INDEX_SCRIPT" "$dir" >/dev/null 2>&1 || true
   fi
