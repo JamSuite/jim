@@ -15,6 +15,7 @@
 #     render.sh stats [<dir>]            counts + clusters + blocking
 #     render.sh list  [<filter>] [<dir>] terse, grouped, configurable view
 #     render.sh show  <id> [<dir>]       one issue, cleaned-up
+#     render.sh insights-graph [<dir>]   graph facts for the issue-analyst
 #     render.sh help                     subcommand listing
 #
 #   <filter> ∈ {open, closed, critical, high, medium, low} — validated
@@ -512,6 +513,54 @@ cmd_show() {
   fi
 }
 
+# ─── Section: insights-graph ─────────────────────────────────────────────────
+
+# cmd_insights_graph [<dir>] — deterministic graph facts for the issue-analyst
+# subagent (spec 020). Emits to stdout (LC_ALL=C stable ordering):
+#   ISOLATED <slug>          one per OPEN issue in no blocks/depends-on edge
+#   BLOCKING <count> <slug>  blocking out-degree per source, count desc then slug
+# Read-only; exit 0 always (degrades to empty output on an absent/empty index).
+cmd_insights_graph() {
+  local dir
+  dir="$(resolve_dir "${1:-}")"
+  [[ -z "$dir" ]] && return 0
+  ensure_index "$dir"
+  local index_file="$dir/$INDEX_FILENAME"
+  [[ -f "$index_file" ]] || return 0
+
+  declare -A is_open
+  local slug num status prio created labels title origin
+  while IFS=$'\t' read -r slug num status prio created labels title origin; do
+    [[ -z "$slug" ]] && continue
+    [[ "$status" == "open" ]] && is_open[$slug]=1
+  done < <(read_issue_rows "$index_file")
+
+  # blocks / depends-on edges → endpoints (non-isolated) + blocking out-degree.
+  # related-to and duplicates are ordering-neutral and ignored (spec 020 AC5).
+  declare -A related blocks_out
+  local row etype esrc etgt
+  while IFS= read -r row; do
+    [[ "$row" =~ ^-\ \`([a-z0-9-]+)\`\ --(blocks|depends-on)--\>\ \`([a-z0-9-]+)\`$ ]] || continue
+    esrc="${BASH_REMATCH[1]}"; etype="${BASH_REMATCH[2]}"; etgt="${BASH_REMATCH[3]}"
+    related[$esrc]=1; related[$etgt]=1
+    [[ "$etype" == "blocks" ]] && blocks_out[$esrc]=$(( ${blocks_out[$esrc]:-0} + 1 ))
+  done < <(awk '
+    /^## Graph$/ { insec=1; next }
+    /^## / && insec { insec=0 }
+    insec && /^- `/ { print }
+  ' "$index_file")
+
+  local s
+  for s in "${!is_open[@]}"; do
+    [[ -n "${related[$s]:-}" ]] && continue
+    printf 'ISOLATED %s\n' "$s"
+  done | sort
+
+  for s in "${!blocks_out[@]}"; do
+    printf 'BLOCKING %d %s\n' "${blocks_out[$s]}" "$s"
+  done | sort -k2,2nr -k3,3
+}
+
 # ─── Section: Dispatch ───────────────────────────────────────────────────────
 
 main() {
@@ -521,9 +570,10 @@ main() {
     stats) cmd_stats "$@" ;;
     list)  cmd_list  "$@" ;;
     show)  cmd_show  "$@" ;;
+    insights-graph) cmd_insights_graph "$@" ;;
     help|-h|--help) cmd_help ;;
     *)
-      echo "error: unknown subcommand '$sub' (valid: stats list show help)" >&2
+      echo "error: unknown subcommand '$sub' (valid: stats list show insights-graph help)" >&2
       cmd_help >&2
       return 2
       ;;
