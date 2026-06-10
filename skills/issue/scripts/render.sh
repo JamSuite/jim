@@ -164,6 +164,9 @@ jim issue — capture & review discovery artifacts
 
   Issues live in the configured issues directory. Close one by editing its
   `status:` field directly.
+
+  By default `list` hides closed issues; use `list closed` to see them, or set
+  `issue_list_closed = "true"` in jimconf.toml to include them in every view.
 HELP
 }
 
@@ -339,7 +342,18 @@ cmd_list() {
   group="$(cfg_validated "${_cfg[issue_list_group]:-}" status status priority origin none)"
   sort="$(cfg_validated "${_cfg[issue_list_sort]:-}" date date priority num)"
   order="$(cfg_validated "${_cfg[issue_list_order]:-}" desc desc asc)"
+  local show_closed
+  show_closed="$(cfg_validated "${_cfg[issue_list_closed]:-}" false false true)"
   cols="${_cfg[issue_list_cols]:-}"
+
+  # Hide closed issues from the default and priority-filtered views unless the
+  # issue_list_closed toggle opts them in. An explicit status filter
+  # (`list open` / `list closed`) is the user being deliberate about status, so
+  # it always overrides the toggle — `list closed` is the ad-hoc closed view.
+  local hide_closed=0
+  if ! in_list "$filter" "${STATUS_TOKENS[@]}" && [[ "$show_closed" != "true" ]]; then
+    hide_closed=1
+  fi
   # Validate every column token; fall back to the default set on any unknown.
   local _c _ok=1 _carr
   IFS=',' read -ra _carr <<< "$cols"
@@ -350,6 +364,7 @@ cmd_list() {
   local rows=() slug num status prio created labels title origin
   while IFS=$'\t' read -r slug num status prio created labels title origin; do
     [[ -z "$slug" ]] && continue
+    [[ "$hide_closed" == 1 && "$status" == "closed" ]] && continue
     if [[ -n "$filter" ]]; then
       if in_list "$filter" "${STATUS_TOKENS[@]}"; then
         [[ "$status" == "$filter" ]] || continue

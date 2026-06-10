@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -71,6 +71,7 @@ default_for() {
     issue_list_sort)             echo "date" ;;
     issue_list_cols)             echo "num,date,priority,slug" ;;
     issue_list_order)            echo "desc" ;;
+    issue_list_closed)           echo "false" ;;
     *) return 1 ;;
   esac
 }
@@ -107,8 +108,9 @@ resolve() {
     # Bare-name keys (no _path suffix). The auto_*/require_* prefixes signal
     # automated/mandatory behaviors; issue_capture is a human-in-the-loop
     # feature flag (spec 018 DD #1); the issue_list_* family configures the
-    # default `/jim:issue list` view (group/sort/cols) and is neither a path
-    # nor a toggle (spec 019 DD #9). All resolve to their bare TOML name.
+    # default `/jim:issue list` view (group/sort/cols/order plus the
+    # issue_list_closed visibility toggle) and is not a path. All resolve to
+    # their bare TOML name.
     toml_key="$cli_key"
   else
     toml_key="${cli_key}_path"

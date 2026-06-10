@@ -91,7 +91,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 `/jim:issue` is a single command with subcommands:
 
 - **`add <subject>`** — capture one discovery from the current conversation as a structured markdown file (single confirm-or-edit moment with a sensitive-content scrub reminder). New issues get a `num:` display ordinal automatically.
-- **`list [filter]`** — terse, grouped, configurable enumeration; an optional `open`/`closed`/`critical`/`high`/`medium`/`low` filter scopes the view. Defaults are set via the `issue_list_group` / `issue_list_sort` / `issue_list_cols` / `issue_list_order` keys in `jimconf.toml`.
+- **`list [filter]`** — terse, grouped, configurable enumeration; an optional `open`/`closed`/`critical`/`high`/`medium`/`low` filter scopes the view. Closed issues are hidden from the default and priority-filtered views unless `issue_list_closed = "true"`; `list closed` is the ad-hoc closed view. Other defaults are set via the `issue_list_group` / `issue_list_sort` / `issue_list_cols` / `issue_list_order` keys in `jimconf.toml`.
 - **`stats`** — counts (open/closed, by priority, by label, by origin) plus blocking analysis.
 - **`show <id>`** — open one issue by its ordinal number, slug, or a slug prefix.
 - bare **`/jim:issue`** — print the subcommand help.

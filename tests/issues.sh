@@ -1024,9 +1024,11 @@ created: 2026-01-01'
   assert_match "slug shown"    '20260101-a' "$OUT"
 }
 
-# AC: `render.sh list` groups by status by default (spec 019)
+# AC: `render.sh list` groups by status (spec 019). Closed issues are hidden by
+# default (issue-list-closed toggle), so this exercises the toggle-on path to
+# assert both status groups render.
 case_issues_render_list_grouped_by_status() {
-  local dir
+  local dir cwd
   dir=$(empty_dir render_list_group)
   write_issue "$dir" "20260101-a" 'title: "A"
 status: open
@@ -1036,9 +1038,92 @@ created: 2026-01-01'
 status: closed
 num: 2
 created: 2026-01-02'
-  run_render list "$dir"
+  cwd=$(empty_dir render_list_group_cwd)
+  printf 'issue_list_closed = "true"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit "rc" 0 "$RC"
   assert_match "open group header"   'open'   "$OUT"
   assert_match "closed group header" 'closed' "$OUT"
+}
+
+# AC: `render.sh list` (no filter) hides closed issues by default.
+case_issues_render_list_hides_closed_by_default() {
+  local dir
+  dir=$(empty_dir render_list_hide_closed)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: closed
+num: 2
+created: 2026-01-02'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "open issue present"  '20260101-alpha' "$OUT"
+  assert_eq    "closed issue hidden" "" "$(printf '%s' "$OUT" | grep -c '20260102-bravo' | sed 's/^0$//')"
+}
+
+# AC: issue_list_closed = "true" opts closed issues back into the default view.
+case_issues_render_list_closed_config_shows_closed() {
+  local dir cwd
+  dir=$(empty_dir render_list_show_closed)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: closed
+num: 2
+created: 2026-01-02'
+  cwd=$(empty_dir render_list_show_closed_cwd)
+  printf 'issue_list_closed = "true"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit "rc" 0 "$RC"
+  assert_match "open issue present"   '20260101-alpha' "$OUT"
+  assert_match "closed issue present" '20260102-bravo' "$OUT"
+}
+
+# AC: `list closed` is the ad-hoc closed view — it overrides the hide-by-default
+# toggle and shows closed issues regardless of config.
+case_issues_render_list_closed_filter_overrides_default() {
+  local dir
+  dir=$(empty_dir render_list_closed_adhoc)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: closed
+num: 2
+created: 2026-01-02'
+  run_render list closed "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "closed issue present" '20260102-bravo' "$OUT"
+  assert_eq    "open issue absent" "" "$(printf '%s' "$OUT" | grep -c '20260101-alpha' | sed 's/^0$//')"
+}
+
+# AC: priority filters also hide closed by default — `list high` shows only open
+# issues of that priority unless issue_list_closed is enabled.
+case_issues_render_list_priority_filter_hides_closed() {
+  local dir
+  dir=$(empty_dir render_list_prio_hide_closed)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+priority: high
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: closed
+priority: high
+num: 2
+created: 2026-01-02'
+  run_render list high "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "open high present"  '20260101-alpha' "$OUT"
+  assert_eq    "closed high hidden" "" "$(printf '%s' "$OUT" | grep -c '20260102-bravo' | sed 's/^0$//')"
 }
 
 # AC: `render.sh list <status>` filters to that status (spec 019)

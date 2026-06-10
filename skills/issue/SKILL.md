@@ -31,7 +31,7 @@ Read the **first whitespace-delimited token** of `$ARGUMENTS` as the subcommand.
   ```
   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/render.sh list <remaining-args>
   ```
-  Present stdout verbatim, then stop.
+  By default this view hides closed issues — `list` (no filter) and the priority filters show open work only. `list closed` is the ad-hoc closed view, and the `issue_list_closed` config key (default `false`) opts closed issues back into the default view when set to `true`. Present stdout verbatim, then stop.
 - **`stats`** → run `render.sh stats`; present stdout verbatim, then stop.
 - **`show`** → the remaining token is the `<id>` (an ordinal number, a slug, or a slug prefix). Run `render.sh show <id>`; present stdout verbatim, then stop.
 - **`insights`** → the LLM-analytical view (convergence, sequencing, parallel-work). This is the one read verb that *interprets* rather than renders. Proceed to **Insights** (step 8). Read-only.
