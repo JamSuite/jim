@@ -717,6 +717,63 @@ issue_id_prefix = \"JIM-{date:%Y%m%d}-{seq:03}\"")
   assert_match "combined template id" '^JIM-[0-9]{8}-008-auth-bug$' "$OUT"
 }
 
+# AC: unknown preset name informs via stderr and falls back to date (spec 021 AC #8)
+case_jimfile_next_id_issue_fallback_unknown_preset() {
+  local cfg today
+  cfg=$(fixture nextid-fb-unknown.toml 'issue_id_prefix = "bogus"')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit     "rc" 0 "$RC"
+  assert_eq       "date fallback" "$today-auth-bug" "$OUT"
+  assert_nonempty "notice on stderr" "$ERR"
+}
+
+# AC: project preset with empty tag informs and falls back to date (spec 021 AC #8)
+case_jimfile_next_id_issue_fallback_empty_project() {
+  local cfg today
+  cfg=$(fixture nextid-fb-emptyproj.toml 'issue_id_prefix = "project"')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit     "rc" 0 "$RC"
+  assert_eq       "date fallback" "$today-auth-bug" "$OUT"
+  assert_nonempty "notice on stderr" "$ERR"
+}
+
+# AC: template rendering an out-of-allowlist char informs and falls back (spec 021 AC #7/#8)
+case_jimfile_next_id_issue_fallback_invalid_charset() {
+  local cfg today
+  cfg=$(fixture nextid-fb-charset.toml 'issue_id_prefix = "{date:%Y/%m}"')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit     "rc" 0 "$RC"
+  assert_eq       "date fallback" "$today-auth-bug" "$OUT"
+  assert_nonempty "notice on stderr" "$ERR"
+}
+
+# AC: an over-length resolved prefix informs and falls back to date (spec 021 AC #11)
+case_jimfile_next_id_issue_fallback_over_length() {
+  local cfg today big
+  big=$(printf 'a%.0s' {1..129})
+  cfg=$(fixture nextid-fb-overlen.toml "issue_id_prefix = \"project\"
+issue_id_project = \"$big\"")
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit     "rc" 0 "$RC"
+  assert_eq       "date fallback" "$today-auth-bug" "$OUT"
+  assert_nonempty "notice on stderr" "$ERR"
+}
+
+# AC: blank issue_id_prefix is zero-config — silent date default, no notice (spec 021 AC #9)
+case_jimfile_next_id_issue_blank_is_silent() {
+  local cfg today
+  cfg=$(fixture nextid-blank.toml 'issue_id_prefix = ""')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "date default" "$today-auth-bug" "$OUT"
+  assert_eq   "no notice on stderr" "" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

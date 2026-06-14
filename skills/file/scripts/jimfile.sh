@@ -365,9 +365,9 @@ render_template() {
 #   {seq}, AC #4), and validates the result with is_valid_id. Prints the
 #   resolved prefix on success. Falls back to the YYYYMMDD- date prefix when
 #   the scheme is unknown, the project tag is empty, or rendering/validation
-#   fails. (The malformed-config stderr notice and the {…} template escape
-#   hatch are layered on in later tasks.) Resolution stays entirely in bash —
-#   never delegated to the caller (AC #10).
+#   fails — emitting a one-line notice to stderr in those malformed cases
+#   (AC #8) while a blank/absent config resolves silently to date (AC #9).
+#   Resolution stays entirely in bash — never delegated to the caller (AC #10).
 resolve_issue_prefix() {
   local scheme project tmpl ordinal prefix default_prefix
   scheme="$(jimconf_get issue_id_prefix)"
@@ -378,15 +378,21 @@ resolve_issue_prefix() {
     sequential) tmpl='{seq:04}' ;;
     project)
       project="$(jimconf_get issue_id_project)"
-      [[ -n "$project" ]] || { printf '%s' "$default_prefix"; return 0; }
+      if [[ -z "$project" ]]; then
+        echo "warning: issue_id_prefix=\"project\" but issue_id_project is empty — using the default date prefix" >&2
+        printf '%s' "$default_prefix"; return 0
+      fi
       tmpl="$project" ;;
     *'{'*)      tmpl="$scheme" ;;   # template escape hatch (contains a token)
-    *)          printf '%s' "$default_prefix"; return 0 ;;
+    *)
+      echo "warning: issue_id_prefix=\"$scheme\" is not a known preset or template — using the default date prefix" >&2
+      printf '%s' "$default_prefix"; return 0 ;;
   esac
   ordinal="$(issue_next_num "$(jimconf_get issues)")"
   if prefix="$(render_template "$tmpl" "$ordinal")" && is_valid_id "$prefix" 2>/dev/null; then
     printf '%s' "$prefix"
   else
+    echo "warning: issue_id_prefix=\"$scheme\" produced an invalid prefix — using the default date prefix" >&2
     printf '%s' "$default_prefix"
   fi
 }
