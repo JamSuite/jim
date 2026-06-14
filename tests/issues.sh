@@ -604,18 +604,21 @@ case_issues_index_malformed_frontmatter_warning() {
 }
 
 # AC: filename that is not a valid slug is skipped with a warning
-case_issues_index_invalid_filename_slug_skipped() {
+case_issues_index_invalid_filename_skipped() {
   local dir
   dir=$(empty_dir index_bad_slug)
-  printf -- '---\ntitle: "X"\nstatus: open\n---\n' > "$dir/Not_a_valid_Slug.md"
+  # '@' is outside the is_valid_id allowlist ([A-Za-z0-9._-]); uppercase and
+  # underscores are now valid id characters (spec 021), so this uses a char
+  # that is genuinely rejected.
+  printf -- '---\ntitle: "X"\nstatus: open\n---\n' > "$dir/bad@slug.md"
   run_index "$dir"
   local idx
   idx="$(cat "$dir/INDEX.md")"
-  assert_match "filename warning" 'not a valid slug' "$idx"
-  # The bad-slug file does not appear in the Issues section as a valid entry
-  if echo "$idx" | grep -q '`Not_a_valid_Slug` —'; then
+  assert_match "filename warning" 'not a valid id' "$idx"
+  # The bad-id file does not appear in the Issues section as a valid entry
+  if echo "$idx" | grep -q '`bad@slug` —'; then
     CURRENT_FAILED=1
-    echo "    [bad-slug filename should not appear as an Issues entry]"
+    echo "    [bad-id filename should not appear as an Issues entry]"
   fi
 }
 
@@ -1525,6 +1528,50 @@ case_issues_render_help_lists_insights() {
   run_render help
   assert_exit "rc" 0 "$RC"
   assert_match "help lists insights" 'insights' "$OUT"
+}
+
+# AC: index accepts a new-scheme (uppercase-prefix) filename stem (spec 021 AC #5)
+case_issues_index_accepts_new_scheme_stem() {
+  local dir
+  dir=$(empty_dir index_new_scheme_stem)
+  write_issue "$dir" "JIM-wire-consumers" 'title: "Wire consumers"
+status: open'
+  run_index "$dir"
+  assert_exit  "rc" 0 "$RC"
+  local idx; idx="$(cat "$dir/INDEX.md")"
+  assert_match "new-scheme slug indexed" '`JIM-wire-consumers`' "$idx"
+  assert_match "open count 1" 'Open: 1' "$idx"
+}
+
+# AC: a relation target with a new-scheme id becomes a graph edge (spec 021 AC #5)
+case_issues_index_new_scheme_relation_edge() {
+  local dir
+  dir=$(empty_dir index_new_scheme_rel)
+  write_issue "$dir" "0001-a" 'title: "A"
+status: open
+relations:
+  blocks: [JIM-b]
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "JIM-b" 'title: "B"
+status: open'
+  run_index "$dir"
+  local idx; idx="$(cat "$dir/INDEX.md")"
+  assert_match "edge to new-scheme target" 'a` --blocks--> `JIM-b' "$idx"
+}
+
+# AC: a body wikilink to a new-scheme id becomes a related-to edge (spec 021 AC #5)
+case_issues_index_new_scheme_wikilink_edge() {
+  local dir
+  dir=$(empty_dir index_new_scheme_wl)
+  write_issue "$dir" "0001-a" 'title: "A"
+status: open' "See [[JIM-b]] for context."
+  write_issue "$dir" "JIM-b" 'title: "B"
+status: open'
+  run_index "$dir"
+  local idx; idx="$(cat "$dir/INDEX.md")"
+  assert_match "wikilink edge to new-scheme" 'a` --related-to--> `JIM-b' "$idx"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

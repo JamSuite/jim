@@ -70,14 +70,33 @@ declare -A RELATION_INVERSE=(
 )
 readonly RELATION_TYPES=(blocks depends-on related-to duplicates)
 
-# ─── Section: Slug validator (mirrors jimfile.sh is_valid_slug) ─────────────
+# ─── Section: Id validator (mirrors jimfile.sh is_valid_id) ─────────────────
 
-# is_valid_slug <slug>
-#   AC-C7 / AC-I4 validation. Quiet — returns 0/1, no output.
-is_valid_slug() {
-  local slug="$1"
-  [[ -z "$slug" ]] && return 1
-  [[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]
+# is_valid_id <id>
+#   Bounded allowlist for a full issue id / prefix (spec 021 AC #7, AC #11).
+#   SYNC: the function body below is byte-identical to the copies in
+#   skills/file/scripts/jimfile.sh and skills/issue/scripts/render.sh — a
+#   tests/jimfile.sh case asserts the three agree. Keep them in lockstep.
+#   Callers here suppress its stderr (2>/dev/null) and add their own warning.
+is_valid_id() {
+  local id="$1"
+  if [[ -z "$id" ]]; then
+    echo "error: id rejected — empty" >&2
+    return 1
+  fi
+  if (( ${#id} > 128 )); then
+    echo "error: id rejected — exceeds 128 characters" >&2
+    return 1
+  fi
+  if [[ "$id" == *..* ]]; then
+    echo "error: id rejected — '$id' contains '..'" >&2
+    return 1
+  fi
+  if [[ ! "$id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    echo "error: id rejected — '$id' (allowed: ^[A-Za-z0-9][A-Za-z0-9._-]*$)" >&2
+    return 1
+  fi
+  return 0
 }
 
 # ─── Section: Frontmatter parsing ────────────────────────────────────────────
@@ -300,8 +319,8 @@ main() {
   for f in "${files_sorted[@]}"; do
     local slug
     slug="$(basename "$f" .md)"
-    if ! is_valid_slug "$slug"; then
-      warnings_section+="- Skipped \`$slug\`: filename is not a valid slug.\n"
+    if ! is_valid_id "$slug" 2>/dev/null; then
+      warnings_section+="- Skipped \`$slug\`: filename is not a valid id.\n"
       continue
     fi
     slugs_seen+=("$slug")
@@ -350,7 +369,7 @@ main() {
     local type target key
     while IFS=$'\t' read -r type target; do
       [[ -z "$type" || -z "$target" ]] && continue
-      if ! is_valid_slug "$target"; then
+      if ! is_valid_id "$target" 2>/dev/null; then
         warnings_section+="- \`$slug\`: invalid relation target \`$target\` (type $type).\n"
         continue
       fi
@@ -370,7 +389,7 @@ main() {
     local wl
     while IFS= read -r wl; do
       [[ -z "$wl" ]] && continue
-      if ! is_valid_slug "$wl"; then
+      if ! is_valid_id "$wl" 2>/dev/null; then
         warnings_section+="- \`$slug\`: malformed wikilink \`[[${wl}]]\` ignored.\n"
         continue
       fi
