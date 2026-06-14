@@ -146,6 +146,37 @@ is_valid_slug() {
   return 0
 }
 
+# is_valid_id <id>
+#   Bounded allowlist for a resolved prefix or a full issue id (spec 021 AC #7,
+#   AC #11). Broader than is_valid_slug — uppercase and '.' are allowed — but
+#   still a positive allowlist, never a denylist, so it cannot escape the
+#   issues directory or be parsed as a flag by downstream tooling.
+#
+#   SYNC: the function body below is mirrored verbatim in
+#   skills/issue/scripts/index.sh and skills/issue/scripts/render.sh. A
+#   tests/jimfile.sh case asserts the three copies are byte-identical — keep
+#   them in lockstep when editing.
+is_valid_id() {
+  local id="$1"
+  if [[ -z "$id" ]]; then
+    echo "error: id rejected — empty" >&2
+    return 1
+  fi
+  if (( ${#id} > 128 )); then
+    echo "error: id rejected — exceeds 128 characters" >&2
+    return 1
+  fi
+  if [[ "$id" == *..* ]]; then
+    echo "error: id rejected — '$id' contains '..'" >&2
+    return 1
+  fi
+  if [[ ! "$id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    echo "error: id rejected — '$id' (allowed: ^[A-Za-z0-9][A-Za-z0-9._-]*$)" >&2
+    return 1
+  fi
+  return 0
+}
+
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
 
 cmd_exists() {
@@ -208,10 +239,11 @@ cmd_next_id() {
       echo "error: 'next-id issue' requires <subject>" >&2
       return 2
     fi
-    local slug today
+    local slug prefix
     slug="$(normalize_slug "$subject")" || return 1
-    today="$(today_yyyymmdd)"
-    printf '%s-%s\n' "$today" "$slug"
+    is_valid_slug "$slug" || return 1
+    prefix="$(resolve_issue_prefix)"
+    printf '%s-%s\n' "$prefix" "$slug"
     return 0
   fi
   local group="$first"
@@ -274,6 +306,88 @@ cmd_next_num() {
   local dir
   dir="$(jimconf_get issues)"
   issue_next_num "$dir"
+}
+
+# render_template <template> <ordinal>
+#   Expand a prefix template to stdout. Recognized tokens:
+#     {date:FMT}      -> date +"FMT"  (single quoted arg; rc 1 on date failure)
+#     {seq} | {seq:W} -> <ordinal>, zero-padded to width W when W is given
+#   Any other text passes through verbatim. Returns rc 1 when a {date:...}
+#   render fails or an unknown / malformed token is encountered. The format
+#   string is passed as a single quoted argument to `date` — never eval'd or
+#   word-split (spec 021 security.md Finding 3); LC_ALL=C from the preamble
+#   keeps output deterministic. Charset validation is the caller's job.
+render_template() {
+  local tmpl="$1" ordinal="$2"
+  local out="" rest="$tmpl" lit token inner
+  while [[ -n "$rest" ]]; do
+    if [[ "$rest" != *'{'* ]]; then
+      out+="$rest"
+      break
+    fi
+    lit="${rest%%\{*}"
+    out+="$lit"
+    rest="${rest#"$lit"}"          # rest now starts with '{'
+    token="${rest%%\}*}"           # up to (not including) the next '}'
+    if [[ "$token" == "$rest" ]]; then
+      out+="$rest"                 # no closing brace — emit remainder literally
+      break
+    fi
+    token="${token}}"             # restore the closing brace -> '{...}'
+    rest="${rest#"$token"}"
+    inner="${token#\{}"; inner="${inner%\}}"
+    case "$inner" in
+      date:*)
+        local fmt rendered
+        fmt="${inner#date:}"
+        rendered="$(date +"$fmt")" || return 1
+        out+="$rendered"
+        ;;
+      seq)
+        out+="$ordinal"
+        ;;
+      seq:*)
+        local width="${inner#seq:}"
+        [[ "$width" =~ ^[0-9]+$ ]] || return 1
+        out+="$(printf "%0*d" "$((10#$width))" "$ordinal")"
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
+# resolve_issue_prefix
+#   Resolve the configured issue-id prefix (spec 021). Maps the preset name in
+#   issue_id_prefix to a template, renders it (projecting the next ordinal for
+#   {seq}, AC #4), and validates the result with is_valid_id. Prints the
+#   resolved prefix on success. Falls back to the YYYYMMDD- date prefix when
+#   the scheme is unknown, the project tag is empty, or rendering/validation
+#   fails. (The malformed-config stderr notice and the {…} template escape
+#   hatch are layered on in later tasks.) Resolution stays entirely in bash —
+#   never delegated to the caller (AC #10).
+resolve_issue_prefix() {
+  local scheme project tmpl ordinal prefix default_prefix
+  scheme="$(jimconf_get issue_id_prefix)"
+  default_prefix="$(today_yyyymmdd)"
+  case "$scheme" in
+    date)       tmpl='{date:%Y%m%d}' ;;
+    timestamp)  tmpl='{date:%Y%m%dT%H%M%S}' ;;
+    sequential) tmpl='{seq:04}' ;;
+    project)
+      project="$(jimconf_get issue_id_project)"
+      [[ -n "$project" ]] || { printf '%s' "$default_prefix"; return 0; }
+      tmpl="$project" ;;
+    *)          printf '%s' "$default_prefix"; return 0 ;;
+  esac
+  ordinal="$(issue_next_num "$(jimconf_get issues)")"
+  if prefix="$(render_template "$tmpl" "$ordinal")" && is_valid_id "$prefix" 2>/dev/null; then
+    printf '%s' "$prefix"
+  else
+    printf '%s' "$default_prefix"
+  fi
 }
 
 # cmd_path <kind> <args...>  |  cmd_path <key>

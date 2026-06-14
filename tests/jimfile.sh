@@ -655,6 +655,47 @@ case_jimfile_nextnum_requires_issue_kind() {
   assert_nonempty "stderr explains" "$ERR"
 }
 
+# AC: next-id issue default scheme is byte-identical to YYYYMMDD-<slug> (spec 021 AC #1)
+case_jimfile_next_id_issue_preset_default_unchanged() {
+  run_jimfile next-id issue "Auth Bug"
+  local today
+  today=$(date +%Y%m%d)
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "default scheme unchanged" "$today-auth-bug" "$OUT"
+}
+
+# AC: sequential preset projects the display ordinal (num) zero-padded (spec 021 AC #3a/#4)
+case_jimfile_next_id_issue_preset_sequential() {
+  local issues cfg
+  issues=$(empty_dir nextid_seq)
+  printf -- '---\nnum: 3\nstatus: open\n---\nbody\n' > "$issues/20260101-a.md"
+  printf -- '---\nnum: 7\nstatus: open\n---\nbody\n' > "$issues/20260102-b.md"
+  cfg=$(fixture nextid-seq.toml "issues_path = \"$issues\"
+issue_id_prefix = \"sequential\"")
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "sequential id" "0008-auth-bug" "$OUT"
+}
+
+# AC: project preset prepends the static issue_id_project tag (spec 021 AC #3b)
+case_jimfile_next_id_issue_preset_project() {
+  local cfg
+  cfg=$(fixture nextid-project.toml 'issue_id_prefix = "project"
+issue_id_project = "JIM"')
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "project id" "JIM-auth-bug" "$OUT"
+}
+
+# AC: timestamp preset yields a sub-day-resolution prefix (spec 021 AC #3c)
+case_jimfile_next_id_issue_preset_timestamp() {
+  local cfg
+  cfg=$(fixture nextid-timestamp.toml 'issue_id_prefix = "timestamp"')
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "timestamp id" '^[0-9]{8}T[0-9]{6}-auth-bug$' "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
