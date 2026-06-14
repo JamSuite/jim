@@ -31,6 +31,14 @@ run_jimfile() {
   ERR="$(cat "$err_file")"
 }
 
+# extract_is_valid_id <script>
+#   Print the is_valid_id function body (def line through its column-0 closing
+#   brace). Used to assert the three hand-synced copies stay byte-identical
+#   (spec 021 security.md Finding 5).
+extract_is_valid_id() {
+  awk '/^is_valid_id\(\) \{/{f=1} f{print} f&&/^\}/{exit}' "$1"
+}
+
 # ─── Section: Test cases ─────────────────────────────────────────────────────
 
 # AC: exists yes for an existing file (Decision 6)
@@ -776,6 +784,18 @@ case_jimfile_next_id_issue_blank_is_silent() {
   assert_exit "rc" 0 "$RC"
   assert_eq   "date default" "$today-auth-bug" "$OUT"
   assert_eq   "no notice on stderr" "" "$ERR"
+}
+
+# AC: the is_valid_id validator is byte-identical across its three copies
+# (spec 021 security.md Finding 5 — guard against hand-sync drift).
+case_jimfile_is_valid_id_triplicate_identical() {
+  local a b c
+  a="$(extract_is_valid_id "$REPO_ROOT/skills/file/scripts/jimfile.sh")"
+  b="$(extract_is_valid_id "$REPO_ROOT/skills/issue/scripts/index.sh")"
+  c="$(extract_is_valid_id "$REPO_ROOT/skills/issue/scripts/render.sh")"
+  assert_nonempty "jimfile.sh is_valid_id extracted" "$a"
+  assert_eq "index.sh copy matches jimfile.sh"  "$a" "$b"
+  assert_eq "render.sh copy matches jimfile.sh" "$a" "$c"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
