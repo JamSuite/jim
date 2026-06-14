@@ -123,3 +123,20 @@ security_adhoc_path       = "docs/security"
 # issue_list_sort  = "date"
 # issue_list_cols  = "num,date,priority,slug"
 # issue_list_order = "desc"
+
+# --- Issue id prefix (spec 021) -------------------------------------------
+
+# The prefix segment of an issue id (the part before the slug). Default
+# "date" keeps the zero-config YYYYMMDD- naming. Presets:
+#   date       : YYYYMMDD-<slug>             (default)
+#   sequential : zero-padded display ordinal, e.g. 0042-<slug>
+#   project    : the static issue_id_project tag, e.g. JIM-<slug>
+#   timestamp  : sub-day resolution, e.g. 20260614T144530-<slug>
+# Or a custom template combining literal text with {date:FMT} and
+# {seq[:width]} tokens, e.g. "JIM-{date:%Y%m%d}-{seq:03}". A malformed value
+# is reported on stderr and falls back to the date default.
+# issue_id_prefix = "date"
+
+# Static project tag used by the "project" preset (also usable as literal
+# text in a template). Empty by default.
+# issue_id_project = "JIM"
