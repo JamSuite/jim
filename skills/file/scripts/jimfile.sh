@@ -238,19 +238,14 @@ cmd_next_id() {
   printf '%03d\n' $(( max + 1 ))
 }
 
-# cmd_next_num <kind>
-#   For 'issue': scan the configured issues directory for top-level `num:`
-#   frontmatter fields and print max+1 (or 1 when none carry a num). The
-#   display ordinal is decentralized — duplicates across branches are
-#   accepted as non-fatal (spec 019 DD #5). Reads num: only; never mutates.
-cmd_next_num() {
-  local kind="${1:-}"
-  if [[ "$kind" != "issue" ]]; then
-    echo "error: 'next-num' requires the 'issue' kind" >&2
-    return 2
-  fi
-  local dir max=0 f n
-  dir="$(jimconf_get issues)"
+# issue_next_num <issues_dir>
+#   Scan <issues_dir>/*.md for top-level `num:` frontmatter and print max+1
+#   (or 1 when none carry a num). Shared by cmd_next_num and the `{seq}`
+#   prefix token (spec 021). Reads num: only; never mutates. The display
+#   ordinal is decentralized — duplicates across branches are accepted as
+#   non-fatal (spec 019 DD #5).
+issue_next_num() {
+  local dir="${1:-}" max=0 f n
   dir="${dir%/}"
   if [[ -d "$dir" ]]; then
     for f in "$dir"/*.md; do
@@ -265,6 +260,20 @@ cmd_next_num() {
     done
   fi
   printf '%d\n' $(( max + 1 ))
+}
+
+# cmd_next_num <kind>
+#   For 'issue': resolve the configured issues directory and print the next
+#   display ordinal via issue_next_num.
+cmd_next_num() {
+  local kind="${1:-}"
+  if [[ "$kind" != "issue" ]]; then
+    echo "error: 'next-num' requires the 'issue' kind" >&2
+    return 2
+  fi
+  local dir
+  dir="$(jimconf_get issues)"
+  issue_next_num "$dir"
 }
 
 # cmd_path <kind> <args...>  |  cmd_path <key>
