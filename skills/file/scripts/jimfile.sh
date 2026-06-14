@@ -450,7 +450,7 @@ cmd_path() {
         echo "error: 'path issue' requires <slug>" >&2
         return 2
       fi
-      is_valid_slug "$slug" || return 1
+      is_valid_id "$slug" || return 1
       local dir
       dir="$(jimconf_get issues)"
       dir="${dir%/}"

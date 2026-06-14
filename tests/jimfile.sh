@@ -547,11 +547,15 @@ case_jimfile_path_issue_rejects_leading_dot() {
   assert_nonempty "stderr explains" "$ERR"
 }
 
-# AC: path issue rejects slug with uppercase characters (AC-C7 — lowercase only)
-case_jimfile_path_issue_rejects_uppercase() {
-  run_jimfile path issue "AUTH-bug"
-  assert_exit     "rc" 1 "$RC"
-  assert_nonempty "stderr explains" "$ERR"
+# AC: path issue accepts an uppercase new-scheme id under is_valid_id (spec 021 AC #7)
+# The broadened id charset admits the project/template prefixes (e.g. JIM-…),
+# replacing the old lowercase-only is_valid_slug guard at this callsite.
+case_jimfile_path_issue_accepts_uppercase_id() {
+  local cfg
+  cfg=$(fixture path-issue-upper.toml 'issues_path = "docs/issues"')
+  run_jimfile -c "$cfg" path issue "JIM-wire-consumers"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "uppercase id path" "docs/issues/JIM-wire-consumers.md" "$OUT"
 }
 
 # AC: path issue (no slug) returns the configured issues_path
