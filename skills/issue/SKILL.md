@@ -95,7 +95,7 @@ Resolve the id (slug) from the capture subject. Run via the Bash tool, passing t
 bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id issue "<subject-or-derived-title>"
 ```
 
-The script returns `YYYYMMDD-<normalized-slug>` — this is the `id`.
+The script returns the resolved `id` — by default `YYYYMMDD-<normalized-slug>`, or whatever the **configured prefix scheme** produces (`issue_id_prefix` / `issue_id_project`, spec 021). If `next-id issue` also writes a notice to **stderr** (a malformed `issue_id_prefix` config that fell back to the default date scheme), surface that notice to the developer before filing.
 
 Resolve the display ordinal:
 
@@ -111,7 +111,7 @@ Resolve the file path:
 bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path issue <id>
 ```
 
-If a slug collision would occur (the resolved path already exists), append a numeric discriminator to the slug (`-2`, `-3`, …) so filing always succeeds; the discriminated id appears in the confirm step below.
+If a slug collision would occur (the resolved path already exists), append a numeric discriminator to the slug (`-2`, `-3`, …) so filing always succeeds; the discriminated id appears in the confirm step below. This collision handling is scheme-agnostic — it applies to whatever prefix scheme produced the id (spec 021 AC #6).
 
 ### 5. Confirm-or-edit moment
 
@@ -196,7 +196,7 @@ Before writing (capture / `add` only):
 
 - [ ] The issue represents pending, unresolved work (the actionability gate passed) — not a retrospective record of already-shipped work whose home is a point-of-encounter doc.
 - [ ] Issue slug matches `^[a-z0-9][a-z0-9-]*$` (alphanumeric + dash).
-- [ ] Filename uses the date-prefixed format `YYYYMMDD-<slug>.md`.
+- [ ] Filename uses the configured prefix scheme (default `YYYYMMDD-<slug>.md`).
 - [ ] Frontmatter contains `id`, `num`, `title`, `status`, `priority`, `labels`, `relations`, `created`, `updated`, `origin`.
 - [ ] `num` is a positive integer resolved via `jimfile.sh next-num issue` (never invented).
 - [ ] `status` is exactly `open`. New captures are always open; closed-on-arrival is forbidden (it signals there was no pending work — see the actionability gate). The schema's binary `open`/`closed` lifecycle is unchanged; closure happens later via a deliberate edit, not at filing time.
