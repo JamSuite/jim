@@ -63,7 +63,9 @@ case_no_config_returns_defaults() {
               "issue_list_sort:date" \
               "issue_list_cols:num,date,priority,slug" \
               "issue_list_order:desc" \
-              "issue_list_closed:false"; do
+              "issue_list_closed:false" \
+              "issue_id_prefix:date" \
+              "issue_id_project:"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -98,7 +100,9 @@ issue_list_group = "priority"
 issue_list_sort = "num"
 issue_list_cols = "num,slug"
 issue_list_order = "asc"
-issue_list_closed = "true"')
+issue_list_closed = "true"
+issue_id_prefix = "sequential"
+issue_id_project = "PROJ"')
   run -c "$cfg" get specs;                     assert_eq "specs"                     "my/specs"               "$OUT"
   run -c "$cfg" get architecture;              assert_eq "architecture"              "docs/arch.md"           "$OUT"
   run -c "$cfg" get vision;                    assert_eq "vision"                    "docs/vision.md"         "$OUT"
@@ -123,6 +127,8 @@ issue_list_closed = "true"')
   run -c "$cfg" get issue_list_cols;           assert_eq "issue_list_cols"           "num,slug"               "$OUT"
   run -c "$cfg" get issue_list_order;          assert_eq "issue_list_order"          "asc"                    "$OUT"
   run -c "$cfg" get issue_list_closed;         assert_eq "issue_list_closed"         "true"                   "$OUT"
+  run -c "$cfg" get issue_id_prefix;           assert_eq "issue_id_prefix"           "sequential"             "$OUT"
+  run -c "$cfg" get issue_id_project;          assert_eq "issue_id_project"          "PROJ"                   "$OUT"
 }
 
 # AC: partial override layered over defaults (spec AC #3)
@@ -152,7 +158,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "25" "$line_count"
+  assert_eq    "list line count"                  "27" "$line_count"
   assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
@@ -178,6 +184,8 @@ case_list_outputs_all_keys() {
   assert_match "issue_list_cols line"              '^issue_list_cols=num,date,priority,slug$' "$OUT"
   assert_match "issue_list_order line"             '^issue_list_order=desc$'                "$OUT"
   assert_match "issue_list_closed line"            '^issue_list_closed=false$'              "$OUT"
+  assert_match "issue_id_prefix line"              '^issue_id_prefix=date$'                 "$OUT"
+  assert_match "issue_id_project line"             '^issue_id_project=$'                    "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -185,7 +193,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -223,7 +231,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "25" "$line_count"
+  assert_eq "list still emits all keys" "27" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -614,6 +622,41 @@ case_issue_list_order_overridden() {
   cfg=$(fixture issue_list_order-override.toml 'issue_list_order = "asc"')
   run -c "$cfg" get issue_list_order
   assert_eq "issue_list_order overridden" "asc" "$OUT"
+}
+
+# AC: issue_id_prefix defaults to "date" (spec 021 AC #1/#9)
+# Bare-name view-config key — TOML name equals CLI name (no _path suffix),
+# resolved via the issue_id_* dispatch in resolve(). Default "date" preserves
+# the zero-config YYYYMMDD- scheme.
+case_issue_id_prefix_default() {
+  local dir actual
+  dir=$(empty_dir issue_id_prefix_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_id_prefix)
+  assert_eq "issue_id_prefix default" "date" "$actual"
+}
+
+# AC: issue_id_prefix override via jimconf.toml (spec 021 AC #2)
+case_issue_id_prefix_overridden() {
+  local cfg
+  cfg=$(fixture issue_id_prefix-override.toml 'issue_id_prefix = "sequential"')
+  run -c "$cfg" get issue_id_prefix
+  assert_eq "issue_id_prefix overridden" "sequential" "$OUT"
+}
+
+# AC: issue_id_project defaults to "" (spec 021 — only used by the project preset)
+case_issue_id_project_default() {
+  local dir actual
+  dir=$(empty_dir issue_id_project_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_id_project)
+  assert_eq "issue_id_project default" "" "$actual"
+}
+
+# AC: issue_id_project override via jimconf.toml (spec 021)
+case_issue_id_project_overridden() {
+  local cfg
+  cfg=$(fixture issue_id_project-override.toml 'issue_id_project = "JIM"')
+  run -c "$cfg" get issue_id_project
+  assert_eq "issue_id_project overridden" "JIM" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
