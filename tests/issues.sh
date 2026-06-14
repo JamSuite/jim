@@ -1574,6 +1574,19 @@ status: open'
   assert_match "wikilink edge to new-scheme" 'a` --related-to--> `JIM-b' "$idx"
 }
 
+# AC: show renders a new-scheme (uppercase prefix) issue (spec 021 AC #5)
+case_issues_render_show_new_scheme_id() {
+  local dir
+  dir=$(empty_dir show_new_scheme)
+  write_issue "$dir" "JIM-wire-consumers" 'num: 5
+title: "Wire consumers"
+status: open'
+  run_render show JIM-wire-consumers "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "renders title" 'Wire consumers' "$OUT"
+  assert_match "renders slug"  'JIM-wire-consumers' "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

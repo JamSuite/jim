@@ -450,16 +450,36 @@ cmd_list() {
 
 # ─── Section: show ───────────────────────────────────────────────────────────
 
-is_valid_slug() {
-  local slug="$1"
-  [[ -z "$slug" ]] && return 1
-  [[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]
+# is_valid_id <id>
+#   Bounded allowlist for a full issue id (spec 021 AC #7, AC #11).
+#   SYNC: the function body below is byte-identical to the copies in
+#   skills/file/scripts/jimfile.sh and skills/issue/scripts/index.sh — a
+#   tests/jimfile.sh case asserts the three agree. Keep them in lockstep.
+is_valid_id() {
+  local id="$1"
+  if [[ -z "$id" ]]; then
+    echo "error: id rejected — empty" >&2
+    return 1
+  fi
+  if (( ${#id} > 128 )); then
+    echo "error: id rejected — exceeds 128 characters" >&2
+    return 1
+  fi
+  if [[ "$id" == *..* ]]; then
+    echo "error: id rejected — '$id' contains '..'" >&2
+    return 1
+  fi
+  if [[ ! "$id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    echo "error: id rejected — '$id' (allowed: ^[A-Za-z0-9][A-Za-z0-9._-]*$)" >&2
+    return 1
+  fi
+  return 0
 }
 
 # render_issue_file <dir> <slug>
 render_issue_file() {
   local dir="$1" slug="$2"
-  is_valid_slug "$slug" || { echo "error: refusing to read invalid slug" >&2; return 1; }
+  is_valid_id "$slug" 2>/dev/null || { echo "error: refusing to read invalid id" >&2; return 1; }
   local f="$dir/$slug.md"
   [[ -f "$f" ]] || { printf 'no issue file for `%s`.\n' "$slug"; return 0; }
   local fm num title status prio labels origin created
