@@ -1,5 +1,5 @@
 ---
-id: {YYYYMMDD}-{slug}
+id: {prefix}-{slug}   # prefix from the configured scheme (default YYYYMMDD-; spec 021)
 num: {num}
 title: "{title}"
 status: open
