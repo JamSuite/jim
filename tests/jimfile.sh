@@ -696,6 +696,27 @@ case_jimfile_next_id_issue_preset_timestamp() {
   assert_match "timestamp id" '^[0-9]{8}T[0-9]{6}-auth-bug$' "$OUT"
 }
 
+# AC: template escape hatch renders a custom date format (spec 021 AC #3d)
+case_jimfile_next_id_issue_template_date_format() {
+  local cfg
+  cfg=$(fixture nextid-tmpl-date.toml 'issue_id_prefix = "{date:%Y.%m.%d}"')
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "dotted date id" '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}-auth-bug$' "$OUT"
+}
+
+# AC: template escape hatch composes literal + date + seq tokens (spec 021 AC #2/#3)
+case_jimfile_next_id_issue_template_combined() {
+  local issues cfg
+  issues=$(empty_dir nextid_tmpl_combined)
+  printf -- '---\nnum: 7\nstatus: open\n---\nbody\n' > "$issues/20260101-a.md"
+  cfg=$(fixture nextid-tmpl-combined.toml "issues_path = \"$issues\"
+issue_id_prefix = \"JIM-{date:%Y%m%d}-{seq:03}\"")
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "combined template id" '^JIM-[0-9]{8}-008-auth-bug$' "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

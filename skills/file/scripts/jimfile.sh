@@ -380,6 +380,7 @@ resolve_issue_prefix() {
       project="$(jimconf_get issue_id_project)"
       [[ -n "$project" ]] || { printf '%s' "$default_prefix"; return 0; }
       tmpl="$project" ;;
+    *'{'*)      tmpl="$scheme" ;;   # template escape hatch (contains a token)
     *)          printf '%s' "$default_prefix"; return 0 ;;
   esac
   ordinal="$(issue_next_num "$(jimconf_get issues)")"
