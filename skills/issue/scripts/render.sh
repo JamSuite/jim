@@ -142,6 +142,16 @@ read_issue_rows() {
         else if (key == "origin") origin = val
         else if (key == "labels") { gsub(/^\[|\]$/, "", val); labels = val }
       }
+      # SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
+      # Degrade a non-conforming created so malformed frontmatter can never
+      # corrupt the TSV (embedded tab/garbage): keep the day-start date prefix
+      # when present, else empty (rendered "-"). Spec 022 AC #8 / Finding F6.
+      if (created != "" && created !~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$/) {
+        if (match(created, /^[0-9]{4}-[0-9]{2}-[0-9]{2}/))
+          created = substr(created, RSTART, RLENGTH)
+        else
+          created = ""
+      }
       printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
         slug, (num == "" ? "-" : num), (status == "" ? "open" : status),
         (prio == "" ? "-" : prio), (created == "" ? "-" : created),

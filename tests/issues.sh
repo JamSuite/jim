@@ -1278,6 +1278,57 @@ created: 2026-01-01'
   assert_eq "num-desc tiebreak (#3 < #2 < #1)" "yes" "$order_ok"
 }
 
+# AC #8: a non-conforming created value degrades to its day-start date prefix
+# and never leaks garbage (or a TSV-breaking tab) into the rendered row.
+case_issues_render_list_malformed_created_degrades() {
+  local dir
+  dir=$(empty_dir render_list_malformed)
+  write_issue "$dir" "20260613-okay" 'title: "OK"
+status: open
+num: 1
+created: 2026-06-13'
+  write_issue "$dir" "20260613-bad" 'title: "BAD"
+status: open
+num: 2
+created: 2026-06-13Xinjected'
+  run_render list "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "bad row present" '20260613-bad' "$OUT"
+  local leaked="no"
+  printf '%s\n' "$OUT" | grep -q 'injected' && leaked="yes"
+  assert_eq "garbage stripped (degraded to day-start)" "no" "$leaked"
+}
+
+# AC #4: same-day issues order by timestamp even when num is equal (collision);
+# AC #3: a legacy date-only issue orders as that day's start. Characterizes the
+# existing sort key (-k5 created, -k2 num) over mixed-resolution values.
+case_issues_render_list_mixed_timestamp_sort() {
+  local dir
+  dir=$(empty_dir render_list_ts_sort)
+  write_issue "$dir" "20260613-wire-a" 'title: "A"
+status: open
+num: 8
+created: 2026-06-13T14:45:30Z'
+  write_issue "$dir" "20260613-wire-b" 'title: "B"
+status: open
+num: 8
+created: 2026-06-13T14:45:33Z'
+  write_issue "$dir" "20260612-legacy" 'title: "L"
+status: open
+num: 4
+created: 2026-06-12'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  # default order is desc: later timestamp first, older date-only last
+  local l_a l_b l_legacy order_ok="no"
+  l_b=$(printf '%s\n' "$OUT" | grep -n '20260613-wire-b' | head -1 | cut -d: -f1)
+  l_a=$(printf '%s\n' "$OUT" | grep -n '20260613-wire-a' | head -1 | cut -d: -f1)
+  l_legacy=$(printf '%s\n' "$OUT" | grep -n '20260612-legacy' | head -1 | cut -d: -f1)
+  if [[ -n "$l_b" && -n "$l_a" && -n "$l_legacy" ]] \
+     && (( l_b < l_a && l_a < l_legacy )); then order_ok="yes"; fi
+  assert_eq "ts-desc with equal num; legacy day-start last" "yes" "$order_ok"
+}
+
 # AC: issue_list_order = "asc" flips the sort direction (spec 019 follow-up).
 # With num sort + asc, the lowest ordinal (#1) appears before the highest (#3).
 case_issues_render_list_order_asc() {
