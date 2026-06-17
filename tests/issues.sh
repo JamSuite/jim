@@ -1329,6 +1329,24 @@ created: 2026-06-12'
   assert_eq "ts-desc with equal num; legacy day-start last" "yes" "$order_ok"
 }
 
+# Spec 022 follow-up: the list `date` column is a terse scan view — it renders
+# the date portion only (YYYY-MM-DD), even for a full-resolution timestamp.
+# Sub-day precision still drives the sort key and stays visible in `show`.
+case_issues_render_list_date_column_is_date_only() {
+  local dir
+  dir=$(empty_dir render_list_date_only)
+  write_issue "$dir" "20260613-timed" 'title: "T"
+status: open
+num: 1
+created: 2026-06-13T14:45:30Z'
+  run_render list "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "date portion shown" '2026-06-13' "$OUT"
+  local timeshown="no"
+  printf '%s\n' "$OUT" | grep -q '2026-06-13T' && timeshown="yes"
+  assert_eq "time/Z trimmed from list date column" "no" "$timeshown"
+}
+
 # AC #8: a non-conforming created is degraded in the INDEX row (day-start, or
 # stripped) and surfaces an Integrity Warning rather than landing raw.
 case_issues_index_malformed_created_warns() {

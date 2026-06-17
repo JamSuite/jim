@@ -310,7 +310,8 @@ format_row() {
   for c in "${_cols[@]}"; do
     case "$c" in
       num)      printf -v pad '#%-5s' "$num";     out+=$pad ;;
-      date)     printf -v pad '%-12s' "$created"; out+=$pad ;;
+      # date portion only; sub-day precision drives sort + shows in `show`.
+      date)     printf -v pad '%-12s' "${created:0:10}"; out+=$pad ;;
       priority) printf -v pad '%-9s' "$prio";     out+=$pad ;;
       status)   printf -v pad '%-8s' "$status";   out+=$pad ;;
       slug)     out+="$slug " ;;
