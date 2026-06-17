@@ -1347,6 +1347,83 @@ created: 2026-06-13Xinjected'
   assert_match "integrity warning present" 'created is not a valid date or timestamp' "$idx"
 }
 
+# read_fm_field <file> <field> — top-level scalar value (test helper).
+read_fm_field() {
+  grep -E "^$2:" "$1" | head -1 | sed -E "s/^$2:[[:space:]]*//"
+}
+
+# AC #5: normalize rewrites date-only created/updated to a day-start UTC
+# timestamp and announces with the placeholder caveat.
+case_issues_backfill_normalize_date_only() {
+  local dir
+  dir=$(empty_dir backfill_normalize)
+  write_issue "$dir" "20260613-x" 'title: "X"
+status: open
+num: 1
+created: 2026-06-13
+updated: 2026-06-13' "Body stays."
+  run_backfill normalize "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_eq    "created -> day-start" "2026-06-13T00:00:00Z" "$(read_fm_field "$dir/20260613-x.md" created)"
+  assert_eq    "updated -> day-start" "2026-06-13T00:00:00Z" "$(read_fm_field "$dir/20260613-x.md" updated)"
+  assert_match "announces count"      'Normalized 1 issue'   "$OUT"
+  assert_match "day-start caveat"     'day-start'            "$OUT"
+}
+
+# AC #5 (idempotent): a second normalize run changes nothing and is silent.
+case_issues_backfill_normalize_idempotent() {
+  local dir
+  dir=$(empty_dir backfill_normalize_idem)
+  write_issue "$dir" "20260613-x" 'title: "X"
+status: open
+num: 1
+created: 2026-06-13
+updated: 2026-06-13'
+  run_backfill normalize "$dir"
+  run_backfill normalize "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "second run silent"  ""                      "$OUT"
+  assert_eq   "created stable"     "2026-06-13T00:00:00Z"  "$(read_fm_field "$dir/20260613-x.md" created)"
+}
+
+# F3 (preserves content): only created/updated change; other fields + body stay.
+case_issues_backfill_normalize_preserves_content() {
+  local dir f
+  dir=$(empty_dir backfill_normalize_preserve)
+  write_issue "$dir" "20260613-x" 'title: "Keep Me"
+status: open
+priority: high
+num: 7
+created: 2026-06-13
+updated: 2026-06-13
+labels: [a, b]' "Body line one.
+Body line two."
+  run_backfill normalize "$dir"
+  assert_exit  "rc" 0 "$RC"
+  f="$dir/20260613-x.md"
+  assert_eq    "title kept"    '"Keep Me"'      "$(read_fm_field "$f" title)"
+  assert_eq    "priority kept" "high"           "$(read_fm_field "$f" priority)"
+  assert_eq    "num kept"      "7"              "$(read_fm_field "$f" num)"
+  assert_match "body kept"     'Body line two.' "$(cat "$f")"
+}
+
+# AC #8 (skip malformed): a malformed created is left unchanged with a warning;
+# a date-only updated in the same file is still normalized.
+case_issues_backfill_normalize_skips_malformed() {
+  local dir
+  dir=$(empty_dir backfill_normalize_malformed)
+  write_issue "$dir" "20260613-x" 'title: "X"
+status: open
+num: 1
+created: not-a-date
+updated: 2026-06-13'
+  run_backfill normalize "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_eq    "malformed created untouched" "not-a-date"            "$(read_fm_field "$dir/20260613-x.md" created)"
+  assert_eq    "updated normalized"          "2026-06-13T00:00:00Z"  "$(read_fm_field "$dir/20260613-x.md" updated)"
+  assert_match "warns on malformed"          'not a valid date or timestamp' "$ERR"
+}
+
 # AC: issue_list_order = "asc" flips the sort direction (spec 019 follow-up).
 # With num sort + asc, the lowest ordinal (#1) appears before the highest (#3).
 case_issues_render_list_order_asc() {

@@ -22,6 +22,12 @@
 #     issues_dir default: jimconf.sh get issues
 #     Prints "Assigned display numbers to N issue(s)." iff N>0; otherwise
 #     silent (idempotent no-op when every issue already has a num).
+#   bash backfill.sh normalize [<issues_dir>]
+#     One-shot, opt-in: rewrite date-only created/updated to
+#     YYYY-MM-DDT00:00:00Z (a day-start placeholder, not a recovered time),
+#     atomically per file. Idempotent — already-timestamped values are left
+#     untouched; malformed values are skipped with a warning. Prints
+#     "Normalized N issue(s) ..." iff N>0; otherwise silent (spec 022).
 #
 # EXIT CODES
 #   0  Success (including the no-op case).
@@ -59,6 +65,26 @@ field_value() {
 num_of() {
   grep -E '^num:[[:space:]]*[0-9]+' "$1" 2>/dev/null \
     | head -n 1 | sed -E 's/^num:[[:space:]]*([0-9]+).*/\1/'
+}
+
+# normalize_ts <value> <file> <field> — echo the canonical form of a
+# created/updated value:
+#   - date-only YYYY-MM-DD      -> YYYY-MM-DDT00:00:00Z (day-start placeholder)
+#   - already a full timestamp  -> unchanged (idempotent)
+#   - empty                     -> unchanged
+#   - malformed (anything else) -> unchanged + a warning on stderr (skip)
+# SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
+normalize_ts() {
+  local v="$1" file="$2" field="$3"
+  if [[ -z "$v" ]]; then printf '%s' "$v"; return 0; fi
+  if [[ "$v" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+    printf '%s' "${v}T00:00:00Z"
+  elif [[ "$v" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+    printf '%s' "$v"
+  else
+    echo "warning: $(basename "$file") $field is not a valid date or timestamp; left unchanged" >&2
+    printf '%s' "$v"
+  fi
 }
 
 cmd_assign_numbers() {
@@ -123,8 +149,60 @@ cmd_assign_numbers() {
   return 0
 }
 
+cmd_normalize() {
+  local dir
+  dir="$(resolve_dir "${1:-}")" || return $?
+  [[ -d "$dir" ]] || return 0
+
+  local normalized=0 f base tmp cval uval new_c new_u
+  for f in "$dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ "$base" == "$INDEX_FILENAME" ]] && continue
+    [[ "$base" == .* ]] && continue
+
+    cval="$(field_value "$f" created)"
+    uval="$(field_value "$f" updated)"
+    new_c="$(normalize_ts "$cval" "$f" created)"
+    new_u="$(normalize_ts "$uval" "$f" updated)"
+    [[ "$new_c" == "$cval" && "$new_u" == "$uval" ]] && continue
+
+    tmp="$(mktemp "$dir/.normalize.tmp.XXXXXX")" || {
+      echo "error: cannot create tmp file in '$dir'" >&2
+      return 1
+    }
+    if awk -v c="$new_c" -v u="$new_u" '
+      /^---$/ { fm++; print; next }
+      fm == 1 && /^created:/ && !cdone { print "created: " c; cdone = 1; next }
+      fm == 1 && /^updated:/ && !udone { print "updated: " u; udone = 1; next }
+      { print }
+    ' "$f" > "$tmp"; then
+      mv "$tmp" "$f" || {
+        rm -f "$tmp"
+        echo "error: atomic rename failed for '$f'" >&2
+        return 1
+      }
+    else
+      rm -f "$tmp"
+      echo "error: rewrite failed for '$f'" >&2
+      return 1
+    fi
+    normalized=$(( normalized + 1 ))
+  done
+
+  if (( normalized > 0 )); then
+    printf 'Normalized %d issue(s) to canonical timestamps. Note: legacy date-only values were set to day-start (T00:00:00Z) — a format placeholder, not a recovered time.\n' "$normalized"
+  fi
+  return 0
+}
+
 main() {
-  cmd_assign_numbers "$@"
+  if [[ "${1:-}" == "normalize" ]]; then
+    shift
+    cmd_normalize "$@"
+  else
+    cmd_assign_numbers "$@"
+  fi
 }
 
 main "$@"
