@@ -173,7 +173,6 @@ apply_plan() {
       return 3
     fi
   fi
-  rm -f "$dir"/.migrate.tmp.* "$dir"/.migrate.map.* 2>/dev/null
 
   local mapfile
   mapfile="$(mktemp "$dir/.migrate.map.XXXXXX")" || {
@@ -205,11 +204,21 @@ apply_plan() {
     finalid="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' "$mapfile")"
     [[ -n "$finalid" ]] || finalid="$id"
     tmp="$(mktemp "$dir/.migrate.tmp.XXXXXX")" || {
-      echo "error: cannot create tmp in $dir" >&2; rm -f "$mapfile"; return 1; }
+      rm -f ${s_tmp[@]+"${s_tmp[@]}"} "$mapfile"
+      echo "error: cannot create tmp in $dir — no changes made; safe to re-run" >&2; return 1; }
     if ! rewrite_refs "$mapfile" "$f" > "$tmp"; then
-      echo "error: rewrite failed for $f" >&2; rm -f "$tmp" "$mapfile"; return 1
+      rm -f ${s_tmp[@]+"${s_tmp[@]}"} "$tmp" "$mapfile"
+      echo "error: rewrite failed for $f — no changes made; safe to re-run" >&2; return 1
     fi
     s_tmp+=("$tmp"); s_old+=("$f"); s_new+=("$dir/$finalid.md")
+    # Test seam: simulate a mid-staging crash. Staging is non-destructive, so
+    # this leaves the collection untouched and a retry converges (AC #10).
+    # Never set in production.
+    if [[ -n "${MIGRATE_FAIL_STAGING:-}" ]]; then
+      rm -f "${s_tmp[@]}" "$mapfile"
+      echo "error: staging aborted (fault injection) — no changes made; safe to re-run" >&2
+      return 1
+    fi
   done
 
   local i
@@ -218,7 +227,9 @@ apply_plan() {
   done
   for i in "${!s_tmp[@]}"; do
     if ! mv "${s_tmp[$i]}" "${s_new[$i]}"; then
-      echo "error: atomic rename failed for ${s_new[$i]}" >&2; rm -f "$mapfile"; return 1
+      rm -f "$mapfile"
+      echo "error: commit failed at ${s_new[$i]} — the collection is PARTIALLY migrated; recover via your version control (e.g. git checkout) and re-run" >&2
+      return 1
     fi
   done
   rm -f "$mapfile"

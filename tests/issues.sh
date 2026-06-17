@@ -1963,6 +1963,54 @@ issue_id_prefix = \"timestamp\"")
   assert_exit "drift exits 3" 3 "$RC"
 }
 
+# spec 023 Task 8: a mid-staging failure leaves the collection untouched (staging
+# is non-destructive), and a retry converges with INDEX integrity clean (AC #10).
+case_issues_migrate_apply_retry_completes() {
+  local dir cfg
+  dir=$(empty_dir migrate_retry)
+  write_issue "$dir" "20260613-aaa" 'title: "A"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: [20260613-bbb]
+  related-to: []
+  duplicates: []
+created: 2026-06-13T09:00:00Z'
+  write_issue "$dir" "20260613-bbb" 'title: "B"
+status: open
+num: 2
+relations:
+  blocks: [20260613-aaa]
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z'
+  cfg=$(fixture migrate-retry.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  export MIGRATE_FAIL_STAGING=1
+  run_migrate -c "$cfg" prefix --apply
+  unset MIGRATE_FAIL_STAGING
+  assert_exit  "injected apply fails" 1 "$RC"
+  assert_match "reports no changes"   'no changes made' "$ERR"
+  local intact=no leaked=no
+  [[ -f "$dir/20260613-aaa.md" && -f "$dir/20260613-bbb.md" ]] && intact=yes
+  [[ -f "$dir/20260613T090000-aaa.md" ]] && leaked=yes
+  assert_eq "collection intact after failure" "yes" "$intact"
+  assert_eq "no partial rename"               "no"  "$leaked"
+
+  run_migrate -c "$cfg" prefix --apply
+  assert_exit "retry rc 0" 0 "$RC"
+  local a=no b=no
+  [[ -f "$dir/20260613T090000-aaa.md" ]] && a=yes
+  [[ -f "$dir/20260613T100000-bbb.md" ]] && b=yes
+  assert_eq "A migrated on retry" "yes" "$a"
+  assert_eq "B migrated on retry" "yes" "$b"
+  assert_match "ref rewritten on retry" 'depends-on: \[20260613T100000-bbb\]' "$(cat "$dir/20260613T090000-aaa.md")"
+  assert_match "INDEX clean" '_None' "$(cat "$dir/INDEX.md")"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
