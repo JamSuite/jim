@@ -344,6 +344,19 @@ main() {
     } < <(parse_scalar_fields "$fm")
     [[ -z "$status" ]] && status="open"
 
+    # SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
+    # Degrade a non-conforming created so a malformed value never lands raw in an
+    # INDEX.md row (tab/garbage): keep the day-start date prefix when present,
+    # else empty, and surface an Integrity Warning. Spec 022 AC #8 / Finding F6.
+    if [[ -n "$created" && ! "$created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$ ]]; then
+      if [[ "$created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+        created="${BASH_REMATCH[0]}"
+      else
+        created=""
+      fi
+      warnings_section+="- \`$slug\` created is not a valid date or timestamp; degraded.\n"
+    fi
+
     meta_status[$slug]="$status"
     meta_priority[$slug]="$priority"
     meta_title[$slug]="$title"

@@ -1329,6 +1329,24 @@ created: 2026-06-12'
   assert_eq "ts-desc with equal num; legacy day-start last" "yes" "$order_ok"
 }
 
+# AC #8: a non-conforming created is degraded in the INDEX row (day-start, or
+# stripped) and surfaces an Integrity Warning rather than landing raw.
+case_issues_index_malformed_created_warns() {
+  local dir idx
+  dir=$(empty_dir index_malformed_created)
+  write_issue "$dir" "20260613-bad" 'title: "BAD"
+status: open
+num: 1
+created: 2026-06-13Xinjected'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  local leaked="no"
+  printf '%s\n' "$idx" | grep -q 'injected' && leaked="yes"
+  assert_eq   "garbage not in INDEX row" "no" "$leaked"
+  assert_match "integrity warning present" 'created is not a valid date or timestamp' "$idx"
+}
+
 # AC: issue_list_order = "asc" flips the sort direction (spec 019 follow-up).
 # With num sort + asc, the lowest ordinal (#1) appears before the highest (#3).
 case_issues_render_list_order_asc() {
