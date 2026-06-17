@@ -61,7 +61,7 @@ num_of() {
     | head -n 1 | sed -E 's/^num:[[:space:]]*([0-9]+).*/\1/'
 }
 
-main() {
+cmd_assign_numbers() {
   local dir
   dir="$(resolve_dir "${1:-}")" || return $?
   [[ -d "$dir" ]] || return 0
@@ -121,6 +121,10 @@ main() {
     printf 'Assigned display numbers to %d issue(s).\n' "$assigned"
   fi
   return 0
+}
+
+main() {
+  cmd_assign_numbers "$@"
 }
 
 main "$@"
