@@ -1863,6 +1863,42 @@ issue_id_prefix = \"timestamp\"")
   assert_eq "plan hash stable across runs" "$h1" "$h2"
 }
 
+# spec 023 Task 5: the rewrite engine rewrites the four relations buckets + body
+# [[wikilinks]] by EXACT id (mirroring index.sh), never touching origin: paths,
+# prose mentions, prefix-overlapping ids, or fenced-code links (security F2).
+case_issues_migrate_rewrite() {
+  local dir
+  dir=$(empty_dir migrate_rewrite)
+  printf '%s\t%s\n' "20260613-foo" "20260613T090000-foo" > "$dir/map.tsv"
+  cat > "$dir/issue.md" <<'MD'
+---
+title: "Ref"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: [20260613-foo]
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z
+origin: docs/specs/jim/20260613-foo/spec.md
+---
+See [[20260613-foo]] and [[20260613-foo-variant]] and bare 20260613-foo here.
+
+```
+code [[20260613-foo]] stays
+```
+MD
+  run_migrate rewrite "$dir/map.tsv" "$dir/issue.md"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "relation target rewritten" 'depends-on: \[20260613T090000-foo\]' "$OUT"
+  assert_match "body wikilink rewritten"   '\[\[20260613T090000-foo\]\]'         "$OUT"
+  assert_match "origin path untouched"     'origin: docs/specs/jim/20260613-foo/spec.md' "$OUT"
+  assert_match "prose mention untouched"   'bare 20260613-foo here'              "$OUT"
+  assert_match "prefix-overlap untouched"  '\[\[20260613-foo-variant\]\]'        "$OUT"
+  assert_match "fenced link untouched"     'code \[\[20260613-foo\]\] stays'     "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

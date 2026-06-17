@@ -174,6 +174,92 @@ cmd_prefix() {
   git_note "$dir"
 }
 
+# rewrite_refs <mapfile> <file> — print <file> with every reference whose id is
+# a key in <mapfile> (TAB old\tnew per line) rewritten to its new id. Rewrites
+# ONLY the structured reference sites index.sh recognizes — the four relations:
+# buckets and body [[wikilinks]] outside fenced code / inline backticks — by
+# EXACT id match. Never a substring/global replace: origin: paths, prose
+# mentions, code-fenced links, and prefix-overlapping ids are left untouched
+# (security F2; mirrors index.sh parse_relations + parse_wikilinks_from_body).
+rewrite_refs() {
+  local mapfile="$1" file="$2"
+  awk -v MAP="$mapfile" '
+    function rewrite_bucket(line,   lb, rb, pre, inner, post, parts, n, i, t, out) {
+      lb = index(line, "["); rb = index(line, "]")
+      if (lb == 0 || rb == 0 || rb < lb) return line
+      pre = substr(line, 1, lb); inner = substr(line, lb+1, rb-lb-1); post = substr(line, rb)
+      if (inner ~ /^[ \t]*$/) return line
+      n = split(inner, parts, ",")
+      out = ""
+      for (i = 1; i <= n; i++) {
+        t = parts[i]; gsub(/^[ \t]+|[ \t]+$/, "", t)
+        if (t in M) t = M[t]
+        out = (i == 1) ? t : out ", " t
+      }
+      return pre out post
+    }
+    function rewrite_wikilinks(seg,   res, rest, p, link, id) {
+      res = ""; rest = seg
+      while (match(rest, /\[\[[^][]*\]\]/)) {
+        p = substr(rest, 1, RSTART-1)
+        link = substr(rest, RSTART, RLENGTH)
+        id = substr(link, 3, RLENGTH-4)
+        if (id in M) link = "[[" M[id] "]]"
+        res = res p link
+        rest = substr(rest, RSTART+RLENGTH)
+      }
+      return res rest
+    }
+    function rewrite_body(line,   parts, np, i, seg, res) {
+      np = split(line, parts, "`")
+      res = ""
+      for (i = 1; i <= np; i++) {
+        seg = parts[i]
+        if (i % 2 == 1) seg = rewrite_wikilinks(seg)
+        res = (i == 1) ? seg : res "`" seg
+      }
+      return res
+    }
+    BEGIN {
+      while ((getline ml < MAP) > 0) {
+        k = index(ml, "\t")
+        if (k > 0) M[substr(ml, 1, k-1)] = substr(ml, k+1)
+      }
+      close(MAP)
+      fmcount = 0; infm = 0; inrel = 0; fence = ""
+    }
+    /^---$/ { fmcount++; print; infm = (fmcount == 1) ? 1 : 0; next }
+    (infm == 1) {
+      if ($0 ~ /^relations:[[:space:]]*$/) { inrel = 1; print; next }
+      if (inrel && $0 !~ /^  /) inrel = 0
+      if (inrel && $0 ~ /^  [a-z-]+:[[:space:]]*\[/) { print rewrite_bucket($0); next }
+      print; next
+    }
+    (fmcount < 2) { print; next }
+    {
+      stripped = $0; sub(/^[ \t]+/, "", stripped)
+      if (fence == "") {
+        if (match(stripped, /^(`{3,}|~{3,})/)) { fence = substr(stripped, RSTART, RLENGTH); print; next }
+        print rewrite_body($0); next
+      } else {
+        fchar = substr(fence, 1, 1); flen = length(fence)
+        if (match(stripped, "^[" fchar "]{" flen ",}[ \t]*$")) fence = ""
+        print; next
+      }
+    }
+  ' "$file"
+}
+
+# cmd_rewrite <mapfile> <file> — internal primitive: print <file> with refs
+# rewritten per <mapfile>. Used by --apply (into a tmp + mv) and exercised
+# directly by the tests; deliberately omitted from usage().
+cmd_rewrite() {
+  local mapfile="${1:-}" file="${2:-}"
+  [[ -f "$mapfile" && -f "$file" ]] || {
+    echo "error: rewrite requires <mapfile> <file>" >&2; return 2; }
+  rewrite_refs "$mapfile" "$file"
+}
+
 usage() {
   printf '%s\n' \
     'migrate.sh — one-shot, opt-in migrations that transform existing issue data.' \
@@ -195,6 +281,7 @@ main() {
   fi
   case "${1:-}" in
     prefix)            shift; cmd_prefix "$@" ;;
+    rewrite)           shift; cmd_rewrite "$@" ;;
     ""|-h|--help|help) usage ;;
     *)
       echo "error: unknown subcommand '$1' (expected: prefix)" >&2
