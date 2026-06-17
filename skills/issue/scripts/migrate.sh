@@ -162,7 +162,17 @@ git_note() {
 # INDEX. Per-file atomic mv; the op is idempotent so an interrupted run is
 # completed by a retry (Tasks 7/8). Mutates the collection.
 apply_plan() {
-  local dir="$1" plan="$2"
+  local dir="$1" plan="$2" expect="${3:-}"
+  # Drift guard (F5): if the caller passed the preview's PLAN-HASH and the
+  # freshly-recomputed plan no longer matches, the collection changed between
+  # preview and apply — abort rather than apply a stale plan.
+  if [[ -n "$expect" ]]; then
+    local cur; cur="$(plan_hash "$plan")"
+    if [[ "$cur" != "$expect" ]]; then
+      echo "error: collection changed since preview (expected PLAN-HASH $expect, got $cur) — re-run the preview" >&2
+      return 3
+    fi
+  fi
   rm -f "$dir"/.migrate.tmp.* "$dir"/.migrate.map.* 2>/dev/null
 
   local mapfile
@@ -175,6 +185,14 @@ apply_plan() {
       rename|collision-resolved) printf '%s\t%s\n' "$old" "$new" >> "$mapfile" ;;
     esac
   done <<<"$plan"
+
+  # Idempotent no-op: nothing to rename means the collection already matches
+  # the active scheme, so touch nothing (AC #5).
+  if [[ ! -s "$mapfile" ]]; then
+    rm -f "$mapfile"
+    printf 'Nothing to migrate — every issue already matches the active scheme.\n'
+    return 0
+  fi
 
   local -a s_tmp=() s_old=() s_new=()
   local f base id finalid tmp
@@ -233,7 +251,7 @@ cmd_prefix() {
   [[ -d "$dir" ]] || { echo "error: not a directory: $dir" >&2; return 1; }
   local plan; plan="$(build_plan "$dir")"
   if (( apply )); then
-    apply_plan "$dir" "$plan"
+    apply_plan "$dir" "$plan" "$expect"
   else
     printf 'Re-derivation plan — %s\n\n' "$dir"
     render_plan "$plan"

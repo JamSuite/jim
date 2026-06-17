@@ -1940,6 +1940,29 @@ issue_id_prefix = \"timestamp\"")
   assert_match "no integrity warnings" '_None' "$(cat "$dir/INDEX.md")"
 }
 
+# spec 023 Task 7: --apply is idempotent (a fully-migrated collection is a
+# silent no-op) and honors the --expect drift guard (mismatch -> exit 3).
+case_issues_migrate_apply_guards() {
+  local dir cfg
+  dir=$(empty_dir migrate_guards)
+  write_issue "$dir" "20260613-alpha" 'title: "A"
+status: open
+num: 1
+created: 2026-06-13T09:00:00Z'
+  cfg=$(fixture migrate-guards.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  run_migrate -c "$cfg" prefix --apply
+  assert_exit "first apply rc" 0 "$RC"
+
+  run_migrate -c "$cfg" prefix --apply
+  assert_exit  "second apply rc"  0 "$RC"
+  assert_match "no-op message" 'Nothing to migrate' "$OUT"
+
+  run_migrate -c "$cfg" prefix --apply --expect WRONGHASH
+  assert_exit "drift exits 3" 3 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
