@@ -10,8 +10,8 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-created: {YYYY-MM-DD}
-updated: {YYYY-MM-DD}
+created: {YYYY-MM-DDThh:mm:ssZ}
+updated: {YYYY-MM-DDThh:mm:ssZ}
 origin: {origin}
 ---
 

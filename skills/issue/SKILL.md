@@ -83,7 +83,7 @@ The capture subject is the remainder of `$ARGUMENTS` after the `add` verb. Compo
 - **priority** — your judgment, choosing from `low | medium | high | critical`. Default to `medium` when context is thin.
 - **labels** — short kebab-case tags inferred from context (e.g., `auth`, `parser`, `flake`). One or more; leave `[]` if nothing strongly applies.
 - **relations** — frontmatter is the canonical structural channel. Populate `blocks` / `depends-on` / `duplicates` here when explicitly known (no other channel carries these types). For `related-to`, either populate the frontmatter list (a structural assertion that obliges the target to reciprocate) **or** drop `[[…]]` wikilinks in the body (an inline prose cross-reference). Both surface as edges in the index Graph; the index dedupes per `(source, type, target)`, so dual-channel authorship produces one edge, not two. When a typed frontmatter relation (`blocks` / `depends-on` / `duplicates`) and a body wikilink both point to the same target, the wikilink is absorbed and does not produce an additional `related-to` edge. To express both a typed relation AND an explicit `related-to` to the same target, populate both frontmatter buckets. For new captures with no explicit cross-reference, leave the four typed lists empty.
-- **created / updated** — today's date (YYYY-MM-DD).
+- **created / updated** — the current second-resolution UTC timestamp resolved in step 4 (`jimfile.sh now`, format `YYYY-MM-DDThh:mm:ssZ`). Both are stamped to that same value at capture; do not hand-write the timestamp.
 - **origin** — relative path to the source artifact when knowable (the spec / plan / brainstorm / research / debug file the discovery surfaced from). For free-form conversation captures with no clear source artifact, use `conversation` as the origin sentinel.
 - **body** — concise prose description. Wikilinks `[[other-issue-slug]]` alias to `related-to` edges at index time; they are treated as one-way "see also" pointers, so only frontmatter `related-to` triggers the bidirectional integrity check. Do **not** embed copy-pasted conversation chunks containing secrets — paraphrase.
 
@@ -112,6 +112,14 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path issue <id>
 ```
 
 If a slug collision would occur (the resolved path already exists), append a numeric discriminator to the slug (`-2`, `-3`, …) so filing always succeeds; the discriminated id appears in the confirm step below. This collision handling is scheme-agnostic — it applies to whatever prefix scheme produced the id (spec 021 AC #6).
+
+Resolve the capture timestamp (used for both `created` and `updated`):
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh now
+```
+
+The script returns the current second-resolution UTC timestamp (`YYYY-MM-DDThh:mm:ssZ`). Write that exact value into both `created` and `updated`. The helper is the deterministic source — never hand-write the timestamp (spec 022).
 
 ### 5. Confirm-or-edit moment
 
