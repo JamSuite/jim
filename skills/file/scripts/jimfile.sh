@@ -188,6 +188,13 @@ is_valid_id() {
 
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
 
+# cmd_valid_id <id> — exit 0 if <id> passes is_valid_id, else 1. Lets callers
+# (e.g. skills/issue/scripts/migrate.sh) validate a full re-derived id through
+# the single security boundary without copying is_valid_id a fourth time.
+cmd_valid_id() {
+  is_valid_id "${1:-}"
+}
+
 cmd_exists() {
   local path="${1:-}"
   if [[ -z "$path" ]]; then
@@ -599,6 +606,7 @@ usage:
   jimfile.sh glob debug                         one path per line
   jimfile.sh glob brainstorms                   one path per line
   jimfile.sh kinds                              valid kinds, no I/O
+  jimfile.sh valid-id <id>                      exit 0 if id passes is_valid_id
   jimfile.sh -c <path> <subcmd>                 forward -c to jimconf.sh
 USAGE
 }
@@ -629,6 +637,7 @@ main() {
     path)    cmd_path    "$@" ;;
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
+    valid-id) cmd_valid_id "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
       usage

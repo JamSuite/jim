@@ -805,6 +805,29 @@ case_jimfile_is_valid_id_triplicate_identical() {
   assert_eq "render.sh copy matches jimfile.sh" "$a" "$c"
 }
 
+# spec 023 Task 1: `valid-id` exposes is_valid_id as a rc-only subcommand so
+# migrate.sh can validate a full re-derived id without a 4th SYNC copy.
+case_jimfile_valid_id_accepts_good() {
+  run_jimfile valid-id "20260613-re-derive-existing-issue-ids"
+  assert_exit "good id rc 0" 0 "$RC"
+}
+
+case_jimfile_valid_id_rejects_traversal() {
+  run_jimfile valid-id "../etc/passwd"
+  assert_exit "traversal rc 1" 1 "$RC"
+}
+
+case_jimfile_valid_id_rejects_empty() {
+  run_jimfile valid-id ""
+  assert_exit "empty rc 1" 1 "$RC"
+}
+
+case_jimfile_valid_id_rejects_overlong() {
+  local long; long="$(head -c 129 /dev/zero | tr '\0' a)"
+  run_jimfile valid-id "$long"
+  assert_exit "129 chars rc 1" 1 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
