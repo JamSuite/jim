@@ -883,7 +883,7 @@ created: 2026-01-02'
   write_issue "$dir" "20260101-early" 'title: "Early"
 status: open
 created: 2026-01-01'
-  run_backfill "$dir"
+  run_backfill num "$dir"
   assert_exit "rc" 0 "$RC"
   assert_eq "early gets 1" "1" "$(num_of "$dir" 20260101-early)"
   assert_eq "late gets 2"  "2" "$(num_of "$dir" 20260102-late)"
@@ -900,7 +900,7 @@ created: 2026-01-03'
   write_issue "$dir" "20260104-needs" 'title: "Needs"
 status: open
 created: 2026-01-04'
-  run_backfill "$dir"
+  run_backfill num "$dir"
   assert_exit "rc" 0 "$RC"
   assert_eq "existing num untouched" "5" "$(num_of "$dir" 20260103-has)"
   assert_eq "new continues from max" "6" "$(num_of "$dir" 20260104-needs)"
@@ -914,7 +914,7 @@ case_issues_backfill_idempotent() {
 status: open
 num: 1
 created: 2026-01-01'
-  run_backfill "$dir"
+  run_backfill num "$dir"
   assert_exit "rc"           0  "$RC"
   assert_eq   "no-op output" "" "$OUT"
   assert_eq   "num unchanged" "1" "$(num_of "$dir" 20260101-a)"
@@ -930,7 +930,7 @@ labels: [bug, auth]
 created: 2026-01-01' '## Description
 
 Body line with a [[20260101-b]] wikilink.'
-  run_backfill "$dir"
+  run_backfill num "$dir"
   local content
   content="$(cat "$dir/20260101-a.md")"
   assert_match "num added"      '^num:[[:space:]]*1'         "$content"
@@ -950,8 +950,23 @@ created: 2026-01-01'
   write_issue "$dir" "20260102-b" 'title: "B"
 status: open
 created: 2026-01-02'
-  run_backfill "$dir"
+  run_backfill num "$dir"
   assert_match "announces 2" 'Assigned display numbers to 2' "$OUT"
+}
+
+# CLI: no subcommand prints help/usage that lists the subcommands.
+case_issues_backfill_no_arg_shows_help() {
+  run_backfill
+  assert_exit  "rc" 0 "$RC"
+  assert_match "lists num"       'num'       "$OUT"
+  assert_match "lists timestamp" 'timestamp' "$OUT"
+}
+
+# CLI: an unknown subcommand errors (rc 2) and names it on stderr.
+case_issues_backfill_unknown_subcommand() {
+  run_backfill bogus
+  assert_exit  "rc" 2 "$RC"
+  assert_match "names the bad subcommand" 'bogus' "$ERR"
 }
 
 # AC: index surfaces num: and created: in the Issues row (spec 019)
@@ -1380,7 +1395,7 @@ status: open
 num: 1
 created: 2026-06-13
 updated: 2026-06-13' "Body stays."
-  run_backfill normalize "$dir"
+  run_backfill timestamp "$dir"
   assert_exit  "rc" 0 "$RC"
   assert_eq    "created -> day-start" "2026-06-13T00:00:00Z" "$(read_fm_field "$dir/20260613-x.md" created)"
   assert_eq    "updated -> day-start" "2026-06-13T00:00:00Z" "$(read_fm_field "$dir/20260613-x.md" updated)"
@@ -1397,8 +1412,8 @@ status: open
 num: 1
 created: 2026-06-13
 updated: 2026-06-13'
-  run_backfill normalize "$dir"
-  run_backfill normalize "$dir"
+  run_backfill timestamp "$dir"
+  run_backfill timestamp "$dir"
   assert_exit "rc" 0 "$RC"
   assert_eq   "second run silent"  ""                      "$OUT"
   assert_eq   "created stable"     "2026-06-13T00:00:00Z"  "$(read_fm_field "$dir/20260613-x.md" created)"
@@ -1416,7 +1431,7 @@ created: 2026-06-13
 updated: 2026-06-13
 labels: [a, b]' "Body line one.
 Body line two."
-  run_backfill normalize "$dir"
+  run_backfill timestamp "$dir"
   assert_exit  "rc" 0 "$RC"
   f="$dir/20260613-x.md"
   assert_eq    "title kept"    '"Keep Me"'      "$(read_fm_field "$f" title)"
@@ -1435,7 +1450,7 @@ status: open
 num: 1
 created: not-a-date
 updated: 2026-06-13'
-  run_backfill normalize "$dir"
+  run_backfill timestamp "$dir"
   assert_exit  "rc" 0 "$RC"
   assert_eq    "malformed created untouched" "not-a-date"            "$(read_fm_field "$dir/20260613-x.md" created)"
   assert_eq    "updated normalized"          "2026-06-13T00:00:00Z"  "$(read_fm_field "$dir/20260613-x.md" updated)"

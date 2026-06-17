@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
-# skills/issue/scripts/backfill.sh — one-shot display-ordinal migration.
+# skills/issue/scripts/backfill.sh — one-shot, opt-in migrations that fill in
+# missing issue data: `num` display ordinals (spec 019) and `created`/`updated`
+# second-resolution timestamps (spec 022). Subcommands: `num`, `timestamp`.
 #
 # PURPOSE
 #   Assign a `num:` display ordinal to every issue file that lacks one,
@@ -18,21 +20,23 @@
 #   Line-oriented only; never `source`/`eval`s an issue file.
 #
 # CLI SUMMARY
-#   bash backfill.sh [<issues_dir>]
-#     issues_dir default: jimconf.sh get issues
-#     Prints "Assigned display numbers to N issue(s)." iff N>0; otherwise
-#     silent (idempotent no-op when every issue already has a num).
-#   bash backfill.sh normalize [<issues_dir>]
-#     One-shot, opt-in: rewrite date-only created/updated to
-#     YYYY-MM-DDT00:00:00Z (a day-start placeholder, not a recovered time),
-#     atomically per file. Idempotent — already-timestamped values are left
-#     untouched; malformed values are skipped with a warning. Prints
-#     "Normalized N issue(s) ..." iff N>0; otherwise silent (spec 022).
+#   bash backfill.sh
+#     No subcommand: print help/usage listing the subcommands.
+#   bash backfill.sh num [<issues_dir>]
+#     Assign a `num:` display ordinal to every issue lacking one, in
+#     created-ascending order. Prints "Assigned display numbers to N issue(s)."
+#     iff N>0; otherwise silent (idempotent no-op). (spec 019)
+#   bash backfill.sh timestamp [<issues_dir>]
+#     Rewrite date-only created/updated to YYYY-MM-DDT00:00:00Z (a day-start
+#     placeholder, not a recovered time), atomically per file. Idempotent —
+#     already-timestamped values untouched; malformed values skipped with a
+#     warning. Prints "Normalized N issue(s) ..." iff N>0; else silent. (spec 022)
+#   issues_dir default: jimconf.sh get issues
 #
 # EXIT CODES
-#   0  Success (including the no-op case).
+#   0  Success (including the no-op and help cases).
 #   1  IO failure (cannot write tmp, atomic rename failed).
-#   2  Malformed invocation (empty issues_dir).
+#   2  Malformed invocation (unknown subcommand, empty issues_dir).
 #
 
 set -uo pipefail
@@ -149,7 +153,7 @@ cmd_assign_numbers() {
   return 0
 }
 
-cmd_normalize() {
+cmd_timestamp() {
   local dir
   dir="$(resolve_dir "${1:-}")" || return $?
   [[ -d "$dir" ]] || return 0
@@ -196,13 +200,32 @@ cmd_normalize() {
   return 0
 }
 
+usage() {
+  printf '%s\n' \
+    'backfill.sh — one-shot, opt-in migrations that fill in missing issue data.' \
+    '' \
+    '  bash backfill.sh num [<issues_dir>]' \
+    '      Assign a display `num:` ordinal to every issue lacking one, in' \
+    '      created-ascending order. Idempotent; announces a count iff any.' \
+    '' \
+    '  bash backfill.sh timestamp [<issues_dir>]' \
+    '      Rewrite legacy date-only created/updated to a day-start UTC timestamp' \
+    '      (YYYY-MM-DDT00:00:00Z placeholder). Idempotent; announces a count iff any.' \
+    '' \
+    '  issues_dir default: jimconf.sh get issues'
+}
+
 main() {
-  if [[ "${1:-}" == "normalize" ]]; then
-    shift
-    cmd_normalize "$@"
-  else
-    cmd_assign_numbers "$@"
-  fi
+  case "${1:-}" in
+    num)               shift; cmd_assign_numbers "$@" ;;
+    timestamp)         shift; cmd_timestamp "$@" ;;
+    ""|-h|--help|help) usage ;;
+    *)
+      echo "error: unknown subcommand '$1' (expected: num | timestamp)" >&2
+      usage >&2
+      return 2
+      ;;
+  esac
 }
 
 main "$@"
