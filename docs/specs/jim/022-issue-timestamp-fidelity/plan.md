@@ -2,7 +2,7 @@
 title: "Second-resolution timestamps for issue created/updated"
 spec: "docs/specs/jim/022-issue-timestamp-fidelity/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Second-resolution timestamps for issue created/updated — Plan
@@ -132,28 +132,28 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] Add the `now` subcommand to `skills/file/scripts/jimfile.sh` — `now_utc_iso8601()` emitting the hardcoded `date -u +%Y-%m-%dT%H:%M:%SZ` (no argument), a `cmd_now`, a `now` case in `main()`, and a usage line. Add `case_jimfile_now_utc_iso8601` to `tests/jimfile.sh` asserting the output matches the full-timestamp shape. (AC #1, AC #2, F2)
+1. [x] Add the `now` subcommand to `skills/file/scripts/jimfile.sh` — `now_utc_iso8601()` emitting the hardcoded `date -u +%Y-%m-%dT%H:%M:%SZ` (no argument), a `cmd_now`, a `now` case in `main()`, and a usage line. Add `case_jimfile_now_utc_iso8601` to `tests/jimfile.sh` asserting the output matches the full-timestamp shape. (AC #1, AC #2, F2)
    **Verify:** `bash /mnt/src/jim/skills/file/scripts/jimfile.sh now | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' && bash /mnt/src/jim/skills/meta-test/scripts/run.sh jimfile`
 
-2. [ ] Update `skills/issue/assets/issue-template.md` `created`/`updated` placeholders to `{YYYY-MM-DDThh:mm:ssZ}`, and update `skills/issue/SKILL.md` step 3 so the add flow resolves the value from `jimfile.sh now` (fenced bash, substituted into the draft). (AC #1, AC #2)
+2. [x] Update `skills/issue/assets/issue-template.md` `created`/`updated` placeholders to `{YYYY-MM-DDThh:mm:ssZ}`, and update `skills/issue/SKILL.md` step 3 so the add flow resolves the value from `jimfile.sh now` (fenced bash, substituted into the draft). (AC #1, AC #2)
    **Verify:** `grep -q 'YYYY-MM-DDThh:mm:ssZ' /mnt/src/jim/skills/issue/assets/issue-template.md && grep -q 'jimfile.sh now' /mnt/src/jim/skills/issue/SKILL.md`
 
-3. [ ] Document the `updated`-on-edit convention in `skills/issue/SKILL.md`: when an issue is modified through jim's tooling, refresh `updated` by running `jimfile.sh now` and writing the result into the frontmatter (degrades gracefully on out-of-band edits). (AC #7)
-   **Verify:** `grep -qiE 'refresh.*updated|updated.*jimfile.sh now' /mnt/src/jim/skills/issue/SKILL.md`
+3. [x] Document the `updated`-on-edit convention in `skills/issue/SKILL.md`: when an issue is modified through jim's tooling, refresh `updated` by running `jimfile.sh now` and writing the result into the frontmatter (degrades gracefully on out-of-band edits). (AC #7)
+   **Verify:** `grep -q 'no edit verb' /mnt/src/jim/skills/issue/SKILL.md && grep -qiE 'refresh its .updated. field by running' /mnt/src/jim/skills/issue/SKILL.md`
 
-4. [ ] Add the shape guard to `skills/issue/scripts/render.sh::read_issue_rows`: a non-conforming `created` degrades to its leading date prefix for sort (else empty) and `-` for display, and never enters the TSV raw. Add `case_issues_render_list_mixed_timestamp_sort` (two same-day issues differing only in sub-day time sort in true order; a date-only issue orders as that day's start) and `case_issues_render_list_malformed_created_degrades`. (AC #3, AC #4, AC #8)
+4. [x] Add the shape guard to `skills/issue/scripts/render.sh::read_issue_rows`: a non-conforming `created` degrades to its leading date prefix for sort (else empty) and `-` for display, and never enters the TSV raw. Add `case_issues_render_list_mixed_timestamp_sort` (two same-day issues differing only in sub-day time sort in true order; a date-only issue orders as that day's start) and `case_issues_render_list_malformed_created_degrades`. (AC #3, AC #4, AC #8)
    **Verify:** `bash /mnt/src/jim/skills/meta-test/scripts/run.sh issues`
 
-5. [ ] Add the shape guard to `skills/issue/scripts/index.sh::parse_scalar_fields` (or its consumer): a non-conforming `created`/`updated` emits an Integrity Warning naming the slug and is not stored raw into the `INDEX.md` row. Add `case_issues_index_malformed_created_warns`. (AC #8)
+5. [x] Add the shape guard to `skills/issue/scripts/index.sh::parse_scalar_fields` (or its consumer): a non-conforming `created`/`updated` emits an Integrity Warning naming the slug and is not stored raw into the `INDEX.md` row. Add `case_issues_index_malformed_created_warns`. (AC #8)
    **Verify:** `bash /mnt/src/jim/skills/meta-test/scripts/run.sh issues`
 
-6. [ ] Add the `normalize [<dir>]` subcommand to `skills/issue/scripts/backfill.sh` (default invocation keeps `num`-assignment): rewrite date-only `created`/`updated` to `YYYY-MM-DDT00:00:00Z` via the existing per-file `mktemp + awk + mv`, skip already-timestamped values (idempotent), skip-and-warn malformed values, and announce N normalized with the day-start-placeholder caveat. Add tests mirroring the existing backfill block: assigns/idempotent/preserves-other-content/announces/skips-malformed plus an F3 round-trip case. (AC #5, AC #8, F3)
+6. [x] Add the `normalize [<dir>]` subcommand to `skills/issue/scripts/backfill.sh` (default invocation keeps `num`-assignment): rewrite date-only `created`/`updated` to `YYYY-MM-DDT00:00:00Z` via the existing per-file `mktemp + awk + mv`, skip already-timestamped values (idempotent), skip-and-warn malformed values, and announce N normalized with the day-start-placeholder caveat. Add tests mirroring the existing backfill block: assigns/idempotent/preserves-other-content/announces/skips-malformed plus an F3 round-trip case. (AC #5, AC #8, F3)
    **Verify:** `bash /mnt/src/jim/skills/meta-test/scripts/run.sh issues`
 
-7. [ ] Ensure the timestamp-shape check is byte-identical across `render.sh`, `index.sh`, and `backfill.sh`: mark each copy with a `# SYNC:` comment and add `case_issues_timestamp_shape_triplicate_identical` (mirroring `tests/jimfile.sh::case_jimfile_is_valid_id_triplicate_identical`) asserting the three copies match exactly. (AC #8, Finding F6)
+7. [x] Ensure the timestamp-shape check is byte-identical across `render.sh`, `index.sh`, and `backfill.sh`: mark each copy with a `# SYNC:` comment and add `case_issues_timestamp_shape_triplicate_identical` (mirroring `tests/jimfile.sh::case_jimfile_is_valid_id_triplicate_identical`) asserting the three copies match exactly. (AC #8, Finding F6)
    **Verify:** `bash /mnt/src/jim/skills/meta-test/scripts/run.sh issues`
 
-8. [ ] Run the full suite to confirm no regression in the existing date-only behavior. (AC #6)
+8. [x] Run the full suite to confirm no regression in the existing date-only behavior. (AC #6)
    **Verify:** `bash /mnt/src/jim/skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
