@@ -1424,6 +1424,25 @@ updated: 2026-06-13'
   assert_match "warns on malformed"          'not a valid date or timestamp' "$ERR"
 }
 
+# extract_ts_shape <script> — the canonical timestamp-shape pattern marked with
+# `# SYNC(ts-shape): <pattern>`, indentation-independent (Finding F6).
+extract_ts_shape() {
+  grep -o 'SYNC(ts-shape): .*' "$1" | head -1 | sed 's/^SYNC(ts-shape): //'
+}
+
+# AC #8 / Finding F6: the timestamp-shape pattern is byte-identical across the
+# three guard sites (render.sh, index.sh, backfill.sh) — guard against drift,
+# mirroring case_jimfile_is_valid_id_triplicate_identical.
+case_issues_timestamp_shape_triplicate_identical() {
+  local a b c
+  a="$(extract_ts_shape "$REPO_ROOT/skills/issue/scripts/render.sh")"
+  b="$(extract_ts_shape "$REPO_ROOT/skills/issue/scripts/index.sh")"
+  c="$(extract_ts_shape "$REPO_ROOT/skills/issue/scripts/backfill.sh")"
+  assert_eq "render marker present" "1" "$([[ -n "$a" ]] && echo 1 || echo 0)"
+  assert_eq "render == index"       "$a" "$b"
+  assert_eq "render == backfill"    "$a" "$c"
+}
+
 # AC: issue_list_order = "asc" flips the sort direction (spec 019 follow-up).
 # With num sort + asc, the lowest ordinal (#1) appears before the highest (#3).
 case_issues_render_list_order_asc() {
