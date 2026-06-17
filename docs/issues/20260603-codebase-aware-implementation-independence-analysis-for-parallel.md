@@ -10,8 +10,8 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-created: 2026-06-03
-updated: 2026-06-03
+created: 2026-06-03T00:00:00Z
+updated: 2026-06-03T00:00:00Z
 origin: docs/brainstorms/20260603-issue-command-consolidation.md
 ---
 

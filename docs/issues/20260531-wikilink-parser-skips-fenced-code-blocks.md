@@ -10,8 +10,8 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-created: 2026-05-31
-updated: 2026-05-31
+created: 2026-05-31T00:00:00Z
+updated: 2026-05-31T00:00:00Z
 origin: conversation
 ---
 

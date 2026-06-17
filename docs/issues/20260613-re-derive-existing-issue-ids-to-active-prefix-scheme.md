@@ -10,8 +10,8 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-created: 2026-06-13
-updated: 2026-06-13
+created: 2026-06-13T00:00:00Z
+updated: 2026-06-13T00:00:00Z
 origin: docs/specs/jim/021-issue-id-prefix/spec.md
 ---
 

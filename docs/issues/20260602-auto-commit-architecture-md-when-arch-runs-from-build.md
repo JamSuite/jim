@@ -10,8 +10,8 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-created: 2026-06-02
-updated: 2026-06-02
+created: 2026-06-02T00:00:00Z
+updated: 2026-06-02T00:00:00Z
 origin: skills/build/SKILL.md
 ---
 
