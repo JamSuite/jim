@@ -828,6 +828,68 @@ case_jimfile_valid_id_rejects_overlong() {
   assert_exit "129 chars rc 1" 1 "$RC"
 }
 
+# spec 023 Task 2: prefix-from re-derives the active scheme's prefix from an
+# issue's OWN stored created/num, never the run clock.
+case_jimfile_prefix_from_date() {
+  local cfg; cfg=$(fixture pf-date.toml 'issue_id_prefix = "date"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "date prefix from created" "20260613" "$OUT"
+}
+
+case_jimfile_prefix_from_timestamp() {
+  local cfg; cfg=$(fixture pf-ts.toml 'issue_id_prefix = "timestamp"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "timestamp prefix from created" "20260613T144530" "$OUT"
+}
+
+# AC #3: a normalized day-start placeholder re-derives literally to T000000.
+case_jimfile_prefix_from_timestamp_daystart() {
+  local cfg; cfg=$(fixture pf-ts2.toml 'issue_id_prefix = "timestamp"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T00:00:00Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "day-start literal" "20260613T000000" "$OUT"
+}
+
+case_jimfile_prefix_from_sequential() {
+  local cfg; cfg=$(fixture pf-seq.toml 'issue_id_prefix = "sequential"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "sequential from num" "0007" "$OUT"
+}
+
+case_jimfile_prefix_from_project() {
+  local cfg; cfg=$(fixture pf-proj.toml 'issue_id_prefix = "project"
+issue_id_project = "JIM"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "project tag" "JIM" "$OUT"
+}
+
+case_jimfile_prefix_from_missing_created_unmigratable() {
+  local cfg; cfg=$(fixture pf-miss.toml 'issue_id_prefix = "date"')
+  run_jimfile -c "$cfg" prefix-from "" 7
+  assert_exit  "rc 1" 1 "$RC"
+  assert_match "reason" 'un-migratable' "$ERR"
+}
+
+# F6: a present-but-non-conforming created is un-migratable, not reshaped.
+case_jimfile_prefix_from_malformed_created_unmigratable() {
+  local cfg; cfg=$(fixture pf-bad.toml 'issue_id_prefix = "date"')
+  run_jimfile -c "$cfg" prefix-from "2026-06" 7
+  assert_exit  "rc 1" 1 "$RC"
+  assert_match "reason" 'un-migratable' "$ERR"
+}
+
+# DD 9: a custom {date:...} template can't be reshaped without date -d.
+case_jimfile_prefix_from_custom_date_template_unmigratable() {
+  local cfg; cfg=$(fixture pf-tmpl.toml 'issue_id_prefix = "X-{date:%Y%j}"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit  "rc 1" 1 "$RC"
+  assert_match "reason" 'un-migratable' "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

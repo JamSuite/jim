@@ -417,6 +417,67 @@ resolve_issue_prefix() {
   fi
 }
 
+# cmd_prefix_from <created_iso> <num>
+#   Re-derive the active issue_id_prefix from an issue's OWN stored data (spec
+#   023): `created` -> date/timestamp prefix, `num` -> sequential, the configured
+#   tag -> project. Renders only from stored inputs (never the run clock) and
+#   validates the result via is_valid_id. Prints the prefix on success. rc 1 +
+#   "un-migratable: <reason>" when the active scheme needs an input the issue
+#   lacks (missing/non-conforming `created`, absent `num`/tag) or for a custom
+#   {date:...} template that can't be reshaped without `date -d` (non-POSIX).
+# SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
+cmd_prefix_from() {
+  local created="${1:-}" num="${2:-}" scheme project prefix date_part
+  scheme="$(jimconf_get issue_id_prefix)"
+  case "$scheme" in
+    date|timestamp)
+      if [[ ! "$created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$ ]]; then
+        echo "un-migratable: created \"$created\" is not a valid date or timestamp" >&2
+        return 1
+      fi
+      date_part="${created:0:4}${created:5:2}${created:8:2}"
+      if [[ "$scheme" == date ]]; then
+        prefix="$date_part"
+      elif [[ "$created" == *T*Z ]]; then
+        prefix="${date_part}T${created:11:2}${created:14:2}${created:17:2}"
+      else
+        prefix="${date_part}T000000"        # date-only -> day-start (AC #3)
+      fi
+      ;;
+    sequential)
+      [[ "$num" =~ ^[0-9]+$ ]] || {
+        echo "un-migratable: num \"$num\" is not a display ordinal" >&2; return 1; }
+      prefix="$(render_template '{seq:04}' "$num")" || {
+        echo "un-migratable: sequential render failed" >&2; return 1; }
+      ;;
+    project)
+      project="$(jimconf_get issue_id_project)"
+      [[ -n "$project" ]] || {
+        echo "un-migratable: issue_id_prefix=project but issue_id_project is empty" >&2; return 1; }
+      prefix="$project"
+      ;;
+    *'{date:'*)
+      echo "un-migratable: custom {date:...} template can't be re-derived without date -d (POSIX)" >&2
+      return 1
+      ;;
+    *'{'*)
+      [[ "$num" =~ ^[0-9]+$ ]] || num=0
+      prefix="$(render_template "$scheme" "$num")" || {
+        echo "un-migratable: custom template render failed" >&2; return 1; }
+      ;;
+    *)
+      echo "un-migratable: unknown issue_id_prefix scheme \"$scheme\"" >&2
+      return 1
+      ;;
+  esac
+  if is_valid_id "$prefix" 2>/dev/null; then
+    printf '%s\n' "$prefix"
+  else
+    echo "un-migratable: re-derived prefix \"$prefix\" failed id validation" >&2
+    return 1
+  fi
+}
+
 # cmd_path <kind> <args...>  |  cmd_path <key>
 #   Two forms, dispatched by arity:
 #     Single-arg form (D3): `path <key>` returns the configured path for a
@@ -607,6 +668,7 @@ usage:
   jimfile.sh glob brainstorms                   one path per line
   jimfile.sh kinds                              valid kinds, no I/O
   jimfile.sh valid-id <id>                      exit 0 if id passes is_valid_id
+  jimfile.sh prefix-from <created> <num>        re-derive active prefix (spec 023)
   jimfile.sh -c <path> <subcmd>                 forward -c to jimconf.sh
 USAGE
 }
@@ -638,6 +700,7 @@ main() {
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
     valid-id) cmd_valid_id "$@" ;;
+    prefix-from) cmd_prefix_from "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
       usage
