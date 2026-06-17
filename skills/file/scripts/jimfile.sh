@@ -128,6 +128,15 @@ today_yyyymmdd() {
   date +%Y%m%d
 }
 
+# now_utc_iso8601
+#   Print the current second-resolution UTC timestamp as ISO 8601 with a Z
+#   suffix (e.g. 2026-06-13T14:45:30Z). Single source of truth for issue
+#   created/updated stamping. The format is a hardcoded literal — it takes no
+#   argument and is never config-driven (spec 022 security.md Finding 2).
+now_utc_iso8601() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
 # is_valid_slug <slug>
 #   AC-C7 validation: slug must be lowercase alnum + dash only, alnum-start,
 #   non-empty. Rejects path separators (/, \), '..', leading dot, control
@@ -222,6 +231,10 @@ cmd_slug() {
 
 cmd_date() {
   today_yyyymmdd
+}
+
+cmd_now() {
+  now_utc_iso8601
 }
 
 cmd_next_id() {
@@ -573,6 +586,7 @@ usage:
                                                 else literal "NOT_FOUND"
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
+  jimfile.sh now                                now as YYYY-MM-DDThh:mm:ssZ (UTC)
   jimfile.sh next-id <group>                    next zero-padded spec id
   jimfile.sh next-num issue                     next display ordinal (max+1)
   jimfile.sh path <key>                         configured path for <key>
@@ -609,6 +623,7 @@ main() {
     get)     cmd_get     "$@" ;;
     slug)    cmd_slug    "$@" ;;
     date)    cmd_date ;;
+    now)     cmd_now ;;
     next-id)  cmd_next_id  "$@" ;;
     next-num) cmd_next_num "$@" ;;
     path)    cmd_path    "$@" ;;

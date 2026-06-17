@@ -127,6 +127,13 @@ case_jimfile_date_yyyymmdd() {
   assert_match "8 digits" '^[0-9]{8}$' "$OUT"
 }
 
+# AC: now prints the current second-resolution UTC timestamp (ISO 8601 Z)
+case_jimfile_now_utc_iso8601() {
+  run_jimfile now
+  assert_exit  "rc" 0 "$RC"
+  assert_match "iso8601 utc" '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$OUT"
+}
+
 # AC: next-id for an empty group returns 001 (Spec AC: start at 001 if empty)
 case_jimfile_next_id_empty_group_returns_001() {
   local specs cfg
