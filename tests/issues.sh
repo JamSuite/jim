@@ -17,6 +17,7 @@ source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 SCRIPT_INDEX="$REPO_ROOT/skills/issue/scripts/index.sh"
 SCRIPT_RENDER="$REPO_ROOT/skills/issue/scripts/render.sh"
 SCRIPT_BACKFILL="$REPO_ROOT/skills/issue/scripts/backfill.sh"
+SCRIPT_MIGRATE="$REPO_ROOT/skills/issue/scripts/migrate.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -42,6 +43,13 @@ run_render() {
 run_backfill() {
   local err_file="$TMP_BASE/.err"
   OUT="$(bash "$SCRIPT_BACKFILL" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+run_migrate() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(bash "$SCRIPT_MIGRATE" "$@" 2> "$err_file")"
   RC=$?
   ERR="$(cat "$err_file")"
 }
@@ -1783,6 +1791,50 @@ status: open'
   assert_exit  "rc" 0 "$RC"
   assert_match "renders title" 'Wire consumers' "$OUT"
   assert_match "renders slug"  'JIM-wire-consumers' "$OUT"
+}
+
+# spec 023 Task 3: migrate.sh no-arg prints help; `prefix` classifies each
+# issue (rename / skip-conforming / skip-unmigratable) and resolves collisions
+# with the -2/-3 discriminator over the re-derived map.
+case_issues_migrate_prefix_classifies() {
+  local dir cfg
+  dir=$(empty_dir migrate_classify)
+  write_issue "$dir" "20260613-alpha" 'title: "A"
+status: open
+num: 1
+created: 2026-06-13T09:00:00Z'
+  write_issue "$dir" "20260613T090000-beta" 'title: "B"
+status: open
+num: 2
+created: 2026-06-13T09:00:00Z'
+  write_issue "$dir" "20260613-bad" 'title: "C"
+status: open
+num: 3
+created: notadate'
+  write_issue "$dir" "0007-dup" 'title: "D"
+status: open
+num: 4
+created: 2026-06-13T12:00:00Z'
+  write_issue "$dir" "20260613-dup" 'title: "E"
+status: open
+num: 5
+created: 2026-06-13T12:00:00Z'
+  cfg=$(fixture migrate-classify.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  run_migrate
+  assert_exit  "help rc 0"  0 "$RC"
+  assert_match "help lists prefix" 'prefix' "$OUT"
+
+  run_migrate -c "$cfg" prefix
+  assert_exit  "prefix rc 0" 0 "$RC"
+  assert_match "renames alpha"     '20260613T090000-alpha' "$OUT"
+  assert_match "skips conforming"  '20260613T090000-beta'  "$OUT"
+  assert_match "skips bad"         '20260613-bad'          "$OUT"
+  assert_match "collision suffix"  '20260613T120000-dup-2' "$OUT"
+  assert_match "rename count"      '3 to rename'           "$OUT"
+  assert_match "skip count"        '2 to skip'             "$OUT"
+  assert_match "collision count"   '1 collision'           "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
