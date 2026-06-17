@@ -156,22 +156,90 @@ git_note() {
   fi
 }
 
+# apply_plan <dir> <plan> — stage every file with its inbound refs rewritten,
+# then commit: remove rename sources first (so a target held by a renamed-away
+# file is free), atomically mv each staged tmp to its final name, regenerate
+# INDEX. Per-file atomic mv; the op is idempotent so an interrupted run is
+# completed by a retry (Tasks 7/8). Mutates the collection.
+apply_plan() {
+  local dir="$1" plan="$2"
+  rm -f "$dir"/.migrate.tmp.* "$dir"/.migrate.map.* 2>/dev/null
+
+  local mapfile
+  mapfile="$(mktemp "$dir/.migrate.map.XXXXXX")" || {
+    echo "error: cannot create tmp in $dir" >&2; return 1; }
+  local action old new reason
+  while IFS=$'\t' read -r action old new reason; do
+    [[ -z "$action" ]] && continue
+    case "$action" in
+      rename|collision-resolved) printf '%s\t%s\n' "$old" "$new" >> "$mapfile" ;;
+    esac
+  done <<<"$plan"
+
+  local -a s_tmp=() s_old=() s_new=()
+  local f base id finalid tmp
+  for f in "$dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ "$base" == "$INDEX_FILENAME" ]] && continue
+    [[ "$base" == .* ]] && continue
+    id="${base%.md}"
+    finalid="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' "$mapfile")"
+    [[ -n "$finalid" ]] || finalid="$id"
+    tmp="$(mktemp "$dir/.migrate.tmp.XXXXXX")" || {
+      echo "error: cannot create tmp in $dir" >&2; rm -f "$mapfile"; return 1; }
+    if ! rewrite_refs "$mapfile" "$f" > "$tmp"; then
+      echo "error: rewrite failed for $f" >&2; rm -f "$tmp" "$mapfile"; return 1
+    fi
+    s_tmp+=("$tmp"); s_old+=("$f"); s_new+=("$dir/$finalid.md")
+  done
+
+  local i
+  for i in "${!s_tmp[@]}"; do
+    [[ "${s_old[$i]}" != "${s_new[$i]}" ]] && rm -f "${s_old[$i]}"
+  done
+  for i in "${!s_tmp[@]}"; do
+    if ! mv "${s_tmp[$i]}" "${s_new[$i]}"; then
+      echo "error: atomic rename failed for ${s_new[$i]}" >&2; rm -f "$mapfile"; return 1
+    fi
+  done
+  rm -f "$mapfile"
+
+  bash "$HERE/index.sh" "$dir" >/dev/null 2>&1
+
+  local renamed=0 skipped=0 collisions=0
+  while IFS=$'\t' read -r action old new reason; do
+    [[ -z "$action" ]] && continue
+    case "$action" in
+      rename)             renamed=$((renamed+1)) ;;
+      collision-resolved) renamed=$((renamed+1)); collisions=$((collisions+1)) ;;
+      skip-conforming|skip-unmigratable) skipped=$((skipped+1)) ;;
+    esac
+  done <<<"$plan"
+  printf 'Re-derived to the active scheme: %d renamed (%d collision-resolved), %d skipped.\n' \
+    "$renamed" "$collisions" "$skipped"
+}
+
 cmd_prefix() {
-  local dir=""
+  local dir="" apply=0 expect=""
   while (( $# )); do
     case "$1" in
-      --apply)  shift ;;
-      --expect) shift 2 2>/dev/null || shift $# ;;
+      --apply)  apply=1; shift ;;
+      --expect) expect="${2:-}"; shift 2 2>/dev/null || shift $# ;;
       *)        dir="$1"; shift ;;
     esac
   done
   dir="$(resolve_dir "$dir")" || return $?
   [[ -d "$dir" ]] || { echo "error: not a directory: $dir" >&2; return 1; }
   local plan; plan="$(build_plan "$dir")"
-  printf 'Re-derivation plan — %s\n\n' "$dir"
-  render_plan "$plan"
-  printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
-  git_note "$dir"
+  if (( apply )); then
+    apply_plan "$dir" "$plan"
+  else
+    printf 'Re-derivation plan — %s\n\n' "$dir"
+    render_plan "$plan"
+    printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
+    git_note "$dir"
+  fi
 }
 
 # rewrite_refs <mapfile> <file> — print <file> with every reference whose id is

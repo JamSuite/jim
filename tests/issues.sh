@@ -1899,6 +1899,47 @@ MD
   assert_match "fenced link untouched"     'code \[\[20260613-foo\]\] stays'     "$OUT"
 }
 
+# spec 023 Task 6: --apply renames files, rewrites cross-file refs, and
+# regenerates INDEX with no new integrity warnings.
+case_issues_migrate_apply_core() {
+  local dir cfg
+  dir=$(empty_dir migrate_apply)
+  write_issue "$dir" "20260613-aaa" 'title: "A"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: [20260613-bbb]
+  related-to: []
+  duplicates: []
+created: 2026-06-13T09:00:00Z'
+  write_issue "$dir" "20260613-bbb" 'title: "B"
+status: open
+num: 2
+relations:
+  blocks: [20260613-aaa]
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z'
+  cfg=$(fixture migrate-apply.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  run_migrate -c "$cfg" prefix --apply
+  assert_exit "rc" 0 "$RC"
+  local aexists=no bexists=no aold=present
+  [[ -f "$dir/20260613T090000-aaa.md" ]] && aexists=yes
+  [[ -f "$dir/20260613T100000-bbb.md" ]] && bexists=yes
+  [[ -f "$dir/20260613-aaa.md" ]] || aold=gone
+  assert_eq "A renamed"  "yes"  "$aexists"
+  assert_eq "B renamed"  "yes"  "$bexists"
+  assert_eq "A old gone" "gone" "$aold"
+  assert_match "A ref rewritten" 'depends-on: \[20260613T100000-bbb\]' "$(cat "$dir/20260613T090000-aaa.md")"
+  assert_match "B ref rewritten" 'blocks: \[20260613T090000-aaa\]'     "$(cat "$dir/20260613T100000-bbb.md")"
+  assert_match "INDEX has new id"      '20260613T090000-aaa' "$(cat "$dir/INDEX.md")"
+  assert_match "no integrity warnings" '_None' "$(cat "$dir/INDEX.md")"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
