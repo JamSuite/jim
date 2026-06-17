@@ -137,6 +137,25 @@ render_plan() {
   printf '\n  %d to rename · %d to skip · %d collisions\n' "$renames" "$skips" "$collisions"
 }
 
+# plan_hash <plan-rows> — a stable fingerprint of the plan for drift detection.
+# cksum is POSIX/portable; we only need to catch accidental drift between the
+# preview and a later --apply, not adversarial tampering.
+plan_hash() {
+  printf '%s' "$1" | cksum | cut -d' ' -f1
+}
+
+# git_note <dir> — read-only VCS recoverability note for the preview. The
+# migration is destructive and recovery is via the developer's version control
+# (git ops stay out of scope, spec 023). Flags an uncommitted collection when
+# detectable, via a read-only `git status` — never a write.
+git_note() {
+  local dir="$1" st
+  printf '\nThis migration is destructive — recovery is via your version control.\n'
+  if st="$(git -C "$dir" status --porcelain -- . 2>/dev/null)" && [[ -n "$st" ]]; then
+    printf 'Note: the issues collection has uncommitted changes; commit a clean checkpoint before --apply.\n'
+  fi
+}
+
 cmd_prefix() {
   local dir=""
   while (( $# )); do
@@ -148,8 +167,11 @@ cmd_prefix() {
   done
   dir="$(resolve_dir "$dir")" || return $?
   [[ -d "$dir" ]] || { echo "error: not a directory: $dir" >&2; return 1; }
+  local plan; plan="$(build_plan "$dir")"
   printf 'Re-derivation plan — %s\n\n' "$dir"
-  render_plan "$(build_plan "$dir")"
+  render_plan "$plan"
+  printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
+  git_note "$dir"
 }
 
 usage() {

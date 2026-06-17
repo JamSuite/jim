@@ -1837,6 +1837,32 @@ issue_id_prefix = \"timestamp\"")
   assert_match "collision count"   '1 collision'           "$OUT"
 }
 
+# spec 023 Task 4: the preview adds a stable PLAN-HASH and a read-only VCS note,
+# and mutates nothing.
+case_issues_migrate_prefix_preview() {
+  local dir cfg before after h1 h2
+  dir=$(empty_dir migrate_preview)
+  write_issue "$dir" "20260613-alpha" 'title: "A"
+status: open
+num: 1
+created: 2026-06-13T09:00:00Z'
+  cfg=$(fixture migrate-preview.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  before="$(ls "$dir")"
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "VCS note"  'version control' "$OUT"
+  assert_match "plan hash" 'PLAN-HASH:'      "$OUT"
+  after="$(ls "$dir")"
+  assert_eq "preview mutates nothing" "$before" "$after"
+
+  h1="$(printf '%s\n' "$OUT" | grep '^PLAN-HASH:')"
+  run_migrate -c "$cfg" prefix
+  h2="$(printf '%s\n' "$OUT" | grep '^PLAN-HASH:')"
+  assert_eq "plan hash stable across runs" "$h1" "$h2"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
