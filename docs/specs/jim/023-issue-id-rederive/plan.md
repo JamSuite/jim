@@ -2,7 +2,7 @@
 title: "Re-derive existing issue ids to the active prefix scheme"
 spec: "spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Re-derive existing issue ids to the active prefix scheme — Plan
@@ -146,31 +146,31 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] Add `jimfile.sh valid-id <id>` subcommand wrapping `is_valid_id` (rc 0/1).
+1. [x] Add `jimfile.sh valid-id <id>` subcommand wrapping `is_valid_id` (rc 0/1).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile_valid_id` (accepts a good id; rejects `../x`, an empty id, and a 129-char id).
 
-2. [ ] Add `prefix-from <created> <num>` subcommand in `jimfile.sh`: validate `created:` against the canonical `# SYNC(ts-shape)` pattern before reshaping (date/timestamp), `render_template` for sequential/project, validate the result via `is_valid_id`; rc 1 + `un-migratable: <reason>` for a missing/non-conforming `created:` or custom `{date:}` template.
+2. [x] Add `prefix-from <created> <num>` subcommand in `jimfile.sh`: validate `created:` against the canonical `# SYNC(ts-shape)` pattern before reshaping (date/timestamp), `render_template` for sequential/project, validate the result via `is_valid_id`; rc 1 + `un-migratable: <reason>` for a missing/non-conforming `created:` or custom `{date:}` template.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile_prefix_from` (date→`YYYYMMDD`, timestamp→`YYYYMMDDThhmmss`, sequential→padded `num`, project→tag, missing `created`→un-migratable, non-conforming `created` `2026-06`→un-migratable, `{date:%j}`→un-migratable).
 
-3. [ ] Create `skills/issue/scripts/migrate.sh`: no-arg → help; `prefix` preview map builder with helpers (`field_value`, split-on-first-`-` slug) — classify each issue (rename / skip-conforming / skip-unmigratable) via `prefix-from` + `valid-id`, resolve collisions with the `-2`/`-3` convention over the map.
+3. [x] Create `skills/issue/scripts/migrate.sh`: no-arg → help; `prefix` preview map builder with helpers (`field_value`, split-on-first-`-` slug) — classify each issue (rename / skip-conforming / skip-unmigratable) via `prefix-from` + `valid-id`, resolve collisions with the `-2`/`-3` convention over the map.
    **Verify:** `bash skills/meta-test/scripts/run.sh migrate_prefix_classifies` (no-arg prints help; `prefix` on a temp fixture yields expected rename/skip/collision rows + summary counts).
 
-4. [ ] `migrate.sh prefix` preview output: human plan lines + a stable `PLAN-HASH:` line + a read-only git dirty-tree / VCS-recovery note; mutates nothing.
+4. [x] `migrate.sh prefix` preview output: human plan lines + a stable `PLAN-HASH:` line + a read-only git dirty-tree / VCS-recovery note; mutates nothing.
    **Verify:** `bash skills/meta-test/scripts/run.sh migrate_prefix_preview` (two preview runs on an unchanged fixture emit identical `PLAN-HASH`; the dirty-tree note appears; no files changed).
 
-5. [ ] Reference-rewrite engine (awk): rewrite the four `relations:` buckets + fenced-aware body `[[wikilinks]]`, exact-id only, per the old→new map.
+5. [x] Reference-rewrite engine (awk): rewrite the four `relations:` buckets + fenced-aware body `[[wikilinks]]`, exact-id only, per the old→new map.
    **Verify:** `bash skills/meta-test/scripts/run.sh migrate_rewrite` (rewrites a relation target + a body wikilink; does NOT touch an `origin:` path, a prose mention, a `[[oldid]]` inside a code fence, or a prefix-overlapping longer id).
 
-6. [ ] `migrate.sh prefix --apply` (core): stage final files (new name + rewritten refs) via `mktemp`, validate the staged set, commit per-file atomic `mv`, regenerate `INDEX.md`, report counts. Depends on tasks 3 and 5.
+6. [x] `migrate.sh prefix --apply` (core): stage final files (new name + rewritten refs) via `mktemp`, validate the staged set, commit per-file atomic `mv`, regenerate `INDEX.md`, report counts. Depends on tasks 3 and 5.
    **Verify:** `bash skills/meta-test/scripts/run.sh migrate_apply_core` (renames files + rewrites refs + regenerates INDEX with no new Integrity Warnings).
 
-7. [ ] `--apply` guards: idempotent re-run (nothing to do → silent no-op) and the `--expect <hash>` drift guard (recompute; mismatch → exit 3). Depends on task 6.
+7. [x] `--apply` guards: idempotent re-run (nothing to do → silent no-op) and the `--expect <hash>` drift guard (recompute; mismatch → exit 3). Depends on task 6.
    **Verify:** `bash skills/meta-test/scripts/run.sh migrate_apply_guards` (second run is a no-op; `--expect WRONG` exits 3).
 
-8. [ ] Consistency-on-failure: an injected mid-apply failure leaves a re-runnable state (retry completes, no dangling refs) and reports the resulting state. Depends on task 6.
+8. [x] Consistency-on-failure: an injected mid-apply failure leaves a re-runnable state (retry completes, no dangling refs) and reports the resulting state. Depends on task 6.
    **Verify:** `bash skills/meta-test/scripts/run.sh migrate_apply_retry_completes` (simulated failure → retry converges; INDEX integrity clean).
 
-9. [ ] Update `ARCHITECTURE.md` Scripting Layer paragraph: `migrate.sh` (prefix preview/apply, reuses `is_valid_id` + index recognition + atomic `tmp+mv`) and the new `jimfile.sh` subcommands.
+9. [x] Update `ARCHITECTURE.md` Scripting Layer paragraph: `migrate.sh` (prefix preview/apply, reuses `is_valid_id` + index recognition + atomic `tmp+mv`) and the new `jimfile.sh` subcommands.
    **Verify:** `grep -q 'migrate.sh' ARCHITECTURE.md`
 
 ## Requirements Coverage Summary
