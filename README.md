@@ -155,6 +155,27 @@ Inspect what jim resolves with `/jim:conf`:
 
 Path-and-name resolution only — the script never reads, writes, or deletes files. Slug normalization, the `.`/`..` reject, and the 64-char cap are enforced by the script (security boundary).
 
+### Issue collection maintenance
+
+Three one-shot, opt-in scripts groom an existing issue collection. They are **deliberately not `/jim:issue` subcommands** — they run rarely (often never) and would clutter the everyday verb surface. Run them directly with `bash` when you need them. Each is idempotent, announces what it changed, and defaults to the configured `issues_path`.
+
+```bash
+# Re-derive existing ids to the active issue_id_prefix scheme — forward-only
+# convergence after you change the scheme. Preview is read-only; --apply renames
+# files and rewrites every inbound relation / [[wikilink]], then regenerates INDEX.md.
+bash skills/issue/scripts/migrate.sh prefix            # preview the rename/skip/collision plan
+bash skills/issue/scripts/migrate.sh prefix --apply    # apply it
+
+# Assign a display `num:` ordinal to issues filed before the field existed.
+bash skills/issue/scripts/backfill.sh num
+
+# Normalize legacy date-only created/updated to canonical second-resolution UTC
+# (a YYYY-MM-DDT00:00:00Z day-start placeholder — cosmetic uniformity, not recovered precision).
+bash skills/issue/scripts/backfill.sh timestamp
+```
+
+Like every jim script under `skills/*/scripts/`, these resolve and sanitize ids deterministically in bash (the security boundary), never via the LLM. `migrate.sh prefix --apply` is destructive (it renames files) and flags an uncommitted issues collection before mutating — checkpoint a clean commit first so recovery is a simple `git restore`.
+
 ## Permissions
 
 When you invoke a jim slash command in a new Claude Code session, the spawned subagent (e.g. `@jim:architect` for `/jim:plan`) reads jim's bundled template (e.g. `skills/plan/assets/plan-template.md`) and Claude Code surfaces a Read permission prompt:
