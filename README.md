@@ -166,6 +166,8 @@ bash skills/issue/scripts/migrate.sh prefix --apply    # rename files, rewrite i
 
 `--apply` is destructive (it renames files) and flags an uncommitted collection before mutating — commit a clean state first so recovery is a simple `git restore`.
 
+*Note:* migrate.sh handles the four named presets (`date` / `timestamp` / `sequential` / `project`) only; custom `{date:…}` templates are reported as un-migratable and left unchanged. The `project` tag must itself be hyphen-free — migration recovers each slug by splitting the id at its first dash, so a hyphenated tag (e.g. `MY-TEAM`) won't migrate cleanly.
+
 ## Permissions
 
 When you invoke a jim slash command in a new Claude Code session, the spawned subagent (e.g. `@jim:architect` for `/jim:plan`) reads jim's bundled template (e.g. `skills/plan/assets/plan-template.md`) and Claude Code surfaces a Read permission prompt:
