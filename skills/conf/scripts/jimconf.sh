@@ -69,7 +69,7 @@ default_for() {
     auto_issue_file)             echo "false" ;;
     issue_list_group)            echo "status" ;;
     issue_list_sort)             echo "date" ;;
-    issue_list_cols)             echo "num,date,priority,slug" ;;
+    issue_list_cols)             echo "num,date,priority,title" ;;
     issue_list_order)            echo "desc" ;;
     issue_list_closed)           echo "false" ;;
     issue_id_prefix)             echo "date" ;;

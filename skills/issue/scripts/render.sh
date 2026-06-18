@@ -369,7 +369,7 @@ cmd_list() {
   local _c _ok=1 _carr
   IFS=',' read -ra _carr <<< "$cols"
   for _c in "${_carr[@]}"; do in_list "$_c" "${COL_TOKENS[@]}" || _ok=0; done
-  [[ "$_ok" == 1 && -n "$cols" ]] || cols="num,date,priority,slug"
+  [[ "$_ok" == 1 && -n "$cols" ]] || cols="num,date,priority,title"
 
   # Load rows, applying the filter.
   local rows=() slug num status prio created labels title origin

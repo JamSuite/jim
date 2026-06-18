@@ -1039,7 +1039,7 @@ created: 2026-01-02'
 case_issues_render_list_shows_num() {
   local dir
   dir=$(empty_dir render_list_num)
-  write_issue "$dir" "20260101-a" 'title: "A"
+  write_issue "$dir" "20260101-a" 'title: "Alpha"
 status: open
 priority: high
 num: 7
@@ -1047,7 +1047,7 @@ created: 2026-01-01'
   run_render list "$dir"
   assert_exit "rc" 0 "$RC"
   assert_match "ordinal shown" '#?7\b' "$OUT"
-  assert_match "slug shown"    '20260101-a' "$OUT"
+  assert_match "title shown"   'Alpha' "$OUT"
 }
 
 # AC: `render.sh list` groups by status (spec 019). Closed issues are hidden by
@@ -1087,8 +1087,8 @@ num: 2
 created: 2026-01-02'
   run_render list "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_match "open issue present"  '20260101-alpha' "$OUT"
-  assert_eq    "closed issue hidden" "" "$(printf '%s' "$OUT" | grep -c '20260102-bravo' | sed 's/^0$//')"
+  assert_match "open issue present"  'Alpha' "$OUT"
+  assert_eq    "closed issue hidden" "" "$(printf '%s' "$OUT" | grep -c 'Bravo' | sed 's/^0$//')"
 }
 
 # AC: issue_list_closed = "true" opts closed issues back into the default view.
@@ -1108,8 +1108,8 @@ created: 2026-01-02'
   OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
   RC=$?
   assert_exit "rc" 0 "$RC"
-  assert_match "open issue present"   '20260101-alpha' "$OUT"
-  assert_match "closed issue present" '20260102-bravo' "$OUT"
+  assert_match "open issue present"   'Alpha' "$OUT"
+  assert_match "closed issue present" 'Bravo' "$OUT"
 }
 
 # AC: `list closed` is the ad-hoc closed view — it overrides the hide-by-default
@@ -1127,8 +1127,8 @@ num: 2
 created: 2026-01-02'
   run_render list closed "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_match "closed issue present" '20260102-bravo' "$OUT"
-  assert_eq    "open issue absent" "" "$(printf '%s' "$OUT" | grep -c '20260101-alpha' | sed 's/^0$//')"
+  assert_match "closed issue present" 'Bravo' "$OUT"
+  assert_eq    "open issue absent" "" "$(printf '%s' "$OUT" | grep -c 'Alpha' | sed 's/^0$//')"
 }
 
 # AC: priority filters also hide closed by default — `list high` shows only open
@@ -1148,8 +1148,8 @@ num: 2
 created: 2026-01-02'
   run_render list high "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_match "open high present"  '20260101-alpha' "$OUT"
-  assert_eq    "closed high hidden" "" "$(printf '%s' "$OUT" | grep -c '20260102-bravo' | sed 's/^0$//')"
+  assert_match "open high present"  'Alpha' "$OUT"
+  assert_eq    "closed high hidden" "" "$(printf '%s' "$OUT" | grep -c 'Bravo' | sed 's/^0$//')"
 }
 
 # AC: `render.sh list <status>` filters to that status (spec 019)
@@ -1166,8 +1166,8 @@ num: 2
 created: 2026-01-02'
   run_render list open "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_match "open issue present"  '20260101-alpha' "$OUT"
-  assert_eq    "closed issue absent" "" "$(printf '%s' "$OUT" | grep -c '20260102-bravo' | sed 's/^0$//')"
+  assert_match "open issue present"  'Alpha' "$OUT"
+  assert_eq    "closed issue absent" "" "$(printf '%s' "$OUT" | grep -c 'Bravo' | sed 's/^0$//')"
 }
 
 # AC: `render.sh list <bad-filter>` errors rather than pattern-matching (Finding 3)
@@ -1196,7 +1196,7 @@ created: 2026-01-01'
   OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
   RC=$?
   assert_exit "rc" 0 "$RC"
-  assert_match "still lists the issue" '20260101-a' "$OUT"
+  assert_match "still lists the issue" '#1' "$OUT"
 }
 
 # AC: `render.sh show <num>` resolves by ordinal (spec 019)
@@ -1293,9 +1293,9 @@ created: 2026-01-01'
   run_render list "$dir"
   assert_exit "rc" 0 "$RC"
   local l_mango l_alpha l_zebra order_ok="no"
-  l_mango=$(printf '%s\n' "$OUT" | grep -n '20260101-mango' | head -1 | cut -d: -f1)
-  l_alpha=$(printf '%s\n' "$OUT" | grep -n '20260101-alpha' | head -1 | cut -d: -f1)
-  l_zebra=$(printf '%s\n' "$OUT" | grep -n '20260101-zebra' | head -1 | cut -d: -f1)
+  l_mango=$(printf '%s\n' "$OUT" | grep -n '#3' | head -1 | cut -d: -f1)
+  l_alpha=$(printf '%s\n' "$OUT" | grep -n '#2' | head -1 | cut -d: -f1)
+  l_zebra=$(printf '%s\n' "$OUT" | grep -n '#1' | head -1 | cut -d: -f1)
   if [[ -n "$l_mango" && -n "$l_alpha" && -n "$l_zebra" ]] \
      && (( l_mango < l_alpha && l_alpha < l_zebra )); then order_ok="yes"; fi
   assert_eq "num-desc tiebreak (#3 < #2 < #1)" "yes" "$order_ok"
@@ -1316,7 +1316,7 @@ num: 2
 created: 2026-06-13Xinjected'
   run_render list "$dir"
   assert_exit  "rc" 0 "$RC"
-  assert_match "bad row present" '20260613-bad' "$OUT"
+  assert_match "bad row present" 'BAD' "$OUT"
   local leaked="no"
   printf '%s\n' "$OUT" | grep -q 'injected' && leaked="yes"
   assert_eq "garbage stripped (degraded to day-start)" "no" "$leaked"
@@ -1328,15 +1328,15 @@ created: 2026-06-13Xinjected'
 case_issues_render_list_mixed_timestamp_sort() {
   local dir
   dir=$(empty_dir render_list_ts_sort)
-  write_issue "$dir" "20260613-wire-a" 'title: "A"
+  write_issue "$dir" "20260613-wire-a" 'title: "Wire-A"
 status: open
 num: 8
 created: 2026-06-13T14:45:30Z'
-  write_issue "$dir" "20260613-wire-b" 'title: "B"
+  write_issue "$dir" "20260613-wire-b" 'title: "Wire-B"
 status: open
 num: 8
 created: 2026-06-13T14:45:33Z'
-  write_issue "$dir" "20260612-legacy" 'title: "L"
+  write_issue "$dir" "20260612-legacy" 'title: "Legacy"
 status: open
 num: 4
 created: 2026-06-12'
@@ -1344,9 +1344,9 @@ created: 2026-06-12'
   assert_exit "rc" 0 "$RC"
   # default order is desc: later timestamp first, older date-only last
   local l_a l_b l_legacy order_ok="no"
-  l_b=$(printf '%s\n' "$OUT" | grep -n '20260613-wire-b' | head -1 | cut -d: -f1)
-  l_a=$(printf '%s\n' "$OUT" | grep -n '20260613-wire-a' | head -1 | cut -d: -f1)
-  l_legacy=$(printf '%s\n' "$OUT" | grep -n '20260612-legacy' | head -1 | cut -d: -f1)
+  l_b=$(printf '%s\n' "$OUT" | grep -n 'Wire-B' | head -1 | cut -d: -f1)
+  l_a=$(printf '%s\n' "$OUT" | grep -n 'Wire-A' | head -1 | cut -d: -f1)
+  l_legacy=$(printf '%s\n' "$OUT" | grep -n 'Legacy' | head -1 | cut -d: -f1)
   if [[ -n "$l_b" && -n "$l_a" && -n "$l_legacy" ]] \
      && (( l_b < l_a && l_a < l_legacy )); then order_ok="yes"; fi
   assert_eq "ts-desc with equal num; legacy day-start last" "yes" "$order_ok"
@@ -1503,8 +1503,8 @@ created: 2026-01-03'
   RC=$?
   assert_exit "rc" 0 "$RC"
   local l1 l3 order_ok="no"
-  l1=$(printf '%s\n' "$OUT" | grep -n '20260101-a' | head -1 | cut -d: -f1)
-  l3=$(printf '%s\n' "$OUT" | grep -n '20260103-c' | head -1 | cut -d: -f1)
+  l1=$(printf '%s\n' "$OUT" | grep -n '#1' | head -1 | cut -d: -f1)
+  l3=$(printf '%s\n' "$OUT" | grep -n '#3' | head -1 | cut -d: -f1)
   if [[ -n "$l1" && -n "$l3" ]] && (( l1 < l3 )); then order_ok="yes"; fi
   assert_eq "ascending: #1 before #3" "yes" "$order_ok"
 }
@@ -1523,8 +1523,8 @@ num: 3
 created: 2026-01-03'
   run_render list "$dir"
   local l1 l3 order_ok="no"
-  l1=$(printf '%s\n' "$OUT" | grep -n '20260101-a' | head -1 | cut -d: -f1)
-  l3=$(printf '%s\n' "$OUT" | grep -n '20260103-c' | head -1 | cut -d: -f1)
+  l1=$(printf '%s\n' "$OUT" | grep -n '#1' | head -1 | cut -d: -f1)
+  l3=$(printf '%s\n' "$OUT" | grep -n '#3' | head -1 | cut -d: -f1)
   if [[ -n "$l1" && -n "$l3" ]] && (( l3 < l1 )); then order_ok="yes"; fi
   assert_eq "descending default: #3 before #1" "yes" "$order_ok"
 }
@@ -1570,7 +1570,7 @@ created: 2026-05-30'
   touch "$dir/INDEX.md"
   run_render list "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_match "issue still listed" '20260530-a' "$OUT"
+  assert_match "issue still listed" '#1' "$OUT"
   if ! grep -q 'SENTINEL-FRESH-INDEX' "$dir/INDEX.md"; then
     CURRENT_FAILED=1
     echo "    [fresh index was regenerated — sentinel lost; rebuild not skipped]"
@@ -1622,7 +1622,7 @@ num: 2
 created: 2026-05-31'
   run_render list "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_match "added issue surfaces" '20260531-b' "$OUT"
+  assert_match "added issue surfaces" 'Brand New' "$OUT"
 }
 
 # AC: a title containing a colon is extracted whole — the scalar-field parser

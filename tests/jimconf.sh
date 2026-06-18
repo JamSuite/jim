@@ -61,7 +61,7 @@ case_no_config_returns_defaults() {
               "auto_issue_file:false" \
               "issue_list_group:status" \
               "issue_list_sort:date" \
-              "issue_list_cols:num,date,priority,slug" \
+              "issue_list_cols:num,date,priority,title" \
               "issue_list_order:desc" \
               "issue_list_closed:false" \
               "issue_id_prefix:date" \
@@ -181,7 +181,7 @@ case_list_outputs_all_keys() {
   assert_match "auto_issue_file line"              '^auto_issue_file=false$'                "$OUT"
   assert_match "issue_list_group line"             '^issue_list_group=status$'              "$OUT"
   assert_match "issue_list_sort line"              '^issue_list_sort=date$'                 "$OUT"
-  assert_match "issue_list_cols line"              '^issue_list_cols=num,date,priority,slug$' "$OUT"
+  assert_match "issue_list_cols line"              '^issue_list_cols=num,date,priority,title$' "$OUT"
   assert_match "issue_list_order line"             '^issue_list_order=desc$'                "$OUT"
   assert_match "issue_list_closed line"            '^issue_list_closed=false$'              "$OUT"
   assert_match "issue_id_prefix line"              '^issue_id_prefix=date$'                 "$OUT"
@@ -592,12 +592,12 @@ case_issue_list_sort_overridden() {
   assert_eq "issue_list_sort overridden" "num" "$OUT"
 }
 
-# AC: issue_list_cols defaults to "num,date,priority,slug" (spec 019)
+# AC: issue_list_cols defaults to "num,date,priority,title" (spec 019)
 case_issue_list_cols_default() {
   local dir actual
   dir=$(empty_dir issue_list_cols_baseline)
   actual=$(cd "$dir" && bash "$SCRIPT" get issue_list_cols)
-  assert_eq "issue_list_cols default" "num,date,priority,slug" "$actual"
+  assert_eq "issue_list_cols default" "num,date,priority,title" "$actual"
 }
 
 # AC: issue_list_cols override via jimconf.toml (spec 019)
