@@ -138,7 +138,9 @@ security_adhoc_path       = "docs/security"
 #   timestamp  : sub-day resolution, e.g. 20260614T144530-<slug>
 # Or a custom template combining literal text with {date:FMT} and
 # {seq[:width]} tokens, e.g. "JIM-{date:%Y%m%d}-{seq:03}". A malformed value
-# is reported on stderr and falls back to the date default.
+# is reported on stderr and falls back to the date default. Changing this is
+# forward-only — it renames no existing files; converge the legacy collection
+# onto the new scheme with `migrate.sh prefix` (spec 023).
 # issue_id_prefix = "date"
 
 # Static project tag used by the "project" preset (also usable as literal
