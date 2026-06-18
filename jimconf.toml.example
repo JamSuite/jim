@@ -124,7 +124,7 @@ security_adhoc_path       = "docs/security"
 #                      `list open` / `list closed` filter always overrides it.
 # issue_list_group  = "status"
 # issue_list_sort   = "date"
-# issue_list_cols   = "num,date,priority,slug"
+# issue_list_cols   = "num,date,priority,title"
 # issue_list_order  = "desc"
 # issue_list_closed = "false"
 
