@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 5
-- Closed: 2
+- Open: 4
+- Closed: 3
 
 ## Issues
 
@@ -13,7 +13,7 @@
 - `20260602-auto-commit-architecture-md-when-arch-runs-from-build` — Auto-commit ARCHITECTURE.md when /jim:arch runs from /jim:build · status: open · num: 4 · priority: low · created: 2026-06-02T00:00:00Z · labels: [arch, build, workflow, future] · origin: skills/build/SKILL.md
 - `20260603-codebase-aware-implementation-independence-analysis-for-parallel` — Codebase-aware implementation-independence analysis for parallel work · status: open · num: 5 · priority: medium · created: 2026-06-03T00:00:00Z · labels: [issues-system, trends, future-spec] · origin: docs/brainstorms/20260603-issue-command-consolidation.md
 - `20260603-replace-coarse-date-prefix-with-date-random-suffix-for-collision` — Replace coarse date prefix with date+random suffix for collision-safe issue ids · status: open · num: 6 · priority: low · created: 2026-06-03T00:00:00Z · labels: [issues-system, id-scheme] · origin: docs/brainstorms/20260603-issue-command-consolidation.md
-- `20260613-re-derive-existing-issue-ids-to-active-prefix-scheme` — Re-derive existing issue ids to the active prefix scheme · status: open · num: 7 · priority: low · created: 2026-06-13T00:00:00Z · labels: [issue, migration, tooling] · origin: docs/specs/jim/021-issue-id-prefix/spec.md
+- `20260613-re-derive-existing-issue-ids-to-active-prefix-scheme` — Re-derive existing issue ids to the active prefix scheme · status: closed · num: 7 · priority: low · created: 2026-06-13T00:00:00Z · labels: [issue, migration, tooling] · origin: docs/specs/jim/021-issue-id-prefix/spec.md
 
 ## Graph
 

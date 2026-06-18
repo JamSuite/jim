@@ -2,7 +2,7 @@
 id: 20260613-re-derive-existing-issue-ids-to-active-prefix-scheme
 num: 7
 title: "Re-derive existing issue ids to the active prefix scheme"
-status: open
+status: closed
 priority: low
 labels: [issue, migration, tooling]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-13T00:00:00Z
-updated: 2026-06-13T00:00:00Z
+updated: 2026-06-18T07:42:03Z
 origin: docs/specs/jim/021-issue-id-prefix/spec.md
 ---
 
