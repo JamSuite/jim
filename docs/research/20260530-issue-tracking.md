@@ -1,6 +1,6 @@
 ---
 spec: "docs/brainstorms/20260530-issue-tracking.md"
-status: Needs PM Review
+status: Active
 date: "2026-05-30"
 ---
 
