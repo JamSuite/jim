@@ -56,7 +56,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:research` | Investigate codebase, external docs, and technical landscape | `@jim:researcher` | `research.md` |
 | `/jim:build` | TDD red-green-refactor + commit per task | `@jim:coder` | Tests + code |
 | `/jim:sec` | Design-time security analysis (hybrid freeform + STRIDE, conditional LINDDUN on PII) | `@jim:security` | `security.md` |
-| `/jim:review` | Post-build code review *(not yet implemented; `/jim:sec` covers design-time security review)* | `@jim:reviewer` | TBD |
+| `/jim:review` | Post-build review — drift vs spec/plan/architecture, code + process metrics, security regressions | `@jim:reviewer` | `review.md` |
 | `/jim:ship` | PR, deploy, update roadmap *(not yet implemented)* | TBD | Merged PR |
 | `/jim:vision` | Create/update project vision and strategy | `@jim:pm` | `VISION.md` |
 | `/jim:roadmap` | Create/update execution milestones and phase sequence | `@jim:pm` | `ROADMAP.md` |
@@ -82,6 +82,8 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | Spec | `docs/specs/{group}/{00X}-{name}/spec.md` | Work definition — requirements, acceptance criteria, spec type (feature/bug/refactor) | `/jim:spec` |
 | Plan | `docs/specs/{group}/{00X}-{name}/plan.md` | Implementation path — codebase research, atomic tasks, dependencies | `/jim:plan` |
 | Security Review | `docs/specs/{group}/{00X}-{name}/security.md` (spec-scoped) or `{security_adhoc_path}/{YYYYMMDD}-{slug}.md` (ad-hoc opt-in) | Design-time findings — severity, route, phase coverage; gates `/jim:plan` and `/jim:build` start when `require_security` / `auto_security` is set | `/jim:sec` |
+| Review Report | `docs/specs/{group}/{00X}-{name}/review.md` | Post-build findings — drift vs spec/plan/architecture, code + process metrics, security regressions, alignment verdict; mineable frontmatter + narrative | `/jim:review` |
+| Build Ledger | `docs/specs/{group}/{00X}-{name}/ledger.md` | Append-only build event log (baseline/head SHAs, interruptions, re-runs) written by `/jim:build`; the reviewer's process-metric source | `/jim:build` |
 | Debug Report | `docs/debug/{YYYYMMDD}-{topic}.md` | Diagnosis — error analysis, root cause, references to affected specs | `/jim:debug` |
 | Brainstorm | `docs/brainstorms/{YYYYMMDD}-{topic}.md` | Exploratory notes — ideas, risks, options, may feed into specs | `/jim:brainstorm` |
 | Issue | `docs/issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` (configurable via `issues_path`) | Discovery artifacts surfaced during the workflow — one markdown file per issue with a display ordinal (`num`), `open`/`closed` status, typed relations, and an auto-generated index | `/jim:issue` |
@@ -175,7 +177,7 @@ jim/
 │   │       └── tdd-guide.md
 │   │
 │   ├── review/
-│   │   └── SKILL.md             # → /jim:review (not yet implemented)
+│   │   └── SKILL.md             # → /jim:review
 │   │
 │   ├── ship/
 │   │   └── SKILL.md             # → /jim:ship (not yet implemented)
@@ -246,7 +248,7 @@ jim/
 | `@jim:architect` | Technical planning, architecture | `/jim:plan`, `/jim:arch` |
 | `@jim:researcher` | Codebase investigation and technical landscape research | `/jim:research`, invoked by PM or architect |
 | `@jim:coder` | TDD implementation, debugging | `/jim:build`, `/jim:debug` |
-| `@jim:reviewer` | Quality gate *(not yet implemented)* | TBD |
+| `@jim:reviewer` | Post-build review — drift, metrics, security regressions | `/jim:review` |
 | `@jim:meta` | Plugin development — builds skills, agents, and bash tests | `/jim:meta-skill`, `/jim:meta-agent`, `/jim:meta-test` |
 
 ### Agent ↔ Skill Composition
@@ -302,10 +304,10 @@ skills:
 ```
 
 ```yaml
-# jim/agents/reviewer.md (not yet implemented)
+# jim/agents/reviewer.md
 ---
 name: reviewer
-description: Code reviewer. Quality and security gate.
+description: Post-build reviewer. Drift, metrics, security regressions.
 skills:
   - review
 ---
@@ -411,9 +413,13 @@ agent: meta
 
 **Gate:** All tests pass. The configured `pre_commit` script (default `./pre-commit.sh`, configurable via `jimconf.toml`) is green if present; absent means the gate is a no-op.
 
-### `/jim:review` *(not yet implemented)*
+### `/jim:review`
 
-**Purpose:** Quality and security review before PR.
+**Purpose:** Verify what `/jim:build` actually shipped against its spec, plan, and architecture — catching drift before it compounds — and record how the build measured up.
+
+`@jim:reviewer` fuses three inputs: the **build ledger** (`ledger.md`, written by `/jim:build` — a trusted, content-free metrics channel via `jimledger.sh`), the **git diff** for the build range, and the **spec / plan / `ARCHITECTURE.md`** ground truth. It reports drift against each, code + process metrics, and any security regressions (optionally invoking `/jim:sec` ad-hoc), then writes `review.md` with a mineable frontmatter summary, a single alignment verdict (`aligned` / `minor-drift` / `major-drift`), and a narrative. Findings can be captured as issues. Ingested commit/diff/ledger content is treated as untrusted; the verdict is the reviewer's judgment, never a value read from that content.
+
+`/jim:build` offers the review at its completion gate by default, or runs it automatically under the `require_review` / `auto_review` knobs. The review is advisory — it never blocks completion.
 
 ### `/jim:ship` *(not yet implemented)*
 

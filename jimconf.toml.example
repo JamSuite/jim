@@ -46,6 +46,20 @@ require_pre_completion = "false"
 # prompt). Default "false" keeps the existing /jim:arch review step.
 auto_arch_feedback = "false"
 
+# --- Post-build review gate -----------------------------------------------
+
+# Post-build review (/jim:review) verifies what the build shipped against the
+# spec, plan, and architecture. When "true", /jim:build runs the review at the
+# completion gate and treats it as a required step (findings stay advisory —
+# the review never blocks). Default "false" makes /jim:build merely offer it.
+require_review = "false"
+
+# Run the post-build review automatically with no prompt at the completion
+# gate. Composes independently of auto_issue_file: auto_review controls
+# invocation only; the review's issue batch stays interactive unless
+# auto_issue_file is also "true". Default "false".
+auto_review = "false"
+
 # --- Security review gates and behavior -----------------------------------
 
 # Hard-gate security review at phase boundaries. When "true":

@@ -45,6 +45,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:roadmap` | Create/update execution roadmap |
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:sec` | Design-time security analysis of specs, plans, or arbitrary files; produces `security.md` |
+| `/jim:review` | Post-build review — drift vs spec/plan/architecture, code + process metrics, security regressions; produces `review.md` |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
 | `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show` / `insights`) — `insights` is an LLM analysis (convergence, sequencing, parallel-work) run by a read-only subagent |
 | `/jim:conf` | Inspect resolved jim configuration paths |
@@ -61,6 +62,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `@jim:architect` | Plans, architecture |
 | `@jim:coder` | TDD builds, debugging |
 | `@jim:security` | Design-time security review of specs and plans |
+| `@jim:reviewer` | Post-build review of shipped code against spec, plan, and architecture |
 | `@jim:meta` | Plugin development — builds skills and agents |
 
 ## How to install
@@ -109,6 +111,8 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `require_pre_commit` | `"false"` | `/jim:build` — when `"true"`, missing pre-commit script halts the build |
 | `require_pre_completion` | `"false"` | `/jim:build` — when `"true"`, missing pre-completion script halts the build |
 | `auto_arch_feedback` | `"false"` | `/jim:build` → `/jim:arch` — when `"true"`, ARCHITECTURE.md updates apply without confirmation |
+| `require_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review runs as a required step at the completion gate (advisory; never blocks) |
+| `auto_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review runs automatically with no prompt; composes independently of `auto_issue_file` |
 | `require_security` | `"false"` | `/jim:plan`, `/jim:build` — when `"true"`, next-phase start blocks until security review covers the prior phase; developer in the loop for routing |
 | `auto_security` | `"false"` | `/jim:plan`, `/jim:build` — same gate as `require_security`, but findings route automatically (no per-finding prompts) |
 | `require_security_loop` | `"false"` | `/jim:sec` — when `"true"`, repeat the review-and-routing cycle until the severity threshold clears or the iteration limit is reached |
