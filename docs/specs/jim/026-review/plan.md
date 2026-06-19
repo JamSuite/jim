@@ -2,7 +2,7 @@
 title: "Post-build review phase"
 spec: "docs/specs/jim/026-review/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Post-build review phase — Plan
