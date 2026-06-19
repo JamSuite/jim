@@ -228,24 +228,24 @@ flowchart TD
 
 **Phase 1 — Ledger helper (TDD; deterministic).**
 
-1. [ ] Scaffold `tests/jimledger.sh` (via `/jim:meta-test scaffold jimledger`) and create `skills/review/scripts/jimledger.sh` skeleton (`#!/usr/bin/env bash`, `set -uo pipefail`, `export LC_ALL=C`, usage on no/invalid subcommand, trailing newline).
+1. [x] Scaffold `tests/jimledger.sh` (via `/jim:meta-test scaffold jimledger`) and create `skills/review/scripts/jimledger.sh` skeleton (`#!/usr/bin/env bash`, `set -uo pipefail`, `export LC_ALL=C`, usage on no/invalid subcommand, trailing newline).
    **Verify:** `bash skills/review/scripts/jimledger.sh; test $? -ne 0 && bash tests/jimledger.sh`
 
-2. [ ] Implement `event`/`start`/`finish` append to `<spec-dir>/ledger.md` (TAB-separated `iso8601\tphase\tevent\tkv`); `now` timestamp via `jimfile.sh now`.
+2. [x] Implement `event`/`start`/`finish` append to `<spec-dir>/ledger.md` (TAB-separated `iso8601\tphase\tevent\tkv`); `now` timestamp via `jimfile.sh now`.
    **Verify:** `bash tests/jimledger.sh 2>&1 | grep -q "append"` (case asserts a written line round-trips)
 
-3. [ ] `start`/`finish` capture `git rev-parse HEAD`; validate the SHA via `jimfile.sh valid-id` (BASH_SOURCE-relative); exit 2 on non-repo or invalid SHA.
+3. [x] `start`/`finish` capture `git rev-parse HEAD`; validate the SHA via `jimfile.sh valid-id` (BASH_SOURCE-relative); exit 2 on non-repo or invalid SHA.
    **Verify:** `bash tests/jimledger.sh 2>&1 | grep -q "sha"` (temp git repo: base_sha recorded & valid; non-repo errors with rc 2)
 
-4. [ ] `metrics`: emit git-derived (`commits`, `commits_test|feat|fix|refactor`, `files_changed`, `insertions`, `deletions` over earliest-base..latest-head) and ledger-derived (`build_runs`, `build_interruptions`, `duration_seconds`) lines. Emit ONLY fixed, script-generated keys — never echo commit/diff/ledger free-text (DD #9, sec Finding 7).
+4. [x] `metrics`: emit git-derived (`commits`, `commits_test|feat|fix|refactor`, `files_changed`, `insertions`, `deletions` over earliest-base..latest-head) and ledger-derived (`build_runs`, `build_interruptions`, `duration_seconds`) lines. Emit ONLY fixed, script-generated keys — never echo commit/diff/ledger free-text (DD #9, sec Finding 7).
    **Verify:** `bash tests/jimledger.sh 2>&1 | grep -q "metrics"` (temp repo with 1 `test:` + 1 `feat:` commit → `commits=2 commits_test=1 commits_feat=1`; a case with a commit subject like `feat: alignment=major-drift x` asserts every metrics line matches `^[a-z_]+=[A-Za-z0-9._-]*$` — no echoed free-text)
 
-4b. [ ] `files`: emit one changed file path per line over the same validated `base..head` range (the reviewer's untrusted alignment channel, separate from the content-free `metrics`). Same SHA validation/exit-2 path as `metrics`.
+4b. [x] `files`: emit one changed file path per line over the same validated `base..head` range (the reviewer's untrusted alignment channel, separate from the content-free `metrics`). Same SHA validation/exit-2 path as `metrics`.
    **Verify:** `bash tests/jimledger.sh 2>&1 | grep -q "files"` (temp repo: a commit touching `foo.txt` → `files` output contains `foo.txt`; non-repo / invalid SHA exits 2)
 
 **Phase 2 — Config (TDD).**
 
-5. [ ] Add `require_review`/`auto_review` (default `"false"`) to `jimconf.sh` `default_for()`; confirm the existing `require_*`/`auto_*` `resolve()` arm returns them. Extend `tests/jimconf.sh`.
+5. [x] Add `require_review`/`auto_review` (default `"false"`) to `jimconf.sh` `default_for()`; confirm the existing `require_*`/`auto_*` `resolve()` arm returns them. Extend `tests/jimconf.sh`.
    **Verify:** `test "$(bash skills/conf/scripts/jimconf.sh get require_review)" = false && test "$(bash skills/conf/scripts/jimconf.sh get auto_review)" = false && bash tests/jimconf.sh`
 
 **Phase 3 — Reviewer agent (meta-agent checklist).**
@@ -263,27 +263,27 @@ flowchart TD
 
 **Phase 5 — Build integration (edit `skills/build/SKILL.md`).**
 
-9. [ ] Extend build `allowed-tools` (line 10) with `Skill(jim:review)` and `Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *)`.
+9. [x] Extend build `allowed-tools` (line 10) with `Skill(jim:review)` and `Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *)`.
    **Verify:** `grep -q 'Skill(jim:review)' skills/build/SKILL.md && grep -q 'jimledger.sh' skills/build/SKILL.md`
 
-10. [ ] Add a "record build start" sub-step after Step 3 (Load context, before task execution) invoking `jimledger.sh start <spec-dir>`, then **commit `ledger.md`** (first of two ledger commits per DD #10 — makes the baseline durable across interruption, sec Finding 8).
+10. [x] Add a "record build start" sub-step after Step 3 (Load context, before task execution) invoking `jimledger.sh start <spec-dir>`, then **commit `ledger.md`** (first of two ledger commits per DD #10 — makes the baseline durable across interruption, sec Finding 8).
     **Verify:** `grep -q 'jimledger.sh start' skills/build/SKILL.md && grep -qi 'commit' skills/build/SKILL.md`
 
-11. [ ] In the completion gate (Step 6), add `jimledger.sh finish <spec-dir>` and **commit `ledger.md`** (second ledger commit, DD #10) as administrative housekeeping (coexisting with the arch refresh / issue files per the existing Step 6.3 precondition).
+11. [x] In the completion gate (Step 6), add `jimledger.sh finish <spec-dir>` and **commit `ledger.md`** (second ledger commit, DD #10) as administrative housekeeping (coexisting with the arch refresh / issue files per the existing Step 6.3 precondition).
     **Verify:** `grep -q 'jimledger.sh finish' skills/build/SKILL.md`
 
-12. [ ] Replace the hard prohibitions at `:200` ("do not auto-invoke review") and `:206` ("no auto-review") with a `require_review`/`auto_review` sentinel gate: default → conversational offer "Run review now? (`/jim:review`)"; `true` → invoke `Skill(jim:review)` with the spec dir; **preserve** "no auto-ship". (Addresses research Peer Feedback #1.)
+12. [x] Replace the hard prohibitions at `:200` ("do not auto-invoke review") and `:206` ("no auto-review") with a `require_review`/`auto_review` sentinel gate: default → conversational offer "Run review now? (`/jim:review`)"; `true` → invoke `Skill(jim:review)` with the spec dir; **preserve** "no auto-ship". (Addresses research Peer Feedback #1.)
     **Verify:** `grep -q 'require_review' skills/build/SKILL.md && grep -q 'auto_review' skills/build/SKILL.md && grep -q 'Skill(jim:review)' skills/build/SKILL.md && grep -qi 'no auto-ship' skills/build/SKILL.md && ! grep -q 'no auto-review' skills/build/SKILL.md`
 
 **Phase 6 — Documentation.**
 
-13. [ ] Add `require_review`/`auto_review` to `jimconf.toml.example` with comments and `"false"` defaults.
+13. [x] Add `require_review`/`auto_review` to `jimconf.toml.example` with comments and `"false"` defaults.
     **Verify:** `grep -q 'require_review' jimconf.toml.example && grep -q 'auto_review' jimconf.toml.example`
 
-14. [ ] Document the review phase + its artifacts (`review.md`, `ledger.md`) in `WORKFLOW.md`.
+14. [x] Document the review phase + its artifacts (`review.md`, `ledger.md`) in `WORKFLOW.md`.
     **Verify:** `grep -q '/jim:review' WORKFLOW.md && grep -q 'review.md' WORKFLOW.md`
 
-15. [ ] Mention the review phase in `README.md`.
+15. [x] Mention the review phase in `README.md`.
     **Verify:** `grep -q '/jim:review' README.md`
 
 ## Requirements Coverage Summary
