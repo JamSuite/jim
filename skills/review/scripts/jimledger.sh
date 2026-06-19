@@ -34,9 +34,39 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
 USAGE
 }
 
+# append_line <spec-dir> <phase> <event> <kv>
+#   Append one TAB-separated event to <spec-dir>/ledger.md.
+append_line() {
+  local dir="$1" phase="$2" event="$3" kv="$4"
+  if [[ ! -d "$dir" ]]; then
+    echo "jimledger: spec-dir not found: $dir" >&2
+    return 2
+  fi
+  local epoch iso
+  epoch="$(date -u +%s)"
+  iso="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$epoch" "$iso" "$phase" "$event" "$kv" >> "$dir/ledger.md"
+}
+
+# cmd_event <spec-dir> <phase> <event> [k=v ...]
+cmd_event() {
+  local dir="${1:-}" phase="${2:-}" event="${3:-}"
+  if [[ -z "$dir" || -z "$phase" || -z "$event" ]]; then
+    echo "jimledger event: need <spec-dir> <phase> <event> [k=v ...]" >&2
+    return 2
+  fi
+  shift 3
+  local kv="" tok
+  for tok in "$@"; do
+    kv="${kv:+$kv;}$tok"
+  done
+  append_line "$dir" "$phase" "$event" "$kv"
+}
+
 main() {
   local sub="${1:-}"
   case "$sub" in
+    event)   shift; cmd_event "$@" ;;
     *) usage; return 2 ;;
   esac
 }
