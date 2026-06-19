@@ -149,6 +149,30 @@ case_jimledger_metrics_clean_channel() {
   assert_eq "all lines safe"  "0" "$(echo "$OUT" | grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
 }
 
+# AC: metrics reports an interruption when a started has no matching finished (Task 4)
+case_jimledger_metrics_interruption() {
+  local sd root sha; sd="$(git_fixture t4d)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  printf '1000\t2026-01-01T00:00:00Z\tbuild\tstarted\tbase_sha=%s\n' "$sha" > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "runs"          '^build_runs=1$'          "$OUT"
+  assert_match "interruptions" '^build_interruptions=1$' "$OUT"
+}
+
+# AC: metrics computes duration_seconds from ledger epochs (Task 4)
+case_jimledger_metrics_duration() {
+  local sd root sha; sd="$(git_fixture t4e)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tbuild\tstarted\tbase_sha=%s\n' "$sha"
+    printf '1005\t2026-01-01T00:00:05Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_match "duration"      '^duration_seconds=5$'    "$OUT"
+  assert_match "interruptions" '^build_interruptions=0$' "$OUT"
+}
+
 # AC: metrics with no recorded baseline exits 2 so the reviewer degrades (Task 4)
 case_jimledger_metrics_no_baseline_exits_2() {
   local sd; sd="$(git_fixture t4c)"
