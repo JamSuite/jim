@@ -122,13 +122,12 @@ ledger_kv() {
   ' "$ledger"
 }
 
-# cmd_metrics <spec-dir> — emit content-free key=value metrics (DD #9).
-cmd_metrics() {
-  local dir="${1:-}"
-  if [[ -z "$dir" ]]; then echo "jimledger metrics: need <spec-dir>" >&2; return 2; fi
-  local ledger="$dir/ledger.md"
+# resolve_range <spec-dir> — print "<base> <head>" for the build range, or
+#   return 2 (no ledger / no baseline / malformed sha). SHAs are validated here
+#   so callers can interpolate them into git ranges safely.
+resolve_range() {
+  local dir="$1" ledger="$dir/ledger.md"
   if [[ ! -f "$ledger" ]]; then echo "jimledger: no ledger at $ledger" >&2; return 2; fi
-
   local base head
   base="$(ledger_kv "$ledger" started base_sha first)"
   head="$(ledger_kv "$ledger" finished head_sha last)"
@@ -138,7 +137,27 @@ cmd_metrics() {
     echo "jimledger: refusing malformed sha in ledger" >&2
     return 2
   fi
+  printf '%s %s' "$base" "$head"
+}
 
+# cmd_files <spec-dir> — list changed paths over the build range (untrusted).
+cmd_files() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger files: need <spec-dir>" >&2; return 2; fi
+  local rr base head
+  rr="$(resolve_range "$dir")" || return 2
+  base="${rr% *}"; head="${rr#* }"
+  git -C "$dir" diff --name-only "$base..$head" --
+}
+
+# cmd_metrics <spec-dir> — emit content-free key=value metrics (DD #9).
+cmd_metrics() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger metrics: need <spec-dir>" >&2; return 2; fi
+  local rr base head
+  rr="$(resolve_range "$dir")" || return 2
+  base="${rr% *}"; head="${rr#* }"
+  local ledger="$dir/ledger.md"
   local range="$base..$head"
   local commits ct cf cx cr stat fc ins del runs fins interruptions
   commits="$(git -C "$dir" rev-list --count "$range" 2>/dev/null || echo 0)"
@@ -182,6 +201,7 @@ main() {
   case "$sub" in
     start)   shift; cmd_start "$@" ;;
     metrics) shift; cmd_metrics "$@" ;;
+    files)   shift; cmd_files "$@" ;;
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
     *) usage; return 2 ;;
