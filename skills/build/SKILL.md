@@ -7,7 +7,7 @@ description: >
   (/jim:research), or planning (/jim:plan).
 agent: coder
 argument-hint: "[spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(mkdir *) Skill(jim:arch) Skill(jim:sec) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:arch) Skill(jim:sec) Skill(jim:review) Read Write Edit
 ---
 
 # /jim:build
@@ -53,6 +53,14 @@ When neither gate flag is set, this step is skipped silently.
 Read `spec.md` and `research.md` from the same directory. These provide the intent and constraints behind each task — the plan tells you *what*, the spec and research tell you *why*. Note the spec type (`feature`, `bug`, or `refactor`) — it governs Red phase behavior.
 
 If the plan is ambiguous (a task's intent is unclear or its Verify command is malformed), STOP. Report the ambiguous task and what's unclear. Wait for the human to update the plan before continuing.
+
+Then open the build ledger so the later review phase can scope exactly this build's changes — even on a branch carrying several specs. Before the first task executes, record the baseline:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh start <spec-dir>
+```
+
+Commit the new `ledger.md` with a `chore(review): open build ledger` message so the baseline survives an interrupted build. This is the first of two ledger commits; the second lands at the completion gate. (If `jimledger.sh` is absent — an older checkout — skip silently; the ledger is best-effort instrumentation.)
 
 ### 4. Execute the TDD loop
 
@@ -196,14 +204,31 @@ After all tasks are marked `[x]`:
      - `s` (skip) — discard the row.
 
    After the batch concludes (auto-file summary, interactive resolution, or silent skip), continue to sub-step 4.
-4. Report results to the user and ask: "Should I mark the plan status as `complete`?"
-5. STOP. Wait for the human to confirm. Do not proceed to the next SDLC phase, do not auto-invoke review. Update the plan frontmatter to `status: complete` only after explicit confirmation.
+4. Close the build ledger and commit it:
+
+   ```
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh finish <spec-dir>
+   ```
+
+   Commit the updated `ledger.md` with `chore(review): close build ledger` — the second of two ledger commits. (If `jimledger.sh` is absent, skip silently.)
+5. Report results to the user and ask: "Should I mark the plan status as `complete`?"
+6. Post-build review gate (require_review / auto_review):
+
+   SET require_review = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_review`
+   SET auto_review    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_review`
+
+   IF require_review == "true" OR auto_review == "true" THEN
+     Invoke `Skill(jim:review)` with the spec directory as the `args` parameter. `require_review` makes the review mandatory; `auto_review` runs it without a prompt — either way it runs once. Review findings are advisory: the review produces a report and never blocks completion.
+   ELSE
+     Offer conversationally: "Run the post-build review now? (`/jim:review`)" — the developer chooses. Do not auto-run.
+   ENDIF
+7. STOP. Wait for the human to confirm. Do not auto-ship. Update the plan frontmatter to `status: complete` only after explicit confirmation.
 
 ## Scope Discipline
 
 - Do NOT add functionality, error handling, or optimizations beyond what the plan tasks specify.
 - Do NOT modify `spec.md` or `plan.md` content — the only allowed change is marking tasks `[x]`.
-- Do NOT proceed to the next SDLC phase (no auto-review, no auto-ship).
+- No auto-ship. The post-build review runs only via the require_review / auto_review gate (Step 6) or the developer's explicit choice — never silently chained beyond it.
 - If stuck and none of the above STOP conditions apply: STOP anyway. Report the task, what was attempted, and what is blocking. The human decides.
 
 ## Validation Checklist
