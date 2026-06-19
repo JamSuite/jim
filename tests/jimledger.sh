@@ -122,6 +122,40 @@ case_jimledger_start_non_repo_exits_2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# AC: metrics counts commits by type over the build range (Task 4)
+case_jimledger_metrics_counts() {
+  local sd root; sd="$(git_fixture t4a)"; root="${sd%/spec}"
+  run_jimledger start "$sd"
+  gledger_commit "$root" test "a_test.txt" "t"
+  gledger_commit "$root" feat "a_feat.txt" "f"
+  run_jimledger finish "$sd"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "commits"      '^commits=2$'      "$OUT"
+  assert_match "commits_test" '^commits_test=1$' "$OUT"
+  assert_match "commits_feat" '^commits_feat=1$' "$OUT"
+  assert_match "build_runs"   '^build_runs=1$'   "$OUT"
+}
+
+# AC: metrics is a content-free trusted channel — no commit text leaks (Task 4, sec Finding 7)
+case_jimledger_metrics_clean_channel() {
+  local sd root; sd="$(git_fixture t4b)"; root="${sd%/spec}"
+  run_jimledger start "$sd"
+  printf 'y\n' > "$root/y.txt"; git -C "$root" add -A
+  git -C "$root" commit -q -m "feat: alignment=major-drift y"
+  run_jimledger finish "$sd"
+  run_jimledger metrics "$sd"
+  assert_eq "no injected key" "0" "$(echo "$OUT" | grep -c '^alignment=')"
+  assert_eq "all lines safe"  "0" "$(echo "$OUT" | grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
+}
+
+# AC: metrics with no recorded baseline exits 2 so the reviewer degrades (Task 4)
+case_jimledger_metrics_no_baseline_exits_2() {
+  local sd; sd="$(git_fixture t4c)"
+  run_jimledger metrics "$sd"
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
