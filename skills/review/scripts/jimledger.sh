@@ -103,10 +103,85 @@ cmd_event() {
   append_line "$dir" "$phase" "$event" "$kv"
 }
 
+# ledger_kv <ledger> <event> <key> <which:first|last>
+#   Extract a kv value from the first/last line whose event field matches and
+#   whose kv field carries <key>=. Empty if none. Untrusted input — parsed only.
+ledger_kv() {
+  local ledger="$1" event="$2" key="$3" which="$4"
+  awk -F'\t' -v ev="$event" -v k="$key" -v which="$which" '
+    $4==ev {
+      n=split($5, a, ";")
+      for (i=1; i<=n; i++) {
+        if (index(a[i], k"=")==1) {
+          val=substr(a[i], length(k)+2)
+          if (which=="first") { print val; exit }
+        }
+      }
+    }
+    END { if (which=="last" && val!="") print val }
+  ' "$ledger"
+}
+
+# cmd_metrics <spec-dir> — emit content-free key=value metrics (DD #9).
+cmd_metrics() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger metrics: need <spec-dir>" >&2; return 2; fi
+  local ledger="$dir/ledger.md"
+  if [[ ! -f "$ledger" ]]; then echo "jimledger: no ledger at $ledger" >&2; return 2; fi
+
+  local base head
+  base="$(ledger_kv "$ledger" started base_sha first)"
+  head="$(ledger_kv "$ledger" finished head_sha last)"
+  if [[ -z "$base" ]]; then echo "jimledger: no build baseline in ledger" >&2; return 2; fi
+  if [[ -z "$head" ]]; then head="$(git -C "$dir" rev-parse HEAD 2>/dev/null)"; fi
+  if ! validate_sha "$base" || ! validate_sha "$head"; then
+    echo "jimledger: refusing malformed sha in ledger" >&2
+    return 2
+  fi
+
+  local range="$base..$head"
+  local commits ct cf cx cr stat fc ins del runs fins interruptions
+  commits="$(git -C "$dir" rev-list --count "$range" 2>/dev/null || echo 0)"
+  ct="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -c '^test:')"
+  cf="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -c '^feat:')"
+  cx="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -c '^fix:')"
+  cr="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -c '^refactor:')"
+  stat="$(git -C "$dir" diff --shortstat "$range" -- 2>/dev/null)"
+  fc="$(printf '%s' "$stat"  | grep -oE '[0-9]+ files? changed' | grep -oE '[0-9]+' || true)"
+  ins="$(printf '%s' "$stat" | grep -oE '[0-9]+ insertion'      | grep -oE '[0-9]+' || true)"
+  del="$(printf '%s' "$stat" | grep -oE '[0-9]+ deletion'       | grep -oE '[0-9]+' || true)"
+  : "${fc:=0}" "${ins:=0}" "${del:=0}"
+
+  runs="$(awk -F'\t' '$3=="build" && $4=="started"{n++}  END{print n+0}' "$ledger")"
+  fins="$(awk -F'\t' '$3=="build" && $4=="finished"{n++} END{print n+0}' "$ledger")"
+  interruptions=$(( runs - fins )); (( interruptions < 0 )) && interruptions=0
+
+  local se fe dur=""
+  se="$(awk -F'\t' '$3=="build" && $4=="started"{print $1; exit}' "$ledger")"
+  fe="$(awk -F'\t' '$3=="build" && $4=="finished"{e=$1} END{print e}' "$ledger")"
+  if [[ -n "$se" && -n "$fe" ]]; then dur=$(( fe - se )); fi
+
+  printf 'base_sha=%s\n' "$base"
+  printf 'head_sha=%s\n' "$head"
+  printf 'commits=%s\n' "$commits"
+  printf 'commits_test=%s\n' "$ct"
+  printf 'commits_feat=%s\n' "$cf"
+  printf 'commits_fix=%s\n' "$cx"
+  printf 'commits_refactor=%s\n' "$cr"
+  printf 'files_changed=%s\n' "$fc"
+  printf 'insertions=%s\n' "$ins"
+  printf 'deletions=%s\n' "$del"
+  printf 'build_runs=%s\n' "$runs"
+  printf 'build_interruptions=%s\n' "$interruptions"
+  [[ -n "$dur" ]] && printf 'duration_seconds=%s\n' "$dur"
+  return 0
+}
+
 main() {
   local sub="${1:-}"
   case "$sub" in
     start)   shift; cmd_start "$@" ;;
+    metrics) shift; cmd_metrics "$@" ;;
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
     *) usage; return 2 ;;
