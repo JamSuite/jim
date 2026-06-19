@@ -99,6 +99,29 @@ case_jimledger_event_missing_args_exits_2() {
   assert_nonempty "stderr" "$ERR"
 }
 
+# AC: start records a validated base_sha (Task 3)
+case_jimledger_start_records_base_sha() {
+  local sd; sd="$(git_fixture t3a)"
+  run_jimledger start "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "base_sha" 'build.*started.*base_sha=[0-9a-f]{7,}' "$(cat "$sd/ledger.md" 2>/dev/null)"
+}
+
+# AC: finish records a validated head_sha (Task 3)
+case_jimledger_finish_records_head_sha() {
+  local sd; sd="$(git_fixture t3b)"
+  run_jimledger finish "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "head_sha" 'build.*finished.*head_sha=[0-9a-f]{7,}' "$(cat "$sd/ledger.md" 2>/dev/null)"
+}
+
+# AC: start outside a git repo exits 2 (Task 3)
+case_jimledger_start_non_repo_exits_2() {
+  local sd; sd="$(empty_dir t3c/spec)"
+  run_jimledger start "$sd"
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
