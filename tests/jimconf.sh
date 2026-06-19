@@ -53,6 +53,8 @@ case_no_config_returns_defaults() {
               "auto_arch_feedback:false" \
               "require_security:false" \
               "auto_security:false" \
+              "require_review:false" \
+              "auto_review:false" \
               "require_security_loop:false" \
               "require_security_loop_sev:critical" \
               "auto_security_loop_limit:5" \
@@ -90,6 +92,8 @@ require_pre_completion = "true"
 auto_arch_feedback = "true"
 require_security = "true"
 auto_security = "true"
+require_review = "true"
+auto_review = "true"
 require_security_loop = "true"
 require_security_loop_sev = "notable"
 auto_security_loop_limit = "10"
@@ -116,6 +120,8 @@ issue_id_project = "PROJ"')
   run -c "$cfg" get auto_arch_feedback;        assert_eq "auto_arch_feedback"        "true"                   "$OUT"
   run -c "$cfg" get require_security;          assert_eq "require_security"          "true"                   "$OUT"
   run -c "$cfg" get auto_security;             assert_eq "auto_security"             "true"                   "$OUT"
+  run -c "$cfg" get require_review;            assert_eq "require_review"            "true"                   "$OUT"
+  run -c "$cfg" get auto_review;               assert_eq "auto_review"               "true"                   "$OUT"
   run -c "$cfg" get require_security_loop;     assert_eq "require_security_loop"     "true"                   "$OUT"
   run -c "$cfg" get require_security_loop_sev; assert_eq "require_security_loop_sev" "notable"                "$OUT"
   run -c "$cfg" get auto_security_loop_limit;  assert_eq "auto_security_loop_limit"  "10"                     "$OUT"
@@ -158,7 +164,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "27" "$line_count"
+  assert_eq    "list line count"                  "29" "$line_count"
   assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
@@ -193,7 +199,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_review\nauto_review\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -231,7 +237,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "27" "$line_count"
+  assert_eq "list still emits all keys" "29" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
