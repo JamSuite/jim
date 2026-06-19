@@ -75,6 +75,30 @@ case_jimledger_unknown_subcommand_exits_2() {
   assert_nonempty "stderr explains" "$ERR"
 }
 
+# AC: event appends a formatted line and creates the ledger (Task 2)
+case_jimledger_event_appends_line() {
+  local sd; sd="$(empty_dir t2a/spec)"
+  run_jimledger event "$sd" research started note=x
+  assert_exit  "rc" 0 "$RC"
+  assert_match "event line" 'research.*started.*note=x' "$(cat "$sd/ledger.md" 2>/dev/null)"
+}
+
+# AC: events accumulate append-only (Task 2)
+case_jimledger_event_appends_multiple() {
+  local sd; sd="$(empty_dir t2b/spec)"
+  run_jimledger event "$sd" build started
+  run_jimledger event "$sd" build finished
+  assert_eq "two lines" "2" "$(wc -l < "$sd/ledger.md" | tr -d ' ')"
+}
+
+# AC: event with too few args exits 2 (Task 2)
+case_jimledger_event_missing_args_exits_2() {
+  local sd; sd="$(empty_dir t2c/spec)"
+  run_jimledger event "$sd" build
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
