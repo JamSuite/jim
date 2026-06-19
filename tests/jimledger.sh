@@ -156,6 +156,24 @@ case_jimledger_metrics_no_baseline_exits_2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# AC: files lists changed paths over the build range (Task 4b)
+case_jimledger_files_lists_changed() {
+  local sd root; sd="$(git_fixture t4ba)"; root="${sd%/spec}"
+  run_jimledger start "$sd"
+  gledger_commit "$root" feat "foo.txt" "x"
+  run_jimledger finish "$sd"
+  run_jimledger files "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "foo listed" '^foo\.txt$' "$OUT"
+}
+
+# AC: files with no recorded baseline exits 2 (Task 4b)
+case_jimledger_files_no_baseline_exits_2() {
+  local sd; sd="$(git_fixture t4bb)"
+  run_jimledger files "$sd"
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
