@@ -95,6 +95,7 @@ Work through this checklist before presenting the artifact. Fix failures inline 
 - [ ] SKILL.md body ≤ 500 lines
 - [ ] Any `references/` file >300 lines has a table of contents
 - [ ] Instructions use imperative form
+- [ ] If the skill carries an end-of-phase candidate batch, its filter set includes the **pipeline-ownership filter** (drop work a jim phase performs automatically) alongside Resolution and Actionability. Regression: a `/jim:plan`→`/jim:build` cycle whose work includes an arch refresh files **no** arch-regen issue (spec 024) — re-validate when the candidate-batch convention changes.
 
 **Scripting Layer (when present)**
 
