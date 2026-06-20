@@ -2,7 +2,7 @@
 num: 8
 id: 20260620-extract-duplicated-candidate-batch-block-into-a-shared-contract
 title: "Extract duplicated candidate-batch block into a shared contract"
-status: open
+status: closed
 priority: medium
 labels: [refactor, candidate-batch, consistency]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-20T07:17:42Z
-updated: 2026-06-20T09:32:28Z
+updated: 2026-06-20T23:36:48Z
 origin: docs/specs/jim/024-issue-pipeline-ownership/research.md
 ---
 
