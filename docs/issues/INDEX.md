@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 6
+- Open: 7
 - Closed: 4
 
 ## Issues
@@ -17,6 +17,7 @@
 - `20260620-architecture-md-hand-edits-bypass-jim-arch-and-stale-the-header` — ARCHITECTURE.md hand-edits bypass /jim:arch and stale the header · status: open · num: 10 · priority: medium · created: 2026-06-20T11:43:15Z · labels: [arch, workflow] · origin: conversation
 - `20260620-commit-planning-artifacts-before-the-build-phase` — Commit planning artifacts before the build phase · status: open · num: 9 · priority: medium · created: 2026-06-20T11:07:00Z · labels: [workflow, enhancement] · origin: conversation
 - `20260620-extract-duplicated-candidate-batch-block-into-a-shared-contract` — Extract duplicated candidate-batch block into a shared contract · status: open · num: 8 · priority: medium · created: 2026-06-20T07:17:42Z · labels: [refactor, candidate-batch, consistency] · origin: docs/specs/jim/024-issue-pipeline-ownership/research.md
+- `20260620-single-source-the-interactive-candidate-batch-ux-into-the-shared` — Single-source the interactive candidate-batch UX into the shared contract · status: open · num: 11 · priority: low · created: 2026-06-20T23:31:27Z · labels: [refactor, candidate-batch, consistency] · origin: docs/specs/jim/025-issue-candidate-batch-extraction/plan.md
 
 ## Graph
 
