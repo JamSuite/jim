@@ -104,7 +104,7 @@ Populate all sections from the template:
 7. **Data Flow** — Mermaid diagram for non-trivial flows; sequence diagram for multi-agent interactions
 8. **Task Breakdown** — atomic tasks in dependency order, each with `**Verify:**` shell command
 9. **Requirements Coverage Summary** — every spec AC mapped to at least one task; ambiguous ACs marked `[NEEDS CLARIFICATION]`
-10. **Out of Scope** — explicit deferrals
+10. **Out of Scope** — explicit deferrals. Distinguish genuinely *deferred* work (a human or a future spec must pick it up → trackable, may become a candidate issue) from work *handled by a later gate* (a jim phase performs it automatically — e.g. the `ARCHITECTURE.md` refresh the `/jim:build` completion gate runs via `/jim:arch` → not a deferral, not an issue). Do not park workflow-automated maintenance in Out of Scope; it is the pipeline's responsibility, not a human follow-on.
 11. **Open Questions** — unresolved items
 
 Resolve the plan write path:
