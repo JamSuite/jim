@@ -2,7 +2,7 @@
 title: "Issue pipeline-ownership — candidate batches over-file work jim auto-performs"
 spec: "docs/specs/jim/024-issue-pipeline-ownership/spec.md"
 type: bug
-status: approved
+status: complete
 ---
 
 # Issue pipeline-ownership — Plan
@@ -120,22 +120,22 @@ flowchart LR
 
 *Bug structure: Reproduce → Fix → Regression.*
 
-1. [ ] **(Reproduce)** Confirm the structural gap: no surfacing skill's candidate batch currently carries a pipeline-ownership filter. The behavioral repro (a `/jim:plan`→`/jim:build` cycle files an arch-regen issue) is recorded in `spec.md`'s Defect Profile as the manual scenario.
+1. [x] **(Reproduce)** Confirm the structural gap: no surfacing skill's candidate batch currently carries a pipeline-ownership filter. The behavioral repro (a `/jim:plan`→`/jim:build` cycle files an arch-regen issue) is recorded in `spec.md`'s Defect Profile as the manual scenario.
    **Verify:** `test "$(grep -rl 'Pipeline-ownership filter' skills/spec/SKILL.md skills/research/SKILL.md skills/plan/SKILL.md skills/build/SKILL.md skills/brainstorm/SKILL.md skills/debug/SKILL.md skills/sec/SKILL.md 2>/dev/null | wc -l)" -eq 0`
 
-2. [ ] **(Fix)** Insert contract **C1** as filter `3.` after the Actionability filter in the 6 standard surfacing skills (spec, research, plan, build, brainstorm, debug).
+2. [x] **(Fix)** Insert contract **C1** as filter `3.` after the Actionability filter in the 6 standard surfacing skills (spec, research, plan, build, brainstorm, debug).
    **Verify:** `test "$(grep -rl 'Pipeline-ownership filter' skills/spec/SKILL.md skills/research/SKILL.md skills/plan/SKILL.md skills/build/SKILL.md skills/brainstorm/SKILL.md skills/debug/SKILL.md | wc -l)" -eq 6`
 
-3. [ ] **(Fix)** Insert contract **C2** (sec variant) as filter `3.` after the Actionability filter in `skills/sec/SKILL.md`.
+3. [x] **(Fix)** Insert contract **C2** (sec variant) as filter `3.` after the Actionability filter in `skills/sec/SKILL.md`.
    **Verify:** `grep -q 'Pipeline-ownership filter' skills/sec/SKILL.md && grep -q 'Route: Issue.*finding whose remediation' skills/sec/SKILL.md`
 
-4. [ ] **(Fix)** Add contract **C3** to `skills/plan/SKILL.md` at the Out-of-Scope authoring instruction.
+4. [x] **(Fix)** Add contract **C3** to `skills/plan/SKILL.md` at the Out-of-Scope authoring instruction.
    **Verify:** `grep -q 'handled by a later gate' skills/plan/SKILL.md`
 
-5. [ ] **(Fix)** Add contract **C4** to `skills/meta-skill/SKILL.md` § *4. Validate*.
+5. [x] **(Fix)** Add contract **C4** to `skills/meta-skill/SKILL.md` § *4. Validate*.
    **Verify:** `grep -qi 'pipeline-ownership filter' skills/meta-skill/SKILL.md`
 
-6. [ ] **(Regression)** Consolidated guard proving the convention holds across every touched surface — the recurrence check the meta-skill line points editors to.
+6. [x] **(Regression)** Consolidated guard proving the convention holds across every touched surface — the recurrence check the meta-skill line points editors to.
    **Verify:** `test "$(grep -rl 'Pipeline-ownership filter' skills/spec/SKILL.md skills/research/SKILL.md skills/plan/SKILL.md skills/build/SKILL.md skills/brainstorm/SKILL.md skills/debug/SKILL.md skills/sec/SKILL.md | wc -l)" -eq 7 && grep -q 'handled by a later gate' skills/plan/SKILL.md && grep -qi 'pipeline-ownership filter' skills/meta-skill/SKILL.md && echo PASS`
 
 ## Requirements Coverage Summary
