@@ -18,6 +18,7 @@ SCRIPT_INDEX="$REPO_ROOT/skills/issue/scripts/index.sh"
 SCRIPT_RENDER="$REPO_ROOT/skills/issue/scripts/render.sh"
 SCRIPT_BACKFILL="$REPO_ROOT/skills/issue/scripts/backfill.sh"
 SCRIPT_MIGRATE="$REPO_ROOT/skills/issue/scripts/migrate.sh"
+SCRIPT_NEW="$REPO_ROOT/skills/issue/scripts/new.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -50,6 +51,13 @@ run_backfill() {
 run_migrate() {
   local err_file="$TMP_BASE/.err"
   OUT="$(bash "$SCRIPT_MIGRATE" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+run_new() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
   RC=$?
   ERR="$(cat "$err_file")"
 }
@@ -2031,6 +2039,159 @@ issue_id_prefix = \"timestamp\"")
 # ${BASH_SOURCE} behave subtly differently in older bash and break aggregate
 # runs.
 #
+# ─── Section: new.sh (issue-file emitter, spec 025) ──────────────────────────
+
+# AC: new.sh emits the spec-017 template shape from fields (spec 025 AC1)
+case_new_happy_path() {
+  local dir b f
+  dir=$(empty_dir new_happy)
+  b=$(fixture new_happy_body.md 'A normal body.')
+  run_new --dir "$dir" --slug "20260101-sample" --num 7 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "Sample title" --priority high --labels "auth, refactor" \
+    --origin "docs/specs/jim/025/plan.md" --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  assert_match "stdout slug" 'sample' "$OUT"
+  assert_match "stdout path" "$dir/20260101-sample.md" "$OUT"
+  f="$dir/20260101-sample.md"
+  assert_match "id"       '^id: 20260101-sample$'                 "$(cat "$f")"
+  assert_match "num"      '^num: 7$'                              "$(cat "$f")"
+  assert_match "title"    '^title: "Sample title"$'              "$(cat "$f")"
+  assert_match "priority" '^priority: high$'                      "$(cat "$f")"
+  assert_match "labels"   '^labels: \[auth, refactor\]$'         "$(cat "$f")"
+  assert_match "origin"   '^origin: docs/specs/jim/025/plan.md$'  "$(cat "$f")"
+  assert_match "body"     'A normal body\.'                       "$(cat "$f")"
+}
+
+# AC: untrusted --title cannot inject or break frontmatter (spec 025 AC4, Finding 1)
+case_new_title_injection_contained() {
+  local dir b f
+  dir=$(empty_dir new_title_inj)
+  b=$(fixture new_title_inj_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-inj" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title 'evil"
+status: closed
+priority: critical
+---
+hi' --priority medium --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  f="$dir/20260101-inj.md"
+  # Exactly two frontmatter delimiters — the title did not open/close frontmatter.
+  assert_eq "delimiter count" "2" "$(grep -c '^---$' "$f")"
+  # Our real fields survive, unaltered by the injected text.
+  assert_match "priority intact" '^priority: medium$' "$(cat "$f")"
+  assert_eq "single status line" "1" "$(grep -c '^status:' "$f")"
+  # index.sh parses the result without error.
+  run_index "$dir"
+  assert_exit "index parses" 0 "$RC"
+}
+
+# AC: untrusted --labels cannot break the inline YAML array (spec 025 AC4, Finding 6)
+case_new_labels_injection_contained() {
+  local dir b f
+  dir=$(empty_dir new_lbl_inj)
+  b=$(fixture new_lbl_inj_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-lbl" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels 'ok, ], [[bad, a"b]' --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  f="$dir/20260101-lbl.md"
+  assert_match "labels well-formed" '^labels: \[ok, bad, a-b\]$' "$(cat "$f")"
+  run_index "$dir"
+  assert_exit "index parses" 0 "$RC"
+}
+
+# AC: --body-file copied verbatim, never executed (spec 025 AC4, Finding 5)
+case_new_body_verbatim_no_exec() {
+  local dir b f marker
+  dir=$(empty_dir new_body_exec)
+  marker="$TMP_BASE/PWNED_new_body"
+  rm -f "$marker"
+  b=$(fixture new_body_exec_body.md 'line one
+BODY
+"quoted" and $(touch '"$marker"')
+--- not frontmatter
+done')
+  run_new --dir "$dir" --slug "20260101-body" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no command executed" "no" "$([[ -e "$marker" ]] && echo yes || echo no)"
+  f="$dir/20260101-body.md"
+  assert_match "body literal present" 'touch ' "$(cat "$f")"
+  assert_match "body last line" '^done$' "$(cat "$f")"
+  assert_match "frontmatter priority intact" '^priority: low$' "$(cat "$f")"
+}
+
+# AC: invalid --priority exits 1 without writing (spec 025 AC4)
+case_new_invalid_priority() {
+  local dir b
+  dir=$(empty_dir new_bad_prio)
+  b=$(fixture new_bad_prio_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-bp" --num 1 \
+    --title "T" --priority urgent --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no file written" "no" "$([[ -e "$dir/20260101-bp.md" ]] && echo yes || echo no)"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: invalid --slug rejected via valid-id before any write (spec 025 AC5, Finding 2)
+case_new_invalid_slug_rejected() {
+  local dir b
+  dir=$(empty_dir new_bad_slug)
+  b=$(fixture new_bad_slug_body.md 'body')
+  run_new --dir "$dir" --slug "../escape" --num 1 \
+    --title "T" --priority low --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no traversal write" "no" "$([[ -e "$dir/../escape.md" ]] && echo yes || echo no)"
+}
+
+# AC: emitted frontmatter field set matches the template asset (spec 025 AC1 drift guard)
+case_new_field_set_matches_asset() {
+  local dir b asset gen
+  dir=$(empty_dir new_drift)
+  b=$(fixture new_drift_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-drift" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels "x" --origin conversation --body-file "$b"
+  asset="$(sed -n '/^---$/,/^---$/p' "$REPO_ROOT/skills/issue/assets/issue-template.md" | grep -E '^[a-z][a-z-]*:' | sed -E 's/:.*//' | sort)"
+  gen="$(sed -n '/^---$/,/^---$/p' "$dir/20260101-drift.md" | grep -E '^[a-z][a-z-]*:' | sed -E 's/:.*//' | sort)"
+  assert_eq "frontmatter field set" "$asset" "$gen"
+}
+
+# AC: emitted file shape matches spec-017 exactly (spec 025 AC10 parity)
+case_new_output_parity() {
+  local dir b expected actual
+  dir=$(empty_dir new_parity)
+  b=$(fixture new_parity_body.md 'Parity body line.')
+  run_new --dir "$dir" --slug "20260101-parity" --num 3 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "Parity" --priority medium --labels "a, b" --origin conversation --body-file "$b"
+  expected='---
+id: 20260101-parity
+num: 3
+title: "Parity"
+status: open
+priority: medium
+labels: [a, b]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: conversation
+---
+
+## Description
+
+Parity body line.'
+  actual="$(cat "$dir/20260101-parity.md")"
+  assert_eq "full file parity" "$expected" "$actual"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
