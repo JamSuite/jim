@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-06-20*
+*Last updated: 2026-06-21*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill to preserve consistency.
 
@@ -76,12 +76,12 @@ jim/
 ├── tests/                   # Developer-only; not loaded by Claude Code (per-script test files only)
 │   ├── jimconf.sh           # Per-script tests for skills/conf/scripts/jimconf.sh (executable)
 │   ├── jimfile.sh           # Per-script tests for skills/file/scripts/jimfile.sh (executable)
-│   ├── issues.sh            # Per-script tests for skills/issue/scripts/{index,render}.sh (executable)
+│   ├── issues.sh            # Per-script tests for skills/issue/scripts/{index,render,backfill,migrate,new}.sh (executable)
 │   ├── jimledger.sh         # Per-script tests for skills/review/scripts/jimledger.sh (executable)
 │   └── metatest.sh          # Per-script tests for skills/meta-test/scripts/metatest.sh (executable)
 ├── docs/
 │   ├── specs/               # Spec groups with numbered spec directories
-│   │   └── jim/             # Specs for jim's own development (001–019)
+│   │   └── jim/             # Specs for jim's own development (001–026)
 │   ├── issues/              # Discovery-artifact capture (per spec 017)
 │   │   ├── INDEX.md         # Auto-generated index — regenerated on every /jim:issue write
 │   │   └── YYYYMMDD-slug.md # One markdown file per issue
@@ -239,7 +239,7 @@ The post-build review phase (spec 026) closes the SDLC loop after code lands. `/
 ### Spec Archive
 
 - **Purpose:** Living development artifacts — specs, research, and plans organized by group and sequential ID
-- **Location:** `docs/specs/{group}/{00X}-{name}/` — currently `docs/specs/jim/001-meta/` through `017-issue-tracking/`
+- **Location:** `docs/specs/{group}/{00X}-{name}/` — currently `docs/specs/jim/001-meta/` through `026-review/`
 - **Interfaces:** Each spec directory contains up to six files: `spec.md`, `research.md`, `plan.md`, `security.md`, `review.md`, and the build `ledger.md`
 - **Dependencies:** Produced by PM (spec), researcher (research), and architect (plan) agents
 - **Key Constraints:** IDs are 3-digit zero-padded, sequential within each group. Groups are noun-based directories. Specs must be `approved` before plans can be created.
