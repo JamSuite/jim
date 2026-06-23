@@ -59,6 +59,16 @@ gledger_commit() {
   git -C "$root" commit -q -m "$prefix: $file"
 }
 
+# gledger_commit_subject <repo-root> <subject> <file> <content>
+#   Like gledger_commit but the full commit subject is supplied verbatim, so
+#   scoped / breaking Conventional Commit headers can be exercised.
+gledger_commit_subject() {
+  local root="$1" subject="$2" file="$3" content="$4"
+  printf '%s\n' "$content" > "$root/$file"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "$subject"
+}
+
 # ─── Section: Test cases ─────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with a usage message (Task 1 skeleton)
@@ -135,6 +145,24 @@ case_jimledger_metrics_counts() {
   assert_match "commits_test" '^commits_test=1$' "$OUT"
   assert_match "commits_feat" '^commits_feat=1$' "$OUT"
   assert_match "build_runs"   '^build_runs=1$'   "$OUT"
+}
+
+# AC: metrics counts scoped and breaking Conventional Commit headers by type (Task 4)
+case_jimledger_metrics_counts_scoped() {
+  local sd root; sd="$(git_fixture t4f)"; root="${sd%/spec}"
+  run_jimledger start "$sd"
+  gledger_commit_subject "$root" "test(api): a"        "s_test.txt"     "t"
+  gledger_commit_subject "$root" "feat(treble): b"     "s_feat.txt"     "f"
+  gledger_commit_subject "$root" "fix(parser)!: c"     "s_fix.txt"      "x"
+  gledger_commit_subject "$root" "refactor(review): d" "s_refactor.txt" "r"
+  run_jimledger finish "$sd"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "commits"          '^commits=4$'          "$OUT"
+  assert_match "commits_test"     '^commits_test=1$'     "$OUT"
+  assert_match "commits_feat"     '^commits_feat=1$'     "$OUT"
+  assert_match "commits_fix"      '^commits_fix=1$'      "$OUT"
+  assert_match "commits_refactor" '^commits_refactor=1$' "$OUT"
 }
 
 # AC: metrics is a content-free trusted channel — no commit text leaks (Task 4, sec Finding 7)
