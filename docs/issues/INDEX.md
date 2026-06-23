@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 8
+- Open: 9
 - Closed: 5
 
 ## Issues
@@ -20,11 +20,13 @@
 - `20260620-single-source-the-interactive-candidate-batch-ux-into-the-shared` — Single-source the interactive candidate-batch UX into the shared contract · status: open · num: 11 · priority: low · created: 2026-06-20T23:31:27Z · labels: [refactor, candidate-batch, consistency] · origin: docs/specs/jim/025-issue-candidate-batch-extraction/plan.md
 - `20260623-configurable-commit-convention-for-git-dependent-skills` — Configurable commit convention for git-dependent skills · status: open · num: 13 · priority: medium · created: 2026-06-23T08:35:27Z · labels: [git, config, commit-convention, architecture] · origin: conversation
 - `20260623-disambiguate-phase-migrate-sdlc-pipeline-term-to-stage` — Disambiguate \"phase\": migrate SDLC pipeline term to \"stage\" · status: open · num: 12 · priority: low · created: 2026-06-23T07:10:26Z · labels: [terminology, docs] · origin: conversation
+- `20260623-issue-candidate-batch-re-files-duplicates-on-skill-re-run` — Issue-candidate batch re-files duplicates on skill re-run · status: open · num: 14 · priority: medium · created: 2026-06-23T10:43:52Z · labels: [candidate-batch, consistency, dedup] · origin: conversation
 
 ## Graph
 
 - `20260530-smoke-test` --related-to--> `20260530-smoke-test`
 - `20260531-wikilink-parser-skips-fenced-code-blocks` --related-to--> `20260531-typed-frontmatter-relations-absorb-same-target-body-wikilinks`
+- `20260623-issue-candidate-batch-re-files-duplicates-on-skill-re-run` --related-to--> `20260620-single-source-the-interactive-candidate-batch-ux-into-the-shared`
 
 ## Integrity Warnings
 
