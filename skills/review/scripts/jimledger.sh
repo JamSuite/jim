@@ -103,13 +103,15 @@ cmd_event() {
   append_line "$dir" "$phase" "$event" "$kv"
 }
 
-# ledger_kv <ledger> <event> <key> <which:first|last>
-#   Extract a kv value from the first/last line whose event field matches and
-#   whose kv field carries <key>=. Empty if none. Untrusted input — parsed only.
+# ledger_kv <ledger> <phase> <event> <key> <which:first|last>
+#   Extract a kv value from the first/last line whose phase AND event fields
+#   match and whose kv field carries <key>=. Empty if none. Scoping by phase
+#   keeps a same-named event from another phase out of the build range.
+#   Untrusted input — parsed only.
 ledger_kv() {
-  local ledger="$1" event="$2" key="$3" which="$4"
-  awk -F'\t' -v ev="$event" -v k="$key" -v which="$which" '
-    $4==ev {
+  local ledger="$1" phase="$2" event="$3" key="$4" which="$5"
+  awk -F'\t' -v ph="$phase" -v ev="$event" -v k="$key" -v which="$which" '
+    $3==ph && $4==ev {
       n=split($5, a, ";")
       for (i=1; i<=n; i++) {
         if (index(a[i], k"=")==1) {
@@ -129,8 +131,8 @@ resolve_range() {
   local dir="$1" ledger="$dir/ledger.md"
   if [[ ! -f "$ledger" ]]; then echo "jimledger: no ledger at $ledger" >&2; return 2; fi
   local base head
-  base="$(ledger_kv "$ledger" started base_sha first)"
-  head="$(ledger_kv "$ledger" finished head_sha last)"
+  base="$(ledger_kv "$ledger" build started base_sha first)"
+  head="$(ledger_kv "$ledger" build finished head_sha last)"
   if [[ -z "$base" ]]; then echo "jimledger: no build baseline in ledger" >&2; return 2; fi
   if [[ -z "$head" ]]; then head="$(git -C "$dir" rev-parse HEAD 2>/dev/null)"; fi
   if ! validate_sha "$base" || ! validate_sha "$head"; then

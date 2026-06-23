@@ -165,6 +165,25 @@ case_jimledger_metrics_counts_scoped() {
   assert_match "commits_refactor" '^commits_refactor=1$' "$OUT"
 }
 
+# AC: base/head come from build-phase events, not a stray same-event from
+# another phase (Task 4 — phase-scoped range resolution)
+case_jimledger_metrics_range_is_build_phase_scoped() {
+  local sd root seed a; sd="$(git_fixture t4g)"; root="${sd%/spec}"
+  seed="$(git -C "$root" rev-parse HEAD)"
+  gledger_commit_subject "$root" "feat(x): a" "x.txt" "x"
+  a="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '900\t2026-01-01T00:00:00Z\tresearch\tstarted\tbase_sha=%s\n'  "$seed"
+    printf '1000\t2026-01-01T00:00:10Z\tbuild\tstarted\tbase_sha=%s\n'    "$a"
+    printf '1005\t2026-01-01T00:00:15Z\tbuild\tfinished\thead_sha=%s\n'   "$a"
+    printf '1010\t2026-01-01T00:00:20Z\tresearch\tfinished\thead_sha=%s\n' "$seed"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "base from build started"  "^base_sha=$a\$" "$OUT"
+  assert_match "head from build finished" "^head_sha=$a\$" "$OUT"
+}
+
 # AC: metrics is a content-free trusted channel — no commit text leaks (Task 4, sec Finding 7)
 case_jimledger_metrics_clean_channel() {
   local sd root; sd="$(git_fixture t4b)"; root="${sd%/spec}"
