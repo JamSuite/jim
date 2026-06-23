@@ -77,7 +77,7 @@ Determine `artifacts_present` by which artifacts exist in the spec directory (`r
 
 ### 8. Write review.md
 
-Read `assets/review-template.md`. Populate the mineable frontmatter (metrics + verdict + artifacts present) and the narrative body (summary; alignment vs spec / plan / architecture; metrics; security regressions; findings; deviations & feedback). Write to `{spec-dir}/review.md`. On a re-run, overwrite `review.md` (latest verdict wins); the ledger is append-only and untouched here.
+Read `assets/review-template.md`. Set `spec:` to the spec's `<group>/<NNN>` identifier, composed from `spec.md`'s own `group` and `id` frontmatter fields (e.g. `group: jim` + `id: 026` → `jim/026`) — the same form as the commit-convention `Spec:` trailer, never a bare filename or path. Populate the mineable frontmatter (metrics + verdict + artifacts present) and the narrative body (summary; alignment vs spec / plan / architecture; metrics; security regressions; findings; deviations & feedback). Write to `{spec-dir}/review.md`. On a re-run, overwrite `review.md` (latest verdict wins); the ledger is append-only and untouched here.
 
 ### 9. End-of-phase candidate batch
 

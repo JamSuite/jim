@@ -1,5 +1,5 @@
 ---
-spec: "{relative/path/to/spec.md}"
+spec: "{spec id — <group>/<NNN>, e.g. jim/026}"
 base_sha: "{baseline SHA at build start, or empty if no ledger}"
 head_sha: "{head SHA at build finish, or empty}"
 commits: "{n}"
