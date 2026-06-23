@@ -13,7 +13,7 @@ deletions: "{n}"
 build_runs: "{n}"
 build_interruptions: "{n}"
 duration_seconds: "{n, or empty}"
-phase_coverage: "{comma-separated artifacts present, e.g. spec,research,security,plan,ledger}"
+artifacts_present: "{comma-separated artifacts present, e.g. spec,research,security,plan,ledger}"
 plan_deviations: "{n — reviewer judgment}"
 security_regressions: "{n — reviewer judgment}"
 alignment: "{aligned | minor-drift | major-drift}"
@@ -58,7 +58,7 @@ assessed over the working tree."}
 | Files changed · insertions · deletions | {n} · {+n} · {-n} |
 | Build runs · interruptions | {n} · {n} |
 | Duration | {n}s |
-| Phase coverage | {spec,research,security,plan,ledger} |
+| Artifacts present | {spec,research,security,plan,ledger} |
 
 ## Security regressions
 

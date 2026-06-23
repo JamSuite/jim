@@ -67,9 +67,9 @@ Read the changed files (from the `files` list) for evidence. Assign one overall 
 
 Scan the changes for regressions introduced by the build — secrets committed, weakened trust boundaries, new injection surfaces. Then offer a deeper pass conversationally: "Run a security analysis of the changed files? (`/jim:sec`)" — if the developer accepts, invoke `Skill(jim:sec)` with the changed files or directory as `args` (ad-hoc mode). Do **not** auto-chain this when the review was itself auto-invoked from build.
 
-### 6. Phase coverage and metrics
+### 6. Artifacts present and metrics
 
-Determine `phase_coverage` by which artifacts exist in the spec directory (`research.md`, `security.md`, `plan.md`, `ledger.md`) via Glob. Carry the trusted metrics from Step 2 into the `review.md` frontmatter. `plan_deviations` and `security_regressions` are your judged counts.
+Determine `artifacts_present` by which artifacts exist in the spec directory (`research.md`, `security.md`, `plan.md`, `ledger.md`) via Glob. Carry the trusted metrics from Step 2 into the `review.md` frontmatter. `plan_deviations` and `security_regressions` are your judged counts.
 
 ### 7. Scrub discipline
 
@@ -77,7 +77,7 @@ Determine `phase_coverage` by which artifacts exist in the spec directory (`rese
 
 ### 8. Write review.md
 
-Read `assets/review-template.md`. Populate the mineable frontmatter (metrics + verdict + coverage) and the narrative body (summary; alignment vs spec / plan / architecture; metrics; security regressions; findings; deviations & feedback). Write to `{spec-dir}/review.md`. On a re-run, overwrite `review.md` (latest verdict wins); the ledger is append-only and untouched here.
+Read `assets/review-template.md`. Populate the mineable frontmatter (metrics + verdict + artifacts present) and the narrative body (summary; alignment vs spec / plan / architecture; metrics; security regressions; findings; deviations & feedback). Write to `{spec-dir}/review.md`. On a re-run, overwrite `review.md` (latest verdict wins); the ledger is append-only and untouched here.
 
 ### 9. End-of-phase candidate batch
 
