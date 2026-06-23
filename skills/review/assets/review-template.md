@@ -1,5 +1,6 @@
 ---
 spec: "{spec id — <group>/<NNN>, e.g. jim/026}"
+type: "{feature | bug | refactor — from spec.md}"
 base_sha: "{baseline SHA at build start, or empty if no ledger}"
 head_sha: "{head SHA at build finish, or empty}"
 commits: "{n}"
