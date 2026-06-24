@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# skills/review/scripts/jimledger.sh — Build ledger for the /jim:review phase.
+# skills/review/scripts/jimledger.sh — jim ledger for the /jim:review phase.
 #
 # Records the build's boundary and process events to <spec-dir>/ledger.md (an
 # append-only, line-oriented log) and derives metrics from git + the ledger for
@@ -10,7 +10,7 @@
 #   start   <spec-dir>                         append a build-started event (base_sha)
 #   finish  <spec-dir>                         append a build-finished event (head_sha)
 #   event   <spec-dir> <phase> <event> [k=v…]  append a generic event
-#   metrics <spec-dir>                         emit git + ledger derived key=value lines
+#   metrics <spec-dir>                         emit git + per-stage ledger key=value lines
 #   files   <spec-dir>                         list changed file paths over base..head
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
@@ -152,6 +152,35 @@ cmd_files() {
   git -C "$dir" diff --name-only "$base..$head" --
 }
 
+# Stages whose started/finished boundaries the ledger may carry. The metrics
+# loop iterates THIS fixed list — key names are literals, never derived from
+# ledger text — so a tampered ledger cannot inject spurious metric keys
+# (sec Finding 7: the metrics stream stays a content-free trusted channel).
+LEDGER_STAGES="spec research plan sec build"
+
+# phase_event_metrics <ledger> — emit per-stage process metrics:
+#   <stage>_runs, <stage>_interruptions, and (when both bounds exist)
+#   <stage>_duration_seconds. runs = max(started, finished) so a stage that
+#   records only `finished` (spec, whose dir does not exist at entry) still
+#   counts as one run. Stages with no events are omitted (absent key = stage
+#   not instrumented), matching the reviewer's graceful-degradation contract.
+phase_event_metrics() {
+  local ledger="$1" ph s f runs inter se fe
+  for ph in $LEDGER_STAGES; do
+    s="$(awk -F'\t' -v p="$ph" '$3==p && $4=="started"{n++}  END{print n+0}' "$ledger")"
+    f="$(awk -F'\t' -v p="$ph" '$3==p && $4=="finished"{n++} END{print n+0}' "$ledger")"
+    if (( s == 0 && f == 0 )); then continue; fi
+    if (( s > f )); then runs=$s; inter=$(( s - f )); else runs=$f; inter=0; fi
+    printf '%s_runs=%s\n' "$ph" "$runs"
+    printf '%s_interruptions=%s\n' "$ph" "$inter"
+    se="$(awk -F'\t' -v p="$ph" '$3==p && $4=="started"{print $1; exit}' "$ledger")"
+    fe="$(awk -F'\t' -v p="$ph" '$3==p && $4=="finished"{e=$1} END{print e}' "$ledger")"
+    if [[ "$se" =~ ^[0-9]+$ && "$fe" =~ ^[0-9]+$ ]]; then
+      printf '%s_duration_seconds=%s\n' "$ph" "$(( fe - se ))"
+    fi
+  done
+}
+
 # cmd_metrics <spec-dir> — emit content-free key=value metrics (DD #9).
 cmd_metrics() {
   local dir="${1:-}"
@@ -161,7 +190,7 @@ cmd_metrics() {
   base="${rr% *}"; head="${rr#* }"
   local ledger="$dir/ledger.md"
   local range="$base..$head"
-  local commits ct cf cx cr stat fc ins del runs fins interruptions
+  local commits ct cf cx cr stat fc ins del
   commits="$(git -C "$dir" rev-list --count "$range" 2>/dev/null || echo 0)"
   ct="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^test(\([^)]+\))?!?:')"
   cf="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^feat(\([^)]+\))?!?:')"
@@ -173,15 +202,6 @@ cmd_metrics() {
   del="$(printf '%s' "$stat" | grep -oE '[0-9]+ deletion'       | grep -oE '[0-9]+' || true)"
   : "${fc:=0}" "${ins:=0}" "${del:=0}"
 
-  runs="$(awk -F'\t' '$3=="build" && $4=="started"{n++}  END{print n+0}' "$ledger")"
-  fins="$(awk -F'\t' '$3=="build" && $4=="finished"{n++} END{print n+0}' "$ledger")"
-  interruptions=$(( runs - fins )); (( interruptions < 0 )) && interruptions=0
-
-  local se fe dur=""
-  se="$(awk -F'\t' '$3=="build" && $4=="started"{print $1; exit}' "$ledger")"
-  fe="$(awk -F'\t' '$3=="build" && $4=="finished"{e=$1} END{print e}' "$ledger")"
-  if [[ -n "$se" && -n "$fe" ]]; then dur=$(( fe - se )); fi
-
   printf 'base_sha=%s\n' "$base"
   printf 'head_sha=%s\n' "$head"
   printf 'commits=%s\n' "$commits"
@@ -192,9 +212,12 @@ cmd_metrics() {
   printf 'files_changed=%s\n' "$fc"
   printf 'insertions=%s\n' "$ins"
   printf 'deletions=%s\n' "$del"
-  printf 'build_runs=%s\n' "$runs"
-  printf 'build_interruptions=%s\n' "$interruptions"
-  [[ -n "$dur" ]] && printf 'duration_seconds=%s\n' "$dur"
+
+  # Per-stage process metrics: build_runs / build_interruptions /
+  # build_duration_seconds, plus the same triplet for every other instrumented
+  # stage (spec/research/plan/sec). Iterates a fixed allowlist (LEDGER_STAGES) —
+  # key names are literals, never derived from ledger text.
+  phase_event_metrics "$ledger"
   return 0
 }
 

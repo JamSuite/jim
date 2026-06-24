@@ -216,8 +216,72 @@ case_jimledger_metrics_duration() {
     printf '1005\t2026-01-01T00:00:05Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
   } > "$sd/ledger.md"
   run_jimledger metrics "$sd"
-  assert_match "duration"      '^duration_seconds=5$'    "$OUT"
-  assert_match "interruptions" '^build_interruptions=0$' "$OUT"
+  assert_match "duration"      '^build_duration_seconds=5$' "$OUT"
+  assert_match "interruptions" '^build_interruptions=0$'    "$OUT"
+}
+
+# AC: metrics emits per-stage runs + duration for non-build stages (multi-stage rollout)
+case_jimledger_metrics_per_stage() {
+  local sd root sha; sd="$(git_fixture t4h)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tplan\tstarted\t\n'
+    printf '1010\t2026-01-01T00:00:10Z\tplan\tfinished\t\n'
+    printf '1020\t2026-01-01T00:00:20Z\tsec\tstarted\t\n'
+    printf '1025\t2026-01-01T00:00:25Z\tsec\tfinished\t\n'
+    printf '1030\t2026-01-01T00:00:30Z\tbuild\tstarted\tbase_sha=%s\n' "$sha"
+    printf '1099\t2026-01-01T00:01:39Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "plan_runs"     '^plan_runs=1$'              "$OUT"
+  assert_match "plan_duration" '^plan_duration_seconds=10$' "$OUT"
+  assert_match "sec_runs"      '^sec_runs=1$'               "$OUT"
+  assert_match "sec_duration"  '^sec_duration_seconds=5$'   "$OUT"
+}
+
+# AC: spec records a finished-only event — runs counts it, no duration emitted (chicken-and-egg)
+case_jimledger_metrics_spec_finished_only() {
+  local sd root sha; sd="$(git_fixture t4i)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tspec\tfinished\t\n'
+    printf '1010\t2026-01-01T00:00:10Z\tbuild\tstarted\tbase_sha=%s\n' "$sha"
+    printf '1020\t2026-01-01T00:00:20Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "spec_runs"        '^spec_runs=1$' "$OUT"
+  assert_eq    "no spec duration" "0" "$(echo "$OUT" | grep -c '^spec_duration_seconds=')"
+}
+
+# AC: a stage started without a matching finished is reported as an interruption
+case_jimledger_metrics_stage_interruption() {
+  local sd root sha; sd="$(git_fixture t4j)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tplan\tstarted\t\n'
+    printf '1010\t2026-01-01T00:00:10Z\tbuild\tstarted\tbase_sha=%s\n' "$sha"
+    printf '1020\t2026-01-01T00:00:20Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_match "plan_runs"          '^plan_runs=1$'          "$OUT"
+  assert_match "plan_interruptions" '^plan_interruptions=1$' "$OUT"
+}
+
+# AC: metrics ignores stage tokens outside the fixed allowlist (content-free, sec Finding 7)
+case_jimledger_metrics_ignores_unknown_stage() {
+  local sd root sha; sd="$(git_fixture t4k)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tevil\tstarted\t\n'
+    printf '1010\t2026-01-01T00:00:10Z\tevil\tfinished\t\n'
+    printf '1020\t2026-01-01T00:00:20Z\tbuild\tstarted\tbase_sha=%s\n' "$sha"
+    printf '1030\t2026-01-01T00:00:30Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_eq "no evil key"    "0" "$(echo "$OUT" | grep -c '^evil')"
+  assert_eq "all lines safe" "0" "$(echo "$OUT" | grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
 }
 
 # AC: metrics with no recorded baseline exits 2 so the reviewer degrades (Task 4)
