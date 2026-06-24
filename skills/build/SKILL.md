@@ -54,13 +54,13 @@ Read `spec.md` and `research.md` from the same directory. These provide the inte
 
 If the plan is ambiguous (a task's intent is unclear or its Verify command is malformed), STOP. Report the ambiguous task and what's unclear. Wait for the human to update the plan before continuing.
 
-Then open the build ledger so the later review phase can scope exactly this build's changes — even on a branch carrying several specs. Before the first task executes, record the baseline:
+Then open the jim ledger so the later review phase can scope exactly this build's changes — even on a branch carrying several specs. Before the first task executes, record the baseline:
 
 ```
 bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh start <spec-dir>
 ```
 
-Commit the new `ledger.md` with a `chore(review): open build ledger` message so the baseline survives an interrupted build. This is the first of two ledger commits; the second lands at the completion gate. (If `jimledger.sh` is absent — an older checkout — skip silently; the ledger is best-effort instrumentation.)
+Commit the new `ledger.md` with a `chore(review): open jim ledger` message so the baseline survives an interrupted build. This is the first of two ledger commits; the second lands at the completion gate. (If `jimledger.sh` is absent — an older checkout — skip silently; the ledger is best-effort instrumentation.)
 
 ### 4. Execute the TDD loop
 
@@ -201,13 +201,13 @@ After all tasks are marked `[x]`:
      - `s` (skip) — discard the row.
 
    After the batch concludes (auto-file summary, interactive resolution, or silent skip), continue to sub-step 4.
-4. Close the build ledger and commit it:
+4. Close the jim ledger and commit it:
 
    ```
    bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh finish <spec-dir>
    ```
 
-   Commit the updated `ledger.md` with `chore(review): close build ledger` — the second of two ledger commits. (If `jimledger.sh` is absent, skip silently.)
+   Commit the updated `ledger.md` with `chore(review): close jim ledger` — the second of two ledger commits. (If `jimledger.sh` is absent, skip silently.)
 5. Report results to the user and ask: "Should I mark the plan status as `complete`?"
 6. Post-build review gate (require_review / auto_review):
 
