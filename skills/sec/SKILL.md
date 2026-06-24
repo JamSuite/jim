@@ -13,7 +13,7 @@ description: >
   compliance audits.
 agent: security
 argument-hint: "[spec-dir | file-path | directory]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(mkdir *) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Read Write Edit
 ---
 
 # /jim:sec
@@ -70,6 +70,14 @@ In spec-scoped mode, check whether `security.md` already exists in the target di
 
 - **Absent:** Continue to Step 4 — this is a new review.
 - **Present:** This is a re-run. Read the existing security.md, including its `reviewed_phases:` frontmatter and the body's `## Findings` and `## Routing Recommendations` sections. The existing review will be Edit-updated (not overwritten) per Steps 11–12.
+
+**Ledger — record the stage start** (best-effort instrumentation for `/jim:review`, spec-scoped mode only). `<spec-dir>` is a runtime value, so call the helper from a fenced bash block (not `!`-injection):
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> sec started
+```
+
+This appends to `<spec-dir>/ledger.md`; you do not commit it — the developer commits it with `security.md`. If `jimledger.sh` is absent (an older checkout), skip silently. In ad-hoc mode there is no spec directory, so skip the ledger entirely.
 
 ### 4. Data classification
 
@@ -180,7 +188,7 @@ Read `references/security-dod.md` and validate the review against every applicab
    - `Needs Spec Review` — at least one Critical or Notable finding routes to Spec.
    - `Needs Plan Review` — at least one Critical or Notable finding routes to Plan.
 6. Set frontmatter `date:` to today's date — SET today = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh date`.
-7. Write to `{spec-dir}/security.md`. Use Write for a new artifact; use Edit for differential update of an existing one (preserve sections the developer did not authorize changes to; surface a conversational delta — new / resolved / unchanged findings — so the developer can scope attention).
+7. Write to `{spec-dir}/security.md`. Use Write for a new artifact; use Edit for differential update of an existing one (preserve sections the developer did not authorize changes to; surface a conversational delta — new / resolved / unchanged findings — so the developer can scope attention). The `sec finished` event is recorded at the terminal step (Step 15), not here — `security.md` keeps changing through routing and the candidate batch.
 
 **Ad-hoc mode:**
 
@@ -291,6 +299,12 @@ After the batch concludes (auto-file summary, interactive resolution, or silent 
 ### 15. Present and stop
 
 Show the findings to the developer with the Critical-finding count highlighted prominently in the summary line. Confirm the artifact was written (spec-scoped) or summarize (ad-hoc). The skill stops here — it does not invoke other skills and does not advance the SDLC workflow.
+
+**Ledger — record the stage finish** (spec-scoped mode only — skip if you did not record a start, or if `jimledger.sh` is absent). After `security.md` is finalized (routing and the candidate batch applied):
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> sec finished
+```
 
 ### 16. Halt-error format (when loop limit reached with unresolved findings)
 

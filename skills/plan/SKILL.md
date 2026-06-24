@@ -8,7 +8,7 @@ description: >
   (/jim:research), or code implementation (/jim:build).
 agent: architect
 argument-hint: "[spec-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(mkdir *) Skill(jim:sec) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:sec) Read Write Edit
 ---
 
 # /jim:plan
@@ -48,6 +48,14 @@ ENDIF
 When neither gate flag is set, this step is skipped silently and the conversational offer in Step 9 handles security review (default mode).
 
 ### 3. Handle research
+
+**Ledger — record the stage start** (best-effort instrumentation for `/jim:review`). The gates above have passed, so the plan stage is committed. `<spec-dir>` (the directory holding the spec) is a runtime value, so call the helper from a fenced bash block (not `!`-injection):
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> plan started
+```
+
+This appends to `<spec-dir>/ledger.md`; you do not commit it — the developer commits it with `plan.md`. If `jimledger.sh` is absent (an older checkout), skip silently.
 
 Check for `research.md` in the same directory as the spec.
 
@@ -111,7 +119,7 @@ Resolve the plan write path:
 
     bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path plan <group> <id> <name>
 
-Write the plan to that path. Status stays `draft`.
+Write the plan to that path. Status stays `draft`. The `plan finished` event is recorded at approval (Step 11), not here — the plan keeps changing through the self-check, the security offer, and your revisions until it is approved.
 
 ### 8. Self-check
 
@@ -195,6 +203,14 @@ Show the completed plan. Summarize what was created or changed. If any `[NEEDS C
 > "There are [N] open clarification items I flagged — see the Requirements Coverage Summary. Resolve these before handing the plan to the coder."
 
 Status stays `draft` until the user explicitly approves. Ask: "Any changes, or should I mark this approved?"
+
+When the user approves, set `status: approved` in the frontmatter (use Edit), then record the plan stage's completion — its true finish, after the design, self-check, and any security-driven revisions:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> plan finished
+```
+
+Skip silently if `jimledger.sh` is absent or no `started` was recorded. Never set `approved` without explicit human confirmation.
 
 Do not proceed to the next phase.
 

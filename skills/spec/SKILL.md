@@ -7,7 +7,7 @@ description: >
   use for technical planning (/jim:plan) or implementation (/jim:build).
 agent: pm
 argument-hint: "[idea-or-name]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(mkdir *) Skill(jim:spec-check) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:spec-check) Read Write Edit
 ---
 
 # /jim:spec
@@ -50,9 +50,25 @@ List existing specs in every group via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/
 
 - If `$ARGUMENTS` matches an existing spec name, ask: "Update the existing spec, or create a new one?"
 - Identify the target group. If ambiguous, suggest a noun-based group name or ask.
-- Note existing spec IDs in the group — you'll need the next available ID later, but don't assign it yet.
+- Note existing spec IDs in the group — for a new spec you'll assign the next id when you open the ledger below.
 
 Flag potential cross-spec side effects if the new idea overlaps with existing specs in the same group.
+
+**Open the jim ledger (new specs only).** Once the target group is known and this is a *new* spec (not a differential update — Step 13), reserve the id and open the ledger immediately, so the spec stage's start is recorded from the outset rather than after the interview's back-and-forth:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id <group>           # → the id; hold it for Step 8
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> wip  # → <specs>/<group>/<id>-wip/spec.md
+```
+
+Create the placeholder dir (the parent of that path) and record the stage start:
+
+```
+mkdir -p <specs>/<group>/<id>-wip
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs>/<group>/<id>-wip spec started
+```
+
+`wip` is a placeholder slug, renamed to the real slug in Step 8. This creates an uncommitted `ledger.md` (in an otherwise-empty spec dir) right away; if you abandon the interview, just delete the `<id>-wip` dir. If `jimledger.sh` is absent (an older checkout), skip this entirely — Step 8 then assigns the id and creates the final dir directly, as before.
 
 ### 4. Detect spec type
 
@@ -126,7 +142,7 @@ No confidence scores. No numeric thresholds. The question is structural: "Can I 
 
 ### 8. Generate spec.md
 
-Now assign the ID. Run via Bash, substituting the target group:
+**Assign the id.** If you opened the ledger in Step 3 (the usual case for a new spec), the id is already assigned — reuse it; do **not** call `next-id` again. Only if Step 3's ledger-open was skipped (e.g. `jimledger.sh` absent) assign it now:
 
 ```
 bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id <group>
@@ -145,13 +161,21 @@ Read `assets/spec-template.md`. Generate the spec:
 - For refactors, ensure acceptance criteria includes "Existing tests pass without modification."
 - **Research & Architecture Handoff** — conditional. Include the `## Research & Architecture Handoff` section *only* when Implementation Insights were surfaced during the interview via the Level-Up Method (Step 6). Each Insight follows the per-Insight sub-template in `assets/spec-template.md`. If no Insights were collected, strip the section entirely along with its comment marker (same convention as the `<!-- ... only -->` type markers).
 
+**Rename the wip dir before writing** (new specs that opened the ledger in Step 3). Now that the slug is settled, rename the `<id>-wip` placeholder to its final name. Do this *before* writing `spec.md` or capturing any path (e.g. the candidate-batch `origin`), so no `-wip` path leaks downstream:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh mv-spec <group> <id> <name>
+```
+
+(Skip if Step 3's ledger-open was skipped — there is no wip dir to rename.)
+
 Resolve the spec write path:
 
 ```
 bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>
 ```
 
-Write the spec to that path.
+Write the spec to that path. The `spec finished` event is **not** recorded here — the spec keeps changing through the self-check and your review until approval, so the stage's finish is recorded at approval (Step 12).
 
 ### 9. Socratic self-check
 
@@ -251,7 +275,13 @@ These are your recommendations — the user has **final authority** over classif
 Ask: "Want to change anything, or should I mark this as approved?"
 
 - If the user requests changes → return to the interview loop (step 6) or edit directly.
-- If the user approves → set `status: approved` in the frontmatter. Use Edit, not Write.
+- If the user approves → set `status: approved` in the frontmatter (use Edit, not Write), then record the spec stage's completion — its true finish, after all the interview and self-check back-and-forth:
+
+  ```
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> spec finished
+  ```
+
+  Skip silently if `jimledger.sh` is absent or no `started` was recorded for this spec.
 
 Never auto-approve. Never set `approved` without explicit human confirmation.
 
@@ -262,7 +292,13 @@ If `$ARGUMENTS` points to an existing spec, or if step 3 identified a name colli
 1. Read the existing spec fully.
 2. Summarize proposed changes organized by section — what's added, changed, or removed.
 3. Ask: "Update in place, or create a new increment?"
-4. If updating: use Edit, not Write. Preserve sections the user didn't ask to change.
+4. If updating in place: record the stage start in this spec's directory (it already exists), apply changes via Edit (preserve sections the user didn't ask to change), then on the user's confirmation record the stage finish in the same directory — skip both if `jimledger.sh` is absent:
+
+   ```
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> spec started
+   # … apply the Edits, get confirmation …
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> spec finished
+   ```
 5. If creating new: follow the normal generation path (step 8) with a new ID.
 
 ## Validation Checklist

@@ -8,7 +8,7 @@ description: >
   or spec creation (/jim:spec).
 agent: researcher
 argument-hint: "[spec-path | brainstorm-path | directory | topic]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(mkdir *) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Read Write Edit
 ---
 
 # /jim:research
@@ -38,6 +38,14 @@ Use `$ARGUMENTS` to determine the research target and mode:
       bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path research <group> <id> <name>
 
   Write the research to that path.
+
+  **Ledger — record the stage start** (best-effort instrumentation for `/jim:review`, spec-linked research only). `<spec-dir>` is a runtime value, so call the helper from a fenced bash block (not `!`-injection):
+
+  ```
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> research started
+  ```
+
+  This appends to `<spec-dir>/ledger.md`; you do not commit it — the developer commits it with `research.md`. If `jimledger.sh` is absent (an older checkout), skip silently. For non-spec research (the cases below), there is no spec directory, so skip the ledger entirely.
 - **Everything else:** Suggest a location and confirm with the user before writing:
   - If a related spec exists, suggest its directory.
   - Otherwise suggest `docs/research/{YYYYMMDD}-{topic}.md`.
@@ -197,3 +205,9 @@ Show the research.md to the user. If a Peer Feedback section exists, surface the
 > "Heads up: I found [concern] that may affect [spec/plan]. You may want to review before proceeding."
 
 Ask for approval. Write the file (Write for new, Edit for updates). Do not proceed to the next phase unprompted.
+
+**Ledger — record the stage finish** (spec-linked research only — skip if you did not record a start, or if `jimledger.sh` is absent). After the file is written and the developer is satisfied:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> research finished
+```
