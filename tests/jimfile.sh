@@ -165,6 +165,82 @@ case_jimfile_next_id_with_gaps() {
   assert_eq "006 not 002" "006" "$OUT"
 }
 
+# AC: mv-spec renames the {id}-wip dir to {id}-{name}; the ledger travels with it
+case_jimfile_mv_spec_renames_wip() {
+  local specs cfg
+  specs=$(empty_dir mvspec_rename)
+  mkdir -p "$specs/jim/027-wip"
+  printf 'x\n' > "$specs/jim/027-wip/ledger.md"
+  cfg=$(fixture mvspec-rename.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec jim 027 review
+  assert_exit "rc" 0 "$RC"
+  assert_eq "target printed"   "$specs/jim/027-review" "$OUT"
+  assert_eq "wip removed"      "no"  "$([[ -d "$specs/jim/027-wip" ]] && echo yes || echo no)"
+  assert_eq "final exists"     "yes" "$([[ -d "$specs/jim/027-review" ]] && echo yes || echo no)"
+  assert_eq "ledger travelled" "yes" "$([[ -f "$specs/jim/027-review/ledger.md" ]] && echo yes || echo no)"
+}
+
+# AC: mv-spec is a no-op success when the dir already carries the target name
+case_jimfile_mv_spec_noop_when_named() {
+  local specs cfg
+  specs=$(empty_dir mvspec_noop)
+  mkdir -p "$specs/jim/030-review"
+  cfg=$(fixture mvspec-noop.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec jim 030 review
+  assert_exit "rc" 0 "$RC"
+  assert_eq "target printed" "$specs/jim/030-review" "$OUT"
+  assert_eq "still exists"   "yes" "$([[ -d "$specs/jim/030-review" ]] && echo yes || echo no)"
+}
+
+# AC: mv-spec rejects a non-slug new-name before any move (is_valid_slug)
+case_jimfile_mv_spec_rejects_bad_name() {
+  local specs cfg
+  specs=$(empty_dir mvspec_badname)
+  mkdir -p "$specs/jim/031-wip"
+  cfg=$(fixture mvspec-badname.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec jim 031 "../evil"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr" "$ERR"
+  assert_eq "wip untouched" "yes" "$([[ -d "$specs/jim/031-wip" ]] && echo yes || echo no)"
+}
+
+# AC: mv-spec rejects a non-3-digit id
+case_jimfile_mv_spec_rejects_bad_id() {
+  local specs cfg
+  specs=$(empty_dir mvspec_badid)
+  mkdir -p "$specs/jim/032-wip"
+  cfg=$(fixture mvspec-badid.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec jim 32 review
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: mv-spec errors when no {id}-* source dir exists
+case_jimfile_mv_spec_missing_source_exits_1() {
+  local specs cfg
+  specs=$(empty_dir mvspec_nosrc)
+  mkdir -p "$specs/jim"
+  cfg=$(fixture mvspec-nosrc.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec jim 040 review
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: mv-spec refuses when more than one {id}-* dir matches (ambiguous source)
+case_jimfile_mv_spec_multiple_match_exits_1() {
+  local specs cfg
+  specs=$(empty_dir mvspec_multi)
+  mkdir -p "$specs/jim/050-wip" "$specs/jim/050-foo"
+  cfg=$(fixture mvspec-multi.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec jim 050 review
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: mv-spec with too few args exits 2 with a message
+case_jimfile_mv_spec_missing_args_exits_2() {
+  run_jimfile mv-spec jim 027
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr" "$ERR"
+}
+
 # AC: next-id zero-pads to 3 digits even at boundary
 case_jimfile_next_id_zero_pads() {
   local specs cfg

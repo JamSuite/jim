@@ -26,6 +26,8 @@
 #   bash jimfile.sh slug <topic>                      kebab-case slug
 #   bash jimfile.sh date                              today as YYYYMMDD
 #   bash jimfile.sh next-id <group>                   next zero-padded spec id
+#   bash jimfile.sh mv-spec <group> <id> <new-name>   rename {id}-* spec dir to
+#                                                     {id}-{new-name} (wip rename)
 #   bash jimfile.sh path <key>                        configured path for <key>,
 #                                                     regardless of existence
 #                                                     (D3 — single-arg form)
@@ -288,6 +290,74 @@ cmd_next_id() {
     done
   fi
   printf '%03d\n' $(( max + 1 ))
+}
+
+# cmd_mv_spec <group> <id> <new-name>
+#   Rename the spec directory {specs}/{group}/{id}-* to {id}-{new-name}. Used by
+#   /jim:spec to rename the `wip` placeholder dir (created at interview start so
+#   the jim ledger has a home) once the spec's slug is settled. Validates
+#   group/id/new-name before any move, resolves the single {id}-* dir, no-ops if
+#   already named, and refuses to clobber a different target. Prints the
+#   resolved target dir on success.
+cmd_mv_spec() {
+  local group="${1:-}" id="${2:-}" new_name="${3:-}"
+  if [[ -z "$group" || -z "$id" || -z "$new_name" ]]; then
+    echo "error: 'mv-spec' requires <group> <id> <new-name>" >&2
+    return 2
+  fi
+  # group: the broad path-safe allowlist (forecloses '/', '..', leading dash).
+  if ! is_valid_id "$group"; then
+    echo "error: mv-spec group rejected — '$group'" >&2
+    return 1
+  fi
+  # id: a zero-padded 3-digit spec id.
+  if [[ ! "$id" =~ ^[0-9]{3}$ ]]; then
+    echo "error: mv-spec id rejected — '$id' (allowed: ^[0-9]{3}\$)" >&2
+    return 1
+  fi
+  # new-name: the spec dir slug (lowercase alnum + dash, alnum-start).
+  if ! is_valid_slug "$new_name"; then
+    echo "error: mv-spec new-name rejected — '$new_name'" >&2
+    return 1
+  fi
+  local specs_root group_dir
+  specs_root="$(jimconf_get specs)"
+  group_dir="$specs_root/$group"
+  if [[ ! -d "$group_dir" ]]; then
+    echo "error: mv-spec group dir not found — '$group_dir'" >&2
+    return 1
+  fi
+  local target="$group_dir/$id-$new_name"
+  # Resolve the single existing {id}-* source dir.
+  local entry src="" count=0
+  for entry in "$group_dir/$id"-*/; do
+    [[ -d "$entry" ]] || continue
+    src="${entry%/}"
+    count=$(( count + 1 ))
+  done
+  if (( count == 0 )); then
+    echo "error: mv-spec no dir matching '$id-*' in '$group_dir'" >&2
+    return 1
+  fi
+  if (( count > 1 )); then
+    echo "error: mv-spec multiple dirs match '$id-*' in '$group_dir'" >&2
+    return 1
+  fi
+  # Already at the target name → no-op success (idempotent).
+  if [[ "$src" == "$target" ]]; then
+    printf '%s\n' "$target"
+    return 0
+  fi
+  # Refuse to clobber a different existing target.
+  if [[ -e "$target" ]]; then
+    echo "error: mv-spec target already exists — '$target'" >&2
+    return 1
+  fi
+  if ! mv -- "$src" "$target"; then
+    echo "error: mv-spec failed to rename '$src' -> '$target'" >&2
+    return 1
+  fi
+  printf '%s\n' "$target"
 }
 
 # issue_next_num <issues_dir>
@@ -656,6 +726,7 @@ usage:
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh now                                now as YYYY-MM-DDThh:mm:ssZ (UTC)
   jimfile.sh next-id <group>                    next zero-padded spec id
+  jimfile.sh mv-spec <group> <id> <new-name>    rename {id}-* spec dir to {id}-{new-name}
   jimfile.sh next-num issue                     next display ordinal (max+1)
   jimfile.sh path <key>                         configured path for <key>
   jimfile.sh path spec      <group> <id> <name>
@@ -696,6 +767,7 @@ main() {
     now)     cmd_now ;;
     next-id)  cmd_next_id  "$@" ;;
     next-num) cmd_next_num "$@" ;;
+    mv-spec)  cmd_mv_spec  "$@" ;;
     path)    cmd_path    "$@" ;;
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
