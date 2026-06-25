@@ -46,6 +46,11 @@ the gap between what was planned and what was shipped.
 - [ ] After `/jim:build` completes, the developer is offered a review by
       default; configuration can instead require the review or run it
       automatically, consistent with jim's existing gate knobs.
+- [ ] When the review is configured as required, the build cannot reach
+      completion until the review has run to completion: the completion gate
+      is held, and an interrupted, errored, or declined required review leaves
+      the build incomplete rather than proceeding. The review's findings remain
+      advisory — it is the uncompleted phase that blocks, never the findings.
 - [ ] The review compares the build's changes against the spec's acceptance
       criteria, the plan's tasks, and the architecture document, and reports
       where the implementation diverges from each.
@@ -99,9 +104,11 @@ flowchart LR
   the portable scoping mechanism. Optional trailer-aware scoping is future work.
 - Token-usage metrics — there is no bash-reachable token meter a skill can read;
   not portably achievable without harness support.
-- Blocking the commit / hard pass-fail gating. The review is advisory: it
-  produces a findings report, not a veto. (`require_review` can require the phase
-  to *run*; it does not auto-reject the build.)
+- Blocking the commit / hard pass-fail gating on the *findings*. The review's
+  findings are advisory: a report, not a veto, and they never auto-reject the
+  build. (`require_review` is a separate axis — it holds the build's completion
+  gate until the review phase has *run to completion*; it gates that the phase
+  ran, never whether the findings pass.)
 - Fixing the drift. The reviewer reports; it does not modify code (mirrors how
   `/jim:debug` diagnoses without fixing).
 - Runtime/dynamic security scanning of deployed code and compliance audits.
@@ -203,8 +210,11 @@ evaluate. The brainstorm carries the full rationale.*
 - **Routing hint:** Architect to decide.
 
 ## Open Questions
-- [ ] `require_review` semantics: what does "required" enforce, and where, given
-      there is no commit gate at the end of build? (Plan concern.)
+- [x] ~~`require_review` semantics: what does "required" enforce, and where, given
+      there is no commit gate at the end of build?~~ Resolved: `require_review`
+      holds `/jim:build`'s completion gate — the plan cannot be marked `complete`
+      until `/jim:review` has run to completion (a `review.md` exists). Findings
+      stay advisory; it is the uncompleted phase that blocks.
 - [ ] Re-running `/jim:review` on the same spec: overwrite `review.md`, or append
       a new review record? (Affects aggregation.)
 - [ ] Exact alignment-verdict vocabulary (e.g. `aligned` / `minor-drift` /
