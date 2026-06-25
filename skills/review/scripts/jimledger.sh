@@ -160,10 +160,16 @@ LEDGER_STAGES="spec research plan sec build"
 
 # phase_event_metrics <ledger> — emit per-stage process metrics:
 #   <stage>_runs, <stage>_interruptions, and (when both bounds exist)
-#   <stage>_duration_seconds. runs = max(started, finished) so a stage that
-#   records only `finished` (spec, whose dir does not exist at entry) still
-#   counts as one run. Stages with no events are omitted (absent key = stage
-#   not instrumented), matching the reviewer's graceful-degradation contract.
+#   <stage>_duration_seconds. runs = max(started, finished); interruptions =
+#   started - finished, so a stage restarted after an abandoned attempt counts
+#   each run and surfaces the gap. spec is instrumented like the rest: it opens
+#   its `started` event in a `<id>-wip` dir that `mv-spec` renames into the
+#   final spec dir, then records `finished` at approval — so a completed spec
+#   carries both bounds and emits all three metrics. A stage with only
+#   `finished` (e.g. an older checkout that skipped the wip open) still counts
+#   one run but emits no duration. Stages with no events are omitted (absent
+#   key = stage not instrumented), matching the reviewer's graceful-degradation
+#   contract.
 phase_event_metrics() {
   local ledger="$1" ph s f runs inter se fe
   for ph in $LEDGER_STAGES; do

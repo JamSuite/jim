@@ -255,6 +255,24 @@ case_jimledger_metrics_spec_finished_only() {
   assert_eq    "no spec duration" "0" "$(echo "$OUT" | grep -c '^spec_duration_seconds=')"
 }
 
+# AC: a completed spec carries both bounds (wip `started` + approval `finished`)
+#     and emits all three metrics, like every other instrumented stage
+case_jimledger_metrics_spec_both_boundaries() {
+  local sd root sha; sd="$(git_fixture t4sb)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tspec\tstarted\t\n'
+    printf '1300\t2026-01-01T00:05:00Z\tspec\tfinished\t\n'
+    printf '2000\t2026-01-01T00:10:00Z\tbuild\tstarted\tbase_sha=%s\n' "$sha"
+    printf '2600\t2026-01-01T00:20:00Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "spec_runs"          '^spec_runs=1$'                "$OUT"
+  assert_match "spec_interruptions" '^spec_interruptions=0$'       "$OUT"
+  assert_match "spec_duration"      '^spec_duration_seconds=300$'  "$OUT"
+}
+
 # AC: a stage started without a matching finished is reported as an interruption
 case_jimledger_metrics_stage_interruption() {
   local sd root sha; sd="$(git_fixture t4j)"; root="${sd%/spec}"
