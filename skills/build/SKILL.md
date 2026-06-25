@@ -208,18 +208,22 @@ After all tasks are marked `[x]`:
    ```
 
    Commit the updated `ledger.md` with `chore(review): close jim ledger` — the second of two ledger commits. (If `jimledger.sh` is absent, skip silently.)
-5. Report results to the user and ask: "Should I mark the plan status as `complete`?"
+5. Report results to the user.
 6. Post-build review gate (require_review / auto_review):
 
    SET require_review = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_review`
    SET auto_review    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_review`
 
    IF require_review == "true" OR auto_review == "true" THEN
-     Invoke `Skill(jim:review)` with the spec directory as the `args` parameter. `require_review` makes the review mandatory; `auto_review` runs it without a prompt — either way it runs once. Review findings are advisory: the review produces a report and never blocks completion.
+     Invoke `Skill(jim:review)` with the spec directory as the `args` parameter — it runs once. `auto_review` runs it without a prompt; `require_review` makes it a **required, blocking phase** (enforced at the completion gate, Step 7).
    ELSE
      Offer conversationally: "Run the post-build review now? (`/jim:review`)" — the developer chooses. Do not auto-run.
    ENDIF
-7. STOP. Wait for the human to confirm. Do not auto-ship. Update the plan frontmatter to `status: complete` only after explicit confirmation.
+
+   Two distinct axes, do not conflate them: the review's *findings* (drift, metrics, security regressions) are advisory — a report, never a veto, and they never auto-reject the build. What `require_review` gates is that the review *phase runs to completion*, not whether its findings pass.
+7. Completion gate. Ask: "Should I mark the plan status as `complete`?" Then STOP and wait for explicit human confirmation. Do not auto-ship. Update the plan frontmatter to `status: complete` only after that confirmation.
+
+   IF require_review == "true": the Step 6 review is a required, blocking phase — do **not** mark the plan complete until that review has run to completion (a `review.md` was produced for this spec). If the review was interrupted, errored, or the developer declined it, the completion gate is **held**: re-run `/jim:review` (or stop and report), and leave the plan status unchanged. Advisory findings never block; an *uncompleted required review* does.
 
 ## Scope Discipline
 

@@ -111,7 +111,7 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `require_pre_commit` | `"false"` | `/jim:build` — when `"true"`, missing pre-commit script halts the build |
 | `require_pre_completion` | `"false"` | `/jim:build` — when `"true"`, missing pre-completion script halts the build |
 | `auto_arch_feedback` | `"false"` | `/jim:build` → `/jim:arch` — when `"true"`, ARCHITECTURE.md updates apply without confirmation |
-| `require_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review runs as a required step at the completion gate (advisory; never blocks) |
+| `require_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review is a required phase: the build's completion gate is held until the review has run to completion. Its findings stay advisory (a report, not a veto), but the build cannot be marked complete without the review |
 | `auto_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review runs automatically with no prompt; composes independently of `auto_issue_file` |
 | `require_security` | `"false"` | `/jim:plan`, `/jim:build` — when `"true"`, next-phase start blocks until security review covers the prior phase; developer in the loop for routing |
 | `auto_security` | `"false"` | `/jim:plan`, `/jim:build` — same gate as `require_security`, but findings route automatically (no per-finding prompts) |

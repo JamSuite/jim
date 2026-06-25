@@ -419,7 +419,7 @@ agent: meta
 
 `@jim:reviewer` fuses three inputs: the **stage ledger** (`ledger.md` — a trusted, content-free metrics channel via `jimledger.sh`; `/jim:build` records the build range and SHAs, while `/jim:spec`, `/jim:research`, `/jim:plan`, and `/jim:sec` each record their own start/finish for per-stage durations and re-runs), the **git diff** for the build range, and the **spec / plan / `ARCHITECTURE.md`** ground truth. It reports drift against each, code + process metrics, and any security regressions (optionally invoking `/jim:sec` ad-hoc), then writes `review.md` with a mineable frontmatter summary, a single alignment verdict (`aligned` / `minor-drift` / `major-drift`), and a narrative. Findings can be captured as issues. Ingested commit/diff/ledger content is treated as untrusted; the verdict is the reviewer's judgment, never a value read from that content.
 
-`/jim:build` offers the review at its completion gate by default, or runs it automatically under the `require_review` / `auto_review` knobs. The review is advisory — it never blocks completion.
+`/jim:build` offers the review at its completion gate by default, or runs it automatically under the `require_review` / `auto_review` knobs. Two axes that don't conflate: the review's **findings** are advisory — a report, never a veto, and they never auto-reject the build. `require_review`, by contrast, makes the review a **required, blocking phase**: the build's completion gate is held until the review has run to completion, so the build cannot be marked complete without it. It is the uncompleted phase that blocks, not the findings.
 
 ### `/jim:ship` *(not yet implemented)*
 

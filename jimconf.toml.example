@@ -49,9 +49,11 @@ auto_arch_feedback = "false"
 # --- Post-build review gate -----------------------------------------------
 
 # Post-build review (/jim:review) verifies what the build shipped against the
-# spec, plan, and architecture. When "true", /jim:build runs the review at the
-# completion gate and treats it as a required step (findings stay advisory —
-# the review never blocks). Default "false" makes /jim:build merely offer it.
+# spec, plan, and architecture. When "true", the review is a required, blocking
+# phase: /jim:build holds the completion gate until the review has run to
+# completion — the build cannot be marked complete without it. The review's
+# findings stay advisory (a report, not a veto); it is the uncompleted phase
+# that blocks, not the findings. Default "false" makes /jim:build merely offer it.
 require_review = "false"
 
 # Run the post-build review automatically with no prompt at the completion
