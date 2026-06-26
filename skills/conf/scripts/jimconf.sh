@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_review auto_review require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -62,6 +62,9 @@ default_for() {
     auto_security)               echo "false" ;;
     require_review)              echo "false" ;;
     auto_review)                 echo "false" ;;
+    review_depth)                echo "thorough" ;;
+    review_model)                echo "inherit" ;;
+    review_fanout_cap)           echo "10" ;;
     require_security_loop)       echo "false" ;;
     require_security_loop_sev)   echo "critical" ;;
     auto_security_loop_limit)    echo "5" ;;
@@ -108,13 +111,14 @@ parse_value() {
 resolve() {
   local file="$1" cli_key="$2"
   local toml_key
-  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* || "$cli_key" == issue_id_* ]]; then
+  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* || "$cli_key" == issue_id_* || "$cli_key" == review_* ]]; then
     # Bare-name keys (no _path suffix). The auto_*/require_* prefixes signal
     # automated/mandatory behaviors; issue_capture is a human-in-the-loop
     # feature flag (spec 018 DD #1); the issue_list_* family configures the
     # default `/jim:issue list` view (group/sort/cols/order plus the
-    # issue_list_closed visibility toggle) and is not a path. All resolve to
-    # their bare TOML name.
+    # issue_list_closed visibility toggle) and is not a path; the review_*
+    # family (review_depth / review_model / review_fanout_cap, spec 027) are
+    # bare behavior selectors. All resolve to their bare TOML name.
     toml_key="$cli_key"
   else
     toml_key="${cli_key}_path"

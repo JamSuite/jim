@@ -55,6 +55,9 @@ case_no_config_returns_defaults() {
               "auto_security:false" \
               "require_review:false" \
               "auto_review:false" \
+              "review_depth:thorough" \
+              "review_model:inherit" \
+              "review_fanout_cap:10" \
               "require_security_loop:false" \
               "require_security_loop_sev:critical" \
               "auto_security_loop_limit:5" \
@@ -94,6 +97,9 @@ require_security = "true"
 auto_security = "true"
 require_review = "true"
 auto_review = "true"
+review_depth = "lean"
+review_model = "opus"
+review_fanout_cap = "5"
 require_security_loop = "true"
 require_security_loop_sev = "notable"
 auto_security_loop_limit = "10"
@@ -122,6 +128,9 @@ issue_id_project = "PROJ"')
   run -c "$cfg" get auto_security;             assert_eq "auto_security"             "true"                   "$OUT"
   run -c "$cfg" get require_review;            assert_eq "require_review"            "true"                   "$OUT"
   run -c "$cfg" get auto_review;               assert_eq "auto_review"               "true"                   "$OUT"
+  run -c "$cfg" get review_depth;              assert_eq "review_depth"              "lean"                   "$OUT"
+  run -c "$cfg" get review_model;              assert_eq "review_model"              "opus"                   "$OUT"
+  run -c "$cfg" get review_fanout_cap;         assert_eq "review_fanout_cap"         "5"                      "$OUT"
   run -c "$cfg" get require_security_loop;     assert_eq "require_security_loop"     "true"                   "$OUT"
   run -c "$cfg" get require_security_loop_sev; assert_eq "require_security_loop_sev" "notable"                "$OUT"
   run -c "$cfg" get auto_security_loop_limit;  assert_eq "auto_security_loop_limit"  "10"                     "$OUT"
@@ -164,7 +173,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "29" "$line_count"
+  assert_eq    "list line count"                  "32" "$line_count"
   assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
@@ -178,6 +187,9 @@ case_list_outputs_all_keys() {
   assert_match "auto_arch_feedback line"           '^auto_arch_feedback=false$'             "$OUT"
   assert_match "require_security line"             '^require_security=false$'               "$OUT"
   assert_match "auto_security line"                '^auto_security=false$'                  "$OUT"
+  assert_match "review_depth line"                 '^review_depth=thorough$'                "$OUT"
+  assert_match "review_model line"                 '^review_model=inherit$'                 "$OUT"
+  assert_match "review_fanout_cap line"            '^review_fanout_cap=10$'                 "$OUT"
   assert_match "require_security_loop line"        '^require_security_loop=false$'          "$OUT"
   assert_match "require_security_loop_sev line"    '^require_security_loop_sev=critical$'   "$OUT"
   assert_match "auto_security_loop_limit line"     '^auto_security_loop_limit=5$'           "$OUT"
@@ -199,7 +211,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_review\nauto_review\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -237,7 +249,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "29" "$line_count"
+  assert_eq "list still emits all keys" "32" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -663,6 +675,58 @@ case_issue_id_project_overridden() {
   cfg=$(fixture issue_id_project-override.toml 'issue_id_project = "JIM"')
   run -c "$cfg" get issue_id_project
   assert_eq "issue_id_project overridden" "JIM" "$OUT"
+}
+
+# AC: review_depth defaults to "thorough" (spec 027)
+# Bare-name behavior knob — TOML name equals CLI name (no _path suffix), resolved
+# via the review_* dispatch arm in resolve(). Default keeps the review thorough.
+case_review_depth_default() {
+  local dir actual
+  dir=$(empty_dir review_depth_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get review_depth)
+  assert_eq "review_depth default" "thorough" "$actual"
+}
+
+# AC: review_depth override via jimconf.toml (spec 027)
+# Guards the silent-no-op the researcher flagged: without the review_* arm the
+# dispatch would look up `review_depth_path` and return the default.
+case_review_depth_overridden() {
+  local cfg
+  cfg=$(fixture review_depth-override.toml 'review_depth = "lean"')
+  run -c "$cfg" get review_depth
+  assert_eq "review_depth overridden" "lean" "$OUT"
+}
+
+# AC: review_model defaults to "inherit" (spec 027)
+case_review_model_default() {
+  local dir actual
+  dir=$(empty_dir review_model_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get review_model)
+  assert_eq "review_model default" "inherit" "$actual"
+}
+
+# AC: review_model override via jimconf.toml (spec 027)
+case_review_model_overridden() {
+  local cfg
+  cfg=$(fixture review_model-override.toml 'review_model = "opus"')
+  run -c "$cfg" get review_model
+  assert_eq "review_model overridden" "opus" "$OUT"
+}
+
+# AC: review_fanout_cap defaults to "10" (spec 027)
+case_review_fanout_cap_default() {
+  local dir actual
+  dir=$(empty_dir review_fanout_cap_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get review_fanout_cap)
+  assert_eq "review_fanout_cap default" "10" "$actual"
+}
+
+# AC: review_fanout_cap override via jimconf.toml (spec 027)
+case_review_fanout_cap_overridden() {
+  local cfg
+  cfg=$(fixture review_fanout_cap-override.toml 'review_fanout_cap = "5"')
+  run -c "$cfg" get review_fanout_cap
+  assert_eq "review_fanout_cap overridden" "5" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
