@@ -12,6 +12,7 @@
 #   event   <spec-dir> <phase> <event> [k=v…]  append a generic event
 #   metrics <spec-dir>                         emit git + per-stage ledger key=value lines
 #   files   <spec-dir>                         list changed file paths over base..head
+#   diff    <spec-dir>                         emit the diff (function-context) over base..head
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
 #
@@ -35,6 +36,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   event   <spec-dir> <phase> <event> [k=v …]  append a generic event
   metrics <spec-dir>                          emit key=value metrics to stdout
   files   <spec-dir>                          list changed files over the build range
+  diff    <spec-dir>                          emit the diff (function-context) over the build range
 USAGE
 }
 
@@ -152,6 +154,18 @@ cmd_files() {
   git -C "$dir" diff --name-only "$base..$head" --
 }
 
+# cmd_diff <spec-dir> — emit the diff over the build range with --function-context
+#   so each hunk carries its enclosing function (untrusted output). Mirrors
+#   cmd_files: SHAs validated by resolve_range, `--` end-of-options guard.
+cmd_diff() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger diff: need <spec-dir>" >&2; return 2; fi
+  local rr base head
+  rr="$(resolve_range "$dir")" || return 2
+  base="${rr% *}"; head="${rr#* }"
+  git -C "$dir" diff --function-context "$base..$head" --
+}
+
 # Stages whose started/finished boundaries the ledger may carry. The metrics
 # loop iterates THIS fixed list — key names are literals, never derived from
 # ledger text — so a tampered ledger cannot inject spurious metric keys
@@ -233,6 +247,7 @@ main() {
     start)   shift; cmd_start "$@" ;;
     metrics) shift; cmd_metrics "$@" ;;
     files)   shift; cmd_files "$@" ;;
+    diff)    shift; cmd_diff "$@" ;;
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
     *) usage; return 2 ;;

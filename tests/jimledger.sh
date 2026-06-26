@@ -327,6 +327,56 @@ case_jimledger_files_no_baseline_exits_2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# AC: diff emits the changed content over the build range (spec 027 Task 1)
+case_jimledger_diff_lists_changes() {
+  local sd root; sd="$(git_fixture t1da)"; root="${sd%/spec}"
+  run_jimledger start "$sd"
+  gledger_commit "$root" feat "foo.txt" "hello-diff-marker"
+  run_jimledger finish "$sd"
+  run_jimledger diff "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "added line"  '^\+hello-diff-marker$' "$OUT"
+  assert_match "diff header" '^diff --git' "$OUT"
+}
+
+# AC: diff passes --function-context so the enclosing function travels with the
+# hunk — a change deep in a function pulls in its header line (spec 027 Task 1)
+case_jimledger_diff_function_context() {
+  local sd root; sd="$(git_fixture t1db)"; root="${sd%/spec}"
+  printf '*.sh diff=bash\n' > "$root/.gitattributes"
+  printf 'ctx_fn() {\n  a=1\n  b=2\n  c=3\n  d=4\n  target=old\n}\n' > "$root/fn.sh"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "feat: fn"
+  run_jimledger start "$sd"
+  printf 'ctx_fn() {\n  a=1\n  b=2\n  c=3\n  d=4\n  target=new\n}\n' > "$root/fn.sh"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "feat: change target"
+  run_jimledger finish "$sd"
+  run_jimledger diff "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "func header pulled into context" 'ctx_fn\(\) \{' "$OUT"
+}
+
+# AC: diff with no recorded baseline exits 2 so the reviewer degrades (spec 027 Task 1)
+case_jimledger_diff_no_baseline_exits_2() {
+  local sd; sd="$(git_fixture t1dc)"
+  run_jimledger diff "$sd"
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: diff is scoped to the build range — pre-baseline changes are excluded (spec 027 Task 1)
+case_jimledger_diff_range_scoped() {
+  local sd root; sd="$(git_fixture t1dd)"; root="${sd%/spec}"
+  gledger_commit "$root" feat "pre.txt" "pre-only-marker"
+  run_jimledger start "$sd"
+  gledger_commit "$root" feat "post.txt" "post-only-marker"
+  run_jimledger finish "$sd"
+  run_jimledger diff "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "post in range"    'post-only-marker' "$OUT"
+  assert_eq    "pre excluded" "0" "$(echo "$OUT" | grep -c 'pre-only-marker')"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
