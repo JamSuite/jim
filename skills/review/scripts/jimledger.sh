@@ -170,7 +170,7 @@ cmd_diff() {
 # loop iterates THIS fixed list — key names are literals, never derived from
 # ledger text — so a tampered ledger cannot inject spurious metric keys
 # (sec Finding 7: the metrics stream stays a content-free trusted channel).
-LEDGER_STAGES="spec research plan sec build"
+LEDGER_STAGES="spec research plan sec build review"
 
 # phase_event_metrics <ledger> — emit per-stage process metrics:
 #   <stage>_runs, <stage>_interruptions, and (when both bounds exist)
@@ -205,38 +205,46 @@ phase_event_metrics() {
 cmd_metrics() {
   local dir="${1:-}"
   if [[ -z "$dir" ]]; then echo "jimledger metrics: need <spec-dir>" >&2; return 2; fi
-  local rr base head
-  rr="$(resolve_range "$dir")" || return 2
-  base="${rr% *}"; head="${rr#* }"
   local ledger="$dir/ledger.md"
-  local range="$base..$head"
-  local commits ct cf cx cr stat fc ins del
-  commits="$(git -C "$dir" rev-list --count "$range" 2>/dev/null || echo 0)"
-  ct="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^test(\([^)]+\))?!?:')"
-  cf="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^feat(\([^)]+\))?!?:')"
-  cx="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^fix(\([^)]+\))?!?:')"
-  cr="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^refactor(\([^)]+\))?!?:')"
-  stat="$(git -C "$dir" diff --shortstat "$range" -- 2>/dev/null)"
-  fc="$(printf '%s' "$stat"  | grep -oE '[0-9]+ files? changed' | grep -oE '[0-9]+' || true)"
-  ins="$(printf '%s' "$stat" | grep -oE '[0-9]+ insertion'      | grep -oE '[0-9]+' || true)"
-  del="$(printf '%s' "$stat" | grep -oE '[0-9]+ deletion'       | grep -oE '[0-9]+' || true)"
-  : "${fc:=0}" "${ins:=0}" "${del:=0}"
+  if [[ ! -f "$ledger" ]]; then echo "jimledger: no ledger at $ledger" >&2; return 2; fi
 
-  printf 'base_sha=%s\n' "$base"
-  printf 'head_sha=%s\n' "$head"
-  printf 'commits=%s\n' "$commits"
-  printf 'commits_test=%s\n' "$ct"
-  printf 'commits_feat=%s\n' "$cf"
-  printf 'commits_fix=%s\n' "$cx"
-  printf 'commits_refactor=%s\n' "$cr"
-  printf 'files_changed=%s\n' "$fc"
-  printf 'insertions=%s\n' "$ins"
-  printf 'deletions=%s\n' "$del"
+  # Git-derived metrics — emitted ONLY when a build range resolves. The
+  # ledger-only metrics below (per-stage process + the review verdict) emit even
+  # with no build baseline, so review stays self-measurable over an
+  # un-instrumented build (028 DD #6). A no-baseline / malformed-sha range simply
+  # skips this block — the stage metrics still land.
+  local rr base head
+  if rr="$(resolve_range "$dir" 2>/dev/null)"; then
+    base="${rr% *}"; head="${rr#* }"
+    local range="$base..$head"
+    local commits ct cf cx cr stat fc ins del
+    commits="$(git -C "$dir" rev-list --count "$range" 2>/dev/null || echo 0)"
+    ct="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^test(\([^)]+\))?!?:')"
+    cf="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^feat(\([^)]+\))?!?:')"
+    cx="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^fix(\([^)]+\))?!?:')"
+    cr="$(git -C "$dir" log --format=%s "$range" 2>/dev/null | grep -cE '^refactor(\([^)]+\))?!?:')"
+    stat="$(git -C "$dir" diff --shortstat "$range" -- 2>/dev/null)"
+    fc="$(printf '%s' "$stat"  | grep -oE '[0-9]+ files? changed' | grep -oE '[0-9]+' || true)"
+    ins="$(printf '%s' "$stat" | grep -oE '[0-9]+ insertion'      | grep -oE '[0-9]+' || true)"
+    del="$(printf '%s' "$stat" | grep -oE '[0-9]+ deletion'       | grep -oE '[0-9]+' || true)"
+    : "${fc:=0}" "${ins:=0}" "${del:=0}"
 
-  # Per-stage process metrics: build_runs / build_interruptions /
-  # build_duration_seconds, plus the same triplet for every other instrumented
-  # stage (spec/research/plan/sec). Iterates a fixed allowlist (LEDGER_STAGES) —
-  # key names are literals, never derived from ledger text.
+    printf 'base_sha=%s\n' "$base"
+    printf 'head_sha=%s\n' "$head"
+    printf 'commits=%s\n' "$commits"
+    printf 'commits_test=%s\n' "$ct"
+    printf 'commits_feat=%s\n' "$cf"
+    printf 'commits_fix=%s\n' "$cx"
+    printf 'commits_refactor=%s\n' "$cr"
+    printf 'files_changed=%s\n' "$fc"
+    printf 'insertions=%s\n' "$ins"
+    printf 'deletions=%s\n' "$del"
+  fi
+
+  # Per-stage process metrics (spec/research/plan/sec/build/review) plus the
+  # latest review verdict — ledger-only, so they survive an un-instrumented
+  # build. Iterates a fixed allowlist (LEDGER_STAGES); key names are literals,
+  # never derived from ledger text (sec Finding 7).
   phase_event_metrics "$ledger"
   return 0
 }

@@ -309,6 +309,23 @@ case_jimledger_metrics_no_baseline_exits_2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── spec 028: review as a ledger stage + verdict history ────────────────────
+
+# AC1/AC6/DD6: review's own per-stage metrics emit even with no build baseline
+# (an un-instrumented build), so review stays self-measurable. Ledger-only
+# metrics are decoupled from the git build range.
+case_jimledger_metrics_review_no_baseline() {
+  local sd; sd="$(empty_dir t28a/spec)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\treview\tstarted\t\n'
+    printf '1060\t2026-01-01T00:01:00Z\treview\tfinished\talignment=aligned;findings=0\n'
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "review_runs"     '^review_runs=1$'              "$OUT"
+  assert_match "review_duration" '^review_duration_seconds=60$' "$OUT"
+}
+
 # AC: files lists changed paths over the build range (Task 4b)
 case_jimledger_files_lists_changed() {
   local sd root; sd="$(git_fixture t4ba)"; root="${sd%/spec}"
