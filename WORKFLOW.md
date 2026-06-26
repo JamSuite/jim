@@ -56,7 +56,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:research` | Investigate codebase, external docs, and technical landscape | `@jim:researcher` | `research.md` |
 | `/jim:build` | TDD red-green-refactor + commit per task | `@jim:coder` | Tests + code |
 | `/jim:sec` | Design-time security analysis (hybrid freeform + STRIDE, conditional LINDDUN on PII) | `@jim:security` | `security.md` |
-| `/jim:review` | Post-build review — drift vs spec/plan/architecture, code + process metrics, security regressions | `@jim:reviewer` | `review.md` |
+| `/jim:review` | Depth-aware post-build review — drift vs spec/plan/architecture (investigator fan-out), code + process metrics, security regressions | `@jim:reviewer` | `review.md` |
 | `/jim:ship` | PR, deploy, update roadmap *(not yet implemented)* | TBD | Merged PR |
 | `/jim:vision` | Create/update project vision and strategy | `@jim:pm` | `VISION.md` |
 | `/jim:roadmap` | Create/update execution milestones and phase sequence | `@jim:pm` | `ROADMAP.md` |
@@ -418,6 +418,8 @@ agent: meta
 **Purpose:** Verify what `/jim:build` actually shipped against its spec, plan, and architecture — catching drift before it compounds — and record how the build measured up.
 
 `@jim:reviewer` fuses three inputs: the **stage ledger** (`ledger.md` — a trusted, content-free metrics channel via `jimledger.sh`; `/jim:build` records the build range and SHAs, while `/jim:spec`, `/jim:research`, `/jim:plan`, and `/jim:sec` each record their own start/finish for per-stage durations and re-runs), the **git diff** for the build range, and the **spec / plan / `ARCHITECTURE.md`** ground truth. It reports drift against each, code + process metrics, and any security regressions (optionally invoking `/jim:sec` ad-hoc), then writes `review.md` with a mineable frontmatter summary, a single alignment verdict (`aligned` / `minor-drift` / `major-drift`), and a narrative. Findings can be captured as issues. Ingested commit/diff/ledger content is treated as untrusted; the verdict is the reviewer's judgment, never a value read from that content.
+
+The review is **depth-aware** (spec 027): it triages the build's diff and fans out read-only `investigator` subagents on the high-stakes changes to verify each acceptance criterion for *complete* satisfaction (including code the build did not touch), recording the evidence in `review.md`. Depth is configurable — `review_depth` (default `thorough`; `lean` for trivial changes; `--depth lean|thorough` overrides per run), `review_model` (the investigator model; default `inherit`), and `review_fanout_cap` (max investigators; default `10`).
 
 `/jim:build` offers the review at its completion gate by default, or runs it automatically under the `require_review` / `auto_review` knobs. Two axes that don't conflate: the review's **findings** are advisory — a report, never a veto, and they never auto-reject the build. `require_review`, by contrast, makes the review a **required, blocking phase**: the build's completion gate is held until the review has run to completion, so the build cannot be marked complete without it. It is the uncompleted phase that blocks, not the findings.
 
