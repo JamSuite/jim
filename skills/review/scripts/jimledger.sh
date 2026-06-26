@@ -13,13 +13,16 @@
 #   metrics <spec-dir>                         emit git + per-stage ledger key=value lines
 #   files   <spec-dir>                         list changed file paths over base..head
 #   diff    <spec-dir>                         emit the diff (function-context) over base..head
+#   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
 #
 # Security: commit/diff/ledger content is untrusted — never sourced or eval'd.
 # SHAs read from the ledger are validated via jimfile.sh `valid-id` before any
-# git range use (forecloses option injection). The script never commits; the
-# build commits ledger.md.
+# git range use (forecloses option injection). The script commits in exactly one
+# place — `commit-review`, a path-scoped commit of review.md + ledger.md with a
+# `--` guard and no `git add -A` (028 AC #10); `/jim:build` commits ledger.md at
+# start/finish itself.
 
 set -uo pipefail
 export LC_ALL=C
@@ -37,6 +40,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   metrics <spec-dir>                          emit key=value metrics to stdout
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
+  commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
 USAGE
 }
 
@@ -88,6 +92,24 @@ cmd_finish() {
   if [[ -z "$dir" ]]; then echo "jimledger finish: need <spec-dir>" >&2; return 2; fi
   sha="$(resolve_head "$dir")" || return 2
   append_line "$dir" build finished "head_sha=$sha"
+}
+
+# cmd_commit_review <spec-dir> [verdict] — the single audited git-write site:
+#   commit review.md + ledger.md together in one path-scoped commit so a
+#   completed review's verdict and metrics are durably recorded without a manual
+#   step (028 AC #8/#10). Literal paths with a `--` guard, never `git add -A`; the
+#   message carries only the trusted-origin verdict enum (DD #4). Any git failure
+#   returns non-zero so the caller degrades with review.md left intact.
+cmd_commit_review() {
+  local dir="${1:-}" verdict="${2:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger commit-review: need <spec-dir>" >&2; return 2; fi
+  if [[ ! -d "$dir" ]]; then echo "jimledger: spec-dir not found: $dir" >&2; return 2; fi
+  local msg="chore(review): record review"
+  case "$verdict" in
+    aligned|minor-drift|major-drift) msg="chore(review): record review ($verdict)" ;;
+  esac
+  git -C "$dir" add -- review.md ledger.md || return 2
+  git -C "$dir" commit -q -m "$msg" -- review.md ledger.md || return 2
 }
 
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
@@ -275,6 +297,7 @@ main() {
     diff)    shift; cmd_diff "$@" ;;
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
+    commit-review) shift; cmd_commit_review "$@" ;;
     *) usage; return 2 ;;
   esac
 }

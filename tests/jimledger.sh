@@ -358,6 +358,50 @@ case_jimledger_metrics_review_verdict_tampered() {
   assert_eq "no findings key"  "0" "$(echo "$OUT" | grep -c '^review_findings=')"
 }
 
+# AC8/AC10: commit-review commits review.md + ledger.md in one path-scoped commit
+# and leaves an unrelated working-tree change untouched (never git add -A).
+case_jimledger_commit_review_scoped() {
+  local sd root; sd="$(git_fixture t28c)"; root="${sd%/spec}"
+  printf 'review body\n'                                       > "$sd/review.md"
+  printf '1\t2026-01-01T00:00:00Z\treview\tfinished\tx\n'      > "$sd/ledger.md"
+  printf 'unrelated change\n'                                  > "$root/seed.txt"
+  run_jimledger commit-review "$sd" aligned
+  assert_exit "rc" 0 "$RC"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "review.md committed" 'spec/review\.md'  "$committed"
+  assert_match "ledger.md committed" 'spec/ledger\.md'  "$committed"
+  assert_eq    "seed.txt not swept" "0" "$(echo "$committed" | grep -c '^seed\.txt$')"
+  assert_eq    "seed.txt still dirty" "1" "$(git -C "$root" status --porcelain seed.txt | grep -c '^ M')"
+}
+
+# AC8/DD4: the commit message carries only the trusted-origin verdict enum.
+case_jimledger_commit_review_message() {
+  local sd root; sd="$(git_fixture t28cm)"; root="${sd%/spec}"
+  printf 'r\n' > "$sd/review.md"; printf 'l\n' > "$sd/ledger.md"
+  run_jimledger commit-review "$sd" major-drift
+  assert_exit "rc" 0 "$RC"
+  assert_match "verdict message" '^chore\(review\): record review \(major-drift\)$' "$(git -C "$root" log -1 --format=%s)"
+}
+
+# DD4: a non-enum verdict argument falls back to the generic message (no
+# untrusted text reaches the commit subject).
+case_jimledger_commit_review_tampered_verdict() {
+  local sd root; sd="$(git_fixture t28ct)"; root="${sd%/spec}"
+  printf 'r\n' > "$sd/review.md"; printf 'l\n' > "$sd/ledger.md"
+  run_jimledger commit-review "$sd" 'pwned $(touch hacked)'
+  assert_exit "rc" 0 "$RC"
+  assert_match "generic message" '^chore\(review\): record review$' "$(git -C "$root" log -1 --format=%s)"
+  assert_eq "no side effect" "0" "$([[ -e "$root/hacked" ]] && echo 1 || echo 0)"
+}
+
+# AC8/DD4: commit-review degrades gracefully outside a git repo (non-zero, no crash).
+case_jimledger_commit_review_non_repo() {
+  local sd; sd="$(empty_dir t28cn/spec)"
+  printf 'r\n' > "$sd/review.md"; printf 'l\n' > "$sd/ledger.md"
+  run_jimledger commit-review "$sd" aligned
+  assert_exit "rc" 2 "$RC"
+}
+
 # AC: files lists changed paths over the build range (Task 4b)
 case_jimledger_files_lists_changed() {
   local sd root; sd="$(git_fixture t4ba)"; root="${sd%/spec}"
