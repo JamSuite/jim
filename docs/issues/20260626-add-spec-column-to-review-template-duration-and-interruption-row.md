@@ -2,7 +2,7 @@
 id: 20260626-add-spec-column-to-review-template-duration-and-interruption-row
 num: 16
 title: "Add spec column to review-template duration and interruption rows"
-status: open
+status: closed
 priority: low
 labels: [review, template]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-26T06:43:40Z
-updated: 2026-06-26T06:43:40Z
+updated: 2026-06-26T22:52:58Z
 origin: docs/specs/jim/027-review-depth/spec.md
 ---
 

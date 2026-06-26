@@ -2,7 +2,7 @@
 id: 20260626-instrument-jim-review-as-a-ledger-stage-and-preserve-verdict-his
 num: 15
 title: "Instrument /jim:review as a ledger stage and preserve verdict history"
-status: open
+status: closed
 priority: medium
 labels: [review, ledger]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-26T06:43:40Z
-updated: 2026-06-26T06:43:40Z
+updated: 2026-06-26T22:52:58Z
 origin: docs/specs/jim/027-review-depth/spec.md
 ---
 
