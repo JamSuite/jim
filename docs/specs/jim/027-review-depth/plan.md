@@ -2,7 +2,7 @@
 title: "Depth-aware post-build review"
 spec: "docs/specs/jim/027-review-depth/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Depth-aware post-build review — Plan
@@ -204,21 +204,21 @@ sequenceDiagram
 
 ## Task Breakdown
 
-1. [ ] **`jimledger.sh diff` subcommand.** Add `cmd_diff` (reuse `resolve_range`;
+1. [x] **`jimledger.sh diff` subcommand.** Add `cmd_diff` (reuse `resolve_range`;
    `git -C "$dir" diff --function-context "$base..$head" --`), a `diff)` arm in
    `main()`, and the usage line. Add `tests/jimledger.sh` cases: lists changed
    hunks over the range; `--function-context` includes enclosing lines;
    no-baseline → exit 2; range excludes pre-baseline commits.
    **Verify:** `bash tests/jimledger.sh`
 
-2. [ ] **`jimconf.sh` review knobs.** Add `review_depth` + `review_model` +
+2. [x] **`jimconf.sh` review knobs.** Add `review_depth` + `review_model` +
    `review_fanout_cap` to `KEYS`; defaults `thorough` / `inherit` / `10` in
    `default_for`; add a `review_*` arm to `resolve()`'s bare-name dispatch (covers
    all three). Add `tests/jimconf.sh` cases: defaults; override via a fixture
    `jimconf.toml`; asserts the keys resolve bare (not `review_depth_path`).
    **Verify:** `bash tests/jimconf.sh`
 
-3. [ ] **`agents/investigator.md` (new).** Read-only deep-dive subagent:
+3. [x] **`agents/investigator.md` (new).** Read-only deep-dive subagent:
    `tools: [Read, Glob, Grep]` (no Bash/Write/Edit/Agent — sec F6), `model:
    inherit`. Body: investigate one assigned region/AC from the orchestrator-
    supplied hunks; adversarial stance (unproven until evidence); trace
@@ -226,7 +226,7 @@ sequenceDiagram
    return the evidence schema; never write.
    **Verify:** `grep -q '^name: investigator' agents/investigator.md && ! grep -E '^tools:' agents/investigator.md | grep -qE '\b(Write|Edit|Agent|Bash)\b'`
 
-4. [ ] **`skills/review/SKILL.md` depth orchestration.** Frontmatter: add
+4. [x] **`skills/review/SKILL.md` depth orchestration.** Frontmatter: add
    `Agent(investigator)` to `allowed-tools`; argument-hint `[--depth
    lean|thorough] [spec-directory-path]`. Body: parse `--depth`; resolve
    `review_depth`/`review_model`/`review_fanout_cap` (validate `review_model` ∈
@@ -240,24 +240,24 @@ sequenceDiagram
    `review.md`.
    **Verify:** `grep -q 'Agent(investigator)' skills/review/SKILL.md && grep -q 'jimledger.sh diff' skills/review/SKILL.md && [ "$(wc -l < skills/review/SKILL.md)" -le 500 ]`
 
-5. [ ] **`assets/review-template.md` evidence + coverage.** Add per-AC evidence
+5. [x] **`assets/review-template.md` evidence + coverage.** Add per-AC evidence
    fields (locations examined, callers/consumers checked, tests checked), a
    high-stakes-regions-investigated subsection, a bounded-coverage statement, and
    a depth-used line. Keep the secrets-scrub reminder.
    **Verify:** `grep -qiE 'callers|locations examined|coverage' skills/review/assets/review-template.md`
 
-6. [ ] **`agents/reviewer.md` orchestrator wiring.** Add `Agent(investigator)` to
+6. [x] **`agents/reviewer.md` orchestrator wiring.** Add `Agent(investigator)` to
    `tools:`; add notes that the review runs inline (never a spawned subagent) so
    investigators stay first-level, and that the orchestrator/verdict runs the
    session model while `review_model` governs investigators only.
    **Verify:** `grep -q 'Agent(investigator)' agents/reviewer.md`
 
-7. [ ] **README permissions note (sec Finding 5).** Document a narrowly-scoped
+7. [x] **README permissions note (sec Finding 5).** Document a narrowly-scoped
    `.claude/settings.json` read grant enabling the investigator fan-out without a
    per-read prompt; recommend the narrowest grant, not a blanket `Read(*)`.
    **Verify:** `grep -qi 'investigator' README.md`
 
-8. [ ] **WORKFLOW.md reference.** Update the `/jim:review` entry for `--depth` and
+8. [x] **WORKFLOW.md reference.** Update the `/jim:review` entry for `--depth` and
    the `review_depth` / `review_model` / `review_fanout_cap` config keys.
    **Verify:** `grep -qE 'review_depth|--depth' WORKFLOW.md`
 
