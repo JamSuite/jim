@@ -201,6 +201,22 @@ phase_event_metrics() {
   done
 }
 
+# review_verdict_metrics <ledger> — surface the latest review verdict under the
+#   fixed, code-literal keys review_alignment / review_findings. The value is
+#   shape-validated on the way out (alignment against the known vocabulary,
+#   findings against a non-negative integer) so a tampered ledger surfaces at
+#   most a bounded, well-formed value — never arbitrary text (sec 028 Finding 1).
+#   review.md, not this channel, is the authoritative verdict (028 AC #9).
+review_verdict_metrics() {
+  local ledger="$1" ra rf
+  ra="$(ledger_kv "$ledger" review finished alignment last)"
+  case "$ra" in
+    aligned|minor-drift|major-drift) printf 'review_alignment=%s\n' "$ra" ;;
+  esac
+  rf="$(ledger_kv "$ledger" review finished findings last)"
+  if [[ "$rf" =~ ^[0-9]+$ ]]; then printf 'review_findings=%s\n' "$rf"; fi
+}
+
 # cmd_metrics <spec-dir> — emit content-free key=value metrics (DD #9).
 cmd_metrics() {
   local dir="${1:-}"
@@ -246,6 +262,7 @@ cmd_metrics() {
   # build. Iterates a fixed allowlist (LEDGER_STAGES); key names are literals,
   # never derived from ledger text (sec Finding 7).
   phase_event_metrics "$ledger"
+  review_verdict_metrics "$ledger"
   return 0
 }
 

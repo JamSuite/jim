@@ -326,6 +326,38 @@ case_jimledger_metrics_review_no_baseline() {
   assert_match "review_duration" '^review_duration_seconds=60$' "$OUT"
 }
 
+# AC4/AC9: the latest review verdict surfaces under fixed, code-literal keys.
+case_jimledger_metrics_review_verdict() {
+  local sd root sha; sd="$(git_fixture t28v)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\treview\tstarted\t\n'
+    printf '1060\t2026-01-01T00:01:00Z\treview\tfinished\talignment=minor-drift;findings=2\n'
+    printf '2000\t2026-01-01T00:10:00Z\tbuild\tstarted\tbase_sha=%s\n' "$sha"
+    printf '2600\t2026-01-01T00:20:00Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "review_alignment" '^review_alignment=minor-drift$' "$OUT"
+  assert_match "review_findings"  '^review_findings=2$'            "$OUT"
+}
+
+# AC9: a tampered verdict value is bounded — a non-enum alignment or non-integer
+# findings is omitted, never surfaced verbatim (sec 028 Finding 1).
+case_jimledger_metrics_review_verdict_tampered() {
+  local sd root sha; sd="$(git_fixture t28vt)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\treview\tfinished\talignment=pwned;findings=x\n'
+    printf '2000\t2026-01-01T00:10:00Z\tbuild\tstarted\tbase_sha=%s\n' "$sha"
+    printf '2600\t2026-01-01T00:20:00Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no alignment key" "0" "$(echo "$OUT" | grep -c '^review_alignment=')"
+  assert_eq "no findings key"  "0" "$(echo "$OUT" | grep -c '^review_findings=')"
+}
+
 # AC: files lists changed paths over the build range (Task 4b)
 case_jimledger_files_lists_changed() {
   local sd root; sd="$(git_fixture t4ba)"; root="${sd%/spec}"
