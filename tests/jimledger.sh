@@ -340,10 +340,13 @@ case_jimledger_diff_lists_changes() {
 }
 
 # AC: diff passes --function-context so the enclosing function travels with the
-# hunk — a change deep in a function pulls in its header line (spec 027 Task 1)
+# hunk. The change is at fn.sh line 6; with plain -U3 the function header (line 1)
+# surfaces ONLY in the @@ hunk-header line (which begins with '@'), whereas
+# --function-context emits it as a CONTEXT line (leading space). Anchoring on the
+# context line (`^ ctx_fn`) makes the test fail if the flag were dropped — a bare
+# `ctx_fn() {` match would also hit the @@ header and pass vacuously (spec 027 Task 1).
 case_jimledger_diff_function_context() {
   local sd root; sd="$(git_fixture t1db)"; root="${sd%/spec}"
-  printf '*.sh diff=bash\n' > "$root/.gitattributes"
   printf 'ctx_fn() {\n  a=1\n  b=2\n  c=3\n  d=4\n  target=old\n}\n' > "$root/fn.sh"
   git -C "$root" add -A
   git -C "$root" commit -q -m "feat: fn"
@@ -354,14 +357,17 @@ case_jimledger_diff_function_context() {
   run_jimledger finish "$sd"
   run_jimledger diff "$sd"
   assert_exit  "rc" 0 "$RC"
-  assert_match "func header pulled into context" 'ctx_fn\(\) \{' "$OUT"
+  assert_match "func header travels as a context line" '^ ctx_fn\(\) \{' "$OUT"
 }
 
 # AC: diff with no recorded baseline exits 2 so the reviewer degrades (spec 027 Task 1)
+# The stderr assertion distinguishes the resolve_range degradation path from a bare
+# usage fallthrough (an unknown subcommand also exits 2).
 case_jimledger_diff_no_baseline_exits_2() {
   local sd; sd="$(git_fixture t1dc)"
   run_jimledger diff "$sd"
-  assert_exit "rc" 2 "$RC"
+  assert_exit  "rc" 2 "$RC"
+  assert_match "stderr names the ledger gap" 'no ledger' "$ERR"
 }
 
 # AC: diff is scoped to the build range — pre-baseline changes are excluded (spec 027 Task 1)
@@ -375,6 +381,20 @@ case_jimledger_diff_range_scoped() {
   assert_exit "rc" 0 "$RC"
   assert_match "post in range"    'post-only-marker' "$OUT"
   assert_eq    "pre excluded" "0" "$(echo "$OUT" | grep -c 'pre-only-marker')"
+}
+
+# AC: diff refuses a malformed SHA in the ledger and exits 2 (spec 027 Task 1, sec F4)
+# Exercises resolve_range's validate_sha reject branch through the diff path.
+case_jimledger_diff_malformed_sha_exits_2() {
+  local sd root sha; sd="$(git_fixture t1de)"; root="${sd%/spec}"
+  sha="$(git -C "$root" rev-parse HEAD)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tbuild\tstarted\tbase_sha=bad!sha\n'
+    printf '1005\t2026-01-01T00:00:05Z\tbuild\tfinished\thead_sha=%s\n' "$sha"
+  } > "$sd/ledger.md"
+  run_jimledger diff "$sd"
+  assert_exit  "rc" 2 "$RC"
+  assert_match "refuses malformed sha" 'malformed sha' "$ERR"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
