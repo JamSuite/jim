@@ -68,7 +68,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get review_model
 bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get review_fanout_cap
 ```
 
-A `--depth` argument (Argument Routing) overrides `review_depth` for this run. Validate `review_model` against `inherit` / `sonnet` / `opus` / `haiku` — treat anything else as `inherit`. Treat `review_fanout_cap` as a positive integer — on a non-numeric value use `10`.
+A `--depth` argument (Argument Routing) overrides `review_depth` for this run. Validate `review_model` against `inherit` / `sonnet` / `opus` / `haiku` — treat anything else as `inherit`. Treat `review_fanout_cap` as a positive integer — on a non-positive or non-numeric value use `10` (a cap of `0` must never silently disable the fan-out).
 
 **4b. Triage the diff into a high-stakes set.** Classify each changed region by the deep read it warrants:
 
