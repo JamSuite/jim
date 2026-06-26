@@ -26,6 +26,9 @@ sec_duration_seconds: "{n, or empty}"
 build_runs: "{n, or empty}"
 build_interruptions: "{n, or empty}"
 build_duration_seconds: "{n, or empty}"
+review_runs: "{n, or empty}"
+review_interruptions: "{n, or empty}"
+review_duration_seconds: "{n, or empty}"
 artifacts_present: "{comma-separated artifacts present, e.g. spec,research,security,plan,ledger}"
 plan_deviations: "{n — reviewer judgment}"
 security_regressions: "{n — reviewer judgment}"
@@ -90,9 +93,9 @@ assessed over the working tree."}
 | :--- | :--- |
 | Commits (test / feat / fix / refactor) | {n} ({t}/{f}/{x}/{r}) |
 | Files changed · insertions · deletions | {n} · {+n} · {-n} |
-| Stage runs (spec·research·plan·sec·build) | {n}·{n}·{n}·{n}·{n} |
-| Stage durations (research·plan·sec·build) | {n}s·{n}s·{n}s·{n}s |
-| Interruptions (research·plan·sec·build) | {n}·{n}·{n}·{n} |
+| Stage runs (spec·research·plan·sec·build·review) | {n}·{n}·{n}·{n}·{n}·{n} |
+| Stage durations (spec·research·plan·sec·build·review) | {n}s·{n}s·{n}s·{n}s·{n}s·{n}s |
+| Interruptions (spec·research·plan·sec·build·review) | {n}·{n}·{n}·{n}·{n}·{n} |
 | Artifacts present | {spec,research,security,plan,ledger} |
 
 ## Security regressions
