@@ -40,7 +40,7 @@ date: "{YYYY-MM-DD}"
 
 ## Summary
 
-**Alignment:** {aligned | minor-drift | major-drift} · **Findings:** {N} · **Plan deviations:** {N} · **Security regressions:** {N}
+**Alignment:** {aligned | minor-drift | major-drift} · **Depth:** {lean | thorough} · **Findings:** {N} · **Plan deviations:** {N} · **Security regressions:** {N}
 
 {1–2 sentences: what was reviewed, the build range, and the headline verdict.
 Note any instrumentation gaps — e.g. "no ledger; metrics unavailable, alignment
@@ -52,6 +52,7 @@ assessed over the working tree."}
      to summarize collectively; spell out every divergence. -->
 
 ### vs. Spec acceptance criteria
+<!-- Verdict per AC; the evidence behind it is recorded under ## Investigation. -->
 - {AC #N — met | drift: what diverged}
 
 ### vs. Plan tasks
@@ -59,6 +60,26 @@ assessed over the working tree."}
 
 ### vs. ARCHITECTURE.md
 - {convention — respected | violated: what and where}
+
+## Investigation
+
+<!-- The auditable depth record: which high-stakes regions / ACs were
+     deep-investigated, the evidence each surfaced, and the coverage. Record
+     locations only — never raw secrets (scrub before write). -->
+
+### High-stakes regions investigated
+
+#### {region or AC}
+- locations examined: {`path:line`, …}
+- callers/consumers traced: {`path:line`, … | none — not a shared symbol}
+- tests checked: {`path:line`, … | none found}
+- verdict: {satisfied | partial | divergence} — {specifics}
+
+### Coverage
+
+- Depth: {lean | thorough}{; review_model: <tier> when non-default}.
+- {Full high-stakes set investigated. | Fan-out capped at {N} — these regions
+  were NOT deep-investigated: {list}. | Instrumentation gap: {what}.}
 
 ## Metrics
 
