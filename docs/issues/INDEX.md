@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 9
+- Open: 12
 - Closed: 5
 
 ## Issues
@@ -21,6 +21,9 @@
 - `20260623-configurable-commit-convention-for-git-dependent-skills` — Configurable commit convention for git-dependent skills · status: open · num: 13 · priority: medium · created: 2026-06-23T08:35:27Z · labels: [git, config, commit-convention, architecture] · origin: conversation
 - `20260623-disambiguate-phase-migrate-sdlc-pipeline-term-to-stage` — Disambiguate \"phase\": migrate SDLC pipeline term to \"stage\" · status: open · num: 12 · priority: low · created: 2026-06-23T07:10:26Z · labels: [terminology, docs] · origin: conversation
 - `20260623-issue-candidate-batch-re-files-duplicates-on-skill-re-run` — Issue-candidate batch re-files duplicates on skill re-run · status: open · num: 14 · priority: medium · created: 2026-06-23T10:43:52Z · labels: [candidate-batch, consistency, dedup] · origin: conversation
+- `20260626-add-frontmatter-body-count-consistency-check-to-jim-review-valid` — Add frontmatter-body count consistency check to /jim:review validation · status: open · num: 17 · priority: low · created: 2026-06-26T06:43:41Z · labels: [review] · origin: docs/specs/jim/027-review-depth/spec.md
+- `20260626-add-spec-column-to-review-template-duration-and-interruption-row` — Add spec column to review-template duration and interruption rows · status: open · num: 16 · priority: low · created: 2026-06-26T06:43:40Z · labels: [review, template] · origin: docs/specs/jim/027-review-depth/spec.md
+- `20260626-instrument-jim-review-as-a-ledger-stage-and-preserve-verdict-his` — Instrument /jim:review as a ledger stage and preserve verdict history · status: open · num: 15 · priority: medium · created: 2026-06-26T06:43:40Z · labels: [review, ledger] · origin: docs/specs/jim/027-review-depth/spec.md
 
 ## Graph
 
