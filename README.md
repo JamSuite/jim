@@ -207,6 +207,22 @@ Restart Claude Code after editing settings. Subagents inherit the parent session
 
 Claude Code's documented permission model does not let a plugin ship pre-approved file access for its subagents. Skill frontmatter `allowed-tools` grants apply only to the skill's main-thread execution and do not propagate to spawned subagents; subagent frontmatter has no `allowed-tools` field; and plugin manifests/settings cannot declare permissions. The user-side `.claude/settings.json` is the only documented mechanism that survives the skill → subagent boundary. See `ARCHITECTURE.md` → Permission Conventions for the full verified-scope discussion, and the doc citations behind it. (A future jim release may add a `/jim:setup` helper to generate the snippet for your install path automatically.)
 
+### Post-build review fan-out (`/jim:review`)
+
+The depth-aware review (`/jim:review`, spec 027) spawns read-only `investigator` subagents that read **your project's own source** to investigate high-stakes changes in depth. Those reads surface the same per-read prompt, since (as above) the skill's grants don't cross the subagent boundary. To suppress it, grant **repo-scoped** reads in `.claude/settings.json`:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(/absolute/path/to/your/repo/**)"
+    ]
+  }
+}
+```
+
+Prefer the **narrowest grant that works** — your repo root — rather than a blanket `Read(*)`, which would widen the read surface for *every* subagent in the session, not just the reviewer's investigators. The investigators are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`), so this grant authorizes reading only.
+
 ## How to develop for Jim
 
 See [`WORKFLOW.md`](./WORKFLOW.md) for the full SDLC process.
