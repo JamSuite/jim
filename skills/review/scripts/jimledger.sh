@@ -191,7 +191,8 @@ cmd_diff() {
 # Stages whose started/finished boundaries the ledger may carry. The metrics
 # loop iterates THIS fixed list — key names are literals, never derived from
 # ledger text — so a tampered ledger cannot inject spurious metric keys
-# (sec Finding 7: the metrics stream stays a content-free trusted channel).
+# (sec Finding 7: the key set is fixed; values are counts/SHAs or the
+# shape-validated verdict, never free-form ledger text).
 LEDGER_STAGES="spec research plan sec build review"
 
 # phase_event_metrics <ledger> — emit per-stage process metrics:
@@ -239,7 +240,8 @@ review_verdict_metrics() {
   if [[ "$rf" =~ ^[0-9]+$ ]]; then printf 'review_findings=%s\n' "$rf"; fi
 }
 
-# cmd_metrics <spec-dir> — emit content-free key=value metrics (DD #9).
+# cmd_metrics <spec-dir> — emit key=value metrics: fixed keys, shape-validated
+#   values, never free-form ledger text (DD #9).
 cmd_metrics() {
   local dir="${1:-}"
   if [[ -z "$dir" ]]; then echo "jimledger metrics: need <spec-dir>" >&2; return 2; fi

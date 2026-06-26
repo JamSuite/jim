@@ -302,11 +302,15 @@ case_jimledger_metrics_ignores_unknown_stage() {
   assert_eq "all lines safe" "0" "$(echo "$OUT" | grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
 }
 
-# AC: metrics with no recorded baseline exits 2 so the reviewer degrades (Task 4)
-case_jimledger_metrics_no_baseline_exits_2() {
+# AC: metrics with no ledger.md at all exits 2 so the reviewer degrades. The
+# no-baseline-but-ledger-present case instead exits 0 (028 DD #6) — see
+# case_jimledger_metrics_review_no_baseline. git_fixture creates the repo + spec
+# dir but no ledger.md, so this exercises the absent-ledger path specifically.
+case_jimledger_metrics_absent_ledger_exits_2() {
   local sd; sd="$(git_fixture t4c)"
   run_jimledger metrics "$sd"
-  assert_exit "rc" 2 "$RC"
+  assert_exit  "rc" 2 "$RC"
+  assert_match "stderr names the missing ledger" 'no ledger' "$ERR"
 }
 
 # ─── spec 028: review as a ledger stage + verdict history ────────────────────
