@@ -2,7 +2,7 @@
 title: "Instrument /jim:review as a ledger stage and preserve verdict history"
 spec: "docs/specs/jim/028-review-verdict/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Instrument /jim:review as a ledger stage and preserve verdict history — Plan
@@ -173,7 +173,7 @@ sequenceDiagram
 green. `bash tests/jimledger.sh` is the per-task gate. All test fixtures use
 `mktemp`/`git_fixture` temp dirs — never production paths.*
 
-1. [ ] Add `review` to `LEDGER_STAGES` and decouple the ledger-only metrics from
+1. [x] Add `review` to `LEDGER_STAGES` and decouple the ledger-only metrics from
    the build range in `cmd_metrics` (DD #6): `phase_event_metrics` runs whenever
    `ledger.md` exists; the git-derived block stays gated on a resolvable range;
    no-baseline exits 0. Add `case_jimledger_metrics_review_no_baseline` (review
@@ -181,7 +181,7 @@ green. `bash tests/jimledger.sh` is the per-task gate. All test fixtures use
    existing no-baseline test that asserts rc=2.
    **Verify:** `bash tests/jimledger.sh`
 
-2. [ ] Surface + validate the verdict in `cmd_metrics` (DD #1): emit literal
+2. [x] Surface + validate the verdict in `cmd_metrics` (DD #1): emit literal
    `review_alignment` (gated on the enum) and `review_findings` (gated on
    `^[0-9]+$`) from `ledger_kv … last`. Add `case_jimledger_metrics_review_verdict`
    (`alignment=aligned;findings=2` → both emitted) and
@@ -189,7 +189,7 @@ green. `bash tests/jimledger.sh` is the per-task gate. All test fixtures use
    → neither emitted).
    **Verify:** `bash tests/jimledger.sh`
 
-3. [ ] Add `cmd_commit_review` + the `main()` `commit-review` case (DD #3/#4), and
+3. [x] Add `cmd_commit_review` + the `main()` `commit-review` case (DD #3/#4), and
    refresh the `:19-22` "never commits" comment to name the single fixed-path
    commit site. Add `case_jimledger_commit_review` (via `git_fixture`: write
    `review.md`, `ledger.md`, and an unrelated tracked change; `commit-review <dir>
@@ -200,14 +200,14 @@ green. `bash tests/jimledger.sh` is the per-task gate. All test fixtures use
    clean exit).
    **Verify:** `bash tests/jimledger.sh`
 
-4. [ ] Update `skills/review/assets/review-template.md`: Stage runs →
+4. [x] Update `skills/review/assets/review-template.md`: Stage runs →
    `(spec·research·plan·sec·build·review)`; Stage durations and Interruptions →
    `(spec·research·plan·sec·build·review)` (adds the missing `spec` and `review`);
    add `review_runs`/`review_interruptions`/`review_duration_seconds` to
    frontmatter. (Absorbs #16.)
    **Verify:** `grep -q 'Stage durations (spec·research·plan·sec·build·review)' skills/review/assets/review-template.md && grep -q 'Interruptions (spec·research·plan·sec·build·review)' skills/review/assets/review-template.md`
 
-5. [ ] Update `skills/review/SKILL.md`: emit `review started` after the Step 1
+5. [x] Update `skills/review/SKILL.md`: emit `review started` after the Step 1
    precondition; emit `review finished alignment=<verdict> findings=<n>` after
    Step 4d; re-read `metrics` after `finished` to feed `review.md`'s own metrics;
    invoke `commit-review <dir> <verdict>` after writing `review.md`, reporting a
@@ -215,7 +215,7 @@ green. `bash tests/jimledger.sh` is the per-task gate. All test fixtures use
    authoritative verdict (the ledger trajectory is advisory).
    **Verify:** `grep -q 'review started' skills/review/SKILL.md && grep -q 'review finished' skills/review/SKILL.md && grep -q 'commit-review' skills/review/SKILL.md`
 
-6. [ ] Run the full deterministic suite.
+6. [x] Run the full deterministic suite.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimledger`
 
 ## Requirements Coverage Summary
