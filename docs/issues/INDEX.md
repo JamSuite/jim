@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 9
+- Open: 10
 - Closed: 8
 
 ## Issues
@@ -24,6 +24,7 @@
 - `20260626-add-frontmatter-body-count-consistency-check-to-jim-review-valid` — Add frontmatter-body count consistency check to /jim:review validation · status: closed · num: 17 · priority: low · created: 2026-06-26T06:43:41Z · labels: [review] · origin: docs/specs/jim/027-review-depth/spec.md
 - `20260626-add-spec-column-to-review-template-duration-and-interruption-row` — Add spec column to review-template duration and interruption rows · status: closed · num: 16 · priority: low · created: 2026-06-26T06:43:40Z · labels: [review, template] · origin: docs/specs/jim/027-review-depth/spec.md
 - `20260626-instrument-jim-review-as-a-ledger-stage-and-preserve-verdict-his` — Instrument /jim:review as a ledger stage and preserve verdict history · status: closed · num: 15 · priority: medium · created: 2026-06-26T06:43:40Z · labels: [review, ledger] · origin: docs/specs/jim/027-review-depth/spec.md
+- `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg` — Read-verb list creates a stray directory from a non-filter arg · status: open · num: 18 · priority: low · created: 2026-06-27T05:13:33Z · labels: [issue, cli] · origin: conversation
 
 ## Graph
 
