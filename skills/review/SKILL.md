@@ -190,6 +190,7 @@ Show the alignment verdict, the key findings, and where `review.md` was written.
 Before presenting:
 
 - [ ] `review.md` has both mineable frontmatter and a narrative body.
+- [ ] The frontmatter `plan_deviations` / `security_regressions` counts match the number of items in the corresponding Deviations and Security-Regressions body sections.
 - [ ] The alignment verdict is one of `aligned` / `minor-drift` / `major-drift`.
 - [ ] High-stakes regions were triaged from the diff spine and deep-investigated per `review_depth`; bounded coverage is named when the fan-out cap bound.
 - [ ] Recorded evidence (locations, callers/consumers, tests checked) is present for the high-stakes regions and ACs.

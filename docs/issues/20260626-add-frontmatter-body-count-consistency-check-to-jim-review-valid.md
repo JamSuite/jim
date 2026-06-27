@@ -2,7 +2,7 @@
 id: 20260626-add-frontmatter-body-count-consistency-check-to-jim-review-valid
 num: 17
 title: "Add frontmatter-body count consistency check to /jim:review validation"
-status: open
+status: closed
 priority: low
 labels: [review]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-26T06:43:41Z
-updated: 2026-06-26T06:43:41Z
+updated: 2026-06-27T05:04:33Z
 origin: docs/specs/jim/027-review-depth/spec.md
 ---
 
