@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 10
+- Open: 11
 - Closed: 8
 
 ## Issues
@@ -25,6 +25,7 @@
 - `20260626-add-spec-column-to-review-template-duration-and-interruption-row` — Add spec column to review-template duration and interruption rows · status: closed · num: 16 · priority: low · created: 2026-06-26T06:43:40Z · labels: [review, template] · origin: docs/specs/jim/027-review-depth/spec.md
 - `20260626-instrument-jim-review-as-a-ledger-stage-and-preserve-verdict-his` — Instrument /jim:review as a ledger stage and preserve verdict history · status: closed · num: 15 · priority: medium · created: 2026-06-26T06:43:40Z · labels: [review, ledger] · origin: docs/specs/jim/027-review-depth/spec.md
 - `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg` — Read-verb list creates a stray directory from a non-filter arg · status: open · num: 18 · priority: low · created: 2026-06-27T05:13:33Z · labels: [issue, cli] · origin: conversation
+- `20260630-build-intelligence-for-context-aware-spec-group-definition` — Build intelligence for context-aware spec-group definition · status: open · num: 19 · priority: high · created: 2026-06-30T11:07:07Z · labels: [spec-groups, context-boundary, architecture, 000-current] · origin: docs/brainstorms/20260630-000-current-spec.md
 
 ## Graph
 
