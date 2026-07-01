@@ -46,10 +46,19 @@ require_pre_completion = "false"
 # prompt). Default "false" keeps the existing /jim:arch review step.
 auto_arch_feedback = "false"
 
-# When "true", /jim:blueprint writes a group's 000-blueprint spec directly
-# instead of the diff-and-confirm prompt. Default "false" keeps the review
-# step. (The require_blueprint gate lands later with the fold-back integration.)
+# When "true", the blueprint update (and /jim:blueprint generate) writes a
+# group's 000-blueprint spec directly instead of the diff-and-confirm prompt.
+# Default "false" keeps the review step. Applies to both the review-triggered
+# and ad-hoc update paths.
 auto_blueprint = "false"
+
+# Post-review blueprint-update gate. When "true", the blueprint update that runs
+# after /jim:review is a required, blocking step: the review is not treated as
+# complete until the update has run to completion. The update's proposed changes
+# stay advisory — it is the uncompleted step that blocks, not the changes. Gates
+# only the review trigger; the ad-hoc `/jim:blueprint <group> --since <ref>`
+# update is developer-invoked and ungated. Default "false".
+require_blueprint = "false"
 
 # --- Post-build review gate -----------------------------------------------
 
