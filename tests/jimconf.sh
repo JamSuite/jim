@@ -51,6 +51,7 @@ case_no_config_returns_defaults() {
               "require_pre_commit:false" \
               "require_pre_completion:false" \
               "auto_arch_feedback:false" \
+              "auto_blueprint:false" \
               "require_security:false" \
               "auto_security:false" \
               "require_review:false" \
@@ -78,6 +79,18 @@ case_no_config_returns_defaults() {
   done
 }
 
+# AC: auto_blueprint defaults to "false" and resolves from config (029 Task 3)
+case_jimconf_auto_blueprint_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_bp_default)
+  run -c "$dir/absent.toml" get auto_blueprint
+  assert_exit "default rc"      0       "$RC"
+  assert_eq   "default false"   "false" "$OUT"
+  cfg=$(fixture jc-bp.toml 'auto_blueprint = "true"')
+  run -c "$cfg" get auto_blueprint
+  assert_eq   "configured true" "true"  "$OUT"
+}
+
 # AC: full override (spec AC #1, #4)
 # When every key is set in the config, every key resolves to the configured value.
 case_full_config_returns_overrides() {
@@ -93,6 +106,7 @@ pre_completion_path = "scripts/pre-completion"
 require_pre_commit = "true"
 require_pre_completion = "true"
 auto_arch_feedback = "true"
+auto_blueprint = "true"
 require_security = "true"
 auto_security = "true"
 require_review = "true"
@@ -124,6 +138,7 @@ issue_id_project = "PROJ"')
   run -c "$cfg" get require_pre_commit;        assert_eq "require_pre_commit"        "true"                   "$OUT"
   run -c "$cfg" get require_pre_completion;    assert_eq "require_pre_completion"    "true"                   "$OUT"
   run -c "$cfg" get auto_arch_feedback;        assert_eq "auto_arch_feedback"        "true"                   "$OUT"
+  run -c "$cfg" get auto_blueprint;            assert_eq "auto_blueprint"            "true"                   "$OUT"
   run -c "$cfg" get require_security;          assert_eq "require_security"          "true"                   "$OUT"
   run -c "$cfg" get auto_security;             assert_eq "auto_security"             "true"                   "$OUT"
   run -c "$cfg" get require_review;            assert_eq "require_review"            "true"                   "$OUT"
@@ -173,7 +188,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "32" "$line_count"
+  assert_eq    "list line count"                  "33" "$line_count"
   assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
@@ -185,6 +200,7 @@ case_list_outputs_all_keys() {
   assert_match "require_pre_commit line"           '^require_pre_commit=false$'             "$OUT"
   assert_match "require_pre_completion line"       '^require_pre_completion=false$'         "$OUT"
   assert_match "auto_arch_feedback line"           '^auto_arch_feedback=false$'             "$OUT"
+  assert_match "auto_blueprint line"               '^auto_blueprint=false$'                 "$OUT"
   assert_match "require_security line"             '^require_security=false$'               "$OUT"
   assert_match "auto_security line"                '^auto_security=false$'                  "$OUT"
   assert_match "review_depth line"                 '^review_depth=thorough$'                "$OUT"
@@ -211,7 +227,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -249,7 +265,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "32" "$line_count"
+  assert_eq "list still emits all keys" "33" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
