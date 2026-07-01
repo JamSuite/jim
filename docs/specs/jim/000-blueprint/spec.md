@@ -59,9 +59,10 @@ executes the data it reads.
   returns the `NOT_FOUND` sentinel for a missing path-typed file; never
   `source`s the config.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
-  `files`/`diff`/`commit-review`. Guarantee: a trusted, fixed-key,
-  shape-validated metrics channel for `/jim:review` that never echoes
-  commit/diff text.
+  `files`/`diff`/`diff-range`/`commit-review`/`commit-blueprint`. Guarantee: a
+  trusted, fixed-key, shape-validated metrics channel for `/jim:review` (and the
+  blueprint update) that never echoes commit/diff text; git writes are
+  path-scoped.
 - **Issue-collection CLIs** — `index.sh` (frontmatter scan → atomic `INDEX.md`),
   `render.sh` (stats/list/show/help/insights read views), `new.sh` (the single
   issue-file emitter), `backfill.sh` / `migrate.sh` (migrations). Guarantee:
@@ -106,7 +107,7 @@ Grounded in ARCHITECTURE.md and the repo tree.
   path); `jimledger.sh` (ledger); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–029`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–030`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root, and
   `docs/brainstorms/` + `docs/debug/`.
 - **Tests** (`tests/*.sh`, developer-only, not loaded by Claude Code) driven by
@@ -136,8 +137,8 @@ records the *rule*, its criticality, and how it would be verified.
 | Scripts never `source`/`eval` user-supplied data — config, ledger, and issue content is parsed, never executed | critical | code review; grep for `source`/`eval` on data paths |
 | Every script sets `set -uo pipefail`; locale-sensitive scripts also `export LC_ALL=C` | high | preamble grep across `skills/**/*.sh` |
 | Inter-script composition uses `BASH_SOURCE`-relative paths, not `${CLAUDE_PLUGIN_ROOT}` (which substitutes only in skill content) | high | grep; test |
-| Every id/SHA is validated through the single `is_valid_id` boundary before use in a git range or filesystem path; its copies stay byte-identical | critical | `tests/jimfile.sh` SYNC case + per-script tests |
-| `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel; ledger content is untrusted and never `source`d; the script commits in exactly one path (`commit-review`, path-scoped, no `git add -A`) | critical | `tests/jimledger.sh`; code review |
+| Every untrusted id / SHA / ref is validated before git interpolation: ledger SHAs and ids through the single `is_valid_id` boundary (copies byte-identical), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` (accepts `/`-refs, forecloses option injection) | critical | `tests/jimfile.sh` SYNC case + `tests/jimledger.sh` diff-range cases |
+| `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint`); ledger content is untrusted and never `source`d; the script commits in exactly two path-scoped paths (`commit-review`, `commit-blueprint` — literal paths, no `git add -A`) | critical | `tests/jimledger.sh`; code review |
 | Untrusted external content (web fetches, git commit/diff, issue/candidate bodies, scanned code) is treated as data, never instructions; secret-looking values are never persisted (redacted to `secret-looking value at <path:line>`) | critical | anti-injection clauses in skills; design review / judge |
 | Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | agent `tools:` frontmatter narrowing; review / judge |
 | Spec IDs are 3-digit zero-padded and sequential within the group; a spec must be `approved` before its plan is produced | high | `jimfile.sh next-id`; `/jim:plan` gate |
