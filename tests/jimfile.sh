@@ -192,6 +192,30 @@ case_jimfile_mv_spec_noop_when_named() {
   assert_eq "still exists"   "yes" "$([[ -d "$specs/jim/030-review" ]] && echo yes || echo no)"
 }
 
+# AC: path blueprint <group> resolves the reserved 000-blueprint/spec.md slot
+case_jimfile_path_blueprint_resolves_reserved_slot() {
+  local specs cfg
+  specs=$(empty_dir bp_path)
+  mkdir -p "$specs/jim"
+  cfg=$(fixture bp-path.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" path blueprint jim
+  assert_exit "rc" 0 "$RC"
+  assert_eq "reserved slot path" "$specs/jim/000-blueprint/spec.md" "$OUT"
+}
+
+# AC: path blueprint rejects an invalid group via the is_valid_slug boundary
+#     (security Finding 3 — write target validated, not composed from raw input)
+case_jimfile_path_blueprint_rejects_invalid_group() {
+  local specs cfg
+  specs=$(empty_dir bp_badgroup)
+  mkdir -p "$specs/jim"
+  cfg=$(fixture bp-badgroup.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" path blueprint "Bad Group"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no path emitted"      ""    "$OUT"
+  assert_eq "slug rejection reason" "yes" "$([[ "$ERR" == *rejected* ]] && echo yes || echo no)"
+}
+
 # AC: mv-spec rejects a non-slug new-name before any move (is_valid_slug)
 case_jimfile_mv_spec_rejects_bad_name() {
   local specs cfg
@@ -435,9 +459,10 @@ case_jimfile_kinds_outputs_valid_kinds() {
   assert_match "debug"      '^debug$'      "$OUT"
   assert_match "brainstorm" '^brainstorm$' "$OUT"
   assert_match "issue"      '^issue$'      "$OUT"
+  assert_match "blueprint"  '^blueprint$'  "$OUT"
   local lines
   lines=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "6 kinds" "6" "$lines"
+  assert_eq "7 kinds" "7" "$lines"
 }
 
 # AC: unknown subcommand exits 2 with stderr explanation

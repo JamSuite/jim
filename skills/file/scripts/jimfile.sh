@@ -66,7 +66,7 @@ export LC_ALL=C
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
 
 # Valid artifact kinds. Drives `path <kind>` validation and `kinds` output.
-readonly KINDS=(spec plan research debug brainstorm issue)
+readonly KINDS=(spec plan research debug brainstorm issue blueprint)
 
 # Optional -c <path> override for jimconf.toml. Empty when not supplied.
 CONFIG_FILE=""
@@ -560,6 +560,7 @@ cmd_prefix_from() {
 #       research <group> <id> <name>
 #       debug      <topic>
 #       brainstorm <topic>
+#       blueprint  <group>            (reserved 000-blueprint/spec.md slot)
 cmd_path() {
   local first="${1:-}"
   if [[ -z "$first" ]]; then
@@ -594,6 +595,21 @@ cmd_path() {
       local specs_root
       specs_root="$(jimconf_get specs)"
       printf '%s/%s/%s-%s/%s.md\n' "$specs_root" "$group" "$id" "$name" "$kind"
+      ;;
+    blueprint)
+      # Reserved per-group slot: {specs}/<group>/000-blueprint/spec.md. The
+      # group is validated through the single is_valid_slug boundary so a
+      # malformed group cannot direct a write outside the specs tree (029
+      # security Finding 3). No id/name — the slot is fixed, not allocated.
+      local group="${1:-}"
+      if [[ -z "$group" ]]; then
+        echo "error: 'path blueprint' requires <group>" >&2
+        return 2
+      fi
+      is_valid_slug "$group" || return 1
+      local specs_root
+      specs_root="$(jimconf_get specs)"
+      printf '%s/%s/000-blueprint/spec.md\n' "$specs_root" "$group"
       ;;
     issue)
       local slug="${1:-}"
