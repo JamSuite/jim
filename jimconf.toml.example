@@ -46,6 +46,11 @@ require_pre_completion = "false"
 # prompt). Default "false" keeps the existing /jim:arch review step.
 auto_arch_feedback = "false"
 
+# When "true", /jim:blueprint writes a group's 000-blueprint spec directly
+# instead of the diff-and-confirm prompt. Default "false" keeps the review
+# step. (The require_blueprint gate lands later with the fold-back integration.)
+auto_blueprint = "false"
+
 # --- Post-build review gate -----------------------------------------------
 
 # Post-build review (/jim:review) verifies what the build shipped against the
