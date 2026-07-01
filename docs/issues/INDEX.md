@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 14
+- Open: 15
 - Closed: 8
 
 ## Issues
@@ -29,6 +29,7 @@
 - `20260630-build-intelligence-for-context-aware-spec-group-definition` — Build intelligence for context-aware spec-group definition · status: open · num: 19 · priority: high · created: 2026-06-30T11:07:07Z · labels: [spec-groups, context-boundary, architecture, 000-current] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260630-build-the-invariant-verification-engine` — Build the invariant verification engine · status: open · num: 22 · priority: medium · created: 2026-06-30T20:35:19Z · labels: [000-blueprint, verification] · origin: docs/specs/jim/029-blueprint-spec/spec.md
 - `20260630-wire-the-000-blueprint-fold-back-loop-into-review` — Wire the 000-blueprint fold-back loop into review · status: open · num: 20 · priority: medium · created: 2026-06-30T20:35:18Z · labels: [000-blueprint, fold-back, review] · origin: docs/specs/jim/029-blueprint-spec/spec.md
+- `20260701-prefix-jimconf-test-cases-so-run-sh-jimconf-covers-them` — Prefix jimconf test cases so run.sh jimconf covers them · status: open · num: 23 · priority: medium · created: 2026-07-01T06:28:22Z · labels: [test-infra, meta-test, jimconf] · origin: docs/specs/jim/029-blueprint-spec/plan.md
 
 ## Graph
 
