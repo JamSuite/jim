@@ -2,7 +2,7 @@
 title: "Group blueprint spec (000-blueprint)"
 spec: "docs/specs/jim/029-blueprint-spec/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Group blueprint spec (000-blueprint) — Plan
@@ -133,25 +133,25 @@ flowchart LR
 
 ## Task Breakdown
 
-1. [ ] **jimfile `blueprint` kind (test-first).** Add `case_jimfile_path_blueprint_*` to `tests/jimfile.sh` asserting `path blueprint <group>` → `{specs}/<group>/000-blueprint/spec.md` and rejecting an invalid group; then implement the `blueprint` branch in `cmd_path` + dispatch in `jimfile.sh`, validating `<group>` via `is_valid_slug`.
+1. [x] **jimfile `blueprint` kind (test-first).** Add `case_jimfile_path_blueprint_*` to `tests/jimfile.sh` asserting `path blueprint <group>` → `{specs}/<group>/000-blueprint/spec.md` and rejecting an invalid group; then implement the `blueprint` branch in `cmd_path` + dispatch in `jimfile.sh`, validating `<group>` via `is_valid_slug`.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`
 
-2. [ ] **Regression-lock the `next-id` invariant.** Add `case_jimfile_next_id_ignores_000_blueprint` to `tests/jimfile.sh` asserting a `000-blueprint` dir does not change `next-id`'s output (no `jimfile.sh` change expected — research confirms the guard at `:285`).
+2. [x] **Regression-lock the `next-id` invariant.** Add `case_jimfile_next_id_ignores_000_blueprint` to `tests/jimfile.sh` asserting a `000-blueprint` dir does not change `next-id`'s output (no `jimfile.sh` change expected — research confirms the guard at `:285`).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`
 
-3. [ ] **jimconf `auto_blueprint` (test-first).** Add a `tests/jimconf.sh` case for the default (`"false"`) and resolution; then add the key to `KEYS` and a `default_for` arm in `jimconf.sh`.
+3. [x] **jimconf `auto_blueprint` (test-first).** Add a `tests/jimconf.sh` case for the default (`"false"`) and resolution; then add the key to `KEYS` and a `default_for` arm in `jimconf.sh`.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimconf`
 
-4. [ ] **Document `auto_blueprint` in `jimconf.toml.example`** beside `auto_arch_feedback`.
+4. [x] **Document `auto_blueprint` in `jimconf.toml.example`** beside `auto_arch_feedback`.
    **Verify:** `grep -q 'auto_blueprint' jimconf.toml.example`
 
-5. [ ] **Create `skills/blueprint/assets/blueprint-template.md`** with the five sections (Responsibility / Provides / Requires / Structure / Invariants; each invariant carries criticality + verification method).
+5. [x] **Create `skills/blueprint/assets/blueprint-template.md`** with the five sections (Responsibility / Provides / Requires / Structure / Invariants; each invariant carries criticality + verification method).
    **Verify:** `test -f skills/blueprint/assets/blueprint-template.md && grep -q 'Invariants' skills/blueprint/assets/blueprint-template.md && grep -q 'Requires' skills/blueprint/assets/blueprint-template.md`
 
-6. [ ] **Author `skills/blueprint/SKILL.md` via `/jim:meta-skill`** (depends on tasks 1, 3, 5) — argument routing (`<group>`), input gathering (glob the group's specs + ARCHITECTURE.md + group code), synthesis grounded in those artifacts, the untrusted-ingestion + secret-scrub guardrails, new-vs-update + diff-and-confirm with the `auto_blueprint` branch, a least-privilege `allowed-tools` grant (DD #8), and writing via `!`-injected `jimfile.sh path blueprint`.
+6. [x] **Author `skills/blueprint/SKILL.md` via `/jim:meta-skill`** (depends on tasks 1, 3, 5) — argument routing (`<group>`), input gathering (glob the group's specs + ARCHITECTURE.md + group code), synthesis grounded in those artifacts, the untrusted-ingestion + secret-scrub guardrails, new-vs-update + diff-and-confirm with the `auto_blueprint` branch, a least-privilege `allowed-tools` grant (DD #8), and writing via `!`-injected `jimfile.sh path blueprint`.
    **Verify:** `test -f skills/blueprint/SKILL.md && [ "$(wc -l < skills/blueprint/SKILL.md)" -lt 500 ] && grep -q 'path blueprint' skills/blueprint/SKILL.md && grep -q 'auto_blueprint' skills/blueprint/SKILL.md && grep -qi 'secret' skills/blueprint/SKILL.md && grep -q 'allowed-tools' skills/blueprint/SKILL.md`
 
-7. [ ] **Document `/jim:blueprint` in `WORKFLOW.md`** command reference.
+7. [x] **Document `/jim:blueprint` in `WORKFLOW.md`** command reference.
    **Verify:** `grep -q 'jim:blueprint' WORKFLOW.md`
 
 ## Requirements Coverage Summary
