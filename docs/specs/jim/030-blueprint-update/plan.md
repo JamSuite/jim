@@ -2,7 +2,7 @@
 title: "Blueprint update"
 spec: "docs/specs/jim/030-blueprint-update/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Blueprint update — Plan
