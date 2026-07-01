@@ -165,6 +165,18 @@ case_jimfile_next_id_with_gaps() {
   assert_eq "006 not 002" "006" "$OUT"
 }
 
+# AC: next-id ignores a 000-blueprint dir (parses to id 0, never raises max) —
+#     regression-locks the reserved-slot invariant (029 plan Task 2)
+case_jimfile_next_id_ignores_000_blueprint() {
+  local specs cfg
+  specs=$(empty_dir next_ignores_bp)
+  mkdir -p "$specs/jim/000-blueprint" "$specs/jim/001-foo" "$specs/jim/002-bar"
+  cfg=$(fixture next-bp.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id jim
+  assert_exit "rc" 0 "$RC"
+  assert_eq "000-blueprint ignored; max is 002" "003" "$OUT"
+}
+
 # AC: mv-spec renames the {id}-wip dir to {id}-{name}; the ledger travels with it
 case_jimfile_mv_spec_renames_wip() {
   local specs cfg
