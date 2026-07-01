@@ -1,6 +1,6 @@
 ---
 spec: "docs/specs/jim/029-blueprint-spec/spec.md"
-status: Needs PM Review
+status: Active
 date: "2026-06-30"
 ---
 
@@ -10,7 +10,7 @@ date: "2026-06-30"
 
 **The generation analog — `/jim:arch`** (mirror its flow, not its scope)
 - `skills/arch/SKILL.md:54-68` — Step 4 codebase scan (Glob/Grep-per-section, evidence-grounded). The per-group blueprint scan mirrors this.
-- `skills/arch/SKILL.md:70-93` — Step 5 template-fill + Step 6 present: the **diff-and-confirm** gate and the `auto_arch_feedback` branch (`=="true"` → write directly; else present diff + wait). The blueprint's approval gate (AC #1) and a future `auto_blueprint_feedback` flag copy this.
+- `skills/arch/SKILL.md:70-93` — Step 5 template-fill + Step 6 present: the **diff-and-confirm** gate and the `auto_arch_feedback` branch (`=="true"` → write directly; else present diff + wait). The blueprint's approval gate (AC #1) and a future `auto_blueprint` flag copy this.
 - `skills/arch/SKILL.md:44-52` — Step 3 differential update (Edit-not-Write, summarize first) — the model for AC #9 (generate-or-update).
 - `skills/build/SKILL.md:134-140` — Step 6.2 existence-gated `Skill(jim:arch)` refresh after a build (refreshes only if the doc exists; never creates). The pattern the **fold-back** follow-on (issue #20) extends into `/jim:review`.
 
@@ -19,7 +19,7 @@ date: "2026-06-30"
 - `skills/file/scripts/jimfile.sh:587-597` — the group-keyed `spec|plan|research` path arm (`{specs}/{group}/{id}-{name}/{kind}.md`). `architecture` is **project-wide / flat** (single-arg dispatch `:563-580`, not in `KINDS` `:69`). → the blueprint needs a **new group-parameterized resolver arm** (a `blueprint` kind); arch's flat resolution does not fit a per-group artifact.
 - `skills/file/scripts/jimfile.sh:147-189` — reusable validators (`is_valid_slug`, `is_valid_id`, `normalize_slug`).
 
-**Config** — `skills/conf/scripts/jimconf.sh:42` (`KEYS`), `:48-84` (`default_for` arms), `:108-139` (`resolve`: `auto_*` → bare TOML name `:122`, else `_path` suffix `:124`). A new `auto_blueprint_feedback` flag slots into `KEYS` + a `default_for` `"false"` arm; `jimconf.toml.example:47` (`auto_arch_feedback`) is the analog line.
+**Config** — `skills/conf/scripts/jimconf.sh:42` (`KEYS`), `:48-84` (`default_for` arms), `:108-139` (`resolve`: `auto_*` → bare TOML name `:122`, else `_path` suffix `:124`). A new `auto_blueprint` flag slots into `KEYS` + a `default_for` `"false"` arm; `jimconf.toml.example:47` (`auto_arch_feedback`) is the analog line.
 
 **Templates to amalgamate** (bootstrap sources, AC #3–7)
 - `skills/spec/assets/spec-template.md` — Overview/Problem (→ Responsibility); ACs (→ invariants).
@@ -57,13 +57,13 @@ Conceptual only — jim is zero-dependency; these are names for orientation, not
 **Alignment:** this aligns with VISION's institutional-memory + human-in-the-loop goals (a living reference, written only on approval — consistent with "not a black box") and follows ARCHITECTURE.md's generate-and-confirm skill pattern, the bash-vs-prompt split, and the untrusted-ingestion security model. No locked-constraint divergence.
 
 For the architect (options, not decisions):
-1. **Reuse `/jim:arch`'s skill shape** for flow (scan → fill → diff-and-confirm → `auto_blueprint_feedback`), but resolve the path through a **new group-keyed `blueprint` kind** in `jimfile.sh` — the flat `architecture` resolver does not fit a per-group artifact.
+1. **Reuse `/jim:arch`'s skill shape** for flow (scan → fill → diff-and-confirm → `auto_blueprint`), but resolve the path through a **new group-keyed `blueprint` kind** in `jimfile.sh` — the flat `architecture` resolver does not fit a per-group artifact.
 2. **Treat `000-blueprint` as a reserved slot**, not an allocated id — no `next-id`/`mv-spec`. Add one regression test that `next-id` ignores it.
 3. **Bootstrap by amalgamating** the group's spec/plan/research/security/review artifacts (section mapping above) plus a code scan for the `requires` face and code-shape invariants.
-4. **Config:** likely just an `auto_blueprint_feedback` boolean; the path is derived per-group from `specs_path` + the reserved slot, so a new `*_path` key may be unnecessary — architect to weigh.
+4. **Config:** likely just an `auto_blueprint` boolean; the path is derived per-group from `specs_path` + the reserved slot, so a new `*_path` key may be unnecessary — architect to weigh.
 5. **Carry the security discipline** from `review`/`investigator` verbatim (parse-never-source, untrusted-wrap, secret-scrub); the `/jim:sec` pass should confirm it is specified.
 
 ## Peer Feedback
 
 For the PM — one feasibility note, not a blocker:
-- **`requires`-from-code precision (AC #5)** is the riskiest unknown. Deriving a group's cross-group dependencies reliably is hard when the group's code boundary is not a clean module — exactly the gap **issue #19** addresses. The MVP can do best-effort `requires` (LLM reading the group's code for cross-group references) and should *set expectations accordingly* (single-group, best-effort, refined later). This reinforces the spec's existing Open Question rather than changing scope — flagged so approval is conscious.
+- **`requires`-from-code precision (AC #5)** is the riskiest unknown. Deriving a group's cross-group dependencies reliably is hard when the group's code boundary is not a clean module — exactly the gap **issue #19** addresses. The MVP can do best-effort `requires` (LLM reading the group's code for cross-group references) and should *set expectations accordingly* (single-group, best-effort, refined later). This reinforces the spec's existing Open Question rather than changing scope — flagged so approval is conscious. **Resolved (PM):** best-effort LLM judgement accepted for the MVP.

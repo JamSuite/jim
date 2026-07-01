@@ -49,7 +49,8 @@ grows silently as the project evolves.
 ## Acceptance Criteria
 - [ ] Running the skill against a named spec group produces that group's
       `000-blueprint` spec, written only after the developer approves the proposed
-      content (no write without approval).
+      content — unless the developer has enabled the opt-in auto-write override
+      (default off, per jim's `auto_*` convention), which writes without a prompt.
 - [ ] Each group's blueprint spec has a single, stable home at the reserved
       `000-blueprint` slot, distinct from the group's numbered specs, so it can be
       found and regenerated in place.
@@ -164,5 +165,5 @@ flowchart LR
 - [x] ~Whole initiative or a slice?~ → Foundation slice: the artifact plus a generator skill for one group. Fold-back, cross-group graph, and verification execution are follow-on specs.
 - [x] ~Record the verification method, or defer it?~ → Record each invariant's criticality + intended method; defer execution to the verification-engine spec.
 - [x] ~Name it: blueprint or spec?~ → Both — it's the **blueprint spec**: "blueprint" is the name, held in jim's spec form, at the reserved `000-blueprint` slot.
-- [ ] How is `requires` reliably derived for a group whose code boundary is not yet a clean module? Ties to issue #19 (defining groups as context boundaries).
+- [x] ~~How is `requires` reliably derived for a group whose code boundary is not yet a clean module?~~ → Accepted: best-effort, LLM-driven derivation at MVP scope; precision sharpened later by issue #19.
 - [ ] Bootstrapping authority: the first blueprint spec is amalgamated *from* the code; the point at which it becomes authoritative *over* the code depends on the later fold-back loop. Flag the dependency so 029 doesn't over-claim authority.
