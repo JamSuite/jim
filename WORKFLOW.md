@@ -61,6 +61,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:vision` | Create/update project vision and strategy | `@jim:pm` | `VISION.md` |
 | `/jim:roadmap` | Create/update execution milestones and phase sequence | `@jim:pm` | `ROADMAP.md` |
 | `/jim:arch` | Create/update technical architecture | `@jim:architect` | `ARCHITECTURE.md` |
+| `/jim:blueprint` | Create/update a group's current-state blueprint spec | `@jim:architect` | `docs/specs/{group}/000-blueprint/spec.md` |
 | `/jim:debug` | Diagnose failures, produce report for spec/plan cycle | `@jim:coder` | `debug/{YYYYMMDD}-{topic}.md` |
 | `/jim:brainstorm` | Freeform ideation — exploratory notes | `@jim:pm` | `brainstorms/{YYYYMMDD}-{topic}.md` |
 | `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list [filter]` / `stats` / `show <id>`; bare → help) | `@jim:pm` | `issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` |
@@ -78,6 +79,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 |----------|----------|------------|------------|
 | Vision | `VISION.md` (project root) | Big picture — problem statement, value prop, target audience, competitive landscape | `/jim:vision` |
 | Architecture | `ARCHITECTURE.md` (project root) | Technical foundation — codemap, system diagram, tech stack, data structures, architectural invariants | `/jim:arch` |
+| Blueprint | `docs/specs/{group}/000-blueprint/spec.md` | A group's current, present-tense spec — responsibility, provides/requires surface, structure, load-bearing invariants; amalgamated from the group's specs, ARCHITECTURE.md, and code | `/jim:blueprint` |
 | Roadmap | `ROADMAP.md` (project root) | Execution sequence — milestones, phase breakdowns, links to numbered specs with status | `/jim:roadmap` |
 | Spec | `docs/specs/{group}/{00X}-{name}/spec.md` | Work definition — requirements, acceptance criteria, spec type (feature/bug/refactor) | `/jim:spec` |
 | Plan | `docs/specs/{group}/{00X}-{name}/plan.md` | Implementation path — codebase research, atomic tasks, dependencies | `/jim:plan` |
