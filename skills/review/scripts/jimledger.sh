@@ -13,6 +13,7 @@
 #   metrics <spec-dir>                         emit git + per-stage ledger key=value lines
 #   files   <spec-dir>                         list changed file paths over base..head
 #   diff    <spec-dir>                         emit the diff (function-context) over base..head
+#   diff-range <base> [head]                   emit the diff over a validated CWD-repo range
 #   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
 #   commit-blueprint <blueprint-dir>           commit spec.md + ledger.md (path-scoped)
 #
@@ -41,6 +42,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   metrics <spec-dir>                          emit key=value metrics to stdout
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
+  diff-range <base> [head]                    emit the diff over a validated CWD-repo range
   commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
   commit-blueprint <blueprint-dir>            commit spec.md + ledger.md (path-scoped)
 USAGE
@@ -77,6 +79,37 @@ resolve_head() {
     echo "jimledger: refusing malformed sha: $sha" >&2
     return 2
   fi
+  printf '%s' "$sha"
+}
+
+# valid_git_ref <ref> — return 0 iff <ref> is safe to hand to git as a rev:
+#   non-empty, no leading '-' (option injection), only ref-name-safe bytes
+#   (letters, digits, / . _ -), no '..', no leading/trailing '/'. Accepts
+#   branch/tag/SHA refs including '/'-bearing ones (origin/main) — which
+#   is_valid_id would wrongly reject — while foreclosing option/metacharacter
+#   injection (sec 030 Finding 5). Rev expressions (HEAD~3, a^, a:b) are
+#   intentionally rejected; pass a plain ref or SHA.
+valid_git_ref() {
+  local ref="$1"
+  [[ -n "$ref" ]] || return 1
+  [[ "$ref" == -* ]] && return 1
+  [[ "$ref" =~ ^[A-Za-z0-9._/-]+$ ]] || return 1
+  [[ "$ref" == *".."* ]] && return 1
+  [[ "$ref" == /* || "$ref" == */ ]] && return 1
+  return 0
+}
+
+# resolve_ref <ref> — validate <ref> and resolve it to a commit SHA in the repo
+#   at CWD, or return 1. `git rev-parse --verify --end-of-options` guarantees the
+#   ref can never be parsed as an option; the resulting SHA is re-validated
+#   through the single is_valid_id boundary before a caller ranges on it.
+resolve_ref() {
+  local ref="$1" sha
+  if ! valid_git_ref "$ref"; then echo "jimledger: invalid git ref: $ref" >&2; return 1; fi
+  sha="$(git rev-parse --verify --end-of-options "$ref^{commit}" 2>/dev/null)" || {
+    echo "jimledger: unresolvable git ref: $ref" >&2; return 1;
+  }
+  if ! validate_sha "$sha"; then echo "jimledger: refusing malformed sha: $sha" >&2; return 1; fi
   printf '%s' "$sha"
 }
 
@@ -205,6 +238,21 @@ cmd_diff() {
   git -C "$dir" diff --function-context "$base..$head" --
 }
 
+# cmd_diff_range <base> [<head>] — emit the --function-context diff over the
+#   <base>..<head> range in the repo at CWD (head defaults to HEAD). The ad-hoc
+#   blueprint update's diff source: both endpoints are ref-safety-gated and
+#   resolved to SHAs (resolve_ref) before any git interpolation, so a crafted
+#   ref cannot inject a git option or pathspec (sec 030 Finding 5). Untrusted
+#   output. Unlike the range verbs, this operates on CWD's repo, not a spec-dir.
+cmd_diff_range() {
+  local base_ref="${1:-}" head_ref="${2:-HEAD}"
+  if [[ -z "$base_ref" ]]; then echo "jimledger diff-range: need <base> [head]" >&2; return 2; fi
+  local base head
+  base="$(resolve_ref "$base_ref")" || return 1
+  head="$(resolve_ref "$head_ref")" || return 1
+  git diff --function-context "$base..$head" --
+}
+
 # Stages whose started/finished boundaries the ledger may carry. The metrics
 # loop iterates THIS fixed list — key names are literals, never derived from
 # ledger text — so a tampered ledger cannot inject spurious metric keys
@@ -314,6 +362,7 @@ main() {
     metrics) shift; cmd_metrics "$@" ;;
     files)   shift; cmd_files "$@" ;;
     diff)    shift; cmd_diff "$@" ;;
+    diff-range) shift; cmd_diff_range "$@" ;;
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;

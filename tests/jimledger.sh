@@ -535,6 +535,67 @@ case_jimledger_commit_blueprint_non_repo() {
   assert_exit "rc" 2 "$RC"
 }
 
+# AC: diff-range emits a --function-context diff over a validated commit range
+# (spec 030 Task 4). Operates on the repo at CWD (the ad-hoc adapter runs at root).
+case_jimledger_diff_range_emits() {
+  local sd root base; sd="$(git_fixture t30dr)"; root="${sd%/spec}"
+  base="$(git -C "$root" rev-parse HEAD)"
+  gledger_commit "$root" feat "dr.txt" "range-diff-marker"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range "$base" HEAD 2>/dev/null)"; RC=$?
+  assert_exit  "rc" 0 "$RC"
+  assert_match "diff header"  '^diff --git'          "$OUT"
+  assert_match "added marker" '^\+range-diff-marker$' "$OUT"
+}
+
+# AC: diff-range accepts a /-bearing ref (branch) — which is_valid_id would
+# wrongly reject. This is the crux of security Finding 5 (spec 030 Task 4).
+case_jimledger_diff_range_accepts_slash_ref() {
+  local sd root; sd="$(git_fixture t30drs)"; root="${sd%/spec}"
+  git -C "$root" branch feat/x HEAD
+  gledger_commit "$root" feat "d2.txt" "slash-ref-marker"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range feat/x HEAD 2>/dev/null)"; RC=$?
+  assert_exit "rc" 0 "$RC"
+  assert_match "slash ref resolved" 'slash-ref-marker' "$OUT"
+}
+
+# AC: diff-range head defaults to HEAD when omitted (spec 030 Task 4).
+case_jimledger_diff_range_head_defaults_to_head() {
+  local sd root base; sd="$(git_fixture t30drh)"; root="${sd%/spec}"
+  base="$(git -C "$root" rev-parse HEAD)"
+  gledger_commit "$root" feat "d3.txt" "default-head-marker"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range "$base" 2>/dev/null)"; RC=$?
+  assert_exit "rc" 0 "$RC"
+  assert_match "default head marker" 'default-head-marker' "$OUT"
+}
+
+# AC: diff-range rejects option-injection / metacharacter / rev-expression refs
+# rc 1 with no git diff run (spec 030 Task 4, security Finding 5).
+case_jimledger_diff_range_rejects_bad_refs() {
+  local sd root badref out rc; sd="$(git_fixture t30drb)"; root="${sd%/spec}"
+  for badref in '--output=x' 'a;b' 'a b' 'HEAD~3' 'a^b' 'a:b' '..' '/leading'; do
+    out="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range "$badref" HEAD 2>/dev/null)"; rc=$?
+    assert_eq "rejects '$badref' rc1"        "1" "$rc"
+    assert_eq "no diff output for '$badref'" ""  "$out"
+  done
+}
+
+# AC: a --output=<file> injection ref never reaches git, so no file is written
+# (spec 030 Task 4, security Finding 5 — the concrete injection foreclosure).
+case_jimledger_diff_range_option_injection_no_write() {
+  local sd root marker rc; sd="$(git_fixture t30dri)"; root="${sd%/spec}"
+  marker="$TMP_BASE/dr-injected"
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range "--output=$marker" HEAD >/dev/null 2>&1); rc=$?
+  assert_eq "rejected rc1"    "1" "$rc"
+  assert_eq "no file written" "0" "$([[ -e "$marker" ]] && echo 1 || echo 0)"
+}
+
+# AC: diff-range with no base arg exits 2 (usage; spec 030 Task 4).
+case_jimledger_diff_range_missing_base_exits_2() {
+  local sd root; sd="$(git_fixture t30drm)"; root="${sd%/spec}"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range 2>/dev/null)"; RC=$?
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
