@@ -14,6 +14,7 @@
 #   files   <spec-dir>                         list changed file paths over base..head
 #   diff    <spec-dir>                         emit the diff (function-context) over base..head
 #   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
+#   commit-blueprint <blueprint-dir>           commit spec.md + ledger.md (path-scoped)
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
 #
@@ -41,6 +42,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
   commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
+  commit-blueprint <blueprint-dir>            commit spec.md + ledger.md (path-scoped)
 USAGE
 }
 
@@ -110,6 +112,21 @@ cmd_commit_review() {
   esac
   git -C "$dir" add -- review.md ledger.md || return 2
   git -C "$dir" commit -q -m "$msg" -- review.md ledger.md || return 2
+}
+
+# cmd_commit_blueprint <blueprint-dir> — path-scoped commit of the refreshed
+#   blueprint: spec.md + ledger.md inside <blueprint-dir>, mirroring
+#   commit-review's discipline (literal paths, `--` guard, never `git add -A`;
+#   sec 030 Finding 2). The blueprint lives in <group>/000-blueprint/, a
+#   different dir than the reviewed spec, so it gets its own path-scoped commit
+#   rather than riding commit-review. Any git failure returns non-zero so the
+#   caller degrades.
+cmd_commit_blueprint() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger commit-blueprint: need <blueprint-dir>" >&2; return 2; fi
+  if [[ ! -d "$dir" ]]; then echo "jimledger: blueprint-dir not found: $dir" >&2; return 2; fi
+  git -C "$dir" add -- spec.md ledger.md || return 2
+  git -C "$dir" commit -q -m "docs(blueprint): update 000-blueprint" -- spec.md ledger.md || return 2
 }
 
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
@@ -300,6 +317,7 @@ main() {
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
+    commit-blueprint) shift; cmd_commit_blueprint "$@" ;;
     *) usage; return 2 ;;
   esac
 }

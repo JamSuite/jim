@@ -510,6 +510,31 @@ case_jimledger_metrics_blueprint_stage() {
   assert_match "blueprint_duration" '^blueprint_duration_seconds=12$' "$OUT"
 }
 
+# AC: commit-blueprint commits spec.md + ledger.md in one path-scoped commit,
+# leaving an unrelated working-tree change untouched — never git add -A
+# (spec 030 Task 3, AC #9, security Finding 2).
+case_jimledger_commit_blueprint_scoped() {
+  local sd root; sd="$(git_fixture t30cb)"; root="${sd%/spec}"
+  printf '# blueprint\n'                                    > "$sd/spec.md"
+  printf '1\t2026-01-01T00:00:00Z\tblueprint\tfinished\t\n' > "$sd/ledger.md"
+  printf 'unrelated change\n'                               > "$root/seed.txt"
+  run_jimledger commit-blueprint "$sd"
+  assert_exit "rc" 0 "$RC"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "spec.md committed"    'spec/spec\.md'   "$committed"
+  assert_match "ledger.md committed"  'spec/ledger\.md' "$committed"
+  assert_eq    "seed.txt not swept"   "0" "$(echo "$committed" | grep -c '^seed\.txt$')"
+  assert_eq    "seed.txt still dirty" "1" "$(git -C "$root" status --porcelain seed.txt | grep -c '^ M')"
+}
+
+# AC: commit-blueprint degrades gracefully outside a git repo (spec 030 Task 3).
+case_jimledger_commit_blueprint_non_repo() {
+  local sd; sd="$(empty_dir t30cbn/spec)"
+  printf 's\n' > "$sd/spec.md"; printf 'l\n' > "$sd/ledger.md"
+  run_jimledger commit-blueprint "$sd"
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
