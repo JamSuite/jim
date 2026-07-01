@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-27T05:13:33Z
-updated: 2026-06-27T05:13:33Z
+updated: 2026-07-01T08:13:10Z
 origin: conversation
 ---
 
@@ -41,3 +41,19 @@ Add a bash regression test under skills/issue/scripts that asserts a read over
 a non-existent dir creates nothing.
 
 Surfaced while running `/jim:issue list 17` during this session.
+
+## Note (2026-07-01): second trigger via direct index.sh + relative default
+
+The same `mkdir -p` (index.sh:280) also fires without any `list` arg. Running
+`index.sh` with no directory argument resolves its target from
+`jimconf.sh get issues`, whose default is the **relative** `./docs/issues/`.
+Invoked from a CWD other than the repo root — e.g. from inside `docs/issues/`
+itself — that relative path resolves to `docs/issues/docs/issues/`, and
+`mkdir -p` silently creates the stray nested tree plus an `INDEX.md` inside it,
+while the real `docs/issues/INDEX.md` goes un-refreshed. Observed this session
+when regenerating the index after an issue edit.
+
+This reinforces that the fix belongs at the **root** (index.sh must not create
+its target dir on a regen — an absent dir means no issues, so emit nothing and
+create nothing). The render.sh cmd_list defense-in-depth would not catch a
+direct `index.sh` invocation, so it cannot be the sole fix.
