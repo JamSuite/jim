@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback auto_blueprint require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback auto_blueprint require_blueprint require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -59,6 +59,7 @@ default_for() {
     require_pre_completion) echo "false" ;;
     auto_arch_feedback)     echo "false" ;;
     auto_blueprint)         echo "false" ;;
+    require_blueprint)      echo "false" ;;
     require_security)            echo "false" ;;
     auto_security)               echo "false" ;;
     require_review)              echo "false" ;;
