@@ -10,7 +10,7 @@ description: >
   (/jim:spec, /jim:plan), or fixing code (/jim:build, /jim:debug).
 agent: reviewer
 argument-hint: "[--depth lean|thorough] [spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(mkdir *) Skill(jim:sec) Agent(investigator) Read Write Glob Grep
+allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(mkdir *) Skill(jim:sec) Skill(jim:blueprint) Agent(investigator) Read Write Glob Grep
 ---
 
 # /jim:review
@@ -181,9 +181,24 @@ Wait for the developer's response.
 - ON `skip all`: discard all rows.
 - ON per-row `f` / `e` / `s`: file (write + regen) / edit (present the full draft with the spec 017 AC-C2 scrub reminder, then write on approval) / skip.
 
-### 10. Present and stop
+### 10. Blueprint update (require_blueprint / auto_blueprint)
 
-Show the alignment verdict, the key findings, and where `review.md` was written. Highlight `major-drift` prominently if present. The skill stops here — it does not advance the SDLC workflow and never modifies code.
+Fold this review's learnings into the reviewed group's `000-blueprint` by reusing `/jim:blueprint` in its `--from-review` mode. The group is the reviewed `spec.md`'s `group:` field (loaded in Step 1).
+
+SET require_blueprint = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_blueprint`
+SET auto_blueprint    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_blueprint`
+
+IF require_blueprint == "true" OR auto_blueprint == "true" THEN
+  Invoke `Skill(jim:blueprint)` with `"<group> --from-review <spec-dir>"` as the args parameter — it runs once. It reads this review's build diff + shape-validated verdict from the ledger, proposes a targeted section-diff to the group's blueprint, and on write self-commits via `commit-blueprint`. `auto_blueprint` writes without a prompt; `require_blueprint` makes the update a required, blocking step.
+ELSE
+  Offer conversationally: "Update the group blueprint from this review now? (`/jim:blueprint <group> --from-review <spec-dir>`)" — the developer chooses. Do not auto-run.
+ENDIF
+
+Two axes, do not conflate: the update's *proposed changes* are advisory — the developer approves the diff (or `auto_blueprint` writes it), never a veto. What `require_blueprint` gates is that the update *runs to completion*. Since `/jim:review` is terminal, the held completion is this review's own stop: under `require_blueprint`, do not present the review as complete (Step 11) until the update has run to completion — a refreshed blueprint written + committed, or `/jim:blueprint` having fallen through to a fresh generate for a group with no blueprint yet. An interrupted, errored, or declined update holds that gate: re-run the update or report the held state.
+
+### 11. Present and stop
+
+Show the alignment verdict, the key findings, where `review.md` was written, and (when the Step 10 blueprint update ran) the refreshed blueprint. Highlight `major-drift` prominently if present. The skill stops here — it does not advance to build or any later phase and never modifies source code (the Step 10 blueprint update writes only the group's `000-blueprint`).
 
 ## Validation Checklist
 
@@ -201,4 +216,5 @@ Before presenting:
 - [ ] The review stage's boundaries were recorded on the ledger — `review started` after the spec.md precondition, `review finished alignment=… findings=…` after the verdict and **before** composing `review.md` — and `review.md`'s own metrics were re-read after `finished`.
 - [ ] `review.md` and `ledger.md` were committed together via `commit-review` (path-scoped, no broad git); a failed commit was reported and `review.md` left intact.
 - [ ] The ledger verdict line was treated as advisory; `review.md` is the authoritative verdict.
-- [ ] No source code was modified (the only writes are `review.md` and the path-scoped ledger commit); the skill stopped without advancing the workflow.
+- [ ] No source code was modified — writes are limited to `review.md`, the path-scoped ledger commit, and (when the blueprint update ran) the group's `000-blueprint` via `/jim:blueprint`; the skill stopped without advancing to build or a later phase.
+- [ ] The blueprint-update step ran per `require_blueprint` / `auto_blueprint` (invoked `/jim:blueprint … --from-review …`, or offered it); under `require_blueprint` the review was not presented complete until the update completed.
