@@ -494,6 +494,22 @@ case_jimledger_diff_malformed_sha_exits_2() {
   assert_match "refuses malformed sha" 'malformed sha' "$ERR"
 }
 
+# ─── spec 030: blueprint stage + commit-blueprint + diff-range ───────────────
+
+# AC: metrics emits per-stage runs + duration for the blueprint stage, so a
+# blueprint update is self-measurable and auditable (spec 030 Task 2, sec F4).
+case_jimledger_metrics_blueprint_stage() {
+  local sd; sd="$(empty_dir t30bp/spec)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tblueprint\tstarted\t\n'
+    printf '1012\t2026-01-01T00:00:12Z\tblueprint\tfinished\t\n'
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "blueprint_runs"     '^blueprint_runs=1$'              "$OUT"
+  assert_match "blueprint_duration" '^blueprint_duration_seconds=12$' "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then

@@ -146,7 +146,7 @@ sequenceDiagram
 1. [x] **`jimconf.sh`: add `require_blueprint`.** Key in `KEYS` (adjacent to `auto_blueprint`) + `require_blueprint) echo "false"` arm in `default_for`. Add dedicated `case_require_blueprint_default`/`_overridden` to `tests/jimconf.sh` and extend the four aggregate cases (defaults, full-override, list, keys).
    **Verify:** `bash /mnt/src/jim/tests/jimconf.sh`
 
-2. [ ] **`jimledger.sh`: add `blueprint` to `LEDGER_STAGES`.** Append `blueprint` to the literal allowlist. Add a `tests/jimledger.sh` case asserting `blueprint_runs`/`_duration_seconds` metrics over a blueprint-stage ledger.
+2. [x] **`jimledger.sh`: add `blueprint` to `LEDGER_STAGES`.** Append `blueprint` to the literal allowlist. Add a `tests/jimledger.sh` case asserting `blueprint_runs`/`_duration_seconds` metrics over a blueprint-stage ledger.
    **Verify:** `bash /mnt/src/jim/tests/jimledger.sh`
 
 3. [ ] **`jimledger.sh`: add `commit-blueprint` verb.** `cmd_commit_blueprint` (path-scoped `git add/commit -- spec.md ledger.md`, `--` guard, never `git add -A`) + dispatch arm. Test asserts only `spec.md`+`ledger.md` staged, other working-tree files untouched. Depends on task 2.

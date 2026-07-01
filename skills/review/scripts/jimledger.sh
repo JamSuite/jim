@@ -193,7 +193,7 @@ cmd_diff() {
 # ledger text — so a tampered ledger cannot inject spurious metric keys
 # (sec Finding 7: the key set is fixed; values are counts/SHAs or the
 # shape-validated verdict, never free-form ledger text).
-LEDGER_STAGES="spec research plan sec build review"
+LEDGER_STAGES="spec research plan sec build review blueprint"
 
 # phase_event_metrics <ledger> — emit per-stage process metrics:
 #   <stage>_runs, <stage>_interruptions, and (when both bounds exist)
@@ -281,7 +281,7 @@ cmd_metrics() {
     printf 'deletions=%s\n' "$del"
   fi
 
-  # Per-stage process metrics (spec/research/plan/sec/build/review) plus the
+  # Per-stage process metrics (spec/research/plan/sec/build/review/blueprint) plus the
   # latest review verdict — ledger-only, so they survive an un-instrumented
   # build. Iterates a fixed allowlist (LEDGER_STAGES); key names are literals,
   # never derived from ledger text (sec Finding 7).
