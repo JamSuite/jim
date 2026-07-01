@@ -4,14 +4,14 @@ num: 19
 title: "Build intelligence for context-aware spec-group definition"
 status: open
 priority: high
-labels: [spec-groups, context-boundary, architecture, 000-current]
+labels: [spec-groups, context-boundary, architecture, 000-blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
 created: 2026-06-30T11:07:07Z
-updated: 2026-06-30T11:07:07Z
+updated: 2026-07-01T08:01:47Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
