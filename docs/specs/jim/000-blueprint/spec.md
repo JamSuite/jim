@@ -2,7 +2,7 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
-updated: "2026-07-01"
+updated: "2026-07-02"
 ---
 
 # jim — blueprint
@@ -16,7 +16,7 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `jim` group **is** the jim plugin: a Claude Code plugin that adds an
 agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md; specs
-001–029) is to make AI-assisted development follow the developer's engineering
+001–031) is to make AI-assisted development follow the developer's engineering
 discipline instead of bypassing it — grounding non-trivial work in a
 phase-gated `spec → research → plan → (security) → build → review` lifecycle,
 backed by specialized agent personas, living strategic documents, and a
@@ -44,7 +44,9 @@ executes the data it reads.
   `blueprint`, `brainstorm` (strategic); `issue` (discovery); `meta-skill`,
   `meta-agent`, `meta-test` (meta); `conf`, `file` (introspection). Guarantee:
   each produces a durable artifact and halts for human approval — no phase
-  auto-advances, nothing auto-ships.
+  auto-advances, nothing auto-ships; blueprint update-mode folds are guarded —
+  a violated invariant is never silently rewritten, and `critical`/`high`
+  downgrades always prompt even under `auto_blueprint`.
 - `@jim:{role}` **agent personas** — `pm`, `architect`, `researcher`, `coder`,
   `security`, `reviewer`, `investigator`, `issue-analyst`, `meta`. Guarantee:
   each is a bounded role that stops after its artifact; read-only roles
@@ -107,7 +109,7 @@ Grounded in ARCHITECTURE.md and the repo tree.
   path); `jimledger.sh` (ledger); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–030`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–031`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root, and
   `docs/brainstorms/` + `docs/debug/`.
 - **Tests** (`tests/*.sh`, developer-only, not loaded by Claude Code) driven by
@@ -145,3 +147,5 @@ records the *rule*, its criticality, and how it would be verified.
 | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0` and is ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | `jimfile.sh`; test |
 | `ARCHITECTURE.md` is generated/maintained only through `/jim:arch`, never hand-edited | medium | process convention; Last-updated header staleness |
 | Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are) | medium | directory convention |
+| A blueprint update never silently rewrites a violated invariant: violations fork explicitly (fix the code / fold the intent) before the section-diff, with evidence in delimited untrusted-content blocks; under `auto_blueprint`, weakening/removal of a `critical`/`high` invariant or any Provides entry prompts, and unattended writes itemize per-row classifications | critical | blueprint SKILL.md validation checklist; judge (issue #22 engine later) |
+| Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | ledger inspection; `tests/jimledger.sh` (belt case tracked as issue #31) |
