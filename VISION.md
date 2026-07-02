@@ -59,7 +59,7 @@ Jim provides an agentic SDLC workflow for Claude Code via `/jim:spec`, `/jim:pla
 ## Non-Goals
 
 - **Not a virtual team.** Jim is an agentic framework, designed for human → agent collaboration. It is not a substitute for real human's work or their roles. 
-- **Not a project management tool.** Jim does not replace Jira, Linear, or any ticketing system. It manages development artifacts, not team workflows.
+- **Not a project management tool.** Jim does not replace Jira, Linear, or any ticketing system, and does not manage team workflows. Issue capture is in scope — but only as a *discovery artifact* surfaced during the jim workflow and saved for later analysis, not as a team-coordination primitive.
 - **Not for hands-off vibe coding.** Jim requires human-in-the-loop approval at every phase gate. If you want fully autonomous code generation, Jim is the wrong tool.
 - **Not a black box.** Jim should never spawn agents and skills in ways the user can't follow. Transparency over automation.
 - **Not a change management system.** Jim tracks development artifacts (specs, plans, research), not organizational change processes.

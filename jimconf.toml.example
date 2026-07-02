@@ -21,6 +21,7 @@ vision_path       = "VISION.md"
 roadmap_path      = "ROADMAP.md"
 brainstorms_path  = "docs/brainstorms"
 debug_path        = "docs/debug"
+issues_path       = "./docs/issues/"
 
 # Optional project-script path for the per-commit gate. Resolves the
 # path-where-it-would-live; /jim:build wraps the call in an existence
@@ -85,3 +86,63 @@ auto_security_loop_limit  = "5"
 # No file is written unless the developer accepts at the end-of-review
 # prompt. Default "docs/security".
 security_adhoc_path       = "docs/security"
+
+# --- Issue tracking workflow integration (spec 018) -----------------------
+
+# Master switch for end-of-phase candidate batch surfacing across the 7
+# surfacing skills (/jim:spec, /jim:research, /jim:plan, /jim:build,
+# /jim:brainstorm, /jim:debug, /jim:sec). When "true" (the default),
+# each skill presents a batch of candidate issues at the conclusion of
+# its run before its final approval/STOP step. When "false", no batch
+# surfaces and ad-hoc /jim:issue is the only capture path. The bare
+# (non-auto_-prefixed) name reflects that the default behavior keeps the
+# human in the loop: surfacing presents a choice, not an automated
+# action. Uncomment to override the default.
+# issue_capture = "true"
+
+# Quiet auto-file mode for the candidate batch. When "true" AND
+# issue_capture is also "true", the batch is filed without prompting:
+# every candidate is written silently, the user sees a one-line summary,
+# and review happens later via /jim:issue list. When "false" (the default),
+# the batch prompts per the batch UX (file all / skip all / per-row
+# file/edit/skip). auto_issue_file = "true" with issue_capture = "false"
+# is a no-op. Uncomment to enable.
+# auto_issue_file = "false"
+
+# --- Issue list view (spec 019) -------------------------------------------
+
+# Default view for `/jim:issue list`. An explicit filter argument
+# (e.g. `/jim:issue list open`) overrides the configured default per call.
+# Unrecognized values fall back to the documented default.
+#   issue_list_group : how rows are grouped — status | priority | origin | none
+#   issue_list_sort  : sort within each group — date | priority | num
+#   issue_list_cols  : comma-separated columns from
+#                      num,date,priority,status,slug,labels,title
+#   issue_list_order : sort direction — desc (default) | asc
+#   issue_list_closed: include closed issues in the default / priority-filtered
+#                      views — false (default) | true. An explicit
+#                      `list open` / `list closed` filter always overrides it.
+# issue_list_group  = "status"
+# issue_list_sort   = "date"
+# issue_list_cols   = "num,date,priority,title"
+# issue_list_order  = "desc"
+# issue_list_closed = "false"
+
+# --- Issue id prefix (spec 021) -------------------------------------------
+
+# The prefix segment of an issue id (the part before the slug). Default
+# "date" keeps the zero-config YYYYMMDD- naming. Presets:
+#   date       : YYYYMMDD-<slug>             (default)
+#   sequential : zero-padded display ordinal, e.g. 0042-<slug>
+#   project    : the static issue_id_project tag, e.g. JIM-<slug>
+#   timestamp  : sub-day resolution, e.g. 20260614T144530-<slug>
+# Or a custom template combining literal text with {date:FMT} and
+# {seq[:width]} tokens, e.g. "JIM-{date:%Y%m%d}-{seq:03}". A malformed value
+# is reported on stderr and falls back to the date default. Changing this is
+# forward-only — it renames no existing files; converge the legacy collection
+# onto the new scheme with `migrate.sh prefix` (spec 023).
+# issue_id_prefix = "date"
+
+# Static project tag used by the "project" preset (also usable as literal
+# text in a template). Empty by default.
+# issue_id_project = "JIM"

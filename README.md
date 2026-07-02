@@ -46,8 +46,9 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:sec` | Design-time security analysis of specs, plans, or arbitrary files; produces `security.md` |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
+| `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show` / `insights`) — `insights` is an LLM analysis (convergence, sequencing, parallel-work) run by a read-only subagent |
 | `/jim:conf` | Inspect resolved jim configuration paths |
-| `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, next-id, path, glob) |
+| `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, now, next-id, next-num, path, glob) |
 | `/jim:meta-skill` | Build a jim plugin skill from spec |
 | `/jim:meta-agent` | Build a jim plugin agent from spec |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite |
@@ -113,6 +114,16 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `require_security_loop` | `"false"` | `/jim:sec` — when `"true"`, repeat the review-and-routing cycle until the severity threshold clears or the iteration limit is reached |
 | `require_security_loop_sev` | `"critical"` | `/jim:sec` — severity threshold for the loop's exit condition (`"critical"` / `"notable"` / `"advisory"`) |
 | `auto_security_loop_limit` | `"5"` | `/jim:sec` — maximum iterations of the gated review-and-routing loop |
+| `issues_path` | `./docs/issues/` | `/jim:issue`  — issue collection location |
+| `issue_capture` | `"true"` | surface potential issues at the end of each development phase; `"false"` disables surfacing |
+| `auto_issue_file` | `"false"` | automatically file issues without prompting |
+| `issue_list_group` | `"status"` | `/jim:issue list` — default grouping (`status` / `priority` / `origin` / `none`) |
+| `issue_list_sort` | `"date"` | `/jim:issue list` — default sort within groups (`date` / `priority` / `num`) |
+| `issue_list_cols` | `"num,date,priority,title"` | `/jim:issue list` — default columns (any of `num,date,priority,status,slug,labels,title`) |
+| `issue_list_order` | `"desc"` | `/jim:issue list` — sort direction (`desc` = newest/highest first, `asc`) |
+| `issue_list_closed` | `"false"` | `/jim:issue list` — when `"false"`, the default and priority-filtered views hide closed issues (use `list closed` to see them); `"true"` includes closed in every view |
+| `issue_id_prefix` | `"date"` | `/jim:issue add` — issue-id prefix scheme (`date` / `timestamp` / `sequential` / `project`, or a `{date:…}`/`{seq:…}` template); forward-only — converge existing ids with `migrate.sh prefix` |
+| `issue_id_project` | `""` (empty) | `/jim:issue add` — static project tag prepended when `issue_id_prefix = "project"` |
 
 > **Manual migration rule.** Changing a configured path does **not** move existing files. If you point `architecture_path` at a new location, you are responsible for moving (or recreating) the file at the new path. Jim never relocates artifacts on a config change.
 
@@ -133,7 +144,9 @@ Inspect what jim resolves with `/jim:conf`:
 /jim:file exists docs/specs/jim/008-jimfile/spec.md   # "yes" or "no"
 /jim:file slug "Auth Token Expiry"                    # auth-token-expiry
 /jim:file date                                        # YYYYMMDD
+/jim:file now                                         # YYYY-MM-DDThh:mm:ssZ (UTC)
 /jim:file next-id jim                                 # next zero-padded spec ID
+/jim:file next-num issue                              # next issue display ordinal
 /jim:file path spec jim 008 jimfile                   # canonical spec path
 /jim:file path debug "auth bug"                       # date-prefixed debug path
 /jim:file glob specs jim                              # every spec in the jim group
@@ -141,6 +154,19 @@ Inspect what jim resolves with `/jim:conf`:
 ```
 
 Path-and-name resolution only — the script never reads, writes, or deletes files. Slug normalization, the `.`/`..` reject, and the 64-char cap are enforced by the script (security boundary).
+
+### Issue prefix
+
+Changing `issue_id_prefix` is forward-only, it doesn't touch existing files. To converge an existing collection on the active scheme, run `migrate.sh prefix`, a one-shot, opt-in script:
+
+```bash
+bash skills/issue/scripts/migrate.sh prefix            # preview the rename/skip/collision plan (read-only)
+bash skills/issue/scripts/migrate.sh prefix --apply    # rename files, rewrite inbound relations/[[wikilinks]], regen INDEX.md
+```
+
+`--apply` is destructive (it renames files) and flags an uncommitted collection before mutating — commit a clean state first so recovery is a simple `git restore`.
+
+*Note:* migrate.sh handles the four named presets (`date` / `timestamp` / `sequential` / `project`) only; custom `{date:…}` templates are reported as un-migratable and left unchanged. The `project` tag must itself be hyphen-free — migration recovers each slug by splitting the id at its first dash, so a hyphenated tag (e.g. `MY-TEAM`) won't migrate cleanly.
 
 ## Permissions
 

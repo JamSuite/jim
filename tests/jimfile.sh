@@ -31,6 +31,14 @@ run_jimfile() {
   ERR="$(cat "$err_file")"
 }
 
+# extract_is_valid_id <script>
+#   Print the is_valid_id function body (def line through its column-0 closing
+#   brace). Used to assert the three hand-synced copies stay byte-identical
+#   (spec 021 security.md Finding 5).
+extract_is_valid_id() {
+  awk '/^is_valid_id\(\) \{/{f=1} f{print} f&&/^\}/{exit}' "$1"
+}
+
 # ─── Section: Test cases ─────────────────────────────────────────────────────
 
 # AC: exists yes for an existing file (Decision 6)
@@ -117,6 +125,13 @@ case_jimfile_date_yyyymmdd() {
   run_jimfile date
   assert_exit  "rc" 0 "$RC"
   assert_match "8 digits" '^[0-9]{8}$' "$OUT"
+}
+
+# AC: now prints the current second-resolution UTC timestamp (ISO 8601 Z)
+case_jimfile_now_utc_iso8601() {
+  run_jimfile now
+  assert_exit  "rc" 0 "$RC"
+  assert_match "iso8601 utc" '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$OUT"
 }
 
 # AC: next-id for an empty group returns 001 (Spec AC: start at 001 if empty)
@@ -343,9 +358,10 @@ case_jimfile_kinds_outputs_valid_kinds() {
   assert_match "research"   '^research$'   "$OUT"
   assert_match "debug"      '^debug$'      "$OUT"
   assert_match "brainstorm" '^brainstorm$' "$OUT"
+  assert_match "issue"      '^issue$'      "$OUT"
   local lines
   lines=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "5 kinds" "5" "$lines"
+  assert_eq "6 kinds" "6" "$lines"
 }
 
 # AC: unknown subcommand exits 2 with stderr explanation
@@ -487,6 +503,391 @@ case_jimfile_get_unknown_key_exits_1() {
   run_jimfile get bogus_key
   assert_exit     "rc" 1 "$RC"
   assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue <slug> returns <issues_dir>/<slug>.md (spec 017 AC-P1)
+# Pure path composition; does not touch the filesystem. Slug must pass
+# AC-C7 validation (alphanumeric + dash); see case_jimfile_path_issue_*
+# rejection cases for invalid-slug behavior.
+case_jimfile_path_issue_basic() {
+  local issues cfg
+  issues=$(empty_dir issues_basic)
+  cfg=$(fixture path-issue-basic.toml "issues_path = \"$issues\"")
+  run_jimfile -c "$cfg" path issue 20260530-test-slug
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "issue path" "$issues/20260530-test-slug.md" "$OUT"
+}
+
+# AC: next-id issue <subject> returns YYYYMMDD-normalized-slug (spec 017 AC-C6, AC-C7)
+case_jimfile_next_id_issue_basic() {
+  run_jimfile next-id issue "Auth Bug"
+  local today
+  today=$(date +%Y%m%d)
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "next-id issue" "$today-auth-bug" "$OUT"
+}
+
+# AC: path issue rejects path-traversal in slug (security.md Finding 1)
+case_jimfile_path_issue_rejects_path_traversal() {
+  run_jimfile path issue "../etc/passwd"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects literal '..' slug (security.md Finding 1)
+case_jimfile_path_issue_rejects_dotdot() {
+  run_jimfile path issue ".."
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects slug containing slash (security.md Finding 1)
+case_jimfile_path_issue_rejects_slash() {
+  run_jimfile path issue "foo/bar"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects slug with backslash (security.md Finding 1)
+case_jimfile_path_issue_rejects_backslash() {
+  run_jimfile path issue 'foo\bar'
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue rejects slug with leading dot (security.md Finding 1)
+case_jimfile_path_issue_rejects_leading_dot() {
+  run_jimfile path issue ".hidden"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: path issue accepts an uppercase new-scheme id under is_valid_id (spec 021 AC #7)
+# The broadened id charset admits the project/template prefixes (e.g. JIM-…),
+# replacing the old lowercase-only is_valid_slug guard at this callsite.
+case_jimfile_path_issue_accepts_uppercase_id() {
+  local cfg
+  cfg=$(fixture path-issue-upper.toml 'issues_path = "docs/issues"')
+  run_jimfile -c "$cfg" path issue "JIM-wire-consumers"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "uppercase id path" "docs/issues/JIM-wire-consumers.md" "$OUT"
+}
+
+# AC: path issue (no slug) returns the configured issues_path
+# Single-arg form mirrors `path debug` — returns the directory, not an error.
+case_jimfile_path_issue_no_arg_returns_dir() {
+  local cfg
+  cfg=$(fixture path-issue-no-arg.toml 'issues_path = "docs/issues"')
+  run_jimfile -c "$cfg" path issue
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "issues dir" "docs/issues" "$OUT"
+}
+
+# AC: path issue honors configured issues_path (AC-P2)
+case_jimfile_path_issue_honors_override() {
+  local cfg
+  cfg=$(fixture path-issue-override.toml 'issues_path = "docs/my-findings"')
+  run_jimfile -c "$cfg" path issue 20260530-x
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "issue path with override" "docs/my-findings/20260530-x.md" "$OUT"
+}
+
+# AC: path issue strips trailing slash from issues_path
+case_jimfile_path_issue_strips_trailing_slash() {
+  local cfg
+  cfg=$(fixture path-issue-trail.toml 'issues_path = "docs/issues/"')
+  run_jimfile -c "$cfg" path issue 20260530-y
+  assert_eq "no double slash" "docs/issues/20260530-y.md" "$OUT"
+}
+
+# AC: next-id issue with no subject exits 2 (malformed invocation)
+case_jimfile_next_id_issue_missing_subject_exits_2() {
+  run_jimfile next-id issue
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: next-id issue rejects subject that normalizes to empty (e.g., "!!!")
+case_jimfile_next_id_issue_rejects_invalid_subject() {
+  run_jimfile next-id issue "!!!"
+  assert_exit     "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: next-id issue normalizes subject with special characters (AC-C7)
+case_jimfile_next_id_issue_normalizes_special_chars() {
+  run_jimfile next-id issue "Foo, Bar & Baz?!"
+  local today
+  today=$(date +%Y%m%d)
+  assert_eq "normalized" "$today-foo-bar-baz" "$OUT"
+}
+
+# AC: next-id issue strips dotdot in subject (path-safety in slug step)
+case_jimfile_next_id_issue_handles_dotdot_in_subject() {
+  run_jimfile next-id issue "../../etc/passwd"
+  local today
+  today=$(date +%Y%m%d)
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "no traversal in slug" "$today-etc-passwd" "$OUT"
+}
+
+# AC: existing next-id <group> behavior is preserved (regression guard)
+# 'issue' as a kind-arg should not break group-name dispatch for other groups.
+case_jimfile_next_id_group_still_works() {
+  local specs cfg
+  specs=$(empty_dir specs_issue_regression)
+  mkdir -p "$specs/jim/001-a"
+  cfg=$(fixture next-issue-regression.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id jim
+  assert_eq "002 from existing group" "002" "$OUT"
+}
+
+# AC: next-num issue returns 1 when no issue carries a num: field (spec 019 DD #5)
+case_jimfile_nextnum_empty_returns_1() {
+  local issues cfg
+  issues=$(empty_dir nextnum_empty)
+  cfg=$(fixture nextnum-empty.toml "issues_path = \"$issues\"")
+  run_jimfile -c "$cfg" next-num issue
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "next-num empty dir" "1" "$OUT"
+}
+
+# AC: next-num issue returns max(num)+1 across the collection (spec 019 DD #5)
+# Files without a num: line are ignored; INDEX.md (no num:) is ignored too.
+case_jimfile_nextnum_returns_max_plus_one() {
+  local issues cfg
+  issues=$(empty_dir nextnum_max)
+  printf -- '---\nnum: 3\nstatus: open\n---\nbody\n' > "$issues/20260101-a.md"
+  printf -- '---\nnum: 7\nstatus: open\n---\nbody\n' > "$issues/20260102-b.md"
+  printf -- '---\nstatus: open\n---\nno num here\n'  > "$issues/20260103-c.md"
+  printf -- '# INDEX\n- nothing\n'                   > "$issues/INDEX.md"
+  cfg=$(fixture nextnum-max.toml "issues_path = \"$issues\"")
+  run_jimfile -c "$cfg" next-num issue
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "next-num max+1" "8" "$OUT"
+}
+
+# AC: next-num requires the 'issue' kind (malformed invocation)
+case_jimfile_nextnum_requires_issue_kind() {
+  run_jimfile next-num
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: next-id issue default scheme is byte-identical to YYYYMMDD-<slug> (spec 021 AC #1)
+case_jimfile_next_id_issue_preset_default_unchanged() {
+  run_jimfile next-id issue "Auth Bug"
+  local today
+  today=$(date +%Y%m%d)
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "default scheme unchanged" "$today-auth-bug" "$OUT"
+}
+
+# AC: sequential preset projects the display ordinal (num) zero-padded (spec 021 AC #3a/#4)
+case_jimfile_next_id_issue_preset_sequential() {
+  local issues cfg
+  issues=$(empty_dir nextid_seq)
+  printf -- '---\nnum: 3\nstatus: open\n---\nbody\n' > "$issues/20260101-a.md"
+  printf -- '---\nnum: 7\nstatus: open\n---\nbody\n' > "$issues/20260102-b.md"
+  cfg=$(fixture nextid-seq.toml "issues_path = \"$issues\"
+issue_id_prefix = \"sequential\"")
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "sequential id" "0008-auth-bug" "$OUT"
+}
+
+# AC: project preset prepends the static issue_id_project tag (spec 021 AC #3b)
+case_jimfile_next_id_issue_preset_project() {
+  local cfg
+  cfg=$(fixture nextid-project.toml 'issue_id_prefix = "project"
+issue_id_project = "JIM"')
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "project id" "JIM-auth-bug" "$OUT"
+}
+
+# AC: timestamp preset yields a sub-day-resolution prefix (spec 021 AC #3c)
+case_jimfile_next_id_issue_preset_timestamp() {
+  local cfg
+  cfg=$(fixture nextid-timestamp.toml 'issue_id_prefix = "timestamp"')
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "timestamp id" '^[0-9]{8}T[0-9]{6}-auth-bug$' "$OUT"
+}
+
+# AC: template escape hatch renders a custom date format (spec 021 AC #3d)
+case_jimfile_next_id_issue_template_date_format() {
+  local cfg
+  cfg=$(fixture nextid-tmpl-date.toml 'issue_id_prefix = "{date:%Y.%m.%d}"')
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "dotted date id" '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}-auth-bug$' "$OUT"
+}
+
+# AC: template escape hatch composes literal + date + seq tokens (spec 021 AC #2/#3)
+case_jimfile_next_id_issue_template_combined() {
+  local issues cfg
+  issues=$(empty_dir nextid_tmpl_combined)
+  printf -- '---\nnum: 7\nstatus: open\n---\nbody\n' > "$issues/20260101-a.md"
+  cfg=$(fixture nextid-tmpl-combined.toml "issues_path = \"$issues\"
+issue_id_prefix = \"JIM-{date:%Y%m%d}-{seq:03}\"")
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "combined template id" '^JIM-[0-9]{8}-008-auth-bug$' "$OUT"
+}
+
+# AC: unknown preset name informs via stderr and falls back to date (spec 021 AC #8)
+case_jimfile_next_id_issue_fallback_unknown_preset() {
+  local cfg today
+  cfg=$(fixture nextid-fb-unknown.toml 'issue_id_prefix = "bogus"')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit     "rc" 0 "$RC"
+  assert_eq       "date fallback" "$today-auth-bug" "$OUT"
+  assert_nonempty "notice on stderr" "$ERR"
+}
+
+# AC: project preset with empty tag informs and falls back to date (spec 021 AC #8)
+case_jimfile_next_id_issue_fallback_empty_project() {
+  local cfg today
+  cfg=$(fixture nextid-fb-emptyproj.toml 'issue_id_prefix = "project"')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit     "rc" 0 "$RC"
+  assert_eq       "date fallback" "$today-auth-bug" "$OUT"
+  assert_nonempty "notice on stderr" "$ERR"
+}
+
+# AC: template rendering an out-of-allowlist char informs and falls back (spec 021 AC #7/#8)
+case_jimfile_next_id_issue_fallback_invalid_charset() {
+  local cfg today
+  cfg=$(fixture nextid-fb-charset.toml 'issue_id_prefix = "{date:%Y/%m}"')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit     "rc" 0 "$RC"
+  assert_eq       "date fallback" "$today-auth-bug" "$OUT"
+  assert_nonempty "notice on stderr" "$ERR"
+}
+
+# AC: an over-length resolved prefix informs and falls back to date (spec 021 AC #11)
+case_jimfile_next_id_issue_fallback_over_length() {
+  local cfg today big
+  big=$(printf 'a%.0s' {1..129})
+  cfg=$(fixture nextid-fb-overlen.toml "issue_id_prefix = \"project\"
+issue_id_project = \"$big\"")
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit     "rc" 0 "$RC"
+  assert_eq       "date fallback" "$today-auth-bug" "$OUT"
+  assert_nonempty "notice on stderr" "$ERR"
+}
+
+# AC: blank issue_id_prefix is zero-config — silent date default, no notice (spec 021 AC #9)
+case_jimfile_next_id_issue_blank_is_silent() {
+  local cfg today
+  cfg=$(fixture nextid-blank.toml 'issue_id_prefix = ""')
+  today=$(date +%Y%m%d)
+  run_jimfile -c "$cfg" next-id issue "Auth Bug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "date default" "$today-auth-bug" "$OUT"
+  assert_eq   "no notice on stderr" "" "$ERR"
+}
+
+# AC: the is_valid_id validator is byte-identical across its three copies
+# (spec 021 security.md Finding 5 — guard against hand-sync drift).
+case_jimfile_is_valid_id_triplicate_identical() {
+  local a b c
+  a="$(extract_is_valid_id "$REPO_ROOT/skills/file/scripts/jimfile.sh")"
+  b="$(extract_is_valid_id "$REPO_ROOT/skills/issue/scripts/index.sh")"
+  c="$(extract_is_valid_id "$REPO_ROOT/skills/issue/scripts/render.sh")"
+  assert_nonempty "jimfile.sh is_valid_id extracted" "$a"
+  assert_eq "index.sh copy matches jimfile.sh"  "$a" "$b"
+  assert_eq "render.sh copy matches jimfile.sh" "$a" "$c"
+}
+
+# spec 023 Task 1: `valid-id` exposes is_valid_id as a rc-only subcommand so
+# migrate.sh can validate a full re-derived id without a 4th SYNC copy.
+case_jimfile_valid_id_accepts_good() {
+  run_jimfile valid-id "20260613-re-derive-existing-issue-ids"
+  assert_exit "good id rc 0" 0 "$RC"
+}
+
+case_jimfile_valid_id_rejects_traversal() {
+  run_jimfile valid-id "../etc/passwd"
+  assert_exit "traversal rc 1" 1 "$RC"
+}
+
+case_jimfile_valid_id_rejects_empty() {
+  run_jimfile valid-id ""
+  assert_exit "empty rc 1" 1 "$RC"
+}
+
+case_jimfile_valid_id_rejects_overlong() {
+  local long; long="$(head -c 129 /dev/zero | tr '\0' a)"
+  run_jimfile valid-id "$long"
+  assert_exit "129 chars rc 1" 1 "$RC"
+}
+
+# spec 023 Task 2: prefix-from re-derives the active scheme's prefix from an
+# issue's OWN stored created/num, never the run clock.
+case_jimfile_prefix_from_date() {
+  local cfg; cfg=$(fixture pf-date.toml 'issue_id_prefix = "date"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "date prefix from created" "20260613" "$OUT"
+}
+
+case_jimfile_prefix_from_timestamp() {
+  local cfg; cfg=$(fixture pf-ts.toml 'issue_id_prefix = "timestamp"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "timestamp prefix from created" "20260613T144530" "$OUT"
+}
+
+# AC #3: a normalized day-start placeholder re-derives literally to T000000.
+case_jimfile_prefix_from_timestamp_daystart() {
+  local cfg; cfg=$(fixture pf-ts2.toml 'issue_id_prefix = "timestamp"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T00:00:00Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "day-start literal" "20260613T000000" "$OUT"
+}
+
+case_jimfile_prefix_from_sequential() {
+  local cfg; cfg=$(fixture pf-seq.toml 'issue_id_prefix = "sequential"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "sequential from num" "0007" "$OUT"
+}
+
+case_jimfile_prefix_from_project() {
+  local cfg; cfg=$(fixture pf-proj.toml 'issue_id_prefix = "project"
+issue_id_project = "JIM"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "project tag" "JIM" "$OUT"
+}
+
+case_jimfile_prefix_from_missing_created_unmigratable() {
+  local cfg; cfg=$(fixture pf-miss.toml 'issue_id_prefix = "date"')
+  run_jimfile -c "$cfg" prefix-from "" 7
+  assert_exit  "rc 1" 1 "$RC"
+  assert_match "reason" 'un-migratable' "$ERR"
+}
+
+# F6: a present-but-non-conforming created is un-migratable, not reshaped.
+case_jimfile_prefix_from_malformed_created_unmigratable() {
+  local cfg; cfg=$(fixture pf-bad.toml 'issue_id_prefix = "date"')
+  run_jimfile -c "$cfg" prefix-from "2026-06" 7
+  assert_exit  "rc 1" 1 "$RC"
+  assert_match "reason" 'un-migratable' "$ERR"
+}
+
+# DD 9: a custom {date:...} template can't be reshaped without date -d.
+case_jimfile_prefix_from_custom_date_template_unmigratable() {
+  local cfg; cfg=$(fixture pf-tmpl.toml 'issue_id_prefix = "X-{date:%Y%j}"')
+  run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
+  assert_exit  "rc 1" 1 "$RC"
+  assert_match "reason" 'un-migratable' "$ERR"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

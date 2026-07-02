@@ -56,7 +56,16 @@ case_no_config_returns_defaults() {
               "require_security_loop:false" \
               "require_security_loop_sev:critical" \
               "auto_security_loop_limit:5" \
-              "security_adhoc:docs/security"; do
+              "security_adhoc:docs/security" \
+              "issue_capture:true" \
+              "auto_issue_file:false" \
+              "issue_list_group:status" \
+              "issue_list_sort:date" \
+              "issue_list_cols:num,date,priority,title" \
+              "issue_list_order:desc" \
+              "issue_list_closed:false" \
+              "issue_id_prefix:date" \
+              "issue_id_project:"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -84,7 +93,16 @@ auto_security = "true"
 require_security_loop = "true"
 require_security_loop_sev = "notable"
 auto_security_loop_limit = "10"
-security_adhoc_path = "docs/sec-out"')
+security_adhoc_path = "docs/sec-out"
+issue_capture = "false"
+auto_issue_file = "true"
+issue_list_group = "priority"
+issue_list_sort = "num"
+issue_list_cols = "num,slug"
+issue_list_order = "asc"
+issue_list_closed = "true"
+issue_id_prefix = "sequential"
+issue_id_project = "PROJ"')
   run -c "$cfg" get specs;                     assert_eq "specs"                     "my/specs"               "$OUT"
   run -c "$cfg" get architecture;              assert_eq "architecture"              "docs/arch.md"           "$OUT"
   run -c "$cfg" get vision;                    assert_eq "vision"                    "docs/vision.md"         "$OUT"
@@ -102,6 +120,15 @@ security_adhoc_path = "docs/sec-out"')
   run -c "$cfg" get require_security_loop_sev; assert_eq "require_security_loop_sev" "notable"                "$OUT"
   run -c "$cfg" get auto_security_loop_limit;  assert_eq "auto_security_loop_limit"  "10"                     "$OUT"
   run -c "$cfg" get security_adhoc;            assert_eq "security_adhoc"            "docs/sec-out"           "$OUT"
+  run -c "$cfg" get issue_capture;             assert_eq "issue_capture"             "false"                  "$OUT"
+  run -c "$cfg" get auto_issue_file;           assert_eq "auto_issue_file"           "true"                   "$OUT"
+  run -c "$cfg" get issue_list_group;          assert_eq "issue_list_group"          "priority"               "$OUT"
+  run -c "$cfg" get issue_list_sort;           assert_eq "issue_list_sort"           "num"                    "$OUT"
+  run -c "$cfg" get issue_list_cols;           assert_eq "issue_list_cols"           "num,slug"               "$OUT"
+  run -c "$cfg" get issue_list_order;          assert_eq "issue_list_order"          "asc"                    "$OUT"
+  run -c "$cfg" get issue_list_closed;         assert_eq "issue_list_closed"         "true"                   "$OUT"
+  run -c "$cfg" get issue_id_prefix;           assert_eq "issue_id_prefix"           "sequential"             "$OUT"
+  run -c "$cfg" get issue_id_project;          assert_eq "issue_id_project"          "PROJ"                   "$OUT"
 }
 
 # AC: partial override layered over defaults (spec AC #3)
@@ -131,7 +158,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "17" "$line_count"
+  assert_eq    "list line count"                  "27" "$line_count"
   assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
@@ -149,6 +176,16 @@ case_list_outputs_all_keys() {
   assert_match "require_security_loop_sev line"    '^require_security_loop_sev=critical$'   "$OUT"
   assert_match "auto_security_loop_limit line"     '^auto_security_loop_limit=5$'           "$OUT"
   assert_match "security_adhoc line"               '^security_adhoc=docs/security$'         "$OUT"
+  assert_match "issues line"                       '^issues=\./docs/issues/$'               "$OUT"
+  assert_match "issue_capture line"                '^issue_capture=true$'                   "$OUT"
+  assert_match "auto_issue_file line"              '^auto_issue_file=false$'                "$OUT"
+  assert_match "issue_list_group line"             '^issue_list_group=status$'              "$OUT"
+  assert_match "issue_list_sort line"              '^issue_list_sort=date$'                 "$OUT"
+  assert_match "issue_list_cols line"              '^issue_list_cols=num,date,priority,title$' "$OUT"
+  assert_match "issue_list_order line"             '^issue_list_order=desc$'                "$OUT"
+  assert_match "issue_list_closed line"            '^issue_list_closed=false$'              "$OUT"
+  assert_match "issue_id_prefix line"              '^issue_id_prefix=date$'                 "$OUT"
+  assert_match "issue_id_project line"             '^issue_id_project=$'                    "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -156,7 +193,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -194,7 +231,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "17" "$line_count"
+  assert_eq "list still emits all keys" "27" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -419,6 +456,207 @@ case_security_adhoc_overridden() {
   cfg=$(fixture security_adhoc-override.toml 'security_adhoc_path = "docs/sec-out"')
   run -c "$cfg" get security_adhoc
   assert_eq "security_adhoc overridden" "docs/sec-out" "$OUT"
+}
+
+# AC: issues defaults to "./docs/issues/" (spec 017 AC-P2)
+# Path-typed key — CLI key `issues` resolves to TOML key `issues_path` via the
+# default `${cli_key}_path` rule in resolve(). Default storage location for
+# discovery-artifact issue files captured via /jim:issue.
+case_issues_default() {
+  local dir actual
+  dir=$(empty_dir issues_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issues)
+  assert_eq "issues default" "./docs/issues/" "$actual"
+}
+
+# AC: issues override via jimconf.toml (spec 017 AC-P2)
+case_issues_overridden() {
+  local cfg
+  cfg=$(fixture issues-override.toml 'issues_path = "docs/findings"')
+  run -c "$cfg" get issues
+  assert_eq "issues overridden" "docs/findings" "$OUT"
+}
+
+# AC: issues with empty-string configured value falls through to default
+# (spec 017 security.md Finding 13 — defense against silent empty-path writes).
+case_issues_empty_string_falls_through_to_default() {
+  local cfg
+  cfg=$(fixture issues-empty.toml 'issues_path = ""')
+  run -c "$cfg" get issues
+  assert_eq "empty → default" "./docs/issues/" "$OUT"
+}
+
+# AC: issues with whitespace-only configured value falls through to default
+# (spec 017 security.md Finding 13 — whitespace counts as empty after trim).
+case_issues_whitespace_only_falls_through_to_default() {
+  local cfg
+  cfg=$(fixture issues-whitespace.toml 'issues_path = "   "')
+  run -c "$cfg" get issues
+  assert_eq "whitespace → default" "./docs/issues/" "$OUT"
+}
+
+# AC: issues with no config file at all falls through to default
+case_issues_no_config_file() {
+  run -c "$TMP_BASE/never-existed.toml" get issues
+  assert_exit "rc" 0 "$RC"
+  assert_eq "missing config → default" "./docs/issues/" "$OUT"
+}
+
+# AC: issues survives commented config (parse-robustness regression guard)
+case_issues_tolerates_comments() {
+  local cfg
+  cfg=$(fixture issues-comments.toml '# default storage location
+issues_path = "docs/my-issues"
+# trailing comment')
+  run -c "$cfg" get issues
+  assert_eq "value past comments" "docs/my-issues" "$OUT"
+}
+
+# AC: issue_capture defaults to "true" (spec 018 CFG-1)
+# Bare-name boolean flag — TOML key is `issue_capture` (no _path suffix and
+# no auto_/require_ prefix). The bare-name reflects that the default
+# behavior keeps the human in the loop: surfacing presents a choice, not an
+# automated action. Resolved via a special-case in resolve() per spec 018
+# DD #1. Default `"true"` enables end-of-phase candidate batches across the
+# 7 surfacing skills out-of-the-box.
+case_issue_capture_default() {
+  local dir actual
+  dir=$(empty_dir issue_capture_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_capture)
+  assert_eq "issue_capture default" "true" "$actual"
+}
+
+# AC: issue_capture override via jimconf.toml (spec 018 CFG-1)
+# Captures the silent-no-op failure mode the researcher's Peer Feedback
+# flagged: without the resolve() bare-name special-case, the dispatch
+# would look up `issue_capture_path` and silently return the default.
+case_issue_capture_overridden() {
+  local cfg
+  cfg=$(fixture issue_capture-override.toml 'issue_capture = "false"')
+  run -c "$cfg" get issue_capture
+  assert_eq "issue_capture overridden" "false" "$OUT"
+}
+
+# AC: auto_issue_file defaults to "false" (spec 018 CFG-2)
+# Flag key — TOML name equals CLI name (no _path suffix); resolved via the
+# auto_* prefix dispatch in resolve(). Default "false" preserves the
+# default-interactive batch UX; flipping to "true" enables quiet auto-file
+# mode (no prompt; per-row write at workflow speed).
+case_auto_issue_file_default() {
+  local dir actual
+  dir=$(empty_dir auto_issue_file_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get auto_issue_file)
+  assert_eq "auto_issue_file default" "false" "$actual"
+}
+
+# AC: auto_issue_file override via jimconf.toml (spec 018 CFG-2)
+case_auto_issue_file_overridden() {
+  local cfg
+  cfg=$(fixture auto_issue_file-override.toml 'auto_issue_file = "true"')
+  run -c "$cfg" get auto_issue_file
+  assert_eq "auto_issue_file overridden" "true" "$OUT"
+}
+
+# AC: issue_list_group defaults to "status" (spec 019)
+# Bare-name view-config key — TOML name equals CLI name (no _path suffix),
+# resolved via the issue_list_* prefix dispatch in resolve(). Controls the
+# default grouping of `/jim:issue list`.
+case_issue_list_group_default() {
+  local dir actual
+  dir=$(empty_dir issue_list_group_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_list_group)
+  assert_eq "issue_list_group default" "status" "$actual"
+}
+
+# AC: issue_list_group override via jimconf.toml (spec 019)
+case_issue_list_group_overridden() {
+  local cfg
+  cfg=$(fixture issue_list_group-override.toml 'issue_list_group = "priority"')
+  run -c "$cfg" get issue_list_group
+  assert_eq "issue_list_group overridden" "priority" "$OUT"
+}
+
+# AC: issue_list_sort defaults to "date" (spec 019)
+case_issue_list_sort_default() {
+  local dir actual
+  dir=$(empty_dir issue_list_sort_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_list_sort)
+  assert_eq "issue_list_sort default" "date" "$actual"
+}
+
+# AC: issue_list_sort override via jimconf.toml (spec 019)
+case_issue_list_sort_overridden() {
+  local cfg
+  cfg=$(fixture issue_list_sort-override.toml 'issue_list_sort = "num"')
+  run -c "$cfg" get issue_list_sort
+  assert_eq "issue_list_sort overridden" "num" "$OUT"
+}
+
+# AC: issue_list_cols defaults to "num,date,priority,title" (spec 019)
+case_issue_list_cols_default() {
+  local dir actual
+  dir=$(empty_dir issue_list_cols_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_list_cols)
+  assert_eq "issue_list_cols default" "num,date,priority,title" "$actual"
+}
+
+# AC: issue_list_cols override via jimconf.toml (spec 019)
+case_issue_list_cols_overridden() {
+  local cfg
+  cfg=$(fixture issue_list_cols-override.toml 'issue_list_cols = "num,slug"')
+  run -c "$cfg" get issue_list_cols
+  assert_eq "issue_list_cols overridden" "num,slug" "$OUT"
+}
+
+# AC: issue_list_order defaults to "desc" (spec 019 follow-up)
+case_issue_list_order_default() {
+  local dir actual
+  dir=$(empty_dir issue_list_order_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_list_order)
+  assert_eq "issue_list_order default" "desc" "$actual"
+}
+
+# AC: issue_list_order override via jimconf.toml (spec 019 follow-up)
+case_issue_list_order_overridden() {
+  local cfg
+  cfg=$(fixture issue_list_order-override.toml 'issue_list_order = "asc"')
+  run -c "$cfg" get issue_list_order
+  assert_eq "issue_list_order overridden" "asc" "$OUT"
+}
+
+# AC: issue_id_prefix defaults to "date" (spec 021 AC #1/#9)
+# Bare-name view-config key — TOML name equals CLI name (no _path suffix),
+# resolved via the issue_id_* dispatch in resolve(). Default "date" preserves
+# the zero-config YYYYMMDD- scheme.
+case_issue_id_prefix_default() {
+  local dir actual
+  dir=$(empty_dir issue_id_prefix_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_id_prefix)
+  assert_eq "issue_id_prefix default" "date" "$actual"
+}
+
+# AC: issue_id_prefix override via jimconf.toml (spec 021 AC #2)
+case_issue_id_prefix_overridden() {
+  local cfg
+  cfg=$(fixture issue_id_prefix-override.toml 'issue_id_prefix = "sequential"')
+  run -c "$cfg" get issue_id_prefix
+  assert_eq "issue_id_prefix overridden" "sequential" "$OUT"
+}
+
+# AC: issue_id_project defaults to "" (spec 021 — only used by the project preset)
+case_issue_id_project_default() {
+  local dir actual
+  dir=$(empty_dir issue_id_project_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get issue_id_project)
+  assert_eq "issue_id_project default" "" "$actual"
+}
+
+# AC: issue_id_project override via jimconf.toml (spec 021)
+case_issue_id_project_overridden() {
+  local cfg
+  cfg=$(fixture issue_id_project-override.toml 'issue_id_project = "JIM"')
+  run -c "$cfg" get issue_id_project
+  assert_eq "issue_id_project overridden" "JIM" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

@@ -7,7 +7,7 @@ description: >
   wants to audit a slug or ID assignment, or wants to list existing
   artifacts. Do not use for setting paths — there is no write surface;
   users edit `jimconf.toml` directly via /jim:conf.
-argument-hint: "<exists|get|slug|date|next-id|path|glob|kinds> [args]"
+argument-hint: "<exists|get|slug|date|next-id|next-num|path|glob|kinds> [args]"
 allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimfile.sh *)
 ---
 
@@ -26,7 +26,10 @@ Run jim's file/path resolver:
 - `/jim:file slug "Auth Token Expiry"` — kebab-case slug
 - `/jim:file date` — today as `YYYYMMDD`
 - `/jim:file next-id jim` — next zero-padded spec ID for the `jim` group
+- `/jim:file next-id issue "Auth bug"` — date-prefixed issue id (`YYYYMMDD-auth-bug`)
+- `/jim:file next-num issue` — next issue display ordinal (max `num` + 1)
 - `/jim:file path spec jim 008 jimfile` — canonical spec path
+- `/jim:file path issue 20260101-auth-bug` — issue file path (slug validated)
 - `/jim:file path debug "auth bug"` — date-prefixed debug path (collision-resolved)
 - `/jim:file glob specs jim` — every spec in the `jim` group
 - `/jim:file glob debug` — every existing debug report
@@ -61,7 +64,7 @@ Plugin Conventions → Logic-Flow Conventions).
 
 - The script honors `/jim:conf` overrides automatically — it shells out to
   `jimconf.sh` for every configurable path (`specs`, `architecture`,
-  `vision`, `roadmap`, `brainstorms`, `debug`, `pre_commit`).
+  `vision`, `roadmap`, `brainstorms`, `debug`, `pre_commit`, `issues`).
 - Path-and-name resolution only — the script never reads, writes, or
   deletes files. Whether to act on a returned path is the calling skill's
   concern.

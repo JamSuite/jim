@@ -51,6 +51,11 @@
 #
 
 set -uo pipefail
+# LC_ALL=C ensures locale-independent behavior for `tr` case folding, regex
+# character class matching, and date formatting. Without this, locales like
+# Turkish produce non-deterministic slugs (dotless ı / dotted İ are not ASCII
+# i/I). Spec 017 security.md Finding 11.
+export LC_ALL=C
 
 # ─── Section: Globals ────────────────────────────────────────────────────────
 
@@ -59,7 +64,7 @@ set -uo pipefail
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
 
 # Valid artifact kinds. Drives `path <kind>` validation and `kinds` output.
-readonly KINDS=(spec plan research debug brainstorm)
+readonly KINDS=(spec plan research debug brainstorm issue)
 
 # Optional -c <path> override for jimconf.toml. Empty when not supplied.
 CONFIG_FILE=""
@@ -123,7 +128,72 @@ today_yyyymmdd() {
   date +%Y%m%d
 }
 
+# now_utc_iso8601
+#   Print the current second-resolution UTC timestamp as ISO 8601 with a Z
+#   suffix (e.g. 2026-06-13T14:45:30Z). Single source of truth for issue
+#   created/updated stamping. The format is a hardcoded literal — it takes no
+#   argument and is never config-driven (spec 022 security.md Finding 2).
+now_utc_iso8601() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+# is_valid_slug <slug>
+#   AC-C7 validation: slug must be lowercase alnum + dash only, alnum-start,
+#   non-empty. Rejects path separators (/, \), '..', leading dot, control
+#   characters, and any other non-conforming input. Errors go to stderr;
+#   stdout stays empty. Spec 017 security.md Finding 1 + Finding 2.
+is_valid_slug() {
+  local slug="$1"
+  if [[ -z "$slug" ]]; then
+    echo "error: slug rejected — empty" >&2
+    return 1
+  fi
+  if [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "error: slug rejected — '$slug' (allowed: ^[a-z0-9][a-z0-9-]*$)" >&2
+    return 1
+  fi
+  return 0
+}
+
+# is_valid_id <id>
+#   Bounded allowlist for a resolved prefix or a full issue id (spec 021 AC #7,
+#   AC #11). Broader than is_valid_slug — uppercase and '.' are allowed — but
+#   still a positive allowlist, never a denylist, so it cannot escape the
+#   issues directory or be parsed as a flag by downstream tooling.
+#
+#   SYNC: the function body below is mirrored verbatim in
+#   skills/issue/scripts/index.sh and skills/issue/scripts/render.sh. A
+#   tests/jimfile.sh case asserts the three copies are byte-identical — keep
+#   them in lockstep when editing.
+is_valid_id() {
+  local id="$1"
+  if [[ -z "$id" ]]; then
+    echo "error: id rejected — empty" >&2
+    return 1
+  fi
+  if (( ${#id} > 128 )); then
+    echo "error: id rejected — exceeds 128 characters" >&2
+    return 1
+  fi
+  if [[ "$id" == *..* ]]; then
+    echo "error: id rejected — '$id' contains '..'" >&2
+    return 1
+  fi
+  if [[ ! "$id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    echo "error: id rejected — '$id' (allowed: ^[A-Za-z0-9][A-Za-z0-9._-]*$)" >&2
+    return 1
+  fi
+  return 0
+}
+
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
+
+# cmd_valid_id <id> — exit 0 if <id> passes is_valid_id, else 1. Lets callers
+# (e.g. skills/issue/scripts/migrate.sh) validate a full re-derived id through
+# the single security boundary without copying is_valid_id a fourth time.
+cmd_valid_id() {
+  is_valid_id "${1:-}"
+}
 
 cmd_exists() {
   local path="${1:-}"
@@ -170,12 +240,33 @@ cmd_date() {
   today_yyyymmdd
 }
 
+cmd_now() {
+  now_utc_iso8601
+}
+
 cmd_next_id() {
-  local group="${1:-}"
-  if [[ -z "$group" ]]; then
-    echo "error: 'next-id' requires a group argument" >&2
+  local first="${1:-}"
+  if [[ -z "$first" ]]; then
+    echo "error: 'next-id' requires an argument" >&2
     return 2
   fi
+  # Dispatch by first arg: 'issue' takes a subject and returns a
+  # date-prefixed slug; everything else is treated as a spec group name
+  # (existing numeric-id behavior).
+  if [[ "$first" == "issue" ]]; then
+    local subject="${2:-}"
+    if [[ -z "$subject" ]]; then
+      echo "error: 'next-id issue' requires <subject>" >&2
+      return 2
+    fi
+    local slug prefix
+    slug="$(normalize_slug "$subject")" || return 1
+    is_valid_slug "$slug" || return 1
+    prefix="$(resolve_issue_prefix)"
+    printf '%s-%s\n' "$prefix" "$slug"
+    return 0
+  fi
+  local group="$first"
   local specs_root group_dir max=0
   specs_root="$(jimconf_get specs)"
   group_dir="$specs_root/$group"
@@ -199,6 +290,194 @@ cmd_next_id() {
   printf '%03d\n' $(( max + 1 ))
 }
 
+# issue_next_num <issues_dir>
+#   Scan <issues_dir>/*.md for top-level `num:` frontmatter and print max+1
+#   (or 1 when none carry a num). Shared by cmd_next_num and the `{seq}`
+#   prefix token (spec 021). Reads num: only; never mutates. The display
+#   ordinal is decentralized — duplicates across branches are accepted as
+#   non-fatal (spec 019 DD #5).
+issue_next_num() {
+  local dir="${1:-}" max=0 f n
+  dir="${dir%/}"
+  if [[ -d "$dir" ]]; then
+    for f in "$dir"/*.md; do
+      [[ -f "$f" ]] || continue
+      n="$(grep -E '^num:[[:space:]]*[0-9]+' "$f" 2>/dev/null \
+        | head -n 1 \
+        | sed -E 's/^num:[[:space:]]*([0-9]+).*/\1/')"
+      [[ "$n" =~ ^[0-9]+$ ]] || continue
+      if (( n > max )); then
+        max=$n
+      fi
+    done
+  fi
+  printf '%d\n' $(( max + 1 ))
+}
+
+# cmd_next_num <kind>
+#   For 'issue': resolve the configured issues directory and print the next
+#   display ordinal via issue_next_num.
+cmd_next_num() {
+  local kind="${1:-}"
+  if [[ "$kind" != "issue" ]]; then
+    echo "error: 'next-num' requires the 'issue' kind" >&2
+    return 2
+  fi
+  local dir
+  dir="$(jimconf_get issues)"
+  issue_next_num "$dir"
+}
+
+# render_template <template> <ordinal>
+#   Expand a prefix template to stdout. Recognized tokens:
+#     {date:FMT}      -> date +"FMT"  (single quoted arg; rc 1 on date failure)
+#     {seq} | {seq:W} -> <ordinal>, zero-padded to width W when W is given
+#   Any other text passes through verbatim. Returns rc 1 when a {date:...}
+#   render fails or an unknown / malformed token is encountered. The format
+#   string is passed as a single quoted argument to `date` — never eval'd or
+#   word-split (spec 021 security.md Finding 3); LC_ALL=C from the preamble
+#   keeps output deterministic. Charset validation is the caller's job.
+render_template() {
+  local tmpl="$1" ordinal="$2"
+  local out="" rest="$tmpl" lit token inner
+  while [[ -n "$rest" ]]; do
+    if [[ "$rest" != *'{'* ]]; then
+      out+="$rest"
+      break
+    fi
+    lit="${rest%%\{*}"
+    out+="$lit"
+    rest="${rest#"$lit"}"          # rest now starts with '{'
+    token="${rest%%\}*}"           # up to (not including) the next '}'
+    if [[ "$token" == "$rest" ]]; then
+      out+="$rest"                 # no closing brace — emit remainder literally
+      break
+    fi
+    token="${token}}"             # restore the closing brace -> '{...}'
+    rest="${rest#"$token"}"
+    inner="${token#\{}"; inner="${inner%\}}"
+    case "$inner" in
+      date:*)
+        local fmt rendered
+        fmt="${inner#date:}"
+        rendered="$(date +"$fmt")" || return 1
+        out+="$rendered"
+        ;;
+      seq)
+        out+="$ordinal"
+        ;;
+      seq:*)
+        local width="${inner#seq:}"
+        [[ "$width" =~ ^[0-9]+$ ]] || return 1
+        out+="$(printf "%0*d" "$((10#$width))" "$ordinal")"
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
+# resolve_issue_prefix
+#   Resolve the configured issue-id prefix (spec 021). Maps the preset name in
+#   issue_id_prefix to a template, renders it (projecting the next ordinal for
+#   {seq}, AC #4), and validates the result with is_valid_id. Prints the
+#   resolved prefix on success. Falls back to the YYYYMMDD- date prefix when
+#   the scheme is unknown, the project tag is empty, or rendering/validation
+#   fails — emitting a one-line notice to stderr in those malformed cases
+#   (AC #8) while a blank/absent config resolves silently to date (AC #9).
+#   Resolution stays entirely in bash — never delegated to the caller (AC #10).
+resolve_issue_prefix() {
+  local scheme project tmpl ordinal prefix default_prefix
+  scheme="$(jimconf_get issue_id_prefix)"
+  default_prefix="$(today_yyyymmdd)"
+  case "$scheme" in
+    date)       tmpl='{date:%Y%m%d}' ;;
+    timestamp)  tmpl='{date:%Y%m%dT%H%M%S}' ;;
+    sequential) tmpl='{seq:04}' ;;
+    project)
+      project="$(jimconf_get issue_id_project)"
+      if [[ -z "$project" ]]; then
+        echo "warning: issue_id_prefix=\"project\" but issue_id_project is empty — using the default date prefix" >&2
+        printf '%s' "$default_prefix"; return 0
+      fi
+      tmpl="$project" ;;
+    *'{'*)      tmpl="$scheme" ;;   # template escape hatch (contains a token)
+    *)
+      echo "warning: issue_id_prefix=\"$scheme\" is not a known preset or template — using the default date prefix" >&2
+      printf '%s' "$default_prefix"; return 0 ;;
+  esac
+  ordinal="$(issue_next_num "$(jimconf_get issues)")"
+  if prefix="$(render_template "$tmpl" "$ordinal")" && is_valid_id "$prefix" 2>/dev/null; then
+    printf '%s' "$prefix"
+  else
+    echo "warning: issue_id_prefix=\"$scheme\" produced an invalid prefix — using the default date prefix" >&2
+    printf '%s' "$default_prefix"
+  fi
+}
+
+# cmd_prefix_from <created_iso> <num>
+#   Re-derive the active issue_id_prefix from an issue's OWN stored data (spec
+#   023): `created` -> date/timestamp prefix, `num` -> sequential, the configured
+#   tag -> project. Renders only from stored inputs (never the run clock) and
+#   validates the result via is_valid_id. Prints the prefix on success. rc 1 +
+#   "un-migratable: <reason>" when the active scheme needs an input the issue
+#   lacks (missing/non-conforming `created`, absent `num`/tag) or for a custom
+#   {date:...} template that can't be reshaped without `date -d` (non-POSIX).
+# SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
+cmd_prefix_from() {
+  local created="${1:-}" num="${2:-}" scheme project prefix date_part
+  scheme="$(jimconf_get issue_id_prefix)"
+  case "$scheme" in
+    date|timestamp)
+      if [[ ! "$created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$ ]]; then
+        echo "un-migratable: created \"$created\" is not a valid date or timestamp" >&2
+        return 1
+      fi
+      date_part="${created:0:4}${created:5:2}${created:8:2}"
+      if [[ "$scheme" == date ]]; then
+        prefix="$date_part"
+      elif [[ "$created" == *T*Z ]]; then
+        prefix="${date_part}T${created:11:2}${created:14:2}${created:17:2}"
+      else
+        prefix="${date_part}T000000"        # date-only -> day-start (AC #3)
+      fi
+      ;;
+    sequential)
+      [[ "$num" =~ ^[0-9]+$ ]] || {
+        echo "un-migratable: num \"$num\" is not a display ordinal" >&2; return 1; }
+      prefix="$(render_template '{seq:04}' "$num")" || {
+        echo "un-migratable: sequential render failed" >&2; return 1; }
+      ;;
+    project)
+      project="$(jimconf_get issue_id_project)"
+      [[ -n "$project" ]] || {
+        echo "un-migratable: issue_id_prefix=project but issue_id_project is empty" >&2; return 1; }
+      prefix="$project"
+      ;;
+    *'{date:'*)
+      echo "un-migratable: custom {date:...} template can't be re-derived without date -d (POSIX)" >&2
+      return 1
+      ;;
+    *'{'*)
+      [[ "$num" =~ ^[0-9]+$ ]] || num=0
+      prefix="$(render_template "$scheme" "$num")" || {
+        echo "un-migratable: custom template render failed" >&2; return 1; }
+      ;;
+    *)
+      echo "un-migratable: unknown issue_id_prefix scheme \"$scheme\"" >&2
+      return 1
+      ;;
+  esac
+  if is_valid_id "$prefix" 2>/dev/null; then
+    printf '%s\n' "$prefix"
+  else
+    echo "un-migratable: re-derived prefix \"$prefix\" failed id validation" >&2
+    return 1
+  fi
+}
+
 # cmd_path <kind> <args...>  |  cmd_path <key>
 #   Two forms, dispatched by arity:
 #     Single-arg form (D3): `path <key>` returns the configured path for a
@@ -218,7 +497,15 @@ cmd_path() {
     return 2
   fi
   if [[ $# -eq 1 ]]; then
-    jimconf_get "$first"
+    # Single-arg form: caller wants the configured path for the named key.
+    # Translate kind→cli_key for the 'issue' kind whose jimconf key is
+    # 'issues' (singular kind → plural collection). Mirrors the existing
+    # multi-arg path-issue handler; analogous to path debug (no topic).
+    if [[ "$first" == "issue" ]]; then
+      jimconf_get issues
+    else
+      jimconf_get "$first"
+    fi
     return $?
   fi
   local kind="$first"
@@ -237,6 +524,18 @@ cmd_path() {
       local specs_root
       specs_root="$(jimconf_get specs)"
       printf '%s/%s/%s-%s/%s.md\n' "$specs_root" "$group" "$id" "$name" "$kind"
+      ;;
+    issue)
+      local slug="${1:-}"
+      if [[ -z "$slug" ]]; then
+        echo "error: 'path issue' requires <slug>" >&2
+        return 2
+      fi
+      is_valid_id "$slug" || return 1
+      local dir
+      dir="$(jimconf_get issues)"
+      dir="${dir%/}"
+      printf '%s/%s.md\n' "$dir" "$slug"
       ;;
     debug|brainstorm)
       local topic="${1:-}"
@@ -355,7 +654,9 @@ usage:
                                                 else literal "NOT_FOUND"
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
+  jimfile.sh now                                now as YYYY-MM-DDThh:mm:ssZ (UTC)
   jimfile.sh next-id <group>                    next zero-padded spec id
+  jimfile.sh next-num issue                     next display ordinal (max+1)
   jimfile.sh path <key>                         configured path for <key>
   jimfile.sh path spec      <group> <id> <name>
   jimfile.sh path plan      <group> <id> <name>
@@ -366,6 +667,8 @@ usage:
   jimfile.sh glob debug                         one path per line
   jimfile.sh glob brainstorms                   one path per line
   jimfile.sh kinds                              valid kinds, no I/O
+  jimfile.sh valid-id <id>                      exit 0 if id passes is_valid_id
+  jimfile.sh prefix-from <created> <num>        re-derive active prefix (spec 023)
   jimfile.sh -c <path> <subcmd>                 forward -c to jimconf.sh
 USAGE
 }
@@ -390,10 +693,14 @@ main() {
     get)     cmd_get     "$@" ;;
     slug)    cmd_slug    "$@" ;;
     date)    cmd_date ;;
-    next-id) cmd_next_id "$@" ;;
+    now)     cmd_now ;;
+    next-id)  cmd_next_id  "$@" ;;
+    next-num) cmd_next_num "$@" ;;
     path)    cmd_path    "$@" ;;
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
+    valid-id) cmd_valid_id "$@" ;;
+    prefix-from) cmd_prefix_from "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
       usage
