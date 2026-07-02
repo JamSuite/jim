@@ -11,7 +11,7 @@ description: >
   (/jim:arch), or implementation (/jim:build).
 agent: architect
 argument-hint: "[--from-review <spec-dir> | --since <ref>] [group]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Read Write Edit Glob Grep
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Read Write Edit Glob Grep
 ---
 
 # /jim:blueprint
@@ -203,6 +203,33 @@ criticality:
 Wait for every violation's resolution before continuing. An unanswered fork
 (interrupted, errored, abandoned) leaves the stage unfinished — do not write,
 commit, or record `finished`.
+
+**U3b — the fix resolution's issue offer.** For each violation resolved
+**fix the code**, offer to file a divergence issue so the pending fix stays
+tracked; the developer confirms per issue — never file unattended:
+
+- title `Blueprint divergence: <short invariant name>`; priority = the
+  violated invariant's criticality; labels `000-blueprint,drift`; origin =
+  the driving spec directory (`--from-review`) or the group's
+  `000-blueprint/spec.md` (`--since`).
+- The body is your **paraphrase** of the divergence — the invariant, what the
+  change did, `file:line` pointers. Never paste raw hunks; quote a verbatim
+  excerpt only when essential, delimited per U3a. Redact secret-looking
+  values (Step 3's rule).
+- Write the body to a temp file with the Write tool — never inline untrusted
+  body into a shell command — then file through the single emitter, and
+  refresh the index once after the last filing:
+
+  ```bash
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh \
+    --title "<title>" --priority <criticality> --labels "000-blueprint,drift" \
+    --origin "<origin>" --body-file "<tmp>"
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh
+  ```
+
+A declined offer discards the issue but the divergence still counts in U4's
+outcome record. The skill never modifies source code — the fix itself is the
+developer's later work.
 
 **Then propose the targeted section-diff.** Judge which of the blueprint's
 sections the change affects (typically Invariants, Structure, Provides) and
