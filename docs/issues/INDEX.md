@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 18
-- Closed: 8
+- Open: 20
+- Closed: 9
 
 ## Issues
 
@@ -28,17 +28,24 @@
 - `20260630-add-the-cross-group-contract-graph-and-blast-radius` — Add the cross-group contract graph and blast-radius · status: open · num: 21 · priority: medium · created: 2026-06-30T20:35:19Z · labels: [000-blueprint, cross-group, architecture] · origin: docs/specs/jim/029-blueprint-spec/spec.md
 - `20260630-build-intelligence-for-context-aware-spec-group-definition` — Build intelligence for context-aware spec-group definition · status: open · num: 19 · priority: high · created: 2026-06-30T11:07:07Z · labels: [spec-groups, context-boundary, architecture, 000-blueprint] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260630-build-the-invariant-verification-engine` — Build the invariant verification engine · status: open · num: 22 · priority: medium · created: 2026-06-30T20:35:19Z · labels: [000-blueprint, verification] · origin: docs/specs/jim/029-blueprint-spec/spec.md
-- `20260630-wire-the-000-blueprint-fold-back-loop-into-review` — Wire the 000-blueprint fold-back loop into review · status: open · num: 20 · priority: medium · created: 2026-06-30T20:35:18Z · labels: [000-blueprint, fold-back, review] · origin: docs/specs/jim/029-blueprint-spec/spec.md
+- `20260630-wire-the-000-blueprint-fold-back-loop-into-review` — Wire the 000-blueprint fold-back loop into review · status: closed · num: 20 · priority: medium · created: 2026-06-30T20:35:18Z · labels: [000-blueprint, fold-back, review] · origin: docs/specs/jim/029-blueprint-spec/spec.md
 - `20260701-add-diff-range-belt-tests-for-command-sub-and-trailing-slash-ref` — Add diff-range belt tests for command-sub and trailing-slash refs · status: open · num: 26 · priority: low · created: 2026-07-01T21:48:42Z · labels: [test-infra, jimledger, security] · origin: docs/specs/jim/030-blueprint-update/review.md
 - `20260701-align-blueprint-update-adapter-docs-arg-order-and-step-1-cross-r` — Align blueprint-update adapter docs (arg-order and Step-1 cross-ref) · status: open · num: 25 · priority: low · created: 2026-07-01T21:48:41Z · labels: [blueprint, review, docs] · origin: docs/specs/jim/030-blueprint-update/review.md
 - `20260701-fix-absent-blueprint-ledger-pairing-in-jim-blueprint-update-mode` — Fix absent-blueprint ledger pairing in /jim:blueprint update mode · status: open · num: 24 · priority: medium · created: 2026-07-01T21:48:41Z · labels: [blueprint, ledger, 000-blueprint] · origin: docs/specs/jim/030-blueprint-update/review.md
 - `20260701-prefix-jimconf-test-cases-so-run-sh-jimconf-covers-them` — Prefix jimconf test cases so run.sh jimconf covers them · status: open · num: 23 · priority: medium · created: 2026-07-01T06:28:22Z · labels: [test-infra, meta-test, jimconf] · origin: docs/specs/jim/029-blueprint-spec/plan.md
+- `20260702-blueprint-update-violation-fork-and-graded-autonomy` — Add violation-vs-fold fork and criticality-graded autonomy to blueprint update · status: open · num: 28 · priority: medium · created: 2026-07-02T07:16:19Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
+- `20260702-size-issue-slugs-at-derivation-not-truncation` — Derive appropriately sized issue slugs instead of relying on truncation · status: open · num: 29 · priority: low · created: 2026-07-02T07:25:25Z · labels: [issue-tracking, jimfile] · origin: conversation
+- `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` — Surface targeted-update count since last full blueprint regen · status: open · num: 27 · priority: low · created: 2026-07-02T07:00:12Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
 
 ## Graph
 
 - `20260530-smoke-test` --related-to--> `20260530-smoke-test`
 - `20260531-wikilink-parser-skips-fenced-code-blocks` --related-to--> `20260531-typed-frontmatter-relations-absorb-same-target-body-wikilinks`
 - `20260623-issue-candidate-batch-re-files-duplicates-on-skill-re-run` --related-to--> `20260620-single-source-the-interactive-candidate-batch-ux-into-the-shared`
+- `20260630-wire-the-000-blueprint-fold-back-loop-into-review` --related-to--> `20260702-surface-targeted-update-count-since-last-full-blueprint-regen`
+- `20260702-blueprint-update-violation-fork-and-graded-autonomy` --related-to--> `20260630-build-the-invariant-verification-engine`
+- `20260702-blueprint-update-violation-fork-and-graded-autonomy` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
+- `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
 
 ## Integrity Warnings
 
