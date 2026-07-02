@@ -2,7 +2,7 @@
 id: 20260630-wire-the-000-blueprint-fold-back-loop-into-review
 num: 20
 title: "Wire the 000-blueprint fold-back loop into review"
-status: open
+status: closed
 priority: medium
 labels: [000-blueprint, fold-back, review]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:18Z
-updated: 2026-07-01T05:15:16Z
+updated: 2026-07-02T07:15:17Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -42,3 +42,14 @@ build's learnings (the verdict ledger + diff) back into the affected group's
 ## Depends on
 
 Spec 029 (the blueprint must exist first).
+
+## Resolution
+
+Closed 2026-07-02: spec 030 (blueprint update) shipped the wiring this issue
+asked for — the post-review update fed by the review's diff + shape-validated
+verdict from the ledger, gated by `auto_blueprint` / `require_blueprint`, with
+the developer approving a proposed diff against the blueprint. The one
+un-shipped clause is the whole-group lens: 030's update is deliberately
+diff-scoped, a design conclusion reaffirmed on review of the shipped MVP. The
+practical residue — knowing when a full whole-group regen is due — is tracked
+by [[20260702-surface-targeted-update-count-since-last-full-blueprint-regen]].
