@@ -86,12 +86,39 @@ update: read it, summarize the proposed changes (added / changed / preserved)
 before writing, and use Edit rather than Write. Otherwise write a new file from
 the template.
 
+### 4a. Downgrade classification (shared rule)
+
+Both write paths grade their differential edits by this single rule — Step 5's
+auto branch and Update-mode U4 point here; do not restate it elsewhere.
+
+Classify every proposed edit that touches an **Invariants** row or a
+**Provides** entry:
+
+- **additive** — a new row or entry, or a strengthened rule / guarantee.
+- **weakening** — the rule or guarantee is loosened, or an invariant's
+  criticality is lowered.
+- **removal** — the row or entry is dropped.
+
+Criticality is read from the invariant row's existing column. **Provides
+entries are load-bearing wholesale** — weakening or removing any Provides
+entry grades as `critical`/`high`, regardless of the absence of a criticality
+column there.
+
+Under `auto_blueprint`, additive edits and downgrades of `medium`/`low`
+-criticality invariants write unattended; **any weakening or removal of a
+`critical`/`high` invariant, or of any Provides entry, prompts the developer
+instead of auto-writing.** Every unattended write's summary must itemize each
+touched Invariants row and Provides entry with the classification you
+assigned it (additive / weakening / removal), so a misclassification is
+auditable from the summary alone. A fresh generate (no existing blueprint)
+has nothing to downgrade and is unaffected.
+
 ### 5. Write, under the developer's control
 
 SET auto_blueprint = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_blueprint`
 
 IF auto_blueprint == "true" THEN
-  Write the blueprint directly to the resolved path. Summarize which sections were added, changed, or preserved.
+  For a differential update, grade the proposed edits per the shared rule (Step 4a): write the ungated edits directly, itemizing each touched Invariants row / Provides entry with its classification in the summary; present any `critical`/`high` or Provides downgrade and wait for confirmation before writing it. For a fresh generate, write directly. Summarize which sections were added, changed, or preserved.
 ELSE
   Present the proposed blueprint (or the diff, for an update) and ask: "Does this reflect the group's current state? Anything to refine?" Wait for confirmation before writing.
 ENDIF
