@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 23
+- Open: 24
 - Closed: 9
 
 ## Issues
@@ -35,6 +35,7 @@
 - `20260701-prefix-jimconf-test-cases-so-run-sh-jimconf-covers-them` — Prefix jimconf test cases so run.sh jimconf covers them · status: open · num: 23 · priority: medium · created: 2026-07-01T06:28:22Z · labels: [test-infra, meta-test, jimconf] · origin: docs/specs/jim/029-blueprint-spec/plan.md
 - `20260702-add-ledger-only-commit-blueprint-belt-test` — Add ledger-only commit-blueprint belt test · status: open · num: 31 · priority: low · created: 2026-07-02T09:30:16Z · labels: [jimledger, tests] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` — Add violation-vs-fold fork and criticality-graded autonomy to blueprint update · status: open · num: 28 · priority: medium · created: 2026-07-02T07:16:19Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
+- `20260702-cache-per-issue-analysis` — Cache per-issue analysis · status: open · num: 33 · priority: low · created: 2026-07-02T10:54:12Z · labels: [issues-system, insights, performance] · origin: conversation
 - `20260702-instrument-pipeline-token-usage-metrics` — Instrument the pipeline with token-usage metrics · status: open · num: 32 · priority: medium · created: 2026-07-02T10:26:11Z · labels: [jimledger, metrics, profiling] · origin: conversation
 - `20260702-size-issue-slugs-at-derivation-not-truncation` — Derive appropriately sized issue slugs instead of relying on truncation · status: open · num: 29 · priority: low · created: 2026-07-02T07:25:25Z · labels: [issue-tracking, jimfile] · origin: conversation
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` — Surface targeted-update count since last full blueprint regen · status: open · num: 27 · priority: low · created: 2026-07-02T07:00:12Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
@@ -48,6 +49,7 @@
 - `20260630-wire-the-000-blueprint-fold-back-loop-into-review` --related-to--> `20260702-surface-targeted-update-count-since-last-full-blueprint-regen`
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` --related-to--> `20260630-build-the-invariant-verification-engine`
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
+- `20260702-cache-per-issue-analysis` --related-to--> `20260603-codebase-aware-implementation-independence-analysis-for-parallel`
 - `20260702-instrument-pipeline-token-usage-metrics` --related-to--> `20260630-build-the-invariant-verification-engine`
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
 
