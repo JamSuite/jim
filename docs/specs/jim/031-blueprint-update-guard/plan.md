@@ -2,7 +2,7 @@
 title: "Blueprint update guard"
 spec: "docs/specs/jim/031-blueprint-update-guard/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Blueprint update guard — Plan
@@ -193,27 +193,27 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] `skills/blueprint/SKILL.md`: add the **Downgrade classification**
+1. [x] `skills/blueprint/SKILL.md`: add the **Downgrade classification**
    subsection (Interface Contracts enum; DD3) and wire Step 5's
    `auto_blueprint == "true"` branch to it — generate-mode differential
    regens gate `critical`/`high`-invariant and Provides downgrades behind a
    prompt; unattended writes itemize per-row classifications.
    **Verify:** `grep -q 'Downgrade classification' skills/blueprint/SKILL.md && grep -q 'itemize' skills/blueprint/SKILL.md`
 
-2. [ ] `skills/blueprint/SKILL.md`: insert **U3a — violation fork**: judge the
+2. [x] `skills/blueprint/SKILL.md`: insert **U3a — violation fork**: judge the
    change against the invariant table before composing the section-diff
    (read changed source when a hunk can't ground the call); batched,
    count-led presentation with delimited `<untrusted-change-evidence>`
    blocks and per-item fix/fold + bulk actions (DD1, DD2). Depends on task 1.
    **Verify:** `grep -q 'untrusted-change-evidence' skills/blueprint/SKILL.md && grep -qi 'fold the intent' skills/blueprint/SKILL.md`
 
-3. [ ] `skills/blueprint/SKILL.md`: the **fix resolution** — withhold that
+3. [x] `skills/blueprint/SKILL.md`: the **fix resolution** — withhold that
    edit, offer the divergence issue per DD5 (emitter call, temp-file body,
    criticality-mapped priority, `index.sh` regen), and extend frontmatter
    `allowed-tools` with the `new.sh` and `index.sh` grants. Depends on task 2.
    **Verify:** `grep -q 'skills/issue/scripts/new.sh' skills/blueprint/SKILL.md`
 
-4. [ ] `skills/blueprint/SKILL.md`: extend **U4** — graded auto gate pointing
+4. [x] `skills/blueprint/SKILL.md`: extend **U4** — graded auto gate pointing
    at the classifier (itemized unattended summary), guard-outcome kv on the
    `blueprint finished` event (always three keys), and the fix-only edge
    (finished + `commit-blueprint` still run; DD4, DD6, DD7). Extend the
@@ -223,12 +223,12 @@ flowchart TD
    task 3.
    **Verify:** `grep -q 'violations=' skills/blueprint/SKILL.md`
 
-5. [ ] `skills/review/SKILL.md`: Step 10 — one line stating an answered fork
+5. [x] `skills/review/SKILL.md`: Step 10 — one line stating an answered fork
    (either resolution) counts as the update running to completion under
    `require_blueprint` (DD8).
    **Verify:** `grep -qi 'answered fork' skills/review/SKILL.md`
 
-6. [ ] Regression: full deterministic suite passes untouched (no script
+6. [x] Regression: full deterministic suite passes untouched (no script
    changed).
    **Verify:** `bash skills/meta-test/scripts/run.sh`
 
