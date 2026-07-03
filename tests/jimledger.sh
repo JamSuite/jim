@@ -722,6 +722,74 @@ case_jimledger_updates_since_missing_ledger_rc2() {
   assert_exit "missing-ledger rc" 2 "$RC"
 }
 
+# AC: commit-map commits the project map + specs-root ledger in one
+# path-scoped commit in the CWD repo, leaving unrelated changes untouched —
+# never git add -A (spec 033 Task 3, AC #10, plan DD 4).
+case_jimledger_commit_map_scoped() {
+  local sd root; sd="$(git_fixture t33cm)"; root="${sd%/spec}"
+  mkdir -p "$root/docs/specs"
+  printf '# map\n' > "$root/BLUEPRINT.md"
+  printf '1\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project\n' > "$root/docs/specs/ledger.md"
+  printf 'unrelated\n' > "$root/loose.txt"
+  local out rc
+  out=$(cd "$root" && bash "$SCRIPT_JIMLEDGER" commit-map BLUEPRINT.md docs/specs 2>&1); rc=$?
+  assert_exit "rc" 0 "$rc"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "map committed"     '^BLUEPRINT\.md$'         "$committed"
+  assert_match "ledger committed"  '^docs/specs/ledger\.md$' "$committed"
+  assert_eq    "loose not swept"   "0" "$(echo "$committed" | grep -c '^loose\.txt$')"
+  assert_eq    "update subject (default)" "docs(blueprint): update project map" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC: commit-map's create mode labels the first-time map commit; an
+# unrecognized mode maps to update — the whitelist keeps the subject
+# well-formed and non-injectable (spec 033 Task 3, mirroring commit-blueprint).
+case_jimledger_commit_map_mode_whitelist() {
+  local sd root; sd="$(git_fixture t33cmw)"; root="${sd%/spec}"
+  mkdir -p "$root/docs/specs"
+  printf '# map v1\n' > "$root/BLUEPRINT.md"
+  printf 'l1\n' > "$root/docs/specs/ledger.md"
+  local rc
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" commit-map BLUEPRINT.md docs/specs create) >/dev/null 2>&1; rc=$?
+  assert_exit "create rc" 0 "$rc"
+  assert_eq "create subject" "docs(blueprint): create project map" "$(git -C "$root" log -1 --format=%s)"
+  printf '# map v2\n' > "$root/BLUEPRINT.md"
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" commit-map BLUEPRINT.md docs/specs 'x`touch /tmp/nope`') >/dev/null 2>&1; rc=$?
+  assert_exit "bad-mode rc" 0 "$rc"
+  assert_eq "bad mode → update" "docs(blueprint): update project map" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC: commit-map rejects absolute and '..'-bearing values in BOTH path
+# arguments — each is config-derived (blueprint_path / specs_path) and passes
+# the jimfile valid-relpath boundary before reaching git (spec 033 security
+# Findings 2 and 8).
+case_jimledger_commit_map_rejects_unsafe_paths() {
+  local sd root; sd="$(git_fixture t33cmr)"; root="${sd%/spec}"
+  mkdir -p "$root/docs/specs"
+  printf 'm\n' > "$root/BLUEPRINT.md"
+  printf 'l\n' > "$root/docs/specs/ledger.md"
+  local rc
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" commit-map /etc/BLUEPRINT.md docs/specs) >/dev/null 2>&1; rc=$?
+  assert_exit "absolute map"   2 "$rc"
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" commit-map ../BLUEPRINT.md docs/specs) >/dev/null 2>&1; rc=$?
+  assert_exit "dotdot map"     2 "$rc"
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" commit-map BLUEPRINT.md /abs/specs) >/dev/null 2>&1; rc=$?
+  assert_exit "absolute specs" 2 "$rc"
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" commit-map BLUEPRINT.md ../specs) >/dev/null 2>&1; rc=$?
+  assert_exit "dotdot specs"   2 "$rc"
+  assert_eq "no commit landed" "1" "$(git -C "$root" rev-list --count HEAD)"
+}
+
+# AC: commit-map degrades gracefully outside a git repo (spec 033 Task 3).
+case_jimledger_commit_map_non_repo() {
+  local d; d="$(empty_dir t33cmn)"
+  printf 'm\n' > "$d/BLUEPRINT.md"
+  mkdir -p "$d/specs"; printf 'l\n' > "$d/specs/ledger.md"
+  local rc
+  (cd "$d" && bash "$SCRIPT_JIMLEDGER" commit-map BLUEPRINT.md specs) >/dev/null 2>&1; rc=$?
+  assert_exit "rc" 2 "$rc"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then

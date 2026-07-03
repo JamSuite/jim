@@ -16,16 +16,19 @@
 #   diff-range <base> [head]                   emit the diff over a validated CWD-repo range
 #   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
 #   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md (path-scoped)
+#   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
 #   updates-since <blueprint-dir> <iso>       count blueprint finished events after <iso>
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
 #
 # Security: commit/diff/ledger content is untrusted — never sourced or eval'd.
 # SHAs read from the ledger are validated via jimfile.sh `valid-id` before any
-# git range use (forecloses option injection). The script commits in exactly one
-# place — `commit-review`, a path-scoped commit of review.md + ledger.md with a
-# `--` guard and no `git add -A` (028 AC #10); `/jim:build` commits ledger.md at
-# start/finish itself.
+# git range use (forecloses option injection). The script commits in exactly
+# three path-scoped places — `commit-review` (review.md + ledger.md, 028 AC
+# #10), `commit-blueprint` (a group's spec.md + ledger.md, 030 AC #8), and
+# `commit-map` (the project map + the specs-root ledger.md, spec 033) — each
+# with literal paths, a `--` guard, and no `git add -A`; `/jim:build` commits
+# ledger.md at start/finish itself.
 
 set -uo pipefail
 export LC_ALL=C
@@ -46,6 +49,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   diff-range <base> [head]                    emit the diff over a validated CWD-repo range
   commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md
+  commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
 USAGE
 }
@@ -166,6 +170,39 @@ cmd_commit_blueprint() {
   [[ "$mode" == "create" ]] || mode="update"
   git -C "$dir" add -- spec.md ledger.md || return 2
   git -C "$dir" commit -q -m "docs(blueprint): $mode 000-blueprint" -- spec.md ledger.md || return 2
+}
+
+# cmd_commit_map <map-path> <specs-dir> [create|update] — path-scoped commit of
+#   the project-tier context map: <map-path> + <specs-dir>/ledger.md in the repo
+#   at CWD (spec 033 AC #10, plan DD 4). BOTH path arguments are config-derived
+#   (blueprint_path / specs_path), so both pass the jimfile `valid-relpath`
+#   boundary — relative, no '..' segment (sec 033 Findings 2, 8). Shape-valid
+#   relative paths resolved under a repo CWD cannot escape the worktree.
+#   Literal paths, `--` guard, never `git add -A`; mode whitelisted like
+#   commit-blueprint. Any git failure returns non-zero so the caller degrades
+#   with the map left intact on disk.
+cmd_commit_map() {
+  local map="${1:-}" specs_dir="${2:-}" mode="${3:-update}"
+  if [[ -z "$map" || -z "$specs_dir" ]]; then
+    echo "jimledger commit-map: need <map-path> <specs-dir> [create|update]" >&2
+    return 2
+  fi
+  if ! bash "$JIMFILE" valid-relpath "$map" >/dev/null 2>&1; then
+    echo "jimledger commit-map: unsafe map path rejected" >&2
+    return 2
+  fi
+  if ! bash "$JIMFILE" valid-relpath "$specs_dir" >/dev/null 2>&1; then
+    echo "jimledger commit-map: unsafe specs dir rejected" >&2
+    return 2
+  fi
+  if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
+    echo "jimledger commit-map: not in a git repo" >&2
+    return 2
+  fi
+  [[ "$mode" == "create" ]] || mode="update"
+  local ledger="${specs_dir%/}/ledger.md"
+  git add -- "$map" "$ledger" || return 2
+  git commit -q -m "docs(blueprint): $mode project map" -- "$map" "$ledger" || return 2
 }
 
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
@@ -394,6 +431,7 @@ main() {
     event)   shift; cmd_event "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;
+    commit-map) shift; cmd_commit_map "$@" ;;
     updates-since) shift; cmd_updates_since "$@" ;;
     *) usage; return 2 ;;
   esac
