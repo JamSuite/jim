@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 18
-- Closed: 15
+- Open: 17
+- Closed: 16
 
 ## Issues
 
@@ -38,7 +38,7 @@
 - `20260702-cache-per-issue-analysis` — Cache per-issue analysis · status: open · num: 33 · priority: low · created: 2026-07-02T10:54:12Z · labels: [issues-system, insights, performance] · origin: conversation
 - `20260702-instrument-pipeline-token-usage-metrics` — Instrument the pipeline with token-usage metrics · status: open · num: 32 · priority: medium · created: 2026-07-02T10:26:11Z · labels: [jimledger, metrics, profiling] · origin: conversation
 - `20260702-size-issue-slugs-at-derivation-not-truncation` — Derive appropriately sized issue slugs instead of relying on truncation · status: open · num: 29 · priority: low · created: 2026-07-02T07:25:25Z · labels: [issue-tracking, jimfile] · origin: conversation
-- `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` — Surface targeted-update count since last full blueprint regen · status: open · num: 27 · priority: low · created: 2026-07-02T07:00:12Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
+- `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` — Surface targeted-update count since last full blueprint regen · status: closed · num: 27 · priority: low · created: 2026-07-02T07:00:12Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260702-tighten-update-guard-wording-and-checklist-gates` — Tighten update-guard wording and checklist gates · status: closed · num: 30 · priority: low · created: 2026-07-02T09:30:15Z · labels: [000-blueprint, fold-back] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
 
 ## Graph

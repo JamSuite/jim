@@ -2,7 +2,7 @@
 title: "Blueprint regen cadence"
 spec: "docs/specs/jim/032-blueprint-regen-cadence/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Blueprint regen cadence — Plan
