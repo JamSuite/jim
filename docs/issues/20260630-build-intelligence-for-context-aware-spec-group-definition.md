@@ -6,12 +6,12 @@ status: open
 priority: high
 labels: [spec-groups, context-boundary, architecture, 000-blueprint]
 relations:
-  blocks: []
+  blocks: [20260630-add-the-cross-group-contract-graph-and-blast-radius, 20260703-build-the-partition-migration-skill]
   depends-on: []
   related-to: []
   duplicates: []
 created: 2026-06-30T11:07:07Z
-updated: 2026-07-01T08:01:47Z
+updated: 2026-07-03T20:08:37Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
@@ -43,14 +43,36 @@ exist. This issue is the upstream act: **how groups come to be well-formed.**
 Careless boundaries propagate bad seams into the blueprint, contracts, and
 verification.
 
-## Proposed direction
+## Direction — resolved (2026-07-03 brainstorm)
 
-Before adopting the master-spec model, invest in **intelligence / guidance for
-defining spec groups as deliberate context boundaries** — choosing boundaries
-and naming inter-group relations with modular-design principles (cohesion, loose
-coupling, bounded contexts) in view, rather than per-spec convenience.
+Design record: `docs/brainstorms/20260703-context-aware-spec-group-definition.md`.
+Decided there (do not re-litigate):
 
-## Out of scope here
+- **The context map is a top-level `BLUEPRINT.md`** — a tier-0 blueprint
+  gluing the group blueprints into a single project-level scope. Declared
+  intent, current-state-only, maintained by the same fold-back machinery as
+  the group tier (specs 030–032). Joins the root doc family;
+  `ARCHITECTURE.md` stays a generated reflection that references the map,
+  never duplicates it.
+- **Opinionated vertical-first doctrine** (bounded contexts, not layers),
+  with an axis escape hatch (`vertical|layered`) in config. Shared-kernel /
+  platform groups stay legitimate via a deliberately small `provides` face.
+- **Code-territory binding is a config mode** (`directory` /
+  `declared-paths` / `none`) — jim never dictates code layout; the chosen
+  mode sets the strength and price of the mechanical verification floor.
+- **Day-one map creation runs both directions:** interview what the user
+  knows *and* actively propose a partition. **Assignment** (`/jim:spec`
+  consumes the map) is advisory with strong pushback — the user decides,
+  after a real argument.
+- **Freeze history:** numbered specs never re-home; only living artifacts
+  (map, blueprints, future filing) migrate.
+- **One spec** covers `BLUEPRINT.md` + creation-time intelligence + the
+  assignment advisor. Migration is split out to
+  [[20260703-build-the-partition-migration-skill]] (#34).
+- **Sequencing: this issue → #21 → #22.** The contract graph's home is
+  `BLUEPRINT.md`, superseding the earlier "plausibly the ARCHITECTURE.md
+  tier" placement.
 
-Resolving this is out of scope for the `000-current` brainstorm; filed for
-separate consideration (likely a research dive and/or its own spec).
+## Next step
+
+`/jim:spec` with the 20260703 brainstorm as origin.

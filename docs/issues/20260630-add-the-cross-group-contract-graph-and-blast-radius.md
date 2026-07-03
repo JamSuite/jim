@@ -7,11 +7,11 @@ priority: medium
 labels: [000-blueprint, cross-group, architecture]
 relations:
   blocks: []
-  depends-on: []
+  depends-on: [20260630-build-intelligence-for-context-aware-spec-group-definition]
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-02T07:15:17Z
+updated: 2026-07-03T20:08:37Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -34,7 +34,9 @@ Reconcile groups' `requires` against other groups' `provides` into a
 - **Pre-build blast radius**: changing a boundary invariant flags every
   dependent group.
 - The graph is *derived* from the per-group faces, not a third hand-maintained
-  copy (plausibly the ARCHITECTURE.md tier).
+  copy. Home: the project-tier **`BLUEPRINT.md`** (resolved in the 20260703
+  context-map brainstorm — supersedes the earlier "plausibly the
+  ARCHITECTURE.md tier" placement).
 
 ## Decided — do not re-litigate
 
@@ -47,4 +49,7 @@ divergence.
 
 ## Depends on
 
-Spec 029, and ≥2 group blueprints to reconcile.
+Spec 029; ≥2 group blueprints to reconcile; and
+[[20260630-build-intelligence-for-context-aware-spec-group-definition]]
+(#19), which delivers `BLUEPRINT.md` — the artifact this graph lives in and
+reconciles against.

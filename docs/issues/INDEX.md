@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 17
+- Open: 18
 - Closed: 16
 
 ## Issues
@@ -40,18 +40,23 @@
 - `20260702-size-issue-slugs-at-derivation-not-truncation` — Derive appropriately sized issue slugs instead of relying on truncation · status: open · num: 29 · priority: low · created: 2026-07-02T07:25:25Z · labels: [issue-tracking, jimfile] · origin: conversation
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` — Surface targeted-update count since last full blueprint regen · status: closed · num: 27 · priority: low · created: 2026-07-02T07:00:12Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260702-tighten-update-guard-wording-and-checklist-gates` — Tighten update-guard wording and checklist gates · status: closed · num: 30 · priority: low · created: 2026-07-02T09:30:15Z · labels: [000-blueprint, fold-back] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
+- `20260703-build-the-partition-migration-skill` — Build the partition migration skill · status: open · num: 34 · priority: medium · created: 2026-07-03T20:08:37Z · labels: [migration, spec-groups, 000-blueprint] · origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
 
 ## Graph
 
 - `20260530-smoke-test` --related-to--> `20260530-smoke-test`
 - `20260531-wikilink-parser-skips-fenced-code-blocks` --related-to--> `20260531-typed-frontmatter-relations-absorb-same-target-body-wikilinks`
 - `20260623-issue-candidate-batch-re-files-duplicates-on-skill-re-run` --related-to--> `20260620-single-source-the-interactive-candidate-batch-ux-into-the-shared`
+- `20260630-add-the-cross-group-contract-graph-and-blast-radius` --depends-on--> `20260630-build-intelligence-for-context-aware-spec-group-definition`
+- `20260630-build-intelligence-for-context-aware-spec-group-definition` --blocks--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
+- `20260630-build-intelligence-for-context-aware-spec-group-definition` --blocks--> `20260703-build-the-partition-migration-skill`
 - `20260630-wire-the-000-blueprint-fold-back-loop-into-review` --related-to--> `20260702-surface-targeted-update-count-since-last-full-blueprint-regen`
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` --related-to--> `20260630-build-the-invariant-verification-engine`
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
 - `20260702-cache-per-issue-analysis` --related-to--> `20260603-codebase-aware-implementation-independence-analysis-for-parallel`
 - `20260702-instrument-pipeline-token-usage-metrics` --related-to--> `20260630-build-the-invariant-verification-engine`
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
+- `20260703-build-the-partition-migration-skill` --depends-on--> `20260630-build-intelligence-for-context-aware-spec-group-definition`
 
 ## Integrity Warnings
 
