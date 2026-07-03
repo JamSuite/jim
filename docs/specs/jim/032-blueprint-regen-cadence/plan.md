@@ -141,10 +141,10 @@ flowchart TD
 6. [x] **U4 count report + threshold trigger** in `skills/blueprint/SKILL.md` — read `last_full_generate`; call `updates-since`; on rc 2 treat as no baseline (signal/prompt, never fire); on a count ≥ 1 report "N targeted updates since last full generate"; read `blueprint_regen_threshold` and **treat any value that is not a positive integer as disabled — signal-only, never fire** (fail-safe, security Finding 4); otherwise if count ≥ threshold, run a full regen instead (unattended under `auto_blueprint` honoring spec 031 graded autonomy; else prompt); pass `update` to `commit-blueprint`. Add checklist rows, including one asserting a malformed/non-positive threshold never fires.
    **Verify:** `grep -q 'updates-since' skills/blueprint/SKILL.md && grep -q 'blueprint_regen_threshold' skills/blueprint/SKILL.md && echo OK`
 
-7. [ ] **Full deterministic suite green + fix-only property intact.** Confirm no regression, in particular `case_jimledger_commit_blueprint_ledger_only` (spec 031 / AC #4).
+7. [x] **Full deterministic suite green + fix-only property intact.** Confirm no regression, in particular `case_jimledger_commit_blueprint_ledger_only` (spec 031 / AC #4).
    **Verify:** `bash skills/meta-test/scripts/run.sh 2>&1 | tail -3`
 
-8. [ ] **SKILL.md ceiling check.**
+8. [x] **SKILL.md ceiling check.**
    **Verify:** `test "$(wc -l < skills/blueprint/SKILL.md)" -le 500 && echo OK`
 
 ## Requirements Coverage Summary
