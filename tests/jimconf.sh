@@ -64,6 +64,9 @@ case_no_config_returns_defaults() {
               "require_security_loop_sev:critical" \
               "auto_security_loop_limit:5" \
               "blueprint_regen_threshold:0" \
+              "blueprint:BLUEPRINT.md" \
+              "group_axis:vertical" \
+              "group_territory:declared-paths" \
               "security_adhoc:docs/security" \
               "issue_capture:true" \
               "auto_issue_file:false" \
@@ -124,6 +127,47 @@ case_jimconf_blueprint_regen_threshold_default_and_resolve() {
   cfg=$(fixture jc-brt.toml 'blueprint_regen_threshold = "5"')
   run -c "$cfg" get blueprint_regen_threshold
   assert_eq   "configured 5" "5"  "$OUT"
+}
+
+# AC: blueprint (project map) path key defaults to "BLUEPRINT.md" and resolves
+# from config (spec 033 Task 1, AC #1). CLI short name `blueprint` maps to
+# TOML `blueprint_path` via the _path suffix rule, like the other strategic
+# docs.
+case_jimconf_blueprint_path_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_map_default)
+  run -c "$dir/absent.toml" get blueprint
+  assert_exit "default rc"        0              "$RC"
+  assert_eq   "default BLUEPRINT" "BLUEPRINT.md" "$OUT"
+  cfg=$(fixture jc-map.toml 'blueprint_path = "docs/BLUEPRINT.md"')
+  run -c "$cfg" get blueprint
+  assert_eq   "configured path"   "docs/BLUEPRINT.md" "$OUT"
+}
+
+# AC: group_axis defaults to "vertical" and resolves from config (spec 033
+# Task 1, AC #7). Bare-name doctrine knob dispatched by the group_* arm.
+case_jimconf_group_axis_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_axis_default)
+  run -c "$dir/absent.toml" get group_axis
+  assert_exit "default rc"         0          "$RC"
+  assert_eq   "default vertical"   "vertical" "$OUT"
+  cfg=$(fixture jc-axis.toml 'group_axis = "layered"')
+  run -c "$cfg" get group_axis
+  assert_eq   "configured layered" "layered"  "$OUT"
+}
+
+# AC: group_territory defaults to "declared-paths" and resolves from config
+# (spec 033 Task 1, AC #8). Bare-name mode knob dispatched by the group_* arm.
+case_jimconf_group_territory_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_terr_default)
+  run -c "$dir/absent.toml" get group_territory
+  assert_exit "default rc"             0                "$RC"
+  assert_eq   "default declared-paths" "declared-paths" "$OUT"
+  cfg=$(fixture jc-terr.toml 'group_territory = "none"')
+  run -c "$cfg" get group_territory
+  assert_eq   "configured none"        "none"           "$OUT"
 }
 
 # AC: full override (spec AC #1, #4)
@@ -225,8 +269,11 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "35" "$line_count"
+  assert_eq    "list line count"                  "38" "$line_count"
   assert_match "blueprint_regen_threshold line"    '^blueprint_regen_threshold=0$'          "$OUT"
+  assert_match "blueprint line"                    '^blueprint=BLUEPRINT\.md$'              "$OUT"
+  assert_match "group_axis line"                   '^group_axis=vertical$'                  "$OUT"
+  assert_match "group_territory line"              '^group_territory=declared-paths$'       "$OUT"
   assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
@@ -266,7 +313,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -304,7 +351,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "35" "$line_count"
+  assert_eq "list still emits all keys" "38" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim

@@ -23,6 +23,11 @@ brainstorms_path  = "docs/brainstorms"
 debug_path        = "docs/debug"
 issues_path       = "./docs/issues/"
 
+# Project-tier context map (spec 033) — the tier-0 blueprint gluing the
+# group blueprints into one project scope. Written only through the
+# /jim:blueprint surface (bare invocation). Root-level by default.
+blueprint_path    = "BLUEPRINT.md"
+
 # Optional project-script path for the per-commit gate. Resolves the
 # path-where-it-would-live; /jim:build wraps the call in an existence
 # gate, so a missing file is silently skipped (no warning, no error).
@@ -68,6 +73,23 @@ require_blueprint = "false"
 # trigger, leaving update mode signal-only — it still reports "N targeted updates
 # since last full generate". Any non-positive-integer value is treated as disabled.
 blueprint_regen_threshold = "0"
+
+# --- Spec-group partition doctrine (spec 033) ------------------------------
+
+# Partition axis the map-creation proposal steers toward. "vertical" (the
+# default) proposes domain-vertical bounded contexts; "layered" is the
+# escape hatch for layer-style partitions — doctrine guidance and straddle
+# messaging recalibrate, and groups carry role "layer". Steers proposal
+# doctrine only; what each group IS lives in its BLUEPRINT.md role field.
+group_axis = "vertical"
+
+# How group↔code binding is captured in the map:
+#   directory      : each group owns a subtree (strongest mechanical checks)
+#   declared-paths : the map lists each group's code locations (default)
+#   none           : no code binding; boundary lives in specs/blueprints only
+# Territory is recorded as data; enforcement arrives with the verification
+# engine (issue #22). Territory entries are optional-when-unknown.
+group_territory = "declared-paths"
 
 # --- Post-build review gate -----------------------------------------------
 
