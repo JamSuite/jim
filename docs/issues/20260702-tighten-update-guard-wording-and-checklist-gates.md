@@ -2,7 +2,7 @@
 id: 20260702-tighten-update-guard-wording-and-checklist-gates
 num: 30
 title: "Tighten update-guard wording and checklist gates"
-status: open
+status: closed
 priority: low
 labels: [000-blueprint, fold-back]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-02T09:30:15Z
-updated: 2026-07-02T09:30:15Z
+updated: 2026-07-03T06:24:09Z
 origin: docs/specs/jim/031-blueprint-update-guard/review.md
 ---
 
@@ -41,3 +41,20 @@ Three one-line tightenings:
 3. **Negative gate for the unanswered fork.** The checklist's outcome-kv row
    frames the requirement positively; extend it with the negative case — an
    unanswered fork records no `finished` and commits nothing.
+
+## Resolution
+
+All three tightenings applied to `skills/blueprint/SKILL.md` (no spec — prose
+hardening on an already-aligned build):
+
+1. U3b's issue-body content list now names the chosen resolution as an explicit
+   `resolved: fix the code` line.
+2. Added a checklist row gating the per-issue confirmation ("never filed
+   unattended", body records the resolution), and scoped the pre-existing
+   approval row to *blueprint writes* so it can't be read as permitting
+   unattended issue filing under `auto_blueprint`.
+3. Extended the outcome-kv checklist row with the negative case — an unanswered
+   fork records no `finished` and commits nothing.
+
+Skill stays at 307 lines, under the 500-line ceiling. No scripts touched, so the
+deterministic suite is unaffected (prose validated by its checklist).
