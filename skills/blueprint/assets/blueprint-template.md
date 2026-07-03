@@ -3,6 +3,7 @@ title: "{group} — blueprint"
 group: "{group}"
 kind: blueprint
 updated: "{YYYY-MM-DD}"
+last_full_generate: "{YYYY-MM-DDThh:mm:ssZ}"
 ---
 
 # {group} — blueprint

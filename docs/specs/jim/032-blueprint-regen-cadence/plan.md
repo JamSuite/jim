@@ -132,7 +132,7 @@ flowchart TD
 3. [x] **`blueprint_regen_threshold` config key** in `skills/conf/scripts/jimconf.sh` — add to `KEYS`, add `blueprint_regen_threshold) echo "0" ;;` to the default case, and add it to the bare-name condition at `jimconf.sh:116`. Add a `tests/jimconf.sh` case (default `"0"` + a `-c` override). Update `skills/conf/SKILL.md` only if it enumerates keys. Red first.
    **Verify:** `bash tests/jimconf.sh blueprint_regen 2>&1 | tail -1; bash skills/conf/scripts/jimconf.sh get blueprint_regen_threshold`
 
-4. [ ] **`last_full_generate` field** in `skills/blueprint/assets/blueprint-template.md` frontmatter (after `updated`).
+4. [x] **`last_full_generate` field** in `skills/blueprint/assets/blueprint-template.md` frontmatter (after `updated`).
    **Verify:** `grep -q '^last_full_generate:' skills/blueprint/assets/blueprint-template.md && echo OK`
 
 5. [ ] **Generate-mode watermark stamp + fallthrough ordering** in `skills/blueprint/SKILL.md` — Step 5 stamps `last_full_generate: <jimfile.sh now>` on write (stamped solely from `now`, never content-derived — DD8); U2 fallthrough records `blueprint finished`, **then** stamps the watermark (fresh `now`), **then** `commit-blueprint <dir> create`; add checklist rows for both.
