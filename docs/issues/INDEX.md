@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 23
-- Closed: 10
+- Open: 22
+- Closed: 11
 
 ## Issues
 
@@ -31,7 +31,7 @@
 - `20260630-wire-the-000-blueprint-fold-back-loop-into-review` — Wire the 000-blueprint fold-back loop into review · status: closed · num: 20 · priority: medium · created: 2026-06-30T20:35:18Z · labels: [000-blueprint, fold-back, review] · origin: docs/specs/jim/029-blueprint-spec/spec.md
 - `20260701-add-diff-range-belt-tests-for-command-sub-and-trailing-slash-ref` — Add diff-range belt tests for command-sub and trailing-slash refs · status: open · num: 26 · priority: low · created: 2026-07-01T21:48:42Z · labels: [test-infra, jimledger, security] · origin: docs/specs/jim/030-blueprint-update/review.md
 - `20260701-align-blueprint-update-adapter-docs-arg-order-and-step-1-cross-r` — Align blueprint-update adapter docs (arg-order and Step-1 cross-ref) · status: open · num: 25 · priority: low · created: 2026-07-01T21:48:41Z · labels: [blueprint, review, docs] · origin: docs/specs/jim/030-blueprint-update/review.md
-- `20260701-fix-absent-blueprint-ledger-pairing-in-jim-blueprint-update-mode` — Fix absent-blueprint ledger pairing in /jim:blueprint update mode · status: open · num: 24 · priority: medium · created: 2026-07-01T21:48:41Z · labels: [blueprint, ledger, 000-blueprint] · origin: docs/specs/jim/030-blueprint-update/review.md
+- `20260701-fix-absent-blueprint-ledger-pairing-in-jim-blueprint-update-mode` — Fix absent-blueprint ledger pairing in /jim:blueprint update mode · status: closed · num: 24 · priority: medium · created: 2026-07-01T21:48:41Z · labels: [blueprint, ledger, 000-blueprint] · origin: docs/specs/jim/030-blueprint-update/review.md
 - `20260701-prefix-jimconf-test-cases-so-run-sh-jimconf-covers-them` — Prefix jimconf test cases so run.sh jimconf covers them · status: open · num: 23 · priority: medium · created: 2026-07-01T06:28:22Z · labels: [test-infra, meta-test, jimconf] · origin: docs/specs/jim/029-blueprint-spec/plan.md
 - `20260702-add-ledger-only-commit-blueprint-belt-test` — Add ledger-only commit-blueprint belt test · status: open · num: 31 · priority: low · created: 2026-07-02T09:30:16Z · labels: [jimledger, tests] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` — Add violation-vs-fold fork and criticality-graded autonomy to blueprint update · status: closed · num: 28 · priority: medium · created: 2026-07-02T07:16:19Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
