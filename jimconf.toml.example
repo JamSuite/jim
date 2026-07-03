@@ -60,6 +60,15 @@ auto_blueprint = "false"
 # update is developer-invoked and ungated. Default "false".
 require_blueprint = "false"
 
+# Opt-in staleness threshold for the blueprint regen cadence (spec 032): an
+# integer count of targeted updates accumulated since the last full generate.
+# When the count reaches it, /jim:blueprint update mode runs a full whole-group
+# regeneration instead of another targeted diff (unattended under auto_blueprint,
+# still criticality-graded; otherwise it prompts). Default "0" disables the
+# trigger, leaving update mode signal-only — it still reports "N targeted updates
+# since last full generate". Any non-positive-integer value is treated as disabled.
+blueprint_regen_threshold = "0"
+
 # --- Post-build review gate -----------------------------------------------
 
 # Post-build review (/jim:review) verifies what the build shipped against the
