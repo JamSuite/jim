@@ -129,7 +129,7 @@ flowchart TD
 2. [x] **`updates-since` subcommand** in `jimledger.sh` per the Interface Contract — add `cmd_updates_since` + a `updates-since)` dispatch arm; validate watermark, bound to `<= now`. Add belt cases (count N; events at/before watermark excluded; future-dated excluded; malformed watermark → rc 2; missing ledger → rc 2) — Red first.
    **Verify:** `bash tests/jimledger.sh updates_since 2>&1 | tail -1`
 
-3. [ ] **`blueprint_regen_threshold` config key** in `skills/conf/scripts/jimconf.sh` — add to `KEYS`, add `blueprint_regen_threshold) echo "0" ;;` to the default case, and add it to the bare-name condition at `jimconf.sh:116`. Add a `tests/jimconf.sh` case (default `"0"` + a `-c` override). Update `skills/conf/SKILL.md` only if it enumerates keys. Red first.
+3. [x] **`blueprint_regen_threshold` config key** in `skills/conf/scripts/jimconf.sh` — add to `KEYS`, add `blueprint_regen_threshold) echo "0" ;;` to the default case, and add it to the bare-name condition at `jimconf.sh:116`. Add a `tests/jimconf.sh` case (default `"0"` + a `-c` override). Update `skills/conf/SKILL.md` only if it enumerates keys. Red first.
    **Verify:** `bash tests/jimconf.sh blueprint_regen 2>&1 | tail -1; bash skills/conf/scripts/jimconf.sh get blueprint_regen_threshold`
 
 4. [ ] **`last_full_generate` field** in `skills/blueprint/assets/blueprint-template.md` frontmatter (after `updated`).
