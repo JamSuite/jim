@@ -2,7 +2,7 @@
 id: 20260702-add-ledger-only-commit-blueprint-belt-test
 num: 31
 title: "Add ledger-only commit-blueprint belt test"
-status: open
+status: closed
 priority: low
 labels: [jimledger, tests]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-02T09:30:16Z
-updated: 2026-07-02T09:30:16Z
+updated: 2026-07-03T06:16:13Z
 origin: docs/specs/jim/031-blueprint-update-guard/review.md
 ---
 
@@ -33,3 +33,17 @@ committed-and-unchanged, run `commit-blueprint`, assert the commit succeeds
 and contains only `ledger.md`. Optionally vary the commit message for the
 ledger-only case — `docs(blueprint): update 000-blueprint` currently
 overstates what a fix-only run landed.
+
+## Resolution
+
+Added `case_jimledger_commit_blueprint_ledger_only` to `tests/jimledger.sh`:
+seeds a committed clean blueprint, appends a fix-only guard-outcome ledger line
+leaving `spec.md` untouched, runs `commit-blueprint`, and asserts rc 0, the
+commit carries `spec/ledger.md` alone (no `spec.md`), and the tree is clean
+after. Locks in the git pathspec-commit behavior review Finding 4 flagged as
+untested. Full `jimledger.sh` suite green (44/44).
+
+The optional commit-message variation is intentionally **not** done — it would
+add branching to `cmd_commit_blueprint` to detect an unchanged `spec.md`, and
+the overstated message is cosmetic (the ledger line itself is the durable
+record). Left as a deliberate non-change, not an oversight.

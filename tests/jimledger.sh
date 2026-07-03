@@ -527,6 +527,27 @@ case_jimledger_commit_blueprint_scoped() {
   assert_eq    "seed.txt still dirty" "1" "$(git -C "$root" status --porcelain seed.txt | grep -c '^ M')"
 }
 
+# AC: commit-blueprint's fix-only edge — every proposed blueprint edit was
+# withheld at the violation fork, so spec.md is unchanged and only ledger.md
+# is dirty. The path-scoped commit must carry ledger.md alone and still succeed
+# (spec 031 AC #8, review Finding 4).
+case_jimledger_commit_blueprint_ledger_only() {
+  local sd root; sd="$(git_fixture t31cbl)"; root="${sd%/spec}"
+  # Seed a committed, clean blueprint: both spec.md and ledger.md tracked.
+  printf '# blueprint\n'                                    > "$sd/spec.md"
+  printf '1\t2026-01-01T00:00:00Z\tblueprint\tfinished\t\n' > "$sd/ledger.md"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "chore: seed blueprint"
+  # Fix-only run: a new guard-outcome line lands, spec.md untouched.
+  printf '2\t2026-01-02T00:00:00Z\tblueprint\tfinished\tviolations=1;folded=0;fixed=1\n' >> "$sd/ledger.md"
+  run_jimledger commit-blueprint "$sd"
+  assert_exit "rc" 0 "$RC"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "ledger.md committed"   'spec/ledger\.md' "$committed"
+  assert_eq    "spec.md not in commit" "0" "$(echo "$committed" | grep -c 'spec\.md')"
+  assert_eq    "tree clean after"      "0" "$(git -C "$root" status --porcelain | grep -c '.')"
+}
+
 # AC: commit-blueprint degrades gracefully outside a git repo (spec 030 Task 3).
 case_jimledger_commit_blueprint_non_repo() {
   local sd; sd="$(empty_dir t30cbn/spec)"

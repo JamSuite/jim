@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 22
-- Closed: 11
+- Open: 21
+- Closed: 12
 
 ## Issues
 
@@ -33,7 +33,7 @@
 - `20260701-align-blueprint-update-adapter-docs-arg-order-and-step-1-cross-r` — Align blueprint-update adapter docs (arg-order and Step-1 cross-ref) · status: open · num: 25 · priority: low · created: 2026-07-01T21:48:41Z · labels: [blueprint, review, docs] · origin: docs/specs/jim/030-blueprint-update/review.md
 - `20260701-fix-absent-blueprint-ledger-pairing-in-jim-blueprint-update-mode` — Fix absent-blueprint ledger pairing in /jim:blueprint update mode · status: closed · num: 24 · priority: medium · created: 2026-07-01T21:48:41Z · labels: [blueprint, ledger, 000-blueprint] · origin: docs/specs/jim/030-blueprint-update/review.md
 - `20260701-prefix-jimconf-test-cases-so-run-sh-jimconf-covers-them` — Prefix jimconf test cases so run.sh jimconf covers them · status: open · num: 23 · priority: medium · created: 2026-07-01T06:28:22Z · labels: [test-infra, meta-test, jimconf] · origin: docs/specs/jim/029-blueprint-spec/plan.md
-- `20260702-add-ledger-only-commit-blueprint-belt-test` — Add ledger-only commit-blueprint belt test · status: open · num: 31 · priority: low · created: 2026-07-02T09:30:16Z · labels: [jimledger, tests] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
+- `20260702-add-ledger-only-commit-blueprint-belt-test` — Add ledger-only commit-blueprint belt test · status: closed · num: 31 · priority: low · created: 2026-07-02T09:30:16Z · labels: [jimledger, tests] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` — Add violation-vs-fold fork and criticality-graded autonomy to blueprint update · status: closed · num: 28 · priority: medium · created: 2026-07-02T07:16:19Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260702-cache-per-issue-analysis` — Cache per-issue analysis · status: open · num: 33 · priority: low · created: 2026-07-02T10:54:12Z · labels: [issues-system, insights, performance] · origin: conversation
 - `20260702-instrument-pipeline-token-usage-metrics` — Instrument the pipeline with token-usage metrics · status: open · num: 32 · priority: medium · created: 2026-07-02T10:26:11Z · labels: [jimledger, metrics, profiling] · origin: conversation
