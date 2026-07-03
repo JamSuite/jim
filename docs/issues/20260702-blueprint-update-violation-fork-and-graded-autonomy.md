@@ -2,7 +2,7 @@
 id: 20260702-blueprint-update-violation-fork-and-graded-autonomy
 num: 28
 title: "Add violation-vs-fold fork and criticality-graded autonomy to blueprint update"
-status: open
+status: closed
 priority: medium
 labels: [000-blueprint, fold-back]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-02T07:16:19Z
-updated: 2026-07-02T07:18:55Z
+updated: 2026-07-03T05:50:57Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
@@ -50,3 +50,11 @@ Together these make `auto_blueprint` safe enough to actually enable — which
 the blueprint's "stays current" promise depends on.
 
 See also [[20260630-wire-the-000-blueprint-fold-back-loop-into-review]].
+
+## Resolution
+
+Shipped as spec `jim/031` (Blueprint update guard), whose `origin` is this
+issue. Both halves landed: the violation-vs-fold fork (spec ACs #1–3) and
+criticality-graded `auto_blueprint` autonomy (spec AC #4). The build reviewed
+`aligned` with all 8 ACs met over commits `09304e0..e694517`. Residual
+hardening from that review was spun out separately (#30, #31).
