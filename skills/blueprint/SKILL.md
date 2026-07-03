@@ -123,6 +123,20 @@ ELSE
   Present the proposed blueprint (or the diff, for an update) and ask: "Does this reflect the group's current state? Anything to refine?" Wait for confirmation before writing.
 ENDIF
 
+On write — a fresh generate or a differential regeneration — stamp the
+blueprint's `last_full_generate` frontmatter field to the current timestamp:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh now
+```
+
+Write that exact value. It is the single-writer regen-cadence baseline — **only
+generate mode stamps it**, and its value comes **solely from `jimfile.sh now`,
+never** from scanned code, a diff, a commit, or the ledger (Step 2's trust
+boundary). Update mode's absent-blueprint fallthrough defers this stamp to
+*after* its `blueprint finished` event (see U2), so the create is not later
+counted as an update.
+
 Do not proceed to another phase.
 
 ## Update mode (`--from-review <spec-dir>` / `--since <ref>`)
@@ -163,20 +177,35 @@ trusted. If the diff is empty or the range is unresolvable, say so and stop.
 If no blueprint exists at the resolved path there is nothing to diff against —
 fall through to the full generate flow (Steps 2–3) and write at Step 5. There is
 no prior invariant table, so U3's violation fork does not apply and a fresh
-generate has nothing to downgrade (Step 4a). **On write**, close the stage as U4
-does — record `blueprint finished` with zero counters and commit — so a
-completed first-time generate reads as a finished run, not an interruption
-(U1 recorded `started` before this check, so the pair must close here):
+generate has nothing to downgrade (Step 4a). **On write**, close the stage — a
+completed first-time generate must read as a finished run, not an interruption
+(U1 recorded `started` before this check, so the pair must close here). Record
+`blueprint finished` with zero counters **first**:
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <blueprint-dir> blueprint finished violations=0 folded=0 fixed=0
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-blueprint <blueprint-dir>
+```
+
+Then stamp `last_full_generate` in the just-written blueprint's frontmatter to a
+**fresh** `jimfile.sh now`, taken *after* the `blueprint finished` event above —
+so the watermark is at/after the create's own finished timestamp and the
+strictly-after count excludes it (a freshly created blueprint reads 0):
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh now
+```
+
+Then commit as a **create** (so the first-time blueprint is not mislabeled an
+update — spec.md + ledger.md, carrying the stamped watermark):
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-blueprint <blueprint-dir> create
 ```
 
 If the developer declines the generate at Step 5, nothing is written — do not
-record `finished` or commit (the started-only stage then surfaces as an
-interruption, correctly). The targeted-diff behavior below (U3–U4) applies only
-when a blueprint already exists.
+record `finished`, stamp the watermark, or commit (the started-only stage then
+surfaces as an interruption, correctly). The targeted-diff behavior below (U3–U4)
+applies only when a blueprint already exists.
 
 ### U3. Violation fork, then the targeted section-diff
 
@@ -304,4 +333,5 @@ Before presenting, confirm:
 - [ ] Each divergence issue from a fix resolution was confirmed by the developer per issue — never filed unattended — and its body recorded the chosen resolution explicitly.
 - [ ] Unattended writes itemized each touched Invariants / Provides row with its classification; `critical`/`high` or Provides downgrades prompted instead of auto-writing.
 - [ ] The `blueprint finished` event carried `violations=` / `folded=` / `fixed=`; a fix-only run still recorded `finished` and committed. An unanswered fork recorded no `finished` and committed nothing.
-- [ ] Update mode, absent-blueprint fallthrough: a completed first-time generate recorded `blueprint finished` and committed (pairing U1's `started`); only a declined generate was left started-only.
+- [ ] Update mode, absent-blueprint fallthrough: a completed first-time generate recorded `blueprint finished`, **then** stamped `last_full_generate` (fresh `now`, after the finished event), **then** committed as a **create** (pairing U1's `started`); only a declined generate was left started-only, with no watermark stamped.
+- [ ] Generate mode stamped `last_full_generate` on write, solely from `jimfile.sh now` — never a value derived from scanned code, a diff, a commit, or the ledger.
