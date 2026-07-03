@@ -1003,6 +1003,59 @@ case_jimfile_prefix_from_custom_date_template_unmigratable() {
   assert_match "reason" 'un-migratable' "$ERR"
 }
 
+# AC: `blueprint` kind-vs-key disambiguation (spec 033 Task 2, plan DD 2).
+# `get blueprint` is existence-gated: NOT_FOUND until the map file exists,
+# then the configured path. Contract-lock case — behavior exists post-T1.
+case_jimfile_get_blueprint_existence_gated() {
+  local dir
+  dir=$(empty_dir jf_map_get)
+  local out
+  out=$(cd "$dir" && bash "$SCRIPT_JIMFILE" get blueprint)
+  assert_eq "absent map NOT_FOUND" "NOT_FOUND" "$out"
+  printf '# map\n' > "$dir/BLUEPRINT.md"
+  out=$(cd "$dir" && bash "$SCRIPT_JIMFILE" get blueprint)
+  assert_eq "present map resolves" "BLUEPRINT.md" "$out"
+}
+
+# AC: arity disambiguates the blueprint key from the blueprint kind (spec 033
+# Task 2, plan DD 2 — build-time correction): single-arg `path blueprint`
+# resolves the configured map path like every other strategic key; the
+# two-arg form still resolves the group-tier 000-blueprint slot.
+case_jimfile_path_blueprint_arity_disambiguation() {
+  run_jimfile path blueprint
+  assert_exit "single-arg rc"   0              "$RC"
+  assert_eq   "single-arg map"  "BLUEPRINT.md" "$OUT"
+  run_jimfile path blueprint storage
+  assert_exit "two-arg rc"      0              "$RC"
+  assert_eq   "two-arg group slot" "docs/specs/storage/000-blueprint/spec.md" "$OUT"
+}
+
+# AC: valid-relpath accepts safe repo-relative territory paths (spec 033
+# Task 2, AC #8, security Finding 9). rc-only, mirrors valid-id's shape.
+case_jimfile_valid_relpath_accepts_relative() {
+  run_jimfile valid-relpath "src/billing/"
+  assert_exit "dir with slash"  0 "$RC"
+  run_jimfile valid-relpath "api/billing"
+  assert_exit "plain relative"  0 "$RC"
+  run_jimfile valid-relpath "a..b/file.txt"
+  assert_exit "dotdot-in-name ok (not a segment)" 0 "$RC"
+}
+
+# AC: valid-relpath rejects absolute, ..-segment, and empty paths (spec 033
+# Task 2, AC #8, security Finding 9).
+case_jimfile_valid_relpath_rejects_unsafe() {
+  run_jimfile valid-relpath "/etc/passwd"
+  assert_exit "absolute"        1 "$RC"
+  run_jimfile valid-relpath "../up"
+  assert_exit "leading dotdot"  1 "$RC"
+  run_jimfile valid-relpath "a/../b"
+  assert_exit "inner dotdot"    1 "$RC"
+  run_jimfile valid-relpath ".."
+  assert_exit "bare dotdot"     1 "$RC"
+  run_jimfile valid-relpath ""
+  assert_exit "empty"           1 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -40,7 +40,16 @@
 #   bash jimfile.sh glob debug                        one path per line
 #   bash jimfile.sh glob brainstorms                  one path per line
 #   bash jimfile.sh kinds                             valid kinds, no I/O
+#   bash jimfile.sh valid-relpath <path>              exit 0 iff safe repo-relative
 #   bash jimfile.sh -c <path> <subcmd>                use <path> as jimconf.toml
+#
+# KIND-VS-KEY: `blueprint` (spec 033)
+#   `blueprint` is both a config KEY (the project-tier map, default
+#   BLUEPRINT.md at the project root) and a per-group KIND (the reserved
+#   000-blueprint slot). Verb + arity disambiguate:
+#     get blueprint            → map path, existence-gated (NOT_FOUND if absent)
+#     path blueprint           → map path from config, regardless of existence
+#     path blueprint <group>   → {specs}/<group>/000-blueprint/spec.md (kind)
 #
 # CONVENTION
 #   Production skills do NOT pass -c. The flag exists for tests and ad-hoc
@@ -195,6 +204,31 @@ is_valid_id() {
 # the single security boundary without copying is_valid_id a fourth time.
 cmd_valid_id() {
   is_valid_id "${1:-}"
+}
+
+# cmd_valid_relpath <path> — exit 0 iff <path> is a safe repo-relative path:
+# non-empty, not absolute, no '..' path segment. The deterministic shape gate
+# for territory declarations recorded in the project map (spec 033 AC #8,
+# security Finding 9). Shape-only: existence is deliberately not checked — a
+# declared territory may predate its code. Segment-precise: 'a..b/x' passes
+# ('..' inside a name), 'a/../b' is rejected ('..' as a segment).
+cmd_valid_relpath() {
+  local p="${1:-}"
+  if [[ -z "$p" ]]; then
+    echo "error: relpath rejected — empty" >&2
+    return 1
+  fi
+  if [[ "$p" == /* ]]; then
+    echo "error: relpath rejected — absolute: '$p'" >&2
+    return 1
+  fi
+  case "/$p/" in
+    */../*)
+      echo "error: relpath rejected — contains '..' segment: '$p'" >&2
+      return 1
+      ;;
+  esac
+  return 0
 }
 
 cmd_exists() {
@@ -755,6 +789,8 @@ usage:
   jimfile.sh glob brainstorms                   one path per line
   jimfile.sh kinds                              valid kinds, no I/O
   jimfile.sh valid-id <id>                      exit 0 if id passes is_valid_id
+  jimfile.sh valid-relpath <path>               exit 0 iff safe repo-relative
+                                                (no abs, no '..' segment)
   jimfile.sh prefix-from <created> <num>        re-derive active prefix (spec 023)
   jimfile.sh -c <path> <subcmd>                 forward -c to jimconf.sh
 USAGE
@@ -788,6 +824,7 @@ main() {
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
     valid-id) cmd_valid_id "$@" ;;
+    valid-relpath) cmd_valid_relpath "$@" ;;
     prefix-from) cmd_prefix_from "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
