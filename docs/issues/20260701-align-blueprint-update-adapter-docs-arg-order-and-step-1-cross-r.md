@@ -2,7 +2,7 @@
 id: 20260701-align-blueprint-update-adapter-docs-arg-order-and-step-1-cross-r
 num: 25
 title: "Align blueprint-update adapter docs (arg-order and Step-1 cross-ref)"
-status: open
+status: closed
 priority: low
 labels: [blueprint, review, docs]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-01T21:48:41Z
-updated: 2026-07-01T21:48:41Z
+updated: 2026-07-03T06:28:03Z
 origin: docs/specs/jim/030-blueprint-update/review.md
 ---
 
@@ -40,3 +40,19 @@ but the parenthetical is imprecise. Adjust it, or name `group` in Step 1.
 ## Relates to
 
 spec 030 DD1; `skills/review/SKILL.md` Step 10; `skills/blueprint/SKILL.md` lines 13, 33.
+
+## Resolution
+
+Both cosmetic doc inconsistencies aligned (no spec — prose only):
+
+- **Arg-order (Finding 2):** picked **flag-first** as canonical and aligned the
+  caller to it. `/jim:blueprint`'s user-facing `argument-hint`, routing table,
+  and parse prose were already flag-first (`--from-review <spec-dir> <group>`)
+  and self-consistent; the divergence was only in `/jim:review` Step 10's
+  invocation and offer text, both now flag-first. Rationale: the callee owns
+  its published grammar, so the caller matches it rather than editing the
+  contract. Parsing is position-independent, so runtime is unchanged. Swept
+  both skills — no group-first references remain.
+- **Step-1 cross-ref (Finding 3):** `/jim:review` Step 1 now names `group`
+  alongside the ACs and `type` in the `spec.md` read, so Step 10's "the
+  `group:` field (loaded in Step 1)" is accurate.

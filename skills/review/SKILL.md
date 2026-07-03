@@ -32,7 +32,7 @@ Use `$ARGUMENTS` to determine the spec directory and (optionally) the depth:
 
 ### 1. Load context
 
-Read from the spec directory: `spec.md` (note the acceptance criteria and `type`), `plan.md` (the task breakdown), `research.md` if present, and `ARCHITECTURE.md` from the project root (conventions to check against).
+Read from the spec directory: `spec.md` (note the acceptance criteria, `type`, and `group`), `plan.md` (the task breakdown), `research.md` if present, and `ARCHITECTURE.md` from the project root (conventions to check against).
 
 - If `spec.md` is missing, stop: "No spec.md found in [path]."
 - If `plan.md` is missing, note it and review against the spec and architecture only.
@@ -189,9 +189,9 @@ SET require_blueprint = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf
 SET auto_blueprint    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_blueprint`
 
 IF require_blueprint == "true" OR auto_blueprint == "true" THEN
-  Invoke `Skill(jim:blueprint)` with `"<group> --from-review <spec-dir>"` as the args parameter — it runs once. It reads this review's build diff + shape-validated verdict from the ledger, proposes a targeted section-diff to the group's blueprint, and on write self-commits via `commit-blueprint`. `auto_blueprint` writes without a prompt; `require_blueprint` makes the update a required, blocking step.
+  Invoke `Skill(jim:blueprint)` with `"--from-review <spec-dir> <group>"` as the args parameter — it runs once. It reads this review's build diff + shape-validated verdict from the ledger, proposes a targeted section-diff to the group's blueprint, and on write self-commits via `commit-blueprint`. `auto_blueprint` writes without a prompt; `require_blueprint` makes the update a required, blocking step.
 ELSE
-  Offer conversationally: "Update the group blueprint from this review now? (`/jim:blueprint <group> --from-review <spec-dir>`)" — the developer chooses. Do not auto-run.
+  Offer conversationally: "Update the group blueprint from this review now? (`/jim:blueprint --from-review <spec-dir> <group>`)" — the developer chooses. Do not auto-run.
 ENDIF
 
 Two axes, do not conflate: the update's *proposed changes* are advisory — the developer approves the diff (or `auto_blueprint` writes it), never a veto. What `require_blueprint` gates is that the update *runs to completion*. Since `/jim:review` is terminal, the held completion is this review's own stop: under `require_blueprint`, do not present the review as complete (Step 11) until the update has run to completion — a refreshed blueprint written + committed, `/jim:blueprint` having fallen through to a fresh generate for a group with no blueprint yet, or an **answered fork**: an update whose violation fork was resolved (either resolution — including a fix-only run that withheld every edit and committed only its ledger record) has run to completion. An interrupted, errored, or declined update — including an unanswered fork — holds that gate: re-run the update or report the held state.
