@@ -593,7 +593,8 @@ case_jimledger_diff_range_head_defaults_to_head() {
 # rc 1 with no git diff run (spec 030 Task 4, security Finding 5).
 case_jimledger_diff_range_rejects_bad_refs() {
   local sd root badref out rc; sd="$(git_fixture t30drb)"; root="${sd%/spec}"
-  for badref in '--output=x' 'a;b' 'a b' 'HEAD~3' 'a^b' 'a:b' '..' '/leading'; do
+  for badref in '--output=x' 'a;b' 'a b' 'HEAD~3' 'a^b' 'a:b' '..' '/leading' \
+                'trailing/' 'a*b' 'a?b' 'a[b]c' $'a\nb'; do
     out="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range "$badref" HEAD 2>/dev/null)"; rc=$?
     assert_eq "rejects '$badref' rc1"        "1" "$rc"
     assert_eq "no diff output for '$badref'" ""  "$out"
@@ -608,6 +609,18 @@ case_jimledger_diff_range_option_injection_no_write() {
   (cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range "--output=$marker" HEAD >/dev/null 2>&1); rc=$?
   assert_eq "rejected rc1"    "1" "$rc"
   assert_eq "no file written" "0" "$([[ -e "$marker" ]] && echo 1 || echo 0)"
+}
+
+# AC: a command-substitution-shaped ref is foreclosed by valid_git_ref — the sole
+# boundary for the ad-hoc ref path — and never reaches a shell that would run it
+# (spec 030 security Finding 5; the strongest belt, mirroring the no-write case).
+case_jimledger_diff_range_command_sub_no_exec() {
+  local sd root marker rc badref; sd="$(git_fixture t30drc)"; root="${sd%/spec}"
+  marker="$TMP_BASE/dr-cmdsub"
+  badref='x`touch '"$marker"'`'
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" diff-range "$badref" HEAD >/dev/null 2>&1); rc=$?
+  assert_eq "rejected rc1"        "1" "$rc"
+  assert_eq "no command executed" "0" "$([[ -e "$marker" ]] && echo 1 || echo 0)"
 }
 
 # AC: diff-range with no base arg exits 2 (usage; spec 030 Task 4).
