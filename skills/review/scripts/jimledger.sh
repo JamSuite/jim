@@ -16,6 +16,7 @@
 #   diff-range <base> [head]                   emit the diff over a validated CWD-repo range
 #   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
 #   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md (path-scoped)
+#   updates-since <blueprint-dir> <iso>       count blueprint finished events after <iso>
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
 #
@@ -45,6 +46,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   diff-range <base> [head]                    emit the diff over a validated CWD-repo range
   commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md
+  updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
 USAGE
 }
 
@@ -359,6 +361,27 @@ cmd_metrics() {
   return 0
 }
 
+# cmd_updates_since <blueprint-dir> <watermark-iso> — print the count of
+#   `blueprint finished` events strictly after <watermark-iso> and at/before now,
+#   for the regen-cadence signal (spec 032). The watermark is validated to the
+#   fixed iso format (rc 2 on malformed/empty) so the count can safely gate an
+#   unattended regen; the `<= now` upper bound stops a planted future-dated ledger
+#   event from inflating the count (sec 032 Finding 1). Untrusted ledger — parsed
+#   only via awk -v (no source/eval), mirroring phase_event_metrics.
+cmd_updates_since() {
+  local dir="${1:-}" wm="${2:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger updates-since: need <blueprint-dir> <watermark-iso>" >&2; return 2; fi
+  local ledger="$dir/ledger.md"
+  if [[ ! -f "$ledger" ]]; then echo "jimledger: no ledger at $ledger" >&2; return 2; fi
+  if [[ ! "$wm" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+    echo "jimledger: invalid watermark: $wm" >&2; return 2
+  fi
+  local now; now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  awk -F'\t' -v w="$wm" -v now="$now" '
+    $3=="blueprint" && $4=="finished" && $2>w && $2<=now { n++ }
+    END { print n+0 }' "$ledger"
+}
+
 main() {
   local sub="${1:-}"
   case "$sub" in
@@ -371,6 +394,7 @@ main() {
     event)   shift; cmd_event "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;
+    updates-since) shift; cmd_updates_since "$@" ;;
     *) usage; return 2 ;;
   esac
 }

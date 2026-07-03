@@ -663,6 +663,65 @@ case_jimledger_diff_range_missing_base_exits_2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── spec 032: updates-since (regen-cadence count) ───────────────────────────
+
+# AC: updates-since counts blueprint finished events strictly after the
+# watermark, ignoring started/other-phase lines (spec 032 AC #1, DD2).
+case_jimledger_updates_since_counts_after_watermark() {
+  local sd; sd="$(empty_dir t32us/spec)"
+  {
+    printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\t\n'
+    printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\t\n'
+    printf '300\t2026-03-01T00:00:00Z\tblueprint\tfinished\tviolations=0\n'
+    printf '400\t2026-02-15T00:00:00Z\tblueprint\tstarted\t\n'
+    printf '500\t2026-02-20T00:00:00Z\tplan\tfinished\t\n'
+  } > "$sd/ledger.md"
+  run_jimledger updates-since "$sd" 2026-01-01T00:00:00Z
+  assert_exit "rc" 0 "$RC"
+  assert_eq "count strictly after watermark" "2" "$OUT"
+}
+
+# AC: the count is 0 when no finished event postdates the watermark — a freshly
+# generated blueprint reads 0 (spec 032 AC #2).
+case_jimledger_updates_since_zero_when_none_after() {
+  local sd; sd="$(empty_dir t32usz/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\t\n' > "$sd/ledger.md"
+  run_jimledger updates-since "$sd" 2026-06-01T00:00:00Z
+  assert_exit "rc" 0 "$RC"
+  assert_eq "zero after a later watermark" "0" "$OUT"
+}
+
+# AC: future-dated events (iso > now) are excluded, so a planted future event
+# cannot inflate the count and force repeat regens (spec 032 sec F1(b), DD7).
+case_jimledger_updates_since_excludes_future() {
+  local sd; sd="$(empty_dir t32usf/spec)"
+  {
+    printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\t\n'
+    printf '999\t2099-01-01T00:00:00Z\tblueprint\tfinished\t\n'
+  } > "$sd/ledger.md"
+  run_jimledger updates-since "$sd" 2026-01-01T00:00:00Z
+  assert_exit "rc" 0 "$RC"
+  assert_eq "future event excluded" "1" "$OUT"
+}
+
+# AC: a malformed or empty watermark returns rc 2, so the caller degrades to "no
+# baseline" instead of counting against garbage (spec 032 AC #8, DD3).
+case_jimledger_updates_since_malformed_watermark_rc2() {
+  local sd; sd="$(empty_dir t32usm/spec)"
+  printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\t\n' > "$sd/ledger.md"
+  run_jimledger updates-since "$sd" 'not-a-timestamp'
+  assert_exit "malformed rc" 2 "$RC"
+  run_jimledger updates-since "$sd" ''
+  assert_exit "empty rc" 2 "$RC"
+}
+
+# AC: a missing ledger returns rc 2 (spec 032 DD3; mirrors metrics/no-ledger).
+case_jimledger_updates_since_missing_ledger_rc2() {
+  local sd; sd="$(empty_dir t32usn/spec)"
+  run_jimledger updates-since "$sd" 2026-01-01T00:00:00Z
+  assert_exit "missing-ledger rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then

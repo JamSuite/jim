@@ -126,7 +126,7 @@ flowchart TD
 1. [x] **`commit-blueprint` create|update mode** in `skills/review/scripts/jimledger.sh` — add an optional 2nd arg; whitelist to `create`|`update`, default `update`; interpolate into the subject. Add belt cases in `tests/jimledger.sh` (create → `create` subject; absent/other → `update` subject) — Red first.
    **Verify:** `bash tests/jimledger.sh commit_blueprint 2>&1 | tail -1`
 
-2. [ ] **`updates-since` subcommand** in `jimledger.sh` per the Interface Contract — add `cmd_updates_since` + a `updates-since)` dispatch arm; validate watermark, bound to `<= now`. Add belt cases (count N; events at/before watermark excluded; future-dated excluded; malformed watermark → rc 2; missing ledger → rc 2) — Red first.
+2. [x] **`updates-since` subcommand** in `jimledger.sh` per the Interface Contract — add `cmd_updates_since` + a `updates-since)` dispatch arm; validate watermark, bound to `<= now`. Add belt cases (count N; events at/before watermark excluded; future-dated excluded; malformed watermark → rc 2; missing ledger → rc 2) — Red first.
    **Verify:** `bash tests/jimledger.sh updates_since 2>&1 | tail -1`
 
 3. [ ] **`blueprint_regen_threshold` config key** in `skills/conf/scripts/jimconf.sh` — add to `KEYS`, add `blueprint_regen_threshold) echo "0" ;;` to the default case, and add it to the bare-name condition at `jimconf.sh:116`. Add a `tests/jimconf.sh` case (default `"0"` + a `-c` override). Update `skills/conf/SKILL.md` only if it enumerates keys. Red first.
