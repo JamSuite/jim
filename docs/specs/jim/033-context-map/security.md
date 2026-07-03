@@ -1,7 +1,7 @@
 ---
 spec: docs/specs/jim/033-context-map/spec.md
-reviewed_phases: [spec]
-status: Needs Spec Review
+reviewed_phases: [spec, plan]
+status: Active
 date: "2026-07-03"
 ---
 
@@ -9,15 +9,21 @@ date: "2026-07-03"
 
 ## Summary
 
-**Findings:** 0 Critical · 3 Notable · 4 Advisory
+**Findings:** 0 Critical · 3 Notable · 6 Advisory
 
-Reviewed `spec.md` only (no `plan.md` exists yet) with the requirements-gap
-lens: freeform expert review plus the STRIDE completeness sweep. LINDDUN
-omitted — no PII, credentials, or session data in scope.
+Dual-lens review: `spec.md` (requirements-gap lens) and `plan.md`
+(design-flaw lens), freeform expert review plus the STRIDE completeness
+sweep. LINDDUN omitted — no PII, credentials, or session data in scope.
+All Critical/Notable findings are addressed — three applied to the spec,
+and the plan folds in the four plan-routed findings (traceability in
+plan.md → Design Decisions). Two new Advisories (8, 9) surfaced by the
+plan lens await routing.
 
 ## Coverage
 
-- spec.md — reviewed 2026-07-03 (requirements-gap lens)
+- spec.md — reviewed 2026-07-03 (requirements-gap lens); re-reviewed
+  2026-07-03 post-amendment under the dual lens
+- plan.md — reviewed 2026-07-03 (design-flaw lens)
 
 ## Data Classification
 
@@ -61,6 +67,8 @@ omitted — no PII, credentials, or session data in scope.
   ARCHITECTURE.md → Security Considerations rather than restating it.
 - **Route:** Plan
 - **Relates to:** AC #1, AC #10
+- **Status:** Addressed in plan — DD 4 (`commit-map` containment validation,
+  literal paths, `--` guard, mode whitelist) / Task 3. See also Finding 8.
 
 ### 3. Advisor must treat map content as data, never instruction
 
@@ -78,6 +86,8 @@ omitted — no PII, credentials, or session data in scope.
   descriptively only.
 - **Route:** Plan
 - **Relates to:** AC #11, AC #12, AC #13
+- **Status:** Addressed in plan — DD 6 (data-not-instruction clause;
+  Task 7's Verify greps for it).
 
 ### 4. Validate territory paths at capture time
 
@@ -116,6 +126,8 @@ omitted — no PII, credentials, or session data in scope.
   content before persistence").
 - **Route:** Plan
 - **Relates to:** AC #5
+- **Status:** Addressed in plan — Tasks 5–6 (scrub reminder text in
+  `map-methodology.md`, applied at both write gates).
 
 ### 7. Narrow the `allowed-tools` widening in `/jim:spec`
 
@@ -129,17 +141,60 @@ omitted — no PII, credentials, or session data in scope.
   allowed-tools-narrowing precedent. No broad git or bash grants.
 - **Route:** Plan
 - **Relates to:** AC #13
+- **Status:** Addressed in plan — DD 6 (single namespaced
+  `Skill(jim:blueprint)` token; nested calls covered by existing scoped
+  tokens).
+
+### 8. Extend `commit-map` containment validation to the `<specs-dir>` argument
+
+- **Severity:** Advisory
+- **Description:** Plan DD 4 validates `<map-path>`, but `commit-map`'s
+  second argument `<specs-dir>` (resolved from the `specs_path` config key)
+  also reaches `git add` via `<specs-dir>/ledger.md` — the same
+  config-derived-path class Finding 2 closed for the map path.
+- **Suggestion:** Apply the identical containment check (relative, no `..`
+  segment, resolves inside `git rev-parse --show-toplevel`) to both
+  arguments; add a reject test case per argument in `tests/jimledger.sh`.
+- **Route:** Plan
+- **Relates to:** plan DD 4, Task 3
+- **Status:** Addressed in plan — DD 4 / Task 3 (containment check applied
+  to both arguments).
+
+### 9. Prefer a deterministic shape check for territory paths
+
+- **Severity:** Advisory
+- **Description:** AC #8's capture-time territory validation is enforced at
+  the prompt layer (methodology rules the LLM applies). The check itself is
+  mechanical — exactly the class the Bash-vs-Prompt rule assigns to
+  scripts; a missed `..` at capture would sit in the map until #22
+  re-validates.
+- **Suggestion:** Run a deterministic validator at the capture step (a
+  small `jimfile.sh` helper or an inline pattern-reject in the skill's
+  fenced block) before recording territory — or explicitly document
+  acceptance of prompt-level validation with #22 as the backstop.
+- **Route:** Plan
+- **Relates to:** plan DD 7, Tasks 5–6; spec AC #8
+- **Status:** Addressed in plan — DD 7 / Task 2 (`jimfile.sh valid-relpath`
+  validator) + Task 5 (methodology invokes it per declared path).
 
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
 | Spoofing | N/A | No auth/identity boundary — all input originates in the developer's session |
-| Tampering | Yes | Findings 2, 5 — config-redirected commit target; out-of-band edits of the authority artifact |
+| Tampering | Yes | Findings 2, 5, 8, 9 — config-redirected commit targets; out-of-band edits of the authority artifact; unvalidated territory paths at rest |
 | Repudiation | No | No issues found — ledger stage events (AC #10) + git history audit every map change |
 | Information Disclosure | Yes | Finding 6 — domain knowledge entering a possibly-public committed doc |
 | Denial of Service | N/A | Human-gated, bounded flows; one small file read per `/jim:spec` |
 | Elevation of Privilege | Yes | Findings 1, 7 — unattended-autonomy gap; transitive tool-surface widening |
+
+## Artifact Misalignment
+
+Dual-lens comparison ran — no misalignments found. AC #18's grading matches
+plan DD 9 exactly; AC #1's single-surface rule survives the mint-new path
+(the write still flows through the blueprint surface, invoked inline); AC
+#10's stage-event convention holds with the documented specs-root ledger
+home (plan DD 3).
 
 ## Routing Recommendations
 
@@ -156,10 +211,12 @@ omitted — no PII, credentials, or session data in scope.
   **applied 2026-07-03** (AC #1 extended in place).
 
 ### Plan amendments
-- Finding 2: path validation + scoped-commit discipline for the generalized commit arm.
-- Finding 3: data-not-instruction clause in the advisor step.
-- Finding 6: scrub reminder at the map approval gate.
-- Finding 7: narrow `allowed-tools` tokens for the inline invocation.
+- Finding 2: path validation + scoped-commit discipline — **addressed**, plan DD 4 / Task 3.
+- Finding 3: data-not-instruction clause in the advisor step — **addressed**, plan DD 6 / Task 7.
+- Finding 6: scrub reminder at the map approval gate — **addressed**, plan Tasks 5–6.
+- Finding 7: narrow `allowed-tools` tokens — **addressed**, plan DD 6 / Task 7.
+- Finding 8 (new, this run): extend `commit-map` containment to `<specs-dir>` — **addressed**, plan DD 4 / Task 3 (both arguments validated).
+- Finding 9 (new, this run): deterministic territory-path shape check — **addressed**, plan DD 7 / Tasks 2, 5 (`jimfile.sh valid-relpath`).
 
 ### Candidate issues
 No findings routed to Issue this run.

@@ -70,9 +70,11 @@ placement — recorded in issue #21).
   with a maintained-by banner ("generated and maintained by
   `/jim:blueprint` — edit via the skill"), mirroring `ARCHITECTURE.md`'s
   (security.md Finding 5).
-- [ ] 2. The map records, for every group: name, purpose, boundary rationale,
-  relations to other groups, and — when the territory mode calls for it —
-  the group's declared code territory (see mockup).
+- [ ] 2. The map records, for every group: name, purpose, **role**
+  (`domain` | `platform` | `layer`), boundary rationale, relations to other
+  groups, and — when the territory mode calls for it — the group's declared
+  code territory (see mockup). Role is a declared design decision — it
+  lives in the map, never in config.
 - [ ] 3. `BLUEPRINT.md` is the sole authority for the partition: a new group
   can come into being during any jim flow only through the map surface,
   never as an ad-hoc side effect of spec filing.
@@ -89,12 +91,15 @@ placement — recorded in issue #21).
   domain knowledge the documents don't carry. The map is written only after
   explicit developer approval — never silently.
 - [ ] 6. The proposal applies the vertical-first doctrine: groups are
-  proposed as domain-vertical bounded contexts; a horizontal / platform /
-  shared-kernel group is proposed only with an explicit justification of its
-  shared surface.
+  proposed as domain-vertical bounded contexts (role `domain`); a
+  horizontal / platform / shared-kernel group (role `platform`) is proposed
+  only with an explicit justification of its shared surface. Every proposed
+  group carries an assigned role.
 - [ ] 7. A `group_axis` config knob (default `vertical`) provides the layered
   escape hatch; under `layered`, doctrine guidance and straddle messaging
-  recalibrate (straddling is expected, not flagged as a partition smell).
+  recalibrate (straddling is expected, not flagged as a partition smell)
+  and groups carry role `layer`. The knob steers proposal doctrine only —
+  what each group *is* lives in its map `role`.
 - [ ] 8. A territory-mode config knob selects how group↔code binding is
   captured — `directory` (group owns a subtree), `declared-paths` (map lists
   the group's code locations), or `none` (no code binding). Territory is
@@ -113,8 +118,10 @@ placement — recorded in issue #21).
 
 - [ ] 11. When `BLUEPRINT.md` exists and holds ≥2 groups, `/jim:spec`'s
   group-identification step consumes the map and recommends join-existing or
-  mint-new, with stated reasoning grounded in the target group's purpose and
-  boundary rationale.
+  mint-new, with stated reasoning grounded in the target group's purpose,
+  role, and boundary rationale. Straddle reasoning is role-aware: spanning
+  two `domain` groups is flagged as a partition smell, while touching a
+  `domain` plus the `platform` group is treated as normal.
 - [ ] 12. When the developer's choice conflicts with the advisor's analysis,
   the advisor pushes back with reasoning and engages the discussion; the
   developer retains final authority — the advisor never blocks filing.
@@ -173,6 +180,7 @@ placement — recorded in issue #21).
 ### billing
 
 - **Purpose:** Charges, invoices, and payment lifecycle.
+- **Role:** domain
 - **Boundary rationale:** Distinct domain language (invoice, charge,
   settlement); changes driven by payment-provider churn, isolated here.
 - **Relations:** requires `accounts` (customer identity).
