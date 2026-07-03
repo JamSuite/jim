@@ -2,7 +2,7 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
-updated: "2026-07-02"
+updated: "2026-07-03"
 ---
 
 # jim — blueprint
@@ -16,7 +16,7 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `jim` group **is** the jim plugin: a Claude Code plugin that adds an
 agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md; specs
-001–031) is to make AI-assisted development follow the developer's engineering
+001–032) is to make AI-assisted development follow the developer's engineering
 discipline instead of bypassing it — grounding non-trivial work in a
 phase-gated `spec → research → plan → (security) → build → review` lifecycle,
 backed by specialized agent personas, living strategic documents, and a
@@ -46,7 +46,10 @@ executes the data it reads.
   each produces a durable artifact and halts for human approval — no phase
   auto-advances, nothing auto-ships; blueprint update-mode folds are guarded —
   a violated invariant is never silently rewritten, and `critical`/`high`
-  downgrades always prompt even under `auto_blueprint`.
+  downgrades always prompt even under `auto_blueprint`; update mode surfaces a
+  regen-cadence signal (targeted updates since the last full generate) and can
+  opt into a `blueprint_regen_threshold` that triggers a full regeneration when
+  reached.
 - `@jim:{role}` **agent personas** — `pm`, `architect`, `researcher`, `coder`,
   `security`, `reviewer`, `investigator`, `issue-analyst`, `meta`. Guarantee:
   each is a bounded role that stops after its artifact; read-only roles
@@ -61,7 +64,7 @@ executes the data it reads.
   returns the `NOT_FOUND` sentinel for a missing path-typed file; never
   `source`s the config.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
-  `files`/`diff`/`diff-range`/`commit-review`/`commit-blueprint`. Guarantee: a
+  `files`/`diff`/`diff-range`/`commit-review`/`commit-blueprint`/`updates-since`. Guarantee: a
   trusted, fixed-key, shape-validated metrics channel for `/jim:review` (and the
   blueprint update) that never echoes commit/diff text; git writes are
   path-scoped.
@@ -109,7 +112,7 @@ Grounded in ARCHITECTURE.md and the repo tree.
   path); `jimledger.sh` (ledger); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–031`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–032`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root, and
   `docs/brainstorms/` + `docs/debug/`.
 - **Tests** (`tests/*.sh`, developer-only, not loaded by Claude Code) driven by
@@ -148,4 +151,5 @@ records the *rule*, its criticality, and how it would be verified.
 | `ARCHITECTURE.md` is generated/maintained only through `/jim:arch`, never hand-edited | medium | process convention; Last-updated header staleness |
 | Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are) | medium | directory convention |
 | A blueprint update never silently rewrites a violated invariant: violations fork explicitly (fix the code / fold the intent) before the section-diff, with evidence in delimited untrusted-content blocks; under `auto_blueprint`, weakening/removal of a `critical`/`high` invariant or any Provides entry prompts, and unattended writes itemize per-row classifications | critical | blueprint SKILL.md validation checklist; judge (issue #22 engine later) |
-| Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | ledger inspection; `tests/jimledger.sh` (belt case tracked as issue #31) |
+| Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | ledger inspection; `tests/jimledger.sh` `commit-blueprint` ledger-only belt case |
+| The blueprint regen-cadence count derives from a single-writer `last_full_generate` watermark (stamped only by generate mode, solely from `jimfile.sh now`); `updates-since` validates the watermark (rc 2 on malformed/absent) and bounds the count to `<= now`, and `blueprint_regen_threshold` treats a non-positive-integer as disabled — so a bad watermark or knob degrades to signal-only and never mis-fires the opt-in unattended regen | high | `tests/jimledger.sh` `updates-since` cases; blueprint SKILL.md validation checklist |
