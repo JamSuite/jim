@@ -207,6 +207,47 @@ record `finished`, stamp the watermark, or commit (the started-only stage then
 surfaces as an interruption, correctly). The targeted-diff behavior below (U3–U4)
 applies only when a blueprint already exists.
 
+### U2a. Regen-cadence: measure staleness, gate on the threshold
+
+A blueprint exists (U2 did not fall through). Before composing the targeted
+diff, measure how many targeted updates have accumulated since the last full
+generate. Read the blueprint's `last_full_generate` watermark and count with:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh updates-since <blueprint-dir> <last_full_generate>
+```
+
+- **rc 2** — no full-generate baseline is recorded (a pre-feature blueprint or a
+  malformed watermark). The count is **not trustworthy**: never trigger a regen
+  on it. Note "no full-generate baseline recorded" for the U4 summary and
+  continue to U3.
+- **rc 0, count N** — hold `N` for the U4 signal.
+
+Then read the opt-in regen threshold:
+
+SET blueprint_regen_threshold = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get blueprint_regen_threshold`
+
+Treat the threshold as **disabled** unless it is a **positive integer** — `0`,
+empty, negative, or non-numeric all mean signal-only (never fire). This
+fail-safe keeps a typo'd knob from mis-triggering an unattended regen.
+
+IF the threshold is a positive integer AND a trustworthy `N` was obtained AND N >= threshold THEN
+  **Regenerate instead of a targeted update.** A full whole-group regeneration
+  reconciles the drift the diff lens cannot see, so skip the targeted section-
+  diff and run the full generate flow (Steps 2–3 → Step 5). It re-scans the
+  group — including the change this update would have folded — and re-stamps the
+  watermark, resetting the count. Under `auto_blueprint` it writes unattended,
+  still graded by Step 4a (a `critical`/`high` invariant or Provides downgrade
+  prompts); otherwise present it and wait. Then close the stage exactly as the
+  U2 fallthrough does — record `blueprint finished`, stamp `last_full_generate`
+  from a fresh `now` **after** that event, then `commit-blueprint <blueprint-dir>
+  update` (an existing blueprint is updated, not created). Report "regen
+  threshold N reached — ran a full regeneration" and **stop**: do not run U3/U4.
+ELSE
+  Continue to U3 with the targeted update; `N` (when trustworthy and ≥ 1) is
+  reported at U4.
+ENDIF
+
 ### U3. Violation fork, then the targeted section-diff
 
 **U3a — violation fork (pre-diff).** Read the current blueprint. Before
@@ -303,7 +344,7 @@ emitting all three counters (zeros included):
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <blueprint-dir> blueprint finished violations=<n> folded=<n> fixed=<n>
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-blueprint <blueprint-dir>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-blueprint <blueprint-dir> update
 ```
 
 `commit-blueprint` commits `spec.md` + `ledger.md` in the blueprint dir
@@ -314,6 +355,14 @@ answered fork always reads as the update running to completion. If the
 developer declines the diff (or abandons the fork), do not write or commit
 and do not record `finished` (the started-only stage surfaces as an
 interruption) — stop. Do not proceed to another phase.
+
+**Regen-cadence signal.** Surface the staleness cue from U2a in the write
+summary: when a trustworthy count `N ≥ 1` was obtained, add `N targeted updates
+since last full generate.` (omit the line at 0). When U2a found no baseline
+(rc 2), note instead that no full-generate baseline is recorded — the next full
+generate establishes it. The signal is informational only; it never blocks the
+update's completion, and with the threshold disabled or unmet nothing is
+regenerated.
 
 ## Validation Checklist
 
@@ -335,3 +384,5 @@ Before presenting, confirm:
 - [ ] The `blueprint finished` event carried `violations=` / `folded=` / `fixed=`; a fix-only run still recorded `finished` and committed. An unanswered fork recorded no `finished` and committed nothing.
 - [ ] Update mode, absent-blueprint fallthrough: a completed first-time generate recorded `blueprint finished`, **then** stamped `last_full_generate` (fresh `now`, after the finished event), **then** committed as a **create** (pairing U1's `started`); only a declined generate was left started-only, with no watermark stamped.
 - [ ] Generate mode stamped `last_full_generate` on write, solely from `jimfile.sh now` — never a value derived from scanned code, a diff, a commit, or the ledger.
+- [ ] Update mode, regen-cadence (U2a): the count came from `updates-since` against `last_full_generate`; a trustworthy `N ≥ 1` was reported as "N targeted updates since last full generate" (suppressed at 0), and an rc-2 (no baseline / malformed watermark) was reported as "no baseline" and **never fired a regen**.
+- [ ] Update mode, regen threshold: treated as disabled unless a **positive integer**; when enabled and `N ≥ threshold`, ran a full regeneration instead (unattended under `auto_blueprint`, still Step-4a graded; else prompted), re-stamping the watermark — otherwise proceeded with the targeted update. A malformed/non-positive threshold never fired.
