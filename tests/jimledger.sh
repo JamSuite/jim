@@ -548,6 +548,39 @@ case_jimledger_commit_blueprint_ledger_only() {
   assert_eq    "tree clean after"      "0" "$(git -C "$root" status --porcelain | grep -c '.')"
 }
 
+# AC: commit-blueprint's create mode labels the commit as a create, so a
+# first-time blueprint (the U2 fallthrough) is no longer mislabeled an update
+# (spec 032 AC #6, DD5).
+case_jimledger_commit_blueprint_create_subject() {
+  local sd root; sd="$(git_fixture t32cbc)"; root="${sd%/spec}"
+  printf '# blueprint\n'                                    > "$sd/spec.md"
+  printf '1\t2026-01-01T00:00:00Z\tblueprint\tfinished\t\n' > "$sd/ledger.md"
+  run_jimledger commit-blueprint "$sd" create
+  assert_exit "rc" 0 "$RC"
+  assert_eq "create subject" "docs(blueprint): create 000-blueprint" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC: mode defaults to update (back-compat), and any non-create value maps to
+# update — the whitelist keeps the subject well-formed (spec 032 DD5, sec F2).
+case_jimledger_commit_blueprint_update_default_subject() {
+  local sd root; sd="$(git_fixture t32cbu)"; root="${sd%/spec}"
+  printf '# blueprint\n'                                    > "$sd/spec.md"
+  printf '1\t2026-01-01T00:00:00Z\tblueprint\tfinished\t\n' > "$sd/ledger.md"
+  run_jimledger commit-blueprint "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "update subject (default)" "docs(blueprint): update 000-blueprint" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC: an unrecognized mode maps to update, never injecting into the subject.
+case_jimledger_commit_blueprint_bad_mode_maps_update() {
+  local sd root; sd="$(git_fixture t32cbm)"; root="${sd%/spec}"
+  printf '# blueprint\n'                                    > "$sd/spec.md"
+  printf '1\t2026-01-01T00:00:00Z\tblueprint\tfinished\t\n' > "$sd/ledger.md"
+  run_jimledger commit-blueprint "$sd" 'x`touch /tmp/nope`'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "bad mode → update" "docs(blueprint): update 000-blueprint" "$(git -C "$root" log -1 --format=%s)"
+}
+
 # AC: commit-blueprint degrades gracefully outside a git repo (spec 030 Task 3).
 case_jimledger_commit_blueprint_non_repo() {
   local sd; sd="$(empty_dir t30cbn/spec)"

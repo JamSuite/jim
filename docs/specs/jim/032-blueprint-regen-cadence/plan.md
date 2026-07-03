@@ -123,7 +123,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **`commit-blueprint` create|update mode** in `skills/review/scripts/jimledger.sh` — add an optional 2nd arg; whitelist to `create`|`update`, default `update`; interpolate into the subject. Add belt cases in `tests/jimledger.sh` (create → `create` subject; absent/other → `update` subject) — Red first.
+1. [x] **`commit-blueprint` create|update mode** in `skills/review/scripts/jimledger.sh` — add an optional 2nd arg; whitelist to `create`|`update`, default `update`; interpolate into the subject. Add belt cases in `tests/jimledger.sh` (create → `create` subject; absent/other → `update` subject) — Red first.
    **Verify:** `bash tests/jimledger.sh commit_blueprint 2>&1 | tail -1`
 
 2. [ ] **`updates-since` subcommand** in `jimledger.sh` per the Interface Contract — add `cmd_updates_since` + a `updates-since)` dispatch arm; validate watermark, bound to `<= now`. Add belt cases (count N; events at/before watermark excluded; future-dated excluded; malformed watermark → rc 2; missing ledger → rc 2) — Red first.

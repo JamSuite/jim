@@ -15,7 +15,7 @@
 #   diff    <spec-dir>                         emit the diff (function-context) over base..head
 #   diff-range <base> [head]                   emit the diff over a validated CWD-repo range
 #   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
-#   commit-blueprint <blueprint-dir>           commit spec.md + ledger.md (path-scoped)
+#   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md (path-scoped)
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
 #
@@ -44,7 +44,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   diff    <spec-dir>                          emit the diff (function-context) over the build range
   diff-range <base> [head]                    emit the diff over a validated CWD-repo range
   commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
-  commit-blueprint <blueprint-dir>            commit spec.md + ledger.md (path-scoped)
+  commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md
 USAGE
 }
 
@@ -155,11 +155,15 @@ cmd_commit_review() {
 #   rather than riding commit-review. Any git failure returns non-zero so the
 #   caller degrades.
 cmd_commit_blueprint() {
-  local dir="${1:-}"
+  local dir="${1:-}" mode="${2:-update}"
   if [[ -z "$dir" ]]; then echo "jimledger commit-blueprint: need <blueprint-dir>" >&2; return 2; fi
   if [[ ! -d "$dir" ]]; then echo "jimledger: blueprint-dir not found: $dir" >&2; return 2; fi
+  # Whitelist the mode to create|update; anything else (or absent) maps to
+  # update so the commit subject stays well-formed and non-injectable (sec 032
+  # Finding 2). A first-time create (the U2 fallthrough) passes 'create'.
+  [[ "$mode" == "create" ]] || mode="update"
   git -C "$dir" add -- spec.md ledger.md || return 2
-  git -C "$dir" commit -q -m "docs(blueprint): update 000-blueprint" -- spec.md ledger.md || return 2
+  git -C "$dir" commit -q -m "docs(blueprint): $mode 000-blueprint" -- spec.md ledger.md || return 2
 }
 
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
