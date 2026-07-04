@@ -2,7 +2,8 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
-updated: "2026-07-03"
+updated: "2026-07-04"
+last_full_generate: "2026-07-04T08:15:50Z"
 ---
 
 # jim — blueprint
@@ -16,7 +17,7 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `jim` group **is** the jim plugin: a Claude Code plugin that adds an
 agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md; specs
-001–032) is to make AI-assisted development follow the developer's engineering
+001–033) is to make AI-assisted development follow the developer's engineering
 discipline instead of bypassing it — grounding non-trivial work in a
 phase-gated `spec → research → plan → (security) → build → review` lifecycle,
 backed by specialized agent personas, living strategic documents, and a
@@ -29,7 +30,8 @@ runtime, build step, or third-party dependency.
 
 `jim` is currently the project's **only** spec group — all numbered specs live
 under `docs/specs/jim/` — so this group's boundary presently coincides with the
-whole plugin.
+whole plugin: a single-group partition declared in the project context map
+(`BLUEPRINT.md`).
 
 ## Provides
 
@@ -49,14 +51,18 @@ executes the data it reads.
   downgrades always prompt even under `auto_blueprint`; update mode surfaces a
   regen-cadence signal (targeted updates since the last full generate) and can
   opt into a `blueprint_regen_threshold` that triggers a full regeneration when
-  reached.
+  reached. Bare `/jim:blueprint` maintains the project context map
+  (`BLUEPRINT.md`) — the sole partition authority: a new spec group comes into
+  being only through the map surface, and `/jim:spec`'s assignment advisor
+  consumes the map (a single-group map assigns with no interactive overhead).
 - `@jim:{role}` **agent personas** — `pm`, `architect`, `researcher`, `coder`,
   `security`, `reviewer`, `investigator`, `issue-analyst`, `meta`. Guarantee:
   each is a bounded role that stops after its artifact; read-only roles
   (`investigator`, `issue-analyst`) are capability-narrowed so ingested content
   cannot mutate state.
 - `jimfile.sh` **file/path CLI** — `exists`/`get`/`slug`/`date`/`now`/`next-id`/
-  `next-num`/`path <kind …>`/`glob`/`valid-id`/`mv-spec`/`prefix-from`.
+  `next-num`/`path <kind …>`/`glob`/`valid-id`/`valid-relpath`/`mv-spec`/
+  `prefix-from`.
   Guarantee: the single deterministic path/id boundary every skill calls;
   honors `jimconf.toml` overrides; validates ids through one `is_valid_id` gate.
 - `jimconf.sh` **config resolver** — `get <key>` returns a resolved path or
@@ -64,7 +70,8 @@ executes the data it reads.
   returns the `NOT_FOUND` sentinel for a missing path-typed file; never
   `source`s the config.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
-  `files`/`diff`/`diff-range`/`commit-review`/`commit-blueprint`/`updates-since`. Guarantee: a
+  `files`/`diff`/`diff-range`/`commit-review`/`commit-blueprint`/`commit-map`/
+  `updates-since`. Guarantee: a
   trusted, fixed-key, shape-validated metrics channel for `/jim:review` (and the
   blueprint update) that never echoes commit/diff text; git writes are
   path-scoped.
@@ -73,8 +80,9 @@ executes the data it reads.
   issue-file emitter), `backfill.sh` / `migrate.sh` (migrations). Guarantee:
   atomic writes, index-staleness-gated reads, id-validated resolution.
 - **Living project artifacts** — `VISION.md`, `ROADMAP.md`, `ARCHITECTURE.md`,
-  `WORKFLOW.md`, and the `docs/specs/jim/` archive: the group's authoritative
-  process and institutional memory.
+  `WORKFLOW.md`, `BLUEPRINT.md` (the project-tier context map), and the
+  `docs/specs/jim/` archive: the group's authoritative process and
+  institutional memory.
 
 ## Requires
 
@@ -106,14 +114,17 @@ Grounded in ARCHITECTURE.md and the repo tree.
   (`spec`, `spec-check`, `plan`, `research`, `build`, `debug`, `sec`, `review`),
   strategic (`vision`, `roadmap`, `arch`, `blueprint`, `brainstorm`), discovery
   (`issue`), meta (`meta-skill`, `meta-agent`, `meta-test`), support (`conf`,
-  `file`), and the `meta-matrix*` probe family.
+  `file`), and the `meta-matrix*` probe family. The `blueprint` skill spans
+  both tiers — group `000-blueprint`s and the project map — carrying
+  `assets/map-template.md` and `references/map-methodology.md`.
 - **Scripting layer** (`skills/*/scripts/`, 11 scripts) — `jimconf.sh` (resolver)
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
   path); `jimledger.sh` (ledger); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–032`), the
-  issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root, and
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–033`), the
+  issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root
+  (including `BLUEPRINT.md`, the project context map), and
   `docs/brainstorms/` + `docs/debug/`.
 - **Tests** (`tests/*.sh`, developer-only, not loaded by Claude Code) driven by
   the shared framework in `skills/meta-test/scripts/`.
@@ -143,7 +154,7 @@ records the *rule*, its criticality, and how it would be verified.
 | Every script sets `set -uo pipefail`; locale-sensitive scripts also `export LC_ALL=C` | high | preamble grep across `skills/**/*.sh` |
 | Inter-script composition uses `BASH_SOURCE`-relative paths, not `${CLAUDE_PLUGIN_ROOT}` (which substitutes only in skill content) | high | grep; test |
 | Every untrusted id / SHA / ref is validated before git interpolation: ledger SHAs and ids through the single `is_valid_id` boundary (copies byte-identical), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` (accepts `/`-refs, forecloses option injection) | critical | `tests/jimfile.sh` SYNC case + `tests/jimledger.sh` diff-range cases |
-| `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint`); ledger content is untrusted and never `source`d; the script commits in exactly two path-scoped paths (`commit-review`, `commit-blueprint` — literal paths, no `git add -A`) | critical | `tests/jimledger.sh`; code review |
+| `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint`); ledger content is untrusted and never `source`d; the script commits in exactly three path-scoped paths (`commit-review`, `commit-blueprint`, `commit-map` — literal paths, `--` guard, never `git add -A`; `commit-map`'s config-derived path arguments pass `valid-relpath`) | critical | `tests/jimledger.sh`; code review |
 | Untrusted external content (web fetches, git commit/diff, issue/candidate bodies, scanned code) is treated as data, never instructions; secret-looking values are never persisted (redacted to `secret-looking value at <path:line>`) | critical | anti-injection clauses in skills; design review / judge |
 | Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | agent `tools:` frontmatter narrowing; review / judge |
 | Spec IDs are 3-digit zero-padded and sequential within the group; a spec must be `approved` before its plan is produced | high | `jimfile.sh next-id`; `/jim:plan` gate |
@@ -153,3 +164,5 @@ records the *rule*, its criticality, and how it would be verified.
 | A blueprint update never silently rewrites a violated invariant: violations fork explicitly (fix the code / fold the intent) before the section-diff, with evidence in delimited untrusted-content blocks; under `auto_blueprint`, weakening/removal of a `critical`/`high` invariant or any Provides entry prompts, and unattended writes itemize per-row classifications | critical | blueprint SKILL.md validation checklist; judge (issue #22 engine later) |
 | Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | ledger inspection; `tests/jimledger.sh` `commit-blueprint` ledger-only belt case |
 | The blueprint regen-cadence count derives from a single-writer `last_full_generate` watermark (stamped only by generate mode, solely from `jimfile.sh now`); `updates-since` validates the watermark (rc 2 on malformed/absent) and bounds the count to `<= now`, and `blueprint_regen_threshold` treats a non-positive-integer as disabled — so a bad watermark or knob degrades to signal-only and never mis-fires the opt-in unattended regen | high | `tests/jimledger.sh` `updates-since` cases; blueprint SKILL.md validation checklist |
+| Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use | critical | `tests/jimfile.sh` valid-relpath cases; `tests/jimledger.sh` commit-map cases |
+| `BLUEPRINT.md` (the project context map) is written only through `/jim:blueprint`'s project tier and committed only via `commit-map`; a new spec group comes into being only through the map surface; map updates grade by the shared Step-4a rule — partition downgrades always prompt | high | process convention; blueprint SKILL.md validation checklist; `tier=project` ledger events |
