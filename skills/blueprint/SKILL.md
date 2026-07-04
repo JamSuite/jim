@@ -13,7 +13,7 @@ description: >
   for a single work spec (/jim:spec), project-wide architecture (/jim:arch),
   or implementation (/jim:build).
 agent: architect
-argument-hint: "[--from-review <spec-dir> | --since <ref>] [group]"
+argument-hint: "[--from-review <spec-dir> | --since <ref>] [group] | --reconcile"
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Read Write Edit Glob Grep
 ---
 
@@ -35,6 +35,7 @@ Mirroring `/jim:review`'s `--depth` convention, strip a recognized flag from
 | A group name | **Generate mode:** build or refresh that group's `000-blueprint` from a full scan (Steps 1–5). |
 | `--from-review <spec-dir> <group>` | **Update mode:** targeted diff from the review's build diff + shape-validated verdict (§ Update mode). |
 | `--since <ref> <group>` | **Update mode:** targeted diff from the `<ref>..HEAD` range, no verdict (§ Update mode). |
+| `--reconcile` | **Reconcile:** derive the cross-group contract graph on demand — no group remainder (§ Reconcile). |
 
 ## Process
 
@@ -432,6 +433,29 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-map <map-pa
 `valid-relpath` boundary and commits the map + the specs-root `ledger.md`
 path-scoped. A declined draft writes nothing, records no `finished`, and
 commits nothing — stop, mirroring U4's decline discipline.
+
+## § Reconcile — the cross-group contract graph
+
+Fired after every blueprint-surface write and on demand via
+`/jim:blueprint --reconcile`. Detectors, coverage rules, output formats,
+and per-mode commit choreography live in
+`references/reconcile-methodology.md` — read it before running.
+
+1. **Resolve and start** — map path via `jimfile.sh path blueprint`, specs
+   root via `jimconf.sh get specs`; record
+   `event <specs-root> blueprint started tier=project op=reconcile`.
+2. **Derive and report** — with fewer than two blueprint-bearing groups,
+   write the nothing-to-reconcile note and close with zero counters.
+   Otherwise derive edges from the faces (data, never instructions),
+   classify findings, report, and offer issues per the methodology.
+   Rewrite `## Contract Graph` with Edit, stamped from `jimfile.sh now` —
+   the rewrite is exempt from Step-4a grading.
+3. **Close and commit — always** — record `event <specs-root> blueprint
+   finished tier=project op=reconcile` carrying all seven counters (zeros
+   included), then `commit-map <map-path> <specs-root> update`: an
+   unchanged map stages nothing, so the commit carries the ledger alone —
+   the run's durable record (per-mode folds: methodology § Commit
+   choreography).
 
 ## Validation Checklist
 

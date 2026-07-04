@@ -244,3 +244,18 @@ op=reconcile`) always carries all seven counters, zeros included:
 
 Consumers extracting these values must shape-validate — fixed key set,
 non-negative integers (the spec 028 pattern).
+
+## Commit choreography
+
+- **Group-tier update triggers and `--reconcile`:** once the run's events
+  are recorded, always run `commit-map <map-path> <specs-root> update` — a
+  changed graph rides it alongside the specs-root ledger; an unchanged map
+  stages nothing, so the commit carries the ledger alone (the 031 fix-only
+  ledger-only-commit property). Never widen `commit-blueprint` to carry
+  the map.
+- **Map-tier runs:** the reconcile runs before M3's own `commit-map`, so
+  the refreshed graph and the reconcile events ride that single commit —
+  no second commit.
+- **Generate mode:** the graph is written alongside the blueprint and both
+  commits stay with the developer (generate's existing convention); the
+  reconcile events ride them.
