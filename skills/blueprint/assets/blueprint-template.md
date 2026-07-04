@@ -43,9 +43,27 @@ ARCHITECTURE.md, and code. Name real files and modules.}
 
 {The load-bearing constraints the group's code must uphold — behavioral,
 structural, and code-shape. Capture the *rule*, never per-instance
-implementation. Each carries a criticality and the intended way it would be
-verified.}
+implementation. Each carries a stable `Id`, a criticality, and a `Check` method
+drawn from the closed vocabulary `/jim:verify` consumes:
+`pattern` (a regex must / must-not match), `structure` (a path exists / is
+absent), `registry:<name>` (an operator-configured command), or `judge`
+(read-only LLM judgment — the always-available fallback). See
+`references/check-authoring.md` for method selection and worked examples.}
 
-| Invariant | Criticality | Verification method |
-| :--- | :--- | :--- |
-| {constraint the code must satisfy} | critical / high / medium / low | {e.g. lint / type / AST check, test, or judge} |
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| {kebab-slug} | {constraint the code must satisfy} | critical / high / medium / low | pattern / structure / registry:<name> / judge |
+
+{Inert parameters for `pattern` and `structure` checks live in the optional
+`verify-checks` fenced block below, keyed by `Id` — never inline in a table
+cell, where a regex `|` would collide with the column separator. Omit the block
+entirely when every invariant is `judge` or `registry:<name>`. `pattern` keys:
+`polarity=must|must-not`, `regex=<ERE>`, optional `scope=<relpath>` (default:
+the group's territory), optional `count=<n>`. `structure` keys: `exists=<relpath>`
+or `absent=<glob>`. A blueprint that records no structured check data at all is
+still verifiable — every such invariant falls back to the `judge` rung.}
+
+```verify-checks
+{id} polarity=must-not regex={ERE} scope={relpath}
+{id} exists={relpath}
+```
