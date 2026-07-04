@@ -441,7 +441,12 @@ The review is **depth-aware** (spec 027): it triages the build's diff and fans o
 2. **Update** — differential diff against the current map, graded by the shared Step-4a rule: additive changes may auto-write under `auto_blueprint`; partition downgrades always prompt per-item
 3. **Consumption** — `/jim:spec`'s assignment advisor reads the map on every spec; a new group can only be minted through this surface
 
-**Gate:** Human approval on every write (the `auto_blueprint` knob relaxes group-tier folds and additive map changes only). Both tiers self-commit path-scoped via `jimledger.sh` (`commit-blueprint` / `commit-map`) and record `blueprint` stage events on their ledgers.
+**Reconcile** (`/jim:blueprint --reconcile`, and fired by every blueprint write — spec 034):
+1. **Graph** — joins each group's `requires` face against the other groups' `provides` faces into the derived `## Contract Graph` section of `BLUEPRINT.md`; re-derived after every write through the blueprint surface (fix-only guard runs skip — no face changed), runnable on demand via `--reconcile`, and a one-line no-op note when fewer than two groups have blueprints
+2. **Findings** — declaration-level mismatches (faces reconcile, never "contracts verified") classified as leak / breaking / dead-surface / unresolved-require / undeclared-relation / stale-relation, each with its remedy; reported at detection time, offered as captured issues, and durably counted on the specs-root ledger (`op=reconcile`, all seven counters)
+3. **Blast radius** — a Provides weakening/removal names every dependent consumer group from the pre-write graph ("graph as of *Last reconciled*") in the Step-4a grading and violation-fork prompts — informational, never a veto
+
+**Gate:** Human approval on every write (the `auto_blueprint` knob relaxes group-tier folds and additive map changes only). Both tiers self-commit path-scoped via `jimledger.sh` (`commit-blueprint` / `commit-map`) and record `blueprint` stage events on their ledgers. The derived contract-graph rewrite is mechanical content — exempt from Step-4a grading, committed via `commit-map` only.
 
 ### `/jim:ship` *(not yet implemented)*
 
