@@ -2,7 +2,7 @@
 id: 20260630-add-the-cross-group-contract-graph-and-blast-radius
 num: 21
 title: "Add the cross-group contract graph and blast-radius"
-status: open
+status: closed
 priority: medium
 labels: [000-blueprint, cross-group, architecture]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-04T08:08:24Z
+updated: 2026-07-04T11:24:07Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 

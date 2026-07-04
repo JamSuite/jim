@@ -2,7 +2,7 @@
 title: "Cross-group contract graph and blast radius"
 spec: "docs/specs/jim/034-contract-graph/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Cross-group contract graph and blast radius — Plan
@@ -223,7 +223,7 @@ flowchart LR
 
 ## Task Breakdown
 
-1. [ ] Create `skills/blueprint/references/reconcile-methodology.md`: the six
+1. [x] Create `skills/blueprint/references/reconcile-methodology.md`: the six
    finding classes with remedies (incl. non-dotted entries → unresolved;
    territory `valid-relpath` re-validation), the declared-data principle with
    the existential/universal coverage rule, coverage reporting, the report
@@ -234,12 +234,12 @@ flowchart LR
    labels), the graph-section shape, and the Step-4a exemption rationale.
    **Verify:** `test -f skills/blueprint/references/reconcile-methodology.md && grep -q "declaration-level" skills/blueprint/references/reconcile-methodology.md && grep -q "untrusted-face-content" skills/blueprint/references/reconcile-methodology.md && grep -q "valid-relpath" skills/blueprint/references/reconcile-methodology.md`
 
-2. [ ] Update `skills/blueprint/assets/map-template.md`: add the
+2. [x] Update `skills/blueprint/assets/map-template.md`: add the
    `## Contract Graph` section per the Interface Contract (table, stamp line,
    nothing-to-reconcile note, do-not-edit banner).
    **Verify:** `grep -q "Contract Graph" skills/blueprint/assets/map-template.md && grep -q "Last reconciled" skills/blueprint/assets/map-template.md`
 
-3. [ ] Update `skills/blueprint/SKILL.md`: add the `--reconcile` routing-table
+3. [x] Update `skills/blueprint/SKILL.md`: add the `--reconcile` routing-table
    row, extend `argument-hint`, and add the `§ Reconcile` section (resolve
    paths, read methodology, short-circuit on < 2 blueprint-bearing groups,
    derive + detect per the reference, write graph via Edit, ledger pair +
@@ -247,24 +247,24 @@ flowchart LR
    when the graph is unchanged, per DD 4).
    **Verify:** `grep -q '\-\-reconcile' skills/blueprint/SKILL.md && grep -q "reconcile-methodology" skills/blueprint/SKILL.md && [ "$(wc -l < skills/blueprint/SKILL.md)" -le 500 ]`
 
-4. [ ] Update `skills/blueprint/SKILL.md`: wire the five trigger hooks
+4. [x] Update `skills/blueprint/SKILL.md`: wire the five trigger hooks
    (Step 5, U2, U2a regen, U4, M3 — fix-only runs skip), and add the Step-4a
    blast-radius consult sentence (read the pre-write graph, name consumers,
    never a veto). Depends on task 3.
    **Verify:** `[ "$(grep -c 'Reconcile' skills/blueprint/SKILL.md)" -ge 7 ] && grep -q "blast radius" skills/blueprint/SKILL.md && [ "$(wc -l < skills/blueprint/SKILL.md)" -le 500 ]`
 
-5. [ ] Update `skills/blueprint/SKILL.md`: add validation-checklist items
+5. [x] Update `skills/blueprint/SKILL.md`: add validation-checklist items
    (detectors fired only on declared data; evidence delimited; counters all
    emitted; graph write exempt from grading while hand-declared content stays
    graded; map committed only via `commit-map`). Depends on task 3.
    **Verify:** `grep -A40 "Validation Checklist" skills/blueprint/SKILL.md | grep -qi "reconcile" && [ "$(wc -l < skills/blueprint/SKILL.md)" -le 500 ]`
 
-6. [ ] Update `WORKFLOW.md`: document the reconcile pass in the blueprint
+6. [x] Update `WORKFLOW.md`: document the reconcile pass in the blueprint
    surface section — the `--reconcile` verb, the write-path triggers, the
    finding classes, and the blast-radius enrichment of the update guard.
    **Verify:** `grep -qi "reconcile" WORKFLOW.md`
 
-7. [ ] Dogfood acceptance on jim's single-group map: drive `§ Reconcile`
+7. [x] Dogfood acceptance on jim's single-group map: drive `§ Reconcile`
    (via `/jim:blueprint --reconcile`) — expect the short-circuit note written
    into `BLUEPRINT.md`, the stamp, the counter-bearing event pair on the
    specs-root ledger, and a `commit-map` commit. Depends on tasks 1–5.
