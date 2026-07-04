@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 30
+- Open: 33
 - Closed: 18
 
 ## Issues
@@ -47,8 +47,11 @@
 - `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` — Add a plan-time blast-radius advisory to /jim:plan · status: open · num: 39 · priority: medium · created: 2026-07-04T06:09:52Z · labels: [000-blueprint, cross-group, plan] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260704-add-fable-to-review-model-s-validated-model-list` — Add fable to review_model's validated model list · status: open · num: 46 · priority: low · created: 2026-07-04T22:05:36Z · labels: [review, config] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-add-partition-health-sensors-split-merge-signals` — Add partition-health sensors (split/merge signals) · status: open · num: 42 · priority: low · created: 2026-07-04T08:08:24Z · labels: [000-blueprint, cross-group, spec-groups] · origin: docs/specs/jim/034-contract-graph/spec.md
+- `20260704-complete-the-jim-verify-check-verb-test-matrix` — Complete the /jim:verify check-verb test matrix · status: open · num: 49 · priority: medium · created: 2026-07-04T23:53:20Z · labels: [verify, test] · origin: docs/specs/jim/035-verify-engine/review.md
+- `20260704-degrade-verify-registry-timeout-on-junk-config-in-the-verify-ski` — Degrade verify_registry_timeout on junk config in the verify skill · status: open · num: 50 · priority: medium · created: 2026-07-04T23:53:20Z · labels: [verify, config] · origin: docs/specs/jim/035-verify-engine/review.md
 - `20260704-derive-the-map-relations-column-from-the-contract-graph` — Derive the map Relations column from the contract graph · status: open · num: 40 · priority: low · created: 2026-07-04T07:02:15Z · labels: [000-blueprint, cross-group, architecture] · origin: docs/specs/jim/034-contract-graph/research.md
 - `20260704-fan-the-blueprint-update-into-every-affected-group` — Fan the blueprint update into every affected group · status: open · num: 41 · priority: medium · created: 2026-07-04T08:08:23Z · labels: [000-blueprint, cross-group] · origin: docs/specs/jim/034-contract-graph/spec.md
+- `20260704-harden-the-verify-floor-path-param-whitespace-dashes-only-id-mkd` — Harden the verify floor: path-param whitespace, dashes-only Id, mkdir grant · status: open · num: 51 · priority: low · created: 2026-07-04T23:53:21Z · labels: [verify, hardening] · origin: docs/specs/jim/035-verify-engine/review.md
 - `20260704-restructure-blueprint-skill-md-to-reclaim-line-budget-headroom` — Restructure blueprint SKILL.md to reclaim line-budget headroom · status: open · num: 43 · priority: low · created: 2026-07-04T09:23:23Z · labels: [000-blueprint, refactor] · origin: docs/specs/jim/034-contract-graph/plan.md
 - `20260704-revisit-territory-conformance-volume-for-single-group-repos` — Revisit territory-conformance volume for single-group repos · status: open · num: 48 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, blueprint] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-strengthen-commit-map-containment-or-amend-dd-4` — Strengthen commit-map containment or amend DD 4 · status: open · num: 38 · priority: low · created: 2026-07-04T00:22:58Z · labels: [security, review] · origin: docs/specs/jim/033-context-map/review.md
