@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 28
+- Open: 30
 - Closed: 18
 
 ## Issues
@@ -42,6 +42,7 @@
 - `20260702-tighten-update-guard-wording-and-checklist-gates` — Tighten update-guard wording and checklist gates · status: closed · num: 30 · priority: low · created: 2026-07-02T09:30:15Z · labels: [000-blueprint, fold-back] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` — Build a bottom-up onboarding partitioner for existing codebases · status: open · num: 35 · priority: low · created: 2026-07-03T20:48:04Z · labels: [spec-groups, onboarding] · origin: docs/specs/jim/033-context-map/spec.md
 - `20260703-build-the-partition-migration-skill` — Build the partition migration skill · status: open · num: 34 · priority: medium · created: 2026-07-03T20:08:37Z · labels: [migration, spec-groups, 000-blueprint] · origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
+- `20260704-add-a-dedicated-test-for-the-pattern-count-parameter` — Add a dedicated test for the pattern count parameter · status: open · num: 47 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, test] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-add-a-mint-new-handoff-row-to-the-blueprint-routing-table` — Add a mint-new handoff row to the blueprint routing table · status: open · num: 37 · priority: low · created: 2026-07-04T00:22:58Z · labels: [blueprint, spec-groups] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` — Add a plan-time blast-radius advisory to /jim:plan · status: open · num: 39 · priority: medium · created: 2026-07-04T06:09:52Z · labels: [000-blueprint, cross-group, plan] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260704-add-fable-to-review-model-s-validated-model-list` — Add fable to review_model's validated model list · status: open · num: 46 · priority: low · created: 2026-07-04T22:05:36Z · labels: [review, config] · origin: docs/specs/jim/035-verify-engine/plan.md
@@ -49,6 +50,7 @@
 - `20260704-derive-the-map-relations-column-from-the-contract-graph` — Derive the map Relations column from the contract graph · status: open · num: 40 · priority: low · created: 2026-07-04T07:02:15Z · labels: [000-blueprint, cross-group, architecture] · origin: docs/specs/jim/034-contract-graph/research.md
 - `20260704-fan-the-blueprint-update-into-every-affected-group` — Fan the blueprint update into every affected group · status: open · num: 41 · priority: medium · created: 2026-07-04T08:08:23Z · labels: [000-blueprint, cross-group] · origin: docs/specs/jim/034-contract-graph/spec.md
 - `20260704-restructure-blueprint-skill-md-to-reclaim-line-budget-headroom` — Restructure blueprint SKILL.md to reclaim line-budget headroom · status: open · num: 43 · priority: low · created: 2026-07-04T09:23:23Z · labels: [000-blueprint, refactor] · origin: docs/specs/jim/034-contract-graph/plan.md
+- `20260704-revisit-territory-conformance-volume-for-single-group-repos` — Revisit territory-conformance volume for single-group repos · status: open · num: 48 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, blueprint] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-strengthen-commit-map-containment-or-amend-dd-4` — Strengthen commit-map containment or amend DD 4 · status: open · num: 38 · priority: low · created: 2026-07-04T00:22:58Z · labels: [security, review] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-surface-face-freshness-in-the-reconcile-report` — Surface face freshness in the reconcile report · status: open · num: 44 · priority: low · created: 2026-07-04T09:23:24Z · labels: [000-blueprint, contract-graph] · origin: docs/specs/jim/034-contract-graph/plan.md
 - `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: open · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/jim/033-context-map/review.md
