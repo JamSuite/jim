@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 25
+- Open: 28
 - Closed: 17
 
 ## Issues
@@ -47,8 +47,11 @@
 - `20260704-add-partition-health-sensors-split-merge-signals` — Add partition-health sensors (split/merge signals) · status: open · num: 42 · priority: low · created: 2026-07-04T08:08:24Z · labels: [000-blueprint, cross-group, spec-groups] · origin: docs/specs/jim/034-contract-graph/spec.md
 - `20260704-derive-the-map-relations-column-from-the-contract-graph` — Derive the map Relations column from the contract graph · status: open · num: 40 · priority: low · created: 2026-07-04T07:02:15Z · labels: [000-blueprint, cross-group, architecture] · origin: docs/specs/jim/034-contract-graph/research.md
 - `20260704-fan-the-blueprint-update-into-every-affected-group` — Fan the blueprint update into every affected group · status: open · num: 41 · priority: medium · created: 2026-07-04T08:08:23Z · labels: [000-blueprint, cross-group] · origin: docs/specs/jim/034-contract-graph/spec.md
+- `20260704-restructure-blueprint-skill-md-to-reclaim-line-budget-headroom` — Restructure blueprint SKILL.md to reclaim line-budget headroom · status: open · num: 43 · priority: low · created: 2026-07-04T09:23:23Z · labels: [000-blueprint, refactor] · origin: docs/specs/jim/034-contract-graph/plan.md
 - `20260704-strengthen-commit-map-containment-or-amend-dd-4` — Strengthen commit-map containment or amend DD 4 · status: open · num: 38 · priority: low · created: 2026-07-04T00:22:58Z · labels: [security, review] · origin: docs/specs/jim/033-context-map/review.md
+- `20260704-surface-face-freshness-in-the-reconcile-report` — Surface face freshness in the reconcile report · status: open · num: 44 · priority: low · created: 2026-07-04T09:23:24Z · labels: [000-blueprint, contract-graph] · origin: docs/specs/jim/034-contract-graph/plan.md
 - `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: open · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/jim/033-context-map/review.md
+- `20260704-update-issue-skill-md-7a-surfacing-skills-enumeration` — Update issue SKILL.md 7a surfacing-skills enumeration · status: open · num: 45 · priority: low · created: 2026-07-04T11:07:13Z · labels: [issue, docs] · origin: docs/specs/jim/034-contract-graph/review.md
 
 ## Graph
 
