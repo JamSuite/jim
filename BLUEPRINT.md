@@ -35,3 +35,11 @@ re-declared here.*
 - **Relations:** — (single group; nothing to relate).
 - **Territory:** `skills/`, `agents/`, `tests/`
 - **Blueprint:** docs/specs/jim/000-blueprint/
+
+## Contract Graph
+
+*Derived from the group blueprints' provides/requires faces — regenerated
+on every blueprint write; do not edit. Last reconciled: 2026-07-04T09:14:03Z
+(via /jim:blueprint)*
+
+*Nothing to reconcile — fewer than two groups have blueprints.*
