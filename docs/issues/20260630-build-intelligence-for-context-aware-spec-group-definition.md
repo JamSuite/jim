@@ -2,7 +2,7 @@
 id: 20260630-build-intelligence-for-context-aware-spec-group-definition
 num: 19
 title: "Build intelligence for context-aware spec-group definition"
-status: open
+status: closed
 priority: high
 labels: [spec-groups, context-boundary, architecture, 000-blueprint]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T11:07:07Z
-updated: 2026-07-03T20:08:37Z
+updated: 2026-07-04T00:34:02Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 

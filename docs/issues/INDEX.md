@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 19
-- Closed: 16
+- Open: 21
+- Closed: 17
 
 ## Issues
 
@@ -26,7 +26,7 @@
 - `20260626-instrument-jim-review-as-a-ledger-stage-and-preserve-verdict-his` — Instrument /jim:review as a ledger stage and preserve verdict history · status: closed · num: 15 · priority: medium · created: 2026-06-26T06:43:40Z · labels: [review, ledger] · origin: docs/specs/jim/027-review-depth/spec.md
 - `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg` — Read-verb list creates a stray directory from a non-filter arg · status: open · num: 18 · priority: low · created: 2026-06-27T05:13:33Z · labels: [issue, cli] · origin: conversation
 - `20260630-add-the-cross-group-contract-graph-and-blast-radius` — Add the cross-group contract graph and blast-radius · status: open · num: 21 · priority: medium · created: 2026-06-30T20:35:19Z · labels: [000-blueprint, cross-group, architecture] · origin: docs/specs/jim/029-blueprint-spec/spec.md
-- `20260630-build-intelligence-for-context-aware-spec-group-definition` — Build intelligence for context-aware spec-group definition · status: open · num: 19 · priority: high · created: 2026-06-30T11:07:07Z · labels: [spec-groups, context-boundary, architecture, 000-blueprint] · origin: docs/brainstorms/20260630-000-current-spec.md
+- `20260630-build-intelligence-for-context-aware-spec-group-definition` — Build intelligence for context-aware spec-group definition · status: closed · num: 19 · priority: high · created: 2026-06-30T11:07:07Z · labels: [spec-groups, context-boundary, architecture, 000-blueprint] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260630-build-the-invariant-verification-engine` — Build the invariant verification engine · status: open · num: 22 · priority: medium · created: 2026-06-30T20:35:19Z · labels: [000-blueprint, verification] · origin: docs/specs/jim/029-blueprint-spec/spec.md
 - `20260630-wire-the-000-blueprint-fold-back-loop-into-review` — Wire the 000-blueprint fold-back loop into review · status: closed · num: 20 · priority: medium · created: 2026-06-30T20:35:18Z · labels: [000-blueprint, fold-back, review] · origin: docs/specs/jim/029-blueprint-spec/spec.md
 - `20260701-add-diff-range-belt-tests-for-command-sub-and-trailing-slash-ref` — Add diff-range belt tests for command-sub and trailing-slash refs · status: closed · num: 26 · priority: low · created: 2026-07-01T21:48:42Z · labels: [test-infra, jimledger, security] · origin: docs/specs/jim/030-blueprint-update/review.md
@@ -42,6 +42,9 @@
 - `20260702-tighten-update-guard-wording-and-checklist-gates` — Tighten update-guard wording and checklist gates · status: closed · num: 30 · priority: low · created: 2026-07-02T09:30:15Z · labels: [000-blueprint, fold-back] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` — Build a bottom-up onboarding partitioner for existing codebases · status: open · num: 35 · priority: low · created: 2026-07-03T20:48:04Z · labels: [spec-groups, onboarding] · origin: docs/specs/jim/033-context-map/spec.md
 - `20260703-build-the-partition-migration-skill` — Build the partition migration skill · status: open · num: 34 · priority: medium · created: 2026-07-03T20:08:37Z · labels: [migration, spec-groups, 000-blueprint] · origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
+- `20260704-add-a-mint-new-handoff-row-to-the-blueprint-routing-table` — Add a mint-new handoff row to the blueprint routing table · status: open · num: 37 · priority: low · created: 2026-07-04T00:22:58Z · labels: [blueprint, spec-groups] · origin: docs/specs/jim/033-context-map/review.md
+- `20260704-strengthen-commit-map-containment-or-amend-dd-4` — Strengthen commit-map containment or amend DD 4 · status: open · num: 38 · priority: low · created: 2026-07-04T00:22:58Z · labels: [security, review] · origin: docs/specs/jim/033-context-map/review.md
+- `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: open · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/jim/033-context-map/review.md
 
 ## Graph
 
@@ -59,6 +62,7 @@
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` --related-to--> `20260703-build-the-partition-migration-skill`
 - `20260703-build-the-partition-migration-skill` --depends-on--> `20260630-build-intelligence-for-context-aware-spec-group-definition`
+- `20260704-sweep-post-033-doc-drift` --related-to--> `20260703-build-intelligence-for-context-aware-spec-group-definition`
 
 ## Integrity Warnings
 

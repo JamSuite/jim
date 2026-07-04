@@ -2,7 +2,7 @@
 title: "Context map — deliberate spec-group definition"
 spec: "docs/specs/jim/033-context-map/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Context map — deliberate spec-group definition — Plan
@@ -37,9 +37,11 @@ one new path-validated commit verb.
   `"BLUEPRINT.md"`), via the existing `_path` else-branch (`KEYS` + a
   `default_for` arm only). In `jimfile.sh`, verb+arity disambiguates: `get
   blueprint` → the project doc (path-or-`NOT_FOUND`); `path blueprint
-  <group>` → the group-tier kind (unchanged); single-arg `path blueprint`
-  stays a usage error (the strategic-doc single-arg form is deliberately
-  not extended to `blueprint`). Documented in the `jimfile.sh` header.
+  <group>` → the group-tier kind (unchanged); single-arg `path blueprint` →
+  the configured map path, like every other strategic key (build-time
+  correction, developer-approved: the single-arg branch precedes kind
+  dispatch, so the natural behavior is consistent, not an error).
+  Documented in the `jimfile.sh` header.
 - **Why:** Keeps the artifact/key/skill name family intact (AC 1) while
   closing research's collision risk with zero code churn in `jimfile.sh` —
   the dispatch already behaves this way; the contract just becomes tested
@@ -230,7 +232,8 @@ group_territory  → group_territory  → "declared-paths"  # directory | declar
 # jimfile.sh — behavior contract (kind-vs-key: documented + tested)
 get blueprint           → configured map path if it exists on disk, else NOT_FOUND
 path blueprint <group>  → <specs>/<group>/000-blueprint/spec.md   (KIND wins; unchanged)
-path blueprint          → usage error (single-arg strategic form not extended)
+path blueprint          → configured map path (single-arg strategic form;
+                          arity disambiguates from the group-tier kind)
 valid-relpath <path>    → NEW rc-only validator: rc 0 iff relative and no
                           ".." segment; rc 1 otherwise (mirrors valid-id)
 
@@ -264,32 +267,32 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] Config keys: add `blueprint` (path), `group_axis`, `group_territory`
+1. [x] Config keys: add `blueprint` (path), `group_axis`, `group_territory`
    (bare, new `group_*` arm) to `jimconf.sh` with defaults, TDD via new
    `case_jimconf_*` cases; document all three in `jimconf.toml.example`.
    **Verify:** `bash tests/jimconf.sh`
 
-2. [ ] jimfile: add disambiguation test cases (`get blueprint`
+2. [x] jimfile: add disambiguation test cases (`get blueprint`
    default/configured/NOT_FOUND; `path blueprint <group>` unchanged;
-   single-arg `path blueprint` errors), the header doc note, and the new
+   single-arg `path blueprint` resolves the map path), the header doc note, and the new
    `valid-relpath` rc-only validator (TDD: accept `src/billing/`; reject
    absolute and `..`-bearing paths).
    **Verify:** `bash tests/jimfile.sh`
 
-3. [ ] `commit-map` verb in `jimledger.sh` with containment validation on
+3. [x] `commit-map` verb in `jimledger.sh` with containment validation on
    both path arguments, TDD via `tests/jimledger.sh` cases (happy path;
    absolute-path and `..`-segment rejects for `<map-path>` AND
    `<specs-dir>`; mode whitelist; ledger co-commit). Depends on task 1
    (resolves `blueprint_path`).
    **Verify:** `bash tests/jimledger.sh`
 
-4. [ ] Map template at `skills/blueprint/assets/map-template.md`: banner
+4. [x] Map template at `skills/blueprint/assets/map-template.md`: banner
    first line, axis/territory line, Last-updated line, Context Map table,
    per-group section shape (purpose, role, boundary rationale, relations,
    territory, blueprint link).
    **Verify:** `grep -q "generated and maintained by" skills/blueprint/assets/map-template.md && grep -q "Context Map" skills/blueprint/assets/map-template.md`
 
-5. [ ] Map methodology at `skills/blueprint/references/map-methodology.md`:
+5. [x] Map methodology at `skills/blueprint/references/map-methodology.md`:
    vertical-first doctrine + shared-kernel justification bar, role
    assignment (`domain | platform | layer`, platform behind the
    justification bar, `layer` under layered doctrine), `layered`
@@ -298,13 +301,13 @@ flowchart TD
    valid-relpath` — AC 8, Finding 9), scrub reminder text (Finding 6).
    **Verify:** `grep -q "vertical-first" skills/blueprint/references/map-methodology.md && grep -qi "scrub" skills/blueprint/references/map-methodology.md`
 
-6. [ ] Blueprint SKILL.md: empty-arg routing row → project tier; "Project
+6. [x] Blueprint SKILL.md: empty-arg routing row → project tier; "Project
    tier" section with create/update skeletons, Step-4a map-tier grading
    note (AC 18), specs-root ledger events, `commit-map` call, scrub gate,
    escape hint; validation-checklist rows. Depends on tasks 3–5.
    **Verify:** `awk 'END{exit !(NR<=500)}' skills/blueprint/SKILL.md && grep -q "commit-map" skills/blueprint/SKILL.md && grep -q "map-methodology" skills/blueprint/SKILL.md`
 
-7. [ ] Spec SKILL.md: advisor block replacing the Step 3 group line
+7. [x] Spec SKILL.md: advisor block replacing the Step 3 group line
    (map-consuming recommend/pushback with role-aware straddle reasoning —
    domain↔domain flags a smell, domain↔platform is normal — silent
    single-group assign, absent-map nudge with ≤1-group suppression,
@@ -313,21 +316,21 @@ flowchart TD
    task 6.
    **Verify:** `grep -q "Skill(jim:blueprint)" skills/spec/SKILL.md && grep -qi "data, not" skills/spec/SKILL.md`
 
-8. [ ] Arch skill + template: reference-the-map rule (partition described by
+8. [x] Arch skill + template: reference-the-map rule (partition described by
    `BLUEPRINT.md` link, never re-declared) in Step 4 scan targets and the
    template.
    **Verify:** `grep -q "BLUEPRINT.md" skills/arch/SKILL.md && grep -q "BLUEPRINT.md" skills/arch/assets/architecture-template.md`
 
-9. [ ] WORKFLOW.md: blueprint lifecycle section covering the group tier
+9. [x] WORKFLOW.md: blueprint lifecycle section covering the group tier
    (generate / update / guard / cadence) and the project tier (map create /
    update / advisor consumption); command-reference row for the bare
    invocation.
    **Verify:** `grep -q "BLUEPRINT.md" WORKFLOW.md && grep -qi "context map" WORKFLOW.md`
 
-10. [ ] `agents/architect.md`: `skills: [plan, arch, blueprint]`.
+10. [x] `agents/architect.md`: `skills: [plan, arch, blueprint]`.
     **Verify:** `grep -q "blueprint" agents/architect.md`
 
-11. [ ] Full regression: entire bash suite green.
+11. [x] Full regression: entire bash suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
