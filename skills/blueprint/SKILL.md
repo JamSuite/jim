@@ -106,7 +106,10 @@ Classify every proposed edit that touches an **Invariants** row or a
 Criticality is read from the invariant row's existing column. **Provides
 entries are load-bearing wholesale** — weakening or removing any Provides
 entry grades as `critical`/`high`, regardless of the absence of a criticality
-column there.
+column there. When grading a Provides weakening/removal, read the map's
+current (pre-write) `## Contract Graph` and add to the prompt:
+`blast radius: <consumer groups> — graph as of <Last reconciled>` —
+informational, never a veto (methodology § Blast radius).
 
 Under `auto_blueprint`, additive edits and downgrades of `medium`/`low`
 -criticality invariants write unattended; **any weakening or removal of a
@@ -141,7 +144,8 @@ boundary). Update mode's absent-blueprint fallthrough defers this stamp to
 *after* its `blueprint finished` event (see U2), so the create is not later
 counted as an update.
 
-Do not proceed to another phase.
+After a completed write, run the reconcile pass (§ Reconcile). Do not
+proceed to another phase.
 
 ## Update mode (`--from-review <spec-dir>` / `--since <ref>`)
 
@@ -206,6 +210,8 @@ update — spec.md + ledger.md, carrying the stamped watermark):
 bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-blueprint <blueprint-dir> create
 ```
 
+Then run the reconcile pass (§ Reconcile).
+
 If the developer declines the generate at Step 5, nothing is written — do not
 record `finished`, stamp the watermark, or commit (the started-only stage then
 surfaces as an interruption, correctly). The targeted-diff behavior below (U3–U4)
@@ -245,8 +251,9 @@ IF the threshold is a positive integer AND a trustworthy `N` was obtained AND N 
   prompts); otherwise present it and wait. Then close the stage exactly as the
   U2 fallthrough does — record `blueprint finished`, stamp `last_full_generate`
   from a fresh `now` **after** that event, then `commit-blueprint <blueprint-dir>
-  update` (an existing blueprint is updated, not created). Report "regen
-  threshold N reached — ran a full regeneration" and **stop**: do not run U3/U4.
+  update` (an existing blueprint is updated, not created), and run the
+  reconcile pass (§ Reconcile). Report "regen threshold N reached — ran a
+  full regeneration" and **stop**: do not run U3/U4.
 ELSE
   Continue to U3 with the targeted update; `N` (when trustworthy and ≥ 1) is
   reported at U4.
@@ -355,10 +362,11 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-blueprint <
 (path-scoped, never `git add -A`). The committed ledger line is the guard's
 durable record: a fix-only run writes no blueprint edit but still records
 `finished` and commits — the commit then carries `ledger.md` alone — so an
-answered fork always reads as the update running to completion. If the
-developer declines the diff (or abandons the fork), do not write or commit
-and do not record `finished` (the started-only stage surfaces as an
-interruption) — stop. Do not proceed to another phase.
+answered fork always reads as the update running to completion. After the
+commit, run the reconcile pass (§ Reconcile); a fix-only run skips it — no
+face changed. If the developer declines the diff (or abandons the fork), do
+not write or commit and do not record `finished` (the started-only stage
+surfaces as an interruption) — stop. Do not proceed to another phase.
 
 **Regen-cadence signal.** Surface the staleness cue from U2a in the write
 summary: when a trustworthy count `N ≥ 1` was obtained, add `N targeted updates
@@ -422,7 +430,8 @@ resumes with the refreshed map.
 
 ### M3. Close the stage and commit
 
-After the write, refresh the map's Last-updated line, then:
+After the write, run the reconcile pass (§ Reconcile — its graph refresh
+and events ride this commit), refresh the map's Last-updated line, then:
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root> blueprint finished tier=project additions=<n> downgrades=<n>
