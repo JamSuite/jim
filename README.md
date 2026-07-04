@@ -223,6 +223,10 @@ The depth-aware review (`/jim:review`, spec 027) spawns read-only `investigator`
 
 Prefer the **narrowest grant that works** — your repo root — rather than a blanket `Read(*)`, which would widen the read surface for *every* subagent in the session, not just the reviewer's investigators. The investigators are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`), so this grant authorizes reading only.
 
+### Invariant-verification fan-out (`/jim:verify`)
+
+Invariant verification (`/jim:verify`, spec 035) fans out read-only `judge` subagents that read **your project's own source** to decide whether a blueprint invariant holds. Like the reviewer's investigators, each judge's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The judges are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when an invariant's check names an operator-configured registry command, `/jim:verify` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a blueprint can never mint that command, only *name* one you configured.
+
 ## How to develop for Jim
 
 See [`WORKFLOW.md`](./WORKFLOW.md) for the full SDLC process.
