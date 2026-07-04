@@ -17,6 +17,7 @@
 #   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
 #   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md (path-scoped)
 #   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
+#   commit-verify <blueprint-dir>             commit ledger.md only (verify self-commit)
 #   updates-since <blueprint-dir> <iso>       count blueprint finished events after <iso>
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
@@ -24,10 +25,11 @@
 # Security: commit/diff/ledger content is untrusted — never sourced or eval'd.
 # SHAs read from the ledger are validated via jimfile.sh `valid-id` before any
 # git range use (forecloses option injection). The script commits in exactly
-# three path-scoped places — `commit-review` (review.md + ledger.md, 028 AC
-# #10), `commit-blueprint` (a group's spec.md + ledger.md, 030 AC #8), and
-# `commit-map` (the project map + the specs-root ledger.md, spec 033) — each
-# with literal paths, a `--` guard, and no `git add -A`; `/jim:build` commits
+# four path-scoped places — `commit-review` (review.md + ledger.md, 028 AC
+# #10), `commit-blueprint` (a group's spec.md + ledger.md, 030 AC #8),
+# `commit-map` (the project map + the specs-root ledger.md, spec 033), and
+# `commit-verify` (a group's ledger.md alone, spec 035 AC #11) — each with
+# literal paths, a `--` guard, and no `git add -A`; `/jim:build` commits
 # ledger.md at start/finish itself.
 
 set -uo pipefail
@@ -50,6 +52,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md
   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
+  commit-verify <blueprint-dir>               commit ledger.md only (verify self-commit)
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
 USAGE
 }
@@ -205,6 +208,23 @@ cmd_commit_map() {
   git commit -q -m "docs(blueprint): $mode project map" -- "$map" "$ledger" || return 2
 }
 
+# cmd_commit_verify <blueprint-dir> — path-scoped commit of a verification run's
+#   self-recorded ledger event: ledger.md alone inside <blueprint-dir>. A verify
+#   run writes NO artifact (no verdict is persisted — spec 035 AC #11) and is
+#   on-demand with no approval gesture to ride, so it self-commits its own ledger
+#   record, modeled on commit-blueprint's fix-only path (ledger.md alone falls
+#   out of pathspec staging for free). The subject is a fixed literal — no mode,
+#   no verdict, no untrusted input reaches the commit message. Literal path,
+#   `--` guard, never `git add -A`. Any git failure returns non-zero so the
+#   caller degrades with the ledger left intact on disk.
+cmd_commit_verify() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger commit-verify: need <blueprint-dir>" >&2; return 2; fi
+  if [[ ! -d "$dir" ]]; then echo "jimledger: blueprint-dir not found: $dir" >&2; return 2; fi
+  git -C "$dir" add -- ledger.md || return 2
+  git -C "$dir" commit -q -m "chore(verify): record verification run" -- ledger.md || return 2
+}
+
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
 cmd_event() {
   local dir="${1:-}" phase="${2:-}" event="${3:-}"
@@ -301,7 +321,7 @@ cmd_diff_range() {
 # ledger text — so a tampered ledger cannot inject spurious metric keys
 # (sec Finding 7: the key set is fixed; values are counts/SHAs or the
 # shape-validated verdict, never free-form ledger text).
-LEDGER_STAGES="spec research plan sec build review blueprint"
+LEDGER_STAGES="spec research plan sec build review blueprint verify"
 
 # phase_event_metrics <ledger> — emit per-stage process metrics:
 #   <stage>_runs, <stage>_interruptions, and (when both bounds exist)
@@ -432,6 +452,7 @@ main() {
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;
     commit-map) shift; cmd_commit_map "$@" ;;
+    commit-verify) shift; cmd_commit_verify "$@" ;;
     updates-since) shift; cmd_updates_since "$@" ;;
     *) usage; return 2 ;;
   esac

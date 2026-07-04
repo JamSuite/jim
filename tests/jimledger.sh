@@ -790,6 +790,71 @@ case_jimledger_commit_map_non_repo() {
   assert_exit "rc" 2 "$rc"
 }
 
+# ─── spec 035: verify stage + commit-verify ──────────────────────────────────
+
+# AC: metrics emits per-stage runs + duration for the verify stage, so a
+# verification run is self-measurable and auditable (spec 035 Task 2, DD #6).
+case_jimledger_metrics_verify_stage() {
+  local sd; sd="$(empty_dir t35v/spec)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tverify\tstarted\t\n'
+    printf '1008\t2026-01-01T00:00:08Z\tverify\tfinished\tchecked=12;holds=7;violated=2;failed=1;unconfigured=1;skipped=1\n'
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "verify_runs"          '^verify_runs=1$'             "$OUT"
+  assert_match "verify_interruptions" '^verify_interruptions=0$'    "$OUT"
+  assert_match "verify_duration"      '^verify_duration_seconds=8$' "$OUT"
+}
+
+# AC: the verify counters ride the finished event as untrusted kv, but only the
+# fixed per-stage keys emit — a crafted counter can never inject a metric key
+# (spec 035, the sec Finding 7 content-free-channel lineage).
+case_jimledger_metrics_verify_channel_clean() {
+  local sd; sd="$(empty_dir t35vc/spec)"
+  {
+    printf '1000\t2026-01-01T00:00:00Z\tverify\tstarted\t\n'
+    printf '1005\t2026-01-01T00:00:05Z\tverify\tfinished\tviolated=1;evil=pwned\n'
+  } > "$sd/ledger.md"
+  run_jimledger metrics "$sd"
+  assert_eq "no injected key" "0" "$(echo "$OUT" | grep -c '^evil')"
+  assert_eq "all lines safe"  "0" "$(echo "$OUT" | grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
+}
+
+# AC: commit-verify commits ledger.md alone with the fixed subject and leaves an
+# unrelated working-tree change untouched — never git add -A. The run writes no
+# artifact, so the ledger event is the only tracked change (spec 035 Task 2,
+# AC #11).
+case_jimledger_commit_verify_ledger_only() {
+  local sd root; sd="$(git_fixture t35cv)"; root="${sd%/spec}"
+  printf '1\t2026-01-01T00:00:00Z\tverify\tfinished\tviolated=0\n' > "$sd/ledger.md"
+  printf 'unrelated change\n' > "$root/seed.txt"
+  run_jimledger commit-verify "$sd"
+  assert_exit "rc" 0 "$RC"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "ledger.md committed"  'spec/ledger\.md' "$committed"
+  assert_eq    "seed.txt not swept"   "0" "$(echo "$committed" | grep -c '^seed\.txt$')"
+  assert_eq    "seed.txt still dirty" "1" "$(git -C "$root" status --porcelain seed.txt | grep -c '^ M')"
+}
+
+# AC: commit-verify's subject is a fixed literal — no mode, no verdict, no
+# untrusted input reaches the commit message (spec 035 Task 2, DD #6).
+case_jimledger_commit_verify_subject() {
+  local sd root; sd="$(git_fixture t35cvm)"; root="${sd%/spec}"
+  printf 'l\n' > "$sd/ledger.md"
+  run_jimledger commit-verify "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "verify subject" "chore(verify): record verification run" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC: commit-verify degrades gracefully outside a git repo (spec 035 Task 2).
+case_jimledger_commit_verify_non_repo() {
+  local sd; sd="$(empty_dir t35cvn/spec)"
+  printf 'l\n' > "$sd/ledger.md"
+  run_jimledger commit-verify "$sd"
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
