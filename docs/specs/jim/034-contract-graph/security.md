@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/jim/034-contract-graph/spec.md"
-reviewed_phases: [spec]
-status: Needs Plan Review
+reviewed_phases: [spec, plan]
+status: Active
 date: "2026-07-04"
 ---
 
@@ -9,23 +9,23 @@ date: "2026-07-04"
 
 ## Summary
 
-**Findings:** 0 Critical · 4 Notable · 3 Advisory
+**Findings:** 0 Critical · 0 Notable · 0 Advisory open (all 9 findings resolved)
 
-Reviewed spec.md only (no plan.md exists yet) under the requirements-gap
-lens, with a STRIDE completeness sweep; LINDDUN omitted (no PII, credentials,
-or session data handled). The spec inherits a strong 026–033 trust-boundary
-lineage; the gaps found are presentation-layer discipline, autonomy
-treatment, and use-time validation — no design flaw that would create a
-vulnerability if built as specified.
-
-*Routing applied 2026-07-04: the four Spec-routed findings (1, 2, 3, 6) were
-folded into spec.md as AC clauses / AC #13. Remaining open routing is
-plan-phase (findings 4, 5, 7) — hence the `Needs Plan Review` status for the
-architect.*
+Dual-lens re-run 2026-07-04 with plan.md present (requirements-gap +
+design-flaw lenses, artifact-misalignment check); LINDDUN omitted (no PII,
+credentials, or session data handled). All seven first-run findings are
+resolved — four folded into spec ACs at routing, three absorbed by plan
+design decisions (DD 2, DD 4, DD 5). The re-run surfaced one Notable
+artifact misalignment (Finding 8 — reconcile-only runs leave their durable
+record uncommitted) and one Advisory hardening (Finding 9); both were
+routed to Plan and applied 2026-07-04 (DD 4/DD 5/task 3 always-commit;
+DD 7/task 1 freshness stamp). No findings remain open — status `Active`.
 
 ## Coverage
 
-- spec.md — reviewed 2026-07-04 (requirements-gap lens)
+- spec.md — reviewed 2026-07-04 (requirements-gap lens; re-checked in the
+  dual-lens re-run after routing amendments)
+- plan.md — reviewed 2026-07-04 (design-flaw lens + artifact misalignment)
 
 ## Data Classification
 
@@ -39,7 +39,7 @@ architect.*
 
 ## Findings
 
-### 1. Untrusted face/map content is quoted without a delimiting requirement
+### 1. Untrusted face/map content is quoted without a delimiting requirement — RESOLVED (spec AC #11 clause)
 
 - **Severity:** Notable
 - **Description:** The reconciliation report, the 031 fork enrichment (blast
@@ -57,7 +57,7 @@ architect.*
 - **Route:** Spec
 - **Relates to:** AC #9, AC #11
 
-### 2. Autonomy treatment of the derived-graph write is unspecified
+### 2. Autonomy treatment of the derived-graph write is unspecified — RESOLVED (spec AC #13; plan DD 6)
 
 - **Severity:** Notable
 - **Description:** Under `auto_blueprint`, blueprint writes run unattended
@@ -77,7 +77,7 @@ architect.*
 - **Route:** Spec
 - **Relates to:** AC #2, AC #7
 
-### 3. Territory paths need use-time re-validation at reconcile time
+### 3. Territory paths need use-time re-validation at reconcile time — RESOLVED (spec AC #4 clause; plan task 1)
 
 - **Severity:** Notable
 - **Description:** The unresolved-require class attributes partition gaps by
@@ -95,7 +95,7 @@ architect.*
 - **Route:** Spec
 - **Relates to:** AC #4
 
-### 4. Commit scope for the map write from group-tier runs
+### 4. Commit scope for the map write from group-tier runs — RESOLVED (plan DD 4: `commit-map` reuse, never widened)
 
 - **Severity:** Notable
 - **Description:** A group-tier update self-commits via `commit-blueprint`,
@@ -113,7 +113,7 @@ architect.*
 - **Route:** Plan
 - **Relates to:** AC #2, AC #7
 
-### 5. Counter consumption must shape-validate
+### 5. Counter consumption must shape-validate — RESOLVED (plan DD 5 + Interface Contracts)
 
 - **Severity:** Advisory
 - **Description:** The `edges=`/`leaks=`/`dead=`/`breaking=` counters (AC
@@ -128,7 +128,7 @@ architect.*
 - **Route:** Plan
 - **Relates to:** AC #10
 
-### 6. Report language must not imply code-level verification
+### 6. Report language must not imply code-level verification — RESOLVED (spec AC #9 clause)
 
 - **Severity:** Advisory
 - **Description:** The reconciliation is declaration-level: faces checked
@@ -142,7 +142,7 @@ architect.*
 - **Route:** Spec
 - **Relates to:** AC #3, AC #9, UI Mockup
 
-### 7. Cost amplification and blast-radius noise
+### 7. Cost amplification and blast-radius noise — RESOLVED (plan DD 2 scoped reads; methodology per-consumer aggregation)
 
 - **Severity:** Advisory
 - **Description:** Re-derivation on every blueprint write costs O(groups)
@@ -157,16 +157,57 @@ architect.*
 - **Route:** Plan
 - **Relates to:** AC #7, AC #8
 
+### 8. Reconcile-only runs leave their durable record uncommitted — RESOLVED (plan DD 4/DD 5 always-commit; task 3)
+
+- **Severity:** Notable
+- **Description:** Spec AC #10 requires each run's outcomes durably recorded
+  — the spec-031 convention, where the record is *committed*. Plan DD 4
+  commits via `commit-map` only **when the graph section changed**, but a
+  reconcile can find mismatches without changing the derived edge table
+  (findings are verdicts, the graph records edges): that run's
+  counter-bearing `started`/`finished` events sit uncommitted on the
+  specs-root ledger indefinitely, and attributability is lost with the
+  working tree. This is an artifact misalignment between spec AC #10 and
+  plan DD 4/DD 5.
+- **Suggestion:** Always run `commit-map` after a reconcile that recorded
+  events: an unchanged map stages nothing, so the commit carries the ledger
+  alone — exactly the 031 fix-only ledger-only-commit property, reusing the
+  existing arm with no script change. Amend DD 4/DD 5 and the § Reconcile
+  skeleton (task 3) accordingly.
+- **Route:** Plan
+- **Relates to:** AC #10; plan DD 4, DD 5
+
+### 9. Blast-radius consult should surface graph freshness — RESOLVED (plan DD 7; task 1 stamp echo)
+
+- **Severity:** Advisory
+- **Description:** Plan DD 7 reads the *persisted* graph for blast radius —
+  correct and cheap, but a stale graph under-reports consumers, and the
+  prompt gives the developer no way to judge that risk.
+- **Suggestion:** Include the graph's `Last reconciled` stamp in the
+  blast-radius line (e.g. "blast radius: billing, orders — graph as of
+  2026-07-04"), so trust in the answer is calibrated by its age. One line in
+  the methodology's fork-enrichment format (task 1).
+- **Route:** Plan
+- **Relates to:** AC #8; plan DD 7
+
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
 | Spoofing | N/A | No identity or auth boundary — all inputs are repo-resident artifacts under the developer's control |
-| Tampering | Yes | Findings 3, 4 (out-of-band map edits; commit-scope discipline). Face tampering is mitigated by design: detectors + approval gates + AC #11 |
-| Repudiation | No | No issues found — AC #10 counters and ledger stage events give attributability |
-| Information Disclosure | Yes | Findings 1, 6 (undelimited quoting; over-trust in clean reports); AC #12 covers secret redaction |
-| Denial of Service | Yes | Finding 7 (per-write cost amplification; blast-radius flooding / alarm fatigue) |
-| Elevation of Privilege | Yes | Finding 2 (unattended write authority for the derived section under `auto_blueprint`) |
+| Tampering | No | Prior findings 3, 4 resolved (spec AC #4 clause; plan DD 4); face tampering mitigated by design: detectors + approval gates + AC #11 |
+| Repudiation | Yes | Finding 8 (reconcile-only runs' counters uncommitted — attributability gap) |
+| Information Disclosure | No | Prior findings 1, 6 resolved (spec AC #11/#9 clauses); AC #12 covers secret redaction |
+| Denial of Service | No | Prior finding 7 resolved (plan DD 2; per-consumer aggregation) |
+| Elevation of Privilege | No | Prior finding 2 resolved (spec AC #13; plan DD 6 — bounded, recorded exemption) |
+
+## Artifact Misalignment
+
+- **Finding 8 — reconcile-only durability:** Spec AC #10 asserts every run's
+  outcomes are durably recorded (the 031 committed-record convention); plan
+  DD 4's conditional commit leaves a no-graph-change reconcile's counters
+  uncommitted. Route: Plan (always `commit-map` after recorded events —
+  ledger-only commit when the map is unchanged).
 
 ## Routing Recommendations
 
@@ -177,9 +218,11 @@ architect.*
 - Finding 6: require declaration-level wording in the report summary — **applied 2026-07-04** (AC #9 clause).
 
 ### Plan amendments
-- Finding 4: route the map write through the path-scoped `commit-map` arm; never widen a commit.
-- Finding 5: shape-validate counter extraction per the spec 028 pattern.
-- Finding 7: deterministic extraction pre-pass; per-consumer aggregation in the report.
+- Finding 4: route the map write through the path-scoped `commit-map` arm — **resolved 2026-07-04** (plan DD 4).
+- Finding 5: shape-validate counter extraction per the spec 028 pattern — **resolved 2026-07-04** (plan DD 5 + Interface Contracts).
+- Finding 7: cost bounding + per-consumer aggregation — **resolved 2026-07-04** (plan DD 2; methodology, task 1).
+- Finding 8: always `commit-map` after a reconcile that recorded events (ledger-only commit when the map is unchanged) — **applied 2026-07-04** (DD 4/DD 5, task 3).
+- Finding 9: echo the graph's `Last reconciled` stamp in the blast-radius line — **applied 2026-07-04** (DD 7, task 1, Interface Contracts).
 
 ### Candidate issues
 No findings routed to Issue this run.
