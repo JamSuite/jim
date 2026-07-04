@@ -74,7 +74,7 @@ from the evidence:
 - **Provides** — the surface the group exposes for others to depend on, with guarantees.
 - **Requires** — what the group depends on from other groups, discovered from its code. Best-effort: record only cross-group dependencies you can ground in the code; where a boundary is unclear, say so rather than inventing.
 - **Structure** — components and key abstractions, from the plan(s), ARCHITECTURE.md, and code.
-- **Invariants** — the load-bearing constraints the code must uphold (behavioral, structural, code-shape). Each carries a criticality and an intended verification method. Capture the *rule*, not per-instance implementation.
+- **Invariants** — the load-bearing constraints the code must uphold (behavioral, structural, code-shape). Each carries a stable `Id`, a criticality, and a `Check` method from the closed `pattern`/`structure`/`registry:<name>`/`judge` vocabulary `/jim:verify` runs; inert `pattern`/`structure` parameters go in the `verify-checks` block. Capture the *rule*, not per-instance implementation. See `references/check-authoring.md` for method selection and examples.
 
 Every claim must trace to the group's actual artifacts. Assert nothing the
 sources do not support.
