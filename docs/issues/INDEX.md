@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 21
+- Open: 25
 - Closed: 17
 
 ## Issues
@@ -43,6 +43,10 @@
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` — Build a bottom-up onboarding partitioner for existing codebases · status: open · num: 35 · priority: low · created: 2026-07-03T20:48:04Z · labels: [spec-groups, onboarding] · origin: docs/specs/jim/033-context-map/spec.md
 - `20260703-build-the-partition-migration-skill` — Build the partition migration skill · status: open · num: 34 · priority: medium · created: 2026-07-03T20:08:37Z · labels: [migration, spec-groups, 000-blueprint] · origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
 - `20260704-add-a-mint-new-handoff-row-to-the-blueprint-routing-table` — Add a mint-new handoff row to the blueprint routing table · status: open · num: 37 · priority: low · created: 2026-07-04T00:22:58Z · labels: [blueprint, spec-groups] · origin: docs/specs/jim/033-context-map/review.md
+- `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` — Add a plan-time blast-radius advisory to /jim:plan · status: open · num: 39 · priority: medium · created: 2026-07-04T06:09:52Z · labels: [000-blueprint, cross-group, plan] · origin: docs/brainstorms/20260630-000-current-spec.md
+- `20260704-add-partition-health-sensors-split-merge-signals` — Add partition-health sensors (split/merge signals) · status: open · num: 42 · priority: low · created: 2026-07-04T08:08:24Z · labels: [000-blueprint, cross-group, spec-groups] · origin: docs/specs/jim/034-contract-graph/spec.md
+- `20260704-derive-the-map-relations-column-from-the-contract-graph` — Derive the map Relations column from the contract graph · status: open · num: 40 · priority: low · created: 2026-07-04T07:02:15Z · labels: [000-blueprint, cross-group, architecture] · origin: docs/specs/jim/034-contract-graph/research.md
+- `20260704-fan-the-blueprint-update-into-every-affected-group` — Fan the blueprint update into every affected group · status: open · num: 41 · priority: medium · created: 2026-07-04T08:08:23Z · labels: [000-blueprint, cross-group] · origin: docs/specs/jim/034-contract-graph/spec.md
 - `20260704-strengthen-commit-map-containment-or-amend-dd-4` — Strengthen commit-map containment or amend DD 4 · status: open · num: 38 · priority: low · created: 2026-07-04T00:22:58Z · labels: [security, review] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: open · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/jim/033-context-map/review.md
 
@@ -51,9 +55,13 @@
 - `20260530-smoke-test` --related-to--> `20260530-smoke-test`
 - `20260531-wikilink-parser-skips-fenced-code-blocks` --related-to--> `20260531-typed-frontmatter-relations-absorb-same-target-body-wikilinks`
 - `20260623-issue-candidate-batch-re-files-duplicates-on-skill-re-run` --related-to--> `20260620-single-source-the-interactive-candidate-batch-ux-into-the-shared`
+- `20260630-add-the-cross-group-contract-graph-and-blast-radius` --blocks--> `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan`
+- `20260630-add-the-cross-group-contract-graph-and-blast-radius` --blocks--> `20260704-derive-the-map-relations-column-from-the-contract-graph`
+- `20260630-add-the-cross-group-contract-graph-and-blast-radius` --blocks--> `20260704-add-partition-health-sensors-split-merge-signals`
 - `20260630-add-the-cross-group-contract-graph-and-blast-radius` --depends-on--> `20260630-build-intelligence-for-context-aware-spec-group-definition`
 - `20260630-build-intelligence-for-context-aware-spec-group-definition` --blocks--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
 - `20260630-build-intelligence-for-context-aware-spec-group-definition` --blocks--> `20260703-build-the-partition-migration-skill`
+- `20260630-build-the-invariant-verification-engine` --related-to--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
 - `20260630-wire-the-000-blueprint-fold-back-loop-into-review` --related-to--> `20260702-surface-targeted-update-count-since-last-full-blueprint-regen`
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` --related-to--> `20260630-build-the-invariant-verification-engine`
 - `20260702-blueprint-update-violation-fork-and-graded-autonomy` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
@@ -62,6 +70,11 @@
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` --related-to--> `20260703-build-the-partition-migration-skill`
 - `20260703-build-the-partition-migration-skill` --depends-on--> `20260630-build-intelligence-for-context-aware-spec-group-definition`
+- `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
+- `20260704-add-partition-health-sensors-split-merge-signals` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
+- `20260704-add-partition-health-sensors-split-merge-signals` --related-to--> `20260703-build-the-partition-migration-skill`
+- `20260704-derive-the-map-relations-column-from-the-contract-graph` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
+- `20260704-fan-the-blueprint-update-into-every-affected-group` --related-to--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
 - `20260704-sweep-post-033-doc-drift` --related-to--> `20260703-build-intelligence-for-context-aware-spec-group-definition`
 
 ## Integrity Warnings

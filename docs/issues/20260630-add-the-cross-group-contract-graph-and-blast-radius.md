@@ -6,12 +6,12 @@ status: open
 priority: medium
 labels: [000-blueprint, cross-group, architecture]
 relations:
-  blocks: []
+  blocks: [20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan, 20260704-derive-the-map-relations-column-from-the-contract-graph, 20260704-add-partition-health-sensors-split-merge-signals]
   depends-on: [20260630-build-intelligence-for-context-aware-spec-group-definition]
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-03T20:08:37Z
+updated: 2026-07-04T08:08:24Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -47,9 +47,28 @@ checked reconciliation of `A.requires ↔ B.provides`, owned by neither map.
 Drift is then a *failed reconciliation* — the detector firing — not silent
 divergence.
 
+## Scope refinement (spec 034 scoping, 2026-07-04)
+
+This issue is being spec'd as **034**. Trigger model settled there:
+
+- **In scope for 034:** the on-demand reconcile surface; re-derivation of the
+  graph on every blueprint-surface write (group-tier generate/update *and*
+  map-tier updates — any write through `/jim:blueprint` refreshes the
+  reconciliation); and the spec-031 violation fork consuming blast radius at
+  face-change time. 031's Out of Scope routes exactly this question here: a
+  Provides-face downgrade should name the consumer groups it breaks.
+- **Split out:** the plan-time pre-build advisory —
+  [[20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan]] (#39). It
+  fires on a prediction rather than an actual face edit and touches
+  `/jim:plan`, so it follows the initiative's thin-slice pattern as its own
+  follow-on.
+
 ## Depends on
 
 Spec 029; ≥2 group blueprints to reconcile; and
 [[20260630-build-intelligence-for-context-aware-spec-group-definition]]
 (#19), which delivers `BLUEPRINT.md` — the artifact this graph lives in and
-reconciles against.
+reconciles against. *Status 2026-07-04: #19 is closed — spec 033 shipped
+`BLUEPRINT.md`, group roles/relations, and territory declarations. The only
+remaining precondition is data, not build: a project with ≥2 group
+blueprints.*

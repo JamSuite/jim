@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-04T00:40:56Z
+updated: 2026-07-04T06:09:52Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -65,6 +65,20 @@ blueprint**:
   `group_territory` mode sets the strength and price of this engine's
   mechanical floor (`directory` strongest; `declared-paths` mid;
   `none` degrades to LLM-judged) — spec 033, security Findings 4/9.
+
+## New inputs from spec 034 (contract graph), once it ships
+
+034 (in scoping, from [[20260630-add-the-cross-group-contract-graph-and-blast-radius]])
+delivers the reconciled cross-group contract graph; two hand-offs land here:
+
+- **Blast radius scopes the fan-out.** The graph names the groups a boundary
+  change affects, so this engine's expensive ceiling can spend on
+  blast-radius-affected groups instead of fanning out blindly — the
+  criticality knob picks how hard, the graph picks where.
+- **Contract edges are checkable invariants.** 034's detectors
+  (leak / dead surface / breaking change) are LLM-judged reconciliation; this
+  engine is where those checks can be hardened mechanically, the same way
+  spec 031 notes its violation-fork detection awaits hardening here.
 
 ## Depends on
 
