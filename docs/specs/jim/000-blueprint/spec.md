@@ -17,7 +17,7 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `jim` group **is** the jim plugin: a Claude Code plugin that adds an
 agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md; specs
-001–033) is to make AI-assisted development follow the developer's engineering
+001–034) is to make AI-assisted development follow the developer's engineering
 discipline instead of bypassing it — grounding non-trivial work in a
 phase-gated `spec → research → plan → (security) → build → review` lifecycle,
 backed by specialized agent personas, living strategic documents, and a
@@ -55,6 +55,10 @@ executes the data it reads.
   (`BLUEPRINT.md`) — the sole partition authority: a new spec group comes into
   being only through the map surface, and `/jim:spec`'s assignment advisor
   consumes the map (a single-group map assigns with no interactive overhead).
+  The reconcile pass (`--reconcile`, and fired by every blueprint-surface
+  write) derives the cross-group contract graph into the map, reports
+  declaration-level findings with offered issues, and names blast radius on
+  a Provides downgrade — informational, never a veto.
 - `@jim:{role}` **agent personas** — `pm`, `architect`, `researcher`, `coder`,
   `security`, `reviewer`, `investigator`, `issue-analyst`, `meta`. Guarantee:
   each is a bounded role that stops after its artifact; read-only roles
@@ -80,7 +84,8 @@ executes the data it reads.
   issue-file emitter), `backfill.sh` / `migrate.sh` (migrations). Guarantee:
   atomic writes, index-staleness-gated reads, id-validated resolution.
 - **Living project artifacts** — `VISION.md`, `ROADMAP.md`, `ARCHITECTURE.md`,
-  `WORKFLOW.md`, `BLUEPRINT.md` (the project-tier context map), and the
+  `WORKFLOW.md`, `BLUEPRINT.md` (the project-tier context map, carrying the
+  derived `## Contract Graph` section), and the
   `docs/specs/jim/` archive: the group's authoritative process and
   institutional memory.
 
@@ -115,14 +120,15 @@ Grounded in ARCHITECTURE.md and the repo tree.
   strategic (`vision`, `roadmap`, `arch`, `blueprint`, `brainstorm`), discovery
   (`issue`), meta (`meta-skill`, `meta-agent`, `meta-test`), support (`conf`,
   `file`), and the `meta-matrix*` probe family. The `blueprint` skill spans
-  both tiers — group `000-blueprint`s and the project map — carrying
-  `assets/map-template.md` and `references/map-methodology.md`.
+  both tiers — group `000-blueprint`s and the project map — plus the
+  reconcile pass, carrying `assets/map-template.md`,
+  `references/map-methodology.md`, and `references/reconcile-methodology.md`.
 - **Scripting layer** (`skills/*/scripts/`, 11 scripts) — `jimconf.sh` (resolver)
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
   path); `jimledger.sh` (ledger); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–033`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–034`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root
   (including `BLUEPRINT.md`, the project context map), and
   `docs/brainstorms/` + `docs/debug/`.
@@ -165,4 +171,7 @@ records the *rule*, its criticality, and how it would be verified.
 | Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | ledger inspection; `tests/jimledger.sh` `commit-blueprint` ledger-only belt case |
 | The blueprint regen-cadence count derives from a single-writer `last_full_generate` watermark (stamped only by generate mode, solely from `jimfile.sh now`); `updates-since` validates the watermark (rc 2 on malformed/absent) and bounds the count to `<= now`, and `blueprint_regen_threshold` treats a non-positive-integer as disabled — so a bad watermark or knob degrades to signal-only and never mis-fires the opt-in unattended regen | high | `tests/jimledger.sh` `updates-since` cases; blueprint SKILL.md validation checklist |
 | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use | critical | `tests/jimfile.sh` valid-relpath cases; `tests/jimledger.sh` commit-map cases |
-| `BLUEPRINT.md` (the project context map) is written only through `/jim:blueprint`'s project tier and committed only via `commit-map`; a new spec group comes into being only through the map surface; map updates grade by the shared Step-4a rule — partition downgrades always prompt | high | process convention; blueprint SKILL.md validation checklist; `tier=project` ledger events |
+| `BLUEPRINT.md` (the project context map) is written only through `/jim:blueprint`'s project tier and committed only via `commit-map`; a new spec group comes into being only through the map surface; hand-declared map updates grade by the shared Step-4a rule — partition downgrades always prompt | high | process convention; blueprint SKILL.md validation checklist; `tier=project` ledger events |
+| The derived `## Contract Graph` section is written only by the reconcile pass — the recomputable join of group faces, never hand-declared or re-declared; its rewrite is Step-4a exempt as mechanical content | high | blueprint SKILL.md validation checklist; judge |
+| Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all seven counters (`edges`/`leaks`/`breaking`/`dead`/`unresolved`/`undeclared`/`stale`, zeros included), and always closes via `commit-map` (ledger-only when the map is unchanged); consumers shape-validate the fixed key set | high | ledger inspection; blueprint SKILL.md validation checklist |
+| Reconcile detectors fire only on declared data — missing declarations degrade to explicit reporting (unverifiable / informational), never silent exclusion, never violations; face/map evidence appears only in delimited `<untrusted-face-content>` blocks | high | blueprint SKILL.md validation checklist; judge (issue #22 engine later) |
