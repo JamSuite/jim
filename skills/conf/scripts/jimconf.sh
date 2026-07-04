@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug blueprint pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback auto_blueprint require_blueprint blueprint_regen_threshold group_axis group_territory require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug blueprint pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback auto_blueprint require_blueprint blueprint_regen_threshold group_axis group_territory require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project verify_appetite verify_fanout_cap verify_model verify_registry_timeout)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -85,6 +85,25 @@ default_for() {
     issue_list_closed)           echo "false" ;;
     issue_id_prefix)             echo "date" ;;
     issue_id_project)            echo "" ;;
+    verify_appetite)             echo "low" ;;
+    verify_fanout_cap)           echo "10" ;;
+    verify_model)                echo "inherit" ;;
+    verify_registry_timeout)     echo "120" ;;
+    *) return 1 ;;
+  esac
+}
+
+# is_verify_dynamic_family <cli-key>
+#   Return 0 iff <cli-key> is a verify dynamic-suffix key — verify_command_<name>
+#   (the operator registry) or verify_appetite_<group> (per-group appetite
+#   override) — recognized by prefix + a non-empty suffix, regardless of whether
+#   the suffix is slug-valid. Suffix charset validation happens in resolve() (a
+#   bad suffix resolves empty, never a TOML lookup — spec 035 Finding 1); this
+#   check only decides that the key SHAPE is a known verify family so `get`
+#   treats it as valid rather than unknown.
+is_verify_dynamic_family() {
+  case "$1" in
+    verify_command_?*|verify_appetite_?*) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -117,7 +136,33 @@ parse_value() {
 resolve() {
   local file="$1" cli_key="$2"
   local toml_key
-  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* || "$cli_key" == issue_id_* || "$cli_key" == review_* || "$cli_key" == group_* || "$cli_key" == "blueprint_regen_threshold" ]]; then
+  # verify_command_<name> / verify_appetite_<group>: dynamic-suffix keys. The
+  # suffix is validated against the slug charset BEFORE any lookup, so a
+  # blueprint-recorded name can never inject regex metacharacters into the grep
+  # pattern parse_value builds (spec 035 security Finding 1). A non-conforming
+  # suffix resolves empty (inert) — never a TOML read. There is no static
+  # default: unset means unconfigured (registry) / no-override (group appetite),
+  # which the /jim:verify skill interprets. The bare fixed key `verify_appetite`
+  # lacks the trailing `_`, so it does not match these globs and falls through
+  # to the normal bare-name path below.
+  case "$cli_key" in
+    verify_command_*|verify_appetite_*)
+      local suffix
+      if [[ "$cli_key" == verify_command_* ]]; then
+        suffix="${cli_key#verify_command_}"
+      else
+        suffix="${cli_key#verify_appetite_}"
+      fi
+      local dyn_value=""
+      if [[ "$suffix" =~ ^[a-z0-9][a-z0-9-]*$ && -f "$file" ]]; then
+        dyn_value="$(parse_value "$file" "$cli_key")"
+        dyn_value="$(printf '%s' "$dyn_value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      fi
+      printf '%s\n' "$dyn_value"
+      return 0
+      ;;
+  esac
+  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* || "$cli_key" == issue_id_* || "$cli_key" == review_* || "$cli_key" == group_* || "$cli_key" == verify_* || "$cli_key" == "blueprint_regen_threshold" ]]; then
     # Bare-name keys (no _path suffix). The auto_*/require_* prefixes signal
     # automated/mandatory behaviors; issue_capture is a human-in-the-loop
     # feature flag (spec 018 DD #1); the issue_list_* family configures the
@@ -126,8 +171,11 @@ resolve() {
     # family (review_depth / review_model / review_fanout_cap, spec 027) are
     # bare behavior selectors; the group_* family (group_axis /
     # group_territory, spec 033) are bare partition-doctrine knobs;
-    # blueprint_regen_threshold (spec 032) is a bare-name integer knob.
-    # All resolve to their bare TOML name.
+    # blueprint_regen_threshold (spec 032) is a bare-name integer knob; the
+    # verify_* family (verify_appetite / verify_fanout_cap / verify_model /
+    # verify_registry_timeout, spec 035) are bare verification knobs (the
+    # dynamic verify_command_* / verify_appetite_* suffixes are handled above,
+    # before this point). All resolve to their bare TOML name.
     toml_key="$cli_key"
   else
     toml_key="${cli_key}_path"
@@ -155,7 +203,7 @@ cmd_get() {
     echo "error: 'get' requires a key argument" >&2
     return 2
   fi
-  if ! default_for "$cli_key" >/dev/null; then
+  if ! default_for "$cli_key" >/dev/null && ! is_verify_dynamic_family "$cli_key"; then
     echo "error: unknown key '$cli_key' (valid: ${KEYS[*]})" >&2
     return 1
   fi

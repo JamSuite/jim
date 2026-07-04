@@ -76,7 +76,11 @@ case_no_config_returns_defaults() {
               "issue_list_order:desc" \
               "issue_list_closed:false" \
               "issue_id_prefix:date" \
-              "issue_id_project:"; do
+              "issue_id_project:" \
+              "verify_appetite:low" \
+              "verify_fanout_cap:10" \
+              "verify_model:inherit" \
+              "verify_registry_timeout:120"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -269,7 +273,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "38" "$line_count"
+  assert_eq    "list line count"                  "42" "$line_count"
   assert_match "blueprint_regen_threshold line"    '^blueprint_regen_threshold=0$'          "$OUT"
   assert_match "blueprint line"                    '^blueprint=BLUEPRINT\.md$'              "$OUT"
   assert_match "group_axis line"                   '^group_axis=vertical$'                  "$OUT"
@@ -306,6 +310,10 @@ case_list_outputs_all_keys() {
   assert_match "issue_list_closed line"            '^issue_list_closed=false$'              "$OUT"
   assert_match "issue_id_prefix line"              '^issue_id_prefix=date$'                 "$OUT"
   assert_match "issue_id_project line"             '^issue_id_project=$'                    "$OUT"
+  assert_match "verify_appetite line"              '^verify_appetite=low$'                  "$OUT"
+  assert_match "verify_fanout_cap line"            '^verify_fanout_cap=10$'                 "$OUT"
+  assert_match "verify_model line"                 '^verify_model=inherit$'                 "$OUT"
+  assert_match "verify_registry_timeout line"      '^verify_registry_timeout=120$'          "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -313,7 +321,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -351,7 +359,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "38" "$line_count"
+  assert_eq "list still emits all keys" "42" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -829,6 +837,104 @@ case_review_fanout_cap_overridden() {
   cfg=$(fixture review_fanout_cap-override.toml 'review_fanout_cap = "5"')
   run -c "$cfg" get review_fanout_cap
   assert_eq "review_fanout_cap overridden" "5" "$OUT"
+}
+
+# ─── spec 035: verify_* config family ────────────────────────────────────────
+
+# AC: verify_appetite defaults to "low" (thorough — every criticality is
+# judge-eligible) and resolves from config (spec 035 Task 1, DD #5). Bare-name
+# behavior knob dispatched by the verify_* arm in resolve().
+case_verify_appetite_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir vf_appetite_default)
+  run -c "$dir/absent.toml" get verify_appetite
+  assert_exit "default rc"      0     "$RC"
+  assert_eq   "default low"     "low" "$OUT"
+  cfg=$(fixture vf-appetite.toml 'verify_appetite = "high"')
+  run -c "$cfg" get verify_appetite
+  assert_eq   "configured high" "high" "$OUT"
+}
+
+# AC: verify_fanout_cap defaults to "10" and resolves from config (spec 035
+# Task 1). Mirrors review_fanout_cap; the skill degrades junk to the default.
+case_verify_fanout_cap_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir vf_cap_default)
+  run -c "$dir/absent.toml" get verify_fanout_cap
+  assert_exit "default rc"   0    "$RC"
+  assert_eq   "default 10"   "10" "$OUT"
+  cfg=$(fixture vf-cap.toml 'verify_fanout_cap = "5"')
+  run -c "$cfg" get verify_fanout_cap
+  assert_eq   "configured 5" "5"  "$OUT"
+}
+
+# AC: verify_model defaults to "inherit" and resolves from config (spec 035
+# Task 1). Per-spawn Agent model param; validated (incl. fable) by the skill.
+case_verify_model_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir vf_model_default)
+  run -c "$dir/absent.toml" get verify_model
+  assert_exit "default rc"       0         "$RC"
+  assert_eq   "default inherit"  "inherit" "$OUT"
+  cfg=$(fixture vf-model.toml 'verify_model = "fable"')
+  run -c "$cfg" get verify_model
+  assert_eq   "configured fable" "fable"   "$OUT"
+}
+
+# AC: verify_registry_timeout defaults to "120" (seconds) and resolves from
+# config (spec 035 Task 1, DD #5/#9). Bounds registry command execution only.
+case_verify_registry_timeout_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir vf_timeout_default)
+  run -c "$dir/absent.toml" get verify_registry_timeout
+  assert_exit "default rc"    0     "$RC"
+  assert_eq   "default 120"   "120" "$OUT"
+  cfg=$(fixture vf-timeout.toml 'verify_registry_timeout = "60"')
+  run -c "$cfg" get verify_registry_timeout
+  assert_eq   "configured 60" "60"  "$OUT"
+}
+
+# AC: verify_command_<name> is a dynamic-suffix registry key: unconfigured
+# resolves empty (the "not configured" outcome), configured resolves the
+# operator's command string verbatim (spec 035 Task 1, AC #6).
+case_verify_command_dynamic_suffix() {
+  local dir cfg
+  dir=$(empty_dir vf_cmd_default)
+  run -c "$dir/absent.toml" get verify_command_linecount
+  assert_exit "unconfigured rc"    0  "$RC"
+  assert_eq   "unconfigured empty" "" "$OUT"
+  cfg=$(fixture vf-cmd.toml 'verify_command_linecount = "wc -l"')
+  run -c "$cfg" get verify_command_linecount
+  assert_eq   "configured command" "wc -l" "$OUT"
+}
+
+# AC: verify_appetite_<group> is a dynamic-suffix per-group override:
+# unconfigured resolves empty (the skill falls back to the global appetite),
+# configured resolves the override (spec 035 Task 1, AC #8).
+case_verify_appetite_group_dynamic_suffix() {
+  local dir cfg
+  dir=$(empty_dir vf_appetite_group_default)
+  run -c "$dir/absent.toml" get verify_appetite_auth
+  assert_exit "unconfigured rc"    0  "$RC"
+  assert_eq   "unconfigured empty" "" "$OUT"
+  cfg=$(fixture vf-appetite-group.toml 'verify_appetite_auth = "critical"')
+  run -c "$cfg" get verify_appetite_auth
+  assert_eq   "configured override" "critical" "$OUT"
+}
+
+# AC: a dynamic-suffix key whose <name> is not slug-class resolves empty and
+# never reaches a TOML lookup — a blueprint-recorded name can't inject regex
+# metacharacters into the grep pattern (spec 035 security Finding 1). The
+# crafted key `verify_command_.*` must not grep-match either real entry.
+case_verify_command_bad_suffix_resolves_empty() {
+  local cfg
+  cfg=$(fixture vf-inject.toml 'verify_command_linecount = "wc -l"
+verify_command_typecheck = "tsc"')
+  run -c "$cfg" get 'verify_command_.*'
+  assert_exit "bad-suffix rc"          0  "$RC"
+  assert_eq   "no regex injection"     "" "$OUT"
+  run -c "$cfg" get verify_command_BADNAME
+  assert_eq   "uppercase suffix empty" "" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
