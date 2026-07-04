@@ -237,6 +237,179 @@ case_jimverify_territory_none_marker() {
   assert_eq "no paths" "" "$OUT"
 }
 
+# ─── Section: check — the mechanical floor (spec 035 Task 4) ─────────────────
+
+# verify_repo_scoped <name> — build a throwaway git repo with a group blueprint
+#   (pattern + structure checks), a project map declaring territory `skills/`,
+#   group code under skills/, and a stray file outside territory. Echo the root.
+verify_repo_scoped() {
+  local name="$1"; local root="$TMP_BASE/$name"
+  mkdir -p "$root/skills/foo" "$root/docs/specs/g/000-blueprint"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+  printf 'see docs/specs/x.md for details\n' > "$root/skills/foo/bad.sh"
+  printf 'CLEANMARKER only\n'                > "$root/skills/foo/good.sh"
+  printf 'stray file\n'                      > "$root/loose.txt"
+  cat > "$root/docs/specs/g/000-blueprint/spec.md" <<'EOF'
+## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| no-inline | no inline doc paths in skills | high | pattern |
+| want-clean | skills carry the clean marker | medium | pattern |
+| no-tmp | no tmp files under skills | low | structure |
+| good-exists | the good file exists | low | structure |
+
+```verify-checks
+no-inline polarity=must-not regex=docs/specs/[^ ]*\.md scope=skills/
+want-clean polarity=must regex=CLEANMARKER scope=skills/
+no-tmp absent=skills/*.tmp
+good-exists exists=skills/foo/good.sh
+```
+EOF
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+## Groups
+
+### g
+
+- **Territory:** `skills/`
+EOF
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "seed"
+  printf '%s' "$root"
+}
+
+# run_jimverify_in <dir> <args...> — invoke jimverify.sh with CWD=<dir> so the
+#   floor's grep/find/git run against the fixture repo. Capture OUT/ERR/RC.
+run_jimverify_in() {
+  local dir="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$dir" && bash "$SCRIPT_jimverify" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: a must-not pattern check that matches inside territory reports violated,
+# with the offending location as evidence (spec 035 AC #4).
+case_jimverify_check_pattern_mustnot_violated() {
+  local root; root="$(verify_repo_scoped t4mn)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit "rc" 0 "$RC"
+  assert_eq    "no-inline violated" "violated"       "$(tsv_field no-inline 2)"
+  assert_match "evidence names file" 'skills/foo/bad\.sh' "$(tsv_field no-inline 3)"
+}
+
+# AC: a must pattern check that finds its required match inside territory holds
+# (spec 035 AC #4).
+case_jimverify_check_pattern_must_holds() {
+  local root; root="$(verify_repo_scoped t4mh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_eq "want-clean holds" "holds" "$(tsv_field want-clean 2)"
+}
+
+# AC: structure existence / absence checks run deterministically — an existing
+# path holds, an absent glob holds (spec 035 AC #4).
+case_jimverify_check_structure_holds() {
+  local root; root="$(verify_repo_scoped t4st)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_eq "good-exists holds" "holds" "$(tsv_field good-exists 2)"
+  assert_eq "no-tmp holds"      "holds" "$(tsv_field no-tmp 2)"
+}
+
+# AC: territory conformance is the deterministic set difference — a tracked file
+# outside the declared territory surfaces as a TERRITORY-CONFORMANCE record; the
+# skill frames attribution (spec 035 AC #5, DD #8).
+case_jimverify_check_conformance_detects_outside_file() {
+  local root; root="$(verify_repo_scoped t4cf)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_match "loose flagged" '^TERRITORY-CONFORMANCE	loose\.txt$' "$OUT"
+  assert_eq "skills code not flagged" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^TERRITORY-CONFORMANCE	skills/')"
+}
+
+# AC: with no declared territory the floor runs unscoped and emits the UNSCOPED
+# sentinel, and territory conformance is skipped — the degradation is named on
+# stdout, never silently absorbed (spec 035 AC #3, DD #8).
+case_jimverify_check_unscoped_sentinel() {
+  local root="$TMP_BASE/t4un"
+  mkdir -p "$root/skills" "$root/docs/specs/g/000-blueprint"
+  git -C "$root" init -q
+  git -C "$root" config user.email "t@e.com"; git -C "$root" config user.name "T"
+  git -C "$root" config commit.gpgsign false
+  printf 'CLEANMARKER\n' > "$root/skills/a.sh"
+  cat > "$root/docs/specs/g/000-blueprint/spec.md" <<'EOF'
+## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| want-clean | clean marker present | medium | pattern |
+
+```verify-checks
+want-clean polarity=must regex=CLEANMARKER scope=skills/
+```
+EOF
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+## Groups
+
+### g
+
+- **Territory:** —
+EOF
+  git -C "$root" add -A; git -C "$root" commit -q -m seed
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit  "rc" 0 "$RC"
+  assert_match "unscoped sentinel" '^UNSCOPED$' "$OUT"
+  assert_eq "no conformance when unscoped" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^TERRITORY-CONFORMANCE')"
+  assert_eq "explicit-scope check still runs" "holds" "$(tsv_field want-clean 2)"
+}
+
+# AC: every path-bearing check parameter passes the valid-relpath + leading-dash
+# gate before use — an absolute path, a `..` segment, or a leading-dash value
+# degrades that check to failed and is never handed to grep/find (spec 035
+# security Finding 6).
+case_jimverify_check_bad_params_fail() {
+  local root="$TMP_BASE/t4bp"
+  mkdir -p "$root/skills" "$root/docs/specs/g/000-blueprint"
+  git -C "$root" init -q
+  git -C "$root" config user.email "t@e.com"; git -C "$root" config user.name "T"
+  git -C "$root" config commit.gpgsign false
+  printf 'x\n' > "$root/skills/a.sh"
+  cat > "$root/docs/specs/g/000-blueprint/spec.md" <<'EOF'
+## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| abs-scope | absolute scope | high | pattern |
+| dotdot-scope | dotdot scope | high | pattern |
+| dash-scope | leading-dash scope | high | pattern |
+| abs-exists | absolute exists | high | structure |
+
+```verify-checks
+abs-scope polarity=must regex=x scope=/etc
+dotdot-scope polarity=must regex=x scope=../outside
+dash-scope polarity=must regex=x scope=-rf
+abs-exists exists=/etc/passwd
+```
+EOF
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+## Groups
+
+### g
+
+- **Territory:** `skills/`
+EOF
+  git -C "$root" add -A; git -C "$root" commit -q -m seed
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit "rc" 0 "$RC"
+  assert_eq "absolute scope → failed"   "failed" "$(tsv_field abs-scope 2)"
+  assert_eq "dotdot scope → failed"     "failed" "$(tsv_field dotdot-scope 2)"
+  assert_eq "leading-dash scope → failed" "failed" "$(tsv_field dash-scope 2)"
+  assert_eq "absolute exists → failed"  "failed" "$(tsv_field abs-exists 2)"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.

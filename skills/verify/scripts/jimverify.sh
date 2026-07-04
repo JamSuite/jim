@@ -178,6 +178,197 @@ cmd_territory() {
   done
 }
 
+# ─── Section: check — the mechanical floor ───────────────────────────────────
+
+# safe_path_param <value> — return 0 iff a path-bearing check parameter (scope /
+#   exists / absent) is safe to hand to grep/find: non-empty, no leading dash
+#   (option injection), and passing jimfile valid-relpath (not absolute, no '..'
+#   segment). The Finding-6 gate — a failing parameter degrades its check to
+#   `failed` and is never executed. Values are ALSO passed behind `-e` / `--`
+#   guards at the call site (defense in depth).
+safe_path_param() {
+  local v="$1"
+  [[ -n "$v" ]] || return 1
+  [[ "$v" == -* ]] && return 1
+  bash "$JIMFILE" valid-relpath "$v" >/dev/null 2>&1 || return 1
+  return 0
+}
+
+# emit_outcome <id> <outcome> <evidence> — print one floor result record. The
+#   evidence field is sanitized (tabs/newlines/CRs → spaces, length capped) so
+#   untrusted code/blueprint content can never shift TSV columns (Finding 7).
+emit_outcome() {
+  local id="$1" outcome="$2" evidence="$3"
+  evidence="$(printf '%s' "$evidence" | tr '\t\n\r' '   ' | cut -c1-1024)"
+  printf '%s\t%s\t%s\n' "$id" "$outcome" "$evidence"
+}
+
+# parse_params <params> — emit one `key\tvalue` line per recognized param key.
+#   The verify-checks grammar is `<key>=<value>` space-separated, but a value may
+#   itself contain a space (e.g. an ERE character class `[^ ]`), so a naive
+#   space split corrupts the regex. This parser is key-aware: a new param begins
+#   only at a token matching `^<knownkey>=`; every other token is a continuation
+#   of the current value. Input is streamed through awk on stdin so backslashes
+#   survive verbatim (unlike awk -v, which processes escapes).
+parse_params() {
+  printf '%s\n' "$1" | awk '{
+    key=""; val=""
+    n = split($0, w, " ")
+    for (i = 1; i <= n; i++) {
+      p = w[i]
+      if (p ~ /^(polarity|regex|scope|count|exists|absent)=/) {
+        if (key != "") print key "\t" val
+        eq = index(p, "=")
+        key = substr(p, 1, eq - 1)
+        val = substr(p, eq + 1)
+      } else if (key != "") {
+        val = val " " p
+      }
+    }
+    if (key != "") print key "\t" val
+  }'
+}
+
+# check_pattern <id> <params> — run a pattern (must / must-not) check. Reads the
+#   verify-checks params: polarity, regex, optional scope (default: territory),
+#   optional count. The regex is handed to grep behind `-e`, search paths behind
+#   `--`. A missing regex / bad polarity / unsafe scope / bad count → failed.
+check_pattern() {
+  local id="$1" params="$2"
+  local polarity="" regex="" scope="" count="" k v
+  while IFS=$'\t' read -r k v; do
+    case "$k" in
+      polarity) polarity="$v" ;;
+      regex)    regex="$v" ;;
+      scope)    scope="$v" ;;
+      count)    count="$v" ;;
+    esac
+  done < <(parse_params "$params")
+  if [[ -z "$regex" ]]; then emit_outcome "$id" failed "no regex parameter"; return; fi
+  if [[ "$polarity" != "must" && "$polarity" != "must-not" ]]; then
+    emit_outcome "$id" failed "invalid polarity parameter"; return
+  fi
+  if [[ -n "$count" && ! "$count" =~ ^[0-9]+$ ]]; then
+    emit_outcome "$id" failed "invalid count parameter"; return
+  fi
+  local -a search=()
+  if [[ -n "$scope" ]]; then
+    if ! safe_path_param "$scope"; then emit_outcome "$id" failed "invalid scope parameter"; return; fi
+    search=("$scope")
+  elif [[ ${#terr_paths[@]} -gt 0 ]]; then
+    search=("${terr_paths[@]}")
+  else
+    search=(".")
+  fi
+  local out n
+  out="$(grep -rnE -e "$regex" -- "${search[@]}" 2>/dev/null)" || true
+  if [[ -z "$out" ]]; then n=0; else n="$(printf '%s\n' "$out" | wc -l | tr -d ' ')"; fi
+  local outcome evidence
+  if [[ -n "$count" ]]; then
+    if [[ "$n" -eq "$count" ]]; then outcome=holds;    evidence="matched $n (expected $count)"
+    else                             outcome=violated; evidence="matched $n, expected $count"; fi
+  elif [[ "$polarity" == "must" ]]; then
+    if [[ "$n" -gt 0 ]]; then outcome=holds;    evidence="$n match(es)"
+    else                      outcome=violated; evidence="required pattern not found in scope"; fi
+  else
+    if [[ "$n" -eq 0 ]]; then outcome=holds;    evidence="no forbidden matches"
+    else                      outcome=violated; evidence="$(printf '%s\n' "$out" | head -n 3 | cut -d: -f1,2 | tr '\n' ' ')"; fi
+  fi
+  emit_outcome "$id" "$outcome" "$evidence"
+}
+
+# check_structure <id> <params> — run a structure check: exists=<relpath> (holds
+#   iff the path exists) or absent=<glob> (holds iff nothing matches). The path /
+#   glob passes safe_path_param before use; the glob is anchored under `./` so it
+#   can never be read as a find option (Finding 6).
+check_structure() {
+  local id="$1" params="$2"
+  local exists="" absent="" k v
+  while IFS=$'\t' read -r k v; do
+    case "$k" in
+      exists) exists="$v" ;;
+      absent) absent="$v" ;;
+    esac
+  done < <(parse_params "$params")
+  if [[ -n "$exists" ]]; then
+    if ! safe_path_param "$exists"; then emit_outcome "$id" failed "invalid exists parameter"; return; fi
+    if [[ -e "$exists" ]]; then emit_outcome "$id" holds "$exists exists"
+    else                        emit_outcome "$id" violated "$exists is absent"; fi
+    return
+  fi
+  if [[ -n "$absent" ]]; then
+    if ! safe_path_param "$absent"; then emit_outcome "$id" failed "invalid absent parameter"; return; fi
+    local hit
+    hit="$(find . -path "./$absent" -print 2>/dev/null | head -n 3 | tr '\n' ' ')" || true
+    if [[ -z "$hit" ]]; then emit_outcome "$id" holds "no match for $absent"
+    else                     emit_outcome "$id" violated "present: $hit"; fi
+    return
+  fi
+  emit_outcome "$id" failed "no exists/absent parameter"
+}
+
+# check_conformance — emit a TERRITORY-CONFORMANCE record for every tracked file
+#   outside every declared territory path (the deterministic set difference).
+#   The skill frames attribution (group code = violation, docs/config =
+#   informational); the script only emits the raw data (DD #8). Reads the
+#   dynamically-scoped terr_paths from cmd_check.
+check_conformance() {
+  local f t tp inside
+  git ls-files 2>/dev/null | while IFS= read -r f; do
+    inside=0
+    for t in "${terr_paths[@]}"; do
+      tp="${t%/}/"
+      case "$f/" in
+        "$tp"*) inside=1; break ;;
+      esac
+    done
+    if [[ $inside -eq 0 ]]; then printf 'TERRITORY-CONFORMANCE\t%s\n' "$f"; fi
+  done
+}
+
+# cmd_check <blueprint-dir> <map-path> <group> — run the mechanical floor: every
+#   pattern/structure invariant scoped to the group's declared territory, plus
+#   territory conformance. registry / judge / malformed invariants are NOT run
+#   here (the skill executes the registry via the Bash tool and fans out judges);
+#   this verb owns only the deterministic floor. With no declared territory the
+#   floor runs unscoped and emits the UNSCOPED sentinel, skipping conformance.
+cmd_check() {
+  local bpdir="${1:-}" map="${2:-}" group="${3:-}"
+  if [[ -z "$bpdir" || -z "$map" || -z "$group" ]]; then
+    echo "jimverify check: need <blueprint-dir> <map-path> <group>" >&2; return 2
+  fi
+  local spec="$bpdir/spec.md"
+  if [[ ! -f "$spec" ]]; then echo "jimverify check: blueprint spec not found: $spec" >&2; return 2; fi
+  if [[ ! "$group" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "jimverify check: invalid group: $group" >&2; return 2
+  fi
+  # Resolve territory (valid paths only; HYGIENE lines are advisory, not scope).
+  local terr_valid=""
+  if [[ -f "$map" ]]; then
+    terr_valid="$(cmd_territory "$map" "$group" 2>/dev/null | grep -v '^HYGIENE'"$(printf '\t')" || true)"
+  fi
+  local -a terr_paths=()
+  local line
+  if [[ -n "$terr_valid" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && terr_paths+=("$line")
+    done <<< "$terr_valid"
+  fi
+  local scoped=1
+  if [[ ${#terr_paths[@]} -eq 0 ]]; then scoped=0; printf 'UNSCOPED\n'; fi
+  # Run the floor for pattern/structure invariants.
+  local id crit method params inv
+  cmd_parse "$spec" | while IFS=$'\t' read -r id crit method params inv; do
+    case "$method" in
+      pattern)   check_pattern   "$id" "$params" ;;
+      structure) check_structure "$id" "$params" ;;
+    esac
+  done
+  # Territory conformance is only meaningful when a territory is declared.
+  if [[ $scoped -eq 1 ]]; then check_conformance; fi
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -185,6 +376,7 @@ main() {
   case "$sub" in
     parse)     shift; cmd_parse "$@" ;;
     territory) shift; cmd_territory "$@" ;;
+    check)     shift; cmd_check "$@" ;;
     *) usage; return 2 ;;
   esac
 }
