@@ -61,7 +61,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:vision` | Create/update project vision and strategy | `@jim:pm` | `VISION.md` |
 | `/jim:roadmap` | Create/update execution milestones and phase sequence | `@jim:pm` | `ROADMAP.md` |
 | `/jim:arch` | Create/update technical architecture | `@jim:architect` | `ARCHITECTURE.md` |
-| `/jim:blueprint` | Create/update a group's current-state blueprint spec | `@jim:architect` | `docs/specs/{group}/000-blueprint/spec.md` |
+| `/jim:blueprint` | Create/update a group's current-state blueprint spec (`<group>`), or — invoked bare — the project-tier context map | `@jim:architect` | `docs/specs/{group}/000-blueprint/spec.md` · `BLUEPRINT.md` |
 | `/jim:debug` | Diagnose failures, produce report for spec/plan cycle | `@jim:coder` | `debug/{YYYYMMDD}-{topic}.md` |
 | `/jim:brainstorm` | Freeform ideation — exploratory notes | `@jim:pm` | `brainstorms/{YYYYMMDD}-{topic}.md` |
 | `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list [filter]` / `stats` / `show <id>`; bare → help) | `@jim:pm` | `issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` |
@@ -79,7 +79,8 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 |----------|----------|------------|------------|
 | Vision | `VISION.md` (project root) | Big picture — problem statement, value prop, target audience, competitive landscape | `/jim:vision` |
 | Architecture | `ARCHITECTURE.md` (project root) | Technical foundation — codemap, system diagram, tech stack, data structures, architectural invariants | `/jim:arch` |
-| Blueprint | `docs/specs/{group}/000-blueprint/spec.md` | A group's current, present-tense spec — responsibility, provides/requires surface, structure, load-bearing invariants; amalgamated from the group's specs, ARCHITECTURE.md, and code | `/jim:blueprint` |
+| Blueprint | `docs/specs/{group}/000-blueprint/spec.md` | A group's current, present-tense spec — responsibility, provides/requires surface, structure, load-bearing invariants; amalgamated from the group's specs, ARCHITECTURE.md, and code | `/jim:blueprint <group>` |
+| Context map | `BLUEPRINT.md` (project root, `blueprint_path`) | The project-tier context map — the declared partition into spec groups, each with a purpose, role (`domain`/`platform`/`layer`), boundary rationale, relations, and (mode-dependent) code territory; consumed by `/jim:spec`'s assignment advisor; sole authority for the partition | `/jim:blueprint` (bare) |
 | Roadmap | `ROADMAP.md` (project root) | Execution sequence — milestones, phase breakdowns, links to numbered specs with status | `/jim:roadmap` |
 | Spec | `docs/specs/{group}/{00X}-{name}/spec.md` | Work definition — requirements, acceptance criteria, spec type (feature/bug/refactor) | `/jim:spec` |
 | Plan | `docs/specs/{group}/{00X}-{name}/plan.md` | Implementation path — codebase research, atomic tasks, dependencies | `/jim:plan` |
@@ -375,7 +376,7 @@ agent: meta
 **Process:**
 1. Describe your idea, bug report, or refactor motivation
 2. PM determines spec type (`feature`, `bug`, `refactor`) and asks clarifying questions (1-2 at a time)
-3. Checks alignment against VISION.md and ARCHITECTURE.md
+3. Checks alignment against VISION.md and ARCHITECTURE.md; when `BLUEPRINT.md` exists, the assignment advisor consumes the context map to recommend the target group (role-aware reasoning, genuine pushback, developer final authority — mint-new routes through the blueprint surface inline)
 4. Generates spec using template from `spec/assets/spec-template.md`
 5. You review and approve or request changes
 
@@ -424,6 +425,23 @@ agent: meta
 The review is **depth-aware** (spec 027): it triages the build's diff and fans out read-only `investigator` subagents on the high-stakes changes to verify each acceptance criterion for *complete* satisfaction (including code the build did not touch), recording the evidence in `review.md`. Depth is configurable — `review_depth` (default `thorough`; `lean` for trivial changes; `--depth lean|thorough` overrides per run), `review_model` (the investigator model; default `inherit`), and `review_fanout_cap` (max investigators; default `10`).
 
 `/jim:build` offers the review at its completion gate by default, or runs it automatically under the `require_review` / `auto_review` knobs. Two axes that don't conflate: the review's **findings** are advisory — a report, never a veto, and they never auto-reject the build. `require_review`, by contrast, makes the review a **required, blocking phase**: the build's completion gate is held until the review has run to completion, so the build cannot be marked complete without it. It is the uncompleted phase that blocks, not the findings.
+
+### `/jim:blueprint`
+
+**Purpose:** Keep the living blueprints current at both tiers — each group's `000-blueprint` (the build-grade map of one group) and the project-tier context map (`BLUEPRINT.md`, the declared partition itself).
+
+**Group tier** (`/jim:blueprint <group>`, specs 029–032):
+1. **Generate** — full scan of the group's specs, ARCHITECTURE.md, and code → `000-blueprint/spec.md` (responsibility, provides/requires faces, structure, invariants); stamps the `last_full_generate` watermark
+2. **Update** — targeted section-diff from a change diff: `--from-review <spec-dir> <group>` (fed by the review's verdict ledger) or `--since <ref> <group>` (ad-hoc git range)
+3. **Guard** — proposed folds are judged against the Invariants table first; violations fork per-item to *fix the code* or *fold the intent* (spec 031)
+4. **Cadence** — accumulated targeted updates since the last full generate are counted and reported; the opt-in `blueprint_regen_threshold` swaps a stale enough targeted update for a full regeneration (spec 032)
+
+**Project tier** (`/jim:blueprint`, bare — spec 033):
+1. **Create** — no map yet: a both-directions flow reads the strategic context *and* interviews for domain knowledge, proposes a partition of deliberate bounded contexts (vertical-first doctrine; `group_axis` escape hatch; roles `domain`/`platform`/`layer`; territory per `group_territory`), and writes `BLUEPRINT.md` only on explicit approval
+2. **Update** — differential diff against the current map, graded by the shared Step-4a rule: additive changes may auto-write under `auto_blueprint`; partition downgrades always prompt per-item
+3. **Consumption** — `/jim:spec`'s assignment advisor reads the map on every spec; a new group can only be minted through this surface
+
+**Gate:** Human approval on every write (the `auto_blueprint` knob relaxes group-tier folds and additive map changes only). Both tiers self-commit path-scoped via `jimledger.sh` (`commit-blueprint` / `commit-map`) and record `blueprint` stage events on their ledgers.
 
 ### `/jim:ship` *(not yet implemented)*
 
