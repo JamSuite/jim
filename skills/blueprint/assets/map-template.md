@@ -35,3 +35,16 @@ re-declared here.*
   valid-relpath`. Omit this line under territory mode `none`; leave empty
   when not yet known (greenfield).}
 - **Blueprint:** {specs}/{group}/000-blueprint/
+
+## Contract Graph
+
+*Derived from the group blueprints' provides/requires faces — regenerated
+on every blueprint write; do not edit. Last reconciled: {ts from
+`jimfile.sh now`} (via /jim:blueprint)*
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| {group} | {relied-on provides entry, named short} | {group} |
+
+{With fewer than two blueprint-bearing groups, replace the table with:
+*Nothing to reconcile — fewer than two groups have blueprints.*}
