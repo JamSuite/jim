@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-02T07:15:17Z
+updated: 2026-07-04T00:40:56Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -51,6 +51,22 @@ blueprint**:
   check them (e.g. verification asserts it, but no intent or usage backs it →
   stale / over-fit).
 
+## New inputs from spec 033 (context map)
+
+033 shipped the project tier and explicitly deferred enforcement here:
+
+- **Territory enforcement.** `BLUEPRINT.md` records per-group code territory
+  as data only (spec 033 AC #8). This engine is the consumption-time
+  backstop: re-validate territory paths at use (`jimfile.sh valid-relpath`
+  is the capture-time gate to reuse) and scope the mechanical floor checks
+  by each group's declared territory.
+- **The map tier is a second checkable artifact.** Roles, relations, and
+  territories in `BLUEPRINT.md` are invariant-class content, and the
+  `group_territory` mode sets the strength and price of this engine's
+  mechanical floor (`directory` strongest; `declared-paths` mid;
+  `none` degrades to LLM-judged) — spec 033, security Findings 4/9.
+
 ## Depends on
 
-Spec 029 (which records the invariants + methods).
+Spec 029 (which records the invariants + methods); spec 033
+(`BLUEPRINT.md`, territory declarations, and the `valid-relpath` gate).
