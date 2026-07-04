@@ -35,7 +35,7 @@ description: >
   @jim:architect produces plans, it does not implement them. Route to the right agent.
   </commentary>
   </example>
-skills: [plan, arch]
+skills: [plan, arch, blueprint]
 tools: [Read, Write, Edit, Glob, Grep, Agent(researcher)]
 model: sonnet
 ---
