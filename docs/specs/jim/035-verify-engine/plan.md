@@ -316,7 +316,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] `jimconf.sh`: add the `verify_*` family — extend the `:120`
+1. [x] `jimconf.sh`: add the `verify_*` family — extend the `:120`
    disjunction, add `default_for` arms (`verify_appetite`→`"low"`,
    `verify_fanout_cap`→`"10"`, `verify_model`→`"inherit"`,
    `verify_registry_timeout`→`"120"`), add the four fixed keys to `KEYS`,
@@ -326,7 +326,7 @@ flowchart TD
    default+override cases per key plus a bad-suffix case.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimconf`
 
-2. [ ] `jimledger.sh`: append `verify` to `LEDGER_STAGES`; add
+2. [x] `jimledger.sh`: append `verify` to `LEDGER_STAGES`; add
    `cmd_commit_verify` (validate dir, `git add -- ledger.md`, commit
    `chore(verify): record verification run` with `-- ledger.md`). Add
    `tests/jimledger.sh` cases: verify-stage metrics triplet appears;
@@ -334,7 +334,7 @@ flowchart TD
    a non-git dir.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimledger`
 
-3. [ ] Create `skills/verify/scripts/jimverify.sh` with `parse` +
+3. [x] Create `skills/verify/scripts/jimverify.sh` with `parse` +
    `territory` verbs per the Interface Contracts (line-oriented awk, id /
    enum / registry-name / relpath validation, malformed-row degradation,
    legacy-table → judge fallback, TSV field sanitization per the
@@ -344,7 +344,7 @@ flowchart TD
    and a tab-bearing invariant row asserting column stability.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimverify`
 
-4. [ ] Extend `jimverify.sh` with the `check` verb: `pattern`/`structure`
+4. [x] Extend `jimverify.sh` with the `check` verb: `pattern`/`structure`
    execution scoped to territory (patterns behind `-e` / `--`, find/test
    behind `--`), the Finding-6 parameter gates (`scope`/`exists`/`absent`
    through `valid-relpath`; failing param → `failed`), the
@@ -356,25 +356,25 @@ flowchart TD
    leading-dash value → `failed`, never executed).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimverify`
 
-5. [ ] Update `skills/blueprint/assets/blueprint-template.md`: Invariants
+5. [x] Update `skills/blueprint/assets/blueprint-template.md`: Invariants
    table gains `Id` and the closed-enum `Check` column; add the optional
    `verify-checks` fenced-block stanza with the grammar comment.
    **Verify:** `grep -q 'verify-checks' skills/blueprint/assets/blueprint-template.md && grep -qE '\| *Id *\|' skills/blueprint/assets/blueprint-template.md`
 
-6. [ ] Create `skills/blueprint/references/check-authoring.md` (grammar,
+6. [x] Create `skills/blueprint/references/check-authoring.md` (grammar,
    method-selection guidance — mechanical-first, judge as fallback — worked
    examples, registry-name inertness note) and add the ≤2-line pointer in
    blueprint SKILL.md Step 3.
    **Verify:** `test -f skills/blueprint/references/check-authoring.md && [ "$(wc -l < skills/blueprint/SKILL.md)" -le 500 ] && grep -q 'check-authoring' skills/blueprint/SKILL.md`
 
-7. [ ] Create `agents/judge.md`: read-only single-invariant judge —
+7. [x] Create `agents/judge.md`: read-only single-invariant judge —
    `tools: [Read, Glob, Grep]`, `model: inherit`, untrusted-content and
    secret-scrub clauses carried from investigator, structured verdict
    output per the spawn contract, description scoped to `/jim:verify`
    dispatch.
    **Verify:** `grep -q 'tools: \[Read, Glob, Grep\]' agents/judge.md && ! grep -qE 'Write|Edit|Bash' agents/judge.md`
 
-8. [ ] Create `skills/verify/SKILL.md`: argument routing (`<group>`
+8. [x] Create `skills/verify/SKILL.md`: argument routing (`<group>`
    required; `--appetite <level>` strip convention), blueprint/map
    existence gates (sentinel vocabulary), floor via `jimverify.sh`,
    registry execution via Bash tool + timeout with the Finding-1 name
@@ -388,12 +388,12 @@ flowchart TD
    Manifest, one-level-nesting standing note.
    **Verify:** `[ "$(wc -l < skills/verify/SKILL.md)" -le 500 ] && grep -q 'Agent(judge)' skills/verify/SKILL.md && grep -q 'commit-verify' skills/verify/SKILL.md`
 
-9. [ ] Update `agents/reviewer.md`: add `verify` to `skills:`, one-line
+9. [x] Update `agents/reviewer.md`: add `verify` to `skills:`, one-line
    domain note ("also runs /jim:verify — blueprint invariant
    verification").
    **Verify:** `grep -q 'verify' agents/reviewer.md`
 
-10. [ ] Update `jimconf.toml.example`: `# --- Verification (spec 035) ---`
+10. [x] Update `jimconf.toml.example`: `# --- Verification (spec 035) ---`
     section — the four fixed keys with defaults (`verify_appetite`,
     `verify_fanout_cap`, `verify_model`, `verify_registry_timeout`), the two
     dynamic-suffix families with one worked example each
@@ -401,10 +401,10 @@ flowchart TD
     security note (blueprint proposes, config activates).
     **Verify:** `grep -q 'verify_appetite' jimconf.toml.example && grep -q 'verify_command_' jimconf.toml.example`
 
-11. [ ] Full suite green.
+11. [x] Full suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
-12. [ ] Update `WORKFLOW.md` (`/jim:verify` command entry, artifacts:
+12. [x] Update `WORKFLOW.md` (`/jim:verify` command entry, artifacts:
     report-only + ledger, placement after the blueprint lifecycle) and
     `README.md` (judge fan-out per-subagent read-prompt note, extending
     the 027 permissions snippet).
