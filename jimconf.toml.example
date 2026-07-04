@@ -207,3 +207,56 @@ security_adhoc_path       = "docs/security"
 # Static project tag used by the "project" preset (also usable as literal
 # text in a template). Empty by default.
 # issue_id_project = "JIM"
+
+# --- Verification engine (spec 035) ---------------------------------------
+
+# /jim:verify checks a group's code against its 000-blueprint's recorded
+# invariants: a zero-config mechanical floor (pattern/structure), an
+# operator-configured registry of project tooling, and a criticality-gated
+# read-only LLM judge. All keys below are optional — the engine runs out of
+# the box with these defaults.
+
+# Appetite: the criticality threshold at which the expensive judge rung runs.
+# The mechanical floor ALWAYS runs and is never gated by this. Values:
+# "critical" | "high" | "medium" | "low". Default "low" is the thorough
+# setting — every criticality is judge-eligible; the knob only ever RAISES the
+# bar (e.g. "high" judges only critical+high invariants, reporting the rest
+# "skipped by appetite" — never silently dropped). A malformed value degrades
+# to "low" and the fallback is noted in the run's report. A per-run
+# `/jim:verify --appetite <level>` overrides this for one run.
+# verify_appetite = "low"
+
+# Per-group appetite override — dynamic suffix, one per group. Overrides
+# verify_appetite for that group only (precedence: --appetite flag > per-group
+# > global > default). The <group> suffix must be a slug.
+# verify_appetite_auth = "critical"
+
+# Judge fan-out cap: the maximum number of judge subagents dispatched per run,
+# highest-criticality first; any remainder is named in the report. Mirrors
+# review_fanout_cap — a non-positive/non-numeric value falls back to 10, and a
+# cap of 0 never silently disables the fan-out. Default "10".
+# verify_fanout_cap = "10"
+
+# Model for the judge subagents (the per-spawn Agent model). "inherit" (the
+# default) runs them on the session model; or pin a tier:
+# "sonnet" | "opus" | "haiku" | "fable". Anything else falls back to "inherit".
+# verify_model = "inherit"
+
+# Per-command timeout (seconds) for REGISTRY command execution only — the
+# native floor and the judges are not governed by it. Expiry folds into that
+# one check's "failed" outcome; the run always continues. A
+# non-positive/non-numeric value falls back to 120. Default "120".
+# verify_registry_timeout = "120"
+
+# The operator-owned registry — dynamic suffix, one command per entry. A
+# blueprint invariant with check `registry:<name>` runs ONLY the command
+# string you place in verify_command_<name> here; the <name> suffix must be a
+# slug. This is the trust boundary: nothing recorded in a blueprint, code, or
+# any scanned artifact can introduce, alter, or activate a command — the
+# blueprint only PROPOSES a name, and this config ACTIVATES it. An unconfigured
+# name reports "not configured" and executes nothing. Registry commands receive
+# no blueprint-derived arguments; each is a complete, self-contained invocation.
+# They run through Claude Code's normal permission prompt (like the pre_commit
+# hook), so you approve each one at run time.
+# verify_command_linecount = "scripts/check-line-budget.sh"
+# verify_command_typecheck = "npm run typecheck"
