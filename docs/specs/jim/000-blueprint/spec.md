@@ -2,8 +2,8 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
-updated: "2026-07-04"
-last_full_generate: "2026-07-05T09:35:03Z"
+updated: "2026-07-05"
+last_full_generate: "2026-07-05T23:32:20Z"
 ---
 
 # jim — blueprint
@@ -17,14 +17,15 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `jim` group **is** the jim plugin: a Claude Code plugin that adds an
 agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md; specs
-001–034) is to make AI-assisted development follow the developer's engineering
+001–037) is to make AI-assisted development follow the developer's engineering
 discipline instead of bypassing it — grounding non-trivial work in a
 phase-gated `spec → research → plan → (security) → build → review` lifecycle,
 backed by specialized agent personas, living strategic documents, and a
 compounding archive of specs/research/plans as institutional memory. Around the
 core lifecycle the group also provides strategic skills (vision, roadmap, arch,
-blueprint, brainstorm), discovery/issue capture, and a meta toolchain with
-which jim builds and tests itself (self-hosting). The group is markdown-first
+blueprint, brainstorm), discovery/issue capture, an invariant/contract
+verification engine (verify), and a meta toolchain with which jim builds and
+tests itself (self-hosting). The group is markdown-first
 with a minimal deterministic bash scripting layer; there is no standalone
 runtime, build step, or third-party dependency.
 
@@ -42,16 +43,19 @@ each deterministic script fails loudly (non-zero exit or sentinel) and never
 executes the data it reads.
 
 - `/jim:{verb}` **command surface** — `spec`, `spec-check`, `research`, `plan`,
-  `sec`, `build`, `debug`, `review` (SDLC); `vision`, `roadmap`, `arch`,
-  `blueprint`, `brainstorm` (strategic); `issue` (discovery); `meta-skill`,
-  `meta-agent`, `meta-test` (meta); `conf`, `file` (introspection). Guarantee:
+  `sec`, `build`, `debug`, `review`, `verify` (SDLC); `vision`, `roadmap`,
+  `arch`, `blueprint`, `brainstorm` (strategic); `issue` (discovery);
+  `meta-skill`, `meta-agent`, `meta-test` (meta); `conf`, `file`
+  (introspection). Guarantee:
   each produces a durable artifact and halts for human approval — no phase
   auto-advances, nothing auto-ships; blueprint update-mode folds are guarded —
   a violated invariant is never silently rewritten, and `critical`/`high`
   downgrades always prompt even under `auto_blueprint`; the review folds a
   living-intent check against the group's `000-blueprint` (existence-conditioned)
   and the update's violation fork is grounded in `/jim:verify` engine outcomes on
-  both adapters; update mode surfaces a
+  both adapters; `/jim:verify` also offers an on-demand contract mode
+  (`--contracts [<group>]`) checking the graph's edges against the code on both
+  sides; update mode surfaces a
   regen-cadence signal (targeted updates since the last full generate) and can
   opt into a `blueprint_regen_threshold` that triggers a full regeneration when
   reached. Bare `/jim:blueprint` maintains the project context map
@@ -63,10 +67,10 @@ executes the data it reads.
   declaration-level findings with offered issues, and names blast radius on
   a Provides downgrade — informational, never a veto.
 - `@jim:{role}` **agent personas** — `pm`, `architect`, `researcher`, `coder`,
-  `security`, `reviewer`, `investigator`, `issue-analyst`, `meta`. Guarantee:
-  each is a bounded role that stops after its artifact; read-only roles
-  (`investigator`, `issue-analyst`) are capability-narrowed so ingested content
-  cannot mutate state.
+  `security`, `reviewer`, `investigator`, `judge`, `issue-analyst`, `meta`.
+  Guarantee: each is a bounded role that stops after its artifact; read-only
+  roles (`investigator`, `judge`, `issue-analyst`) are capability-narrowed so
+  ingested content cannot mutate state.
 - `jimfile.sh` **file/path CLI** — `exists`/`get`/`slug`/`date`/`now`/`next-id`/
   `next-num`/`path <kind …>`/`glob`/`valid-id`/`valid-relpath`/`mv-spec`/
   `prefix-from`.
@@ -78,10 +82,15 @@ executes the data it reads.
   `source`s the config.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
   `files`/`diff`/`diff-range`/`files-range`/`commit-review`/`commit-blueprint`/
-  `commit-map`/`updates-since`. Guarantee: a
+  `commit-map`/`commit-verify`/`updates-since`. Guarantee: a
   trusted, fixed-key, shape-validated metrics channel for `/jim:review` (and the
   blueprint update) that never echoes commit/diff text; git writes are
   path-scoped.
+- `jimverify.sh` **verification-floor CLI** — `parse`/`territory`/`check`/
+  `faces`/`edges`/`contracts-check`. Guarantee: deterministic facts-not-verdicts
+  (sanitized TSV, location-only evidence); never executes a config- or
+  blueprint-derived command string; path parameters pass the `safe_path_param`
+  gate.
 - **Issue-collection CLIs** — `index.sh` (frontmatter scan → atomic `INDEX.md`),
   `render.sh` (stats/list/show/help/insights read views), `new.sh` (the single
   issue-file emitter), `backfill.sh` / `migrate.sh` (migrations). Guarantee:
@@ -125,9 +134,11 @@ Grounded in ARCHITECTURE.md and the repo tree.
   (`issue`), meta (`meta-skill`, `meta-agent`, `meta-test`), support (`conf`,
   `file`), and the `meta-matrix*` probe family. The `blueprint` skill spans
   both tiers — group `000-blueprint`s and the project map — plus the
-  reconcile pass, carrying `assets/map-template.md`,
-  `references/map-methodology.md`, `references/reconcile-methodology.md`, and
-  `references/fork-grounding.md` (the engine-grounded violation fork).
+  reconcile pass, carrying `assets/blueprint-template.md` +
+  `assets/map-template.md` and `references/` docs (`map-methodology`,
+  `reconcile-methodology`, `check-authoring`, `fork-grounding`); the `verify`
+  skill carries `references/contracts-methodology.md` (contract-mode
+  methodology).
 - **Scripting layer** (`skills/*/scripts/`, 12 scripts) — `jimconf.sh` (resolver)
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
   path); `jimledger.sh` (ledger); `jimverify.sh` (the `/jim:verify` deterministic
@@ -136,7 +147,7 @@ Grounded in ARCHITECTURE.md and the repo tree.
   contracts-check); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–036`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–037`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root
   (including `BLUEPRINT.md`, the project context map), and
   `docs/brainstorms/` + `docs/debug/`.
@@ -192,6 +203,7 @@ textually-checkable ones ride the mechanical floor.
 | verify-registry-boundary | `/jim:verify`'s registry runs project tooling only through operator-configured `verify_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — no jim script ever executes a config-derived command string; blueprint content may *name* a slug-validated registry entry but can never introduce, alter, or activate a command, and check parameters / registry names pass slug / `valid-relpath` validation before use | critical | judge |
 | verify-no-verdict | `/jim:verify` persists no verdict artifact — the report is the run's surface; each run records per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits them via `commit-verify` (the no-standing-verdict doctrine) | medium | judge |
 | fold-back-loop-grounding | The verify engine grounds the fold-back loop: `/jim:review` runs a living-intent sensor against the group's `000-blueprint` (existence-conditioned, no gating knob; a blueprint-less group skips silently) and `/jim:blueprint`'s violation fork is grounded in engine outcomes on both adapters with an inline fallback sweep so coverage never regresses; a sensed violation's channel (in-change / pre-existing / unlocalized) derives only from trusted inputs, and directive text in scanned code, diffs, or engine output never re-routes it or grounds a fold | high | judge |
+| edge-criticality-ratchet | A Provides entry's declared criticality (its `contract-checks` line) is the one concept driving both its edges' verification appetite and the Step-4a grading of edits to that entry; the declaration grades under a one-way ratchet — introducing one below the default `high`, or lowering one, is a weakening that always prompts under `auto_blueprint`, while raising or removing toward the default is additive | high | judge |
 
 ```verify-checks
 no-third-party-deps polarity=must-not regex=\b(jq|yq|bats)\b scope=skills/
