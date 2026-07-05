@@ -16,10 +16,22 @@ This document defines the agentic development workflow for projects using Jim. "
   [ PLAN ] <───┘                                  │
       │                                           │
       ▼                                           │
-  [ BUILD ] ───► [ REVIEW* ] ───► [ SHIP* ] ──────┘
+  [ BUILD ] ───► [ REVIEW ] ───► [ SHIP* ] ───────┘
+                     │
+                     ▼ (Fold-Back Loop)
+               [ BLUEPRINT ] ◄──── grounded by [ VERIFY ]
 
   * = not yet implemented
 ```
+
+### The Fold-Back Loop
+
+The living blueprints close a second loop after review: `/jim:review` senses
+drift from the group's `000-blueprint` (living intent), the blueprint update
+folds confirmed learnings back into it — or forks a violation into "fix the
+code" — and `/jim:verify` grounds both moments in engine outcomes instead of
+unaided judgment. See `/jim:blueprint` and `/jim:verify` in The Lifecycle in
+Detail.
 
 ### The Feedback Loop
 
@@ -62,7 +74,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:roadmap` | Create/update execution milestones and phase sequence | `@jim:pm` | `ROADMAP.md` |
 | `/jim:arch` | Create/update technical architecture | `@jim:architect` | `ARCHITECTURE.md` |
 | `/jim:blueprint` | Create/update a group's current-state blueprint spec (`<group>`), or — invoked bare — the project-tier context map | `@jim:architect` | `docs/specs/{group}/000-blueprint/spec.md` · `BLUEPRINT.md` |
-| `/jim:verify` | Check a group's code against its `000-blueprint` invariants — zero-config mechanical floor, operator-configured registry, criticality-gated read-only judge; per-invariant outcomes, violations offered as issues. Scoped adapter modes `--from-review` / `--since` (spec 036) ground the fold-back loop; **contract mode `--contracts [<group>]` (spec 037)** checks the cross-group contract graph's edges against code on both sides — a territory cross-reference floor plus per-side judges, blast-radius-scoped by the graph and the existing appetite knobs (no new config), with two grains (whole-graph incl. dead-surface, or edges touching one group) and change-driven triggers at the review sensor and the blueprint boundary-change; `/jim:review` and `/jim:blueprint` are its first programmatic callers | `@jim:reviewer` | Report + ledger event (no persisted verdict) |
+| `/jim:verify` | Check a group's code against its `000-blueprint` invariants — mechanical floor, operator registry, criticality-gated read-only judges — plus contract mode (`--contracts`) checking the contract graph's edges against code on both sides; scoped modes (`--from-review` / `--since`) ground the fold-back loop (see The Lifecycle in Detail) | `@jim:reviewer` | Report + ledger event (no persisted verdict) |
 | `/jim:debug` | Diagnose failures, produce report for spec/plan cycle | `@jim:coder` | `debug/{YYYYMMDD}-{topic}.md` |
 | `/jim:brainstorm` | Freeform ideation — exploratory notes | `@jim:pm` | `brainstorms/{YYYYMMDD}-{topic}.md` |
 | `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list [filter]` / `stats` / `show <id>`; bare → help) | `@jim:pm` | `issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` |
@@ -87,7 +99,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | Plan | `docs/specs/{group}/{00X}-{name}/plan.md` | Implementation path — codebase research, atomic tasks, dependencies | `/jim:plan` |
 | Security Review | `docs/specs/{group}/{00X}-{name}/security.md` (spec-scoped) or `{security_adhoc_path}/{YYYYMMDD}-{slug}.md` (ad-hoc opt-in) | Design-time findings — severity, route, phase coverage; gates `/jim:plan` and `/jim:build` start when `require_security` / `auto_security` is set | `/jim:sec` |
 | Review Report | `docs/specs/{group}/{00X}-{name}/review.md` | Post-build findings — drift vs spec/plan/architecture, code + process metrics, security regressions, alignment verdict; mineable frontmatter + narrative | `/jim:review` |
-| Stage Ledger | `docs/specs/{group}/{00X}-{name}/ledger.md` | Append-only event log of SDLC stage boundaries (baseline/head SHAs, per-stage start/finish, interruptions, re-runs); `/jim:build` records the build range and SHAs, and `/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:sec`, and `/jim:review` each record their own start/finish — `/jim:review` also appends its validated alignment verdict and self-commits `review.md` + `ledger.md` (spec 028); `/jim:verify` records its per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits that ledger alone via `commit-verify` (spec 035, its only durable trace — no verdict artifact is persisted) — the reviewer's process-metric source | `/jim:build` (+ spec/research/plan/sec/review/verify) |
+| Stage Ledger | `docs/specs/{group}/{00X}-{name}/ledger.md` | Append-only event log of SDLC stage boundaries (baseline/head SHAs, per-stage start/finish, interruptions, re-runs); `/jim:build` records the build range and SHAs, and `/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:sec`, and `/jim:review` each record their own start/finish — `/jim:review` also appends its validated alignment verdict and self-commits `review.md` + `ledger.md` (spec 028); `/jim:verify` records its per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits that ledger alone via `commit-verify` (spec 035, its only durable trace — no verdict artifact is persisted); map-tier blueprint, reconcile, and contract-mode runs record `tier=project` events on the specs-root `ledger.md` — the reviewer's process-metric source | `/jim:build` (+ spec/research/plan/sec/review/verify) |
 | Debug Report | `docs/debug/{YYYYMMDD}-{topic}.md` | Diagnosis — error analysis, root cause, references to affected specs | `/jim:debug` |
 | Brainstorm | `docs/brainstorms/{YYYYMMDD}-{topic}.md` | Exploratory notes — ideas, risks, options, may feed into specs | `/jim:brainstorm` |
 | Issue | `docs/issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` (configurable via `issues_path`) | Discovery artifacts surfaced during the workflow — one markdown file per issue with a display ordinal (`num`), `open`/`closed` status, typed relations, and an auto-generated index | `/jim:issue` |
@@ -113,7 +125,7 @@ Issues are also surfaced automatically at the end of each SDLC phase as a candid
 | Plugin Vision | `jim/VISION.md` | Why Jim exists, what problem it solves | `/jim:vision` (from within jim/) |
 | Plugin Architecture | `jim/ARCHITECTURE.md` | Plugin structure, agent-skill composition, naming conventions | `/jim:arch` (from within jim/) |
 | Plugin Roadmap | `jim/ROADMAP.md` | Which skills/agents to build in what order | `/jim:roadmap` (from within jim/) |
-| Plugin Workflow | `jim/docs/workflow.md` | This file — the SDLC process itself | Manual or `/jim:meta-skill` |
+| Plugin Workflow | `jim/WORKFLOW.md` | This file — the SDLC process itself | Manual or `/jim:meta-skill` |
 | Skill | `jim/skills/{name}/SKILL.md` | A jim plugin skill — instructions, templates, references | `/jim:meta-skill` |
 | Agent | `jim/agents/{name}.md` | A jim plugin agent — persona, tools, skill composition | `/jim:meta-agent` |
 
@@ -139,108 +151,74 @@ Issues are also surfaced automatically at the end of each SDLC phase as a candid
 
 ### Plugin Directory
 
+Summarized layout — the authoritative, file-level tree lives in
+`ARCHITECTURE.md` → Project Structure.
+
 ```
 jim/
 ├── .claude-plugin/
-│   └── plugin.json              # { "name": "jim", "version": "1.0.0" }
+│   └── plugin.json              # { "name": "jim", "version": "2.0.0" }
 │
 ├── VISION.md                    # Why Jim exists (Jim's own strategic docs)
 ├── ARCHITECTURE.md              # How Jim is structured
 ├── ROADMAP.md                   # What to build next for Jim
+├── BLUEPRINT.md                 # Jim's own project-tier context map
+├── WORKFLOW.md                  # This file — the SDLC process itself
 │
-├── agents/
+├── agents/                      # One .md per persona
 │   ├── pm.md                    # → @jim:pm
 │   ├── architect.md             # → @jim:architect
 │   ├── researcher.md            # → @jim:researcher
 │   ├── coder.md                 # → @jim:coder
 │   ├── security.md              # → @jim:security
 │   ├── reviewer.md              # → @jim:reviewer
-│   └── meta.md                  # → @jim:meta
+│   ├── meta.md                  # → @jim:meta
+│   ├── investigator.md          # read-only deep-dive subagent, spawned by /jim:review
+│   ├── judge.md                 # read-only invariant/edge judge, spawned by /jim:verify
+│   ├── issue-analyst.md         # read-only insights subagent, spawned by /jim:issue insights
+│   └── meta-matrix-probe.md     # runtime-probe subagent (manual harness)
 │
-├── skills/
+├── skills/                      # One dir per skill: SKILL.md + optional assets/ (templates),
+│   │                            # references/ (methodology), scripts/ (deterministic bash)
 │   │
 │   │  # ── SDLC Lifecycle ──
-│   ├── spec/
-│   │   ├── SKILL.md             # → /jim:spec
-│   │   ├── assets/
-│   │   │   └── spec-template.md
-│   │   └── references/
-│   │       └── spec-types.md
-│   │
-│   ├── plan/
-│   │   ├── SKILL.md             # → /jim:plan
-│   │   └── assets/
-│   │       └── plan-template.md
-│   │
-│   ├── research/
-│   │   └── SKILL.md             # → /jim:research
-│   │
-│   ├── build/
-│   │   ├── SKILL.md             # → /jim:build
-│   │   └── references/
-│   │       └── tdd-guide.md
-│   │
-│   ├── review/
-│   │   └── SKILL.md             # → /jim:review
-│   │
-│   ├── ship/
-│   │   └── SKILL.md             # → /jim:ship (not yet implemented)
+│   ├── spec/                    # → /jim:spec        assets + references
+│   ├── spec-check/              # → /jim:spec-check  Socratic DoD audit (also invoked by /jim:spec)
+│   ├── research/                # → /jim:research    assets + references
+│   ├── plan/                    # → /jim:plan        assets + references
+│   ├── build/                   # → /jim:build       references (TDD guide)
+│   ├── sec/                     # → /jim:sec         assets + references
+│   ├── review/                  # → /jim:review      assets + scripts (jimledger.sh — the SDLC stage ledger)
+│   ├── verify/                  # → /jim:verify      references + scripts (jimverify.sh — the deterministic check floor)
+│   ├── debug/                   # → /jim:debug       assets
 │   │
 │   │  # ── Strategic ──
-│   ├── vision/
-│   │   ├── SKILL.md             # → /jim:vision
-│   │   └── assets/
-│   │       └── vision-template.md
+│   ├── vision/                  # → /jim:vision      assets
+│   ├── roadmap/                 # → /jim:roadmap     assets
+│   ├── arch/                    # → /jim:arch        assets
+│   ├── blueprint/               # → /jim:blueprint   assets (blueprint + map templates) + references
+│   ├── brainstorm/              # → /jim:brainstorm
 │   │
-│   ├── roadmap/
-│   │   ├── SKILL.md             # → /jim:roadmap
-│   │   └── assets/
-│   │       └── roadmap-template.md
+│   │  # ── Discovery ──
+│   ├── issue/                   # → /jim:issue       assets + scripts (index/new/render/backfill/migrate)
 │   │
-│   ├── arch/
-│   │   ├── SKILL.md             # → /jim:arch
-│   │   └── assets/
-│   │       └── architecture-template.md
-│   │
-│   │  # ── Utilities ──
-│   ├── debug/
-│   │   ├── SKILL.md             # → /jim:debug
-│   │   └── assets/
-│   │       └── debug-template.md
-│   │
-│   ├── sec/
-│   │   ├── SKILL.md             # → /jim:sec
-│   │   ├── assets/
-│   │   │   └── security-template.md
-│   │   └── references/
-│   │       └── security-dod.md
-│   │
-│   ├── brainstorm/
-│   │   └── SKILL.md             # → /jim:brainstorm
+│   │  # ── Introspection ──
+│   ├── conf/                    # → /jim:conf        scripts (jimconf.sh — the shared config resolver)
+│   ├── file/                    # → /jim:file        scripts (jimfile.sh — the shared path/id resolver)
 │   │
 │   │  # ── Meta (Jim building Jim) ──
-│   ├── meta-skill/
-│   │   ├── SKILL.md             # → /jim:meta-skill
-│   │   └── references/
-│   │       └── skill-standards.md
-│   │
-│   ├── meta-agent/
-│   │   ├── SKILL.md             # → /jim:meta-agent
-│   │   └── references/
-│   │       └── agent-standards.md
-│   │
-│   └── meta-test/
-│       ├── SKILL.md             # → /jim:meta-test
-│       ├── assets/
-│       │   └── test-file.sh.tmpl
-│       └── scripts/
-│           ├── testlib.sh       # Shared test framework (asserts, fixtures, reporter)
-│           ├── run.sh           # Aggregate runner (sources testlib + every tests/*.sh)
-│           └── metatest.sh      # Dispatcher (scaffold | add | run subcommands)
+│   ├── meta-skill/              # → /jim:meta-skill
+│   ├── meta-agent/              # → /jim:meta-agent
+│   ├── meta-test/               # → /jim:meta-test   assets + scripts (testlib/run/metatest)
+│   └── meta-matrix*/            # manual runtime-probe skill family (not part of the SDLC)
 │
+├── tests/                       # Developer-only bash tests — not loaded by Claude Code
 ├── docs/
-│   └── workflow.md              # This file — the SDLC process itself
-│
+│   ├── specs/jim/               # Jim's own spec archive (jim develops jim)
+│   ├── issues/                  # Discovery capture + INDEX.md
+│   ├── brainstorms/             # Freeform ideation
+│   └── debug/                   # Debug reports
+├── jimconf.toml.example         # Shipped config template
 └── README.md
 ```
 
@@ -249,10 +227,10 @@ jim/
 | Agent | Role | Used By |
 |-------|------|---------|
 | `@jim:pm` | Product strategy, specs, vision, roadmap | `/jim:spec`, `/jim:vision`, `/jim:roadmap`, `/jim:brainstorm` |
-| `@jim:architect` | Technical planning, architecture | `/jim:plan`, `/jim:arch` |
+| `@jim:architect` | Technical planning, architecture, blueprints | `/jim:plan`, `/jim:arch`, `/jim:blueprint` |
 | `@jim:researcher` | Codebase investigation and technical landscape research | `/jim:research`, invoked by PM or architect |
 | `@jim:coder` | TDD implementation, debugging | `/jim:build`, `/jim:debug` |
-| `@jim:reviewer` | Post-build review — drift, metrics, security regressions | `/jim:review` |
+| `@jim:reviewer` | Post-build review + invariant/contract verification | `/jim:review`, `/jim:verify` |
 | `@jim:meta` | Plugin development — builds skills, agents, and bash tests | `/jim:meta-skill`, `/jim:meta-agent`, `/jim:meta-test` |
 
 ### Agent ↔ Skill Composition
@@ -277,11 +255,12 @@ skills:
 ---
 name: architect
 description: Technical architect. Plans implementation and maintains
-  the technical architecture. Delegates codebase investigation to
-  @jim:researcher subagent.
+  the technical architecture and the living blueprints. Delegates
+  codebase investigation to @jim:researcher subagent.
 skills:
   - plan
   - arch
+  - blueprint
 ---
 ```
 
@@ -311,9 +290,11 @@ skills:
 # jim/agents/reviewer.md
 ---
 name: reviewer
-description: Post-build reviewer. Drift, metrics, security regressions.
+description: Post-build reviewer and invariant verifier. Drift, metrics,
+  security regressions, blueprint invariants and contracts.
 skills:
   - review
+  - verify
 ---
 ```
 
@@ -425,7 +406,7 @@ agent: meta
 
 The review is **depth-aware** (spec 027): it triages the build's diff and fans out read-only `investigator` subagents on the high-stakes changes to verify each acceptance criterion for *complete* satisfaction (including code the build did not touch), recording the evidence in `review.md`. Depth is configurable — `review_depth` (default `thorough`; `lean` for trivial changes; `--depth lean|thorough` overrides per run), `review_model` (the investigator model; default `inherit`), and `review_fanout_cap` (max investigators; default `10`).
 
-The review is also a **living-intent sensor** (spec 036): for a group that has a `000-blueprint`, it invokes `/jim:verify --from-review` to check the group's code against its recorded invariants as part of every review — the mechanical floor and registry whole-group, LLM judges scoped to the build's change and gated by `verify_appetite`. Results land as their own `## Living intent` dimension in `review.md`, distinct from the alignment verdict and never setting it (the two signals stay clean). Sensed violations route by two channels: those intersecting the build's change feed the blueprint update's violation fork as engine-grounded divergences; pre-existing drift (and any unlocalized violation) is reported and offered as tracked issues, never folded into the update. A blueprint-less group skips the sensor silently, and a check that fails to run is contained and reported — never aborting the review.
+The review is also a **living-intent sensor** (spec 036): for a group that has a `000-blueprint`, it invokes `/jim:verify --from-review` to check the group's code against its recorded invariants as part of every review — the mechanical floor and registry whole-group, LLM judges scoped to the build's change and gated by `verify_appetite`. Results land as their own `## Living intent` dimension in `review.md`, distinct from the alignment verdict and never setting it (the two signals stay clean). Sensed violations route by two channels: those intersecting the build's change feed the blueprint update's violation fork as engine-grounded divergences; pre-existing drift (and any unlocalized violation) is reported and offered as tracked issues, never folded into the update. A blueprint-less group skips the sensor silently, and a check that fails to run is contained and reported — never aborting the review. When the contract graph names the reviewed group as a provider and the build touched its provides-side code, the affected contract edges join the check (spec 037) — rendered as a **Contracts** subsection of the living-intent dimension with its own counts; consumer-side violations are offered as issues, while provider-side in-change violations feed the blueprint update's fork as provides-face divergences.
 
 `/jim:build` offers the review at its completion gate by default, or runs it automatically under the `require_review` / `auto_review` knobs. Two axes that don't conflate: the review's **findings** are advisory — a report, never a veto, and they never auto-reject the build. `require_review`, by contrast, makes the review a **required, blocking phase**: the build's completion gate is held until the review has run to completion, so the build cannot be marked complete without it. It is the uncompleted phase that blocks, not the findings.
 
@@ -450,6 +431,23 @@ The review is also a **living-intent sensor** (spec 036): for a group that has a
 3. **Blast radius** — a Provides weakening/removal names every dependent consumer group from the pre-write graph ("graph as of *Last reconciled*") in the Step-4a grading and violation-fork prompts — informational, never a veto
 
 **Gate:** Human approval on every write (the `auto_blueprint` knob relaxes group-tier folds and additive map changes only). Both tiers self-commit path-scoped via `jimledger.sh` (`commit-blueprint` / `commit-map`) and record `blueprint` stage events on their ledgers. The derived contract-graph rewrite is mechanical content — exempt from Step-4a grading, committed via `commit-map` only.
+
+### `/jim:verify`
+
+**Purpose:** Ask whether a group's code still honors what its `000-blueprint` says must hold — per-invariant outcomes with evidence, violations offered as tracked issues. The engine is read-only toward the project: it reports, never fixes.
+
+**Process** (`/jim:verify [--appetite <level>] <group>`, spec 035):
+1. **Parse** — `jimverify.sh` reads the blueprint's Invariants table (`Id` / criticality / `Check`) and the map's territory declarations; a group with no blueprint, or a blueprint with no invariants, reports that plainly and stops
+2. **Mechanical floor** (always runs, never appetite-gated) — deterministic `pattern` / `structure` checks scoped to the group's declared territory, plus territory conformance: code attributed to the group that falls outside its declared territory reports as a violation
+3. **Registry** — an invariant checked as `registry:<name>` runs the operator's `verify_command_<name>` from `jimconf.toml`. This is the trust boundary made concrete: a blueprint can only *name* a command, only config can supply one — an unconfigured name reports `unconfigured` and executes nothing. Each command is bounded by `verify_registry_timeout`; a crash or expiry folds into that one check's `failed` outcome, never aborting the run
+4. **Judge ceiling** — invariants with no mechanical check (or checked as `judge`) fan out to read-only `judge` subagents, criticality-gated by `verify_appetite` (default `"low"` — every criticality judged; per-group `verify_appetite_<group>` override; per-run `--appetite` flag), bounded by `verify_fanout_cap`, on the model `verify_model` selects
+5. **Report** — criticality-led per-invariant outcomes (`holds` / `violated` / `failed` / `unconfigured` / `skipped`) with evidence for every non-holding line, so a clean line always means "checked and sound", never "not looked at"; violations are offered as captured issues (priority from criticality); outcome counters self-commit to the group's `000-blueprint/ledger.md` via `commit-verify` — no verdict artifact persists
+
+**Scoped modes** (spec 036 — the fold-back loop's grounding): `--from-review <spec-dir> <group>` is `/jim:review`'s living-intent sensor — the floor and registry run whole-group, judges scope to the build's change; `--since <ref> <group>` grounds the ad-hoc blueprint update's violation fork and is entirely diff-scoped. Both hand their outcomes to the caller as `VERIFY-OUTCOME` records — one engine run per change, consumed rather than re-derived.
+
+**Contract mode** (`/jim:verify --contracts [<group>]`, spec 037): checks the contract graph's edges against the code on both sides — the provider still honors each declared guarantee, the consumer stays within the declared surface — via a territory cross-reference floor plus per-side judges, edge criticality defaulting to `high` (a provides entry may declare its own). Whole-graph runs also code-ground dead surface; group-scoped runs check leak and breaking on the named group's edges. Findings report in spec 034's finding classes with a code-level provenance marker, and runs record `tier=project` events on the specs-root ledger. The same capability fires change-driven: the review sensor's Contracts extension, and the blueprint surface's boundary-change grading when a provides entry is weakened.
+
+**Gate:** None — the run is on-demand and advisory. Its only writes are issue files the developer confirms and the self-committed ledger record.
 
 ### `/jim:ship` *(not yet implemented)*
 

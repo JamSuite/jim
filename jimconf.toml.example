@@ -107,6 +107,27 @@ require_review = "false"
 # auto_issue_file is also "true". Default "false".
 auto_review = "false"
 
+# Depth of the review's deep-investigation pass (spec 027). "thorough" (the
+# default) triages the build's diff and fans out read-only investigator
+# subagents on the high-stakes changes; "lean" skips the broad fan-out and
+# investigates only security-relevant regions. A per-run
+# `/jim:review --depth lean|thorough` overrides this for one run.
+# review_depth = "thorough"
+
+# Model for the investigator subagents (the per-spawn Agent model).
+# "inherit" (the default) runs them on the session model; or pin a tier:
+# "sonnet" | "opus" | "haiku". Anything else falls back to "inherit". The
+# review's own orchestration and alignment verdict always run on the
+# session model, which jim does not set.
+# review_model = "inherit"
+
+# Investigator fan-out cap: the maximum number of investigator subagents
+# dispatched per review, highest-stakes first; bounded coverage is named in
+# review.md rather than silently truncated. A non-positive/non-numeric value
+# falls back to 10, and a cap of 0 never silently disables the fan-out.
+# Default "10".
+# review_fanout_cap = "10"
+
 # --- Security review gates and behavior -----------------------------------
 
 # Hard-gate security review at phase boundaries. When "true":

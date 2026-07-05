@@ -39,13 +39,16 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 |---------|-------------|
 | `/jim:spec` | Define a feature, bug, or refactor |
 | `/jim:plan` | Research codebase + create atomic task plan |
+| `/jim:research` | Investigate codebase + technical landscape before a spec or plan; produces `research.md` |
 | `/jim:build` | TDD red-green-refactor, one task at a time |
 | `/jim:vision` | Create/update project vision |
 | `/jim:arch` | Create/update technical architecture |
+| `/jim:blueprint` | Living blueprints — a group's current-state `000-blueprint` (`<group>`), the project-tier context map (bare), the cross-group contract graph (`--reconcile`) |
 | `/jim:roadmap` | Create/update execution roadmap |
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:sec` | Design-time security analysis of specs, plans, or arbitrary files; produces `security.md` |
-| `/jim:review` | Post-build review — drift vs spec/plan/architecture, code + process metrics, security regressions; produces `review.md` |
+| `/jim:review` | Post-build review — drift vs spec/plan/architecture, code + process metrics, security regressions, living-intent sensing against the group blueprint; produces `review.md` |
+| `/jim:verify` | Check a group's code against its `000-blueprint` invariants (mechanical floor → operator registry → read-only judges); `--contracts` checks contract-graph edges against code |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
 | `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show` / `insights`) — `insights` is an LLM analysis (convergence, sequencing, parallel-work) run by a read-only subagent |
 | `/jim:conf` | Inspect resolved jim configuration paths |
@@ -59,10 +62,11 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | Agent | Role |
 |-------|------|
 | `@jim:pm` | Specs, vision, roadmap, brainstorms |
-| `@jim:architect` | Plans, architecture |
+| `@jim:architect` | Plans, architecture, blueprints |
+| `@jim:researcher` | Codebase investigation and technical landscape research |
 | `@jim:coder` | TDD builds, debugging |
 | `@jim:security` | Design-time security review of specs and plans |
-| `@jim:reviewer` | Post-build review of shipped code against spec, plan, and architecture |
+| `@jim:reviewer` | Post-build review + invariant/contract verification (`/jim:review`, `/jim:verify`) |
 | `@jim:meta` | Plugin development — builds skills and agents |
 
 ## How to install
@@ -111,8 +115,17 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `require_pre_commit` | `"false"` | `/jim:build` — when `"true"`, missing pre-commit script halts the build |
 | `require_pre_completion` | `"false"` | `/jim:build` — when `"true"`, missing pre-completion script halts the build |
 | `auto_arch_feedback` | `"false"` | `/jim:build` → `/jim:arch` — when `"true"`, ARCHITECTURE.md updates apply without confirmation |
+| `blueprint_path` | `BLUEPRINT.md` | `/jim:blueprint` (bare) — location of the project-tier context map |
+| `auto_blueprint` | `"false"` | `/jim:blueprint` — when `"true"`, blueprint writes skip the diff-and-confirm prompt; autonomy stays criticality-graded: weakening or removal of a `critical`/`high` invariant, a Provides entry, or partition content still prompts per-item |
+| `require_blueprint` | `"false"` | `/jim:review` → `/jim:blueprint` — when `"true"`, the review-triggered blueprint update is a required step: the review is not complete until the update has run to completion (the proposed changes stay advisory); the ad-hoc `--since` path is developer-invoked and ungated |
+| `blueprint_regen_threshold` | `"0"` | `/jim:blueprint` — opt-in staleness threshold: when this many targeted updates accumulate since the last full generate, update mode runs a whole-group regeneration instead (`"0"` disables the trigger; the count is still reported) |
+| `group_axis` | `"vertical"` | `/jim:blueprint` (bare) — partition doctrine the map-creation proposal steers toward (`vertical` / `layered`) |
+| `group_territory` | `"declared-paths"` | `/jim:blueprint` (bare) — how group↔code binding is captured in the map (`directory` / `declared-paths` / `none`) |
 | `require_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review is a required phase: the build's completion gate is held until the review has run to completion. Its findings stay advisory (a report, not a veto), but the build cannot be marked complete without the review |
 | `auto_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review runs automatically with no prompt; composes independently of `auto_issue_file` |
+| `review_depth` | `"thorough"` | `/jim:review` — depth of the deep-investigation pass; `"lean"` skips the broad fan-out for trivial changes; a per-run `--depth` flag overrides it |
+| `review_model` | `"inherit"` | `/jim:review` — model for the investigator subagents (`inherit` / `sonnet` / `opus` / `haiku`); the review's own orchestration and verdict always run on the session model |
+| `review_fanout_cap` | `"10"` | `/jim:review` — maximum investigator subagents per run; bounded coverage is named in `review.md`, never silent |
 | `require_security` | `"false"` | `/jim:plan`, `/jim:build` — when `"true"`, next-phase start blocks until security review covers the prior phase; developer in the loop for routing |
 | `auto_security` | `"false"` | `/jim:plan`, `/jim:build` — same gate as `require_security`, but findings route automatically (no per-finding prompts) |
 | `require_security_loop` | `"false"` | `/jim:sec` — when `"true"`, repeat the review-and-routing cycle until the severity threshold clears or the iteration limit is reached |
@@ -128,6 +141,12 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `issue_list_closed` | `"false"` | `/jim:issue list` — when `"false"`, the default and priority-filtered views hide closed issues (use `list closed` to see them); `"true"` includes closed in every view |
 | `issue_id_prefix` | `"date"` | `/jim:issue add` — issue-id prefix scheme (`date` / `timestamp` / `sequential` / `project`, or a `{date:…}`/`{seq:…}` template); forward-only — converge existing ids with `migrate.sh prefix` |
 | `issue_id_project` | `""` (empty) | `/jim:issue add` — static project tag prepended when `issue_id_prefix = "project"` |
+| `verify_appetite` | `"low"` | `/jim:verify` — criticality threshold at which the judge rung runs (`critical` / `high` / `medium` / `low`); the mechanical floor always runs; `"low"` is the thorough default (every criticality judged) and the knob only ever raises the bar; a per-run `--appetite` flag overrides it |
+| `verify_appetite_<group>` | — (unset) | `/jim:verify` — per-group appetite override (e.g. `verify_appetite_auth = "critical"`); precedence: `--appetite` flag > per-group > global |
+| `verify_fanout_cap` | `"10"` | `/jim:verify` — maximum judge subagents per run, highest criticality first; any remainder is named in the report |
+| `verify_model` | `"inherit"` | `/jim:verify` — model for the judge subagents (`inherit` / `sonnet` / `opus` / `haiku` / `fable`) |
+| `verify_registry_timeout` | `"120"` | `/jim:verify` — per-command timeout in seconds for registry commands; expiry folds into that one check's `failed` outcome, never aborting the run |
+| `verify_command_<name>` | — (unset) | `/jim:verify` — the operator-owned registry: an invariant checked as `registry:<name>` runs only the command string you place here; a blueprint can *name* an entry but never define one — unconfigured names report `unconfigured` and execute nothing |
 
 > **Manual migration rule.** Changing a configured path does **not** move existing files. If you point `architecture_path` at a new location, you are responsible for moving (or recreating) the file at the new path. Jim never relocates artifacts on a config change.
 
@@ -225,7 +244,7 @@ Prefer the **narrowest grant that works** — your repo root — rather than a b
 
 ### Invariant-verification fan-out (`/jim:verify`)
 
-Invariant verification (`/jim:verify`, spec 035) fans out read-only `judge` subagents that read **your project's own source** to decide whether a blueprint invariant holds. Like the reviewer's investigators, each judge's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The judges are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when an invariant's check names an operator-configured registry command, `/jim:verify` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a blueprint can never mint that command, only *name* one you configured.
+Invariant verification (`/jim:verify`, spec 035) fans out read-only `judge` subagents that read **your project's own source** to decide whether a blueprint invariant holds — or, in contract mode (`--contracts`, spec 037), whether one side of a cross-group contract edge holds in code. Like the reviewer's investigators, each judge's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The judges are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when an invariant's check names an operator-configured registry command, `/jim:verify` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a blueprint can never mint that command, only *name* one you configured.
 
 ## How to develop for Jim
 
