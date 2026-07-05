@@ -2,7 +2,7 @@
 id: 20260704-restructure-blueprint-skill-md-to-reclaim-line-budget-headroom
 num: 43
 title: "Restructure blueprint SKILL.md to reclaim line-budget headroom"
-status: open
+status: closed
 priority: low
 labels: [000-blueprint, refactor]
 relations:
@@ -11,9 +11,17 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T09:23:23Z
-updated: 2026-07-04T09:23:23Z
+updated: 2026-07-05T08:51:16Z
 origin: docs/specs/jim/034-contract-graph/plan.md
 ---
+
+## Resolution
+
+Closed by spec 036 (Task 5). The blueprint SKILL.md's violation-fork
+detail (U3a presentation, U3b issue offer) was extracted to
+`skills/blueprint/references/fork-grounding.md`, taking the body from
+497 to 440 lines; the subsequent 036 behavioral wiring left it at 455,
+with ~45 lines of headroom under the 500-line ceiling.
 
 ## Description
 
