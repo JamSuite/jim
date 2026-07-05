@@ -56,13 +56,13 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:research` | Investigate codebase, external docs, and technical landscape | `@jim:researcher` | `research.md` |
 | `/jim:build` | TDD red-green-refactor + commit per task | `@jim:coder` | Tests + code |
 | `/jim:sec` | Design-time security analysis (hybrid freeform + STRIDE, conditional LINDDUN on PII) | `@jim:security` | `security.md` |
-| `/jim:review` | Depth-aware post-build review — drift vs spec/plan/architecture (investigator fan-out), code + process metrics, security regressions | `@jim:reviewer` | `review.md` |
+| `/jim:review` | Depth-aware post-build review — drift vs spec/plan/architecture (investigator fan-out), code + process metrics, security regressions, and living-intent sensing against the group blueprint | `@jim:reviewer` | `review.md` |
 | `/jim:ship` | PR, deploy, update roadmap *(not yet implemented)* | TBD | Merged PR |
 | `/jim:vision` | Create/update project vision and strategy | `@jim:pm` | `VISION.md` |
 | `/jim:roadmap` | Create/update execution milestones and phase sequence | `@jim:pm` | `ROADMAP.md` |
 | `/jim:arch` | Create/update technical architecture | `@jim:architect` | `ARCHITECTURE.md` |
 | `/jim:blueprint` | Create/update a group's current-state blueprint spec (`<group>`), or — invoked bare — the project-tier context map | `@jim:architect` | `docs/specs/{group}/000-blueprint/spec.md` · `BLUEPRINT.md` |
-| `/jim:verify` | Check a group's code against its `000-blueprint` invariants — zero-config mechanical floor, operator-configured registry, criticality-gated read-only judge; per-invariant outcomes, violations offered as issues | `@jim:reviewer` | Report + ledger event (no persisted verdict) |
+| `/jim:verify` | Check a group's code against its `000-blueprint` invariants — zero-config mechanical floor, operator-configured registry, criticality-gated read-only judge; per-invariant outcomes, violations offered as issues. Scoped adapter modes `--from-review` / `--since` (spec 036) ground the fold-back loop; `/jim:review` and `/jim:blueprint` are its first programmatic callers | `@jim:reviewer` | Report + ledger event (no persisted verdict) |
 | `/jim:debug` | Diagnose failures, produce report for spec/plan cycle | `@jim:coder` | `debug/{YYYYMMDD}-{topic}.md` |
 | `/jim:brainstorm` | Freeform ideation — exploratory notes | `@jim:pm` | `brainstorms/{YYYYMMDD}-{topic}.md` |
 | `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list [filter]` / `stats` / `show <id>`; bare → help) | `@jim:pm` | `issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` |
@@ -425,6 +425,8 @@ agent: meta
 
 The review is **depth-aware** (spec 027): it triages the build's diff and fans out read-only `investigator` subagents on the high-stakes changes to verify each acceptance criterion for *complete* satisfaction (including code the build did not touch), recording the evidence in `review.md`. Depth is configurable — `review_depth` (default `thorough`; `lean` for trivial changes; `--depth lean|thorough` overrides per run), `review_model` (the investigator model; default `inherit`), and `review_fanout_cap` (max investigators; default `10`).
 
+The review is also a **living-intent sensor** (spec 036): for a group that has a `000-blueprint`, it invokes `/jim:verify --from-review` to check the group's code against its recorded invariants as part of every review — the mechanical floor and registry whole-group, LLM judges scoped to the build's change and gated by `verify_appetite`. Results land as their own `## Living intent` dimension in `review.md`, distinct from the alignment verdict and never setting it (the two signals stay clean). Sensed violations route by two channels: those intersecting the build's change feed the blueprint update's violation fork as engine-grounded divergences; pre-existing drift (and any unlocalized violation) is reported and offered as tracked issues, never folded into the update. A blueprint-less group skips the sensor silently, and a check that fails to run is contained and reported — never aborting the review.
+
 `/jim:build` offers the review at its completion gate by default, or runs it automatically under the `require_review` / `auto_review` knobs. Two axes that don't conflate: the review's **findings** are advisory — a report, never a veto, and they never auto-reject the build. `require_review`, by contrast, makes the review a **required, blocking phase**: the build's completion gate is held until the review has run to completion, so the build cannot be marked complete without it. It is the uncompleted phase that blocks, not the findings.
 
 ### `/jim:blueprint`
@@ -433,8 +435,8 @@ The review is **depth-aware** (spec 027): it triages the build's diff and fans o
 
 **Group tier** (`/jim:blueprint <group>`, specs 029–032):
 1. **Generate** — full scan of the group's specs, ARCHITECTURE.md, and code → `000-blueprint/spec.md` (responsibility, provides/requires faces, structure, invariants); stamps the `last_full_generate` watermark
-2. **Update** — targeted section-diff from a change diff: `--from-review <spec-dir> <group>` (fed by the review's verdict ledger) or `--since <ref> <group>` (ad-hoc git range)
-3. **Guard** — proposed folds are judged against the Invariants table first; violations fork per-item to *fix the code* or *fold the intent* (spec 031)
+2. **Update** — targeted section-diff from a change diff: `--from-review <spec-dir> <group>` (fed by the review's verdict ledger, consuming the review sensor's engine outcomes — no double-run) or `--since <ref> <group>` (ad-hoc git range, invoking the engine itself over the range to ground the fork)
+3. **Guard** — the violation fork is grounded in `/jim:verify` engine outcomes on both adapters (spec 036), with an inline fallback sweep for invariants the engine did not cover and fail-closed precedence; violations still fork per-item to *fix the code* or *fold the intent*, the fix-vs-fold semantics unchanged from spec 031
 4. **Cadence** — accumulated targeted updates since the last full generate are counted and reported; the opt-in `blueprint_regen_threshold` swaps a stale enough targeted update for a full regeneration (spec 032)
 
 **Project tier** (`/jim:blueprint`, bare — spec 033):
