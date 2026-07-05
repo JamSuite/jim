@@ -737,6 +737,192 @@ case_jimverify_edges_crafted_cell_hygiene() {
   assert_eq "clean row still emitted" "catalog" "$(tsv_field orders 3)"
 }
 
+# ─── Section: contracts-check — the composite floor (spec 037 Task 3) ────────
+
+# contracts_repo <name> — build a two-group project (accounts provider, billing
+#   consumer) with territories, blueprints (accounts declares a provider-ref /
+#   consumer-ref contract-check), a live graph edge, and code on both sides.
+#   No git needed — contracts-check greps directories and reads files. Echo root.
+contracts_repo() {
+  local name="$1"; local root="$TMP_BASE/$name"
+  mkdir -p "$root/accounts" "$root/billing" \
+           "$root/docs/specs/accounts/000-blueprint" \
+           "$root/docs/specs/billing/000-blueprint"
+  printf 'function getIdentity() { return id; }\n' > "$root/accounts/session.js"
+  printf 'const s = require("accounts/session");\nfunction pay() { return getIdentity(); }\n' > "$root/billing/invoice.js"
+  cat > "$root/docs/specs/accounts/000-blueprint/spec.md" <<'EOF'
+## Provides
+
+- `identity lookup` — read-after-write identity resolution
+
+```contract-checks
+identity-lookup criticality=high provider-ref=getIdentity consumer-ref=getIdentity
+```
+EOF
+  cat > "$root/docs/specs/billing/000-blueprint/spec.md" <<'EOF'
+## Provides
+
+- `invoice total` — computed total
+
+## Requires
+
+- `accounts.identity lookup` — resolves the customer
+EOF
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+# Blueprint — shop
+
+## Groups
+
+### accounts
+
+- **Territory:** `accounts/`
+- **Blueprint:** docs/specs/accounts/000-blueprint/
+
+### billing
+
+- **Territory:** `billing/`
+- **Blueprint:** docs/specs/billing/000-blueprint/
+
+## Contract Graph
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| billing | customer identity lookup | accounts |
+EOF
+  printf '%s' "$root"
+}
+
+# AC: the floor emits a COVERAGE fact and a CROSS-REF reference fact for a
+# consumer reaching into provider territory — evidence is location-only, the
+# matched code line is never emitted (spec 037 AC #5/#13/#17; the Finding-2
+# exfiltration guard).
+case_jimverify_contracts_coverage_crossref_locationonly() {
+  local root; root="$(contracts_repo cc1)"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_match "coverage 2 mapped 2 with blueprints" '^COVERAGE	2	2$' "$OUT"
+  assert_match "cross-ref billing→accounts with file:line" \
+    '^CROSS-REF	billing	billing/invoice\.js:1	accounts$' "$OUT"
+  assert_eq "matched code content never emitted" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'require')"
+}
+
+# AC: a provider-ref pattern check holds when the declared surface is present in
+# provider territory — the provider still honors the guarantee (spec 037 AC #2).
+case_jimverify_contracts_provider_holds() {
+  local root; root="$(contracts_repo cc2)"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  assert_eq "provider side holds" "holds" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
+}
+
+# AC: a provider-ref check reports violated when the declared surface is gone
+# from provider code — a code-level breaking, grounded in evidence (spec 037
+# AC #3).
+case_jimverify_contracts_provider_violated() {
+  local root; root="$(contracts_repo cc3)"
+  printf 'function resolveCustomer() { return id; }\n' > "$root/accounts/session.js"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  assert_eq "provider side violated when surface gone" "violated" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
+}
+
+# AC: a consumer-ref pattern check holds when the consumer's declared usage is
+# present in consumer territory — the usage is within the declared surface
+# (spec 037 AC #2).
+case_jimverify_contracts_consumer_holds() {
+  local root; root="$(contracts_repo cc4)"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  assert_eq "consumer side holds" "holds" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="consumer" {print $3; exit}')"
+}
+
+# AC: a mapped group with no declared territory surfaces as UNSCOPED-GROUP — the
+# degradation is named, never silently absorbed (spec 037 AC #5/#13).
+case_jimverify_contracts_unscoped_group() {
+  local root; root="$(contracts_repo cc5)"
+  # Rewrite the map with a third group (platform) that declares no Territory,
+  # placed inside the ## Groups section (before ## Contract Graph).
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+# Blueprint — shop
+
+## Groups
+
+### accounts
+
+- **Territory:** `accounts/`
+
+### billing
+
+- **Territory:** `billing/`
+
+### platform
+
+- **Purpose:** shared infra
+
+## Contract Graph
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| billing | customer identity lookup | accounts |
+EOF
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  assert_match "platform → UNSCOPED-GROUP" '^UNSCOPED-GROUP	platform$' "$OUT"
+}
+
+# AC: an unsafe scope in the provider's contract-check degrades the provider
+# side to failed — the path never reaches grep (spec 037 AC #17; the Finding-2
+# param gate, the safe_path_param twin of the check verb).
+case_jimverify_contracts_unsafe_scope_failed() {
+  local root; root="$(contracts_repo cc6)"
+  cat > "$root/docs/specs/accounts/000-blueprint/spec.md" <<'EOF'
+## Provides
+
+- `identity lookup` — read-after-write identity resolution
+
+```contract-checks
+identity-lookup criticality=high provider-ref=getIdentity scope=/etc
+```
+EOF
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  assert_eq "unsafe scope → provider failed" "failed" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
+}
+
+# AC: an unsafe files-list line (absolute / C-quoted / tab-bearing) is excluded
+# as HYGIENE and never handed to grep; a safe listed file is still scanned
+# (spec 037 AC #17; the security.md Finding-10 lineage, carried to the floor).
+case_jimverify_contracts_filelist_hygiene() {
+  local root fl; root="$(contracts_repo cc7)"
+  fl="$(mk_flist cc7.list /etc/passwd '"uni-caf\303\251.js"' billing/invoice.js)"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs "$fl"
+  assert_exit "rc" 0 "$RC"
+  assert_match "absolute path → HYGIENE" '^HYGIENE	/etc/passwd$' "$OUT"
+  assert_match "C-quoted path → HYGIENE" '^HYGIENE	"uni-caf' "$OUT"
+  assert_match "listed billing file still cross-ref scanned" \
+    '^CROSS-REF	billing	billing/invoice\.js:1	accounts$' "$OUT"
+}
+
+# AC: a files-list scopes the cross-reference scan to the listed files — scoping
+# to a provider-only file surfaces no cross-ref; scoping to the consumer file
+# surfaces it (spec 037 AC #10 sensor-scope; the 036 amplification lesson).
+case_jimverify_contracts_scoped_crossref() {
+  local root fl; root="$(contracts_repo cc8)"
+  fl="$(mk_flist cc8a.list accounts/session.js)"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs "$fl"
+  assert_eq "no cross-ref when only provider file is listed" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^CROSS-REF')"
+  fl="$(mk_flist cc8b.list billing/invoice.js)"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs "$fl"
+  assert_match "cross-ref when consumer file is listed" '^CROSS-REF	billing	' "$OUT"
+}
+
+# AC: contracts-check with missing arguments exits 2.
+case_jimverify_contracts_missing_args_exits_2() {
+  run_jimverify contracts-check
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.

@@ -33,9 +33,11 @@
 #       token is a valid group slug, else "-"; always "-" for provides
 #     - criticality: provides only — the declared value from the entry's
 #       contract-checks line, else "-"
-#     - params: the entry's joined contract-checks line, or "-"; malformed
-#       check data (bad criticality / unsafe scope) degrades to
-#       "malformed:<reason>" — never a silent drop
+#     - params: the entry's joined contract-checks line, or "-"; a malformed
+#       criticality value degrades to "malformed:<reason>" — never a silent
+#       drop. Path safety of a scope= value is NOT gated here: it is enforced at
+#       execution by contracts-check's safe_path_param (the single validation
+#       boundary), which degrades the check to `failed` if unsafe.
 #     - text: the entry's verbatim guarantee text (sanitized)
 #   A contract-checks line whose key is not a valid slug matches no entry and is
 #   inert (the verify-checks orphan precedent). rc 2 when the file is missing.
@@ -51,6 +53,25 @@
 #                                            is not a valid slug — excluded
 #   rc 2 when the map has no `## Contract Graph` section (caller names the
 #   degradation). A present-but-empty graph emits nothing and exits 0.
+#   contracts-check <map-path> <specs-root> [files-list]  (spec 037) the
+#                                          deterministic cross-group floor.
+#
+# contracts-check OUTPUT (record types, TAB-separated):
+#   COVERAGE \t <groups-mapped> \t <groups-with-blueprints>   coverage fact
+#   UNSCOPED-GROUP \t <group>                a mapped group with no territory
+#   CROSS-REF \t <consumer> \t <file:line> \t <provider>   a consumer-territory
+#                                          reference into provider territory —
+#                                          a code-level-leak candidate, evidence
+#                                          location-only (matched content never
+#                                          emitted, Finding 2)
+#   <consumer>><provider>#<entry-slug> \t <side> \t <outcome> \t <evidence>
+#                                          a face-declared provider-ref /
+#                                          consumer-ref pattern outcome
+#                                          (holds | violated | failed); side ∈
+#                                          provider | consumer
+#   HYGIENE \t <line>                        an excluded unsafe files-list line
+#   The optional files-list scopes every scan to the change set. CROSS-REF facts
+#   are candidates the skill classifies — never autonomous verdicts (DD 1).
 #
 # parse OUTPUT (TAB-separated, one record per line):
 #   id \t criticality \t method \t params \t invariant
@@ -96,6 +117,7 @@ usage: jimverify.sh <subcommand> [args]
   check     <blueprint-dir> <map-path> <group> [files-list]  run the mechanical floor
   faces     <blueprint-spec.md>              provides/requires + contract-checks → TSV
   edges     <map-path>                        persisted Contract Graph → consumer/relies-on/provider
+  contracts-check <map-path> <specs-root> [files-list]  cross-group floor: CROSS-REF facts + edge outcomes
 USAGE
 }
 
@@ -290,19 +312,22 @@ emit_outcome() {
 }
 
 # parse_params <params> — emit one `key\tvalue` line per recognized param key.
-#   The verify-checks grammar is `<key>=<value>` space-separated, but a value may
-#   itself contain a space (e.g. an ERE character class `[^ ]`), so a naive
-#   space split corrupts the regex. This parser is key-aware: a new param begins
-#   only at a token matching `^<knownkey>=`; every other token is a continuation
-#   of the current value. Input is streamed through awk on stdin so backslashes
-#   survive verbatim (unlike awk -v, which processes escapes).
+#   The verify-checks / contract-checks grammar is `<key>=<value>` space-separated,
+#   but a value may itself contain a space (e.g. an ERE character class `[^ ]` or
+#   `provider-ref=function getIdentity`), so a naive space split corrupts the
+#   regex. This parser is key-aware: a new param begins only at a token matching
+#   `^<knownkey>=`; every other token is a continuation of the current value.
+#   Input is streamed through awk on stdin so backslashes survive verbatim
+#   (unlike awk -v, which processes escapes). The recognized-key set spans both
+#   the verify-checks keys and the spec-037 contract-checks keys — additive, so
+#   an unrelated grammar simply never sees the extra keys.
 parse_params() {
   printf '%s\n' "$1" | awk '{
     key=""; val=""
     n = split($0, w, " ")
     for (i = 1; i <= n; i++) {
       p = w[i]
-      if (p ~ /^(polarity|regex|scope|count|exists|absent)=/) {
+      if (p ~ /^(polarity|regex|scope|count|exists|absent|criticality|provider-ref|consumer-ref)=/) {
         if (key != "") print key "\t" val
         eq = index(p, "=")
         key = substr(p, 1, eq - 1)
@@ -536,18 +561,6 @@ cmd_faces() {
       }
       return ""
     }
-    # scope_unsafe — a cheap in-parser shape gate on the scope= path (absolute,
-    #   leading dash, or a `..` segment). contracts-check re-gates every path at
-    #   execution via safe_path_param; this is early, defense-in-depth flagging.
-    function scope_unsafe(p,   s) {
-      if (match(p, /(^|[ \t])scope=[^ \t]+/)) {
-        s = substr(p, RSTART, RLENGTH); sub(/^[ \t]*scope=/, "", s)
-        if (s ~ /^\//) return 1
-        if (s ~ /^-/) return 1
-        if (s ~ /(^|\/)\.\.(\/|$)/) return 1
-      }
-      return 0
-    }
     BEGIN { in_prov = 0; in_req = 0; in_cc = 0; np = 0; nr = 0 }
 
     # contract-checks fenced block (anywhere): <entry-slug> <key>=<value>...
@@ -592,7 +605,6 @@ cmd_faces() {
         if (slug in cparams) {
           p = cparams[slug]; c = crit_of(p)
           if (c != "" && c !~ /^(critical|high|medium|low)$/) params = "malformed:invalid criticality"
-          else if (scope_unsafe(p))                           params = "malformed:unsafe scope"
           else { params = p; if (c != "") crit = c }
         }
         printf "provides\t%s\t-\t%s\t%s\t%s\n", san(slug), san(crit), san(params), san(ptext[i])
@@ -644,16 +656,197 @@ cmd_edges() {
   return 0
 }
 
+# ─── Section: contracts-check — the composite cross-group floor (spec 037) ───
+
+# groups_of <map-path> — emit each group slug declared under `## Groups` (the
+#   `### <group>` H3 subsections). The section ends at the next H2.
+groups_of() {
+  awk '
+    /^##[ \t]+Groups[ \t]*$/ { insec = 1; next }
+    insec && /^##[ \t]/ { insec = 0 }
+    insec && /^###[ \t]+/ { g = $0; sub(/^###[ \t]+/, "", g); sub(/[ \t].*$/, "", g); if (g != "") print g }
+  ' "$1"
+}
+
+# terr_of <map-path> <group> — the group's validated territory paths (HYGIENE
+#   lines dropped). Reuses cmd_territory, which slug-validates the group and
+#   valid-relpath-gates each path.
+terr_of() {
+  cmd_territory "$1" "$2" 2>/dev/null | grep -v "^HYGIENE$(printf '\t')" || true
+}
+
+# intersect_scope <base-path>... — in whole mode echo the base paths unchanged;
+#   in scoped mode echo each change-set file (scope_files) that falls under one
+#   of the base paths. Reads has_filelist / scope_files from the caller via
+#   bash's dynamic scope — the same idiom check_pattern uses.
+intersect_scope() {
+  local -a bases=("$@")
+  if [[ ${has_filelist:-0} -ne 1 ]]; then
+    [[ ${#bases[@]} -gt 0 ]] && printf '%s\n' "${bases[@]}"
+    return
+  fi
+  local sf base
+  for sf in "${scope_files[@]}"; do
+    for base in "${bases[@]}"; do
+      if path_under "$sf" "$base"; then printf '%s\n' "$sf"; break; fi
+    done
+  done
+}
+
+# emit_edge <edge-key> <side> <outcome> <evidence> — one edge pattern-outcome
+#   record. Evidence is sanitized (tabs/newlines/CRs → spaces, capped) so
+#   untrusted code/blueprint content can never shift TSV columns (Finding 7) and
+#   is location-only by construction at every call site (Finding 2).
+emit_edge() {
+  local ev; ev="$(printf '%s' "$4" | tr '\t\n\r' '   ' | cut -c1-512)"
+  printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$ev"
+}
+
+# contract_ref_check <edge-key> <side> <ere> <scope> <group> <map> <absent-outcome>
+#   Run a face-declared reference pattern with must-find semantics over the
+#   group's territory (or the declared provider-side scope, re-gated through
+#   safe_path_param). A match → holds with a file:line (never the matched line
+#   content). No match → the <absent-outcome>: `violated` (a provider must still
+#   expose the declared surface — a code-level breaking) or `abstain` (a consumer
+#   not exercising the surface is not itself a code-level violation — it falls to
+#   the judge / cross-ref floor). An unsafe scope → failed. Scoped runs intersect
+#   the base with the change set; a fully scoped-out base abstains.
+contract_ref_check() {
+  local ekey="$1" side="$2" ere="$3" scope="$4" group="$5" map="$6" absent="$7"
+  local -a bases=()
+  if [[ -n "$scope" ]]; then
+    if ! safe_path_param "$scope"; then emit_edge "$ekey" "$side" failed "invalid scope parameter"; return; fi
+    bases=("$scope")
+  else
+    local terr l
+    terr="$(terr_of "$map" "$group")"
+    while IFS= read -r l; do [[ -n "$l" ]] && bases+=("$l"); done <<< "$terr"
+  fi
+  [[ ${#bases[@]} -eq 0 ]] && return
+  local -a search=() l2
+  while IFS= read -r l2; do [[ -n "$l2" ]] && search+=("$l2"); done < <(intersect_scope "${bases[@]}")
+  [[ ${#search[@]} -eq 0 ]] && return
+  local out
+  out="$(grep -rHnE -e "$ere" -- "${search[@]}" 2>/dev/null | head -n 1)" || true
+  if [[ -n "$out" ]]; then
+    emit_edge "$ekey" "$side" holds "$(printf '%s' "$out" | cut -d: -f1,2)"
+  elif [[ "$absent" == "violated" ]]; then
+    emit_edge "$ekey" "$side" violated "declared surface pattern not found in $group territory"
+  fi
+}
+
+# cmd_contracts_check <map-path> <specs-root> [files-list] — the deterministic
+#   cross-group floor over every blueprint-bearing group pair. Emits COVERAGE
+#   and per-group UNSCOPED-GROUP facts, CROSS-REF reference facts (consumer
+#   territory referencing provider territory, location-only), and face-declared
+#   provider-ref/consumer-ref pattern outcomes per graph edge. The optional
+#   files-list scopes every scan to the listed change set (the spec-036 4th-arg
+#   semantics, re-gated through safe_scope_file). No matched content is ever
+#   emitted; every path-bearing value passes safe_path_param before use.
+cmd_contracts_check() {
+  local map="${1:-}" specs_root="${2:-}"
+  if [[ -z "$map" || -z "$specs_root" ]]; then
+    echo "jimverify contracts-check: need <map-path> <specs-root>" >&2; return 2
+  fi
+  if [[ ! -f "$map" ]]; then echo "jimverify contracts-check: map not found: $map" >&2; return 2; fi
+
+  # Optional files-list: re-gate each line, HYGIENE the unsafe (Finding 10).
+  local flist="${3:-}"
+  local has_filelist=0
+  local -a scope_files=()
+  if [[ -n "$flist" ]]; then
+    if [[ ! -r "$flist" ]]; then echo "jimverify contracts-check: files-list not readable: $flist" >&2; return 2; fi
+    has_filelist=1
+    local fl
+    while IFS= read -r fl || [[ -n "$fl" ]]; do
+      [[ -z "$fl" ]] && continue
+      if safe_scope_file "$fl"; then scope_files+=("$fl"); else printf 'HYGIENE\t%s\n' "$fl"; fi
+    done < "$flist"
+  fi
+
+  # Mapped groups (valid slugs only) + coverage.
+  local -a groups=()
+  local g
+  while IFS= read -r g; do
+    [[ -z "$g" ]] && continue
+    [[ "$g" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
+    groups+=("$g")
+  done < <(groups_of "$map")
+
+  local mapped=${#groups[@]} withbp=0 bp
+  for g in "${groups[@]}"; do
+    bp="$specs_root/$g/000-blueprint/spec.md"
+    [[ -f "$bp" ]] && withbp=$((withbp + 1))
+    if [[ -z "$(terr_of "$map" "$g")" ]]; then printf 'UNSCOPED-GROUP\t%s\n' "$g"; fi
+  done
+  printf 'COVERAGE\t%s\t%s\n' "$mapped" "$withbp"
+
+  # CROSS-REF facts: consumer territory referencing provider territory. The
+  # provider path is a fixed string (never a regex), behind -e / --.
+  local C P tp cterr pterr l out ln loc
+  for C in "${groups[@]}"; do
+    cterr="$(terr_of "$map" "$C")"
+    [[ -z "$cterr" ]] && continue
+    local -a cbases=() csearch=()
+    while IFS= read -r l; do [[ -n "$l" ]] && cbases+=("$l"); done <<< "$cterr"
+    while IFS= read -r l; do [[ -n "$l" ]] && csearch+=("$l"); done < <(intersect_scope "${cbases[@]}")
+    [[ ${#csearch[@]} -eq 0 ]] && continue
+    for P in "${groups[@]}"; do
+      [[ "$P" == "$C" ]] && continue
+      pterr="$(terr_of "$map" "$P")"
+      [[ -z "$pterr" ]] && continue
+      while IFS= read -r tp; do
+        [[ -z "$tp" ]] && continue
+        out="$(grep -rHnF -e "$tp" -- "${csearch[@]}" 2>/dev/null | head -n 50)" || true
+        [[ -z "$out" ]] && continue
+        while IFS= read -r ln; do
+          loc="$(printf '%s' "$ln" | cut -d: -f1,2)"
+          printf 'CROSS-REF\t%s\t%s\t%s\n' "$C" "$(printf '%s' "$loc" | tr '\t\n\r' '   ' | cut -c1-512)" "$P"
+        done <<< "$out"
+      done <<< "$pterr"
+    done
+  done
+
+  # Pattern outcomes from face check-data, per graph edge.
+  local relies kind slug tgt crit params text pbp pref cref cscope k v ekey
+  cmd_edges "$map" 2>/dev/null | while IFS=$'\t' read -r C relies P; do
+    [[ "$C" == "HYGIENE" ]] && continue
+    [[ "$C" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
+    [[ "$P" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
+    pbp="$specs_root/$P/000-blueprint/spec.md"
+    [[ -f "$pbp" ]] || continue
+    cmd_faces "$pbp" 2>/dev/null | while IFS=$'\t' read -r kind slug tgt crit params text; do
+      [[ "$kind" == "provides" ]] || continue
+      [[ "$params" == "-" || "$params" == malformed:* ]] && continue
+      pref=""; cref=""; cscope=""
+      while IFS=$'\t' read -r k v; do
+        case "$k" in
+          provider-ref) pref="$v" ;;
+          consumer-ref) cref="$v" ;;
+          scope)        cscope="$v" ;;
+        esac
+      done < <(parse_params "$params")
+      ekey="$C>$P#$slug"
+      # scope= narrows the provider-side base only (where the surface lives);
+      # the consumer side always scans the consumer's own territory.
+      [[ -n "$pref" ]] && contract_ref_check "$ekey" provider "$pref" "$cscope" "$P" "$map" violated
+      [[ -n "$cref" ]] && contract_ref_check "$ekey" consumer "$cref" ""       "$C" "$map" abstain
+    done
+  done
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
   local sub="${1:-}"
   case "$sub" in
-    parse)     shift; cmd_parse "$@" ;;
-    territory) shift; cmd_territory "$@" ;;
-    check)     shift; cmd_check "$@" ;;
-    faces)     shift; cmd_faces "$@" ;;
-    edges)     shift; cmd_edges "$@" ;;
+    parse)           shift; cmd_parse "$@" ;;
+    territory)       shift; cmd_territory "$@" ;;
+    check)           shift; cmd_check "$@" ;;
+    faces)           shift; cmd_faces "$@" ;;
+    edges)           shift; cmd_edges "$@" ;;
+    contracts-check) shift; cmd_contracts_check "$@" ;;
     *) usage; return 2 ;;
   esac
 }
