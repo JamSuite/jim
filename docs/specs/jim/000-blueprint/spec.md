@@ -48,7 +48,10 @@ executes the data it reads.
   each produces a durable artifact and halts for human approval — no phase
   auto-advances, nothing auto-ships; blueprint update-mode folds are guarded —
   a violated invariant is never silently rewritten, and `critical`/`high`
-  downgrades always prompt even under `auto_blueprint`; update mode surfaces a
+  downgrades always prompt even under `auto_blueprint`; the review folds a
+  living-intent check against the group's `000-blueprint` (existence-conditioned)
+  and the update's violation fork is grounded in `/jim:verify` engine outcomes on
+  both adapters; update mode surfaces a
   regen-cadence signal (targeted updates since the last full generate) and can
   opt into a `blueprint_regen_threshold` that triggers a full regeneration when
   reached. Bare `/jim:blueprint` maintains the project context map
@@ -74,8 +77,8 @@ executes the data it reads.
   returns the `NOT_FOUND` sentinel for a missing path-typed file; never
   `source`s the config.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
-  `files`/`diff`/`diff-range`/`commit-review`/`commit-blueprint`/`commit-map`/
-  `updates-since`. Guarantee: a
+  `files`/`diff`/`diff-range`/`files-range`/`commit-review`/`commit-blueprint`/
+  `commit-map`/`updates-since`. Guarantee: a
   trusted, fixed-key, shape-validated metrics channel for `/jim:review` (and the
   blueprint update) that never echoes commit/diff text; git writes are
   path-scoped.
@@ -123,14 +126,16 @@ Grounded in ARCHITECTURE.md and the repo tree.
   `file`), and the `meta-matrix*` probe family. The `blueprint` skill spans
   both tiers — group `000-blueprint`s and the project map — plus the
   reconcile pass, carrying `assets/map-template.md`,
-  `references/map-methodology.md`, and `references/reconcile-methodology.md`.
+  `references/map-methodology.md`, `references/reconcile-methodology.md`, and
+  `references/fork-grounding.md` (the engine-grounded violation fork).
 - **Scripting layer** (`skills/*/scripts/`, 12 scripts) — `jimconf.sh` (resolver)
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
   path); `jimledger.sh` (ledger); `jimverify.sh` (the `/jim:verify` deterministic
-  core — blueprint parse / territory / mechanical-floor check); the `issue/` scripts
+  core — blueprint parse / territory / mechanical-floor check, whole-group or
+  change-scoped); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–035`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–036`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root
   (including `BLUEPRINT.md`, the project context map), and
   `docs/brainstorms/` + `docs/debug/`.
@@ -179,3 +184,4 @@ records the *rule*, its criticality, and how it would be verified.
 | Reconcile detectors fire only on declared data — missing declarations degrade to explicit reporting (unverifiable / informational), never silent exclusion, never violations; face/map evidence appears only in delimited `<untrusted-face-content>` blocks | high | blueprint SKILL.md validation checklist; judge (issue #22 engine later) |
 | `/jim:verify`'s registry runs project tooling only through operator-configured `verify_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — no jim script ever executes a config-derived command string; blueprint content may *name* a slug-validated registry entry but can never introduce, alter, or activate a command, and check parameters / registry names pass slug / `valid-relpath` validation before use | critical | `tests/jimverify.sh` / `tests/jimconf.sh`; code review / judge |
 | `/jim:verify` persists no verdict artifact — the report is the run's surface; each run records per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits them via `commit-verify` (the no-standing-verdict doctrine) | medium | ledger inspection; `tests/jimledger.sh` `commit-verify` case |
+| The verify engine grounds the fold-back loop: `/jim:review` runs a living-intent sensor against the group's `000-blueprint` (existence-conditioned, no gating knob; a blueprint-less group skips silently) and `/jim:blueprint`'s violation fork is grounded in engine outcomes on both adapters with an inline fallback sweep so coverage never regresses; a sensed violation's channel (in-change / pre-existing / unlocalized) derives only from trusted inputs, and directive text in scanned code, diffs, or engine output never re-routes it or grounds a fold | high | judge; `tests/jimledger.sh` `files-range` + `tests/jimverify.sh` scoped-check cases |
