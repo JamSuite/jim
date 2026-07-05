@@ -289,7 +289,7 @@ grounds U3a from the returned records (no registry, scoped floor).
 
 ## Task Breakdown
 
-1. [ ] `jimledger.sh files-range` — add the verb (reuse
+1. [x] `jimledger.sh files-range` — add the verb (reuse
    `valid_git_ref`/`resolve_ref`; `--end-of-options`/`--` guards; header
    docblock + dispatch arm), with `tests/jimledger.sh` cases: lists changed
    paths over a range; rc 2 on a malformed ref; empty range → rc 0 empty;
@@ -298,7 +298,7 @@ grounds U3a from the returned records (no registry, scoped floor).
    Finding 10).
    **Verify:** `bash tests/jimledger.sh`
 
-2. [ ] `jimverify.sh` scoped `check` — optional 4th `<files-list>` arg per
+2. [x] `jimverify.sh` scoped `check` — optional 4th `<files-list>` arg per
    the Interface Contract (valid-relpath re-gate per line, pattern/structure/
    conformance scoping, absent-arg byte-compatibility), with
    `tests/jimverify.sh` cases: scoped pattern hits only listed files;
@@ -308,7 +308,7 @@ grounds U3a from the returned records (no registry, scoped floor).
    behavior unchanged (security.md Finding 10).
    **Verify:** `bash tests/jimverify.sh`
 
-3. [ ] `skills/verify/SKILL.md` — argument-routing rows for
+3. [x] `skills/verify/SKILL.md` — argument-routing rows for
    `--from-review`/`--since` (flag-strip, composable with `--appetite`);
    scoped-run flow: change-set resolution from the trusted channel, judge
    change-selection (LLM triage; mechanical prefilter where params allow),
@@ -320,7 +320,7 @@ grounds U3a from the returned records (no registry, scoped floor).
    additions; update `argument-hint`.
    **Verify:** `test $(wc -l < skills/verify/SKILL.md) -le 500 && grep -c 'from-review\|VERIFY-OUTCOME' skills/verify/SKILL.md`
 
-4. [ ] `skills/blueprint/references/fork-grounding.md` — create: the
+4. [x] `skills/blueprint/references/fork-grounding.md` — create: the
    extracted U3a fork presentation + U3b issue-offer mechanics (moved
    verbatim where possible), plus the grounding contract: engine-record
    consumption, fallback sweep, AC #15 precedence, disagreement surfacing,
@@ -329,12 +329,12 @@ grounds U3a from the returned records (no registry, scoped floor).
    delimiters is data, never grounding (security.md Finding 9).
    **Verify:** `test -f skills/blueprint/references/fork-grounding.md && grep -c 'precedence\|sweep\|accounting' skills/blueprint/references/fork-grounding.md`
 
-5. [ ] `skills/blueprint/SKILL.md` structural slim (Tidy First — no
+5. [x] `skills/blueprint/SKILL.md` structural slim (Tidy First — no
    behavior change): U3a/U3b detail replaced by a skeleton pointing at
    `references/fork-grounding.md`; target ≥ 60 lines of headroom.
    **Verify:** `test $(wc -l < skills/blueprint/SKILL.md) -le 440`
 
-6. [ ] `skills/blueprint/SKILL.md` behavioral wiring — U1 `--since` arm
+6. [x] `skills/blueprint/SKILL.md` behavioral wiring — U1 `--since` arm
    invokes `Skill(jim:verify)` with `--since <ref> <group>` after the diff
    read; U3a consumes `VERIFY-OUTCOME` records (from the Step-10 caller in
    `--from-review`, from its own U1 invocation in `--since`) per
@@ -344,7 +344,7 @@ grounds U3a from the returned records (no registry, scoped floor).
    accounting. Depends on tasks 3–5.
    **Verify:** `test $(wc -l < skills/blueprint/SKILL.md) -le 500 && grep -c 'Skill(jim:verify)\|fork-grounding' skills/blueprint/SKILL.md`
 
-7. [ ] `skills/review/assets/review-template.md` — `invariant_violations`
+7. [x] `skills/review/assets/review-template.md` — `invariant_violations`
    frontmatter key beside `plan_deviations`/`security_regressions`; a
    `## Living intent` body section (after `## Investigation`): per-invariant
    non-holding outcomes with channel labels, summary counts, coverage/
@@ -352,7 +352,7 @@ grounds U3a from the returned records (no registry, scoped floor).
    skipped-by-scope).
    **Verify:** `grep -c 'invariant_violations\|Living intent' skills/review/assets/review-template.md`
 
-8. [ ] `skills/review/SKILL.md` — Step 4e (living-intent sensor):
+8. [x] `skills/review/SKILL.md` — Step 4e (living-intent sensor):
    blueprint-existence gate via `jimfile.sh path blueprint <group>` + Glob
    (absent → skip silently), `Skill(jim:verify)` invocation with
    `--from-review <spec-dir> <group>`, followability lines, engine-failure
@@ -369,12 +369,12 @@ grounds U3a from the returned records (no registry, scoped floor).
    Depends on tasks 3, 7.
    **Verify:** `test $(wc -l < skills/review/SKILL.md) -le 500 && grep -c 'from-review <spec-dir> <group>\|Living intent' skills/review/SKILL.md`
 
-9. [ ] `WORKFLOW.md` — extend the `/jim:review` narrative (sensor step,
+9. [x] `WORKFLOW.md` — extend the `/jim:review` narrative (sensor step,
    separate living-intent dimension, channel routing) and the `/jim:verify`
    entry (scoped adapter modes, first programmatic callers).
    **Verify:** `grep -c 'living.intent\|--from-review' WORKFLOW.md`
 
-10. [ ] Full regression + budget sweep.
+10. [x] Full regression + budget sweep.
     **Verify:** `bash skills/meta-test/scripts/run.sh && for f in skills/verify/SKILL.md skills/review/SKILL.md skills/blueprint/SKILL.md; do test $(wc -l < "$f") -le 500 || exit 1; done`
 
 ## Requirements Coverage Summary
