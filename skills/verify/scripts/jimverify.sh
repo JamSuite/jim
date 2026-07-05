@@ -19,6 +19,27 @@
 #                                          listed files ∩ territory, structure runs
 #                                          only when its param path is listed, and
 #                                          conformance scans the listed set only.
+#   faces     <blueprint-spec.md>          (spec 037) Provides/Requires face
+#                                          entries joined with the optional
+#                                          contract-checks block → one TSV record
+#                                          per entry.
+#
+# faces OUTPUT (TAB-separated, one record per Provides/Requires entry):
+#   kind \t key \t target \t criticality \t params \t text
+#     - kind ∈ provides | requires
+#     - key: slugified backticked surface name (provides) or slugified dotted
+#       ref (requires)
+#     - target: requires only — the readable <group>.<surface> when the leading
+#       token is a valid group slug, else "-"; always "-" for provides
+#     - criticality: provides only — the declared value from the entry's
+#       contract-checks line, else "-"
+#     - params: the entry's joined contract-checks line, or "-"; malformed
+#       check data (bad criticality / unsafe scope) degrades to
+#       "malformed:<reason>" — never a silent drop
+#     - text: the entry's verbatim guarantee text (sanitized)
+#   A contract-checks line whose key is not a valid slug matches no entry and is
+#   inert (the verify-checks orphan precedent). rc 2 when the file is missing.
+#   The record STRUCTURE is trusted; the carried text/params are untrusted data.
 #
 # parse OUTPUT (TAB-separated, one record per line):
 #   id \t criticality \t method \t params \t invariant
@@ -62,6 +83,7 @@ usage: jimverify.sh <subcommand> [args]
   parse     <blueprint-spec.md>              invariants → normalized TSV
   territory <map-path> <group>               group territory paths (validated)
   check     <blueprint-dir> <map-path> <group> [files-list]  run the mechanical floor
+  faces     <blueprint-spec.md>              provides/requires + contract-checks → TSV
 USAGE
 }
 
@@ -478,6 +500,102 @@ cmd_check() {
   return 0
 }
 
+# ─── Section: faces — provides/requires + contract-checks (spec 037) ─────────
+
+# cmd_faces <blueprint-spec.md> — emit one normalized TSV record per Provides /
+#   Requires face entry, joined with the optional `contract-checks` block. A
+#   single awk pass collects the block and both face sections regardless of
+#   order, then emits at END. The record *structure* is script-normalized and
+#   trusted; the carried `text`/`params` face content stays UNTRUSTED DATA the
+#   skill wraps under its Step-8 discipline — the same split the `parse` verb
+#   documents, restated so it survives for faces (security Finding 7).
+cmd_faces() {
+  local file="${1:-}"
+  if [[ -z "$file" ]]; then echo "jimverify faces: need <blueprint-spec.md>" >&2; return 2; fi
+  if [[ ! -f "$file" ]]; then echo "jimverify faces: file not found: $file" >&2; return 2; fi
+  awk '
+    function san(x) { gsub(/\t/, " ", x); gsub(/\r/, "", x); if (length(x) > 1024) x = substr(x, 1, 1024); return x }
+    function is_slug(x) { return x ~ /^[a-z0-9][a-z0-9-]*$/ }
+    function slugify(x,   s) { s = tolower(x); gsub(/[^a-z0-9]+/, "-", s); gsub(/^-+|-+$/, "", s); return s }
+    # crit_of — the criticality= token value (values are single, space-free tokens).
+    function crit_of(p,   s) {
+      if (match(p, /(^|[ \t])criticality=[^ \t]+/)) {
+        s = substr(p, RSTART, RLENGTH); sub(/^[ \t]*criticality=/, "", s); return s
+      }
+      return ""
+    }
+    # scope_unsafe — a cheap in-parser shape gate on the scope= path (absolute,
+    #   leading dash, or a `..` segment). contracts-check re-gates every path at
+    #   execution via safe_path_param; this is early, defense-in-depth flagging.
+    function scope_unsafe(p,   s) {
+      if (match(p, /(^|[ \t])scope=[^ \t]+/)) {
+        s = substr(p, RSTART, RLENGTH); sub(/^[ \t]*scope=/, "", s)
+        if (s ~ /^\//) return 1
+        if (s ~ /^-/) return 1
+        if (s ~ /(^|\/)\.\.(\/|$)/) return 1
+      }
+      return 0
+    }
+    BEGIN { in_prov = 0; in_req = 0; in_cc = 0; np = 0; nr = 0 }
+
+    # contract-checks fenced block (anywhere): <entry-slug> <key>=<value>...
+    /^```contract-checks[ \t]*$/ { in_cc = 1; next }
+    in_cc && /^```/ { in_cc = 0; next }
+    in_cc {
+      line = $0; sub(/^[ \t]+/, "", line)
+      if (line == "") next
+      cid = line;  sub(/[ \t].*$/, "", cid)          # first token = entry-slug
+      rest = line; sub(/^[^ \t]+[ \t]*/, "", rest)   # remainder = params
+      if (!is_slug(cid)) next                        # bad key slug → inert orphan
+      cparams[cid] = rest
+      next
+    }
+
+    # section tracking — the specific face headings consume their line (next),
+    # so only OTHER H2 headings fall through to the reset rule.
+    /^##[ \t]+Provides[ \t]*$/ { in_prov = 1; in_req = 0; next }
+    /^##[ \t]+Requires[ \t]*$/ { in_req = 1; in_prov = 0; next }
+    /^##[ \t]/ { in_prov = 0; in_req = 0 }
+
+    (in_prov || in_req) && /^[ \t]*[-*][ \t]+`/ {
+      line = $0
+      if (!match(line, /`[^`]*`/)) next
+      surf = substr(line, RSTART + 1, RLENGTH - 2)
+      text = substr(line, RSTART + RLENGTH)
+      sub(/^[ \t]+/, "", text)
+      sub(/^—[ \t]*/, "", text)      # em-dash separator
+      sub(/^-[ \t]*/, "", text)      # hyphen separator
+      if (in_prov) { np++; psurf[np] = surf; ptext[np] = text }
+      else         { nr++; rref[nr]  = surf; rtext[nr] = text }
+    }
+
+    END {
+      for (i = 1; i <= np; i++) {
+        slug = slugify(psurf[i])
+        if (!is_slug(slug)) {
+          printf "provides\t%s\t-\t-\tmalformed:unslugifiable provides surface\t%s\n", san(psurf[i]), san(ptext[i])
+          continue
+        }
+        crit = "-"; params = "-"
+        if (slug in cparams) {
+          p = cparams[slug]; c = crit_of(p)
+          if (c != "" && c !~ /^(critical|high|medium|low)$/) params = "malformed:invalid criticality"
+          else if (scope_unsafe(p))                           params = "malformed:unsafe scope"
+          else { params = p; if (c != "") crit = c }
+        }
+        printf "provides\t%s\t-\t%s\t%s\t%s\n", san(slug), san(crit), san(params), san(ptext[i])
+      }
+      for (i = 1; i <= nr; i++) {
+        ref = rref[i]; slug = slugify(ref)
+        if (!is_slug(slug)) slug = san(ref)
+        target = "-"; grp = ref; sub(/\..*$/, "", grp)
+        if (is_slug(grp) && ref ~ /\./) target = ref
+        printf "requires\t%s\t%s\t-\t-\t%s\n", san(slug), san(target), san(rtext[i])
+      }
+    }
+  ' "$file"
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -486,6 +604,7 @@ main() {
     parse)     shift; cmd_parse "$@" ;;
     territory) shift; cmd_territory "$@" ;;
     check)     shift; cmd_check "$@" ;;
+    faces)     shift; cmd_faces "$@" ;;
     *) usage; return 2 ;;
   esac
 }

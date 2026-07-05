@@ -521,6 +521,136 @@ case_jimverify_check_no_filelist_unchanged() {
     "$(printf '%s\n' "$OUT" | grep -c '^HYGIENE')"
 }
 
+# ─── Section: faces — provides/requires + contract-checks (spec 037 Task 1) ──
+
+# faces_field <key> <n> — echo TAB-field <n> of the first OUT line whose SECOND
+#   field (the entry key) equals <key>. faces records repeat field 1 (the kind),
+#   so keying on field 2 is how a specific provides/requires entry is asserted.
+faces_field() {
+  printf '%s\n' "$OUT" | awk -F'\t' -v k="$1" -v n="$2" '$2==k {print $n; exit}'
+}
+
+# faces_fields <key> — echo the TAB-field count of the first row keyed by <key>.
+faces_fields() {
+  printf '%s\n' "$OUT" | awk -F'\t' -v k="$1" '$2==k {print NF; exit}'
+}
+
+# bp_faces <name> <body> — write a group blueprint fixture; echo its path.
+bp_faces() { fixture "$1" "$2"; }
+
+# AC: faces emits one record per Provides/Requires entry — kind, slugified key,
+# target (requires only), declared criticality (provides only, from the
+# contract-checks line), joined params, and the verbatim guarantee text
+# (spec 037 AC #6, interface contract).
+case_jimverify_faces_wellformed() {
+  local cfg
+  cfg=$(bp_faces bp-well.md '## Provides
+
+- `identity lookup` — read-after-write customer identity resolution
+- `session token` — signed token with a 15 minute expiry
+
+## Requires
+
+- `platform.rate limiter` — best-effort request throttling
+
+## Structure
+
+Real files here.
+
+```contract-checks
+identity-lookup criticality=high provider-ref=function getIdentity consumer-ref=getIdentity\( scope=accounts/
+session-token criticality=medium
+```
+
+## Invariants
+
+None.')
+  run_jimverify faces "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "identity-lookup kind"        "provides" "$(faces_field identity-lookup 1)"
+  assert_eq "identity-lookup criticality" "high"     "$(faces_field identity-lookup 4)"
+  assert_match "identity-lookup params carry provider-ref" 'provider-ref=function getIdentity' "$(faces_field identity-lookup 5)"
+  assert_match "identity-lookup params carry scope"        'scope=accounts/'                   "$(faces_field identity-lookup 5)"
+  assert_match "identity-lookup text"     'read-after-write customer identity resolution' "$(faces_field identity-lookup 6)"
+  assert_eq "identity-lookup is 6 fields" "6" "$(faces_fields identity-lookup)"
+  assert_eq "session-token criticality"   "medium"   "$(faces_field session-token 4)"
+  assert_eq "requires kind"               "requires" "$(faces_field platform-rate-limiter 1)"
+  assert_eq "requires target group-attributed" "platform.rate limiter" "$(faces_field platform-rate-limiter 3)"
+}
+
+# AC: a blueprint with no contract-checks block verifies unchanged — every
+# provides entry emits criticality "-" and params "-", never an error (spec 037
+# AC #6, the legacy-no-migration rule).
+case_jimverify_faces_legacy_no_block() {
+  local cfg
+  cfg=$(bp_faces bp-legacy.md '## Provides
+
+- `identity lookup` — resolves a customer id
+
+## Requires
+
+- `platform.rate limiter` — throttling
+')
+  run_jimverify faces "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no-block criticality dash" "-" "$(faces_field identity-lookup 4)"
+  assert_eq "no-block params dash"      "-" "$(faces_field identity-lookup 5)"
+}
+
+# AC: a contract-checks line with an out-of-enum criticality degrades that
+# entry's params to malformed:<reason> — never a silent drop, never an error
+# (interface contract, the parse malformed-row precedent).
+case_jimverify_faces_malformed_criticality() {
+  local cfg
+  cfg=$(bp_faces bp-badcrit.md '## Provides
+
+- `identity lookup` — resolves a customer id
+
+```contract-checks
+identity-lookup criticality=BOGUS provider-ref=x
+```
+')
+  run_jimverify faces "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_match "malformed params" '^malformed:' "$(faces_field identity-lookup 5)"
+  assert_eq "criticality falls back to dash" "-" "$(faces_field identity-lookup 4)"
+}
+
+# AC: a contract-checks line whose key is not a valid slug matches no provides
+# entry and is inert — the raw key is never echoed and the entry falls back to
+# "-" (the verify-checks orphan precedent; TSV integrity).
+case_jimverify_faces_badkey_inert() {
+  local cfg
+  cfg=$(bp_faces bp-badkey.md '## Provides
+
+- `identity lookup` — resolves a customer id
+
+```contract-checks
+Bad_Key criticality=high provider-ref=x
+```
+')
+  run_jimverify faces "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "raw bad key never echoed" "0" "$(printf '%s\n' "$OUT" | grep -c 'Bad_Key')"
+  assert_eq "unmatched entry params dash" "-" "$(faces_field identity-lookup 5)"
+}
+
+# AC: a tab embedded in guarantee text is sanitized so it can never shift TSV
+# columns or smuggle a spurious record (spec 037 AC #17, the Finding-7 lineage).
+case_jimverify_faces_tab_sanitized() {
+  local cfg
+  cfg=$(bp_faces bp-tab.md "$(printf '## Provides\n\n- `surf` — has\ta tab inside\n')")
+  run_jimverify faces "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "surf row stays 6 fields" "6" "$(faces_fields surf)"
+}
+
+# AC: faces with a missing file argument exits 2.
+case_jimverify_faces_missing_file_exits_2() {
+  run_jimverify faces "$TMP_BASE/no-such-blueprint.md"
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.
