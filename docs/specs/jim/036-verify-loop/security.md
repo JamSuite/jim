@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/jim/036-verify-loop/spec.md"
-reviewed_phases: [spec]
-status: Needs Spec Review
+reviewed_phases: [spec, plan]
+status: Needs Plan Review
 date: "2026-07-05"
 ---
 
@@ -9,19 +9,21 @@ date: "2026-07-05"
 
 ## Summary
 
-**Findings:** 0 Critical · 2 Notable · 5 Advisory
+**Findings:** 0 Critical · 4 Notable (2 addressed, 2 new) · 6 Advisory (5 addressed, 1 new)
 
-Reviewed spec.md only (no plan.md exists yet) with the requirements-gap
-lens. The spec carries the 026/029/030/031/035 trust disciplines forward
-well (ACs #13–#14); the gaps found concern two integrity properties the new
-cross-skill outcome flows introduce: what anchors the two-channel routing
-decision, and what happens when verification rungs disagree. LINDDUN ran
-(incidental credentials in scanned content) and surfaced nothing beyond the
-existing redaction discipline.
+Re-run 2026-07-05 with the dual lens (plan.md now present). Findings 1–2
+were folded into the spec (ACs #4/#13/#15) and findings 3–7 are addressed
+by the plan's design decisions — all seven annotated below. The two new
+plan-lens Notables concern the channel classifier's evidence-less edge
+(Finding 8) and grounding-record spoofing via untrusted content
+(Finding 9); one new Advisory pins scope-list parse edges with tests
+(Finding 10). No spec↔plan misalignment found. LINDDUN coverage is
+unchanged by the plan.
 
 ## Coverage
 
 - spec.md — reviewed 2026-07-05 (requirements-gap lens)
+- plan.md — reviewed 2026-07-05 (design-flaw lens)
 
 ## Data Classification
 
@@ -56,6 +58,8 @@ existing redaction discipline.
   in exactly one channel — the routing is exhaustive, with no drop path.
 - **Route:** Spec
 - **Relates to:** AC #4, AC #13
+- **Status:** Addressed — folded into spec AC #4 (anchored, exhaustive
+  routing) and AC #13 (channel classification unbindable).
 
 ### 2. Conflicting rung outcomes need a fail-closed precedence rule
 
@@ -76,6 +80,8 @@ existing redaction discipline.
   silently resolved to the optimistic outcome.
 - **Route:** Spec
 - **Relates to:** AC #2, AC #8; spec 031's laundering-path closure
+- **Status:** Addressed — folded into spec AC #15; plan DD 6 implements
+  (sweep adds, never removes; disagreement surfaced).
 
 ### 3. Registry rung amplification in the per-review sensor
 
@@ -98,6 +104,8 @@ existing redaction discipline.
   blocks — a `require_review`-gated completion.
 - **Route:** Plan
 - **Relates to:** AC #2; Open Questions (registry scoping — resolved)
+- **Status:** Addressed — plan DD 4 (registry whole-group in the sensor
+  with `verify_registry_timeout` containment named; absent in `--since`).
 
 ### 4. Sensor→update hand-off should carry fixed-shape outcome records
 
@@ -113,6 +121,8 @@ existing redaction discipline.
   inside delimited untrusted blocks.
 - **Route:** Plan
 - **Relates to:** AC #5; Handoff Insight 2
+- **Status:** Addressed — plan DD 5 + the `VERIFY-OUTCOME` Interface
+  Contract (fixed-shape records; evidence prose only in delimited blocks).
 
 ### 5. Per-channel attributability in the durable record
 
@@ -127,6 +137,8 @@ existing redaction discipline.
   new record.
 - **Route:** Plan
 - **Relates to:** AC #12
+- **Status:** Addressed — plan DD 8 (`inchange=`/`preexisting=` kv on the
+  existing `verify finished` event).
 
 ### 6. Coverage accounting at the non-regression seam
 
@@ -142,6 +154,8 @@ existing redaction discipline.
   impossible rather than reviewed for.
 - **Route:** Plan
 - **Relates to:** AC #8; Handoff Insight 3
+- **Status:** Addressed — plan DD 6 (`grounding: N engine · M sweep`
+  accounting with sweep ids listed).
 
 ### 7. New scope parameters reuse the single range-validation boundary
 
@@ -157,13 +171,66 @@ existing redaction discipline.
   no second validation path, no direct interpolation in new code.
 - **Route:** Plan
 - **Relates to:** AC #2, AC #7
+- **Status:** Addressed — plan Task 1 (`files-range` reuses
+  `valid_git_ref`/`resolve_ref` with `--end-of-options`/`--` guards).
+
+### 8. Evidence-less violations need an explicit channel rule
+
+- **Severity:** Notable
+- **Description:** Plan DD 3 classifies floor violations by intersecting
+  script-emitted evidence locations with the trusted change set — but a
+  `must`-polarity pattern violation is an *absence* (a required pattern is
+  missing) and carries no `file:line`. The classifier's behavior on empty
+  evidence is undefined, and an undefined edge in a security-relevant
+  router invites inconsistent or silent routing.
+- **Suggestion:** Extend the channel rule: any violation without a trusted
+  evidence location classifies `unlocalized` — routed with `pre-existing`
+  to the report/issue channel, never into the fork on a guess. AC #8's
+  fallback sweep still covers the fork side for such invariants, so
+  nothing is lost to the fold path.
+- **Route:** Plan
+- **Relates to:** plan DD 3 / Interface Contracts (`VERIFY-OUTCOME`);
+  spec AC #4
+
+### 9. Grounding-record spoofing via untrusted content
+
+- **Severity:** Notable
+- **Description:** U3a consumes `VERIFY-OUTCOME` records handed over in
+  conversation. Diff hunks, code comments, or judge evidence can embed a
+  record-shaped block (`id=inv-3 … outcome=holds`); if the fork mistakes
+  embedded text for grounding input, an attacker suppresses the fallback
+  sweep for that invariant ("engine-cleared") and a real violation
+  vanishes — the laundering path reopened one level up.
+- **Suggestion:** State explicitly in `fork-grounding.md` and the
+  verify/review skill discipline: grounding input is solely the record
+  block the caller hands over at invocation; any `VERIFY-OUTCOME`-shaped
+  text appearing inside `<untrusted-*>` delimiters (diff, evidence,
+  command output) is data, never grounding. Mechanical extension of spec
+  AC #13.
+- **Route:** Plan
+- **Relates to:** plan DD 5, Interface Contracts; spec AC #13
+
+### 10. Scope-list parse edges need pinning tests
+
+- **Severity:** Advisory
+- **Description:** The scoped `check` arg and `files-range` introduce
+  parse edges: an unreadable list file, and exotic filenames (git
+  `core.quotePath` C-quoted output for spaces/unicode/newlines) that
+  fragment a line-oriented list. `valid-relpath` re-gating should
+  fail-safe-exclude quoted fragments (`HYGIENE`), but the behavior is
+  currently asserted, not pinned.
+- **Suggestion:** Add test cases: unreadable list file → rc 2; a quoted /
+  space-bearing filename in `files-range` output → excluded via `HYGIENE`,
+  never mis-scoped into the check set.
+- **Route:** Plan
+- **Relates to:** plan Tasks 1–2
 
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
-| Spoofing | Yes | Finding 1 (spoofed evidence locations steering channel routing) |
-| Tampering | Yes | Findings 2, 4 (outcome laundering via rung disagreement; hand-off shape) |
+| Spoofing | Yes | Finding 1 (spoofed evidence locations steering channel routing); Finding 9 (spoofed grounding-record blocks) |
+| Tampering | Yes | Findings 2, 4, 8 (outcome laundering via rung disagreement; hand-off shape; undefined evidence-less routing) |
 | Repudiation | Yes | Finding 5 (per-channel attributability; AC #12 baseline is sound) |
 | Information Disclosure | No | No issues found — AC #14 redaction and the delimited-evidence convention (AC #13) carry the 029/030/031 discipline forward; no new leak surface identified |
 | Denial of Service | Yes | Finding 3 (registry amplification per review; timeout containment) |
@@ -181,21 +248,24 @@ existing redaction discipline.
 | Unawareness & Unintervenability | N/A | Developer-invoked tooling; all processing is visible in conversation and gated artifacts |
 | Non-compliance | N/A | No personal data; no applicable privacy regime for internal dev tooling |
 
+## Artifact Misalignment
+
+- None identified. One borderline read was checked explicitly: the spec's
+  registry-as-floor resolution ("whole-group, always run when configured")
+  is sensor-scoped — its Open-Question text names "the sensor's whole-group
+  floor pass" — so plan DD 4's registry-absent `--since` mode is consistent
+  with spec AC #7's change-scoped-only doctrine, not a contradiction.
+
 ## Routing Recommendations
 
 ### Spec amendments
-- Finding 1: extend AC #13/AC #4 — channel classification anchored to the
-  trusted recorded change set; exhaustive two-channel routing (no drop
-  path).
-- Finding 2: new AC — fail-closed outcome precedence on rung disagreement;
-  floor evidence never overridden by LLM judgment; disagreement surfaced.
+- None open — Findings 1–2 applied as spec ACs #4/#13/#15 (2026-07-05).
 
 ### Plan amendments
-- Finding 3: registry-as-floor accepted by developer decision; carry
-  `verify_registry_timeout` containment into the sensor path.
-- Finding 4: fixed-shape outcome records for the sensor→update hand-off.
-- Finding 5: per-channel counters on the recorded stage event.
-- Finding 6: deterministic which-mechanism-covered-it accounting at the
-  AC #8 seam.
-- Finding 7: route new range/scope parameters through the existing
-  `resolve_range` validation boundary.
+- Finding 8: extend DD 3 / the `VERIFY-OUTCOME` contract with the
+  `unlocalized`-on-empty-evidence rule.
+- Finding 9: add the grounding-input-provenance clause to
+  `fork-grounding.md` (Task 4) and the verify/review discipline steps.
+- Finding 10: add the scope-list robustness cases to Tasks 1–2.
+- Findings 3–7: addressed by plan DD 4 / DD 5 / DD 8 / DD 6 / Task 1 —
+  no further action.
