@@ -2,7 +2,7 @@
 id: 20260705-guard-the-contracts-check-edge-loop-against-self-edges
 num: 61
 title: "Guard the contracts-check edge loop against self-edges"
-status: open
+status: closed
 priority: low
 labels: [verify, contract-graph]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:44:13Z
-updated: 2026-07-05T22:44:13Z
+updated: 2026-07-05T22:55:35Z
 origin: docs/specs/jim/037-verify-contracts/review.md
 ---
 
@@ -31,3 +31,7 @@ or hand-edited graph.
 mirroring the existing CROSS-REF self-pair skip.
 
 Surfaced by the spec 037 post-build review (`docs/specs/jim/037-verify-contracts/review.md`, Finding 5).
+
+---
+
+**Folded into [[20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin]] (#62)** — closed 2026-07-05; the fix lands there as a checklist item.

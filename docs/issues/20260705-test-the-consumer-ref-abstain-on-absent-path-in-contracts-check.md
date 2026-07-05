@@ -2,7 +2,7 @@
 id: 20260705-test-the-consumer-ref-abstain-on-absent-path-in-contracts-check
 num: 58
 title: "Test the consumer-ref abstain-on-absent path in contracts-check"
-status: open
+status: closed
 priority: medium
 labels: [verify, contract-graph, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:44:11Z
-updated: 2026-07-05T22:44:11Z
+updated: 2026-07-05T22:55:35Z
 origin: docs/specs/jim/037-verify-contracts/review.md
 ---
 
@@ -33,3 +33,7 @@ declared usage, and assert the consumer side emits **no** edge record for that
 edge (not `violated`, not `failed`).
 
 Surfaced by the spec 037 post-build review (`docs/specs/jim/037-verify-contracts/review.md`, Finding 2).
+
+---
+
+**Folded into [[20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin]] (#62)** — closed 2026-07-05; the fix lands there as a checklist item.
