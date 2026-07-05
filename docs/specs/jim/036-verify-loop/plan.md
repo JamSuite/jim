@@ -2,7 +2,7 @@
 title: "Verification engine loop integration"
 spec: "docs/specs/jim/036-verify-loop/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Verification engine loop integration — Plan
