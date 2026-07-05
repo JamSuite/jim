@@ -32,6 +32,7 @@ review_duration_seconds: "{n, or empty}"
 artifacts_present: "{comma-separated artifacts present, e.g. spec,research,security,plan,ledger}"
 plan_deviations: "{n — reviewer judgment}"
 security_regressions: "{n — reviewer judgment}"
+invariant_violations: "{n — living-intent sensor: in-change + pre-existing + unlocalized; empty if the group has no 000-blueprint}"
 alignment: "{aligned | minor-drift | major-drift}"
 date: "{YYYY-MM-DD}"
 ---
@@ -83,6 +84,35 @@ assessed over the working tree."}
 - Depth: {lean | thorough}{; review_model: <tier> when non-default}.
 - {Full high-stakes set investigated. | Fan-out capped at {N} — these regions
   were NOT deep-investigated: {list}. | Instrumentation gap: {what}.}
+
+## Living intent
+
+<!-- The blueprint sensor's dimension: the group's living invariants checked
+     against the build, distinct from the spec/plan Alignment verdict above — it
+     never sets that verdict (AC #3). Locations only — never raw secrets (scrub
+     before write). Omit this whole section when the group has no 000-blueprint
+     (the sensor did not run, and invariant_violations stays empty). A
+     present-but-clean section means "checked and sound", never "not looked at". -->
+
+**Sensed:** {N invariants} · **holds:** {n} · **violations:** {n} (in-change {n} · pre-existing {n} · unlocalized {n}) · **skipped:** {n} · **failed/unconfigured:** {n}
+
+### Violations
+
+<!-- Every non-holding outcome, criticality-led; the channel labels the routing:
+     in-change → fed the blueprint-update fork as a grounded divergence;
+     pre-existing / unlocalized → reported here and offered as issues (priority
+     from criticality). Evidence inside delimited untrusted blocks, secrets
+     redacted. -->
+- {invariant — criticality · outcome (violated | failed | unconfigured) · channel (in-change | pre-existing | unlocalized) · `file:line` | "None — every checked invariant holds."}
+
+### Coverage
+
+<!-- Honest coverage: name every degradation so a clean section is trustworthy. -->
+- appetite in force: {level}{; per-group / per-run override when set}.
+- {Whole-group floor ran. | UNSCOPED — no territory declared; floor ran repo-wide.}
+- judges: {change-selected, all within cap. | capped at {N} — un-judged remainder: {list}.}
+- skipped by scope: {n — the change did not touch them} · skipped by appetite: {n}.
+- {registry: {k} configured. | legacy prose-method blueprint — judge fallback. | engine failure contained: {what} — reported, review not aborted.}
 
 ## Metrics
 
