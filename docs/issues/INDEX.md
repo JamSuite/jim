@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 33
+- Open: 36
 - Closed: 18
 
 ## Issues
@@ -58,6 +58,9 @@
 - `20260704-surface-face-freshness-in-the-reconcile-report` — Surface face freshness in the reconcile report · status: open · num: 44 · priority: low · created: 2026-07-04T09:23:24Z · labels: [000-blueprint, contract-graph] · origin: docs/specs/jim/034-contract-graph/plan.md
 - `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: open · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-update-issue-skill-md-7a-surfacing-skills-enumeration` — Update issue SKILL.md 7a surfacing-skills enumeration · status: open · num: 45 · priority: low · created: 2026-07-04T11:07:13Z · labels: [issue, docs] · origin: docs/specs/jim/034-contract-graph/review.md
+- `20260705-allowed-tools-exactness-drift-in-issue-and-meta-matrix-skills` — allowed-tools exactness drift in issue and meta-matrix skills · status: open · num: 52 · priority: critical · created: 2026-07-05T00:28:45Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
+- `20260705-meta-matrix-probe-agent-body-exceeds-progressive-disclosure-toke` — meta-matrix-probe agent body exceeds progressive-disclosure token budget · status: open · num: 54 · priority: medium · created: 2026-07-05T00:37:36Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
+- `20260705-untrusted-data-and-secret-redaction-gap-on-researcher-web-fetch-` — untrusted-data and secret-redaction gap on researcher web-fetch path · status: open · num: 53 · priority: critical · created: 2026-07-05T00:28:53Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 
 ## Graph
 
