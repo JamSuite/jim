@@ -33,6 +33,7 @@ artifacts_present: "{comma-separated artifacts present, e.g. spec,research,secur
 plan_deviations: "{n — reviewer judgment}"
 security_regressions: "{n — reviewer judgment}"
 invariant_violations: "{n — living-intent sensor: in-change + pre-existing + unlocalized; empty if the group has no 000-blueprint}"
+contract_violations: "{n — cross-group contract edges: provider-side + consumer-side non-holding; empty if the contract-edge phase did not run}"
 alignment: "{aligned | minor-drift | major-drift}"
 date: "{YYYY-MM-DD}"
 ---
@@ -113,6 +114,20 @@ assessed over the working tree."}
 - judges: {change-selected, all within cap. | capped at {N} — un-judged remainder: {list}.}
 - skipped by scope: {n — the change did not touch them} · skipped by appetite: {n}.
 - {registry: {k} configured. | legacy prose-method blueprint — judge fallback. | engine failure contained: {what} — reported, review not aborted.}
+
+### Contracts
+
+<!-- The cross-group contract-edge phase, rendered only when it ran (the map's
+     graph names the reviewed group as a provider and the build touched
+     provides-side code). Omit this whole subsection otherwise, and leave
+     contract_violations empty. Locations only — never raw secrets. Class is the
+     spec-034 finding class; channel labels the routing: provider-side in-change
+     → the blueprint-update fork; consumer-side / pre-existing → offered as
+     issues here, never folded into this group's update. -->
+
+**Edges checked:** {n} · **holds:** {n} · **violations:** {n} (provider-side {n} · consumer-side {n})
+
+- {consumer → provider "entry" — criticality · code-level {leak | breaking} · side (provider | consumer) · channel (in-change | pre-existing) · `file:line` | "None — every checked edge holds."}
 
 ## Metrics
 
