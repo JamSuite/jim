@@ -324,7 +324,7 @@ flowchart LR
 
 ## Task Breakdown
 
-1. [ ] `jimverify.sh` `faces` verb: parse Provides/Requires bullets +
+1. [x] `jimverify.sh` `faces` verb: parse Provides/Requires bullets +
    `contract-checks` block per the Interface Contract (slug-gated keys,
    `parse_params` reuse, sanitized emission, malformed-degrade); the header
    comment restates the trusted-channel / untrusted-text split (the `parse`
@@ -333,13 +333,13 @@ flowchart LR
    text).
    **Verify:** `bash tests/jimverify.sh`
 
-2. [ ] `jimverify.sh` `edges` verb: parse `## Contract Graph` per the
+2. [x] `jimverify.sh` `edges` verb: parse `## Contract Graph` per the
    Interface Contract (slug-gated cells, HYGIENE rows, rc 2 absent-section).
    Tests first (graph present, absent, nothing-to-reconcile note, crafted
    cell).
    **Verify:** `bash tests/jimverify.sh`
 
-3. [ ] `jimverify.sh` `contracts-check` verb: cross-territory `CROSS-REF`
+3. [x] `jimverify.sh` `contracts-check` verb: cross-territory `CROSS-REF`
    facts, `provider-ref`/`consumer-ref` pattern outcomes (per-side scoping,
    `safe_path_param` on every path-bearing value, `-e`/`--` guards),
    `UNSCOPED-GROUP`/`COVERAGE`/`HYGIENE` records, optional files-list. Tests
@@ -348,13 +348,13 @@ flowchart LR
    matched content in any record).
    **Verify:** `bash tests/jimverify.sh`
 
-4. [ ] Authoring reach-back: `blueprint-template.md` gains the
+4. [x] Authoring reach-back: `blueprint-template.md` gains the
    `contract-checks` stanza; `check-authoring.md` gains the grammar section,
    criticality-declaration guidance, and the one-way ratchet note (spec
    AC #8). Depends on task 1's grammar.
    **Verify:** `grep -q 'contract-checks' skills/blueprint/assets/blueprint-template.md && grep -q 'contract-checks' skills/blueprint/references/check-authoring.md`
 
-5. [ ] Verify skill contract mode: create
+5. [x] Verify skill contract mode: create
    `references/contracts-methodology.md` (edge semantics, fact
    classification incl. the faces untrusted-text restatement — security
    Finding 7, per-side appetite resolution, fail-closed rules incl.
@@ -367,25 +367,25 @@ flowchart LR
    Depends on tasks 1–3.
    **Verify:** `grep -q -- '--contracts' skills/verify/SKILL.md && test -f skills/verify/references/contracts-methodology.md && awk 'END{exit NR>500?1:0}' skills/verify/SKILL.md`
 
-6. [ ] `agents/judge.md`: generalize to "one invariant — or one side of one
+6. [x] `agents/judge.md`: generalize to "one invariant — or one side of one
    contract edge" (edge input shape; tools unchanged).
    **Verify:** `grep -q 'contract edge' agents/judge.md`
 
-7. [ ] Scoped-adapter edge phase in `skills/verify/SKILL.md` (§ Scoped
+7. [x] Scoped-adapter edge phase in `skills/verify/SKILL.md` (§ Scoped
    adapters): provider-condition (graph names group as provider),
    change-selection of affected edges (DD 9), edge records joining the
    block, `edges_checked=`/`edge_violations=` on the finished event.
    Depends on task 5.
    **Verify:** `grep -q 'edge_violations' skills/verify/SKILL.md`
 
-8. [ ] Review surface: `SKILL.md` Step 4e names the edge phase
+8. [x] Review surface: `SKILL.md` Step 4e names the edge phase
    (existence-conditioned on the graph), Step 8 renders the Living-intent
    **Contracts** subsection + `contract_violations` counter (template
    updated), Step 9 batches consumer-side/pre-existing edge violations.
    Depends on task 7.
    **Verify:** `grep -q 'contract_violations' skills/review/assets/review-template.md && grep -qi 'contracts' skills/review/SKILL.md`
 
-9. [ ] Blueprint integration: Step 4a reads declared criticality + the
+9. [x] Blueprint integration: Step 4a reads declared criticality + the
    ratchet classification (DD 10); the weakening prompt/U3 grounds itself
    **consume-first** — handed-over edge records cover their entries, and the
    `--contracts <group> --entries <file>` trigger runs only for uncovered
@@ -399,11 +399,11 @@ flowchart LR
    variant. Keep `SKILL.md` deltas lean (DD 12). Depends on tasks 4–5.
    **Verify:** `grep -q 'ratchet' skills/blueprint/SKILL.md && grep -q -- '--entries' skills/blueprint/SKILL.md && grep -qi 'edge' skills/blueprint/references/fork-grounding.md && grep -qi 'dependent edge' skills/blueprint/references/map-methodology.md && awk 'END{exit NR>500?1:0}' skills/blueprint/SKILL.md`
 
-10. [ ] `WORKFLOW.md`: `/jim:verify` entry gains the contract mode (two
+10. [x] `WORKFLOW.md`: `/jim:verify` entry gains the contract mode (two
     grains, triggers, no new knobs).
     **Verify:** `grep -q -- '--contracts' WORKFLOW.md`
 
-11. [ ] Full suite green + budgets: run everything; confirm both touched
+11. [x] Full suite green + budgets: run everything; confirm both touched
     SKILL.md budgets and the agent body stayed within limits.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
