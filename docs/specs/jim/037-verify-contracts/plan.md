@@ -2,7 +2,7 @@
 title: "Contract-graph verification"
 spec: "docs/specs/jim/037-verify-contracts/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Contract-graph verification — Plan
