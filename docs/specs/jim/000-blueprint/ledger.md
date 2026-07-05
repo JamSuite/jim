@@ -11,3 +11,5 @@
 1783210358	2026-07-05T00:12:38Z	verify	started	
 1783210885	2026-07-05T00:21:25Z	verify	finished	checked=10;holds=8;violated=2;failed=0;unconfigured=0;skipped=19
 1783211636	2026-07-05T00:33:56Z	verify	finished	checked=29;holds=26;violated=3;failed=0;unconfigured=0;skipped=0
+1783241964	2026-07-05T08:59:24Z	verify	started	
+1783242325	2026-07-05T09:05:25Z	verify	finished	checked=29;holds=4;violated=0;failed=0;unconfigured=0;skipped=25;inchange=0;preexisting=0
