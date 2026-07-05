@@ -132,7 +132,8 @@ Grounded in ARCHITECTURE.md and the repo tree.
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
   path); `jimledger.sh` (ledger); `jimverify.sh` (the `/jim:verify` deterministic
   core — blueprint parse / territory / mechanical-floor check, whole-group or
-  change-scoped); the `issue/` scripts
+  change-scoped, plus the cross-group contract floor: faces / edges /
+  contracts-check); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
 - **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–036`), the
