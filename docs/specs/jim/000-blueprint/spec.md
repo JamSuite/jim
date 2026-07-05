@@ -110,25 +110,27 @@ platform, not to another jim group; recorded here because it is load-bearing:
 
 Grounded in ARCHITECTURE.md and the repo tree.
 
-- **Agents** (`agents/*.md`, 10 files) — self-contained persona system prompts;
+- **Agents** (`agents/*.md`, 11 files) — self-contained persona system prompts;
   frontmatter `name`/`description`/`skills`/`tools`/`model`. Includes the
-  capability-narrowed read-only `investigator` and `issue-analyst`, and the
-  `meta-matrix-probe` runtime-probe agent.
-- **Skills** (`skills/*/`, 26 directories) — `SKILL.md` plus optional `assets/`
+  capability-narrowed read-only `investigator`, `issue-analyst`, and `judge`
+  (the `/jim:verify` invariant judge), and the `meta-matrix-probe` runtime-probe
+  agent.
+- **Skills** (`skills/*/`, 27 directories) — `SKILL.md` plus optional `assets/`
   (templates), `references/` (methodology), and `scripts/`. Families: SDLC
-  (`spec`, `spec-check`, `plan`, `research`, `build`, `debug`, `sec`, `review`),
-  strategic (`vision`, `roadmap`, `arch`, `blueprint`, `brainstorm`), discovery
+  (`spec`, `spec-check`, `plan`, `research`, `build`, `debug`, `sec`, `review`,
+  `verify`), strategic (`vision`, `roadmap`, `arch`, `blueprint`, `brainstorm`), discovery
   (`issue`), meta (`meta-skill`, `meta-agent`, `meta-test`), support (`conf`,
   `file`), and the `meta-matrix*` probe family. The `blueprint` skill spans
   both tiers — group `000-blueprint`s and the project map — plus the
   reconcile pass, carrying `assets/map-template.md`,
   `references/map-methodology.md`, and `references/reconcile-methodology.md`.
-- **Scripting layer** (`skills/*/scripts/`, 11 scripts) — `jimconf.sh` (resolver)
+- **Scripting layer** (`skills/*/scripts/`, 12 scripts) — `jimconf.sh` (resolver)
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
-  path); `jimledger.sh` (ledger); the `issue/` scripts
+  path); `jimledger.sh` (ledger); `jimverify.sh` (the `/jim:verify` deterministic
+  core — blueprint parse / territory / mechanical-floor check); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–034`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–035`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root
   (including `BLUEPRINT.md`, the project context map), and
   `docs/brainstorms/` + `docs/debug/`.
@@ -160,9 +162,9 @@ records the *rule*, its criticality, and how it would be verified.
 | Every script sets `set -uo pipefail`; locale-sensitive scripts also `export LC_ALL=C` | high | preamble grep across `skills/**/*.sh` |
 | Inter-script composition uses `BASH_SOURCE`-relative paths, not `${CLAUDE_PLUGIN_ROOT}` (which substitutes only in skill content) | high | grep; test |
 | Every untrusted id / SHA / ref is validated before git interpolation: ledger SHAs and ids through the single `is_valid_id` boundary (copies byte-identical), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` (accepts `/`-refs, forecloses option injection) | critical | `tests/jimfile.sh` SYNC case + `tests/jimledger.sh` diff-range cases |
-| `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint`); ledger content is untrusted and never `source`d; the script commits in exactly three path-scoped paths (`commit-review`, `commit-blueprint`, `commit-map` — literal paths, `--` guard, never `git add -A`; `commit-map`'s config-derived path arguments pass `valid-relpath`) | critical | `tests/jimledger.sh`; code review |
+| `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint verify`); ledger content is untrusted and never `source`d; the script commits in exactly four path-scoped paths (`commit-review`, `commit-blueprint`, `commit-map`, `commit-verify` — literal paths, `--` guard, never `git add -A`; `commit-map`'s config-derived path arguments pass `valid-relpath`, `commit-verify` stages `ledger.md` alone) | critical | `tests/jimledger.sh`; code review |
 | Untrusted external content (web fetches, git commit/diff, issue/candidate bodies, scanned code) is treated as data, never instructions; secret-looking values are never persisted (redacted to `secret-looking value at <path:line>`) | critical | anti-injection clauses in skills; design review / judge |
-| Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | agent `tools:` frontmatter narrowing; review / judge |
+| Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`, `judge`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | agent `tools:` frontmatter narrowing; review / judge |
 | Spec IDs are 3-digit zero-padded and sequential within the group; a spec must be `approved` before its plan is produced | high | `jimfile.sh next-id`; `/jim:plan` gate |
 | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0` and is ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | `jimfile.sh`; test |
 | `ARCHITECTURE.md` is generated/maintained only through `/jim:arch`, never hand-edited | medium | process convention; Last-updated header staleness |
@@ -175,3 +177,5 @@ records the *rule*, its criticality, and how it would be verified.
 | The derived `## Contract Graph` section is written only by the reconcile pass — the recomputable join of group faces, never hand-declared or re-declared; its rewrite is Step-4a exempt as mechanical content | high | blueprint SKILL.md validation checklist; judge |
 | Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all seven counters (`edges`/`leaks`/`breaking`/`dead`/`unresolved`/`undeclared`/`stale`, zeros included), and always closes via `commit-map` (ledger-only when the map is unchanged); consumers shape-validate the fixed key set | high | ledger inspection; blueprint SKILL.md validation checklist |
 | Reconcile detectors fire only on declared data — missing declarations degrade to explicit reporting (unverifiable / informational), never silent exclusion, never violations; face/map evidence appears only in delimited `<untrusted-face-content>` blocks | high | blueprint SKILL.md validation checklist; judge (issue #22 engine later) |
+| `/jim:verify`'s registry runs project tooling only through operator-configured `verify_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — no jim script ever executes a config-derived command string; blueprint content may *name* a slug-validated registry entry but can never introduce, alter, or activate a command, and check parameters / registry names pass slug / `valid-relpath` validation before use | critical | `tests/jimverify.sh` / `tests/jimconf.sh`; code review / judge |
+| `/jim:verify` persists no verdict artifact — the report is the run's surface; each run records per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits them via `commit-verify` (the no-standing-verdict doctrine) | medium | ledger inspection; `tests/jimledger.sh` `commit-verify` case |
