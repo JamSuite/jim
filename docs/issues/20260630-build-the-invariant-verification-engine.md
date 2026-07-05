@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-04T20:32:09Z
+updated: 2026-07-05T00:46:27Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -67,10 +67,12 @@ blueprint**:
 
 ## Slicing
 
-- **Spec A — engine core** (first): `/jim:verify`, on-demand, one group;
-  enum + `check:` format change; native floor; registry; judge rung;
-  appetite knob; report/issues/ledger. Fully exercisable on jim's own
-  single-group repo. Swarm and blast-radius-scoped spend deferred.
+- **Spec A — engine core** — ✅ **shipped as spec 035** (2026-07-05,
+  `docs/specs/jim/035-verify-engine/`): `/jim:verify`, on-demand, one group;
+  enum + `check:` format change; native floor (`skills/verify/scripts/jimverify.sh`);
+  registry; judge rung; appetite knob; report/issues/ledger. Exercised on
+  jim's own single-group repo. Swarm and blast-radius-scoped spend deferred to
+  Spec B as planned.
 - **Spec B — pipeline integration:** review-as-sensor (fix-code /
   fold-intent wired to the 030/031 fork); 031 fork hardening; 034 detector
   hardening; blast-radius-scoped ceiling. Needs multi-group fixtures or a
@@ -109,10 +111,12 @@ blueprint**:
   mechanical floor (`directory` strongest; `declared-paths` mid;
   `none` degrades to LLM-judged) — spec 033, security Findings 4/9.
 
-## New inputs from spec 034 (contract graph), once it ships
+## New inputs from spec 034 (contract graph)
 
-034 (in scoping, from [[20260630-add-the-cross-group-contract-graph-and-blast-radius]])
-delivers the reconciled cross-group contract graph; two hand-offs land here:
+034 shipped (2026-07-05, `docs/specs/jim/034-contract-graph/`; origin
+[[20260630-add-the-cross-group-contract-graph-and-blast-radius]], since closed)
+and delivers the reconciled cross-group contract graph. Its two hand-offs are
+now available inputs — consuming them is **Spec B** work (not yet built):
 
 - **Blast radius scopes the fan-out.** The graph names the groups a boundary
   change affects, so this engine's expensive ceiling can spend on
