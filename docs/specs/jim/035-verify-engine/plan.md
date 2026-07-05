@@ -2,7 +2,7 @@
 title: "Invariant verification engine core"
 spec: "docs/specs/jim/035-verify-engine/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Invariant verification engine core — Plan
