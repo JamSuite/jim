@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-05T00:46:27Z
+updated: 2026-07-05T06:08:16Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -89,6 +89,17 @@ blueprint**:
   intent," with two resolutions: fix the code, or fold the learning into the
   blueprint. This is the natural moment to evolve review's lens; until then
   the blueprint stays a downstream consumer of review, never its reference.
+  **Lens evolution deliberately deferred** (spec 036 scoping decision,
+  2026-07-05): 036 ships the sensor with living-intent results as a
+  *separate dimension* in `review.md` — the alignment verdict stays
+  spec/plan-scoped, its vocabulary untouched, and living-intent results
+  never set it. The deferred follow-on, gated on real-world sensor mileage:
+  decide whether the alignment verdict should absorb living-intent drift
+  (the lens-shift that re-defines "drift" as divergence from living
+  intent). Any such evolution must contend with the verdict vocabulary
+  being shape-validated on the ledger (`aligned` / `minor-drift` /
+  `major-drift`, spec 028) — changing its semantics or values touches that
+  extraction contract.
 - **Retirement direction.** The load-bearing sources (declared intent /
   cross-boundary usage / verification dependency) also run in reverse: an
   invariant no source justifies anymore is flagged for retirement — the
