@@ -410,6 +410,117 @@ EOF
   assert_eq "absolute exists → failed"  "failed" "$(tsv_field abs-exists 2)"
 }
 
+# ─── Section: check — scoped 4th <files-list> arg (spec 036 Task 2) ──────────
+
+# mk_flist <name> <line…> — write one path per line to $TMP_BASE/<name>; echo it.
+mk_flist() {
+  local name="$1"; shift
+  local path="$TMP_BASE/$name"
+  : > "$path"
+  local l
+  for l in "$@"; do printf '%s\n' "$l" >> "$path"; done
+  printf '%s' "$path"
+}
+
+# AC: a scoped pattern check searches only the listed files (∩ territory). The
+# whole-group run reports no-inline VIOLATED (bad.sh matches); scoping to good.sh
+# alone flips it to HOLDS — proof the scope is the listed set, not the territory.
+case_jimverify_check_scoped_pattern_listed_only() {
+  local root fl; root="$(verify_repo_scoped t36sp)"
+  fl="$(mk_flist t36sp.list skills/foo/good.sh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$fl"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no-inline holds when only good.sh is listed" "holds" "$(tsv_field no-inline 2)"
+  assert_eq "want-clean holds (good.sh carries the marker)" "holds" "$(tsv_field want-clean 2)"
+}
+
+# AC: the same pattern scoped to bad.sh reports violated — the listed file drives
+# the outcome (the converse of the case above).
+case_jimverify_check_scoped_pattern_violated_when_listed() {
+  local root fl; root="$(verify_repo_scoped t36spv)"
+  fl="$(mk_flist t36spv.list skills/foo/bad.sh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$fl"
+  assert_eq "no-inline violated when bad.sh listed" "violated" "$(tsv_field no-inline 2)"
+  assert_match "evidence names bad.sh" 'skills/foo/bad\.sh' "$(tsv_field no-inline 3)"
+}
+
+# AC: a structure check runs only when its param path is in the listed set;
+# otherwise it makes no record (falls to the caller's sweep/judge accounting).
+case_jimverify_check_scoped_structure_skipped_when_unlisted() {
+  local root fl; root="$(verify_repo_scoped t36ss)"
+  fl="$(mk_flist t36ss.list skills/foo/bad.sh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$fl"
+  assert_eq "good-exists makes no record (its path unlisted)" "" "$(tsv_field good-exists 2)"
+}
+
+# AC: a structure check whose exists path IS listed still runs and holds.
+case_jimverify_check_scoped_structure_runs_when_listed() {
+  local root fl; root="$(verify_repo_scoped t36sr)"
+  fl="$(mk_flist t36sr.list skills/foo/good.sh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$fl"
+  assert_eq "good-exists holds when its path is listed" "holds" "$(tsv_field good-exists 2)"
+}
+
+# AC: territory conformance runs over the listed files only. Listing an in-territory
+# file surfaces NO conformance record even though a tracked outside file exists;
+# listing the outside file surfaces it — proof the scan set is the listed set.
+case_jimverify_check_scoped_conformance_listed_only() {
+  local root fl; root="$(verify_repo_scoped t36cf)"
+  fl="$(mk_flist t36cf.list skills/foo/good.sh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$fl"
+  assert_eq "loose.txt NOT flagged — it is unlisted" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^TERRITORY-CONFORMANCE')"
+  fl="$(mk_flist t36cf2.list loose.txt skills/foo/good.sh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$fl"
+  assert_match "loose.txt flagged when listed" '^TERRITORY-CONFORMANCE	loose\.txt$' "$OUT"
+}
+
+# AC: an unsafe list line (absolute / '..' segment) emits HYGIENE and is excluded
+# from the scope — never handed to grep/find (security.md Finding 10).
+case_jimverify_check_scoped_unsafe_line_hygiene() {
+  local root fl; root="$(verify_repo_scoped t36hy)"
+  fl="$(mk_flist t36hy.list /etc/passwd skills/../outside skills/foo/good.sh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$fl"
+  assert_exit "rc" 0 "$RC"
+  assert_match "absolute path → HYGIENE"  '^HYGIENE	/etc/passwd$'     "$OUT"
+  assert_match "dotdot path → HYGIENE"    '^HYGIENE	skills/\.\./outside$' "$OUT"
+}
+
+# AC: a C-quoted (non-ASCII) or space-bearing list line — the exact untrusted
+# shapes files-range emits — is HYGIENE-excluded and never mis-scoped
+# (security.md Finding 10). valid-relpath alone accepts spaces, so the scoped
+# gate is stricter.
+case_jimverify_check_scoped_cquoted_space_hygiene() {
+  local root fl; root="$(verify_repo_scoped t36cq)"
+  fl="$(mk_flist t36cq.list '"uni-caf\303\251.txt"' 'has space.txt' skills/foo/good.sh)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$fl"
+  assert_exit "rc" 0 "$RC"
+  assert_match "C-quoted path → HYGIENE"    '^HYGIENE	"uni-caf' "$OUT"
+  assert_match "space-bearing path → HYGIENE" '^HYGIENE	has space\.txt$' "$OUT"
+  assert_eq "good.sh still scoped (structure holds)" "holds" "$(tsv_field good-exists 2)"
+}
+
+# AC: an unreadable / absent files-list file exits 2 (contained), so the caller
+# degrades rather than silently running whole-group.
+case_jimverify_check_scoped_unreadable_list_exits_2() {
+  local root; root="$(verify_repo_scoped t36ur)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g "$TMP_BASE/no-such.list"
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: with no 4th arg the output is byte-for-byte today's whole-group behavior —
+# the scoped path is purely additive (interface contract).
+case_jimverify_check_no_filelist_unchanged() {
+  local root; root="$(verify_repo_scoped t36bc)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit "rc" 0 "$RC"
+  assert_eq    "no-inline violated (whole-group)" "violated" "$(tsv_field no-inline 2)"
+  assert_eq    "good-exists holds (whole-group)"  "holds"    "$(tsv_field good-exists 2)"
+  assert_match "loose flagged (whole-group)" '^TERRITORY-CONFORMANCE	loose\.txt$' "$OUT"
+  assert_eq "no HYGIENE lines without a list" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^HYGIENE')"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.

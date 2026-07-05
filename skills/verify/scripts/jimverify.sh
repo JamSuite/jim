@@ -11,8 +11,14 @@
 #                                          → normalized TSV, one record per invariant.
 #   territory <map-path> <group>           the group's declared territory paths,
 #                                          one validated relpath per line.
-#   check     <blueprint-dir> <map> <group>  (spec 035 Task 4) run the mechanical
-#                                          floor and emit per-invariant outcomes.
+#   check     <blueprint-dir> <map> <group> [files-list]  (spec 035 Task 4) run
+#                                          the mechanical floor and emit
+#                                          per-invariant outcomes. An optional 4th
+#                                          files-list scopes the floor to a change
+#                                          set (spec 036): patterns search only
+#                                          listed files ∩ territory, structure runs
+#                                          only when its param path is listed, and
+#                                          conformance scans the listed set only.
 #
 # parse OUTPUT (TAB-separated, one record per line):
 #   id \t criticality \t method \t params \t invariant
@@ -55,7 +61,7 @@ usage() {
 usage: jimverify.sh <subcommand> [args]
   parse     <blueprint-spec.md>              invariants → normalized TSV
   territory <map-path> <group>               group territory paths (validated)
-  check     <blueprint-dir> <map-path> <group>  run the mechanical floor
+  check     <blueprint-dir> <map-path> <group> [files-list]  run the mechanical floor
 USAGE
 }
 
@@ -194,6 +200,52 @@ safe_path_param() {
   return 0
 }
 
+# safe_scope_file <path> — return 0 iff an untrusted files-list line is safe to
+#   use as a scope path. Stricter than safe_path_param: it ALSO rejects any
+#   whitespace or double-quote byte, so git's C-quoted output (a non-ASCII path
+#   arrives double-quoted and octal-escaped) and space-bearing paths are excluded
+#   rather than word-split or mis-read as a real file (security.md Finding 10). An
+#   excluded line emits HYGIENE and the invariant falls to the caller's sweep.
+safe_scope_file() {
+  local v="$1"
+  safe_path_param "$v" || return 1
+  [[ "$v" == *[[:space:]]* ]] && return 1
+  [[ "$v" == *'"'* ]] && return 1
+  return 0
+}
+
+# path_under <file> <base> — 0 iff <file> is at or under <base> (prefix match on
+#   a normalized trailing slash); base "." matches everything. Both are already
+#   shape-gated relpaths, so this is pure string logic.
+path_under() {
+  local f="$1" base="$2" bp
+  [[ "$base" == "." ]] && return 0
+  bp="${base%/}/"
+  case "$f/" in "$bp"*) return 0 ;; esac
+  return 1
+}
+
+# structure_relevant <exists> <absent> — 0 iff the change set (scope_files, read
+#   via dynamic scope) touches this structure check's subject: the concrete
+#   exists path is a listed file, or some listed file matches the absent glob.
+#   Consulted only in scoped mode; an irrelevant check makes no record so the
+#   invariant falls to the caller's sweep/judge accounting (interface contract).
+structure_relevant() {
+  local exists="$1" absent="$2" sf
+  if [[ -n "$exists" ]]; then
+    for sf in "${scope_files[@]}"; do [[ "$sf" == "$exists" ]] && return 0; done
+    return 1
+  fi
+  if [[ -n "$absent" ]]; then
+    for sf in "${scope_files[@]}"; do
+      # shellcheck disable=SC2053  # deliberate glob match against the absent pattern
+      [[ "$sf" == $absent ]] && return 0
+    done
+    return 1
+  fi
+  return 1
+}
+
 # emit_outcome <id> <outcome> <evidence> — print one floor result record. The
 #   evidence field is sanitized (tabs/newlines/CRs → spaces, length capped) so
 #   untrusted code/blueprint content can never shift TSV columns (Finding 7).
@@ -260,8 +312,28 @@ check_pattern() {
   else
     search=(".")
   fi
+  # Scoped mode: intersect the search base with the listed change set. An
+  # invariant no listed file falls under makes no record (falls to the caller's
+  # sweep), so the floor never spuriously judges code the change did not touch.
+  if [[ ${has_filelist:-0} -eq 1 ]]; then
+    local -a scoped_search=()
+    local sf base
+    for sf in "${scope_files[@]}"; do
+      for base in "${search[@]}"; do
+        if path_under "$sf" "$base"; then scoped_search+=("$sf"); break; fi
+      done
+    done
+    if [[ ${#scoped_search[@]} -eq 0 ]]; then return; fi
+    search=("${scoped_search[@]}")
+  fi
   local out n
-  out="$(grep -rnE -e "$regex" -- "${search[@]}" 2>/dev/null)" || true
+  # Force -H in scoped mode: a single listed file otherwise greps without a
+  # filename prefix, and must-not evidence must carry file:line so the caller's
+  # two-channel classifier can attribute it to the trusted change set. Whole-group
+  # (no files-list) keeps the exact original invocation (byte-compatible).
+  local -a gflags=(-rnE)
+  [[ ${has_filelist:-0} -eq 1 ]] && gflags=(-rHnE)
+  out="$(grep "${gflags[@]}" -e "$regex" -- "${search[@]}" 2>/dev/null)" || true
   if [[ -z "$out" ]]; then n=0; else n="$(printf '%s\n' "$out" | wc -l | tr -d ' ')"; fi
   local outcome evidence
   if [[ -n "$count" ]]; then
@@ -290,6 +362,11 @@ check_structure() {
       absent) absent="$v" ;;
     esac
   done < <(parse_params "$params")
+  # Scoped mode: run only when the change set touches this check's subject;
+  # otherwise no record (the invariant falls to the caller's sweep/judge).
+  if [[ ${has_filelist:-0} -eq 1 ]] && ! structure_relevant "$exists" "$absent"; then
+    return
+  fi
   if [[ -n "$exists" ]]; then
     if ! safe_path_param "$exists"; then emit_outcome "$id" failed "invalid exists parameter"; return; fi
     if [[ -e "$exists" ]]; then emit_outcome "$id" holds "$exists exists"
@@ -314,6 +391,20 @@ check_structure() {
 #   dynamically-scoped terr_paths from cmd_check.
 check_conformance() {
   local f t tp inside
+  # Scoped mode: the conformance scan set is the listed change set, not every
+  # tracked file — a pre-existing outside file the change never touched is not
+  # re-flagged on every scoped run (interface contract).
+  if [[ ${has_filelist:-0} -eq 1 ]]; then
+    for f in "${scope_files[@]}"; do
+      inside=0
+      for t in "${terr_paths[@]}"; do
+        tp="${t%/}/"
+        case "$f/" in "$tp"*) inside=1; break ;; esac
+      done
+      [[ $inside -eq 0 ]] && printf 'TERRITORY-CONFORMANCE\t%s\n' "$f"
+    done
+    return 0
+  fi
   git ls-files 2>/dev/null | while IFS= read -r f; do
     inside=0
     for t in "${terr_paths[@]}"; do
@@ -341,6 +432,24 @@ cmd_check() {
   if [[ ! -f "$spec" ]]; then echo "jimverify check: blueprint spec not found: $spec" >&2; return 2; fi
   if [[ ! "$group" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     echo "jimverify check: invalid group: $group" >&2; return 2
+  fi
+  # Optional 4th arg: a files-list scoping the floor to a change set (spec 036).
+  # Absent → whole-group (byte-compatible). Present → each line re-gated through
+  # safe_scope_file; safe lines become the scope, unsafe lines emit HYGIENE and
+  # are excluded (never mis-scoped, security.md Finding 10). An unreadable list
+  # is a contained rc 2 so the caller degrades rather than running whole-group.
+  local flist="${4:-}"
+  local has_filelist=0
+  local -a scope_files=()
+  if [[ -n "$flist" ]]; then
+    if [[ ! -r "$flist" ]]; then echo "jimverify check: files-list not readable: $flist" >&2; return 2; fi
+    has_filelist=1
+    local fl
+    while IFS= read -r fl || [[ -n "$fl" ]]; do
+      [[ -z "$fl" ]] && continue
+      if safe_scope_file "$fl"; then scope_files+=("$fl")
+      else printf 'HYGIENE\t%s\n' "$fl"; fi
+    done < "$flist"
   fi
   # Resolve territory (valid paths only; HYGIENE lines are advisory, not scope).
   local terr_valid=""
