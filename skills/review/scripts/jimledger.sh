@@ -14,6 +14,7 @@
 #   files   <spec-dir>                         list changed file paths over base..head
 #   diff    <spec-dir>                         emit the diff (function-context) over base..head
 #   diff-range <base> [head]                   emit the diff over a validated CWD-repo range
+#   files-range <base> [head]                  list changed paths over a validated CWD-repo range
 #   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
 #   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md (path-scoped)
 #   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
@@ -49,6 +50,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
   diff-range <base> [head]                    emit the diff over a validated CWD-repo range
+  files-range <base> [head]                   list changed paths over a validated CWD-repo range
   commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md
   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
@@ -316,6 +318,27 @@ cmd_diff_range() {
   git diff --function-context "$base..$head" --
 }
 
+# cmd_files_range <base> [<head>] — list changed paths over the <base>..<head>
+#   range in the repo at CWD (head defaults to HEAD), one repo-relative path per
+#   line via `git diff --name-only`. The --name-only sibling of cmd_diff_range:
+#   both endpoints are ref-safety-gated and resolved to SHAs (resolve_ref) before
+#   any git interpolation, so a crafted ref cannot inject a git option or
+#   pathspec (sec 030 Finding 5). Returns rc 2 on an invalid/unresolvable ref or a
+#   missing base — the files-family degrade code the review sensor and the ad-hoc
+#   --since caller key on (not diff-range's rc 1) — and rc 0 + empty on an empty
+#   range. Untrusted output: paths with unusual bytes arrive git-C-quoted
+#   (double-quoted, octal-escaped), while a plain-space path is emitted verbatim,
+#   so consumers must re-gate each line (security.md Finding 10). Operates on
+#   CWD's repo, not a spec-dir — the ad-hoc --since adapter runs at root.
+cmd_files_range() {
+  local base_ref="${1:-}" head_ref="${2:-HEAD}"
+  if [[ -z "$base_ref" ]]; then echo "jimledger files-range: need <base> [head]" >&2; return 2; fi
+  local base head
+  base="$(resolve_ref "$base_ref")" || return 2
+  head="$(resolve_ref "$head_ref")" || return 2
+  git diff --name-only "$base..$head" --
+}
+
 # Stages whose started/finished boundaries the ledger may carry. The metrics
 # loop iterates THIS fixed list — key names are literals, never derived from
 # ledger text — so a tampered ledger cannot inject spurious metric keys
@@ -447,6 +470,7 @@ main() {
     files)   shift; cmd_files "$@" ;;
     diff)    shift; cmd_diff "$@" ;;
     diff-range) shift; cmd_diff_range "$@" ;;
+    files-range) shift; cmd_files_range "$@" ;;
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;

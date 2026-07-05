@@ -663,6 +663,94 @@ case_jimledger_diff_range_missing_base_exits_2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── spec 036: files-range (changed paths over an ad-hoc range) ──────────────
+
+# AC: files-range lists changed paths over a validated CWD-repo range (Task 1).
+# Mirrors diff-range's ref-safety machinery but emits --name-only, one path/line.
+case_jimledger_files_range_lists() {
+  local sd root base; sd="$(git_fixture t36fr)"; root="${sd%/spec}"
+  base="$(git -C "$root" rev-parse HEAD)"
+  gledger_commit "$root" feat "fr.txt" "x"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" files-range "$base" HEAD 2>/dev/null)"; RC=$?
+  assert_exit  "rc" 0 "$RC"
+  assert_match "path listed" '^fr\.txt$' "$OUT"
+}
+
+# AC: files-range head defaults to HEAD when omitted (Task 1; mirrors diff-range).
+case_jimledger_files_range_head_defaults() {
+  local sd root base; sd="$(git_fixture t36frh)"; root="${sd%/spec}"
+  base="$(git -C "$root" rev-parse HEAD)"
+  gledger_commit "$root" feat "frh.txt" "x"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" files-range "$base" 2>/dev/null)"; RC=$?
+  assert_exit  "rc" 0 "$RC"
+  assert_match "default-head path" '^frh\.txt$' "$OUT"
+}
+
+# AC: files-range on an empty range (base == head) exits 0 with no output (Task 1).
+case_jimledger_files_range_empty_range() {
+  local sd root base; sd="$(git_fixture t36fre)"; root="${sd%/spec}"
+  base="$(git -C "$root" rev-parse HEAD)"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" files-range "$base" HEAD 2>/dev/null)"; RC=$?
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "empty output" "" "$OUT"
+}
+
+# AC: files-range rejects option-injection / metacharacter / rev-expression refs
+# with rc 2 and no output — the files-family degrade code (Task 1, security F10 /
+# 030 F5 ref-safety lineage). rc 2 (not diff-range's rc 1) aligns with the
+# files/diff/metrics degrade-on-2 family that the sensor & --since callers key on.
+case_jimledger_files_range_bad_ref_exits_2() {
+  local sd root out rc; sd="$(git_fixture t36frb)"; root="${sd%/spec}"
+  for badref in '--output=x' 'a;b' 'a b' 'HEAD~3' 'a^b' 'a:b' '..' '/leading' \
+                'trailing/' 'a*b' 'a?b' $'a\nb'; do
+    out="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" files-range "$badref" HEAD 2>/dev/null)"; rc=$?
+    assert_eq "rejects '$badref' rc2"       "2" "$rc"
+    assert_eq "no output for '$badref'" ""  "$out"
+  done
+}
+
+# AC: a --output=<file> injection ref never reaches git, so no file is written
+# (Task 1, security ref-safety lineage — the concrete injection foreclosure).
+case_jimledger_files_range_option_injection_no_write() {
+  local sd root marker rc; sd="$(git_fixture t36fri)"; root="${sd%/spec}"
+  marker="$TMP_BASE/fr-injected"
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" files-range "--output=$marker" HEAD >/dev/null 2>&1); rc=$?
+  assert_eq "rejected rc2"    "2" "$rc"
+  assert_eq "no file written" "0" "$([[ -e "$marker" ]] && echo 1 || echo 0)"
+}
+
+# AC: files-range with no base arg exits 2 (usage; Task 1).
+case_jimledger_files_range_missing_base_exits_2() {
+  local sd root; sd="$(git_fixture t36frm)"; root="${sd%/spec}"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" files-range 2>/dev/null)"; RC=$?
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: outside a git repo, files-range fails contained (rc 2, no crash) — the
+# --since caller degrades rather than aborting (Task 1).
+case_jimledger_files_range_non_repo_exits_2() {
+  local nonrepo; nonrepo="$TMP_BASE/t36frn"; mkdir -p "$nonrepo"
+  OUT="$(cd "$nonrepo" && bash "$SCRIPT_JIMLEDGER" files-range HEAD HEAD 2>/dev/null)"; RC=$?
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: the emitted-path form is pinned so the scoped-check consumer knows the
+# untrusted shape (Task 1, security.md Finding 10). git's default core.quotePath
+# emits a plain-space path VERBATIM (unquoted) but C-quotes a non-ASCII path
+# (double-quote-wrapped, octal-escaped) — both forms pinned here.
+case_jimledger_files_range_quotepath_emitted_form() {
+  local sd root base; sd="$(git_fixture t36frq)"; root="${sd%/spec}"
+  base="$(git -C "$root" rev-parse HEAD)"
+  printf 'x\n' > "$root/has space.txt"
+  printf 'y\n' > "$root/uni-café.txt"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "feat: odd names"
+  OUT="$(cd "$root" && bash "$SCRIPT_JIMLEDGER" files-range "$base" HEAD 2>/dev/null)"; RC=$?
+  assert_exit  "rc" 0 "$RC"
+  assert_match "space path emitted verbatim (unquoted)" '^has space\.txt$' "$OUT"
+  assert_match "non-ascii path C-quoted"                '^"uni-caf\\303\\251\.txt"$' "$OUT"
+}
+
 # ─── spec 032: updates-since (regen-cadence count) ───────────────────────────
 
 # AC: updates-since counts blueprint finished events strictly after the
