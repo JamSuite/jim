@@ -161,7 +161,16 @@ prompt (Step 4a) and the violation fork (U3) name every dependent consumer:
   re-derive.
 - The line: `blast radius: <consumer groups> — graph as of <Last reconciled>`
   — the stamp calibrates trust in the answer by its age. No dependent edge
-  recorded → `blast radius: none recorded`; no graph section yet → say so.
+  recorded → `blast radius: none recorded`; no graph section yet →
+  `no graph section — run /jim:blueprint --reconcile`. The basis is **always
+  named**; an absent or stale graph degrades to the declaration-level line, never
+  a fabricated edge set (security Finding 3).
+- **Engine-evidence variant (spec 037).** When engine edge records ground the
+  weakening — consumed from a handed-over VERIFY-OUTCOME block, or from a
+  `--contracts <group> --entries <file>` run over the uncovered entries
+  (consume-first, AC #12) — the line carries who breaks **in code**, not just who
+  is declared dependent:
+  `engine: consumer-side checked — <group> VIOLATED (<file:line>), <group> holds`.
 - Informational only, never a veto: the fork's and the grading's decision
   authority is unchanged.
 

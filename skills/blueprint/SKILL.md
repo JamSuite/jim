@@ -103,18 +103,27 @@ Classify every proposed edit that touches an **Invariants** row or a
   criticality is lowered.
 - **removal** — the row or entry is dropped.
 
-Criticality is read from the invariant row's existing column. **Provides
-entries are load-bearing wholesale** — weakening or removing any Provides
-entry grades as `critical`/`high`, regardless of the absence of a criticality
-column there. When grading a Provides weakening/removal, read the map's
-current (pre-write) `## Contract Graph` and add to the prompt:
-`blast radius: <consumer groups> — graph as of <Last reconciled>` —
-informational, never a veto (methodology § Blast radius).
+Criticality is read from the invariant row's column. A **Provides entry** with
+no declared criticality stays **load-bearing wholesale** — weakening or removing
+it grades `critical`/`high`. An entry may declare a criticality in its
+`contract-checks` line (spec 037); that value then drives the grade, so a
+deliberately-`medium`/`low` entry may auto-write its weakening like any
+`medium`/`low` content. The declaration itself grades under a **one-way
+ratchet**: introducing one below the default, or lowering an existing one, is a
+**weakening** (always prompts under `auto_blueprint`, blast radius attached);
+raising or removing it toward the default is **additive** — so a relaxation is
+never laundered in as an additive write (security Finding 1). When grading a
+Provides weakening/removal, read the pre-write `## Contract Graph` for the
+`blast radius: <consumer groups> — graph as of <Last reconciled>` line and
+ground it **consume-first**: consume any handed-over VERIFY-OUTCOME edge
+records, then run `--contracts <group> --entries <file>` for the uncovered
+entries only (methodology § Blast radius, `references/fork-grounding.md`) —
+informational, never a veto.
 
 Under `auto_blueprint`, additive edits and downgrades of `medium`/`low`
 -criticality invariants write unattended; **any weakening or removal of a
-`critical`/`high` invariant, or of any Provides entry, prompts the developer
-instead of auto-writing.** Every unattended write's summary must itemize each
+`critical`/`high` invariant, or of a Provides entry not declared `medium`/`low`,
+prompts the developer instead of auto-writing.** Every unattended write's summary must itemize each
 touched Invariants row and Provides entry with the classification you
 assigned it (additive / weakening / removal), so a misclassification is
 auditable from the summary alone. A fresh generate (no existing blueprint)

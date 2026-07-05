@@ -43,6 +43,29 @@ them as issues (review's Step 9 batch; the `--since` run surfaces them alongside
 the update). This keeps the update's proposed edits scoped to the change while
 old drift is still surfaced, never dropped.
 
+## Contract-edge violations (spec 037)
+
+On a multi-group project the block may also carry **edge records**
+(`edge= side= class=`) when the run included a contract-edge phase (the map's
+graph names this group as a provider and provides-side code changed). They route
+by side:
+
+- **provider-side `in-change`** edge violations enter the fork as **provides-face
+  divergences** — the same two resolutions, edge-shaped: **fix the code** (the
+  provider's code should still honor the guarantee; the face stands) or **fold
+  the face** (the guarantee genuinely changed; rewrite the Provides entry).
+  Graded by Step 4a with the blast radius attached; a `code-level breaking`
+  class names it in the fork.
+- **consumer-side** edge violations (another group's code) and any
+  `pre-existing` ones never fold — this group's update never writes across the
+  boundary (spec 030's exclusion). The caller reports and offers them as issues
+  (review's Step 9 batch).
+
+**Consume-first (AC #12, security Finding 5).** The handed-over block's edge
+records already cover the entries the engine checked; run a fresh
+`--contracts <group> --entries <file>` only for weakened entries the block did
+**not** cover — one engine opinion per edge per change, never a double-run.
+
 ## Fork coverage: engine records + fallback sweep (AC #8)
 
 Every recorded invariant the change could violate must still be violation-judged

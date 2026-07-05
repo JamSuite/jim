@@ -78,6 +78,18 @@ tier:
   under `auto_blueprint`; partition downgrades are boundary-class by
   definition.
 
+**Engine-enriched downgrade (spec 037).** When a downgrade drops or weakens a
+group the persisted (pre-write) `## Contract Graph` names as a **provider**, name
+its **dependent edges** from that graph — the same "do not re-derive"
+blast-radius source Step 4a uses — and ground the prompt in the consumers' code:
+run the dropped/weakened provider's edges through the same scoped trigger,
+`/jim:verify --contracts <provider-group> --entries <file>`, so the downgrade
+prompt shows who breaks **in code**, not just who is declared dependent
+(consume-first, AC #12; security Finding 6). The graph basis is always named; an
+absent or stale graph degrades to the declaration-level line, never a fabricated
+dependent-edge set (Finding 3). Informational, never a veto — the developer
+retains authority over the partition change.
+
 Create mode always prompts — it is one whole-map approval.
 
 ## Territory capture
