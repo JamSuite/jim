@@ -109,6 +109,77 @@ data the engine reasons over, never executable surface it can be tricked into
 minting. Propose the registry name in the blueprint; the operator decides
 whether — and what — to wire up.
 
+## Cross-group contracts: the `contract-checks` block
+
+On a multi-group project the contract graph's *edges* are verified too — the
+provides/requires faces checked against the code on both sides (spec 037,
+`/jim:verify --contracts`). Faces are prose, so the inert check data for an edge
+lives in an optional `contract-checks` fenced block — the faces analog of
+`verify-checks`, keyed by a **Provides** entry's backticked surface name
+slugified (`identity lookup` → `identity-lookup`). Keep those surface names
+slug-friendly and stable across regens so an edge's trend history stays
+attributable.
+
+````markdown
+```contract-checks
+identity-lookup criticality=high provider-ref=function getIdentity consumer-ref=getIdentity\( scope=accounts/session.ts
+```
+````
+
+Grammar — one line per Provides entry, `<entry-slug> <key>=<value> ...`, every
+key optional:
+
+- **`criticality=critical|high|medium|low`** — how load-bearing the entry is.
+  See *Declaring criticality* below.
+- **`provider-ref=<ERE>`** — locates the declared surface in the provider's own
+  code. Checked must-find: a match ⇒ the provider still honors the guarantee
+  (holds); no match ⇒ a **code-level breaking** (the surface is gone).
+- **`consumer-ref=<ERE>`** — identifies a consumer's usage of the surface. A
+  match ⇒ the usage is present and within the declared surface (holds); no match
+  abstains (a consumer not exercising the surface is not itself a violation — it
+  falls to the judge and the cross-reference floor).
+- **`scope=<relpath>`** — narrows the **provider-side** search base (where the
+  surface lives); the consumer side always scans the consumer's own territory.
+
+An edge with no `contract-checks` line for its entry falls back to read-only
+`judge` over the two faces and the relevant code — legacy faces predating this
+feature verify unchanged, no migration.
+
+### Parameter safety
+
+- `provider-ref` / `consumer-ref` are POSIX-extended regexes (`grep -E`), handed
+  to grep behind `-e` and never as a command — the same inert-data boundary as
+  `verify-checks` `regex=`. A backslash is literal in the file.
+- The `scope` path is re-validated at use (repo-relative, no `..` segment, no
+  leading `-`); an unsafe value degrades that edge's check to *check failed to
+  run*, never handed to grep.
+- Evidence is always location-only: a matched line's `file:line` is reported,
+  never its content, so a crafted surface can never exfiltrate code through the
+  result channel.
+
+### Declaring criticality
+
+An edge's criticality defaults to `high` — a broken contract is a broken app.
+Declaring `criticality=` on a Provides entry sets **one** value that drives both
+the edge's verification appetite (how hard `/jim:verify` checks it) and the
+Step-4a autonomy grading of edits to that entry (how cautiously the blueprint
+surface folds a change to it). Declare `critical` for a load-bearing boundary
+(auth, billing identity); declare `medium`/`low` for a nice-to-have surface that
+is cheap to check and cheap to evolve.
+
+**The one-way ratchet.** The declaration itself is graded content, and it
+ratchets in one direction only:
+
+- *Introducing* a declaration **below** the default, or *lowering* an existing
+  one, grades as a **weakening** — it always prompts under `auto_blueprint`,
+  with the blast radius attached. A relaxation is confirmed by a human at the
+  moment it is introduced.
+- *Raising* a declaration, or *removing* it back toward the default, is
+  **additive** — it needs no prompt.
+
+So a `medium`/`low` label can never be laundered in as an unattended additive
+write to escape the always-prompt grading its weakening deserves.
+
 ## Worked examples
 
 **A banned construct (pattern, must-not):**

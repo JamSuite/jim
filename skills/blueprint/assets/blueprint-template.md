@@ -25,6 +25,21 @@ exposes nothing across its boundary, write "*None — internal to the group.*"}
 
 - `{surface}` — {guarantee}
 
+{Optional inert check data for the contract graph's edges lives in a
+`contract-checks` fenced block below, keyed by a Provides entry's backticked
+surface name slugified — the faces analog of `verify-checks`. It upgrades that
+edge's cross-group checks from `judge` to mechanical and declares how
+load-bearing the entry is. Omit the block when every edge should verify by
+judgment. Keys, all optional per entry: `criticality=critical|high|medium|low`
+(default `high`), `provider-ref=<ERE>` (locates the surface in provider code),
+`consumer-ref=<ERE>` (identifies a consumer's usage), `scope=<relpath>` (narrows
+the provider-side search base). See `references/check-authoring.md` → Cross-group
+contracts for grammar, semantics, and the criticality ratchet.}
+
+```contract-checks
+{entry-slug} criticality={critical|high|medium|low} provider-ref={ERE} consumer-ref={ERE} scope={relpath}
+```
+
 ## Requires
 
 {What this group depends on from other groups, discovered from its code.
