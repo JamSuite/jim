@@ -8,3 +8,5 @@
 1783164012	2026-07-04T11:20:12Z	blueprint	finished	violations=0;folded=0;fixed=0
 1783209649	2026-07-05T00:00:49Z	blueprint	started	
 1783210099	2026-07-05T00:08:19Z	blueprint	finished	violations=1;folded=1;fixed=0
+1783210358	2026-07-05T00:12:38Z	verify	started	
+1783210885	2026-07-05T00:21:25Z	verify	finished	checked=10;holds=8;violated=2;failed=0;unconfigured=0;skipped=19
