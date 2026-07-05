@@ -651,6 +651,92 @@ case_jimverify_faces_missing_file_exits_2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── Section: edges — Contract Graph parse (spec 037 Task 2) ─────────────────
+
+# AC: edges parses the persisted `## Contract Graph` table into one
+# consumer/relies-on/provider record per data row, header and separator rows
+# skipped (spec 037 interface contract; the reconcile pass is the graph's sole
+# writer, this verb only reads it).
+case_jimverify_edges_present() {
+  local cfg
+  cfg=$(fixture map-graph.md '# Blueprint — acme
+
+## Contract Graph
+
+*Derived from the group blueprints. Last reconciled: 2026-07-04 (via /jim:blueprint)*
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| billing | customer identity lookup | accounts |
+| orders | cart pricing | catalog |
+')
+  run_jimverify edges "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "billing→accounts relies-on" "customer identity lookup" "$(tsv_field billing 2)"
+  assert_eq "billing→accounts provider"  "accounts"                 "$(tsv_field billing 3)"
+  assert_eq "orders→catalog provider"    "catalog"                  "$(tsv_field orders 3)"
+  assert_eq "billing row is 3 fields"    "3"                        "$(tsv_fields billing)"
+}
+
+# AC: a map with no `## Contract Graph` section exits 2 — the caller names the
+# degradation rather than silently reporting an empty graph (DD 8).
+case_jimverify_edges_no_section_exits_2() {
+  local cfg
+  cfg=$(fixture map-nograph.md '# Blueprint — acme
+
+## Context Map
+
+| Group | Role | Purpose | Relations |
+| :--- | :--- | :--- | :--- |
+| accounts | domain | identity | — |
+')
+  run_jimverify edges "$cfg"
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: a `Nothing to reconcile` graph (fewer than two blueprint-bearing groups)
+# has a section but no data rows — the verb emits nothing and exits 0, so the
+# caller reports nothing to check without error litter (spec 037 AC #1).
+case_jimverify_edges_nothing_to_reconcile() {
+  local cfg
+  cfg=$(fixture map-nothing.md '# Blueprint — acme
+
+## Contract Graph
+
+*Derived from the group blueprints. Last reconciled: 2026-07-04 (via /jim:blueprint)*
+
+*Nothing to reconcile — fewer than two groups have blueprints.*
+')
+  run_jimverify edges "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no edges emitted" "" "$OUT"
+}
+
+# AC: a graph row whose consumer or provider cell is not a valid group slug is
+# excluded as HYGIENE and never emitted as a plain edge — a crafted map cell
+# can never smuggle a path or shift columns (spec 037 AC #17).
+case_jimverify_edges_crafted_cell_hygiene() {
+  local cfg
+  cfg=$(fixture map-crafted.md '# Blueprint — acme
+
+## Contract Graph
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| ../evil | x | accounts |
+| billing | identity | /etc/passwd |
+| orders | pricing | catalog |
+')
+  run_jimverify edges "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_match "crafted consumer → HYGIENE" '^HYGIENE	' "$OUT"
+  assert_eq "crafted consumer never a plain edge" "0" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="../evil"' | grep -c .)"
+  assert_eq "crafted provider never a plain edge" "0" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$3=="/etc/passwd"' | grep -c .)"
+  assert_eq "clean row still emitted" "catalog" "$(tsv_field orders 3)"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.

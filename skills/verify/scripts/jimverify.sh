@@ -40,6 +40,17 @@
 #   A contract-checks line whose key is not a valid slug matches no entry and is
 #   inert (the verify-checks orphan precedent). rc 2 when the file is missing.
 #   The record STRUCTURE is trusted; the carried text/params are untrusted data.
+#   edges     <map-path>                    (spec 037) the persisted Contract
+#                                          Graph → one edge per line.
+#
+# edges OUTPUT (one per data row):
+#   consumer \t relies-on \t provider        consumer/provider are validated
+#                                            group slugs; relies-on is sanitized
+#                                            free text
+#   HYGIENE \t <row>                         a row whose consumer/provider cell
+#                                            is not a valid slug — excluded
+#   rc 2 when the map has no `## Contract Graph` section (caller names the
+#   degradation). A present-but-empty graph emits nothing and exits 0.
 #
 # parse OUTPUT (TAB-separated, one record per line):
 #   id \t criticality \t method \t params \t invariant
@@ -84,6 +95,7 @@ usage: jimverify.sh <subcommand> [args]
   territory <map-path> <group>               group territory paths (validated)
   check     <blueprint-dir> <map-path> <group> [files-list]  run the mechanical floor
   faces     <blueprint-spec.md>              provides/requires + contract-checks → TSV
+  edges     <map-path>                        persisted Contract Graph → consumer/relies-on/provider
 USAGE
 }
 
@@ -596,6 +608,42 @@ cmd_faces() {
   ' "$file"
 }
 
+# ─── Section: edges — the persisted contract graph (spec 037) ────────────────
+
+# cmd_edges <map-path> — emit the persisted `## Contract Graph` as one edge per
+#   line: consumer \t relies-on \t provider. The reconcile pass is the graph's
+#   sole writer; this verb only reads it. Consumer/provider cells must be valid
+#   group slugs (a crafted cell can never smuggle a path or shift columns); the
+#   relies-on cell is free text, sanitized only. A row failing the slug gate
+#   emits `HYGIENE \t <row>` and is excluded. rc 2 when there is no Contract
+#   Graph section — the caller names that degradation (DD 8), never fabricating
+#   an empty graph. A present-but-empty graph ("Nothing to reconcile") emits
+#   nothing and exits 0.
+cmd_edges() {
+  local map="${1:-}"
+  if [[ -z "$map" ]]; then echo "jimverify edges: need <map-path>" >&2; return 2; fi
+  if [[ ! -f "$map" ]]; then echo "jimverify edges: map not found: $map" >&2; return 2; fi
+  if ! awk '/^##[ \t]+Contract Graph[ \t]*$/ { f = 1 } END { exit(f ? 0 : 1) }' "$map"; then
+    echo "jimverify edges: no Contract Graph section: $map" >&2; return 2
+  fi
+  awk '
+    function san(x) { gsub(/\t/, " ", x); gsub(/\r/, "", x); if (length(x) > 512) x = substr(x, 1, 512); return x }
+    function trim(x) { gsub(/^[ \t]+|[ \t]+$/, "", x); return x }
+    function is_slug(x) { return x ~ /^[a-z0-9][a-z0-9-]*$/ }
+    BEGIN { FS = "|"; insec = 0 }
+    /^##[ \t]+Contract Graph[ \t]*$/ { insec = 1; next }
+    insec && /^##[ \t]/ { insec = 0 }
+    insec && /^[ \t]*\|/ {
+      c1 = trim($2); c2 = trim($3); c3 = trim($4)
+      if (c1 ~ /^:?-+:?$/) next               # separator row
+      if (tolower(c1) == "consumer") next      # header row
+      if (is_slug(c1) && is_slug(c3)) printf "%s\t%s\t%s\n", san(c1), san(c2), san(c3)
+      else                            printf "HYGIENE\t%s\n", san(trim($0))
+    }
+  ' "$map"
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -605,6 +653,7 @@ main() {
     territory) shift; cmd_territory "$@" ;;
     check)     shift; cmd_check "$@" ;;
     faces)     shift; cmd_faces "$@" ;;
+    edges)     shift; cmd_edges "$@" ;;
     *) usage; return 2 ;;
   esac
 }
