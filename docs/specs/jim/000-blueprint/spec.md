@@ -3,7 +3,7 @@ title: "jim — blueprint"
 group: "jim"
 kind: blueprint
 updated: "2026-07-04"
-last_full_generate: "2026-07-04T08:15:50Z"
+last_full_generate: "2026-07-05T09:35:03Z"
 ---
 
 # jim — blueprint
@@ -151,37 +151,53 @@ logic-flow vocabulary; and the untrusted-content trust boundary.
 ## Invariants
 
 The load-bearing constraints the group's code and prompts must uphold. Each
-records the *rule*, its criticality, and how it would be verified.
+carries a stable `Id`, the *rule*, its criticality, and a `Check` method from the
+closed `pattern`/`structure`/`registry:<name>`/`judge` vocabulary `/jim:verify`
+runs; inert `pattern`/`structure` parameters live in the `verify-checks` block
+below (`references/check-authoring.md`). Most of jim's invariants are semantic
+prompt/architecture conventions with no *faithful* mechanical check — a grep
+would give false confidence — so they route honestly to `judge`; only the two
+textually-checkable ones ride the mechanical floor.
 
-| Invariant | Criticality | Verification method |
-| :--- | :--- | :--- |
-| `plugin.json` `name` is `"jim"`; every skill/agent is namespaced from it (`/jim:*`, `@jim:*`) | critical | grep/schema check on the manifest |
-| Skill `name` frontmatter equals its directory name, and agent `name` equals its filename (kebab-case) | high | frontmatter-vs-path lint; meta-skill / meta-agent checklist |
-| `allowed-tools` names the exact script path(s) a skill injects/runs — never a bare `Bash(bash *)` wildcard; own-skill uses `${CLAUDE_SKILL_DIR}`, cross-skill uses `${CLAUDE_PLUGIN_ROOT}` | critical | grep `allowed-tools` vs call sites; meta-skill checklist |
-| `!`-injection slots appear only as the RHS of a `SET`; never wrapped in `(...)` on the same line, never inside inline backticks | critical | grep for the wrapper pattern; `meta-matrix` probe regression |
-| Gate logic uses the `SET`/`IF…THEN`/`ELSE IF`/`ENDIF` sentinel vocabulary; the retired EXISTS-family and paren-wrap forms are regressions | high | grep for banned directive shapes; meta-skill / meta-agent checklist |
-| The three substitution sigils are never mixed (`<lower>` in fences only, `{lower}` in `assets/`, `$UPPER` for real shell expansion) | high | lint / review |
-| SKILL.md ≤ 500 lines and agent body ≈ ≤ 800 tokens (progressive disclosure — detail lives in `assets/` / `references/`) | medium | line / token count check |
-| No third-party runtime dependencies — scripts use bash + POSIX only (no `jq`/`yq`/`bats`) | critical | grep for banned tools; suite runs with zero deps |
-| Scripts never `source`/`eval` user-supplied data — config, ledger, and issue content is parsed, never executed | critical | code review; grep for `source`/`eval` on data paths |
-| Every script sets `set -uo pipefail`; locale-sensitive scripts also `export LC_ALL=C` | high | preamble grep across `skills/**/*.sh` |
-| Inter-script composition uses `BASH_SOURCE`-relative paths, not `${CLAUDE_PLUGIN_ROOT}` (which substitutes only in skill content) | high | grep; test |
-| Every untrusted id / SHA / ref is validated before git interpolation: ledger SHAs and ids through the single `is_valid_id` boundary (copies byte-identical), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` (accepts `/`-refs, forecloses option injection) | critical | `tests/jimfile.sh` SYNC case + `tests/jimledger.sh` diff-range cases |
-| `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint verify`); ledger content is untrusted and never `source`d; the script commits in exactly four path-scoped paths (`commit-review`, `commit-blueprint`, `commit-map`, `commit-verify` — literal paths, `--` guard, never `git add -A`; `commit-map`'s config-derived path arguments pass `valid-relpath`, `commit-verify` stages `ledger.md` alone) | critical | `tests/jimledger.sh`; code review |
-| Untrusted external content (web fetches, git commit/diff, issue/candidate bodies, scanned code) is treated as data, never instructions; secret-looking values are never persisted (redacted to `secret-looking value at <path:line>`) | critical | anti-injection clauses in skills; design review / judge |
-| Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`, `judge`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | agent `tools:` frontmatter narrowing; review / judge |
-| Spec IDs are 3-digit zero-padded and sequential within the group; a spec must be `approved` before its plan is produced | high | `jimfile.sh next-id`; `/jim:plan` gate |
-| The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0` and is ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | `jimfile.sh`; test |
-| `ARCHITECTURE.md` is generated/maintained only through `/jim:arch`, never hand-edited | medium | process convention; Last-updated header staleness |
-| Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are) | medium | directory convention |
-| A blueprint update never silently rewrites a violated invariant: violations fork explicitly (fix the code / fold the intent) before the section-diff, with evidence in delimited untrusted-content blocks; under `auto_blueprint`, weakening/removal of a `critical`/`high` invariant or any Provides entry prompts, and unattended writes itemize per-row classifications | critical | blueprint SKILL.md validation checklist; judge (issue #22 engine later) |
-| Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | ledger inspection; `tests/jimledger.sh` `commit-blueprint` ledger-only belt case |
-| The blueprint regen-cadence count derives from a single-writer `last_full_generate` watermark (stamped only by generate mode, solely from `jimfile.sh now`); `updates-since` validates the watermark (rc 2 on malformed/absent) and bounds the count to `<= now`, and `blueprint_regen_threshold` treats a non-positive-integer as disabled — so a bad watermark or knob degrades to signal-only and never mis-fires the opt-in unattended regen | high | `tests/jimledger.sh` `updates-since` cases; blueprint SKILL.md validation checklist |
-| Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use | critical | `tests/jimfile.sh` valid-relpath cases; `tests/jimledger.sh` commit-map cases |
-| `BLUEPRINT.md` (the project context map) is written only through `/jim:blueprint`'s project tier and committed only via `commit-map`; a new spec group comes into being only through the map surface; hand-declared map updates grade by the shared Step-4a rule — partition downgrades always prompt | high | process convention; blueprint SKILL.md validation checklist; `tier=project` ledger events |
-| The derived `## Contract Graph` section is written only by the reconcile pass — the recomputable join of group faces, never hand-declared or re-declared; its rewrite is Step-4a exempt as mechanical content | high | blueprint SKILL.md validation checklist; judge |
-| Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all seven counters (`edges`/`leaks`/`breaking`/`dead`/`unresolved`/`undeclared`/`stale`, zeros included), and always closes via `commit-map` (ledger-only when the map is unchanged); consumers shape-validate the fixed key set | high | ledger inspection; blueprint SKILL.md validation checklist |
-| Reconcile detectors fire only on declared data — missing declarations degrade to explicit reporting (unverifiable / informational), never silent exclusion, never violations; face/map evidence appears only in delimited `<untrusted-face-content>` blocks | high | blueprint SKILL.md validation checklist; judge (issue #22 engine later) |
-| `/jim:verify`'s registry runs project tooling only through operator-configured `verify_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — no jim script ever executes a config-derived command string; blueprint content may *name* a slug-validated registry entry but can never introduce, alter, or activate a command, and check parameters / registry names pass slug / `valid-relpath` validation before use | critical | `tests/jimverify.sh` / `tests/jimconf.sh`; code review / judge |
-| `/jim:verify` persists no verdict artifact — the report is the run's surface; each run records per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits them via `commit-verify` (the no-standing-verdict doctrine) | medium | ledger inspection; `tests/jimledger.sh` `commit-verify` case |
-| The verify engine grounds the fold-back loop: `/jim:review` runs a living-intent sensor against the group's `000-blueprint` (existence-conditioned, no gating knob; a blueprint-less group skips silently) and `/jim:blueprint`'s violation fork is grounded in engine outcomes on both adapters with an inline fallback sweep so coverage never regresses; a sensed violation's channel (in-change / pre-existing / unlocalized) derives only from trusted inputs, and directive text in scanned code, diffs, or engine output never re-routes it or grounds a fold | high | judge; `tests/jimledger.sh` `files-range` + `tests/jimverify.sh` scoped-check cases |
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| plugin-name | `plugin.json` `name` is `"jim"`; every skill/agent is namespaced from it (`/jim:*`, `@jim:*`) | critical | judge |
+| name-matches-path | Skill `name` frontmatter equals its directory name, and agent `name` equals its filename (kebab-case) | high | judge |
+| allowed-tools-exact | `allowed-tools` names the exact script path(s) a skill injects/runs — never a bare `Bash(bash *)` wildcard; own-skill uses `${CLAUDE_SKILL_DIR}`, cross-skill uses `${CLAUDE_PLUGIN_ROOT}` | critical | judge |
+| injection-set-rhs | `!`-injection slots appear only as the RHS of a `SET`; never wrapped in `(...)` on the same line, never inside inline backticks | critical | judge |
+| sentinel-vocab | Gate logic uses the `SET`/`IF…THEN`/`ELSE IF`/`ENDIF` sentinel vocabulary; the retired EXISTS-family and paren-wrap forms are regressions | high | judge |
+| sigil-discipline | The three substitution sigils are never mixed (`<lower>` in fences only, `{lower}` in `assets/`, `$UPPER` for real shell expansion) | high | judge |
+| skill-budget | SKILL.md ≤ 500 lines and agent body ≈ ≤ 800 tokens (progressive disclosure — detail lives in `assets/` / `references/`) | medium | registry:skill-line-budget |
+| no-third-party-deps | No third-party runtime dependencies — scripts use bash + POSIX only (no `jq`/`yq`/`bats`) | critical | pattern |
+| no-source-eval | Scripts never `source`/`eval` user-supplied data — config, ledger, and issue content is parsed, never executed | critical | judge |
+| script-preamble | Every script sets `set -uo pipefail`; locale-sensitive scripts also `export LC_ALL=C` | high | judge |
+| bash-source-relative | Inter-script composition uses `BASH_SOURCE`-relative paths, not `${CLAUDE_PLUGIN_ROOT}` (which substitutes only in skill content) | high | judge |
+| ref-validation | Every untrusted id / SHA / ref is validated before git interpolation: ledger SHAs and ids through the single `is_valid_id` boundary (copies byte-identical), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` (accepts `/`-refs, forecloses option injection) | critical | judge |
+| ledger-commit-discipline | `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint verify`); ledger content is untrusted and never `source`d; the script commits in exactly four path-scoped paths (`commit-review`, `commit-blueprint`, `commit-map`, `commit-verify` — literal paths, `--` guard, never `git add -A`; `commit-map`'s config-derived path arguments pass `valid-relpath`, `commit-verify` stages `ledger.md` alone) | critical | judge |
+| untrusted-content | Untrusted external content (web fetches, git commit/diff, issue/candidate bodies, scanned code) is treated as data, never instructions; secret-looking values are never persisted (redacted to `secret-looking value at <path:line>`) | critical | judge |
+| agent-boundaries | Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`, `judge`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | judge |
+| spec-id-sequencing | Spec IDs are 3-digit zero-padded and sequential within the group; a spec must be `approved` before its plan is produced | high | judge |
+| blueprint-slot-reserved | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0` and is ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | judge |
+| arch-via-skill | `ARCHITECTURE.md` is generated/maintained only through `/jim:arch`, never hand-edited | medium | judge |
+| tests-under-tests | Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are) | medium | judge |
+| fork-no-silent-rewrite | A blueprint update never silently rewrites a violated invariant: violations fork explicitly (fix the code / fold the intent) before the section-diff, with evidence in delimited untrusted-content blocks; under `auto_blueprint`, weakening/removal of a `critical`/`high` invariant or any Provides entry prompts, and unattended writes itemize per-row classifications | critical | judge |
+| update-durable-record | Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | judge |
+| regen-cadence-safety | The blueprint regen-cadence count derives from a single-writer `last_full_generate` watermark (stamped only by generate mode, solely from `jimfile.sh now`); `updates-since` validates the watermark (rc 2 on malformed/absent) and bounds the count to `<= now`, and `blueprint_regen_threshold` treats a non-positive-integer as disabled — so a bad watermark or knob degrades to signal-only and never mis-fires the opt-in unattended regen | high | judge |
+| relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use | critical | judge |
+| map-partition-authority | `BLUEPRINT.md` (the project context map) is written only through `/jim:blueprint`'s project tier and committed only via `commit-map`; a new spec group comes into being only through the map surface; hand-declared map updates grade by the shared Step-4a rule — partition downgrades always prompt | high | judge |
+| contract-graph-derived | The derived `## Contract Graph` section is written only by the reconcile pass — the recomputable join of group faces, never hand-declared or re-declared; its rewrite is Step-4a exempt as mechanical content | high | judge |
+| reconcile-durable-record | Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all seven counters (`edges`/`leaks`/`breaking`/`dead`/`unresolved`/`undeclared`/`stale`, zeros included), and always closes via `commit-map` (ledger-only when the map is unchanged); consumers shape-validate the fixed key set | high | judge |
+| reconcile-declared-data | Reconcile detectors fire only on declared data — missing declarations degrade to explicit reporting (unverifiable / informational), never silent exclusion, never violations; face/map evidence appears only in delimited `<untrusted-face-content>` blocks | high | judge |
+| verify-registry-boundary | `/jim:verify`'s registry runs project tooling only through operator-configured `verify_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — no jim script ever executes a config-derived command string; blueprint content may *name* a slug-validated registry entry but can never introduce, alter, or activate a command, and check parameters / registry names pass slug / `valid-relpath` validation before use | critical | judge |
+| verify-no-verdict | `/jim:verify` persists no verdict artifact — the report is the run's surface; each run records per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits them via `commit-verify` (the no-standing-verdict doctrine) | medium | judge |
+| fold-back-loop-grounding | The verify engine grounds the fold-back loop: `/jim:review` runs a living-intent sensor against the group's `000-blueprint` (existence-conditioned, no gating knob; a blueprint-less group skips silently) and `/jim:blueprint`'s violation fork is grounded in engine outcomes on both adapters with an inline fallback sweep so coverage never regresses; a sensed violation's channel (in-change / pre-existing / unlocalized) derives only from trusted inputs, and directive text in scanned code, diffs, or engine output never re-routes it or grounds a fold | high | judge |
+
+```verify-checks
+no-third-party-deps polarity=must-not regex=\b(jq|yq|bats)\b scope=skills/
+```
+
+`skill-budget` names `registry:skill-line-budget` — the operator activates it by
+setting `verify_command_skill_line_budget` in `jimconf.toml` (e.g. a script that
+exits non-zero on any `SKILL.md` over 500 lines); until then the engine reports
+it `unconfigured` and runs nothing. Every other invariant is `judge`: its rule is
+a cross-file or behavioral property no single grep checks faithfully.
