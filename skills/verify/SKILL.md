@@ -76,6 +76,17 @@ Every `violated` carries exactly one channel, derived only from **trusted** inpu
 
 `unlocalized` routes with `pre-existing` — to the report and the issue offer, **never** into the fork (nothing folds without grounding; AC #4's no-drop path still holds, and the fork's fallback sweep covers that invariant on its side). In `--from-review` the floor is whole-group, so this classification is live; in `--since` the floor is already change-scoped, so all channels resolve to `in-change`.
 
+### Contract-edge phase (scoped adapters, spec 037)
+
+When the reviewed/ranged change plausibly touches the group's **provides-side** code, the affected contract edges join the same scoped run — cross-group impact surfaces at review time instead of at the consumer's next build (AC #10). This phase is **existence-conditioned**, adding nothing unless all hold:
+
+- The map has a `## Contract Graph` (`jimverify.sh edges <map>`; rc 2 → no graph, skip the phase and name it) **and** the graph names `<group>` as a **provider**. Single-group projects and provider-untouched changes add nothing — no new gating knob.
+- **Affected edges** = edges whose Provides entry the change plausibly touches: mechanically where check data allows (the entry's `provider-ref` scope ∩ the changed-file set), else by LLM triage over the changed-file list (the trusted channel) — the **Judge change-selection** rule, applied to edges. Scope the floor scan and judge selection to these edges' consumer territories only; whole-graph scanning stays exclusive to on-demand `--contracts` (the 036 amplification lesson).
+
+Run the floor via `jimverify.sh contracts-check <map> <specs-root> <files-list>` (the change set as the 4th arg scopes the provider-side breaking check to the change; consumer-side leak facts come from the affected edges' consumer territories). Appetite-gate and judge each affected edge side as in Contract mode. Leak and breaking only — dead surface is whole-graph-only (AC #4). Emit **edge records** into the same VERIFY-OUTCOME block (grammar below). Channel derives from trusted inputs only: a provider-side violation on changed provider code is `in-change`; a consumer-side violation (another group's unchanged code) is `pre-existing` and reported, never folded into the reviewed group's update (AC #11, routed by the caller — review Step 9 / the blueprint fork).
+
+**The scoped finished event gains edge counters.** Append `edges_checked=<n> edge_violations=<n>` to the group-ledger `verify finished` event (Step 9d) so the edge phase is attributable; the scoped adapters keep recording on the group's own `000-blueprint/ledger.md`, not the specs-root (only on-demand `--contracts` records project-tier at the specs root).
+
 ### The VERIFY-OUTCOME record
 
 The scoped run's product is one record per invariant, in a fenced block:
@@ -260,7 +271,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <blueprint-d
 bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-verify <blueprint-dir>
 ```
 
-**In `--from-review` mode, extend the finished event with channel counters** — append `inchange=<n> preexisting=<n>` to the same event (where `preexisting` counts `pre-existing` + `unlocalized` violations), so a violation nobody filed stays attributable (AC #12). `--since` records the base counters unchanged. `commit-verify` is unchanged in both.
+**In `--from-review` mode, extend the finished event with channel counters** — append `inchange=<n> preexisting=<n>` to the same event (where `preexisting` counts `pre-existing` + `unlocalized` violations), so a violation nobody filed stays attributable (AC #12). `--since` records the base counters unchanged. **When the contract-edge phase ran** (either scoped adapter), also append `edges_checked=<n> edge_violations=<n>` to the same group-ledger event. `commit-verify` is unchanged in all cases.
 
 `commit-verify` stages `ledger.md` alone (the run wrote no other artifact). If the commit fails (not a git repo, a rejecting hook, nothing to commit), report it and leave the ledger intact — never abort the run or force the commit. Skip silently if `jimledger.sh` is absent.
 
