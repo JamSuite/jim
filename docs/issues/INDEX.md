@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 36
+- Open: 37
 - Closed: 19
 
 ## Issues
@@ -61,6 +61,7 @@
 - `20260705-allowed-tools-exactness-drift-in-issue-and-meta-matrix-skills` — allowed-tools exactness drift in issue and meta-matrix skills · status: open · num: 52 · priority: critical · created: 2026-07-05T00:28:45Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-meta-matrix-probe-agent-body-exceeds-progressive-disclosure-toke` — meta-matrix-probe agent body exceeds progressive-disclosure token budget · status: open · num: 54 · priority: medium · created: 2026-07-05T00:37:36Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-migrate-review-s-issue-batch-to-the-new-sh-emitter` — Migrate review's issue batch to the new.sh emitter · status: open · num: 55 · priority: medium · created: 2026-07-05T07:25:21Z · labels: [issue-tracking, review] · origin: docs/specs/jim/036-verify-loop/plan.md
+- `20260705-surface-capped-cross-ref-facts-in-contracts-check` — Surface capped CROSS-REF facts in contracts-check · status: open · num: 56 · priority: low · created: 2026-07-05T22:17:53Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/plan.md
 - `20260705-untrusted-data-and-secret-redaction-gap-on-researcher-web-fetch-` — untrusted-data and secret-redaction gap on researcher web-fetch path · status: open · num: 53 · priority: critical · created: 2026-07-05T00:28:53Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 
 ## Graph
