@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-05T06:08:16Z
+updated: 2026-07-05T09:40:30Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -73,11 +73,20 @@ blueprint**:
   registry; judge rung; appetite knob; report/issues/ledger. Exercised on
   jim's own single-group repo. Swarm and blast-radius-scoped spend deferred to
   Spec B as planned.
-- **Spec B — pipeline integration:** review-as-sensor (fix-code /
-  fold-intent wired to the 030/031 fork); 031 fork hardening; 034 detector
-  hardening; blast-radius-scoped ceiling. Needs multi-group fixtures or a
-  real multi-group project; split review-sensor vs detector-hardening if it
-  balloons at scoping.
+- **Spec B — pipeline integration:** *split at scoping (2026-07-05) on
+  feature/code-relationship grounds, as this bullet anticipated.*
+  - **B1 — fold-back loop** — ✅ **shipped as spec 036** (2026-07-05,
+    `docs/specs/jim/036-verify-loop/`): the `/jim:review` living-intent sensor
+    (whole-group floor + change-selected judges, a separate `## Living intent`
+    dimension that never sets the alignment verdict) and the 030/031 violation
+    fork grounded in engine outcomes on **both** adapters (`--from-review` /
+    `--since`), with an inline fallback sweep and fail-closed precedence.
+    Exercised end-to-end on jim's own blueprint; jim's `000-blueprint` then
+    regenerated to structured `check:` data (off the all-judge fallback).
+  - **B2 — contract-graph integration** — ⬜ remaining: harden 034's reconcile
+    detectors (leak / breaking / dead-surface) into engine checks +
+    blast-radius-scoped ceiling spend (may itself split detector-hardening from
+    blast-radius). Different input artifact and surfaces from B1.
 - **Spec C — retirement direction** (last): the reverse load-bearing-source
   analysis below.
 
