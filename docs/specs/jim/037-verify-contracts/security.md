@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/jim/037-verify-contracts/spec.md"
-reviewed_phases: [spec]
-status: Needs Plan Review
+reviewed_phases: [spec, plan]
+status: Active
 date: "2026-07-05"
 ---
 
@@ -9,22 +9,25 @@ date: "2026-07-05"
 
 ## Summary
 
-**Findings:** 0 Critical · 2 Notable (1 addressed) · 2 Advisory
+**Findings:** 0 Critical · 4 Notable (all addressed) · 4 Advisory
+(all addressed)
 
-Spec-phase run (no plan.md yet — requirements-gap lens only). Finding 1 was
-folded into spec AC #8 (the one-way ratchet) on 2026-07-05; Findings 2–4
-route to Plan and carry forward to `/jim:plan`. The spec
-inherits the 035/036 security posture soundly (registry boundary untouched,
-read-only engine, VERIFY-OUTCOME provenance, fail-closed precedence,
-redaction). The two Notables are new surfaces this spec opens: a two-step
-laundering path through the declared-criticality channel (Finding 1), and
-consumer-authored check data driving scans and evidence-quoting over
-*provider* territory (Finding 2). LINDDUN active on incidental credentials;
-all rows N/A / no issues, matching the 036 baseline.
+Dual-lens re-run 2026-07-05 (plan.md now present). Finding 1 was folded into
+spec AC #8 (the one-way ratchet); Findings 2–4 are **addressed by the plan's
+design** (DD 1/4 + task 3; DD 7/8 + tasks 5/9; DD 9 + task 7) — annotated
+below. The two new plan-lens Notables are spec↔plan gaps, not new threat
+surface: the Step-4a trigger can double-run the engine over edges the
+sensor already covered (Finding 5, AC #12), and AC #9's map-tier grading
+moment has no wiring in the task breakdown (Finding 6). Two new Advisories
+pin discipline drift (faces-TSV text remains untrusted, Finding 7) and
+dead-surface epistemics (absence-of-evidence framing, Finding 8). LINDDUN
+unchanged by the plan.
 
 ## Coverage
 
-- spec.md — reviewed 2026-07-05 (requirements-gap lens)
+- spec.md — reviewed 2026-07-05 (requirements-gap lens; re-checked in the
+  dual-lens run)
+- plan.md — reviewed 2026-07-05 (design-flaw lens)
 
 ## Data Classification
 
@@ -90,6 +93,9 @@ all rows N/A / no issues, matching the 036 baseline.
   tests.
 - **Route:** Plan
 - **Relates to:** AC #5, AC #6, AC #17; research Recommendation 1/3
+- **Status:** Addressed — plan DD 1 (facts-not-verdicts), DD 4 (location-only
+  edge records), task 3 (param gates + security-negative fixtures incl. a
+  location-only assertion).
 
 ### 3. Boundary-change trigger integrity: absent/stale graph and unattended attributability
 
@@ -113,6 +119,9 @@ all rows N/A / no issues, matching the 036 baseline.
   attributable.
 - **Route:** Plan
 - **Relates to:** AC #9, AC #13, AC #15
+- **Status:** Addressed — plan DD 7 (specs-root events + `commit-verify`
+  self-commit carry unattended judge outcomes) and DD 8 / task 9 (graph
+  basis always named; absent graph degrades visibly, never fabricates).
 
 ### 4. Sensor cross-group floor must stay scoped to affected edges
 
@@ -129,13 +138,97 @@ all rows N/A / no issues, matching the 036 baseline.
   applied to the floor).
 - **Route:** Plan
 - **Relates to:** AC #10; spec 036 security Finding 3
+- **Status:** Addressed — plan DD 9 / task 7 (sensor floor + judges scoped
+  to affected edges' consumer territories; whole-graph exclusive to
+  on-demand).
+
+### 5. The Step-4a trigger can double-run the engine over sensor-covered edges
+
+- **Severity:** Notable
+- **Description:** Plan task 9 has the Step-4a weakening prompt "invoke the
+  `--contracts <group> --entries <file>` trigger" unconditionally. On the
+  `--from-review` path the U1 hand-off block may already carry edge records
+  for the weakened entries (the sensor's edge phase, task 7) — re-invoking
+  the engine over the same edges violates spec AC #12's no-double-run rule,
+  and two runs over one change invite disagreeing outcomes with no defined
+  precedence between them (the confusion, not just the cost, is the risk).
+- **Suggestion:** Extend task 9 / DD 8: the trigger first consumes the
+  handed-over block's edge records for the weakened entries (Finding-9
+  provenance discipline); `--entries` is invoked only for entries the block
+  does not cover (generate-mode differential, `--since` without edge
+  coverage, sensor-unselected entries). One engine opinion per edge per
+  change.
+- **Route:** Plan
+- **Relates to:** spec AC #12; plan task 9, DD 2/8
+- **Status:** Addressed — plan DD 8 + task 9 (consume-first grounding;
+  `--entries` only for uncovered entries), 2026-07-05.
+
+### 6. AC #9's map-tier grading moment has no wiring in the plan
+
+- **Severity:** Notable
+- **Description:** Spec AC #9 names "the map-tier grading moment" among the
+  trigger sites, but the plan wires the trigger only into group-tier Step 4a
+  (task 9). Map-tier downgrades are exactly the highest-blast-radius edits —
+  dropping a group or severing a relation while the graph records live edges
+  into it — and the plan leaves that prompt unenriched: the developer
+  approves a partition edit without seeing the consumers whose code still
+  depends on the dropped provider.
+- **Suggestion:** Extend task 9: the map-tier downgrade prompt names the
+  dependent edges from the persisted graph (basis-named per DD 8), and for a
+  dropped/weakened *provider* runs the consumer-side checks of its edges via
+  the same `--entries`-style scoped trigger (bounded by that group's edge
+  set) — or, if the engine run is judged disproportionate there, at minimum
+  the graph-edge naming, with the narrowing recorded as a deliberate
+  deviation from AC #9 for the developer to approve.
+- **Route:** Plan
+- **Relates to:** spec AC #9; plan task 9, DD 10
+- **Status:** Addressed — plan DD 8 + task 9 + the `map-methodology.md`
+  manifest entry (dependent-edge naming + dropped-provider consumer-side
+  checks at the map-tier prompt), 2026-07-05.
+
+### 7. The `faces` TSV's text fields remain untrusted content — restate it
+
+- **Severity:** Advisory
+- **Description:** `faces` emits a script-normalized TSV whose `text` and
+  `params` fields carry face-authored prose — the same trusted-channel /
+  untrusted-content split the shipped `parse` verb documents explicitly
+  ("the invariant *text* it carries is still untrusted content"). The plan's
+  interface contract does not restate this for faces; omitting it invites
+  the drift the 035 wording exists to prevent (a future edit treating TSV
+  rows as wholly trusted because the *channel* is script-normalized).
+- **Suggestion:** In `contracts-methodology.md` (task 5) and the `faces`
+  header comment (task 1), restate the split verbatim: the record structure
+  is trusted, the carried face text is untrusted data under the Step-8
+  discipline.
+- **Route:** Plan
+- **Relates to:** plan Interface Contracts (`faces`), tasks 1, 5; spec AC #17
+- **Status:** Addressed — the split restated in the plan's `faces` Interface
+  Contract and tasks 1/5, 2026-07-05.
+
+### 8. Dead-surface findings are absence-of-evidence claims — frame them so
+
+- **Severity:** Advisory
+- **Description:** Code-level dead surface derives from *no* CROSS-REF fact
+  and *no* declared edge (plan DD 1 / task 5 set logic). Textual absence is
+  not semantic absence — dynamic dispatch, config-driven wiring, or
+  reflection-style indirection all defeat a territory grep — and the remedy
+  ("trim") deletes live surface if over-trusted.
+- **Suggestion:** In `contracts-methodology.md`, frame code-level dead
+  surface as a high-confidence *candidate* (grounded stronger than 034's
+  declaration-only version, still not a mechanical verdict): judge-confirm
+  in-appetite, and word the report/issue remedy as "verify then trim",
+  mirroring the leak-candidate epistemics of DD 1.
+- **Route:** Plan
+- **Relates to:** spec AC #4; plan DD 1, task 5
+- **Status:** Addressed — plan task 5 (judge-confirmed candidate framing,
+  "verify then trim" remedy wording), 2026-07-05.
 
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
 | Spoofing | No | No issues found — edge records ride the VERIFY-OUTCOME provenance discipline (AC #12, Finding-9 lineage); channel/side classification anchors to trusted inputs (AC #11) |
-| Tampering | Yes | Finding 1 (criticality-declaration laundering); Finding 3 (absent/stale graph silently emptying the trigger's edge set) |
+| Tampering | Yes | Finding 1 (criticality-declaration laundering); Finding 3 (absent/stale graph silently emptying the trigger's edge set); Finding 7 (faces-TSV text treated as trusted would reopen the directive-binding class) |
 | Repudiation | Yes | Finding 3 (unattended trigger outcomes must stay attributable; AC #15's baseline is sound) |
 | Information Disclosure | Yes | Finding 2 (pattern-driven evidence harvesting across the group-authorship seam; location-only records + redaction are the guards) |
 | Denial of Service | Yes | Finding 4 (per-review cross-group scan amplification); whole-graph judge spend is capped and named (AC #7) |
@@ -153,6 +246,14 @@ all rows N/A / no issues, matching the 036 baseline.
 | Unawareness & Unintervenability | N/A | Developer-invoked tooling; unattended paths run under user-owned appetite/fan-out config with summary + durable record (AC #9) |
 | Non-compliance | N/A | No personal data; no applicable privacy regime for internal dev tooling |
 
+## Artifact Misalignment
+
+- **Finding 5 — trigger double-run:** Spec AC #12 requires consuming the
+  handed-over engine outcomes; plan task 9 invokes the trigger
+  unconditionally. Route: Plan.
+- **Finding 6 — map-tier trigger site:** Spec AC #9 includes the map-tier
+  grading moment; the plan wires only group-tier Step 4a. Route: Plan.
+
 ## Routing Recommendations
 
 ### Spec amendments
@@ -160,11 +261,8 @@ all rows N/A / no issues, matching the 036 baseline.
   declaration ratchet).
 
 ### Plan amendments
-- Finding 2: face-declared check params through the at-use validation gate;
-  location-only floor records; delimited redacted excerpts; negative fixtures.
-- Finding 3: enrichment names its graph basis (freshness stamp / none
-  recorded); trigger-run counters ride the durable record.
-- Finding 4: sensor's cross-group floor and judges scoped to affected edges'
-  territories; whole-graph stays on-demand.
+- ~~Findings 2–8~~ — all applied 2026-07-05: DD 1/4/7/8/9 + tasks 3, 5, 7, 9
+  (spec-phase carry-forwards) and DD 8 + tasks 1, 5, 9 + the
+  `map-methodology.md` manifest entry (dual-lens findings 5–8).
 
 No findings route to Issue — no candidates this run.
