@@ -148,7 +148,7 @@ Grounded in ARCHITECTURE.md and the repo tree.
   both tiers — group `000-blueprint`s and the project map — plus the
   reconcile pass, carrying `assets/blueprint-template.md` +
   `assets/map-template.md` and `references/` docs (`map-methodology`,
-  `reconcile-methodology`, `check-authoring`, `fork-grounding`); the `verify`
+  `reconcile-methodology`, `check-authoring`, `fork-grounding`, `gate-presentation`); the `verify`
   skill carries `references/contracts-methodology.md` (contract-mode
   methodology).
 - **Scripting layer** (`skills/*/scripts/`, 13 scripts) — `jimconf.sh` (resolver)
@@ -206,6 +206,7 @@ textually-checkable ones ride the mechanical floor.
 | arch-via-skill | `ARCHITECTURE.md` is generated/maintained only through `/jim:arch`, never hand-edited | medium | judge |
 | tests-under-tests | Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are) | medium | judge |
 | fork-no-silent-rewrite | A blueprint update never silently rewrites a violated invariant: violations fork explicitly (fix the code / fold the intent) before the section-diff, with evidence in delimited untrusted-content blocks; under `auto_blueprint`, weakening/removal of a `critical`/`high` invariant or any Provides entry prompts, and unattended writes itemize per-row classifications | critical | judge |
+| gate-presentation | Skills presenting content for human approval at a hard gate reference the one canonical gate-presentation rule (`skills/blueprint/references/gate-presentation.md`): the approval request is the turn's final plain-text message with no tool call (incl. `AskUserQuestion`) chained after the presented content and nothing past ~20 lines in an `AskUserQuestion` preview; content beyond ~20 lines goes to a session-scratchpad reviewable file (secret-scrubbed, untrusted evidence delimited) with a compact verbatim summary | high | judge |
 | update-durable-record | Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | judge |
 | regen-cadence-safety | The blueprint regen-cadence count derives from a single-writer `last_full_generate` watermark (stamped only by generate mode, solely from `jimfile.sh now`); `updates-since` validates the watermark (rc 2 on malformed/absent) and bounds the count to `<= now`, and `blueprint_regen_threshold` treats a non-positive-integer as disabled — so a bad watermark or knob degrades to signal-only and never mis-fires the opt-in unattended regen | high | judge |
 | relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use | critical | judge |
