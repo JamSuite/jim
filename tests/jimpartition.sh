@@ -378,6 +378,38 @@ case_jimpartition_scan_go_metachar_module() {
   assert_match "go degraded to unmodeled" '^UNMODELED'"$(printf '\t')"'go'"$(printf '\t')" "$OUT"
 }
 
+# AC #2: Python dotted `import` statements resolve to a/b.py (or the package's
+# __init__.py). CHANNEL counts every scanned .py file.
+case_jimpartition_scan_python() {
+  local dir
+  dir=$(git_init scan_py)
+  repo_add "$dir" pkg/__init__.py '# pkg'
+  repo_add "$dir" pkg/a.py "$(printf 'import pkg.b')"
+  repo_add "$dir" pkg/b.py '# b'
+  repo_add "$dir" main.py "$(printf 'import pkg.a')"
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tmain.py\tpkg/a.py\timports\nEDGE\tpkg/a.py\tpkg/b.py\timports\nCHANNEL\timports\tpython\t4')"
+  assert_eq "python import edges" "$expected" "$OUT"
+}
+
+# AC #2: `from pkg import sub` resolves both the package (__init__.py) and the
+# named submodule (pkg/sub.py); a symbol import that names no file yields no
+# false edge.
+case_jimpartition_scan_python_from() {
+  local dir
+  dir=$(git_init scan_py_from)
+  repo_add "$dir" pkg/__init__.py '# pkg'
+  repo_add "$dir" pkg/sub.py '# sub'
+  repo_add "$dir" app.py "$(printf 'from pkg import sub')"
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tapp.py\tpkg/__init__.py\timports\nEDGE\tapp.py\tpkg/sub.py\timports\nCHANNEL\timports\tpython\t3')"
+  assert_eq "python from-import edges" "$expected" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

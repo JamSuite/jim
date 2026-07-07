@@ -312,6 +312,11 @@ cmd_scan() {
       UNMOD["go"]=$(( ${UNMOD["go"]:-0} + ${#GO_FILES[@]} ))
     fi
   fi
+  if [[ ${#PY_FILES[@]} -gt 0 ]]; then
+    out="$(scan_python "${PY_FILES[@]}")"
+    edges+="$out"$'\n'
+    channels+="$(printf 'CHANNEL\timports\tpython\t%d' "${#PY_FILES[@]}")"$'\n'
+  fi
 
   # Emit EDGEs (deduped + sorted), then CHANNEL facts (sorted), then UNMODELED
   # facts (sorted) — a deterministic, stable substrate.
@@ -367,6 +372,66 @@ scan_go() {
       [[ "$rel" == "$imp" ]] && continue          # external import
       [[ -n "${HASDIR[$rel]:-}" ]] && printf 'EDGE\t%s\t%s\timports\n' "$f" "$rel"
     done < <(go_imports "$f")
+  done
+  return 0
+}
+
+# py_imports <file> — emit one candidate dotted module per line for a .py file:
+#   every `import a.b.c` (comma lists, `as` aliases) and, for `from a.b import
+#   x, y`, the package `a.b` plus each `a.b.x`. Relative imports (leading dot)
+#   are unmodeled and skipped.
+py_imports() {
+  awk '
+    /^[[:space:]]*import[[:space:]]+/ {
+      s = $0
+      sub(/^[[:space:]]*import[[:space:]]+/, "", s)
+      sub(/#.*/, "", s)
+      n = split(s, parts, ",")
+      for (i = 1; i <= n; i++) {
+        m = parts[i]
+        sub(/[[:space:]]+as[[:space:]]+.*/, "", m)
+        gsub(/[[:space:]]/, "", m)
+        if (m ~ /^[A-Za-z_][A-Za-z0-9_.]*$/) print m
+      }
+      next
+    }
+    /^[[:space:]]*from[[:space:]]+/ {
+      s = $0
+      sub(/^[[:space:]]*from[[:space:]]+/, "", s)
+      mod = s
+      sub(/[[:space:]]+import[[:space:]].*/, "", mod)
+      gsub(/[[:space:]]/, "", mod)
+      if (mod ~ /^\./ || mod !~ /^[A-Za-z_][A-Za-z0-9_.]*$/) next
+      print mod
+      names = s
+      sub(/^.*[[:space:]]import[[:space:]]+/, "", names)
+      gsub(/[()]/, "", names); sub(/#.*/, "", names)
+      nn = split(names, nm, ",")
+      for (i = 1; i <= nn; i++) {
+        x = nm[i]
+        sub(/[[:space:]]+as[[:space:]]+.*/, "", x)
+        gsub(/[[:space:]]/, "", x)
+        if (x ~ /^[A-Za-z_][A-Za-z0-9_]*$/) print mod "." x
+      }
+      next
+    }
+  ' "$1"
+}
+
+# scan_python <py-file...> — resolve each candidate dotted module to a tracked
+#   a/b.py or a/b/__init__.py. Always models (Python has no manifest to gate).
+scan_python() {
+  local f cand slashed
+  for f in "$@"; do
+    while IFS= read -r cand; do
+      [[ -z "$cand" ]] && continue
+      slashed="${cand//./\/}"
+      if [[ -n "${TRACKED[$slashed.py]:-}" ]]; then
+        printf 'EDGE\t%s\t%s\timports\n' "$f" "$slashed.py"
+      elif [[ -n "${TRACKED[$slashed/__init__.py]:-}" ]]; then
+        printf 'EDGE\t%s\t%s\timports\n' "$f" "$slashed/__init__.py"
+      fi
+    done < <(py_imports "$f")
   done
   return 0
 }
