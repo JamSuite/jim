@@ -186,7 +186,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] `jimverify.sh health` — graph metrics: GROUPS/EDGES/CYCLES/CYCLE/
+1. [x] `jimverify.sh health` — graph metrics: GROUPS/EDGES/CYCLES/CYCLE/
    FANIN/FANIN_GROUP per the contract (Kahn peel + WCC clustering, DD 2),
    rc 2 without a graph section. Tests: acyclic → CYCLES 0; mutual pair →
    1 cluster/2 members; two disjoint cycles → 2 clusters; shared-node
@@ -194,7 +194,7 @@ flowchart TD
    sanitized cells.
    **Verify:** `bash skills/meta-test/scripts/metatest.sh run jimverify`
 
-2. [ ] `jimverify.sh health` — coverage: UNCOVERED/UNCOVERED_DIR via
+2. [x] `jimverify.sh health` — coverage: UNCOVERED/UNCOVERED_DIR via
    git-ls-files minus territory-union prefix match, top-level aggregation,
    `na` + `UNCOVERED_NA_REASON` when no Territory lines or git unavailable
    (DD 5). Tests use a git fixture (conformance-test pattern): covered
@@ -203,21 +203,21 @@ flowchart TD
    on task 1.
    **Verify:** `bash skills/meta-test/scripts/metatest.sh run jimverify`
 
-3. [ ] `jimledger.sh last-reconcile` per the contract (DD 3). Tests: no
+3. [x] `jimledger.sh last-reconcile` per the contract (DD 3). Tests: no
    reconcile event → rc 1; latest of several wins; pre-039 seven-counter
    event → rc 0 (health keys absent); junk value on a documented key →
    rc 2; unknown key in kv → dropped from output (whitelist, Finding 4);
    `na` accepted on the four health keys only.
    **Verify:** `bash skills/meta-test/scripts/metatest.sh run jimledger`
 
-4. [ ] Wire the reconcile: `skills/blueprint/SKILL.md` § Reconcile — add
+4. [x] Wire the reconcile: `skills/blueprint/SKILL.md` § Reconcile — add
    step 2a (run `health` on the just-rewritten map, `last-reconcile` on
    the specs root, render the block per methodology) and extend step 3's
    instruction to all eleven counters with `na` on the short-circuit path
    (DD 4, 6). Depends on tasks 1–3.
    **Verify:** `grep -q 'uncovered=' skills/blueprint/SKILL.md && [ "$(wc -l < skills/blueprint/SKILL.md)" -le 500 ] && echo pass`
 
-5. [ ] Document the contract: `reconcile-methodology.md` — extend
+5. [x] Document the contract: `reconcile-methodology.md` — extend
    § Outcome counters (four new keys, int-or-na carve-out, values are
    script-emitted and never lifted from content) and add § Graph health
    (block format incl. derived density, delta/baseline/malformed-prior
@@ -228,7 +228,7 @@ flowchart TD
    behavior). Depends on task 4 for consistency.
    **Verify:** `grep -q '## Graph health' skills/blueprint/references/reconcile-methodology.md && grep -q 'int-or-na' skills/blueprint/references/reconcile-methodology.md && echo pass`
 
-6. [ ] Full suite green.
+6. [x] Full suite green.
    **Verify:** `bash skills/meta-test/scripts/metatest.sh run`
 
 ## Requirements Coverage Summary
