@@ -410,6 +410,24 @@ case_jimpartition_scan_python_from() {
   assert_eq "python from-import edges" "$expected" "$OUT"
 }
 
+# AC #2: JS/TS relative specifiers resolve with extension and /index resolution
+# (bare package specifiers are external and ignored). Both single- and
+# double-quoted, import and require forms are recognized.
+case_jimpartition_scan_jsts() {
+  local dir
+  dir=$(git_init scan_jsts)
+  repo_add "$dir" src/index.js "$(printf "import { a } from './lib/a';\nconst b = require('./lib/b.js');\nimport react from 'react';")"
+  repo_add "$dir" src/lib/a.js '// a'
+  repo_add "$dir" src/lib/b.js '// b'
+  repo_add "$dir" src/lib/c/index.ts '// c'
+  repo_add "$dir" src/main.ts "$(printf "import x from './lib/c';")"
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tsrc/index.js\tsrc/lib/a.js\timports\nEDGE\tsrc/index.js\tsrc/lib/b.js\timports\nEDGE\tsrc/main.ts\tsrc/lib/c/index.ts\timports\nCHANNEL\timports\tjs-ts\t5')"
+  assert_eq "js/ts relative edges" "$expected" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

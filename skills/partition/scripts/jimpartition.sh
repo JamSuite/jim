@@ -317,6 +317,11 @@ cmd_scan() {
     edges+="$out"$'\n'
     channels+="$(printf 'CHANNEL\timports\tpython\t%d' "${#PY_FILES[@]}")"$'\n'
   fi
+  if [[ ${#JS_FILES[@]} -gt 0 ]]; then
+    out="$(scan_jsts "${JS_FILES[@]}")"
+    edges+="$out"$'\n'
+    channels+="$(printf 'CHANNEL\timports\tjs-ts\t%d' "${#JS_FILES[@]}")"$'\n'
+  fi
 
   # Emit EDGEs (deduped + sorted), then CHANNEL facts (sorted), then UNMODELED
   # facts (sorted) — a deterministic, stable substrate.
@@ -432,6 +437,76 @@ scan_python() {
         printf 'EDGE\t%s\t%s\timports\n' "$f" "$slashed/__init__.py"
       fi
     done < <(py_imports "$f")
+  done
+  return 0
+}
+
+# norm_path <relpath> — collapse '.' and '..' segments (pure string math, no
+#   filesystem). A path that escapes the root (leading '..') simply won't match
+#   a tracked file, so no edge is emitted.
+norm_path() {
+  local p="$1"
+  local -a out=()
+  local seg IFS='/'
+  local -a segs
+  read -ra segs <<<"$p"
+  for seg in "${segs[@]}"; do
+    case "$seg" in
+      ''|.) continue ;;
+      ..)
+        if [[ ${#out[@]} -gt 0 && "${out[-1]}" != ".." ]]; then unset 'out[-1]'
+        else out+=(".."); fi
+        ;;
+      *) out+=("$seg") ;;
+    esac
+  done
+  printf '%s' "${out[*]}"
+}
+
+# jsts_specs <file> — emit one relative module specifier per line from a JS/TS
+#   file (import / require / export-from, single- or double-quoted). Bare
+#   package specifiers (react, lodash) are external and skipped.
+jsts_specs() {
+  awk -v Q="'" '
+    {
+      line = $0
+      if (line !~ /(^|[^A-Za-z0-9_$])(import|require|export)([^A-Za-z0-9_$]|$)/ && line !~ /[[:space:]]from([[:space:]]|$)/)
+        next
+      gsub(Q, "\"", line)
+      if (match(line, /"[^"]*"/)) {
+        s = substr(line, RSTART + 1, RLENGTH - 2)
+        if (substr(s, 1, 2) == "./" || substr(s, 1, 3) == "../") print s
+      }
+    }
+  ' "$1"
+}
+
+# scan_jsts <js-file...> — resolve each relative specifier against the importing
+#   file's directory, trying the exact path, then each extension, then an index
+#   file (the Node/bundler resolution order the baseline models).
+scan_jsts() {
+  local -a exts=(js jsx ts tsx mjs cjs)
+  local f dir spec base target ext
+  for f in "$@"; do
+    dir="${f%/*}"; [[ "$dir" == "$f" ]] && dir=""
+    while IFS= read -r spec; do
+      [[ -z "$spec" ]] && continue
+      base="$(norm_path "${dir:+$dir/}$spec")"
+      [[ -z "$base" ]] && continue
+      target=""
+      [[ -n "${TRACKED[$base]:-}" ]] && target="$base"
+      if [[ -z "$target" ]]; then
+        for ext in "${exts[@]}"; do
+          if [[ -n "${TRACKED[$base.$ext]:-}" ]]; then target="$base.$ext"; break; fi
+        done
+      fi
+      if [[ -z "$target" ]]; then
+        for ext in "${exts[@]}"; do
+          if [[ -n "${TRACKED[$base/index.$ext]:-}" ]]; then target="$base/index.$ext"; break; fi
+        done
+      fi
+      [[ -n "$target" ]] && printf 'EDGE\t%s\t%s\timports\n' "$f" "$target"
+    done < <(jsts_specs "$f")
   done
   return 0
 }
