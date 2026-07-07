@@ -117,6 +117,7 @@ Work through this checklist before presenting the artifact. Fix failures inline 
 - [ ] Second-person voice throughout ("You are...")
 - [ ] Body is fully self-contained — no assumed inherited context
 - [ ] All required sections present: role, context, responsibilities, process, constraints
+- [ ] If the agent presents content at a human approval gate, that gate references the canonical **gate-presentation rule** in `skills/blueprint/references/gate-presentation.md` (spec 040): long content to a reviewable scratchpad file + compact **verbatim** summary; the approval question is the turn's **final plain-text message** — no tool call (including `AskUserQuestion`) chained after the presented content, no >~20-line preview.
 
 **Logic-Flow Idiom (when the agent body uses path gates)**
 
