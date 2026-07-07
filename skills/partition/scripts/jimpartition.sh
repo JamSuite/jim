@@ -750,6 +750,63 @@ scan_elixir() {
   return 0
 }
 
+# ─── Section: aggregate ──────────────────────────────────────────────────────
+
+# cmd_aggregate <edges-file> <territories-file> — project file-level EDGEs onto
+#   proposed territories. Emits group-level edges (GEDGE, intra-group dropped),
+#   STRADDLE facts (a territory-assigned unit consumed by >=2 distinct foreign
+#   groups — a single foreign consumer is a normal GEDGE, DD 14), and
+#   UNASSIGNED dirs (endpoints under no territory, dirname-aggregated). Group
+#   assignment is a slash-anchored longest-prefix match (039 semantics). The
+#   edges-file's non-EDGE lines (CHANNEL / UNMODELED substrate metadata) are
+#   ignored; a missing file or a malformed territories line is rc 2.
+cmd_aggregate() {
+  local edges_file="${1:-}" terr_file="${2:-}"
+  if [[ -z "$edges_file" || -z "$terr_file" ]]; then
+    echo "jimpartition aggregate: need <edges-file> <territories-file>" >&2; return 2
+  fi
+  if [[ ! -f "$edges_file" ]]; then
+    echo "jimpartition aggregate: edges file not found: $edges_file" >&2; return 2
+  fi
+  local terr_lines
+  terr_lines="$(emit_territories "$terr_file")" || return 2
+
+  {
+    printf '%s\n' "$terr_lines" | awk -F'\t' 'NF >= 2 { print "G\t" $1 "\t" $2 }'
+    awk -F'\t' '$1 == "EDGE" && NF >= 3 { print "E\t" $2 "\t" $3 }' "$edges_file"
+  } | awk -F'\t' '
+    function san(x) { gsub(/[[:cntrl:]]/, "", x); if (length(x) > 512) x = substr(x, 1, 512); return x }
+    function dirof(e,  d) { d = e; if (index(d, "/") > 0) { sub(/\/[^/]*$/, "", d); return d "/" } return "./" }
+    function assign(e,  i, best, bestlen, tp) {
+      best = ""; bestlen = -1
+      for (i = 1; i <= nt; i++) {
+        tp = TP[i]
+        if (index(e "/", tp "/") == 1 && length(tp) > bestlen) { bestlen = length(tp); best = TG[i] }
+      }
+      return best
+    }
+    $1 == "G" { nt++; TG[nt] = $2; tp = $3; sub(/\/+$/, "", tp); TP[nt] = tp; next }
+    $1 == "E" {
+      from = $2; to = $3
+      fg = assign(from); tg = assign(to)
+      if (fg == "" && !(from in seenun)) { seenun[from] = 1; UND[dirof(from)]++ }
+      if (tg == "" && !(to in seenun))   { seenun[to]   = 1; UND[dirof(to)]++ }
+      if (fg != "" && tg != "" && fg != tg) {
+        GE[fg SUBSEP tg]++
+        TOOWNER[to] = tg
+        if (!((to SUBSEP fg) in seenfc)) { seenfc[to SUBSEP fg] = 1; FCC[to]++ }
+      }
+      next
+    }
+    END {
+      for (k in GE)  { split(k, a, SUBSEP); print "GEDGE\t" a[1] "\t" a[2] "\t" GE[k] }
+      for (u in FCC) if (FCC[u] >= 2) print "STRADDLE\t" san(u) "\t" TOOWNER[u] "\t" FCC[u]
+      for (d in UND) print "UNASSIGNED\t" san(d) "\t" UND[d]
+    }
+  ' | sort
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -757,6 +814,7 @@ main() {
   case "$sub" in
     scan)      shift; cmd_scan "$@" ;;
     ingest)    shift; cmd_ingest "$@" ;;
+    aggregate) shift; cmd_aggregate "$@" ;;
     coverage)  shift; cmd_coverage "$@" ;;
     *)         usage; return 2 ;;
   esac

@@ -478,6 +478,59 @@ case_jimpartition_scan_elixir() {
   assert_eq "elixir alias edges" "$expected" "$OUT"
 }
 
+# ─── Section: aggregate cases (Task 5) ───────────────────────────────────────
+
+# AC #2/#20: aggregate joins file EDGEs against proposed territories → GEDGE
+# counts (intra-group edges dropped), STRADDLE facts for units consumed by >=2
+# distinct foreign groups, and UNASSIGNED dirs for endpoints under no territory.
+case_jimpartition_aggregate_full() {
+  local edges terr
+  edges=$(fixture agg_edges.txt "$(printf 'EDGE\tsrc/api/h.go\tsrc/core/x.go\timports\nEDGE\tsrc/web/w.go\tsrc/core/x.go\timports\nEDGE\tsrc/core/a.go\tsrc/core/b.go\timports\nEDGE\tsrc/api/h.go\tsrc/platform/log.go\timports\nEDGE\tsrc/web/w.go\tsrc/platform/log.go\timports\nEDGE\tsrc/core/x.go\tsrc/platform/log.go\timports\nEDGE\tsrc/web/w.go\torphan/util.go\timports')")
+  terr=$(fixture agg_terr.txt "$(printf 'GROUP\tcore\tsrc/core\nGROUP\tapi\tsrc/api\nGROUP\tweb\tsrc/web\nGROUP\tplatform\tsrc/platform')")
+  run_jimpartition aggregate "$edges" "$terr"
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'GEDGE\tapi\tcore\t1\nGEDGE\tapi\tplatform\t1\nGEDGE\tcore\tplatform\t1\nGEDGE\tweb\tcore\t1\nGEDGE\tweb\tplatform\t1\nSTRADDLE\tsrc/core/x.go\tcore\t2\nSTRADDLE\tsrc/platform/log.go\tplatform\t3\nUNASSIGNED\torphan/\t1')"
+  assert_eq "group edges + straddles + unassigned" "$expected" "$OUT"
+}
+
+# DD 14: a unit consumed by exactly one foreign group is a normal GEDGE, never a
+# STRADDLE (the >=2 threshold).
+case_jimpartition_aggregate_one_foreign_no_straddle() {
+  local edges terr
+  edges=$(fixture agg1_edges.txt "$(printf 'EDGE\tsrc/api/h.go\tsrc/core/x.go\timports')")
+  terr=$(fixture agg1_terr.txt "$(printf 'GROUP\tcore\tsrc/core\nGROUP\tapi\tsrc/api')")
+  run_jimpartition aggregate "$edges" "$terr"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no straddle" "0" "$(printf '%s\n' "$OUT" | grep -c '^STRADDLE' || true)"
+  assert_match "single gedge" '^GEDGE'"$(printf '\t')"'api'"$(printf '\t')"'core'"$(printf '\t')"'1$' "$OUT"
+}
+
+# rc 2 when the edges file is missing.
+case_jimpartition_aggregate_missing_edges() {
+  local terr
+  terr=$(fixture agg_me_terr.txt "$(printf 'GROUP\tcore\tsrc/core')")
+  run_jimpartition aggregate "$TMP_BASE/no-such-edges.txt" "$terr"
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 on a malformed territories file (caller error).
+case_jimpartition_aggregate_malformed_territories() {
+  local edges terr
+  edges=$(fixture agg_mt_edges.txt "$(printf 'EDGE\tsrc/a.go\tsrc/b.go\timports')")
+  terr=$(fixture agg_mt_terr.txt "$(printf 'GROUP\tcore\t../escape')")
+  run_jimpartition aggregate "$edges" "$terr"
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 when arguments are missing.
+case_jimpartition_aggregate_missing_args() {
+  local edges
+  edges=$(fixture agg_ma_edges.txt "$(printf 'EDGE\tsrc/a.go\tsrc/b.go\timports')")
+  run_jimpartition aggregate "$edges"
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
