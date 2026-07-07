@@ -3,7 +3,7 @@
 ## Summary
 
 - Open: 40
-- Closed: 22
+- Closed: 23
 
 ## Issues
 
@@ -40,7 +40,7 @@
 - `20260702-size-issue-slugs-at-derivation-not-truncation` — Derive appropriately sized issue slugs instead of relying on truncation · status: open · num: 29 · priority: low · created: 2026-07-02T07:25:25Z · labels: [issue-tracking, jimfile] · origin: conversation
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` — Surface targeted-update count since last full blueprint regen · status: closed · num: 27 · priority: low · created: 2026-07-02T07:00:12Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260702-tighten-update-guard-wording-and-checklist-gates` — Tighten update-guard wording and checklist gates · status: closed · num: 30 · priority: low · created: 2026-07-02T09:30:15Z · labels: [000-blueprint, fold-back] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
-- `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` — Build a bottom-up onboarding partitioner for existing codebases · status: open · num: 35 · priority: low · created: 2026-07-03T20:48:04Z · labels: [spec-groups, onboarding] · origin: docs/specs/jim/033-context-map/spec.md
+- `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` — Build a bottom-up onboarding partitioner for existing codebases · status: closed · num: 35 · priority: low · created: 2026-07-03T20:48:04Z · labels: [spec-groups, onboarding] · origin: docs/specs/jim/033-context-map/spec.md
 - `20260703-build-the-partition-migration-skill` — Build the partition migration skill · status: open · num: 34 · priority: medium · created: 2026-07-03T20:08:37Z · labels: [migration, spec-groups, 000-blueprint] · origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
 - `20260704-add-a-dedicated-test-for-the-pattern-count-parameter` — Add a dedicated test for the pattern count parameter · status: open · num: 47 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, test] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-add-a-mint-new-handoff-row-to-the-blueprint-routing-table` — Add a mint-new handoff row to the blueprint routing table · status: open · num: 37 · priority: low · created: 2026-07-04T00:22:58Z · labels: [blueprint, spec-groups] · origin: docs/specs/jim/033-context-map/review.md
@@ -69,6 +69,7 @@
 - `20260705-test-the-consumer-ref-abstain-on-absent-path-in-contracts-check` — Test the consumer-ref abstain-on-absent path in contracts-check · status: closed · num: 58 · priority: medium · created: 2026-07-05T22:44:11Z · labels: [verify, contract-graph, test] · origin: docs/specs/jim/037-verify-contracts/review.md
 - `20260705-untrusted-data-and-secret-redaction-gap-on-researcher-web-fetch-` — untrusted-data and secret-redaction gap on researcher web-fetch path · status: open · num: 53 · priority: critical · created: 2026-07-05T00:28:53Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-wire-the-group-territory-floor-strength-label-in-contract-mode` — Wire the group_territory floor-strength label in contract mode · status: open · num: 60 · priority: low · created: 2026-07-05T22:44:12Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/review.md
+- `20260707-compute-graph-health-metrics-in-the-reconcile-pass` — Compute graph-health metrics in the reconcile pass · status: open · num: 63 · priority: medium · created: 2026-07-07T03:07:44Z · labels: [000-blueprint, contract-graph, spec-groups] · origin: conversation
 
 ## Graph
 
@@ -90,8 +91,11 @@
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` --related-to--> `20260630-wire-the-000-blueprint-fold-back-loop-into-review`
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` --related-to--> `20260703-build-the-partition-migration-skill`
 - `20260703-build-the-partition-migration-skill` --depends-on--> `20260630-build-intelligence-for-context-aware-spec-group-definition`
+- `20260703-build-the-partition-migration-skill` --depends-on--> `20260707-compute-graph-health-metrics-in-the-reconcile-pass`
+- `20260703-build-the-partition-migration-skill` --related-to--> `20260704-derive-the-map-relations-column-from-the-contract-graph`
 - `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
 - `20260704-add-partition-health-sensors-split-merge-signals` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
+- `20260704-add-partition-health-sensors-split-merge-signals` --depends-on--> `20260707-compute-graph-health-metrics-in-the-reconcile-pass`
 - `20260704-add-partition-health-sensors-split-merge-signals` --related-to--> `20260703-build-the-partition-migration-skill`
 - `20260704-derive-the-map-relations-column-from-the-contract-graph` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
 - `20260704-fan-the-blueprint-update-into-every-affected-group` --related-to--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
@@ -99,6 +103,9 @@
 - `20260705-assert-edge-outcome-evidence-is-location-only-in-contracts-check` --related-to--> `20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin`
 - `20260705-guard-the-contracts-check-edge-loop-against-self-edges` --related-to--> `20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin`
 - `20260705-test-the-consumer-ref-abstain-on-absent-path-in-contracts-check` --related-to--> `20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin`
+- `20260707-compute-graph-health-metrics-in-the-reconcile-pass` --blocks--> `20260703-build-the-partition-migration-skill`
+- `20260707-compute-graph-health-metrics-in-the-reconcile-pass` --blocks--> `20260704-add-partition-health-sensors-split-merge-signals`
+- `20260707-compute-graph-health-metrics-in-the-reconcile-pass` --related-to--> `20260630-build-the-invariant-verification-engine`
 
 ## Integrity Warnings
 

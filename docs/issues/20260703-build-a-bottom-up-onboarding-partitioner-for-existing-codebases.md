@@ -2,7 +2,7 @@
 id: 20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases
 num: 35
 title: "Build a bottom-up onboarding partitioner for existing codebases"
-status: open
+status: closed
 priority: low
 labels: [spec-groups, onboarding]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-03T20:48:04Z
-updated: 2026-07-03T20:48:04Z
+updated: 2026-07-07T03:28:37Z
 origin: docs/specs/jim/033-context-map/spec.md
 ---
 
@@ -45,3 +45,13 @@ doctrine from spec 033 (issue #19).
 Speculative until real adoption demand appears — jim's current audience
 develops projects with jim from the start (greenfield multi-group). Filed as
 a trend marker for the adoption story.
+
+## Resolution (2026-07-07)
+
+Absorbed into [[20260703-build-the-partition-migration-skill]] (#34) as its
+`greenfield` entry mode. The 2026-07-06 dry-run (recorded in #34)
+exercised exactly this first-contact case — adoption demand did appear —
+and showed it
+shares the extract → propose → interview → materialize pipeline with
+re-partitioning: one skill, two entry modes. Closed without separate
+implementation.

@@ -7,11 +7,11 @@ priority: low
 labels: [000-blueprint, cross-group, spec-groups]
 relations:
   blocks: []
-  depends-on: [20260630-add-the-cross-group-contract-graph-and-blast-radius]
+  depends-on: [20260630-add-the-cross-group-contract-graph-and-blast-radius, 20260707-compute-graph-health-metrics-in-the-reconcile-pass]
   related-to: []
   duplicates: []
 created: 2026-07-04T08:08:24Z
-updated: 2026-07-04T08:08:24Z
+updated: 2026-07-07T03:28:37Z
 origin: docs/specs/jim/034-contract-graph/spec.md
 ---
 
@@ -54,3 +54,8 @@ home instead of a dangling pointer.
 [[20260630-add-the-cross-group-contract-graph-and-blast-radius]] (#21) —
 the graph, its finding classes, and the reconcile counters are the primary
 signal source; #22's verification failures enrich it later.
+
+[[20260707-compute-graph-health-metrics-in-the-reconcile-pass]] (#63) —
+supplies the mechanical graph-health metrics (edge density, cycles, fan-in,
+territory coverage) these sensors read as their trend line; added
+2026-07-07 from the partition-migration dry-run (recorded in #34).
