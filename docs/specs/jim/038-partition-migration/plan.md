@@ -520,7 +520,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] `deps_command_<name>` dynamic family in `jimconf.sh`: generalize
+1. [x] `deps_command_<name>` dynamic family in `jimconf.sh`: generalize
    `is_verify_dynamic_family` → `is_dynamic_family` (three globs; update the
    `cmd_get` call site), add the `deps_command_*` suffix-strip arm to the
    dynamic case in `resolve()`, header comment. Tests: configured value
@@ -528,20 +528,20 @@ flowchart TD
    resolves empty with no TOML read; bare `deps_command` stays unknown-key.
    **Verify:** `bash tests/jimconf.sh`
 
-2. [ ] Scaffold `tests/jimpartition.sh` (`bash skills/meta-test/scripts/metatest.sh
+2. [x] Scaffold `tests/jimpartition.sh` (`bash skills/meta-test/scripts/metatest.sh
    scaffold jimpartition`) and implement `jimpartition.sh coverage` (+ usage +
    preamble): territories-file parse with per-line validation, tracked-file
    set-difference, dirname aggregation, `TOTAL`; rc 2 on no-git/malformed.
    **Verify:** `bash tests/jimpartition.sh`
 
-3. [ ] `jimpartition.sh ingest`: channel-slug gate, per-line parse,
+3. [x] `jimpartition.sh ingest`: channel-slug gate, per-line parse,
    valid-relpath + tracked-endpoint gate (file or dir-with-tracked-files),
    dedup, `HYGIENE` reason counts. Hostile-path cases: absolute, `..`,
    tab/control bytes in fields, untracked endpoint, empty/garbage lines,
    invalid channel (security Finding 3).
    **Verify:** `bash tests/jimpartition.sh`
 
-4. [ ] `jimpartition.sh scan`: Go (go.mod module-prefix → package-dir edges),
+4. [x] `jimpartition.sh scan`: Go (go.mod module-prefix → package-dir edges),
    Python (dotted-module resolution), JS/TS (relative specifiers +
    extension/index resolution), Rust (`use crate::` + `mod` decls;
    cross-crate via workspace Cargo.toml package names with hyphen↔underscore
@@ -558,26 +558,26 @@ flowchart TD
    unmodeled-only repo + metacharacter-bearing go.mod and Cargo.toml.
    **Verify:** `bash tests/jimpartition.sh`
 
-5. [ ] `jimpartition.sh aggregate`: EDGE × territories join (slash-anchored
+5. [x] `jimpartition.sh aggregate`: EDGE × territories join (slash-anchored
    prefix), intra-group drop, `GEDGE` counts, `STRADDLE` facts (≥ 2
    distinct foreign consumer groups, owner-group attribution; a 1-foreign-
    consumer unit emits none — DD 14), `UNASSIGNED` aggregation;
    deterministic output order; malformed-input rc 2.
    **Verify:** `bash tests/jimpartition.sh`
 
-6. [ ] Blueprint `--retire <group>` arm: routing-table row, compact section
+6. [x] Blueprint `--retire <group>` arm: routing-table row, compact section
    (prompt-always, frontmatter + banner edit, `op=retire` finished event,
    `commit-blueprint update`), one validation-checklist line. Budget-check
    the file.
    **Verify:** `awk 'END{exit NR>500}' skills/blueprint/SKILL.md && grep -q -- '--retire' skills/blueprint/SKILL.md`
 
-7. [ ] `agents/gatherer.md`: read-only persona per the judge/investigator
+7. [x] `agents/gatherer.md`: read-only persona per the judge/investigator
    template — one group per dispatch, substrate-grounded evidence contract
    (DD 11), untrusted-content + redaction rules, fail-closed held/violated
    marking (sec Finding 9), "dispatched only by /jim:partition".
    **Verify:** `grep -q 'tools: \[Read, Glob, Grep\]' agents/gatherer.md`
 
-8. [ ] `skills/partition/SKILL.md`: frontmatter (`allowed-tools` naming every
+8. [x] `skills/partition/SKILL.md`: frontmatter (`allowed-tools` naming every
    script path + `Skill(jim:blueprint)` + `Agent(gatherer)`; registry
    commands deliberately undeclared), argument routing (DD 2), extract
    phase (registry + native + ingest + labels, timeout; degraded-first
@@ -591,7 +591,7 @@ flowchart TD
    `partition` label), validation checklist. ≤ 500 lines.
    **Verify:** `awk 'END{exit NR>500}' skills/partition/SKILL.md && grep -q 'partition finished' skills/partition/SKILL.md`
 
-9. [ ] `skills/partition/references/partition-methodology.md`: interview method
+9. [x] `skills/partition/references/partition-methodology.md`: interview method
    for the three forks (with the platform-heavy-partition guidance),
    coverage-label honesty rules ("derived from what ran"), proposal
    evidence format (edge counts + representative references per group),
@@ -606,13 +606,13 @@ flowchart TD
    reminder. ToC if > 300 lines.
    **Verify:** `test -f skills/partition/references/partition-methodology.md`
 
-10. [ ] Docs seams: `WORKFLOW.md` command-reference entry for
+10. [x] Docs seams: `WORKFLOW.md` command-reference entry for
     `/jim:partition`; `skills/issue/SKILL.md` § 7a seven → eight surfacing
     skills (adding `/jim:partition`); `jimconf.toml.example`
     `deps_command_<name>` block beside the verify registry.
     **Verify:** `grep -q 'jim:partition' WORKFLOW.md && grep -q 'jim:partition' skills/issue/SKILL.md && grep -q 'deps_command' jimconf.toml.example`
 
-11. [ ] Full-suite gate: aggregate runner green, and the
+11. [x] Full-suite gate: aggregate runner green, and the
     model-executes-registry boundary holds mechanically — `jimpartition.sh`
     never references the `deps_command` family (only `jimconf.sh`
     resolves it; only the model executes it).
