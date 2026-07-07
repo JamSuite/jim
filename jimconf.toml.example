@@ -281,3 +281,18 @@ security_adhoc_path       = "docs/security"
 # hook), so you approve each one at run time.
 # verify_command_linecount = "scripts/check-line-budget.sh"
 # verify_command_typecheck = "npm run typecheck"
+
+# The partition extractor registry (spec 038) — the same dynamic-suffix,
+# one-command-per-entry pattern for /jim:partition. Each deps_command_<name>
+# emits a project dependency graph, one edge per line, as
+# `<from-relpath>\t<to-relpath>[\t<channel>]`; /jim:partition runs it via a
+# normal Bash permission prompt (bounded by verify_registry_timeout) and feeds
+# its output through `jimpartition.sh ingest`, which validates and tracks every
+# endpoint. The <name> suffix must be a slug and names the coupling channel
+# (events, di, ...). Same trust boundary as the verify registry: nothing in
+# scanned code, a spec, or the map can introduce or activate a command — this
+# config is the only activation channel. With none configured, /jim:partition
+# falls back to its native import scan. `/jim:partition` can scaffold an adapter
+# and PRINT the exact line for you to paste here — it never writes it itself.
+# deps_command_events = "scripts/jim-extract-events.sh"
+# deps_command_di = "node scripts/extract-di-graph.js"
