@@ -8,3 +8,5 @@
 1783459617	2026-07-07T21:26:57Z	sec	started	
 1783459903	2026-07-07T21:31:43Z	sec	finished	
 1783460355	2026-07-07T21:39:15Z	plan	finished	
+1783462285	2026-07-07T22:11:25Z	review	started	
+1783462749	2026-07-07T22:19:09Z	review	finished	alignment=minor-drift;findings=2
