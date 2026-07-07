@@ -68,6 +68,25 @@ terr_file() {
   printf '%s' "$path"
 }
 
+# git_init <name> — create an empty git work tree under TMP_BASE/<name>; print
+#   the absolute repo dir. Companion to repo_add for scan fixtures that need
+#   real file content.
+git_init() {
+  local dir="$TMP_BASE/$1"
+  mkdir -p "$dir"
+  git -C "$dir" init -q
+  printf '%s' "$dir"
+}
+
+# repo_add <dir> <relpath> <content> — write <content> to <dir>/<relpath> and
+#   stage it (git ls-files then lists it — no commit needed).
+repo_add() {
+  local dir="$1" rel="$2" content="$3"
+  mkdir -p "$dir/$(dirname "$rel")"
+  printf '%s\n' "$content" > "$dir/$rel"
+  git -C "$dir" add "$rel"
+}
+
 # ─── Section: coverage cases (Task 2) ────────────────────────────────────────
 
 # AC #4: tracked files under no proposed territory are reported, dirname-
@@ -285,6 +304,78 @@ case_jimpartition_ingest_missing_channel_arg() {
   raw=$(fixture ing_noarg_raw.txt "$(printf 'pkg/a.go\tpkg/b.go')")
   run_jimpartition_in "$dir" ingest "$raw"
   assert_exit "rc" 2 "$RC"
+}
+
+# ─── Section: scan cases (Task 4) ────────────────────────────────────────────
+
+# rc 2 when scan runs outside a git work tree.
+case_jimpartition_scan_no_git() {
+  local dir
+  dir=$(empty_dir scan_nogit)
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC #3: a repo of only unmodeled source is labeled UNMODELED (by language),
+# emits no edges, and no CHANNEL — the honest degraded graph. Non-source files
+# (manifests, docs) are not counted.
+case_jimpartition_scan_unmodeled_only() {
+  local dir
+  dir=$(git_init scan_unmodeled)
+  repo_add "$dir" Foo.java 'class Foo {}'
+  repo_add "$dir" Bar.java 'class Bar {}'
+  repo_add "$dir" README.md '# docs'
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  assert_match "java unmodeled x2" '^UNMODELED'"$(printf '\t')"'java'"$(printf '\t')"'2$' "$OUT"
+  assert_eq "no edges" "0" "$(printf '%s\n' "$OUT" | grep -c '^EDGE' || true)"
+  assert_eq "no channel" "0" "$(printf '%s\n' "$OUT" | grep -c '^CHANNEL' || true)"
+  assert_eq "md not counted" "0" "$(printf '%s\n' "$OUT" | grep -c 'md' || true)"
+}
+
+# AC #2/#3: a mixed repo emits a CHANNEL for the modeled language and an
+# UNMODELED fact for the unmodeled source — both coverage signals present.
+case_jimpartition_scan_mixed() {
+  local dir
+  dir=$(git_init scan_mixed)
+  repo_add "$dir" go.mod "$(printf 'module example.com/m\n\ngo 1.21')"
+  repo_add "$dir" main.go "$(printf 'package main')"
+  repo_add "$dir" Extra.java 'class Extra {}'
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  assert_match "go channel scanned 1" '^CHANNEL'"$(printf '\t')"'imports'"$(printf '\t')"'go'"$(printf '\t')"'1$' "$OUT"
+  assert_match "java unmodeled 1" '^UNMODELED'"$(printf '\t')"'java'"$(printf '\t')"'1$' "$OUT"
+}
+
+# AC #2: Go internal imports (single and block form) resolve to package dirs;
+# external imports (fmt) are ignored. CHANNEL counts every scanned .go file.
+case_jimpartition_scan_go() {
+  local dir
+  dir=$(git_init scan_go)
+  repo_add "$dir" go.mod "$(printf 'module example.com/proj\n\ngo 1.21')"
+  repo_add "$dir" a/main.go "$(printf 'package main\nimport "example.com/proj/lib/foo"')"
+  repo_add "$dir" b/x.go "$(printf 'package b\n\nimport (\n\t"example.com/proj/lib/foo"\n\t"fmt"\n)')"
+  repo_add "$dir" lib/foo/foo.go 'package foo'
+  repo_add "$dir" lib/foo/bar.go 'package foo'
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\ta/main.go\tlib/foo\timports\nEDGE\tb/x.go\tlib/foo\timports\nCHANNEL\timports\tgo\t4')"
+  assert_eq "go edges + channel" "$expected" "$OUT"
+}
+
+# sec Finding 7: a go.mod module carrying regex metacharacters fails the charset
+# gate, so Go degrades to UNMODELED (no crash, no injected match, no edges).
+case_jimpartition_scan_go_metachar_module() {
+  local dir
+  dir=$(git_init scan_go_meta)
+  repo_add "$dir" go.mod "$(printf 'module example.com/pro*j\n\ngo 1.21')"
+  repo_add "$dir" main.go "$(printf 'package main\nimport "example.com/pro*j/lib/foo"')"
+  repo_add "$dir" lib/foo/foo.go 'package foo'
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no edges" "0" "$(printf '%s\n' "$OUT" | grep -c '^EDGE' || true)"
+  assert_match "go degraded to unmodeled" '^UNMODELED'"$(printf '\t')"'go'"$(printf '\t')" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

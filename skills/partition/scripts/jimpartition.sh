@@ -222,11 +222,161 @@ cmd_ingest() {
   return 0
 }
 
+# ─── Section: scan ───────────────────────────────────────────────────────────
+
+# classify_ext <ext> — for a known SOURCE extension print "<modeled|source> \t
+#   <lang>"; print nothing for a non-source extension (manifests, docs, config,
+#   assets are ignored, never counted as unmodeled source). The map is the
+#   single source of truth for "what counts as source" — UNMODELED never inflates
+#   with non-code files.
+classify_ext() {
+  case "$1" in
+    go)                    printf 'modeled\tgo' ;;
+    py)                    printf 'modeled\tpython' ;;
+    js|jsx|ts|tsx|mjs|cjs) printf 'modeled\tjs-ts' ;;
+    rs)                    printf 'modeled\trust' ;;
+    ex|exs)                printf 'modeled\telixir' ;;
+    java)                  printf 'source\tjava' ;;
+    rb)                    printf 'source\truby' ;;
+    c|h)                   printf 'source\tc' ;;
+    cc|cpp|cxx|hh|hpp|hxx) printf 'source\tcpp' ;;
+    cs)                    printf 'source\tcsharp' ;;
+    php)                   printf 'source\tphp' ;;
+    kt|kts)                printf 'source\tkotlin' ;;
+    swift)                 printf 'source\tswift' ;;
+    scala|sc)              printf 'source\tscala' ;;
+    clj|cljs|cljc)         printf 'source\tclojure' ;;
+    hs)                    printf 'source\thaskell' ;;
+    pl|pm)                 printf 'source\tperl' ;;
+    lua)                   printf 'source\tlua' ;;
+    dart)                  printf 'source\tdart' ;;
+    r)                     printf 'source\tr' ;;
+    *)                     : ;;
+  esac
+}
+
+# cmd_scan — native import scan over `git ls-files` in the CWD repo. Channels:
+#   imports only, per modeled language. Emits validated EDGE lines (both
+#   endpoints tracked by construction — the resolvers only target tracked files
+#   / package dirs), CHANNEL facts per language scanned, and UNMODELED facts for
+#   tracked source the baseline does not model (an honest, degraded graph — the
+#   coverage-label input, never a promise of channel completeness).
+cmd_scan() {
+  local gitfiles rc_git
+  gitfiles="$(git ls-files 2>/dev/null)"; rc_git=$?
+  if [[ $rc_git -ne 0 ]]; then
+    echo "jimpartition scan: not a git work tree" >&2; return 2
+  fi
+
+  # Tracked-file set + ancestor-directory set. HASDIR lets a resolver target a
+  # package directory (Go) or a crate src dir (Rust cross-crate) that contains
+  # tracked files. Both are local; the scan_* helpers read them via bash's
+  # dynamic scope (they are only ever called from here).
+  local -A TRACKED=() HASDIR=()
+  local -a GO_FILES=() PY_FILES=() JS_FILES=() RS_FILES=() EX_FILES=()
+  local -A UNMOD=()
+  local f d base ext cl kind lang
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    TRACKED["$f"]=1
+    d="$f"
+    while [[ "$d" == */* ]]; do d="${d%/*}"; HASDIR["$d"]=1; done
+    base="${f##*/}"
+    if [[ "$base" == *.* ]]; then ext="${base##*.}"; else ext=""; fi
+    cl="$(classify_ext "$ext")"
+    [[ -z "$cl" ]] && continue
+    kind="${cl%%$'\t'*}"; lang="${cl#*$'\t'}"
+    if [[ "$kind" == "modeled" ]]; then
+      case "$lang" in
+        go)     GO_FILES+=("$f") ;;
+        python) PY_FILES+=("$f") ;;
+        js-ts)  JS_FILES+=("$f") ;;
+        rust)   RS_FILES+=("$f") ;;
+        elixir) EX_FILES+=("$f") ;;
+      esac
+    else
+      UNMOD["$lang"]=$(( ${UNMOD["$lang"]:-0} + 1 ))
+    fi
+  done <<<"$gitfiles"
+
+  local edges="" channels="" out rc
+  # A modeled language whose manifest fails the charset gate (Finding 7) degrades
+  # to UNMODELED for that language — the scanner returns non-zero and emits no
+  # edges, so a poisoned manifest never injects a match.
+  if [[ ${#GO_FILES[@]} -gt 0 ]]; then
+    out="$(scan_go "${GO_FILES[@]}")"; rc=$?
+    if [[ $rc -eq 0 ]]; then
+      edges+="$out"$'\n'
+      channels+="$(printf 'CHANNEL\timports\tgo\t%d' "${#GO_FILES[@]}")"$'\n'
+    else
+      UNMOD["go"]=$(( ${UNMOD["go"]:-0} + ${#GO_FILES[@]} ))
+    fi
+  fi
+
+  # Emit EDGEs (deduped + sorted), then CHANNEL facts (sorted), then UNMODELED
+  # facts (sorted) — a deterministic, stable substrate.
+  if [[ -n "${edges//[$'\n']/}" ]]; then
+    printf '%s\n' "$edges" | grep -v '^$' | sort -u
+  fi
+  if [[ -n "${channels//[$'\n']/}" ]]; then
+    printf '%s\n' "$channels" | grep -v '^$' | sort
+  fi
+  local ul
+  while IFS= read -r ul; do
+    [[ -z "$ul" ]] && continue
+    printf 'UNMODELED\t%s\t%d\n' "$ul" "${UNMOD[$ul]}"
+  done < <(printf '%s\n' "${!UNMOD[@]}" | sort)
+  return 0
+}
+
+# go_imports <file> — emit one imported package path per line (single and block
+#   `import ( ... )` forms; the quoted path from each import line).
+go_imports() {
+  awk '
+    /^[[:space:]]*import[[:space:]]*\(/ { inb = 1; next }
+    inb && /^[[:space:]]*\)/            { inb = 0; next }
+    inb {
+      if (match($0, /"[^"]*"/)) print substr($0, RSTART + 1, RLENGTH - 2)
+      next
+    }
+    /^[[:space:]]*import[[:space:]]/ {
+      if (match($0, /"[^"]*"/)) print substr($0, RSTART + 1, RLENGTH - 2)
+    }
+  ' "$1"
+}
+
+# scan_go <go-file...> — resolve internal imports to package dirs. Reads ./go.mod
+#   for the module prefix, charset-gated before use (Finding 7): a Go module path
+#   is alnum + . _ - / ~ only; anything else (or a missing go.mod) degrades the
+#   whole language (return 1). The gated module is stripped as a LITERAL prefix
+#   (quoted parameter expansion), never interpolated into a pattern.
+scan_go() {
+  local module=""
+  if [[ -f go.mod ]]; then
+    module="$(grep -E '^[[:space:]]*module[[:space:]]+' go.mod 2>/dev/null | head -n1 \
+      | sed -E 's/^[[:space:]]*module[[:space:]]+//; s/[[:space:]]+$//')"
+  fi
+  if [[ -z "$module" || ! "$module" =~ ^[A-Za-z0-9][A-Za-z0-9._/~-]*$ ]]; then
+    return 1
+  fi
+  local f imp rel
+  for f in "$@"; do
+    while IFS= read -r imp; do
+      [[ -z "$imp" ]] && continue
+      rel="${imp#"$module"/}"
+      [[ "$rel" == "$imp" ]] && continue          # external import
+      [[ -n "${HASDIR[$rel]:-}" ]] && printf 'EDGE\t%s\t%s\timports\n' "$f" "$rel"
+    done < <(go_imports "$f")
+  done
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
   local sub="${1:-}"
   case "$sub" in
+    scan)      shift; cmd_scan "$@" ;;
     ingest)    shift; cmd_ingest "$@" ;;
     coverage)  shift; cmd_coverage "$@" ;;
     *)         usage; return 2 ;;
