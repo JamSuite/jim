@@ -2,7 +2,7 @@
 title: "Graph-health metrics in the reconcile pass"
 spec: "docs/specs/jim/039-graph-health/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Graph-health metrics in the reconcile pass — Plan
