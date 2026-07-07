@@ -116,8 +116,10 @@ mode and a stronger mechanical verification floor.
 - [ ] Invoked to upgrade the territory mode, the skill reports readiness —
       the remaining blocker issues and current conformance state — and only
       on a clean assessment plus explicit confirmation updates the
-      territory declarations and mode through the blueprint surface; it
-      never moves or edits application code, and a `directory`-mode gap is
+      territory declarations through the blueprint surface and sets
+      `group_territory` to the invocation's named target — the sole config
+      key this skill may write, to a developer-typed value only; it never
+      moves or edits application code, and a `directory`-mode gap is
       framed as "resolve these N issues first."
 - [ ] A migration run's durable record is the materialized artifacts, the
       filed issues, and start/finish ledger events carrying outcome
@@ -138,6 +140,20 @@ mode and a stronger mechanical verification floor.
       superseded group's `000-blueprint` as retired — pointing at the new
       map, through the blueprint surface — so exactly one partition
       authority exists after migration.
+- [ ] The proposal presented at the map gate includes straddle facts —
+      each territory unit whose extracted edges arrive from two or more
+      proposed groups other than its owner, named with its owner group —
+      so code serving multiple groups is surfaced for explicit assignment
+      judgment rather than silently listed under one group; a straddle is
+      gate evidence or an offered issue, never recorded in a map or
+      blueprint.
+- [ ] When the extraction coverage label names a material gap (an
+      unmodeled dominant language or coupling channel), the run offers
+      assisted extractor scaffolding — jim authors the adapter in the
+      project's own repo, validates its output against the edge
+      contract, and prints the registry configuration line — and a
+      scaffolded command is never activated except by the operator's own
+      configuration entry.
 
 ## Data Flow
 
@@ -254,7 +270,10 @@ point to evaluate, not a directive.*
       per language — which channels must the zero-config scan model before
       the degraded graph is honest enough to propose from? (Researcher to
       ground against real project shapes.)
-- [ ] Skill verb name — leaning `/jim:migrate`; settle at plan time.
+- [x] ~Skill verb name — leaning `/jim:migrate`; settle at plan time.~ →
+      `/jim:partition`, with direct-named territory-target tokens
+      (`path`|`directory`) in place of a movement-verb mode; settled at
+      plan review 2026-07-07 (plan DD 1/2).
 - [x] ~Migration-report artifact or issues-only?~ → No report artifact;
       run-time report + issues + ledger counters (034/035 doctrine).
 - [x] ~What materializes in the blocked terminal state?~ → Nothing;
