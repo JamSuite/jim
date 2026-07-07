@@ -382,7 +382,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root>
   diff, and grade each change by the Step-4a shared rule at the map tier
   (methodology § Update flow): additive changes may write unattended under
   `auto_blueprint = "true"`; any downgrade (dropped group, severed relation,
-  shrunk territory) always prompts per-item. Use Edit, not Write.
+  shrunk territory) always prompts per-item — present each per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`). Use Edit, not Write.
 
 Territory entries (mode-dependent) are validated per path via
 `jimfile.sh valid-relpath` before being recorded — a rejected path is never

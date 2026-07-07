@@ -77,7 +77,8 @@ tier:
 - **Downgrade** — dropping a group, severing a relation, shrinking
   territory, weakening a boundary rationale. Always prompts per-item, even
   under `auto_blueprint`; partition downgrades are boundary-class by
-  definition.
+  definition. Present each downgrade per the gate-presentation rule
+  (`skills/blueprint/references/gate-presentation.md`).
 
 **Engine-enriched downgrade (spec 037).** When a downgrade drops or weakens a
 group the persisted (pre-write) `## Contract Graph` names as a **provider**, name

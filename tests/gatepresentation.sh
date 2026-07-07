@@ -38,11 +38,11 @@ token_count() {
 case_gatepresentation_sites_reference_rule() {
   # "<repo-relative file>\t<minimum expected count>"
   local rows=(
-    "skills/blueprint/SKILL.md	6"
+    "skills/blueprint/SKILL.md	7"
     "skills/blueprint/references/fork-grounding.md	1"
     "skills/blueprint/references/reconcile-methodology.md	1"
-    "skills/blueprint/references/map-methodology.md	1"
-    "skills/partition/SKILL.md	1"
+    "skills/blueprint/references/map-methodology.md	2"
+    "skills/partition/SKILL.md	2"
     "skills/meta-skill/SKILL.md	1"
     "skills/meta-agent/SKILL.md	1"
   )
