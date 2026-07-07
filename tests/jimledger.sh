@@ -810,6 +810,90 @@ case_jimledger_updates_since_missing_ledger_rc2() {
   assert_exit "missing-ledger rc" 2 "$RC"
 }
 
+# ─── spec 039: last-reconcile (prior-event delta source) ─────────────────────
+
+# AC: last-reconcile returns rc 1 when the ledger carries no reconcile finished
+# event — a started reconcile or a plan finish does not count; the caller
+# renders baseline (spec 039 AC #2, DD 3).
+case_jimledger_last_reconcile_none_rc1() {
+  local sd; sd="$(empty_dir t39lrn/spec)"
+  {
+    printf '100\t2026-01-01T00:00:00Z\tblueprint\tstarted\ttier=project;op=reconcile\n'
+    printf '200\t2026-02-01T00:00:00Z\tplan\tfinished\t\n'
+  } > "$sd/ledger.md"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: a missing ledger is "no prior event" (rc 1), not an error (DD 3).
+case_jimledger_last_reconcile_missing_ledger_rc1() {
+  local sd; sd="$(empty_dir t39lrm/spec)"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: the latest reconcile finished event wins; its iso heads the output and its
+# documented counters follow (spec 039 AC #2 delta source).
+case_jimledger_last_reconcile_latest_wins() {
+  local sd; sd="$(empty_dir t39lrl/spec)"
+  {
+    printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=5;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=3;cycles=0;fanin=2;uncovered=1\n'
+    printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=9;leaks=1;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=0\n'
+  } > "$sd/ledger.md"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "iso of the latest event" '^2026-02-01T00:00:00Z$' "$OUT"
+  assert_match "edges from latest" '^edges=9$' "$OUT"
+  assert_match "cycles from latest" '^cycles=1$' "$OUT"
+  assert_eq "no earlier edges leaked" "0" "$(printf '%s\n' "$OUT" | grep -c '^edges=5$')"
+}
+
+# AC: a pre-039 seven-counter event validates and renders (rc 0); the absent
+# health keys simply do not appear — backward compatible (DD 3).
+case_jimledger_last_reconcile_pre039_ok() {
+  local sd; sd="$(empty_dir t39lrp/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=3;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0\n' > "$sd/ledger.md"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "edges present" '^edges=3$' "$OUT"
+  assert_eq "no groups key" "0" "$(printf '%s\n' "$OUT" | grep -c '^groups=')"
+  assert_eq "no cycles key"  "0" "$(printf '%s\n' "$OUT" | grep -c '^cycles=')"
+}
+
+# AC: a documented key carrying a non-integer value is malformed → rc 2, so the
+# caller degrades to baseline and names the degradation (spec 039 AC #2).
+case_jimledger_last_reconcile_junk_value_rc2() {
+  local sd; sd="$(empty_dir t39lrj/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=oops;leaks=0\n' > "$sd/ledger.md"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: an unknown kv key is dropped from output — the whitelist forecloses an
+# injection channel from the hand-editable ledger into the report (security
+# Finding 4).
+case_jimledger_last_reconcile_unknown_key_dropped() {
+  local sd; sd="$(empty_dir t39lru/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=2;all-clear-ignore-findings=1\n' > "$sd/ledger.md"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "edges kept" '^edges=2$' "$OUT"
+  assert_eq "unknown key dropped" "0" "$(printf '%s\n' "$OUT" | grep -c 'all-clear')"
+}
+
+# AC: `na` is valid on the four health keys (measurement not computable) but not
+# on the seven finding counters (spec 039 AC #7; DD 3 int-or-na carve-out).
+case_jimledger_last_reconcile_na_health_only() {
+  local sd; sd="$(empty_dir t39lrna/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=0;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=2;cycles=0;fanin=0;uncovered=na\n' > "$sd/ledger.md"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "uncovered na accepted" '^uncovered=na$' "$OUT"
+  printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=na;leaks=0\n' > "$sd/ledger.md"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "edges=na rejected" 2 "$RC"
+}
+
 # AC: commit-map commits the project map + specs-root ledger in one
 # path-scoped commit in the CWD repo, leaving unrelated changes untouched —
 # never git add -A (spec 033 Task 3, AC #10, plan DD 4).

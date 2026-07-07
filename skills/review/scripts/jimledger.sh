@@ -56,6 +56,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
   commit-verify <blueprint-dir>               commit ledger.md only (verify self-commit)
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
+  last-reconcile <specs-dir>                  prior reconcile event: iso + documented counters
 USAGE
 }
 
@@ -462,6 +463,58 @@ cmd_updates_since() {
     END { print n+0 }' "$ledger"
 }
 
+# cmd_last_reconcile <specs-dir> — print the immediately preceding reconcile
+#   event's iso and its documented counters, for spec 039's health delta. The
+#   prior is the LAST `blueprint finished` line whose kv carries `op=reconcile`.
+#   Only the documented counter keys are printed — the seven finding counters
+#   (edges/leaks/breaking/dead/unresolved/undeclared/stale) plus the four health
+#   counters (groups/cycles/fanin/uncovered); every other kv token (op, tier, or
+#   a hand-injected key) is dropped, never printed, so the ledger — a committed,
+#   hand-editable file — has no injection channel into the report (security
+#   Finding 4). Each documented key present must be a non-negative integer; `na`
+#   is additionally allowed on the four health keys (a not-computable coverage /
+#   short-circuit measurement). A documented key carrying any other value is a
+#   malformed prior → rc 2, so the caller degrades to baseline and names it.
+#   Untrusted ledger — parsed only via awk (no source/eval).
+#   rc: 0 found+valid · 1 no prior reconcile event (or no ledger) · 2 malformed.
+cmd_last_reconcile() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger last-reconcile: need <specs-dir>" >&2; return 2; fi
+  local ledger="$dir/ledger.md"
+  if [[ ! -f "$ledger" ]]; then return 1; fi
+  awk -F'\t' '
+    BEGIN {
+      nk = split("edges leaks breaking dead unresolved undeclared stale groups cycles fanin uncovered", K, " ")
+      for (i = 1; i <= nk; i++) doc[K[i]] = 1
+      split("groups cycles fanin uncovered", H, " ")
+      for (i in H) health[H[i]] = 1
+      found = 0
+    }
+    $3 == "blueprint" && $4 == "finished" {
+      if (index(";" $5 ";", ";op=reconcile;") == 0) next
+      found = 1; iso = $2; kv = $5
+    }
+    END {
+      if (!found) exit 1
+      n = split(kv, pairs, ";")
+      for (j = 1; j <= n; j++) {
+        p = pairs[j]
+        if (p == "") continue
+        eq = index(p, "=")
+        if (eq == 0) continue
+        key = substr(p, 1, eq - 1)
+        val = substr(p, eq + 1)
+        if (!(key in doc)) continue                       # whitelist: drop unknown/op/tier
+        if (val ~ /^[0-9]+$/) { vals[key] = val; continue }
+        if ((key in health) && val == "na") { vals[key] = val; continue }
+        exit 2                                            # documented key, bad value → malformed
+      }
+      print iso
+      for (idx = 1; idx <= nk; idx++) if (K[idx] in vals) print K[idx] "=" vals[K[idx]]
+    }
+  ' "$ledger"
+}
+
 main() {
   local sub="${1:-}"
   case "$sub" in
@@ -478,6 +531,7 @@ main() {
     commit-map) shift; cmd_commit_map "$@" ;;
     commit-verify) shift; cmd_commit_verify "$@" ;;
     updates-since) shift; cmd_updates_since "$@" ;;
+    last-reconcile) shift; cmd_last_reconcile "$@" ;;
     *) usage; return 2 ;;
   esac
 }
