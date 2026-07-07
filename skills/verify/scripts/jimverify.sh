@@ -118,6 +118,7 @@ usage: jimverify.sh <subcommand> [args]
   faces     <blueprint-spec.md>              provides/requires + contract-checks → TSV
   edges     <map-path>                        persisted Contract Graph → consumer/relies-on/provider
   contracts-check <map-path> <specs-root> [files-list]  cross-group floor: CROSS-REF facts + edge outcomes
+  health    <map-path>                        graph-quality metrics: groups/edges/cycles/fan-in/coverage
 USAGE
 }
 
@@ -836,6 +837,92 @@ cmd_contracts_check() {
   return 0
 }
 
+# ─── Section: health — graph-quality metrics (spec 039) ──────────────────────
+
+# cmd_health <map-path> — emit deterministic partition-quality measurements over
+#   the just-persisted `## Contract Graph` plus territory coverage. Facts are
+#   TAB-separated and san()-sanitized; group names arrive already slug-validated
+#   from cmd_edges, so a crafted cell is HYGIENE-excluded upstream and can never
+#   shift columns or smuggle a node. Measurement-only: no verdicts, thresholds,
+#   or pass/fail wording — the skill frames, downstream sensors judge (spec 034
+#   no-standing-verdict doctrine). rc 2 when the map is unreadable or carries no
+#   `## Contract Graph` section (the caller names the degradation, mirroring the
+#   edges verb).
+cmd_health() {
+  local map="${1:-}"
+  if [[ -z "$map" ]]; then echo "jimverify health: need <map-path>" >&2; return 2; fi
+  if [[ ! -f "$map" ]]; then echo "jimverify health: map not found: $map" >&2; return 2; fi
+  if ! awk '/^##[ \t]+Contract Graph[ \t]*$/ { f = 1 } END { exit(f ? 0 : 1) }' "$map"; then
+    echo "jimverify health: no Contract Graph section: $map" >&2; return 2
+  fi
+  # GROUPS — mapped groups under `## Groups` (the coverage/density denominator).
+  printf 'GROUPS\t%s\n' "$(groups_of "$map" | grep -c . || true)"
+  # Graph metrics from the valid (non-HYGIENE) edge rows. cmd_edges already
+  # slug-validates and sanitizes consumer/provider, so the nodes fed here are
+  # inert; the awk dedupes edges, walks the directed graph for cycle clusters
+  # (Kahn peel of sources/sinks → weakly-connected components of the cyclic
+  # core, DD 2), and reports max provider in-degree with every tied group named.
+  cmd_edges "$map" 2>/dev/null | awk -F'\t' '
+    function san(x) { gsub(/\t/, " ", x); gsub(/\r/, "", x); if (length(x) > 512) x = substr(x, 1, 512); return x }
+    $1 == "HYGIENE" { next }
+    {
+      c = $1; p = $3
+      rows++
+      ek = c SUBSEP p
+      if (!(ek in eseen)) {
+        eseen[ek] = 1
+        m++; EU[m] = c; EV[m] = p
+        nodes[c] = 1; nodes[p] = 1
+      }
+    }
+    END {
+      print "EDGES\t" rows + 0
+
+      # Cycle clusters: iteratively peel nodes with in- or out-degree 0 in the
+      # remaining subgraph; the survivors are exactly the on-cycle nodes. Their
+      # weakly-connected components (union-find over the alive undirected edges)
+      # are the clusters. Deterministic — cluster ids assigned in sorted-node
+      # order, output sorted.
+      for (nd in nodes) alive[nd] = 1
+      changed = 1
+      while (changed) {
+        changed = 0
+        for (nd in nodes) { ind[nd] = 0; outd[nd] = 0 }
+        for (i = 1; i <= m; i++) if (alive[EU[i]] && alive[EV[i]]) { outd[EU[i]]++; ind[EV[i]]++ }
+        for (nd in nodes) if (alive[nd] && (ind[nd] == 0 || outd[nd] == 0)) { alive[nd] = 0; changed = 1 }
+      }
+      for (nd in nodes) if (alive[nd]) parent[nd] = nd
+      for (i = 1; i <= m; i++) if (alive[EU[i]] && alive[EV[i]]) union(EU[i], EV[i])
+      na = 0
+      for (nd in nodes) if (alive[nd]) { na++; AN[na] = nd }
+      isort(AN, na)
+      cid = 0
+      for (i = 1; i <= na; i++) { r = find(AN[i]); if (!(r in clab)) { cid++; clab[r] = cid } }
+      print "CYCLES\t" cid + 0
+      for (i = 1; i <= na; i++) print "CYCLE\t" clab[find(AN[i])] "\t" san(AN[i])
+
+      # Fan-in: max provider in-degree over deduped edges; name every group at
+      # the max, sorted (ties → all).
+      for (i = 1; i <= m; i++) indeg[EV[i]]++
+      maxf = 0
+      for (nd in nodes) { d = (nd in indeg) ? indeg[nd] : 0; if (d > maxf) maxf = d }
+      print "FANIN\t" maxf + 0
+      if (maxf > 0) {
+        k = 0
+        for (nd in nodes) if ((nd in indeg) && indeg[nd] == maxf) { k++; FG[k] = nd }
+        isort(FG, k)
+        for (i = 1; i <= k; i++) print "FANIN_GROUP\t" san(FG[i])
+      }
+    }
+    function find(x) { while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x] } return x }
+    function union(a, b,   ra, rb) { ra = find(a); rb = find(b); if (ra != rb) parent[rb] = ra }
+    function isort(arr, n,   i, j, key) {
+      for (i = 2; i <= n; i++) { key = arr[i]; j = i - 1; while (j >= 1 && arr[j] > key) { arr[j+1] = arr[j]; j-- } arr[j+1] = key }
+    }
+  '
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -847,6 +934,7 @@ main() {
     faces)           shift; cmd_faces "$@" ;;
     edges)           shift; cmd_edges "$@" ;;
     contracts-check) shift; cmd_contracts_check "$@" ;;
+    health)          shift; cmd_health "$@" ;;
     *) usage; return 2 ;;
   esac
 }

@@ -923,6 +923,169 @@ case_jimverify_contracts_missing_args_exits_2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── Section: health — graph metrics (spec 039 Task 1) ───────────────────────
+
+# hmap <name> <groups> <rows> — build a project map with a `## Groups` section
+#   (one `### <g>` per whitespace token in <groups>) and a `## Contract Graph`
+#   whose table body is <rows> (literal `| … |` lines). Echo the map path.
+hmap() {
+  local name="$1" groups="$2" rows="$3" g body=""
+  for g in $groups; do body="$body### $g
+"; done
+  fixture "$name" "# Blueprint — acme
+
+## Groups
+
+$body
+## Contract Graph
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+$rows"
+}
+
+# hcycle <group> — echo the cluster index of <group>'s CYCLE line (empty if the
+#   group is on no cycle).
+hcycle() {
+  printf '%s\n' "$OUT" | awk -F'\t' -v g="$1" '$1=="CYCLE" && $3==g {print $2; exit}'
+}
+
+# AC: health emits GROUPS/EDGES/FANIN and CYCLES 0 over an acyclic graph
+# (spec 039 AC #1, interface contract; Kahn peel leaves no cyclic core).
+case_jimverify_health_acyclic() {
+  local m
+  m=$(hmap m-acyclic.md "accounts billing catalog orders" '| billing | x | accounts |
+| orders | y | catalog |')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "groups" "4" "$(tsv_field GROUPS 2)"
+  assert_eq "edges"  "2" "$(tsv_field EDGES 2)"
+  assert_eq "cycles" "0" "$(tsv_field CYCLES 2)"
+  assert_eq "fanin"  "1" "$(tsv_field FANIN 2)"
+  assert_eq "no CYCLE lines" "" "$(printf '%s\n' "$OUT" | grep '^CYCLE	' || true)"
+}
+
+# AC: a mutual pair (billing ⇄ orders) is one cycle cluster; both groups are
+# named under the same cluster index (spec 039 AC #1; DD 2 mockup semantics).
+case_jimverify_health_mutual_pair() {
+  local m
+  m=$(hmap m-mutual.md "billing orders" '| billing | x | orders |
+| orders | y | billing |')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "cycles" "1" "$(tsv_field CYCLES 2)"
+  assert_nonempty "billing on a cycle" "$(hcycle billing)"
+  assert_eq "billing and orders share a cluster" "$(hcycle billing)" "$(hcycle orders)"
+}
+
+# AC: two disjoint mutual pairs are two clusters, each self-contained (DD 2 WCC).
+case_jimverify_health_two_disjoint_cycles() {
+  local m
+  m=$(hmap m-disjoint.md "billing orders catalog shipping" '| billing | x | orders |
+| orders | y | billing |
+| catalog | z | shipping |
+| shipping | w | catalog |')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "cycles" "2" "$(tsv_field CYCLES 2)"
+  assert_eq "billing/orders together" "$(hcycle billing)" "$(hcycle orders)"
+  assert_eq "catalog/shipping together" "$(hcycle catalog)" "$(hcycle shipping)"
+  local a b; a="$(hcycle billing)"; b="$(hcycle catalog)"
+  assert_eq "the two clusters differ" "1" "$([ "$a" != "$b" ] && echo 1 || echo 0)"
+}
+
+# AC: two cycles sharing a node collapse into one cluster (DD 2 WCC over the
+# cyclic core — a shared-node tangle reads as one degradation unit).
+case_jimverify_health_shared_node_tangle() {
+  local m
+  m=$(hmap m-tangle.md "billing orders catalog" '| billing | x | orders |
+| orders | y | billing |
+| orders | z | catalog |
+| catalog | w | orders |')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "cycles" "1" "$(tsv_field CYCLES 2)"
+  assert_eq "orders is the max fan-in" "2" "$(tsv_field FANIN 2)"
+  assert_match "orders named at max fan-in" '^FANIN_GROUP	orders$' "$OUT"
+}
+
+# AC: on a fan-in tie every group at the max is named, sorted (interface
+# contract: ties → all, sorted).
+case_jimverify_health_fanin_ties_sorted() {
+  local m
+  m=$(hmap m-fanin.md "acct cat alpha bravo charlie delta" '| alpha | x | acct |
+| bravo | y | acct |
+| charlie | z | cat |
+| delta | w | cat |')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "fanin" "2" "$(tsv_field FANIN 2)"
+  assert_eq "both maxed groups, sorted" "acct
+cat" "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="FANIN_GROUP"{print $2}')"
+}
+
+# AC: a present-but-empty graph (nothing-to-reconcile note, no rows) yields
+# zero-valued metrics without error — EDGES/CYCLES/FANIN all 0 (spec 039 AC #1).
+case_jimverify_health_empty_graph() {
+  local m
+  m=$(fixture m-empty.md '# Blueprint — acme
+
+## Groups
+
+### accounts
+
+## Contract Graph
+
+*Nothing to reconcile — fewer than two groups have blueprints.*
+')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "edges"  "0" "$(tsv_field EDGES 2)"
+  assert_eq "cycles" "0" "$(tsv_field CYCLES 2)"
+  assert_eq "fanin"  "0" "$(tsv_field FANIN 2)"
+}
+
+# AC: a map with no `## Contract Graph` section exits 2 — the caller names the
+# degradation (mirrors the edges verb; interface contract rc 2).
+case_jimverify_health_no_section_exits_2() {
+  local m
+  m=$(fixture m-nograph.md '# Blueprint — acme
+
+## Groups
+
+### accounts
+')
+  run_jimverify health "$m"
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: a crafted (non-slug) consumer/provider cell is HYGIENE-excluded upstream,
+# so it never counts as an edge or appears as a group in the metrics (spec 039
+# AC #5, the edges-verb slug gate carried into health).
+case_jimverify_health_crafted_cell_excluded() {
+  local m
+  m=$(hmap m-crafted.md "billing accounts orders catalog" '| ../evil | x | accounts |
+| billing | y | accounts |
+| orders | z | catalog |')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "edges count valid rows only" "2" "$(tsv_field EDGES 2)"
+  assert_eq "crafted cell never a group" "" "$(printf '%s\n' "$OUT" | grep '\.\./evil' || true)"
+}
+
+# AC: measurements are deterministic — re-running over an unchanged map produces
+# byte-identical output (spec 039 AC #9).
+case_jimverify_health_deterministic() {
+  local m first
+  m=$(hmap m-determ.md "billing orders catalog" '| billing | x | orders |
+| orders | y | billing |
+| orders | z | catalog |
+| catalog | w | orders |')
+  run_jimverify health "$m"; first="$OUT"
+  run_jimverify health "$m"
+  assert_eq "identical across runs" "$first" "$OUT"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.
