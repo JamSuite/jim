@@ -23,9 +23,11 @@
 #
 #   All output is TAB-separated and field-sanitized (control-stripped,
 #   length-capped). Emitted / declared paths pass the valid-relpath boundary
-#   before use; this script NEVER resolves or executes a deps_command_<name>
-#   value — the operator's config activates extractor commands and the model
-#   runs them via the Bash tool (the spec 035 registry trust boundary).
+#   before use; this script NEVER resolves or executes an operator extractor
+#   command — the operator's config activates those commands (through
+#   jimconf.sh) and the model runs them via the Bash tool (the spec 035
+#   registry trust boundary). The extractor-registry family name appears
+#   nowhere in this script by design.
 #
 # EXIT CODES
 #   0  Success (HYGIENE / UNCOVERED counts may be > 0 — a report, not an error).
@@ -162,8 +164,8 @@ cmd_coverage() {
 #   caller-written territories-file a bad line is never fatal: it is counted and
 #   dropped (the ingest choke point, security Finding 3).
 #
-#   Raw line: <from-relpath> \t <to-relpath> [\t <channel>]   (the deps_command
-#   output contract; a per-edge 3rd field overrides the CLI <channel>).
+#   Raw line: <from-relpath> \t <to-relpath> [\t <channel>]   (the operator
+#   extractor output contract; a per-edge 3rd field overrides the CLI <channel>).
 #   Endpoint gate: valid-relpath (shape) AND tracked (a tracked file, or a
 #   directory containing tracked files — Go edges are package dirs). Both
 #   endpoints must pass or the whole edge is dropped.
