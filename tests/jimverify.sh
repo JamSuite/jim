@@ -1086,6 +1086,111 @@ case_jimverify_health_deterministic() {
   assert_eq "identical across runs" "$first" "$OUT"
 }
 
+# ─── Section: health — territory coverage (spec 039 Task 2) ──────────────────
+
+# health_git <name> — build a git repo whose only tracked files are
+#   accounts/session.js and billing/invoice.js. Echo the repo root. The map is
+#   read from disk (never git), so leaving BLUEPRINT.md untracked keeps the
+#   coverage set to exactly the code files a test declares.
+health_git() {
+  local name="$1"
+  local root="$TMP_BASE/$name"
+  mkdir -p "$root/accounts" "$root/billing"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+  printf 'code\n' > "$root/accounts/session.js"
+  printf 'code\n' > "$root/billing/invoice.js"
+  git -C "$root" add accounts billing
+  git -C "$root" commit -q -m "seed"
+  printf '%s' "$root"
+}
+
+# hmap_territory <root> — write an untracked BLUEPRINT.md declaring accounts/
+#   and billing/ territories plus a one-edge Contract Graph.
+hmap_territory() {
+  cat > "$1/BLUEPRINT.md" <<'EOF'
+# Blueprint — shop
+
+## Groups
+
+### accounts
+
+- **Territory:** `accounts/`
+
+### billing
+
+- **Territory:** `billing/`
+
+## Contract Graph
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| billing | identity | accounts |
+EOF
+}
+
+# AC: coverage is 0 when every tracked file falls under a declared territory —
+# the conformance set-difference, unioned across groups, is empty (spec 039 AC #6).
+case_jimverify_health_coverage_zero() {
+  local root; root="$(health_git t2cz)"; hmap_territory "$root"
+  run_jimverify_in "$root" health BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no uncovered paths" "0" "$(tsv_field UNCOVERED 2)"
+}
+
+# AC: a tracked file under no territory is uncovered — the event carries the
+# exact count and the report gets a row aggregated by its containing directory
+# (spec 039 AC #6, DD 5).
+case_jimverify_health_coverage_stray() {
+  local root; root="$(health_git t2cs)"; hmap_territory "$root"
+  mkdir -p "$root/src/metrics"
+  printf 'm\n' > "$root/src/metrics/foo.js"
+  git -C "$root" add src && git -C "$root" commit -q -m "stray"
+  run_jimverify_in "$root" health BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "one uncovered path" "1" "$(tsv_field UNCOVERED 2)"
+  assert_match "dir row by containing dir" '^UNCOVERED_DIR	src/metrics/	1$' "$OUT"
+}
+
+# AC: a map with no path-bearing territory reports coverage as not computable —
+# na with an explicit reason, never "0 uncovered" (spec 039 AC #7, DD 5).
+case_jimverify_health_coverage_no_territories() {
+  local root; root="$(health_git t2nt)"
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+# Blueprint — shop
+
+## Groups
+
+### accounts
+
+### billing
+
+## Contract Graph
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| billing | identity | accounts |
+EOF
+  run_jimverify_in "$root" health BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "coverage na" "na" "$(tsv_field UNCOVERED 2)"
+  assert_match "reason no-territories" '^UNCOVERED_NA_REASON	no-territories$' "$OUT"
+}
+
+# AC: outside a git repo, coverage is na with reason no-git — a broken
+# environment never silently reads as none-mode (security Finding 5, the 035
+# vocabulary doctrine keeping not-applicable distinct from measurement failure).
+case_jimverify_health_coverage_no_git() {
+  local dir; dir="$(empty_dir t2ng)"
+  hmap_territory "$dir"
+  run_jimverify_in "$dir" health BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "coverage na" "na" "$(tsv_field UNCOVERED 2)"
+  assert_match "reason no-git" '^UNCOVERED_NA_REASON	no-git$' "$OUT"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.

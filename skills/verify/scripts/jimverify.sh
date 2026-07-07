@@ -920,6 +920,59 @@ cmd_health() {
       for (i = 2; i <= n; i++) { key = arr[i]; j = i - 1; while (j >= 1 && arr[j] > key) { arr[j+1] = arr[j]; j-- } arr[j+1] = key }
     }
   '
+  # Coverage — tracked source paths owned by no group's territory. Union the
+  # validated territory paths across all groups (the conformance set-difference,
+  # unioned). No path-bearing territory at all → not computable (no-territories);
+  # a non-git tree → not computable (no-git). `na` never reads as "0 uncovered"
+  # (AC #7); the reason keeps not-applicable distinct from measurement failure
+  # (security Finding 5, the 035 vocabulary doctrine).
+  local -a terr=()
+  local g tline
+  while IFS= read -r g; do
+    [[ -z "$g" ]] && continue
+    while IFS= read -r tline; do
+      [[ -n "$tline" ]] && terr+=("$tline")
+    done < <(terr_of "$map" "$g")
+  done < <(groups_of "$map")
+  if [[ ${#terr[@]} -eq 0 ]]; then
+    printf 'UNCOVERED\tna\n'
+    printf 'UNCOVERED_NA_REASON\tno-territories\n'
+    return 0
+  fi
+  local gitfiles rc_git
+  gitfiles="$(git ls-files 2>/dev/null)"; rc_git=$?
+  if [[ $rc_git -ne 0 ]]; then
+    printf 'UNCOVERED\tna\n'
+    printf 'UNCOVERED_NA_REASON\tno-git\n'
+    return 0
+  fi
+  # Set-difference + aggregate by containing directory. Untrusted working-tree
+  # filenames are control-stripped and length-capped, and the rendered list is
+  # aggregated (the skill further caps it) so alarm fatigue stays bounded
+  # (security Finding 1). Territory prefixes are fed tagged; tracked files are
+  # the untagged single-field lines (git never emits a tab inside a path).
+  {
+    printf 'T\t%s\n' "${terr[@]}"
+    printf '%s\n' "$gitfiles"
+  } | awk -F'\t' '
+    function san(x) { gsub(/[[:cntrl:]]/, "", x); if (length(x) > 512) x = substr(x, 1, 512); return x }
+    NF >= 2 && $1 == "T" { t = $2; sub(/\/+$/, "", t); pref[t "/"] = 1; next }
+    {
+      f = $0
+      if (f == "") next
+      for (p in pref) if (index(f "/", p) == 1) next    # under a territory → covered
+      total++
+      d = f
+      if (index(d, "/") > 0) { sub(/\/[^/]*$/, "", d); d = d "/" } else d = "./"
+      if (!(d in dc)) { nd++; DN[nd] = d }
+      dc[d]++
+    }
+    END {
+      print "UNCOVERED\t" total + 0
+      for (i = 2; i <= nd; i++) { key = DN[i]; j = i - 1; while (j >= 1 && DN[j] > key) { DN[j+1] = DN[j]; j-- } DN[j+1] = key }
+      for (i = 1; i <= nd; i++) print "UNCOVERED_DIR\t" san(DN[i]) "\t" dc[DN[i]]
+    }
+  '
   return 0
 }
 
