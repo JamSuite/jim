@@ -13,7 +13,7 @@ description: >
   for a single work spec (/jim:spec), project-wide architecture (/jim:arch),
   or implementation (/jim:build).
 agent: architect
-argument-hint: "[--from-review <spec-dir> | --since <ref>] [group] | --reconcile"
+argument-hint: "[--from-review <spec-dir> | --since <ref> | --retire] [group] | --reconcile"
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Skill(jim:verify) Agent(judge) Read Write Edit Glob Grep
 ---
 
@@ -36,6 +36,7 @@ Mirroring `/jim:review`'s `--depth` convention, strip a recognized flag from
 | `--from-review <spec-dir> <group>` | **Update mode:** targeted diff from the review's build diff + shape-validated verdict (§ Update mode). |
 | `--since <ref> <group>` | **Update mode:** targeted diff from the `<ref>..HEAD` range, no verdict (§ Update mode). |
 | `--reconcile` | **Reconcile:** derive the cross-group contract graph on demand — no group remainder (§ Reconcile). |
+| `--retire <group>` | **Retire mode:** mark a superseded group's `000-blueprint` retired, pointing at the map (§ Retire mode). |
 
 ## Process
 
@@ -444,6 +445,25 @@ and per-mode commit choreography live in
    ledger alone — the run's durable record (per-mode folds: methodology
    § Commit choreography).
 
+## Retire mode (`--retire <group>`)
+
+Mark a superseded group's `000-blueprint` retired so exactly one partition
+authority survives a migration (AC #19). A wholesale status change, so it
+**always prompts** — regardless of `auto_blueprint`.
+
+1. Resolve the blueprint path (Step 1); its parent is the blueprint dir. If no
+   `spec.md` exists there, say so and stop — nothing to retire.
+2. Read the existing blueprint, present the proposed retirement, and wait for
+   explicit confirmation. On decline, write nothing, record no `finished`, stop.
+3. On confirmation, Edit `spec.md`: set frontmatter `status: retired` and add a
+   banner under the title — `> Retired — superseded by the project context map,
+   <date>.` — with `<date>` the `YYYY-MM-DD` prefix of `jimfile.sh now`. Change
+   nothing else; exclusion from reconcile/graph is automatic (the reconcile
+   enumerates groups from the map, and a retired group is absent from it).
+4. Record `blueprint finished op=retire` on the group ledger, then commit via
+   `commit-blueprint <blueprint-dir> update` (spec.md + ledger.md, path-scoped).
+   No reconcile pass runs — retirement changes no face. Do not proceed further.
+
 ## Validation Checklist
 
 Before presenting, confirm:
@@ -475,3 +495,4 @@ Before presenting, confirm:
 - [ ] Project tier: no group came into being outside this surface; the map references group-blueprint faces, never restates them.
 - [ ] Reconcile: detectors fired only on declared data; evidence appeared only inside delimited `<untrusted-face-content>` blocks; the `finished` event carried all eleven counters (seven findings zeros-included, four health or `na`); the health block was measurement-only, its integers copied verbatim from the health verb; the map was committed only via `commit-map`.
 - [ ] Reconcile: the graph rewrite went ungraded (Step-4a exempt) while hand-declared map content (groups, Relations, territory) stayed fully graded.
+- [ ] Retire mode: prompted regardless of `auto_blueprint`; set `status: retired` + a map-pointing banner via Edit; recorded `blueprint finished op=retire`; committed via `commit-blueprint update`; ran no reconcile pass.
