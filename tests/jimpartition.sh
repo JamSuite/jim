@@ -169,6 +169,124 @@ case_jimpartition_coverage_missing_arg() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── Section: ingest cases (Task 3) ──────────────────────────────────────────
+
+# AC #2/#17: valid tracked edges pass the gate and are emitted with the channel
+# arg; a directory endpoint (a Go package dir containing tracked files) is
+# accepted. Output is sorted; no HYGIENE on clean input.
+case_jimpartition_ingest_valid_edges() {
+  local dir raw
+  dir=$(git_repo ing_valid pkg/a/f1.go pkg/a/f2.go pkg/b/g.go main.go)
+  raw=$(fixture ing_valid_raw.txt "$(printf 'pkg/a/f1.go\tpkg/b/g.go\nmain.go\tpkg/a')")
+  run_jimpartition_in "$dir" ingest "$raw" imports
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tmain.go\tpkg/a\timports\nEDGE\tpkg/a/f1.go\tpkg/b/g.go\timports')"
+  assert_eq "sorted edges, no hygiene" "$expected" "$OUT"
+}
+
+# AC #2: duplicate raw lines collapse to a single EDGE.
+case_jimpartition_ingest_dedup() {
+  local dir raw
+  dir=$(git_repo ing_dedup pkg/a.go pkg/b.go)
+  raw=$(fixture ing_dedup_raw.txt "$(printf 'pkg/a.go\tpkg/b.go\npkg/a.go\tpkg/b.go\npkg/a.go\tpkg/b.go')")
+  run_jimpartition_in "$dir" ingest "$raw" imports
+  assert_exit "rc" 0 "$RC"
+  assert_eq "deduped" "$(printf 'EDGE\tpkg/a.go\tpkg/b.go\timports')" "$OUT"
+}
+
+# AC #2: a per-edge 3rd field overrides the CLI channel for that edge (the
+# deps_command output contract's optional channel), leaving 2-field lines on
+# the CLI channel.
+case_jimpartition_ingest_per_edge_channel() {
+  local dir raw
+  dir=$(git_repo ing_chan pkg/a.go pkg/b.go)
+  raw=$(fixture ing_chan_raw.txt "$(printf 'pkg/a.go\tpkg/b.go\tevents\npkg/a.go\tpkg/b.go')")
+  run_jimpartition_in "$dir" ingest "$raw" imports
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tpkg/a.go\tpkg/b.go\tevents\nEDGE\tpkg/a.go\tpkg/b.go\timports')"
+  assert_eq "per-edge + cli channel" "$expected" "$OUT"
+}
+
+# AC #17 / sec Finding 3: absolute and '..'-segment endpoints are rejected by
+# the valid-relpath boundary, counted as unsafe-path, and never emitted.
+case_jimpartition_ingest_unsafe_path() {
+  local dir raw
+  dir=$(git_repo ing_unsafe pkg/a.go pkg/b.go)
+  raw=$(fixture ing_unsafe_raw.txt "$(printf '/etc/passwd\tpkg/b.go\npkg/a.go\t../escape\npkg/a.go\tpkg/b.go')")
+  run_jimpartition_in "$dir" ingest "$raw" imports
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tpkg/a.go\tpkg/b.go\timports\nHYGIENE\tunsafe-path\t2')"
+  assert_eq "unsafe dropped + counted" "$expected" "$OUT"
+}
+
+# AC #17 / sec Finding 3: an endpoint outside the tracked set is dropped and
+# counted as untracked — scanning can't be scoped to a path that isn't real.
+case_jimpartition_ingest_untracked() {
+  local dir raw
+  dir=$(git_repo ing_untracked pkg/a.go pkg/b.go)
+  raw=$(fixture ing_untracked_raw.txt "$(printf 'pkg/a.go\tnope/missing.go\npkg/a.go\tpkg/b.go')")
+  run_jimpartition_in "$dir" ingest "$raw" imports
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tpkg/a.go\tpkg/b.go\timports\nHYGIENE\tuntracked\t1')"
+  assert_eq "untracked dropped + counted" "$expected" "$OUT"
+}
+
+# sec Finding 3: single-field / empty-endpoint lines are malformed; blank lines
+# are benign and skipped (not counted).
+case_jimpartition_ingest_malformed_and_blank() {
+  local dir raw
+  dir=$(git_repo ing_malformed pkg/a.go pkg/b.go)
+  raw=$(fixture ing_malformed_raw.txt "$(printf 'onlyonefield\n\npkg/a.go\tpkg/b.go\n\t')")
+  run_jimpartition_in "$dir" ingest "$raw" imports
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tpkg/a.go\tpkg/b.go\timports\nHYGIENE\tmalformed-line\t2')"
+  assert_eq "malformed counted, blanks skipped" "$expected" "$OUT"
+}
+
+# sec Finding 3: a control byte in an endpoint is not a tracked path, so the
+# edge is dropped (counted, never emitted). The run does not crash.
+case_jimpartition_ingest_control_bytes() {
+  local dir raw
+  dir=$(git_repo ing_ctrl pkg/a.go pkg/b.go)
+  raw=$(fixture ing_ctrl_raw.txt "$(printf 'pkg/a.go\tpkg/\x01b.go\npkg/a.go\tpkg/b.go')")
+  run_jimpartition_in "$dir" ingest "$raw" imports
+  assert_exit "rc" 0 "$RC"
+  assert_match "clean edge emitted" '^EDGE'"$(printf '\t')"'pkg/a\.go'"$(printf '\t')"'pkg/b\.go'"$(printf '\t')"'imports$' "$OUT"
+  assert_match "control-byte edge dropped as hygiene" '^HYGIENE' "$OUT"
+}
+
+# rc 2 on a non-slug channel argument (the whole invocation is rejected — a
+# blueprint/map-recorded name can never inject via the channel arg).
+case_jimpartition_ingest_invalid_channel() {
+  local dir raw
+  dir=$(git_repo ing_badchan pkg/a.go pkg/b.go)
+  raw=$(fixture ing_badchan_raw.txt "$(printf 'pkg/a.go\tpkg/b.go')")
+  run_jimpartition_in "$dir" ingest "$raw" 'BAD.CHAN'
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 when the raw file is unreadable / missing.
+case_jimpartition_ingest_unreadable_file() {
+  local dir
+  dir=$(git_repo ing_noraw pkg/a.go)
+  run_jimpartition_in "$dir" ingest "$dir/does-not-exist.txt" imports
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 when the channel argument is missing.
+case_jimpartition_ingest_missing_channel_arg() {
+  local dir raw
+  dir=$(git_repo ing_noarg pkg/a.go)
+  raw=$(fixture ing_noarg_raw.txt "$(printf 'pkg/a.go\tpkg/b.go')")
+  run_jimpartition_in "$dir" ingest "$raw"
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

@@ -138,11 +138,96 @@ cmd_coverage() {
   return 0
 }
 
+# ─── Section: ingest ─────────────────────────────────────────────────────────
+
+# cmd_ingest <raw-file> <channel> — validate one extractor's raw edge lines and
+#   emit the clean, deduped edge set plus counted hygiene facts. Raw output is
+#   UNTRUSTED (the native scan or an operator command), so unlike coverage's
+#   caller-written territories-file a bad line is never fatal: it is counted and
+#   dropped (the ingest choke point, security Finding 3).
+#
+#   Raw line: <from-relpath> \t <to-relpath> [\t <channel>]   (the deps_command
+#   output contract; a per-edge 3rd field overrides the CLI <channel>).
+#   Endpoint gate: valid-relpath (shape) AND tracked (a tracked file, or a
+#   directory containing tracked files — Go edges are package dirs). Both
+#   endpoints must pass or the whole edge is dropped.
+#   HYGIENE reasons: malformed-line | unsafe-path | untracked.
+cmd_ingest() {
+  local raw="${1:-}" channel="${2:-}"
+  if [[ -z "$raw" || -z "$channel" ]]; then
+    echo "jimpartition ingest: need <raw-file> <channel>" >&2; return 2
+  fi
+  if [[ ! -f "$raw" || ! -r "$raw" ]]; then
+    echo "jimpartition ingest: raw file not readable: $raw" >&2; return 2
+  fi
+  if ! valid_slug "$channel"; then
+    echo "jimpartition ingest: invalid channel slug: $channel" >&2; return 2
+  fi
+
+  # The tracked-file set feeds the endpoint gate. Outside a git tree it is empty
+  # (every endpoint then untracked) — ingest never rc-2s on no-git; only scan
+  # requires a work tree.
+  local gitfiles
+  gitfiles="$(git ls-files 2>/dev/null)"
+
+  # One awk pass: tracked files tagged `F` (all emitted before any `R` so the
+  # tracked[]/dir[] sets are complete when edges are processed), raw lines tagged
+  # `R`. safe() inlines jimfile.sh cmd_valid_relpath's shape rules (non-empty,
+  # not absolute, no '..' segment) — the boundary is forked per-line only for the
+  # few caller-written territory paths (coverage), never for untrusted edges at
+  # ingest scale. Endpoint precedence: malformed-line > unsafe-path > untracked.
+  {
+    printf '%s\n' "$gitfiles" | awk 'NF { print "F\t" $0 }'
+    awk '{ print "R\t" $0 }' "$raw"
+  } | awk -F'\t' -v chan="$channel" '
+    function san(x) { gsub(/[[:cntrl:]]/, "", x); if (length(x) > 512) x = substr(x, 1, 512); return x }
+    function safe(p) {
+      if (p == "") return 0
+      if (substr(p, 1, 1) == "/") return 0             # absolute
+      if (index("/" p "/", "/../") > 0) return 0        # ".." segment
+      return 1
+    }
+    function tracked(e) { return (e in trk) || (e in dir) }
+    $1 == "F" {
+      f = $2
+      trk[f] = 1
+      d = f
+      while (index(d, "/") > 0) { sub(/\/[^/]*$/, "", d); if (d == "") break; dir[d] = 1 }
+      next
+    }
+    $1 == "R" {
+      # $2=from $3=to $4=channel(optional). NF counts the R tag.
+      from = (NF >= 2 ? $2 : "")
+      to   = (NF >= 3 ? $3 : "")
+      if (NF == 2 && from == "") next                   # blank line — benign, skip
+      if (NF < 3 || NF > 4 || from == "" || to == "") { hy["malformed-line"]++; next }
+      ch = chan
+      if (NF == 4) {
+        if ($4 !~ /^[a-z0-9][a-z0-9-]*$/) { hy["malformed-line"]++; next }
+        ch = $4
+      }
+      if (!safe(from) || !safe(to)) { hy["unsafe-path"]++; next }
+      if (!tracked(from) || !tracked(to)) { hy["untracked"]++; next }
+      key = from "\t" to "\t" ch
+      if (!(key in seen)) { seen[key] = 1; nk++; K[nk] = key }
+      next
+    }
+    END {
+      for (i = 2; i <= nk; i++) { keyv = K[i]; j = i - 1; while (j >= 1 && K[j] > keyv) { K[j+1] = K[j]; j-- } K[j+1] = keyv }
+      for (i = 1; i <= nk; i++) { n = split(K[i], a, "\t"); print "EDGE\t" san(a[1]) "\t" san(a[2]) "\t" san(a[3]) }
+      split("malformed-line unsafe-path untracked", order, " ")
+      for (i = 1; i <= 3; i++) if (hy[order[i]] > 0) print "HYGIENE\t" order[i] "\t" hy[order[i]]
+    }
+  '
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
   local sub="${1:-}"
   case "$sub" in
+    ingest)    shift; cmd_ingest "$@" ;;
     coverage)  shift; cmd_coverage "$@" ;;
     *)         usage; return 2 ;;
   esac
