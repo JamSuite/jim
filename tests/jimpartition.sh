@@ -462,6 +462,22 @@ case_jimpartition_scan_rust_metachar_name() {
   assert_match "rust degraded to unmodeled" '^UNMODELED'"$(printf '\t')"'rust'"$(printf '\t')"'2$' "$OUT"
 }
 
+# AC #2: Elixir resolves references (alias/import/use/require, including the
+# `Ns.{Qux}` brace form) against a defmodule->file map built over tracked
+# .ex/.exs. CHANNEL counts every scanned Elixir file.
+case_jimpartition_scan_elixir() {
+  local dir
+  dir=$(git_init scan_ex)
+  repo_add "$dir" lib/foo.ex "$(printf 'defmodule Foo do\n  alias Bar\n  alias Ns.{Qux}\nend')"
+  repo_add "$dir" lib/bar.ex "$(printf 'defmodule Bar do\nend')"
+  repo_add "$dir" lib/ns/qux.ex "$(printf 'defmodule Ns.Qux do\nend')"
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tlib/foo.ex\tlib/bar.ex\timports\nEDGE\tlib/foo.ex\tlib/ns/qux.ex\timports\nCHANNEL\timports\telixir\t3')"
+  assert_eq "elixir alias edges" "$expected" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

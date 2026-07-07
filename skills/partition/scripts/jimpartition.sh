@@ -331,6 +331,11 @@ cmd_scan() {
     [[ "${rmod:-0}" -gt 0 ]] && channels+="$(printf 'CHANNEL\timports\trust\t%d' "$rmod")"$'\n'
     [[ "${rdeg:-0}" -gt 0 ]] && UNMOD["rust"]=$(( ${UNMOD["rust"]:-0} + rdeg ))
   fi
+  if [[ ${#EX_FILES[@]} -gt 0 ]]; then
+    out="$(scan_elixir "${EX_FILES[@]}")"
+    edges+="$out"$'\n'
+    channels+="$(printf 'CHANNEL\timports\telixir\t%d' "${#EX_FILES[@]}")"$'\n'
+  fi
 
   # Emit EDGEs (deduped + sorted), then CHANNEL facts (sorted), then UNMODELED
   # facts (sorted) — a deterministic, stable substrate.
@@ -666,6 +671,67 @@ scan_rust() {
     done < <(rust_uses "$f")
   done
   printf 'RUSTMETA\t%d\t%d\n' "$modeled" "$degraded"
+}
+
+# elixir_defmodules <file> — emit each `defmodule <Name>` module name.
+elixir_defmodules() {
+  awk '
+    /^[[:space:]]*defmodule[[:space:]]+[A-Z]/ {
+      s = $0
+      sub(/^[[:space:]]*defmodule[[:space:]]+/, "", s)
+      sub(/[[:space:]].*/, "", s); sub(/,.*/, "", s)
+      print s
+    }
+  ' "$1"
+}
+
+# elixir_refs <file> — emit each aliased/imported/used/required module name,
+#   expanding the `Prefix.{A, B}` brace form into Prefix.A, Prefix.B.
+elixir_refs() {
+  awk '
+    /^[[:space:]]*(alias|import|use|require)[[:space:]]+[A-Z]/ {
+      s = $0
+      sub(/^[[:space:]]*(alias|import|use|require)[[:space:]]+/, "", s)
+      sub(/#.*/, "", s)
+      if (match(s, /\.\{[^}]*\}/)) {
+        prefix = substr(s, 1, RSTART - 1)
+        inner  = substr(s, RSTART + 2, RLENGTH - 3)
+        ni = split(inner, items, ",")
+        for (i = 1; i <= ni; i++) {
+          it = items[i]; gsub(/[[:space:]]/, "", it)
+          if (it != "") print prefix "." it
+        }
+        next
+      }
+      sub(/[,[:space:]].*/, "", s); gsub(/[[:space:]]/, "", s)
+      if (s != "") print s
+    }
+  ' "$1"
+}
+
+# scan_elixir <ex-file...> — build a defmodule->file map over all tracked
+#   Elixir source (module names charset-gated, Finding 7), then resolve each
+#   file's references to that map. Bare qualified calls are unmodeled; a
+#   self-reference emits no edge. Always models (no whole-language manifest).
+scan_elixir() {
+  local -A MODMAP=()
+  local f mod ref tgt
+  for f in "$@"; do
+    while IFS= read -r mod; do
+      [[ -z "$mod" ]] && continue
+      [[ "$mod" =~ ^[A-Z][A-Za-z0-9_]*(\.[A-Z][A-Za-z0-9_]*)*$ ]] || continue
+      [[ -z "${MODMAP[$mod]:-}" ]] && MODMAP["$mod"]="$f"
+    done < <(elixir_defmodules "$f")
+  done
+  for f in "$@"; do
+    while IFS= read -r ref; do
+      [[ -z "$ref" ]] && continue
+      [[ "$ref" =~ ^[A-Z][A-Za-z0-9_]*(\.[A-Z][A-Za-z0-9_]*)*$ ]] || continue
+      tgt="${MODMAP[$ref]:-}"
+      [[ -n "$tgt" && "$tgt" != "$f" ]] && printf 'EDGE\t%s\t%s\timports\n' "$f" "$tgt"
+    done < <(elixir_refs "$f")
+  done
+  return 0
 }
 
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
