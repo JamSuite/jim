@@ -428,6 +428,40 @@ case_jimpartition_scan_jsts() {
   assert_eq "js/ts relative edges" "$expected" "$OUT"
 }
 
+# AC #2: a two-member Rust workspace — intra-crate `mod` + `use crate::` resolve
+# within the crate; cross-crate `use crate_a::` (underscore) normalizes to the
+# member crate-a (hyphen) and edges to its src dir. Crate identity comes from
+# each Cargo.toml [package] name.
+case_jimpartition_scan_rust_workspace() {
+  local dir
+  dir=$(git_init scan_rust)
+  repo_add "$dir" Cargo.toml "$(printf '[workspace]\nmembers = ["crate-a", "crate-b"]')"
+  repo_add "$dir" crate-a/Cargo.toml "$(printf '[package]\nname = "crate-a"')"
+  repo_add "$dir" crate-a/src/lib.rs "$(printf 'mod helper;\npub use crate::helper::thing;')"
+  repo_add "$dir" crate-a/src/helper.rs "$(printf 'pub fn thing() {}')"
+  repo_add "$dir" crate-b/Cargo.toml "$(printf '[package]\nname = "crate-b"')"
+  repo_add "$dir" crate-b/src/lib.rs "$(printf 'use crate_a::thing;')"
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  local expected
+  expected="$(printf 'EDGE\tcrate-a/src/lib.rs\tcrate-a/src/helper.rs\timports\nEDGE\tcrate-b/src/lib.rs\tcrate-a/src\timports\nCHANNEL\timports\trust\t3')"
+  assert_eq "rust workspace edges" "$expected" "$OUT"
+}
+
+# sec Finding 7: a Cargo.toml [package] name with regex metacharacters fails the
+# charset gate, degrading that crate's files to UNMODELED (no crash, no edges).
+case_jimpartition_scan_rust_metachar_name() {
+  local dir
+  dir=$(git_init scan_rust_meta)
+  repo_add "$dir" Cargo.toml "$(printf '[package]\nname = "bad*name"')"
+  repo_add "$dir" src/lib.rs "$(printf 'mod foo;')"
+  repo_add "$dir" src/foo.rs "$(printf 'pub fn f() {}')"
+  run_jimpartition_in "$dir" scan
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no edges" "0" "$(printf '%s\n' "$OUT" | grep -c '^EDGE' || true)"
+  assert_match "rust degraded to unmodeled" '^UNMODELED'"$(printf '\t')"'rust'"$(printf '\t')"'2$' "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

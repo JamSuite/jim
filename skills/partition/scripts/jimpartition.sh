@@ -322,6 +322,15 @@ cmd_scan() {
     edges+="$out"$'\n'
     channels+="$(printf 'CHANNEL\timports\tjs-ts\t%d' "${#JS_FILES[@]}")"$'\n'
   fi
+  if [[ ${#RS_FILES[@]} -gt 0 ]]; then
+    out="$(scan_rust "${RS_FILES[@]}")"
+    local rmeta rmod rdeg
+    rmeta="$(printf '%s\n' "$out" | grep '^RUSTMETA' | head -1)"
+    rmod="$(printf '%s' "$rmeta" | cut -f2)"; rdeg="$(printf '%s' "$rmeta" | cut -f3)"
+    edges+="$(printf '%s\n' "$out" | grep '^EDGE' || true)"$'\n'
+    [[ "${rmod:-0}" -gt 0 ]] && channels+="$(printf 'CHANNEL\timports\trust\t%d' "$rmod")"$'\n'
+    [[ "${rdeg:-0}" -gt 0 ]] && UNMOD["rust"]=$(( ${UNMOD["rust"]:-0} + rdeg ))
+  fi
 
   # Emit EDGEs (deduped + sorted), then CHANNEL facts (sorted), then UNMODELED
   # facts (sorted) — a deterministic, stable substrate.
@@ -509,6 +518,154 @@ scan_jsts() {
     done < <(jsts_specs "$f")
   done
   return 0
+}
+
+# cargo_name <Cargo.toml> — the crate's `[package] name`, or nothing (a bare
+#   `[workspace]` manifest has none).
+cargo_name() {
+  awk '
+    /^[[:space:]]*\[package\]/ { inpkg = 1; next }
+    /^[[:space:]]*\[/          { inpkg = 0 }
+    inpkg && /^[[:space:]]*name[[:space:]]*=/ {
+      if (match($0, /"[^"]*"/)) { print substr($0, RSTART + 1, RLENGTH - 2); exit }
+    }
+  ' "$1"
+}
+
+# rust_uses <file> — emit `MOD <name>` for each `mod name;` and `USE <path>` for
+#   each `use <path>` (the module prefix before any `{` brace group).
+rust_uses() {
+  awk '
+    /^[[:space:]]*(pub[[:space:]]+)?mod[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*;/ {
+      m = $0
+      sub(/^[[:space:]]*(pub[[:space:]]+)?mod[[:space:]]+/, "", m)
+      sub(/[[:space:]]*;.*/, "", m); gsub(/[[:space:]]/, "", m)
+      print "MOD\t" m; next
+    }
+    /^[[:space:]]*(pub[[:space:]]+)?use[[:space:]]+/ {
+      u = $0
+      sub(/^[[:space:]]*(pub[[:space:]]+)?use[[:space:]]+/, "", u)
+      sub(/\{.*/, "", u)
+      sub(/[[:space:]]+as[[:space:]].*/, "", u)
+      sub(/;.*/, "", u); gsub(/[[:space:]]/, "", u)
+      sub(/(::)?$/, "", u)
+      print "USE\t" u; next
+    }
+  ' "$1"
+}
+
+# rust_resolve_mod <file> <name> — resolve a `mod <name>;` declaration to a
+#   sibling file. A crate root (lib.rs/main.rs) or mod.rs declares submodules in
+#   its own directory; any other file declares them under a dir named for its
+#   stem (Rust 2018).
+rust_resolve_mod() {
+  local f="$1" name="$2"
+  local fdir="${f%/*}"; [[ "$fdir" == "$f" ]] && fdir=""
+  local fbase="${f##*/}"; fbase="${fbase%.rs}"
+  local pfx
+  if [[ "$fbase" == lib || "$fbase" == main || "$fbase" == mod ]]; then
+    pfx="${fdir:+$fdir/}"
+  else
+    pfx="${fdir:+$fdir/}$fbase/"
+  fi
+  if [[ -n "${TRACKED[$pfx$name.rs]:-}" ]]; then
+    printf 'EDGE\t%s\t%s\timports\n' "$f" "$pfx$name.rs"
+  elif [[ -n "${TRACKED[$pfx$name/mod.rs]:-}" ]]; then
+    printf 'EDGE\t%s\t%s\timports\n' "$f" "$pfx$name/mod.rs"
+  fi
+}
+
+# rust_resolve_local <file> <crate-src> <rest-path> — resolve a `crate::<rest>`
+#   module path under the crate src root, deepest module first (an item leaf
+#   collapses to its containing module file).
+rust_resolve_local() {
+  local f="$1" cs="$2" rest="$3"
+  [[ -z "$rest" ]] && return
+  local -a segs=(); local tmp="$rest"
+  while [[ -n "$tmp" ]]; do
+    segs+=("${tmp%%::*}")
+    if [[ "$tmp" == *"::"* ]]; then tmp="${tmp#*::}"; else tmp=""; fi
+  done
+  local n=${#segs[@]} k i path
+  for (( k = n; k >= 1; k-- )); do
+    path="$cs"
+    for (( i = 0; i < k; i++ )); do path="$path/${segs[$i]}"; done
+    if [[ -n "${TRACKED[$path.rs]:-}" ]]; then printf 'EDGE\t%s\t%s\timports\n' "$f" "$path.rs"; return; fi
+    if [[ -n "${TRACKED[$path/mod.rs]:-}" ]]; then printf 'EDGE\t%s\t%s\timports\n' "$f" "$path/mod.rs"; return; fi
+  done
+}
+
+# rust_resolve_use <file> <crate-src> <own-name> <path> — dispatch a use path:
+#   crate:: is crate-local; self/super are unmodeled; any other leading segment
+#   is a cross-crate reference resolved against the member map (to the member's
+#   src dir). MEMBER is scan_rust's local, read here via dynamic scope.
+rust_resolve_use() {
+  local f="$1" cs="$2" own="$3" path="$4"
+  [[ -z "$path" ]] && return
+  local first rest
+  first="${path%%::*}"
+  rest="${path#*::}"; [[ "$rest" == "$path" ]] && rest=""
+  case "$first" in
+    crate)      [[ -n "$cs" ]] && rust_resolve_local "$f" "$cs" "$rest" ;;
+    self|super|"") return ;;
+    *)
+      local src="${MEMBER[$first]:-}"
+      if [[ -n "$src" && "$src" != "$cs" && -n "${HASDIR[$src]:-}" ]]; then
+        printf 'EDGE\t%s\t%s\timports\n' "$f" "$src"
+      fi
+      ;;
+  esac
+}
+
+# scan_rust <rs-file...> — emit EDGE lines plus a trailing `RUSTMETA <modeled>
+#   <degraded>` line. Crate identity comes from tracked Cargo.toml [package]
+#   names, charset-gated (Finding 7); a file under a bad-named crate degrades to
+#   UNMODELED rather than resolving. The normalized (hyphen→underscore) name is
+#   how source `use crate_a::` matches the member `crate-a`.
+scan_rust() {
+  local -A CRATE_SRC_NAME=() CRATE_SRC_DEGRADED=() MEMBER=()
+  local toml cdir name norm src
+  while IFS= read -r toml; do
+    [[ -z "$toml" ]] && continue
+    [[ "${toml##*/}" == "Cargo.toml" ]] || continue
+    cdir="${toml%/*}"; [[ "$cdir" == "$toml" ]] && cdir="."
+    name="$(cargo_name "$toml")"
+    [[ -z "$name" ]] && continue
+    if [[ "$cdir" == "." ]]; then src="src"; else src="$cdir/src"; fi
+    if [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+      norm="${name//-/_}"
+      CRATE_SRC_NAME["$src"]="$norm"
+      MEMBER["$norm"]="$src"
+    else
+      CRATE_SRC_DEGRADED["$src"]=1
+    fi
+  done < <(printf '%s\n' "${!TRACKED[@]}")
+
+  local modeled=0 degraded=0
+  local f cs own deg bestlen srcdir line tag val
+  for f in "$@"; do
+    cs=""; own=""; deg=0; bestlen=-1
+    for srcdir in "${!CRATE_SRC_NAME[@]}"; do
+      if [[ "$f" == "$srcdir/"* && ${#srcdir} -gt $bestlen ]]; then
+        cs="$srcdir"; own="${CRATE_SRC_NAME[$srcdir]}"; deg=0; bestlen=${#srcdir}
+      fi
+    done
+    for srcdir in "${!CRATE_SRC_DEGRADED[@]}"; do
+      if [[ "$f" == "$srcdir/"* && ${#srcdir} -gt $bestlen ]]; then
+        cs="$srcdir"; own=""; deg=1; bestlen=${#srcdir}
+      fi
+    done
+    if [[ $deg -eq 1 ]]; then degraded=$((degraded + 1)); continue; fi
+    modeled=$((modeled + 1))
+    while IFS= read -r line; do
+      tag="${line%%$'\t'*}"; val="${line#*$'\t'}"
+      case "$tag" in
+        MOD) rust_resolve_mod "$f" "$val" ;;
+        USE) rust_resolve_use "$f" "$cs" "$own" "$val" ;;
+      esac
+    done < <(rust_uses "$f")
+  done
+  printf 'RUSTMETA\t%d\t%d\n' "$modeled" "$degraded"
 }
 
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
