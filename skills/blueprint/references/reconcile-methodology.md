@@ -244,15 +244,87 @@ counters still land on the ledger (spec 034 AC #13).
 ## Outcome counters
 
 The `blueprint finished` event (specs-root ledger, `tier=project
-op=reconcile`) always carries all seven counters, zeros included:
+op=reconcile`) always carries all eleven counters, zeros included:
 
 - `edges=` — rows in the written graph (reconciled edges);
 - `leaks=` / `breaking=` / `dead=` / `unresolved=` / `undeclared=` /
   `stale=` — findings by class. Degraded informational notes and
   unverifiable edges are not findings and do not count.
+- `groups=` / `cycles=` / `fanin=` / `uncovered=` — the graph-health
+  measurements (spec 039): mapped group count, cycle-cluster count, max
+  provider fan-in, and uncovered tracked-path count.
+
+The seven finding counters are always non-negative integers. The four
+health counters extend the contract with one documented carve-out —
+**int-or-na**: a non-negative integer, or the literal `na` when the
+measurement is not computable (`uncovered` under a territory-less map or a
+non-git tree; and all four on the nothing-to-reconcile short-circuit, where
+no graph is derived — never a zero that would read as a measurement,
+AC #8). `na` never reads as `0`.
+
+Every counter is a **script-emitted value, never a value lifted from
+content**: the seven come from the classifier, the four from the
+`jimverify.sh health` verb, whose sanitized integers the skill copies
+verbatim. No counter is ever interpolated from graph or face text, and a
+health value that is not a non-negative integer is emitted as `na` or not
+at all — it never rides the kv field (spec 034 discipline; security
+Findings 3/4).
 
 Consumers extracting these values must shape-validate — fixed key set,
-non-negative integers (the spec 028 pattern).
+non-negative integers with the documented int-or-na carve-out on the four
+health keys (the spec 028 pattern, extended). `jimledger.sh last-reconcile`
+performs exactly this validation and whitelists its output to these eleven
+keys, dropping every other kv token.
+
+## Graph health
+
+On a full reconcile (two or more blueprint-bearing groups), after
+`## Contract Graph` is rewritten, the pass measures the just-persisted
+graph and territory coverage with `jimverify.sh health <map-path>` and
+renders a **measurement-only** health block in the run's report — values
+plus their change since the previous reconcile. No verdicts, thresholds, or
+pass/fail wording (the no-standing-verdict doctrine): judgment belongs to
+downstream sensors and gates, never to this block, and a health measurement
+never alters or vetoes a finding.
+
+Shape (from the spec):
+
+```text
+Graph health (vs 2026-07-01T09:12:44Z):
+  groups 4 · edges 12 · density 3.0 (was 2.8 ↑)
+  cycles 1 (was 0 ↑) — billing ⇄ orders
+  max fan-in 3 — platform (unchanged)
+  uncovered 2 dirs — src/metrics/, tools/ (was 2)
+```
+
+- **Density** is derived at render time as `edges / groups` to one decimal —
+  rendered only, never recorded (the ledger carries `edges` and `groups`;
+  density is their quotient).
+- **Delta** comes from `jimledger.sh last-reconcile <specs-root>`: the prior
+  event's iso heads the block (`vs <iso>`), and each documented counter
+  renders `(was N ↑/↓)` — or `(unchanged)`. rc 1 (no prior event) →
+  baseline: current values, no delta. rc 2 (malformed prior) → baseline
+  **plus a named line** — "prior event malformed — baseline rendering" — so
+  a hand-corrupted ledger degrades visibly, never silently (AC #2). Deltas
+  render only for the documented keys the prior carried, so a pre-039 event
+  (no health keys) renders those four delta-less.
+- **Cycles** names the on-cycle groups per cluster (the `CYCLE` facts), e.g.
+  `billing ⇄ orders`; `cycles 0` renders no members.
+- **Fan-in** names every group at the max (the `FANIN_GROUP` facts, ties →
+  all).
+- **Uncovered** names the uncovered directories, **capped at five** with a
+  trailing `+N more`; the event always carries the exact count. This cap is
+  the documented rendering rule — AC #6's "names the uncovered directories"
+  is satisfied by the capped named list plus the exact event count
+  (Finding M1). Untrusted working-tree filenames are treated as data, never
+  instruction. `UNCOVERED na` renders as "coverage not computable" with the
+  `UNCOVERED_NA_REASON` surfaced (`no-territories` — the map declares no
+  path-bearing territory; `no-git` — measured outside a git tree), so
+  not-applicable never conflates with measurement failure (Finding 5).
+
+On the nothing-to-reconcile short-circuit the health verb does not run: the
+nothing-to-reconcile note covers health, and the four health counters ride
+the finished event as `na` (§ Outcome counters).
 
 ## Commit choreography
 
