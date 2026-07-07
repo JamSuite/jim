@@ -2,7 +2,7 @@
 title: "Partition migration skill"
 spec: "docs/specs/jim/038-partition-migration/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Partition migration skill — Plan
