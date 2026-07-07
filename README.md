@@ -44,6 +44,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:vision` | Create/update project vision |
 | `/jim:arch` | Create/update technical architecture |
 | `/jim:blueprint` | Living blueprints — a group's current-state `000-blueprint` (`<group>`), the project-tier context map (bare), the cross-group contract graph (`--reconcile`) |
+| `/jim:partition` | Migrate a project onto the blueprint partition doctrine — extract the code's dependency graph, propose a context map, materialize via the blueprint surface after a hard gate; auto-detects greenfield/repartition, and `path`/`directory` assess territory-mode readiness |
 | `/jim:roadmap` | Create/update execution roadmap |
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:sec` | Design-time security analysis of specs, plans, or arbitrary files; produces `security.md` |
@@ -147,6 +148,7 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `verify_model` | `"inherit"` | `/jim:verify` — model for the judge subagents (`inherit` / `sonnet` / `opus` / `haiku` / `fable`) |
 | `verify_registry_timeout` | `"120"` | `/jim:verify` — per-command timeout in seconds for registry commands; expiry folds into that one check's `failed` outcome, never aborting the run |
 | `verify_command_<name>` | — (unset) | `/jim:verify` — the operator-owned registry: an invariant checked as `registry:<name>` runs only the command string you place here; a blueprint can *name* an entry but never define one — unconfigured names report `unconfigured` and execute nothing |
+| `deps_command_<name>` | — (unset) | `/jim:partition` — the operator-owned dependency-extraction registry (the same activation model as `verify_command_<name>`): each entry is a command emitting the project's dependency graph as tab-separated `from`/`to`/`channel` edges, one per line, which `/jim:partition` runs via Bash and ingests through `jimpartition.sh`; a scanned artifact can never define one, and with none configured `/jim:partition` falls back to its native import scan |
 
 > **Manual migration rule.** Changing a configured path does **not** move existing files. If you point `architecture_path` at a new location, you are responsible for moving (or recreating) the file at the new path. Jim never relocates artifacts on a config change.
 
@@ -245,6 +247,10 @@ Prefer the **narrowest grant that works** — your repo root — rather than a b
 ### Invariant-verification fan-out (`/jim:verify`)
 
 Invariant verification (`/jim:verify`, spec 035) fans out read-only `judge` subagents that read **your project's own source** to decide whether a blueprint invariant holds — or, in contract mode (`--contracts`, spec 037), whether one side of a cross-group contract edge holds in code. Like the reviewer's investigators, each judge's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The judges are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when an invariant's check names an operator-configured registry command, `/jim:verify` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a blueprint can never mint that command, only *name* one you configured.
+
+### Partition fan-out (`/jim:partition`)
+
+Partition migration (`/jim:partition`, spec 038) fans out read-only `gatherer` subagents that read **your project's own source** to gather per-group evidence for the proposed context map. Like the reviewer's investigators, each gatherer's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The gatherers are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when you configure a `deps_command_<name>` extractor (see Configuration), `/jim:partition` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a scanned artifact can never mint that command, only your own config activates one.
 
 ## How to develop for Jim
 
