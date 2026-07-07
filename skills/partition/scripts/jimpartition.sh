@@ -67,6 +67,34 @@ valid_slug() {
   [[ "$1" =~ ^[a-z0-9][a-z0-9-]*$ ]]
 }
 
+# emit_territories <territories-file> — validate every line and echo one
+#   `<group>\t<path>` per declared territory. The file is caller-written (the
+#   skill writes it from the approved partition), so a malformed line, a
+#   non-slug group, or an unsafe path is a caller error → rc 2 (distinct from
+#   ingest's HYGIENE counting of untrusted extractor output). Shared by the
+#   coverage and aggregate verbs.
+#   territories-file line: GROUP \t <group-slug> \t <repo-relative-path>
+emit_territories() {
+  local terr_file="$1" line f1 f2 f3 rest
+  if [[ ! -f "$terr_file" ]]; then
+    echo "jimpartition: territories file not found: $terr_file" >&2; return 2
+  fi
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" ]] && continue
+    IFS=$'\t' read -r f1 f2 f3 rest <<<"$line"
+    if [[ "$f1" != "GROUP" || -n "${rest:-}" || -z "${f3:-}" ]]; then
+      echo "jimpartition: malformed territories line: $line" >&2; return 2
+    fi
+    if ! valid_slug "$f2"; then
+      echo "jimpartition: invalid group slug: $f2" >&2; return 2
+    fi
+    if ! valid_relpath "$f3"; then
+      echo "jimpartition: invalid territory path: $f3" >&2; return 2
+    fi
+    printf '%s\t%s\n' "$f2" "$f3"
+  done < "$terr_file"
+}
+
 # ─── Section: coverage ───────────────────────────────────────────────────────
 
 # cmd_coverage <territories-file> — tracked files owned by no proposed group's
@@ -82,26 +110,14 @@ cmd_coverage() {
   if [[ -z "$terr_file" ]]; then
     echo "jimpartition coverage: need <territories-file>" >&2; return 2
   fi
-  if [[ ! -f "$terr_file" ]]; then
-    echo "jimpartition coverage: territories file not found: $terr_file" >&2; return 2
-  fi
 
+  local terr_lines tl
+  terr_lines="$(emit_territories "$terr_file")" || return 2
   local -a terr=()
-  local line f1 f2 f3 rest
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    [[ -z "$line" ]] && continue
-    IFS=$'\t' read -r f1 f2 f3 rest <<<"$line"
-    if [[ "$f1" != "GROUP" || -n "${rest:-}" || -z "${f3:-}" ]]; then
-      echo "jimpartition coverage: malformed territories line: $line" >&2; return 2
-    fi
-    if ! valid_slug "$f2"; then
-      echo "jimpartition coverage: invalid group slug: $f2" >&2; return 2
-    fi
-    if ! valid_relpath "$f3"; then
-      echo "jimpartition coverage: invalid territory path: $f3" >&2; return 2
-    fi
-    terr+=("$f3")
-  done < "$terr_file"
+  while IFS= read -r tl; do
+    [[ -z "$tl" ]] && continue
+    terr+=("${tl#*$'\t'}")           # path is the field after the group slug
+  done <<<"$terr_lines"
 
   local gitfiles rc_git
   gitfiles="$(git ls-files 2>/dev/null)"; rc_git=$?
