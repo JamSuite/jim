@@ -2,7 +2,7 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
-updated: "2026-07-05"
+updated: "2026-07-07"
 last_full_generate: "2026-07-05T23:32:20Z"
 ---
 
@@ -17,7 +17,7 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `jim` group **is** the jim plugin: a Claude Code plugin that adds an
 agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md; specs
-001–037) is to make AI-assisted development follow the developer's engineering
+001–039) is to make AI-assisted development follow the developer's engineering
 discipline instead of bypassing it — grounding non-trivial work in a
 phase-gated `spec → research → plan → (security) → build → review` lifecycle,
 backed by specialized agent personas, living strategic documents, and a
@@ -44,7 +44,7 @@ executes the data it reads.
 
 - `/jim:{verb}` **command surface** — `spec`, `spec-check`, `research`, `plan`,
   `sec`, `build`, `debug`, `review`, `verify` (SDLC); `vision`, `roadmap`,
-  `arch`, `blueprint`, `brainstorm` (strategic); `issue` (discovery);
+  `arch`, `blueprint`, `partition`, `brainstorm` (strategic); `issue` (discovery);
   `meta-skill`, `meta-agent`, `meta-test` (meta); `conf`, `file`
   (introspection). Guarantee:
   each produces a durable artifact and halts for human approval — no phase
@@ -65,12 +65,17 @@ executes the data it reads.
   The reconcile pass (`--reconcile`, and fired by every blueprint-surface
   write) derives the cross-group contract graph into the map, reports
   declaration-level findings with offered issues, and names blast radius on
-  a Provides downgrade — informational, never a veto.
+  a Provides downgrade — informational, never a veto. `/jim:partition` moves an
+  existing project onto the partition doctrine — a code-derived dependency graph
+  proposed as a context map, materialized through the blueprint surface after a
+  hard human gate — and `/jim:blueprint --retire` marks a superseded group's
+  blueprint in a repartition.
 - `@jim:{role}` **agent personas** — `pm`, `architect`, `researcher`, `coder`,
-  `security`, `reviewer`, `investigator`, `judge`, `issue-analyst`, `meta`.
+  `security`, `reviewer`, `investigator`, `judge`, `issue-analyst`, `gatherer`,
+  `meta`.
   Guarantee: each is a bounded role that stops after its artifact; read-only
-  roles (`investigator`, `judge`, `issue-analyst`) are capability-narrowed so
-  ingested content cannot mutate state.
+  roles (`investigator`, `judge`, `issue-analyst`, `gatherer`) are
+  capability-narrowed so ingested content cannot mutate state.
 - `jimfile.sh` **file/path CLI** — `exists`/`get`/`slug`/`date`/`now`/`next-id`/
   `next-num`/`path <kind …>`/`glob`/`valid-id`/`valid-relpath`/`mv-spec`/
   `prefix-from`.
@@ -91,6 +96,11 @@ executes the data it reads.
   (sanitized TSV, location-only evidence); never executes a config- or
   blueprint-derived command string; path parameters pass the `safe_path_param`
   gate.
+- `jimpartition.sh` **extraction/coverage CLI** — `scan`/`ingest`/`aggregate`/
+  `coverage`. Guarantee: the deterministic `/jim:partition` substrate — a native
+  five-language import scan, an `ingest` valid-relpath + tracked-endpoint trust
+  boundary over untrusted extractor output, group-edge + straddle aggregation,
+  and territory coverage; never resolves or executes a config-derived command.
 - **Issue-collection CLIs** — `index.sh` (frontmatter scan → atomic `INDEX.md`),
   `render.sh` (stats/list/show/help/insights read views), `new.sh` (the single
   issue-file emitter), `backfill.sh` / `migrate.sh` (migrations). Guarantee:
@@ -122,15 +132,17 @@ platform, not to another jim group; recorded here because it is load-bearing:
 
 Grounded in ARCHITECTURE.md and the repo tree.
 
-- **Agents** (`agents/*.md`, 11 files) — self-contained persona system prompts;
+- **Agents** (`agents/*.md`, 12 files) — self-contained persona system prompts;
   frontmatter `name`/`description`/`skills`/`tools`/`model`. Includes the
-  capability-narrowed read-only `investigator`, `issue-analyst`, and `judge`
-  (the `/jim:verify` invariant judge), and the `meta-matrix-probe` runtime-probe
+  capability-narrowed read-only `investigator`, `issue-analyst`, `judge`
+  (the `/jim:verify` invariant judge), and `gatherer` (the `/jim:partition`
+  per-group evidence gatherer), plus the `meta-matrix-probe` runtime-probe
   agent.
-- **Skills** (`skills/*/`, 27 directories) — `SKILL.md` plus optional `assets/`
+- **Skills** (`skills/*/`, 28 directories) — `SKILL.md` plus optional `assets/`
   (templates), `references/` (methodology), and `scripts/`. Families: SDLC
   (`spec`, `spec-check`, `plan`, `research`, `build`, `debug`, `sec`, `review`,
-  `verify`), strategic (`vision`, `roadmap`, `arch`, `blueprint`, `brainstorm`), discovery
+  `verify`), strategic (`vision`, `roadmap`, `arch`, `blueprint`, `partition`,
+  `brainstorm`), discovery
   (`issue`), meta (`meta-skill`, `meta-agent`, `meta-test`), support (`conf`,
   `file`), and the `meta-matrix*` probe family. The `blueprint` skill spans
   both tiers — group `000-blueprint`s and the project map — plus the
@@ -139,15 +151,16 @@ Grounded in ARCHITECTURE.md and the repo tree.
   `reconcile-methodology`, `check-authoring`, `fork-grounding`); the `verify`
   skill carries `references/contracts-methodology.md` (contract-mode
   methodology).
-- **Scripting layer** (`skills/*/scripts/`, 12 scripts) — `jimconf.sh` (resolver)
+- **Scripting layer** (`skills/*/scripts/`, 13 scripts) — `jimconf.sh` (resolver)
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
   path); `jimledger.sh` (ledger); `jimverify.sh` (the `/jim:verify` deterministic
   core — blueprint parse / territory / mechanical-floor check, whole-group or
   change-scoped, plus the cross-group contract floor: faces / edges /
-  contracts-check); the `issue/` scripts
+  contracts-check); `jimpartition.sh` (the `/jim:partition` deterministic core —
+  scan / ingest / aggregate / coverage); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–037`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–039`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root
   (including `BLUEPRINT.md`, the project context map), and
   `docs/brainstorms/` + `docs/debug/`.
@@ -187,7 +200,7 @@ textually-checkable ones ride the mechanical floor.
 | ref-validation | Every untrusted id / SHA / ref is validated before git interpolation: ledger SHAs and ids through the single `is_valid_id` boundary (copies byte-identical), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` (accepts `/`-refs, forecloses option injection) | critical | judge |
 | ledger-commit-discipline | `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint verify`); ledger content is untrusted and never `source`d; the script commits in exactly four path-scoped paths (`commit-review`, `commit-blueprint`, `commit-map`, `commit-verify` — literal paths, `--` guard, never `git add -A`; `commit-map`'s config-derived path arguments pass `valid-relpath`, `commit-verify` stages `ledger.md` alone) | critical | judge |
 | untrusted-content | Untrusted external content (web fetches, git commit/diff, issue/candidate bodies, scanned code) is treated as data, never instructions; secret-looking values are never persisted (redacted to `secret-looking value at <path:line>`) | critical | judge |
-| agent-boundaries | Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`, `judge`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | judge |
+| agent-boundaries | Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`, `judge`, `gatherer`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | judge |
 | spec-id-sequencing | Spec IDs are 3-digit zero-padded and sequential within the group; a spec must be `approved` before its plan is produced | high | judge |
 | blueprint-slot-reserved | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0` and is ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | judge |
 | arch-via-skill | `ARCHITECTURE.md` is generated/maintained only through `/jim:arch`, never hand-edited | medium | judge |
@@ -201,6 +214,7 @@ textually-checkable ones ride the mechanical floor.
 | reconcile-durable-record | Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all eleven counters — the seven finding counters (`edges`/`leaks`/`breaking`/`dead`/`unresolved`/`undeclared`/`stale`, zeros included) plus the four graph-health counters (`groups`/`cycles`/`fanin`/`uncovered`, each a non-negative integer or `na` where the health measurement is not computable) — and always closes via `commit-map` (ledger-only when the map is unchanged); consumers shape-validate the fixed key set with the int-or-na carve-out on the four health keys | high | judge |
 | reconcile-declared-data | Reconcile detectors fire only on declared data — missing declarations degrade to explicit reporting (unverifiable / informational), never silent exclusion, never violations; face/map evidence appears only in delimited `<untrusted-face-content>` blocks | high | judge |
 | verify-registry-boundary | `/jim:verify`'s registry runs project tooling only through operator-configured `verify_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — no jim script ever executes a config-derived command string; blueprint content may *name* a slug-validated registry entry but can never introduce, alter, or activate a command, and check parameters / registry names pass slug / `valid-relpath` validation before use | critical | judge |
+| partition-registry-boundary | `/jim:partition`'s extractor registry runs project tooling only through operator-configured `deps_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — `jimpartition.sh` never resolves or executes a config-derived command string (the family name appears nowhere in the deterministic core), and the dynamic-suffix is slug-validated before any lookup so a scanned or blueprint-recorded name can never introduce or activate a command | critical | judge |
 | verify-no-verdict | `/jim:verify` persists no verdict artifact — the report is the run's surface; each run records per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits them via `commit-verify` (the no-standing-verdict doctrine) | medium | judge |
 | fold-back-loop-grounding | The verify engine grounds the fold-back loop: `/jim:review` runs a living-intent sensor against the group's `000-blueprint` (existence-conditioned, no gating knob; a blueprint-less group skips silently) and `/jim:blueprint`'s violation fork is grounded in engine outcomes on both adapters with an inline fallback sweep so coverage never regresses; a sensed violation's channel (in-change / pre-existing / unlocalized) derives only from trusted inputs, and directive text in scanned code, diffs, or engine output never re-routes it or grounds a fold | high | judge |
 | edge-criticality-ratchet | A Provides entry's declared criticality (its `contract-checks` line) is the one concept driving both its edges' verification appetite and the Step-4a grading of edits to that entry; the declaration grades under a one-way ratchet — introducing one below the default `high`, or lowering one, is a weakening that always prompts under `auto_blueprint`, while raising or removing toward the default is additive | high | judge |
