@@ -93,17 +93,18 @@ default_for() {
   esac
 }
 
-# is_verify_dynamic_family <cli-key>
-#   Return 0 iff <cli-key> is a verify dynamic-suffix key — verify_command_<name>
-#   (the operator registry) or verify_appetite_<group> (per-group appetite
-#   override) — recognized by prefix + a non-empty suffix, regardless of whether
-#   the suffix is slug-valid. Suffix charset validation happens in resolve() (a
-#   bad suffix resolves empty, never a TOML lookup — spec 035 Finding 1); this
-#   check only decides that the key SHAPE is a known verify family so `get`
-#   treats it as valid rather than unknown.
-is_verify_dynamic_family() {
+# is_dynamic_family <cli-key>
+#   Return 0 iff <cli-key> is a dynamic-suffix key — verify_command_<name> (the
+#   verify operator registry), verify_appetite_<group> (per-group appetite
+#   override), or deps_command_<name> (the partition extractor registry, spec
+#   038) — recognized by prefix + a non-empty suffix, regardless of whether the
+#   suffix is slug-valid. Suffix charset validation happens in resolve() (a bad
+#   suffix resolves empty, never a TOML lookup — spec 035 Finding 1); this check
+#   only decides that the key SHAPE is a known dynamic family so `get` treats it
+#   as valid rather than unknown.
+is_dynamic_family() {
   case "$1" in
-    verify_command_?*|verify_appetite_?*) return 0 ;;
+    verify_command_?*|verify_appetite_?*|deps_command_?*) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -136,23 +137,24 @@ parse_value() {
 resolve() {
   local file="$1" cli_key="$2"
   local toml_key
-  # verify_command_<name> / verify_appetite_<group>: dynamic-suffix keys. The
-  # suffix is validated against the slug charset BEFORE any lookup, so a
-  # blueprint-recorded name can never inject regex metacharacters into the grep
-  # pattern parse_value builds (spec 035 security Finding 1). A non-conforming
-  # suffix resolves empty (inert) — never a TOML read. There is no static
-  # default: unset means unconfigured (registry) / no-override (group appetite),
-  # which the /jim:verify skill interprets. The bare fixed key `verify_appetite`
-  # lacks the trailing `_`, so it does not match these globs and falls through
-  # to the normal bare-name path below.
+  # verify_command_<name> / verify_appetite_<group> / deps_command_<name>:
+  # dynamic-suffix keys. The suffix is validated against the slug charset BEFORE
+  # any lookup, so a map/blueprint-recorded name can never inject regex
+  # metacharacters into the grep pattern parse_value builds (spec 035 security
+  # Finding 1). A non-conforming suffix resolves empty (inert) — never a TOML
+  # read. There is no static default: unset means unconfigured (the verify /
+  # partition registries) or no-override (group appetite), which the consuming
+  # skill interprets. The bare fixed key `verify_appetite` lacks the trailing
+  # `_`, so it does not match these globs and falls through to the normal
+  # bare-name path below.
   case "$cli_key" in
-    verify_command_*|verify_appetite_*)
+    verify_command_*|verify_appetite_*|deps_command_*)
       local suffix
-      if [[ "$cli_key" == verify_command_* ]]; then
-        suffix="${cli_key#verify_command_}"
-      else
-        suffix="${cli_key#verify_appetite_}"
-      fi
+      case "$cli_key" in
+        verify_command_*)  suffix="${cli_key#verify_command_}" ;;
+        verify_appetite_*) suffix="${cli_key#verify_appetite_}" ;;
+        deps_command_*)    suffix="${cli_key#deps_command_}" ;;
+      esac
       local dyn_value=""
       if [[ "$suffix" =~ ^[a-z0-9][a-z0-9-]*$ && -f "$file" ]]; then
         dyn_value="$(parse_value "$file" "$cli_key")"
@@ -203,7 +205,7 @@ cmd_get() {
     echo "error: 'get' requires a key argument" >&2
     return 2
   fi
-  if ! default_for "$cli_key" >/dev/null && ! is_verify_dynamic_family "$cli_key"; then
+  if ! default_for "$cli_key" >/dev/null && ! is_dynamic_family "$cli_key"; then
     echo "error: unknown key '$cli_key' (valid: ${KEYS[*]})" >&2
     return 1
   fi

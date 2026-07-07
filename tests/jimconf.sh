@@ -937,6 +937,50 @@ verify_command_typecheck = "tsc"')
   assert_eq   "uppercase suffix empty" "" "$OUT"
 }
 
+# ─── spec 038: deps_command_<name> dynamic family ────────────────────────────
+
+# AC: deps_command_<name> is a dynamic-suffix registry key mirroring
+# verify_command_<name>: unconfigured resolves empty (the "not configured"
+# outcome → the native scan fallback), configured resolves the operator's
+# command string verbatim (spec 038 Task 1, DD #3).
+case_deps_command_dynamic_suffix() {
+  local dir cfg
+  dir=$(empty_dir dc_cmd_default)
+  run -c "$dir/absent.toml" get deps_command_events
+  assert_exit "unconfigured rc"    0  "$RC"
+  assert_eq   "unconfigured empty" "" "$OUT"
+  cfg=$(fixture dc-cmd.toml 'deps_command_events = "node extract-events.js"')
+  run -c "$cfg" get deps_command_events
+  assert_eq   "configured command" "node extract-events.js" "$OUT"
+}
+
+# AC: a deps_command_<name> whose <name> is not slug-class resolves empty and
+# never reaches a TOML lookup — a map/blueprint-recorded name can't inject
+# regex metacharacters into the grep pattern (spec 035 security Finding 1,
+# carried to the new family). The crafted key must not grep-match a real entry.
+case_deps_command_bad_suffix_resolves_empty() {
+  local cfg
+  cfg=$(fixture dc-inject.toml 'deps_command_events = "node x.js"
+deps_command_di = "grep -R inject"')
+  run -c "$cfg" get 'deps_command_.*'
+  assert_exit "bad-suffix rc"          0  "$RC"
+  assert_eq   "no regex injection"     "" "$OUT"
+  run -c "$cfg" get deps_command_A.B
+  assert_eq   "dotted suffix empty"    "" "$OUT"
+  run -c "$cfg" get deps_command_BADNAME
+  assert_eq   "uppercase suffix empty" "" "$OUT"
+}
+
+# AC: the bare fixed key `deps_command` (no `_<name>` suffix) is not a known
+# key — neither a static default nor a dynamic family member — so `get`
+# rejects it with rc 1 (spec 038 Task 1). Guards the `?*` glob boundary.
+case_deps_command_bare_key_unknown() {
+  run get deps_command
+  assert_exit     "bare rc"         1  "$RC"
+  assert_eq       "stdout empty"    "" "$OUT"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
