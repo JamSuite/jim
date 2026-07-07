@@ -117,7 +117,9 @@ column itself.
 ## The report
 
 Findings surface in the run's conversation report at detection time —
-`BLUEPRINT.md` carries the graph only, never findings or verdicts.
+`BLUEPRINT.md` carries the graph only, never findings or verdicts. Present the
+report (and any offered-issue batch) per the gate-presentation rule
+(`skills/blueprint/references/gate-presentation.md`).
 
 - Header: `Reconcile — <project>: N groups, M with blueprints (coverage M/N)`.
 - Wording is declaration-level throughout.

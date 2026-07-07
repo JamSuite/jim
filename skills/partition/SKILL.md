@@ -111,7 +111,8 @@ The gatherer fan-out completes **before** any `Skill(jim:blueprint)` call
 (one-level nesting).
 
 Present the proposal with **cited evidence per group** — edge counts and
-representative references (AC #2). Present, before the gate, every
+representative references (AC #2), per the gate-presentation rule
+(`skills/blueprint/references/gate-presentation.md`). Present, before the gate, every
 `UNCOVERED` directory for explicit assignment or acknowledgment (AC #4) and
 every `STRADDLE` fact — a unit consumed by ≥2 foreign groups, named with its
 owner — for assignment judgment (AC #20; interpretation lens in methodology
@@ -129,7 +130,8 @@ and recommend `declared-paths` as the default territory mode for retrofits
 `auto_blueprint` effect: "with `auto_blueprint` unset, each of the N blueprint
 writes will prompt; set it `\"true\"` for unattended generation." The gate
 approves the *partition*; the blueprint surface's own prompt confirms each
-*write* — a second, cheap confirmation by design.
+*write* — a second, cheap confirmation by design. Present the gate per the
+gate-presentation rule (`skills/blueprint/references/gate-presentation.md`).
 
 **Blocked outcome (AC #11).** When the code does not support a clean partition,
 conclude as "partition blocked on refactors": materialize nothing, report the

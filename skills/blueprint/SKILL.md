@@ -135,9 +135,9 @@ has nothing to downgrade and is unaffected.
 SET auto_blueprint = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_blueprint`
 
 IF auto_blueprint == "true" THEN
-  For a differential update, grade the proposed edits per the shared rule (Step 4a): write the ungated edits directly, itemizing each touched Invariants row / Provides entry with its classification in the summary; present any `critical`/`high` or Provides downgrade and wait for confirmation before writing it. For a fresh generate, write directly. Summarize which sections were added, changed, or preserved.
+  For a differential update, grade the proposed edits per the shared rule (Step 4a): write the ungated edits directly, itemizing each touched Invariants row / Provides entry with its classification in the summary; present any `critical`/`high` or Provides downgrade and wait for confirmation before writing it. For a fresh generate, write directly. Summarize which sections were added, changed, or preserved. Any downgrade prompt follows the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`).
 ELSE
-  Present the proposed blueprint (or the diff, for an update) and ask: "Does this reflect the group's current state? Anything to refine?" Wait for confirmation before writing.
+  Present the proposed blueprint (or the diff, for an update) and ask: "Does this reflect the group's current state? Anything to refine?" Wait for confirmation before writing — present per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`).
 ENDIF
 
 On write — a fresh generate or a differential regeneration — stamp the
@@ -271,7 +271,7 @@ IF the threshold is a positive integer AND a trustworthy `N` was obtained AND N 
   group — including the change this update would have folded — and re-stamps the
   watermark, resetting the count. Under `auto_blueprint` it writes unattended,
   still graded by Step 4a (a `critical`/`high` invariant or Provides downgrade
-  prompts); otherwise present it and wait. Then close the stage exactly as the
+  prompts); otherwise present it and wait — present per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`). Then close the stage exactly as the
   U2 fallthrough does — record `blueprint finished`, stamp `last_full_generate`
   from a fresh `now` **after** that event, then `commit-blueprint <blueprint-dir>
   update` (an existing blueprint is updated, not created), and run the
@@ -311,7 +311,7 @@ Apply Step 5's `auto_blueprint` gate to the *targeted diff*, graded by the
 shared rule (Step 4a): `"true"` writes the ungated edits directly (Edit) with
 the itemized per-row classification summary, while `critical`/`high`
 invariant or Provides downgrades are presented and wait for confirmation;
-otherwise present the whole diff, ask for confirmation, and wait. Fork
+otherwise present the whole diff, ask for confirmation, and wait — present per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`). Fork
 resolutions from U3a are already baked into the diff — a fold of a
 `critical`/`high` violation was explicitly confirmed at the fork.
 
@@ -377,7 +377,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root>
   developer's domain knowledge, converge. Materialize from
   `assets/map-template.md`. Creation always prompts: present the full map
   draft with the scrub reminder (methodology § Scrub) and write only on
-  explicit approval — never silently.
+  explicit approval — never silently. Present per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`).
 - **Update:** differential — read the existing map, propose changes as a
   diff, and grade each change by the Step-4a shared rule at the map tier
   (methodology § Update flow): additive changes may write unattended under
@@ -453,7 +453,7 @@ authority survives a migration (AC #19). A wholesale status change, so it
 
 1. Resolve the blueprint path (Step 1); its parent is the blueprint dir. If no
    `spec.md` exists there, say so and stop — nothing to retire.
-2. Read the existing blueprint, present the proposed retirement, and wait for
+2. Read the existing blueprint, present the proposed retirement per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`), and wait for
    explicit confirmation. On decline, write nothing, record no `finished`, stop.
 3. On confirmation, Edit `spec.md`: set frontmatter `status: retired` and add a
    banner under the title — `> Retired — superseded by the project context map,

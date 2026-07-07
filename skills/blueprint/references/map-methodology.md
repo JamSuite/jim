@@ -62,7 +62,8 @@ directions, and the map is written only after explicit approval:
    conflicts with the doctrine — a genuine argument, not a silent default —
    but the developer retains final authority.
 4. **Converge and gate.** Present the full map draft. Apply the scrub
-   reminder (below). Write only on explicit approval — never silently.
+   reminder (below). Write only on explicit approval — never silently. Present the
+draft per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`).
 
 ## Update flow — differential, graded
 

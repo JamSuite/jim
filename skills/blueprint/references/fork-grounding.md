@@ -119,7 +119,7 @@ signal to add structured check data to the blueprint (`references/check-authorin
 ## U3a — presenting the fork
 
 When violations are found (engine-grounded or swept), present them all as **one
-batched fork** before proposing the section-diff — a violated invariant is never
+batched fork** (present per the gate-presentation rule `skills/blueprint/references/gate-presentation.md`) before proposing the section-diff — a violated invariant is never
 silently rewritten, in interactive and `auto_blueprint` modes alike, at every
 criticality:
 
