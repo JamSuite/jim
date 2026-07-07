@@ -40,7 +40,7 @@ re-declared here.*
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-07-05T23:37:22Z
+on every blueprint write; do not edit. Last reconciled: 2026-07-07T22:42:48Z
 (via /jim:blueprint)*
 
 *Nothing to reconcile — fewer than two groups have blueprints.*
