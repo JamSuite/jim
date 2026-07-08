@@ -2,7 +2,7 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
-updated: "2026-07-07"
+updated: "2026-07-08"
 last_full_generate: "2026-07-05T23:32:20Z"
 ---
 
@@ -23,7 +23,7 @@ phase-gated `spec → research → plan → (security) → build → review` lif
 backed by specialized agent personas, living strategic documents, and a
 compounding archive of specs/research/plans as institutional memory. Around the
 core lifecycle the group also provides strategic skills (vision, roadmap, arch,
-blueprint, brainstorm), discovery/issue capture, an invariant/contract
+blueprint, brainstorm), discovery/issue capture, an invariant/contract/retirement
 verification engine (verify), and a meta toolchain with which jim builds and
 tests itself (self-hosting). The group is markdown-first
 with a minimal deterministic bash scripting layer; there is no standalone
@@ -55,7 +55,10 @@ executes the data it reads.
   and the update's violation fork is grounded in `/jim:verify` engine outcomes on
   both adapters; `/jim:verify` also offers an on-demand contract mode
   (`--contracts [<group>]`) checking the graph's edges against the code on both
-  sides; update mode surfaces a
+  sides, and a retirement mode (`--retirement [<group>]`) flagging blueprint
+  entries no load-bearing source justifies anymore (stale invariants, stale
+  requires, dead surface) — signal only, offered as issues, never written;
+  update mode surfaces a
   regen-cadence signal (targeted updates since the last full generate) and can
   opt into a `blueprint_regen_threshold` that triggers a full regeneration when
   reached. Bare `/jim:blueprint` maintains the project context map
@@ -92,7 +95,7 @@ executes the data it reads.
   blueprint update) that never echoes commit/diff text; git writes are
   path-scoped.
 - `jimverify.sh` **verification-floor CLI** — `parse`/`territory`/`check`/
-  `faces`/`edges`/`contracts-check`. Guarantee: deterministic facts-not-verdicts
+  `scope-census`/`faces`/`edges`/`contracts-check`/`health`. Guarantee: deterministic facts-not-verdicts
   (sanitized TSV, location-only evidence); never executes a config- or
   blueprint-derived command string; path parameters pass the `safe_path_param`
   gate.
@@ -149,14 +152,15 @@ Grounded in ARCHITECTURE.md and the repo tree.
   reconcile pass, carrying `assets/blueprint-template.md` +
   `assets/map-template.md` and `references/` docs (`map-methodology`,
   `reconcile-methodology`, `check-authoring`, `fork-grounding`, `gate-presentation`); the `verify`
-  skill carries `references/contracts-methodology.md` (contract-mode
-  methodology).
+  skill carries `references/contracts-methodology.md` (contract-mode) and
+  `references/retirement-methodology.md` (retirement-mode) methodology.
 - **Scripting layer** (`skills/*/scripts/`, 13 scripts) — `jimconf.sh` (resolver)
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
   path); `jimledger.sh` (ledger); `jimverify.sh` (the `/jim:verify` deterministic
   core — blueprint parse / territory / mechanical-floor check, whole-group or
-  change-scoped, plus the cross-group contract floor: faces / edges /
-  contracts-check); `jimpartition.sh` (the `/jim:partition` deterministic core —
+  change-scoped, the retirement scope-census fact, plus the cross-group contract
+  floor: faces / edges / contracts-check, and graph-health metrics);
+  `jimpartition.sh` (the `/jim:partition` deterministic core —
   scan / ingest / aggregate / coverage); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
@@ -209,7 +213,7 @@ textually-checkable ones ride the mechanical floor.
 | gate-presentation | Skills presenting content for human approval at a hard gate reference the one canonical gate-presentation rule (`skills/blueprint/references/gate-presentation.md`): the approval request is the turn's final plain-text message with no tool call (incl. `AskUserQuestion`) chained after the presented content and nothing past ~20 lines in an `AskUserQuestion` preview; content beyond ~20 lines goes to a session-scratchpad reviewable file (secret-scrubbed, untrusted evidence delimited) with a compact verbatim summary | high | judge |
 | update-durable-record | Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | judge |
 | regen-cadence-safety | The blueprint regen-cadence count derives from a single-writer `last_full_generate` watermark (stamped only by generate mode, solely from `jimfile.sh now`); `updates-since` validates the watermark (rc 2 on malformed/absent) and bounds the count to `<= now`, and `blueprint_regen_threshold` treats a non-positive-integer as disabled — so a bad watermark or knob degrades to signal-only and never mis-fires the opt-in unattended regen | high | judge |
-| relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use | critical | judge |
+| relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use; and an untrusted path is never handed to git as a **pathspec** (`valid-relpath` does not neutralize git pathspec-magic like `:(exclude)`/`:/`) — tracked-file filtering enumerates `git ls-files` without a pathspec and filters in bash | critical | judge |
 | map-partition-authority | `BLUEPRINT.md` (the project context map) is written only through `/jim:blueprint`'s project tier and committed only via `commit-map`; a new spec group comes into being only through the map surface; hand-declared map updates grade by the shared Step-4a rule — partition downgrades always prompt | high | judge |
 | contract-graph-derived | The derived `## Contract Graph` section is written only by the reconcile pass — the recomputable join of group faces, never hand-declared or re-declared; its rewrite is Step-4a exempt as mechanical content | high | judge |
 | reconcile-durable-record | Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all eleven counters — the seven finding counters (`edges`/`leaks`/`breaking`/`dead`/`unresolved`/`undeclared`/`stale`, zeros included) plus the four graph-health counters (`groups`/`cycles`/`fanin`/`uncovered`, each a non-negative integer or `na` where the health measurement is not computable) — and always closes via `commit-map` (ledger-only when the map is unchanged); consumers shape-validate the fixed key set with the int-or-na carve-out on the four health keys | high | judge |
