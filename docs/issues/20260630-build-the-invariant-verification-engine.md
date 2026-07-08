@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-05T09:40:30Z
+updated: 2026-07-08T08:08:46Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -83,10 +83,15 @@ blueprint**:
     `--since`), with an inline fallback sweep and fail-closed precedence.
     Exercised end-to-end on jim's own blueprint; jim's `000-blueprint` then
     regenerated to structured `check:` data (off the all-judge fallback).
-  - **B2 — contract-graph integration** — ⬜ remaining: harden 034's reconcile
-    detectors (leak / breaking / dead-surface) into engine checks +
-    blast-radius-scoped ceiling spend (may itself split detector-hardening from
-    blast-radius). Different input artifact and surfaces from B1.
+  - **B2 — contract-graph integration** — ✅ **shipped as spec 037**
+    (2026-07-05, `docs/specs/jim/037-verify-contracts/`): the engine's
+    cross-group contract mode — 034's detectors (leak / breaking /
+    dead-surface) code-grounded on both sides of each edge, a deterministic
+    cross-reference floor (`contracts-check`), edge-generalized judges under
+    the existing appetite knob, blast-radius-scoped spend at the
+    boundary-change trigger, the review-sensor contracts subsection, and
+    provides-entry criticality with the one-way ratchet. Detector-hardening
+    and blast-radius stayed one spec, as scoping resolved.
 - **Spec C — retirement direction** (last): the reverse load-bearing-source
   analysis below.
 
@@ -135,8 +140,8 @@ blueprint**:
 
 034 shipped (2026-07-05, `docs/specs/jim/034-contract-graph/`; origin
 [[20260630-add-the-cross-group-contract-graph-and-blast-radius]], since closed)
-and delivers the reconciled cross-group contract graph. Its two hand-offs are
-now available inputs — consuming them is **Spec B** work (not yet built):
+and delivers the reconciled cross-group contract graph. Its two hand-offs
+were consumed by **Spec B2** (spec 037):
 
 - **Blast radius scopes the fan-out.** The graph names the groups a boundary
   change affects, so this engine's expensive ceiling can spend on
