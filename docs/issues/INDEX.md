@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 42
-- Closed: 26
+- Open: 41
+- Closed: 27
 
 ## Issues
 
@@ -56,7 +56,7 @@
 - `20260704-revisit-territory-conformance-volume-for-single-group-repos` — Revisit territory-conformance volume for single-group repos · status: open · num: 48 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, blueprint] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-strengthen-commit-map-containment-or-amend-dd-4` — Strengthen commit-map containment or amend DD 4 · status: open · num: 38 · priority: low · created: 2026-07-04T00:22:58Z · labels: [security, review] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-surface-face-freshness-in-the-reconcile-report` — Surface face freshness in the reconcile report · status: open · num: 44 · priority: low · created: 2026-07-04T09:23:24Z · labels: [000-blueprint, contract-graph] · origin: docs/specs/jim/034-contract-graph/plan.md
-- `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: open · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/jim/033-context-map/review.md
+- `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: closed · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-update-issue-skill-md-7a-surfacing-skills-enumeration` — Update issue SKILL.md 7a surfacing-skills enumeration · status: open · num: 45 · priority: low · created: 2026-07-04T11:07:13Z · labels: [issue, docs] · origin: docs/specs/jim/034-contract-graph/review.md
 - `20260705-allowed-tools-exactness-drift-in-issue-and-meta-matrix-skills` — allowed-tools exactness drift in issue and meta-matrix skills · status: open · num: 52 · priority: critical · created: 2026-07-05T00:28:45Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-assert-edge-outcome-evidence-is-location-only-in-contracts-check` — Assert edge-outcome evidence is location-only in contracts-check tests · status: closed · num: 59 · priority: medium · created: 2026-07-05T22:44:11Z · labels: [verify, contract-graph, test] · origin: docs/specs/jim/037-verify-contracts/review.md
