@@ -2,7 +2,7 @@
 id: 20260630-build-the-invariant-verification-engine
 num: 22
 title: "Build the invariant verification engine"
-status: open
+status: closed
 priority: medium
 labels: [000-blueprint, verification]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-08T08:08:46Z
+updated: 2026-07-08T11:34:08Z
 origin: docs/specs/jim/029-blueprint-spec/spec.md
 ---
 
@@ -92,8 +92,16 @@ blueprint**:
     boundary-change trigger, the review-sensor contracts subsection, and
     provides-entry criticality with the one-way ratchet. Detector-hardening
     and blast-radius stayed one spec, as scoping resolved.
-- **Spec C — retirement direction** (last): the reverse load-bearing-source
-  analysis below.
+- **Spec C — retirement direction** — ✅ **shipped as spec 041** (2026-07-08,
+  `docs/specs/jim/041-verify-retirement/`): the on-demand `/jim:verify
+  --retirement [<group>]` sweep runs the load-bearing sources in reverse,
+  flagging stale invariants, stale requires entries, and dead surface — signal
+  only, offered as issues, never written. A new `jimverify.sh scope-census`
+  verb supplies the invariant staleness fact; the judge gains a third claim
+  type; everything else composes over the existing verbs.
+
+**All slices shipped — the invariant-verification-engine initiative (035 →
+036 → 037 → 041) is complete; closing this issue.**
 
 ## Follow-through once the engine exists
 
