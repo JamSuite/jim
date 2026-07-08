@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 42
+- Open: 43
 - Closed: 25
 
 ## Issues
@@ -74,6 +74,7 @@
 - `20260707-route-scan-edge-emit-through-san-for-defense-in-depth` — route scan EDGE emit through san() for defense-in-depth · status: open · num: 65 · priority: low · created: 2026-07-07T11:03:53Z · labels: [partition, hardening] · origin: docs/specs/jim/038-partition-migration/review.md
 - `20260707-spell-out-the-superseded-group-set-derivation-for-retire` — spell out the superseded-group set derivation for --retire · status: open · num: 66 · priority: low · created: 2026-07-07T11:03:54Z · labels: [partition, docs] · origin: docs/specs/jim/038-partition-migration/review.md
 - `20260707-strengthen-039-graph-health-test-coverage` — Strengthen 039 graph-health test coverage · status: open · num: 64 · priority: low · created: 2026-07-07T06:33:25Z · labels: [test, verify] · origin: docs/specs/jim/039-graph-health/review.md
+- `20260708-partition-spec-migration-mode` — Extend /jim:partition with a spec-migration mode (move specs into new groups) · status: open · num: 68 · priority: medium · created: 2026-07-08T07:53:09Z · labels: [partition, migration, freeze-history] · origin: conversation
 
 ## Graph
 
@@ -112,6 +113,7 @@
 - `20260707-compute-graph-health-metrics-in-the-reconcile-pass` --blocks--> `20260703-build-the-partition-migration-skill`
 - `20260707-compute-graph-health-metrics-in-the-reconcile-pass` --blocks--> `20260704-add-partition-health-sensors-split-merge-signals`
 - `20260707-compute-graph-health-metrics-in-the-reconcile-pass` --related-to--> `20260630-build-the-invariant-verification-engine`
+- `20260708-partition-spec-migration-mode` --related-to--> `20260703-build-the-partition-migration-skill`
 
 ## Integrity Warnings
 
