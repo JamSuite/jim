@@ -2,7 +2,7 @@
 title: "Retirement sweep"
 spec: "docs/specs/jim/041-verify-retirement/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Retirement sweep — Plan
@@ -334,7 +334,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **Add the `scope-census` verb to `jimverify.sh`** — `cmd_scope_census`
+1. [x] **Add the `scope-census` verb to `jimverify.sh`** — `cmd_scope_census`
    resolving territory via `cmd_territory`, iterating `cmd_parse` output, and
    for each `pattern`/`structure` invariant resolving its scope
    (`verify-checks` `scope=`/`exists=`/`absent=` via `parse_params`, else
@@ -348,7 +348,7 @@ flowchart TD
    `na`. `judge`/`registry`/`malformed` invariants emit nothing.
    **Verify:** `grep -n "scope-census)" /mnt/src/jim/skills/verify/scripts/jimverify.sh && bash /mnt/src/jim/skills/verify/scripts/jimverify.sh scope-census 2>&1 | grep -q "need <blueprint-dir>"`
 
-2. [ ] **Add `scope-census` tests to `tests/jimverify.sh`** — cases covering:
+2. [x] **Add `scope-census` tests to `tests/jimverify.sh`** — cases covering:
    a populated `scope=` (count ≥1, `still-justified` upstream); an empty
    `scope=` path (count 0, kind `pattern`); a territory-default pattern with a
    populated then emptied territory; an `exists=` present (1) and absent (0);
@@ -361,12 +361,12 @@ flowchart TD
    existing `verify_repo_scoped` / temp-git-repo helpers.
    **Verify:** `bash /mnt/src/jim/tests/jimverify.sh scope_census 2>&1 | grep -Eq "Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed"`
 
-3. [ ] **Full `jimverify.sh` suite stays green** — confirm the new verb and
+3. [x] **Full `jimverify.sh` suite stays green** — confirm the new verb and
    cases did not regress `parse`/`territory`/`check`/`faces`/`edges`/
    `contracts-check`/`health`.
    **Verify:** `bash /mnt/src/jim/tests/jimverify.sh 2>&1 | grep -Eq "Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed"`
 
-4. [ ] **Extend `agents/judge.md` with the retirement claim type** — add the
+4. [x] **Extend `agents/judge.md` with the retirement claim type** — add the
    third claim (entry kinds invariant | requires | provides-surface) with the
    handed-input list and the parallel `sources_examined` + `verdict:
    justified|stale|inconclusive` output contract from Interface Contracts.
@@ -375,7 +375,7 @@ flowchart TD
    contract is unchanged. Tools stay `Read`/`Glob`/`Grep`.
    **Verify:** `grep -q "sources_examined" /mnt/src/jim/agents/judge.md && grep -q "retirement" /mnt/src/jim/agents/judge.md`
 
-5. [ ] **Create `skills/verify/references/retirement-methodology.md`** — the
+5. [x] **Create `skills/verify/references/retirement-methodology.md`** — the
    full method: the three load-bearing sources and their mechanical/judge
    mapping (DD 2); the hint→candidate→judge flow; per-kind emptiness rules
    (DD 3); the mass-anomaly guard with its exact ≥3-and-≥50% threshold (DD 8),
@@ -395,7 +395,7 @@ flowchart TD
    degradation rules (unswept groups, `na`, single-group short-circuit).
    **Verify:** `test -f /mnt/src/jim/skills/verify/references/retirement-methodology.md && grep -Eq "mass-anomaly|territory may have moved" /mnt/src/jim/skills/verify/references/retirement-methodology.md`
 
-6. [ ] **Wire `--retirement` into `skills/verify/SKILL.md`** — add the
+6. [x] **Wire `--retirement` into `skills/verify/SKILL.md`** — add the
    argument-routing rows (`--retirement` = whole-project, `--retirement
    <group>` = group-scoped; composes with `--appetite`, strip-and-remainder;
    fewer than two blueprint-bearing groups → nothing-to-sweep short-circuit,
@@ -406,7 +406,7 @@ flowchart TD
    jimfile.sh/Read/Glob/Grep all present). Keep under 500 lines.
    **Verify:** `grep -q -- "--retirement" /mnt/src/jim/skills/verify/SKILL.md && grep -q "retirement-methodology" /mnt/src/jim/skills/verify/SKILL.md && [ "$(wc -l < /mnt/src/jim/skills/verify/SKILL.md)" -lt 500 ]`
 
-7. [ ] **Blueprint-anchored self-check of the wiring** — confirm the mode
+7. [x] **Blueprint-anchored self-check of the wiring** — confirm the mode
    short-circuits cleanly on jim's own single-group repo (the AC #1 path is
    the only one exercisable here) and the skill's routing text names the
    two-grain / short-circuit behavior. This is the observable host-repo check;
