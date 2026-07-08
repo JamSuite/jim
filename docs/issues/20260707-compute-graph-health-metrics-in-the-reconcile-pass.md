@@ -2,7 +2,7 @@
 id: 20260707-compute-graph-health-metrics-in-the-reconcile-pass
 num: 63
 title: "Compute graph-health metrics in the reconcile pass"
-status: open
+status: closed
 priority: medium
 labels: [000-blueprint, contract-graph, spec-groups]
 relations:
@@ -11,11 +11,25 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-07T03:07:44Z
-updated: 2026-07-07T03:28:37Z
+updated: 2026-07-08T07:37:46Z
 origin: conversation
 ---
 
 ## Description
+
+## Resolution
+
+Shipped as **spec 039** (`docs/specs/jim/039-graph-health/`, 2026-07-07), which
+names this issue as its origin. The reconcile pass now computes all four
+measurements (edge density, cycle count, fan-in concentration, territory
+coverage) deterministically and records them as additive counters on the
+`blueprint finished … op=reconcile` ledger event; review confirmed all ten ACs
+met, 434/434 tests passing. **Straddle count** remains deferred behind the
+extractor fork (spec 038 / [[20260703-build-the-partition-migration-skill]]),
+as scoped here. Downstream consumers stay open work: threshold/gating on these
+metrics is [[20260630-build-the-invariant-verification-engine]] slice B2, and
+split/merge interpretation is
+[[20260704-add-partition-health-sensors-split-merge-signals]].
 
 ## Context
 

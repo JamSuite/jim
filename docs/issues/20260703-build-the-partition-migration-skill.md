@@ -2,7 +2,7 @@
 id: 20260703-build-the-partition-migration-skill
 num: 34
 title: "Build the partition migration skill"
-status: open
+status: closed
 priority: medium
 labels: [migration, spec-groups, 000-blueprint]
 relations:
@@ -11,11 +11,26 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-03T20:08:37Z
-updated: 2026-07-07T03:28:37Z
+updated: 2026-07-08T07:42:32Z
 origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
 ---
 
 ## Description
+
+## Resolution
+
+Shipped as **spec 038** (`docs/specs/jim/038-partition-migration/`, 2026-07-07),
+which names this issue as its origin. Delivered as **`/jim:partition`** (the verb
+settled from the tentative `/jim:migrate`): both auto-detected entry modes
+(greenfield + repartition), a code-derived dependency graph with coupling-channel
+coverage labels, the hard map gate, straddle facts, the
+"partition-blocked-on-refactors" terminal state, and territory-mode upgrades —
+the full scope here. Review verdict **aligned**, all 21 ACs met, 472/472 tests
+green. Greenfield mode absorbed [[20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases]]
+(#35, also closed). Both `depends-on` are satisfied: #19 (shipped 033/034) and
+[[20260707-compute-graph-health-metrics-in-the-reconcile-pass]] (#63, shipped
+039). Downstream split/merge sensors ([[20260704-add-partition-health-sensors-split-merge-signals]],
+#42) stay open — separate work this skill points at, not built here.
 
 ## Context
 

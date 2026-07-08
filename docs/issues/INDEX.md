@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 44
-- Closed: 23
+- Open: 42
+- Closed: 25
 
 ## Issues
 
@@ -41,7 +41,7 @@
 - `20260702-surface-targeted-update-count-since-last-full-blueprint-regen` — Surface targeted-update count since last full blueprint regen · status: closed · num: 27 · priority: low · created: 2026-07-02T07:00:12Z · labels: [000-blueprint, fold-back] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260702-tighten-update-guard-wording-and-checklist-gates` — Tighten update-guard wording and checklist gates · status: closed · num: 30 · priority: low · created: 2026-07-02T09:30:15Z · labels: [000-blueprint, fold-back] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` — Build a bottom-up onboarding partitioner for existing codebases · status: closed · num: 35 · priority: low · created: 2026-07-03T20:48:04Z · labels: [spec-groups, onboarding] · origin: docs/specs/jim/033-context-map/spec.md
-- `20260703-build-the-partition-migration-skill` — Build the partition migration skill · status: open · num: 34 · priority: medium · created: 2026-07-03T20:08:37Z · labels: [migration, spec-groups, 000-blueprint] · origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
+- `20260703-build-the-partition-migration-skill` — Build the partition migration skill · status: closed · num: 34 · priority: medium · created: 2026-07-03T20:08:37Z · labels: [migration, spec-groups, 000-blueprint] · origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
 - `20260704-add-a-dedicated-test-for-the-pattern-count-parameter` — Add a dedicated test for the pattern count parameter · status: open · num: 47 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, test] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-add-a-mint-new-handoff-row-to-the-blueprint-routing-table` — Add a mint-new handoff row to the blueprint routing table · status: open · num: 37 · priority: low · created: 2026-07-04T00:22:58Z · labels: [blueprint, spec-groups] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` — Add a plan-time blast-radius advisory to /jim:plan · status: open · num: 39 · priority: medium · created: 2026-07-04T06:09:52Z · labels: [000-blueprint, cross-group, plan] · origin: docs/brainstorms/20260630-000-current-spec.md
@@ -69,7 +69,7 @@
 - `20260705-test-the-consumer-ref-abstain-on-absent-path-in-contracts-check` — Test the consumer-ref abstain-on-absent path in contracts-check · status: closed · num: 58 · priority: medium · created: 2026-07-05T22:44:11Z · labels: [verify, contract-graph, test] · origin: docs/specs/jim/037-verify-contracts/review.md
 - `20260705-untrusted-data-and-secret-redaction-gap-on-researcher-web-fetch-` — untrusted-data and secret-redaction gap on researcher web-fetch path · status: open · num: 53 · priority: critical · created: 2026-07-05T00:28:53Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-wire-the-group-territory-floor-strength-label-in-contract-mode` — Wire the group_territory floor-strength label in contract mode · status: open · num: 60 · priority: low · created: 2026-07-05T22:44:12Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/review.md
-- `20260707-compute-graph-health-metrics-in-the-reconcile-pass` — Compute graph-health metrics in the reconcile pass · status: open · num: 63 · priority: medium · created: 2026-07-07T03:07:44Z · labels: [000-blueprint, contract-graph, spec-groups] · origin: conversation
+- `20260707-compute-graph-health-metrics-in-the-reconcile-pass` — Compute graph-health metrics in the reconcile pass · status: closed · num: 63 · priority: medium · created: 2026-07-07T03:07:44Z · labels: [000-blueprint, contract-graph, spec-groups] · origin: conversation
 - `20260707-extend-the-gate-presentation-rule-beyond-the-blueprint-surface` — Extend the gate-presentation rule beyond the blueprint surface · status: open · num: 67 · priority: medium · created: 2026-07-07T20:55:43Z · labels: [gate-presentation, follow-up] · origin: docs/specs/jim/040-blueprint-gate-presentation/spec.md
 - `20260707-route-scan-edge-emit-through-san-for-defense-in-depth` — route scan EDGE emit through san() for defense-in-depth · status: open · num: 65 · priority: low · created: 2026-07-07T11:03:53Z · labels: [partition, hardening] · origin: docs/specs/jim/038-partition-migration/review.md
 - `20260707-spell-out-the-superseded-group-set-derivation-for-retire` — spell out the superseded-group set derivation for --retire · status: open · num: 66 · priority: low · created: 2026-07-07T11:03:54Z · labels: [partition, docs] · origin: docs/specs/jim/038-partition-migration/review.md
@@ -96,6 +96,8 @@
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` --related-to--> `20260703-build-the-partition-migration-skill`
 - `20260703-build-the-partition-migration-skill` --depends-on--> `20260630-build-intelligence-for-context-aware-spec-group-definition`
 - `20260703-build-the-partition-migration-skill` --depends-on--> `20260707-compute-graph-health-metrics-in-the-reconcile-pass`
+- `20260703-build-the-partition-migration-skill` --related-to--> `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases`
+- `20260703-build-the-partition-migration-skill` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
 - `20260703-build-the-partition-migration-skill` --related-to--> `20260704-derive-the-map-relations-column-from-the-contract-graph`
 - `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
 - `20260704-add-partition-health-sensors-split-merge-signals` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
