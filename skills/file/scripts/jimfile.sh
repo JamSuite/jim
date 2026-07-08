@@ -586,8 +586,9 @@ cmd_prefix_from() {
 #   Two forms, dispatched by arity:
 #     Single-arg form (D3): `path <key>` returns the configured path for a
 #     jimconf key (delegates to jimconf.sh, regardless of disk existence).
-#     The only KINDS∩KEYS overlap is `debug`: `path debug` (no further args)
-#     takes the key form and returns the configured `debug` directory.
+#     KINDS∩KEYS overlaps are `debug` and `blueprint` (spec 033): `path debug`
+#     / `path blueprint` (no further args) take the key form and return the
+#     configured `debug` directory / project-tier map path respectively.
 #     Multi-arg form: `path <kind> <args...>` resolves a derived artifact path:
 #       spec     <group> <id> <name>
 #       plan     <group> <id> <name>

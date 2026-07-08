@@ -247,9 +247,11 @@ name: pm
 description: Product manager. Defines specs and maintains strategic alignment.
 skills:
   - spec
+  - spec-check
   - vision
   - roadmap
   - brainstorm
+  - issue
 ---
 ```
 
