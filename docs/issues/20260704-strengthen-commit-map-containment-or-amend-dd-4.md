@@ -2,7 +2,7 @@
 id: 20260704-strengthen-commit-map-containment-or-amend-dd-4
 num: 38
 title: "Strengthen commit-map containment or amend DD 4"
-status: open
+status: closed
 priority: low
 labels: [security, review]
 relations:
@@ -11,35 +11,34 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T00:22:58Z
-updated: 2026-07-04T00:22:58Z
+updated: 2026-07-08T20:15:50Z
 origin: docs/specs/jim/033-context-map/review.md
 ---
 
 ## Description
 
-## Context
+Surfaced by the 033 post-build review (origin) as the single counted plan
+deviation. Closed by strengthening the check to match plan DD 4's letter.
 
-Surfaced by the 033 post-build review (origin) — the single counted plan
-deviation. Plan DD 4 specified that `commit-map` verify each path
-"resolves inside `git rev-parse --show-toplevel`"; the implementation
-substitutes shape validation (`valid-relpath` on both arguments) plus a
-repo-presence check, with the rationale documented at
-`skills/review/scripts/jimledger.sh:178-180`.
+## What it was
 
-## What
+Plan DD 4 (and its security fold-ins, Findings 2 and 8) specified that
+`commit-map` verify each path argument "resolves inside `git rev-parse
+--show-toplevel`". The shipped `commit-map` substituted shape validation
+(`valid-relpath` on both args — relative, no `..`) plus a repo-presence check.
+Two investigations judged the substitution sound, but it narrowed the plan's
+letter without being surfaced for approval mid-build, and the plan/security
+artifacts still asserted the literal check.
 
-Two investigations judged the substitution sound (lexical containment
-holds for `..`-free relative paths under a repo CWD; `git add` refuses
-worktree-escaping symlink traversal; failures degrade rc 2), but it is a
-narrowing of the plan's letter that was not surfaced for approval
-mid-build. Resolve the gap one of two ways:
+## Resolution
 
-1. **Strengthen:** add the literal resolved-path-inside-toplevel
-   comparison to `commit-map` (belt and suspenders; closes the
-   invoked-from-subdirectory nuance), with reject tests; or
-2. **Accept:** amend plan DD 4 / security.md Finding 2's wording to match
-   the shipped mechanism, recording the acceptance explicitly.
-
-## Relates to
+Strengthened rather than accepted (developer's call). `cmd_commit_map` now
+captures `git rev-parse --show-toplevel` and rejects (rc 2) any git-add target
+whose `realpath -m` resolution falls outside the worktree top — a
+belt-and-suspenders backstop over `valid-relpath` and git's own symlink
+refusal, catching a shape-valid path that symlinks out of the tree. Added a
+symlink-escape reject test in `tests/jimledger.sh`; full suite green. The code
+now matches plan DD 4 / security.md Findings 2 & 8, so no doc amendment is
+needed.
 
 Spec 033 plan DD 4 / Task 3; security.md Findings 2, 8; review finding 1.
