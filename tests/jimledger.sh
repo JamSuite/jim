@@ -952,6 +952,23 @@ case_jimledger_commit_map_rejects_unsafe_paths() {
   assert_eq "no commit landed" "1" "$(git -C "$root" rev-list --count HEAD)"
 }
 
+# AC: commit-map rejects a shape-valid arg that resolves outside the worktree
+# via a symlink — the DD 4 containment check (each git-add target resolves
+# inside `git rev-parse --show-toplevel`) backstops valid-relpath and git's own
+# symlink refusal before git runs (spec 033 Finding 8).
+case_jimledger_commit_map_rejects_symlink_escape() {
+  local sd root; sd="$(git_fixture t33cme)"; root="${sd%/spec}"
+  mkdir -p "$root/docs/specs"
+  printf 'l\n' > "$root/docs/specs/ledger.md"
+  # 'escape.md' is a shape-valid arg (relative, no '..') that symlinks out of
+  # the worktree, so it clears valid-relpath but must fail the containment gate.
+  ln -s ../escape-target.md "$root/escape.md"
+  local rc
+  (cd "$root" && bash "$SCRIPT_JIMLEDGER" commit-map escape.md docs/specs) >/dev/null 2>&1; rc=$?
+  assert_exit "symlink-escaping map rejected" 2 "$rc"
+  assert_eq "no commit landed" "1" "$(git -C "$root" rev-list --count HEAD)"
+}
+
 # AC: commit-map degrades gracefully outside a git repo (spec 033 Task 3).
 case_jimledger_commit_map_non_repo() {
   local d; d="$(empty_dir t33cmn)"

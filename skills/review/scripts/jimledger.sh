@@ -181,9 +181,11 @@ cmd_commit_blueprint() {
 # cmd_commit_map <map-path> <specs-dir> [create|update] — path-scoped commit of
 #   the project-tier context map: <map-path> + <specs-dir>/ledger.md in the repo
 #   at CWD (spec 033 AC #10, plan DD 4). BOTH path arguments are config-derived
-#   (blueprint_path / specs_path), so both pass the jimfile `valid-relpath`
-#   boundary — relative, no '..' segment (sec 033 Findings 2, 8). Shape-valid
-#   relative paths resolved under a repo CWD cannot escape the worktree.
+#   (blueprint_path / specs_path) and clear two containment gates before git runs
+#   (sec 033 Findings 2, 8): the jimfile `valid-relpath` boundary (relative, no
+#   '..' segment), then a literal check that each git-add target resolves inside
+#   `git rev-parse --show-toplevel` — backstopping valid-relpath and git's own
+#   symlink refusal against a shape-valid path that symlinks out of the worktree.
 #   Literal paths, `--` guard, never `git add -A`; mode whitelisted like
 #   commit-blueprint. Any git failure returns non-zero so the caller degrades
 #   with the map left intact on disk.
@@ -201,12 +203,22 @@ cmd_commit_map() {
     echo "jimledger commit-map: unsafe specs dir rejected" >&2
     return 2
   fi
-  if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
     echo "jimledger commit-map: not in a git repo" >&2
     return 2
   fi
   [[ "$mode" == "create" ]] || mode="update"
   local ledger="${specs_dir%/}/ledger.md"
+  # DD 4 containment: each git-add target must resolve inside the worktree top,
+  # rejecting a shape-valid path that symlinks out of the tree before git runs.
+  local target resolved
+  for target in "$map" "$ledger"; do
+    if ! resolved="$(realpath -m -- "$target" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "jimledger commit-map: path escapes worktree: $target" >&2
+      return 2
+    fi
+  done
   git add -- "$map" "$ledger" || return 2
   git commit -q -m "docs(blueprint): $mode project map" -- "$map" "$ledger" || return 2
 }
