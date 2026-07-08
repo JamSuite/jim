@@ -11,34 +11,41 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T00:22:57Z
-updated: 2026-07-04T00:22:57Z
+updated: 2026-07-08T19:13:35Z
 origin: docs/specs/jim/033-context-map/review.md
 ---
 
 ## Description
 
-## Context
+Surfaced by the 033 post-build review (origin) as a sweep of low-impact
+documentation drift. The substantive items are now resolved; only cosmetic
+residual remains.
 
-Surfaced by the 033 post-build review (origin). The build's ecosystem
-touches exposed pre-existing schematic staleness plus a handful of
-cosmetic drift items introduced or highlighted by 033.
+## Resolved
 
-## What
+- `WORKFLOW.md` illustrative sections — the architect Agent ↔ Skill example
+  now carries `blueprint`, the pm example now lists `spec-check` + `issue`,
+  the Agents table lists `/jim:blueprint` on architect's row, and the plugin
+  directory tree is current (blueprint/partition/verify plus the read-only
+  subagents). Fixed incidentally by the blueprint/partition doc sweeps, plus
+  the pm-example correction in this sweep.
+- `skills/file/scripts/jimfile.sh` `cmd_path` header comment — now names both
+  `debug` and `blueprint` as the KINDS∩KEYS overlaps (was "the only overlap
+  is `debug`", stale since spec 033 made `blueprint` both a KIND and a KEY).
 
-One sweep of documentation drift, smallest-possible edits:
+## Remaining (cosmetic, optional)
 
-- `WORKFLOW.md` illustrative sections: the Agent ↔ Skill Composition
-  example still shows architect `skills: [plan, arch]` (real file now
-  carries `blueprint`; the pm example is stale too); the Agents table
-  omits `/jim:blueprint` from architect's row and has other pre-existing
-  incompleteness; the plugin directory tree predates spec 029.
-- `skills/file/scripts/jimfile.sh:590` comment: "the only KINDS∩KEYS
-  overlap is `debug`" — `blueprint` is now the second overlap.
-- Cosmetic cross-references: `skills/blueprint/SKILL.md` cites
-  "methodology § Scrub" vs the actual heading "Scrub reminder (canonical
-  text)"; `map-methodology.md` is the only `references/` file carrying a
-  literal `${CLAUDE_PLUGIN_ROOT}`; the map banner tail wording differs
-  slightly from ARCHITECTURE.md's.
+- `skills/blueprint/SKILL.md` cites "methodology § Scrub"; the actual heading
+  is "Scrub reminder (canonical text)" in `map-methodology.md`. `§ Scrub`
+  reads as a fair shorthand — align only if literal exactness is wanted.
+- The map banner tail ("…preserve the partition's coherence.") differs from
+  ARCHITECTURE.md's ("…preserve consistency."). Plausibly intentional across
+  two distinct documents — align only if a single house phrasing is wanted.
+
+The original "`map-methodology.md` is the only `references/` file with a
+literal `${CLAUDE_PLUGIN_ROOT}`" bullet is dropped: three references files now
+carry it, and it is correct usage in skill-content (where the variable
+substitutes), not a defect.
 
 ## Why low
 
