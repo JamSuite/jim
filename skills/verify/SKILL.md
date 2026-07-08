@@ -10,7 +10,7 @@ description: >
   for post-build drift review (/jim:review), design-time security (/jim:sec), or
   fixing code (/jim:build) — the engine reports and offers issues, never fixes.
 agent: reviewer
-argument-hint: "[--appetite critical|high|medium|low] <group> | --from-review <spec-dir> <group> | --since <ref> <group> | --contracts [<group>]"
+argument-hint: "[--appetite critical|high|medium|low] <group> | --from-review <spec-dir> <group> | --since <ref> <group> | --contracts [<group>] | --retirement [<group>]"
 allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(mkdir *) Agent(judge) Read Write Glob Grep
 ---
 
@@ -31,6 +31,7 @@ Use `$ARGUMENTS` to determine the group, the mode, and (optionally) the appetite
 | `--since <ref> <group>` | **Ad-hoc scoped mode** (spec 036): verify the `<ref>..HEAD` range against `<group>`'s blueprint — change-scoped floor, no registry, change-selected judges. Strip the flag; the two operands follow. See **Scoped adapters**. |
 | `--contracts [<group>]` | **Contract mode** (spec 037): verify the cross-group contract graph's edges against code on both sides. Bare = whole graph (dead-surface included); a `<group>` operand = only edges touching that group (leak + breaking). Strip the flag. See **Contract mode**. |
 | `--contracts <group> --entries <file>` | **Caller-scoped contract trigger** (the boundary-change consume path): check only the entry-slugs listed in `<file>` (one per line) for `<group>`'s edges. Returns a VERIFY-OUTCOME block; the issue offer is suppressed and the caller owns durability. |
+| `--retirement [<group>]` | **Retirement mode** (spec 041): flag blueprint entries no load-bearing source justifies anymore. Bare = whole-project (every blueprint-bearing group, incl. cross-group dead surface); a `<group>` operand = that group's invariants + requires entries. Strip the flag. See **Retirement mode**. |
 
 The adapters compose with `--appetite` (strip both; order-independent). At most one adapter flag; the plain `<group>` form is on-demand mode and behaves exactly as before.
 
@@ -127,6 +128,16 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-verify <spe
 ```
 
 `commit-verify` stages `ledger.md` alone and works unchanged for the specs root. A caller-scoped `--entries` trigger returns its VERIFY-OUTCOME block to the caller and records nothing itself — the caller owns durability (the spec 036 suppression rule).
+
+## Retirement mode (`--retirement`)
+
+On a multi-group project, `--retirement` runs the load-bearing sources **in reverse** — flagging blueprint entries (stale invariants, stale requires entries, dead surface) that no source justifies anymore, in one consolidated report, offered as issues, **never written** (AC #8). It reuses this skill's appetite/fan-out knobs, the read-only `judge`, and the untrusted-content discipline unchanged — **no new configuration**.
+
+The one new deterministic fact is `jimverify.sh scope-census <blueprint-dir> <map> <group>`: per pattern/structure invariant, the count of tracked files its resolved scope covers — the staleness signal the floor's `check` grammar cannot express (a `must-not` over an empty scope reads `holds`). A populated scope is a live verification source (reported `still-justified`, no judge spent); the hollow ones, prose invariants, and unreferenced requires edges become judge candidates, appetite-gated. Mechanical hints never flag alone — every flag is judge-confirmed, and a `stale` verdict without a complete per-source evidence block degrades to `inconclusive` (fail toward keeping the constraint).
+
+Two grains, both on-demand: **whole-project** (`--retirement`, includes cross-group dead surface) and **group-scoped** (`--retirement <group>`). With fewer than two blueprint-bearing groups the run reports there is **nothing to sweep** and stops (AC #1). Judge fan-out is bounded **run-global** by `verify_fanout_cap` across all groups — never per-group.
+
+The full methodology — the three sources, the hint→candidate→judge ladder, the mass-anomaly guard, dead-surface / stale-requires reuse, the confirmation burden, the report shape, and the ledger choreography — lives in **`references/retirement-methodology.md`**. Read it before running the mode. Retirement runs record a project-tier `verify … op=retirement` event on the **specs-root** ledger and self-commit via `commit-verify`, exactly as contract runs do.
 
 ## Process
 
