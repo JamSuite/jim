@@ -19,6 +19,23 @@
 #                                          listed files ∩ territory, structure runs
 #                                          only when its param path is listed, and
 #                                          conformance scans the listed set only.
+#   scope-census <blueprint-dir> <map-path> <group>  (spec 041) per
+#                                          pattern/structure invariant, the
+#                                          count of tracked files its resolved
+#                                          scope covers — the staleness fact the
+#                                          `check` grammar cannot express.
+#
+# scope-census OUTPUT (TAB-separated):
+#   SCOPE \t <id> \t <count|na> \t <kind> \t <scope-desc>
+#     - kind ∈ pattern | exists | absent
+#     - count: tracked files under (pattern/exists) or matching (absent) the
+#       resolved scope; `na` on a non-git tree (unavailable ≠ zero, AC #6)
+#     - scope-desc: the resolved scope path(s) or `territory` (location-only)
+#   UNSCOPED                               no territory declared (caller names it)
+#   HYGIENE \t <scope>                     an explicit scope failing safe_path_param
+#   judge/registry/malformed invariants emit no SCOPE record. The untrusted scope
+#   is never handed to git as a pathspec (Finding 4). rc 2 on bad args.
+#
 #   faces     <blueprint-spec.md>          (spec 037) Provides/Requires face
 #                                          entries joined with the optional
 #                                          contract-checks block → one TSV record
@@ -115,6 +132,7 @@ usage: jimverify.sh <subcommand> [args]
   parse     <blueprint-spec.md>              invariants → normalized TSV
   territory <map-path> <group>               group territory paths (validated)
   check     <blueprint-dir> <map-path> <group> [files-list]  run the mechanical floor
+  scope-census <blueprint-dir> <map-path> <group>  per-invariant scope population (retirement)
   faces     <blueprint-spec.md>              provides/requires + contract-checks → TSV
   edges     <map-path>                        persisted Contract Graph → consumer/relies-on/provider
   contracts-check <map-path> <specs-root> [files-list]  cross-group floor: CROSS-REF facts + edge outcomes
@@ -535,6 +553,108 @@ cmd_check() {
   done
   # Territory conformance is only meaningful when a territory is declared.
   if [[ $scoped -eq 1 ]]; then check_conformance; fi
+  return 0
+}
+
+# ─── Section: scope-census — retirement staleness facts (spec 041) ───────────
+
+# emit_scope <id> <count> <kind> <scope-desc> — one scope-census fact record.
+#   count is a non-negative integer or `na` (non-git tree). scope-desc is
+#   location-only (a declared path or `territory`), sanitized so untrusted
+#   blueprint content can never shift TSV columns (the emit_outcome discipline).
+emit_scope() {
+  local id="$1" count="$2" kind="$3" desc="$4"
+  desc="$(printf '%s' "$desc" | tr '\t\n\r' '   ' | cut -c1-512)"
+  printf 'SCOPE\t%s\t%s\t%s\t%s\n' "$id" "$count" "$kind" "$desc"
+}
+
+# cmd_scope_census <blueprint-dir> <map-path> <group> — emit, per pattern /
+#   structure invariant, the count of tracked files its resolved scope covers:
+#   the one staleness fact the `check` grammar cannot express (a must-not over
+#   an empty scope reads `holds`, indistinguishable from a genuinely-clean
+#   scope). Facts only — the retirement skill classifies (Bash-vs-Prompt).
+#   Counting mirrors check_conformance: `git ls-files` is enumerated ONCE with
+#   NO pathspec and filtered by path_under in bash. The untrusted scope is NEVER
+#   handed to git as a pathspec — git pathspec-magic (`:(exclude)…`, `:/`) can
+#   slip past the relpath shape gate (security Finding 4); a magic scope either
+#   fails safe_path_param (HYGIENE) or is counted literally (0). judge /
+#   registry / malformed invariants have no mechanical scope and emit nothing.
+cmd_scope_census() {
+  local bpdir="${1:-}" map="${2:-}" group="${3:-}"
+  if [[ -z "$bpdir" || -z "$map" || -z "$group" ]]; then
+    echo "jimverify scope-census: need <blueprint-dir> <map-path> <group>" >&2; return 2
+  fi
+  local spec="$bpdir/spec.md"
+  if [[ ! -f "$spec" ]]; then echo "jimverify scope-census: blueprint spec not found: $spec" >&2; return 2; fi
+  if [[ ! "$group" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "jimverify scope-census: invalid group: $group" >&2; return 2
+  fi
+  # Resolve territory (valid paths only; HYGIENE lines are advisory), as cmd_check does.
+  local terr_valid=""
+  if [[ -f "$map" ]]; then
+    terr_valid="$(cmd_territory "$map" "$group" 2>/dev/null | grep -v '^HYGIENE'"$(printf '\t')" || true)"
+  fi
+  local -a terr_paths=()
+  local line
+  if [[ -n "$terr_valid" ]]; then
+    while IFS= read -r line; do [[ -n "$line" ]] && terr_paths+=("$line"); done <<< "$terr_valid"
+  fi
+  local scoped=1
+  if [[ ${#terr_paths[@]} -eq 0 ]]; then scoped=0; printf 'UNSCOPED\n'; fi
+  # Enumerate tracked files ONCE, no pathspec. A non-git tree → `na` per
+  # invariant (unavailable ≠ zero — AC #6), never a false emptiness signal.
+  local gitfiles rc_git
+  gitfiles="$(git ls-files 2>/dev/null)"; rc_git=$?
+  local id crit method params inv
+  while IFS=$'\t' read -r id crit method params inv; do
+    local kind="" k v scope="" exists="" absent=""
+    case "$method" in
+      pattern)
+        while IFS=$'\t' read -r k v; do [[ "$k" == scope ]] && scope="$v"; done < <(parse_params "$params")
+        kind=pattern
+        ;;
+      structure)
+        while IFS=$'\t' read -r k v; do
+          [[ "$k" == exists ]] && exists="$v"
+          [[ "$k" == absent ]] && absent="$v"
+        done < <(parse_params "$params")
+        if   [[ -n "$exists" ]]; then kind=exists; scope="$exists"
+        elif [[ -n "$absent" ]]; then kind=absent; scope="$absent"
+        else continue    # malformed structure (no exists/absent) → no scope fact
+        fi
+        ;;
+      *) continue ;;      # judge / registry / malformed → no mechanical scope
+    esac
+    if [[ $rc_git -ne 0 ]]; then
+      emit_scope "$id" na "$kind" "${scope:-territory}"; continue
+    fi
+    local -a bases=(); local desc=""
+    if [[ "$kind" == pattern && -z "$scope" ]]; then
+      if [[ $scoped -eq 1 ]]; then bases=("${terr_paths[@]}"); else bases=("."); fi
+      desc=territory
+    else
+      if ! safe_path_param "$scope"; then printf 'HYGIENE\t%s\n' "$scope"; continue; fi
+      bases=("$scope"); desc="$scope"
+    fi
+    local count=0 f b
+    if [[ "$kind" == absent ]]; then
+      # A forbidden-glob count is not a staleness signal (the skill excludes
+      # kind=absent, DD 3); reported for completeness via bash glob match.
+      while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        # shellcheck disable=SC2053  # deliberate glob match against the absent pattern
+        [[ "$f" == $scope ]] && count=$((count + 1))
+      done <<< "$gitfiles"
+    else
+      while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        for b in "${bases[@]}"; do
+          if path_under "$f" "$b"; then count=$((count + 1)); break; fi
+        done
+      done <<< "$gitfiles"
+    fi
+    emit_scope "$id" "$count" "$kind" "$desc"
+  done < <(cmd_parse "$spec")
   return 0
 }
 
@@ -984,6 +1104,7 @@ main() {
     parse)           shift; cmd_parse "$@" ;;
     territory)       shift; cmd_territory "$@" ;;
     check)           shift; cmd_check "$@" ;;
+    scope-census)    shift; cmd_scope_census "$@" ;;
     faces)           shift; cmd_faces "$@" ;;
     edges)           shift; cmd_edges "$@" ;;
     contracts-check) shift; cmd_contracts_check "$@" ;;
