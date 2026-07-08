@@ -1191,6 +1191,200 @@ case_jimverify_health_coverage_no_git() {
   assert_match "reason no-git" '^UNCOVERED_NA_REASON	no-git$' "$OUT"
 }
 
+# ─── Section: scope-census — retirement staleness facts (spec 041 Task 1) ────
+
+# census_repo <name> — a throwaway git repo whose blueprint exercises every
+#   scope-census kind: a populated scoped pattern, an empty scoped pattern, a
+#   territory-default pattern, present/absent `exists=` structure checks, an
+#   `absent=` glob, a prose (judge) invariant, and a git-pathspec-magic scope.
+#   Territory is `skills/` and holds two tracked files.
+census_repo() {
+  local name="$1"; local root="$TMP_BASE/$name"
+  mkdir -p "$root/skills/foo" "$root/docs/specs/g/000-blueprint"
+  git -C "$root" init -q
+  git -C "$root" config user.email "t@e.com"; git -C "$root" config user.name "T"
+  git -C "$root" config commit.gpgsign false
+  printf 'code\n' > "$root/skills/foo/good.sh"
+  printf 'more\n' > "$root/skills/foo/bar.sh"
+  cat > "$root/docs/specs/g/000-blueprint/spec.md" <<'EOF'
+## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| pat-pop | populated scoped pattern | high | pattern |
+| pat-empty | empty scoped pattern | high | pattern |
+| pat-terr | territory-default pattern | medium | pattern |
+| ex-present | present file | low | structure |
+| ex-absent | absent file | low | structure |
+| abs-check | forbidden glob | low | structure |
+| prose-inv | prose only | medium | judge |
+| pat-magic | pathspec magic scope | low | pattern |
+
+```verify-checks
+pat-pop polarity=must-not regex=NOPE scope=skills/
+pat-empty polarity=must-not regex=NOPE scope=skills/gone/
+pat-terr polarity=must regex=code
+ex-present exists=skills/foo/good.sh
+ex-absent exists=skills/foo/missing.sh
+abs-check absent=skills/*.tmp
+pat-magic polarity=must-not regex=NOPE scope=:(exclude)*
+```
+EOF
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+## Groups
+
+### g
+
+- **Territory:** `skills/`
+EOF
+  git -C "$root" add -A
+  git -C "$root" commit -q -m seed
+  printf '%s' "$root"
+}
+
+# scope_field <id> <n> — TAB-field <n> of the first SCOPE record keyed by <id>
+#   (SCOPE records lead with the literal tag, so the id is field 2).
+scope_field() {
+  printf '%s\n' "$OUT" | awk -F'\t' -v id="$1" -v n="$2" '$1=="SCOPE" && $2==id {print $n; exit}'
+}
+
+# AC (spec 041 Task 1): a pattern scoped to a populated directory reports its
+# tracked-file count (≥1), kind `pattern`, and the scope as location-only desc.
+case_jimverify_scope_census_populated() {
+  local root; root="$(census_repo scpop)"
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit "rc" 0 "$RC"
+  assert_match "pat-pop counted ≥1" '^[1-9][0-9]*$' "$(scope_field pat-pop 3)"
+  assert_eq "pat-pop kind" "pattern" "$(scope_field pat-pop 4)"
+  assert_eq "pat-pop desc" "skills/" "$(scope_field pat-pop 5)"
+}
+
+# AC: a pattern scoped to an empty/absent directory reports count 0 — the
+# zombie signal the `check` grammar cannot express (a must-not over an empty
+# scope reads `holds`).
+case_jimverify_scope_census_empty_scope() {
+  local root; root="$(census_repo scempty)"
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_eq "pat-empty count 0" "0" "$(scope_field pat-empty 3)"
+  assert_eq "pat-empty kind" "pattern" "$(scope_field pat-empty 4)"
+}
+
+# AC: a scope-less pattern defaults to the group's territory; the desc reads
+# `territory` and the count reflects the populated territory.
+case_jimverify_scope_census_territory_default() {
+  local root; root="$(census_repo scterr)"
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_eq "pat-terr desc" "territory" "$(scope_field pat-terr 5)"
+  assert_match "pat-terr counted ≥1" '^[1-9][0-9]*$' "$(scope_field pat-terr 3)"
+}
+
+# AC: `exists=` structure checks report kind `exists`; a present path counts 1,
+# an absent path counts 0 (the required artifact vanished — a stale candidate).
+case_jimverify_scope_census_exists() {
+  local root; root="$(census_repo scex)"
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_eq "ex-present count 1" "1" "$(scope_field ex-present 3)"
+  assert_eq "ex-present kind" "exists" "$(scope_field ex-present 4)"
+  assert_eq "ex-absent count 0" "0" "$(scope_field ex-absent 3)"
+  assert_eq "ex-absent kind" "exists" "$(scope_field ex-absent 4)"
+}
+
+# AC (DD 3): an `absent=` check is tagged kind `absent` so the skill excludes it
+# from the emptiness hint (zero matches is the healthy state, not obsolescence).
+case_jimverify_scope_census_absent_kind() {
+  local root; root="$(census_repo scabs)"
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_eq "abs-check kind" "absent" "$(scope_field abs-check 4)"
+}
+
+# AC: judge / registry / malformed invariants have no mechanical scope — they
+# emit NO SCOPE record (the skill accounts for them from `parse`).
+case_jimverify_scope_census_judge_no_record() {
+  local root; root="$(census_repo scjudge)"
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_eq "prose-inv emits no SCOPE record" "" "$(scope_field prose-inv 3)"
+}
+
+# AC (security Finding 4): a git-pathspec-magic scope is never handed to git as
+# a pathspec — it either fails the safe_path_param gate (HYGIENE) or is counted
+# literally (0), never interpreted as `:(exclude)` / `:/`.
+case_jimverify_scope_census_pathspec_magic_not_interpreted() {
+  local root; root="$(census_repo scmagic)"
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit "rc" 0 "$RC"
+  assert_match "pat-magic gated or literal-0, never git-interpreted" \
+    '(^SCOPE	pat-magic	0	)|(^HYGIENE	:\(exclude\))' "$OUT"
+}
+
+# AC (AC #6): a non-git tree yields `na`, not `0` — unavailable is not
+# evidence of absence.
+case_jimverify_scope_census_non_git_na() {
+  local root="$TMP_BASE/scnogit"
+  mkdir -p "$root/skills/foo" "$root/docs/specs/g/000-blueprint"
+  printf 'code\n' > "$root/skills/foo/good.sh"
+  cat > "$root/docs/specs/g/000-blueprint/spec.md" <<'EOF'
+## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| pat-pop | scoped pattern | high | pattern |
+
+```verify-checks
+pat-pop polarity=must-not regex=NOPE scope=skills/
+```
+EOF
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+## Groups
+
+### g
+
+- **Territory:** `skills/`
+EOF
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit "rc" 0 "$RC"
+  assert_eq "pat-pop na on non-git tree" "na" "$(scope_field pat-pop 3)"
+}
+
+# AC: with no declared territory, scope-census emits the UNSCOPED sentinel so
+# the skill names the degradation (mirrors the check verb).
+case_jimverify_scope_census_unscoped_sentinel() {
+  local root="$TMP_BASE/scunsc"
+  mkdir -p "$root/skills" "$root/docs/specs/g/000-blueprint"
+  git -C "$root" init -q
+  git -C "$root" config user.email "t@e.com"; git -C "$root" config user.name "T"
+  git -C "$root" config commit.gpgsign false
+  printf 'code\n' > "$root/skills/a.sh"
+  cat > "$root/docs/specs/g/000-blueprint/spec.md" <<'EOF'
+## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| pat-terr | territory-default pattern | medium | pattern |
+
+```verify-checks
+pat-terr polarity=must regex=code
+```
+EOF
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+## Groups
+
+### g
+
+- **Territory:** —
+EOF
+  git -C "$root" add -A; git -C "$root" commit -q -m seed
+  run_jimverify_in "$root" scope-census docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit "rc" 0 "$RC"
+  assert_match "unscoped sentinel" '^UNSCOPED$' "$OUT"
+}
+
+# AC: missing args exit 2 with a usage message on stderr (mirrors check).
+case_jimverify_scope_census_no_args_rc2() {
+  run_jimverify scope-census
+  assert_exit "rc" 2 "$RC"
+  assert_match "need message" 'need <blueprint-dir>' "$ERR"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.
