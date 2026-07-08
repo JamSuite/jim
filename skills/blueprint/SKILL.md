@@ -33,6 +33,7 @@ Mirroring `/jim:review`'s `--depth` convention, strip a recognized flag from
 | :--- | :--- |
 | Empty | **Project tier:** create or update the project context map `BLUEPRINT.md` (§ Project tier). For a group blueprint, pass the group name. |
 | A group name | **Generate mode:** build or refresh that group's `000-blueprint` from a full scan (Steps 1–5). |
+| A group name carrying purpose/role/rationale (inline `Skill(jim:blueprint)` mint-new handoff from `/jim:spec`) | **Project tier update:** scoped add of that group's map entry via the update flow — not group-tier generate (§ Project tier, Mint-new handoff). |
 | `--from-review <spec-dir> <group>` | **Update mode:** targeted diff from the review's build diff + shape-validated verdict (§ Update mode). |
 | `--since <ref> <group>` | **Update mode:** targeted diff from the `<ref>..HEAD` range, no verdict (§ Update mode). |
 | `--reconcile` | **Reconcile:** derive the cross-group contract graph on demand — no group remainder (§ Reconcile). |
