@@ -2,7 +2,7 @@
 id: 20260707-strengthen-039-graph-health-test-coverage
 num: 64
 title: "Strengthen 039 graph-health test coverage"
-status: open
+status: closed
 priority: low
 labels: [test, verify]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-07T06:33:25Z
-updated: 2026-07-09T10:50:29Z
+updated: 2026-07-09T10:58:00Z
 origin: docs/specs/jim/039-graph-health/review.md
 ---
 
@@ -49,3 +49,40 @@ per-loop), not a current behavior to pin blind here.
 
 Origin: post-build review of spec jim/039
 (`docs/specs/jim/039-graph-health/review.md`).
+
+## Resolution (2026-07-09)
+
+Added four `case_jimverify_health_*` tests (`tests/jimverify.sh`, suite
+72→76 green); no production change — all guard existing behavior. The
+self-loop face moved to #62 in a prior commit.
+
+- **Determinism → CYCLE ordering.** Augmented `case_..._deterministic`:
+  kept run-twice byte-equality and added a direct assertion that CYCLE
+  nodes emit in sorted order. Used the codebase's own ordering-assertion
+  idiom (awk field extraction, as in `..._fanin_ties_sorted`) rather than
+  a tab-laden golden byte-string. This is the **only** guard on
+  `isort(AN)`, the cycle-node sort — `isort(FG)` (fan-in) is already
+  guarded by `..._fanin_ties_sorted`.
+- **Adjacent prefix.** `case_..._coverage_adjacent_prefix`: a file under
+  `accountsfoo/` stays uncovered under the `accounts/` territory, pinning
+  the slash-anchored prefix (`index(f "/", t "/") == 1`).
+- **Length cap.** `case_..._coverage_dir_capped`: a >512-char uncovered
+  directory (three nested ~200-char components, each < `NAME_MAX`) is
+  capped in `UNCOVERED_DIR`.
+- **Duplicate row.** `case_..._duplicate_row`: a repeated
+  `(consumer, provider)` row counts in `EDGES` (raw) but is deduped out of
+  fan-in / cycles.
+
+**Deliberately not done — the control-char coverage-path case.** The
+original third bullet paired the 512-cap (done) with a control-char strip
+test. The strip is **belt-only and unreachable through the real path**:
+`git ls-files` C-escapes control bytes before they reach the coverage awk
+(the same escaping guarantee behind #65). Exercising it would mean driving
+the awk in isolation on input the real path can't produce — no coverage of
+a reachable behavior. The reachable half (length cap) is covered; the
+unreachable half is left, noted here rather than tested for show.
+
+**Teeth verified by mutation.** Neutralizing `isort(AN)` flips the CYCLE
+order to hash order and fails the determinism case; making the edge dedup a
+no-op inflates fan-in 1→2 and fails the duplicate-row case. Both new
+assertions fail when their guarded behavior regresses.
