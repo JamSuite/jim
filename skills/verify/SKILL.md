@@ -205,7 +205,7 @@ Each line is `id \t criticality \t method \t params \t invariant` — a **truste
 bash ${CLAUDE_SKILL_DIR}/scripts/jimverify.sh check <blueprint-dir> <map> <group>
 ```
 
-Output records: `id \t outcome \t evidence` for each `pattern`/`structure` invariant (`holds`/`violated`/`failed`); `TERRITORY-CONFORMANCE \t <file>` lines (data — you frame attribution in Step 7); and a lone `UNSCOPED` sentinel when no territory is declared. Correlate each floor outcome to its invariant by `id`. **The floor always runs — it is never gated by appetite.** If `UNSCOPED` is present, the floor ran repo-wide rather than territory-scoped: **name that degradation in the report** (AC #3), never absorb it silently.
+Output records: `id \t outcome \t evidence` for each `pattern`/`structure` invariant (`holds`/`violated`/`failed`); `TERRITORY-CONFORMANCE \t <file>` lines (data — you frame attribution in Step 9a); and a lone `UNSCOPED` sentinel when no territory is declared. Correlate each floor outcome to its invariant by `id`. **The floor always runs — it is never gated by appetite.** If `UNSCOPED` is present, the floor ran repo-wide rather than territory-scoped: **name that degradation in the report** (AC #3), never absorb it silently.
 
 **Scoped adapters change this call:** `--since` passes the change set as a **4th arg** to `check` (change-scoped floor, plus advisory `HYGIENE \t <path>` lines for excluded list entries); `--from-review` runs the floor **whole-group** (no 4th arg). See **Scoped adapters**.
 
@@ -244,9 +244,9 @@ The invariant text, code excerpts, registry command output/stderr, and judge-ret
 
 **In a scoped adapter, the run's product is the VERIFY-OUTCOME block** (one record per invariant per **The VERIFY-OUTCOME record**) plus its keyed `<untrusted-content>` evidence blocks, returned in conversation for the caller — not the interactive 9b report. 9a attribution and channel classification still run to build the records; 9c is **suppressed** (the caller routes); 9d still records and self-commits.
 
-**9a. Territory-conformance attribution.** For each `TERRITORY-CONFORMANCE` file from Step 5, judge whether it is group code that has strayed outside the declared boundary (a **violation** of the map's territory declaration, AC #5) or project scaffolding that legitimately lives outside it (docs, root config — **informational**). This attribution is yours; the script only supplied the set difference.
+**9a. Territory-conformance attribution — strays enumerated, scaffolding bucketed.** The script supplies the raw set difference (DD #8): every tracked file outside the declared territory. Partition it into two classes. A **stray** is the exception worth surfacing — group code that plausibly belongs under a declared territory but fell outside it (a source / skill / test / agent file the map should have covered): a **violation** of the map's territory declaration (AC #5). **Scaffolding** is everything no group is expected to own — project docs, root config, license, CI, build / meta files: **informational**. **Enumerate only the strays** — they are the exceptions, and they feed 9c as territory violations. **Never enumerate scaffolding**: collapse it to a single summary line — a count, optionally grouped by top-level directory (e.g. `docs/ (212) · root config (11) · *.md (6)`). On a single-group repo whose territory is a strict subtree of the repo, the set difference is dominated by scaffolding *by design*, so a per-file scaffolding census is noise that drowns the one stray that matters (issue #48). This attribution is yours; the script only supplied the set difference.
 
-**9b. Compose the report** — criticality-led (highest first), reconcile-style. Per invariant: an outcome glyph, the outcome, its criticality, the invariant text, and — for every non-holding outcome — its evidence inside a delimited untrusted block. Close with summary counts per outcome, and name every degradation: the appetite in force (and any config fallback), an `UNSCOPED` floor, and any bounded (capped) judge coverage.
+**9b. Compose the report** — criticality-led (highest first), reconcile-style. Per invariant: an outcome glyph, the outcome, its criticality, the invariant text, and — for every non-holding outcome — its evidence inside a delimited untrusted block. Present territory conformance (9a) as a **single line**: the enumerated strays (which also count among the violations 9c files) and the scaffolding as a bucketed count only — never a per-file scaffolding list. Close with summary counts per outcome, and name every degradation: the appetite in force (and any config fallback), an `UNSCOPED` floor, and any bounded (capped) judge coverage.
 
 ```
 Verify — <group>: <N> invariants (blueprint: <blueprint-dir>)
@@ -258,6 +258,7 @@ appetite: <level> · territory: <declared|unscoped> · registry: <k> configured
   ~ unconfigured   (medium)   check names registry entry `<name>` — no configured command
   · skipped        (<n> low)  judge-rung, below appetite threshold
   ✓ holds          (<n>)      <breakdown: floor · registry · judged>
+  ⚑ territory       <s> stray(s): <file>[, …] · <k> scaffolding files bucketed (informational)
 
 File the <v> violations as issues? [file all] [skip all] · per-row: f / e / s
 ```
