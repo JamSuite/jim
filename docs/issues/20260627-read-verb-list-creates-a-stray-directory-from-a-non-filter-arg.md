@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-27T05:13:33Z
-updated: 2026-07-01T08:13:10Z
+updated: 2026-07-09T06:45:02Z
 origin: conversation
 ---
 
@@ -57,3 +57,25 @@ This reinforces that the fix belongs at the **root** (index.sh must not create
 its target dir on a regen — an absent dir means no issues, so emit nothing and
 create nothing). The render.sh cmd_list defense-in-depth would not catch a
 direct `index.sh` invocation, so it cannot be the sole fix.
+
+## Note (2026-07-09): third trigger — any read verb via `ensure_index`
+
+Reproduced again, this time through `render.sh show 42` run from inside
+`docs/issues/`. No `index.sh` call, no `list` arg — a plain `show`. The chain
+is `cmd_show` → `resolve_dir` → `ensure_index` (render.sh:89) → `index.sh`,
+and `ensure_index`'s regen inherits the same relative-default + wrong-CWD
+resolution as the 2026-07-01 note, so `mkdir -p` (index.sh:280) creates
+`docs/issues/docs/issues/INDEX.md` while the real index goes un-refreshed.
+
+The new fact this pins down: the stray dir is reachable from **every read verb**
+(`show`, `list`, `stats`), because they all funnel through the shared
+`ensure_index` helper — it is not specific to `list`'s arg parsing or to a
+direct `index.sh` call. That is the sharpest statement of the "a read verb
+violates its own read-only contract" defect, and it further confirms the root
+fix (index.sh must not `mkdir` on a regen): a `cmd_list`-only guard cannot cover
+the `show`/`stats` paths, which never touch `cmd_list`.
+
+(Also underscores the CWD-relative default as the proximate cause — a read
+reached from a non-repo-root CWD mis-resolves the target. Whether the resolver
+should anchor the default to the project root is arguably a second, narrower
+fix worth weighing alongside the index.sh root fix.)
