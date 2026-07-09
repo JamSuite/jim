@@ -2,7 +2,7 @@
 id: 20260705-record-boundary-change-contract-grounding-in-a-durable-ledger-co
 num: 57
 title: "Record boundary-change contract grounding in a durable ledger counter"
-status: open
+status: closed
 priority: medium
 labels: [verify, contract-graph]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:44:10Z
-updated: 2026-07-05T22:44:10Z
+updated: 2026-07-09T09:46:35Z
 origin: docs/specs/jim/037-verify-contracts/review.md
 ---
 
@@ -38,3 +38,34 @@ but not attributable in any durable ledger record.
 boundary-change trigger ran, mirroring the review-sensor path.
 
 Surfaced by the spec 037 post-build review (`docs/specs/jim/037-verify-contracts/review.md`, Finding 1).
+
+## Resolution (2026-07-09)
+
+**Reused `edges_checked=/edge_violations=`, did not mint `contract_*`.** The
+`blueprint finished` event is a `jimledger.sh event` record — the same grammar
+family as the scoped `verify finished` event, which already carries
+`edges_checked=/edge_violations=` for this exact concept. One concept keeps one
+name across the ledger's `finished` events. (`contract_violations` is a *review.md
+frontmatter* field — a different layer, the mined artifact — not a ledger-event
+key, so it was the wrong precedent to copy.)
+
+Grounding pinned the site: the boundary-change trigger `--contracts <group>
+--entries` fires only in **update mode**, grading a Provides weakening in Step 4a
+(consume-first), and that stage closes at the **U4** `blueprint finished` event.
+The fresh-generate finished (zeros) can't weaken anything, and a plain regenerate
+has no such event — so the single conditional append site is U4.
+
+Skill-authoring only — no script or test change: `jimledger.sh event` already
+takes free-form trailing `k=v` (the verify path appends
+`edges_checked=/inchange=/…` the same way).
+
+Changes:
+
+1. **`blueprint/SKILL.md`** — the U4 `finished` event now conditionally appends
+   `edges_checked=/edge_violations=` when the Step-4a trigger ran; validation
+   checklist updated. Kept SKILL.md at exactly 500 lines (the `skill-budget`
+   invariant ceiling) by folding the mention tightly and moving the rationale to
+   the reference — progressive disclosure, not budget breach.
+2. **`blueprint/references/fork-grounding.md`** — new *Recording the
+   boundary-change grounding (AC #9)* section carrying the counter definitions,
+   the reuse-not-mint rationale, and why it mirrors the review-sensor path.
