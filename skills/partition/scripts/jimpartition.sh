@@ -356,9 +356,14 @@ cmd_scan() {
   fi
 
   # Emit EDGEs (deduped + sorted), then CHANNEL facts (sorted), then UNMODELED
-  # facts (sorted) — a deterministic, stable substrate.
+  # facts (sorted) — a deterministic, stable substrate. EDGE endpoint paths pass
+  # the same san() control-strip/length-cap the other verbs apply, so the
+  # "field-sanitized" contract holds at this emit without relying on git's
+  # C-escaping guarantee (the belt scan endpoints are tracked-by-construction).
   if [[ -n "${edges//[$'\n']/}" ]]; then
-    printf '%s\n' "$edges" | grep -v '^$' | sort -u
+    printf '%s\n' "$edges" | grep -v '^$' \
+      | awk -F'\t' 'function san(x){gsub(/[[:cntrl:]]/,"",x); if(length(x)>512)x=substr(x,1,512); return x} {print $1"\t"san($2)"\t"san($3)"\t"$4}' \
+      | sort -u
   fi
   if [[ -n "${channels//[$'\n']/}" ]]; then
     printf '%s\n' "$channels" | grep -v '^$' | sort
