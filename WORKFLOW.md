@@ -381,7 +381,8 @@ agent: meta
 3. Reviews research findings
 4. Checks ARCHITECTURE.md for architectural constraints
 5. Breaks work into atomic, checkable tasks
-6. You review and approve
+6. Surfaces a cross-group **blast-radius advisory** (spec 042) — when the plan's group is a provider in the contract graph, mechanically names every dependent group and the entry it relies on (from the derived `## Contract Graph`, `graph as of <Last reconciled>`), so you can weigh the blast radius before approving; non-blocking and silent on single-group projects. The plan-time complement to the reconcile pass's face-change blast radius (below)
+7. You review and approve
 
 **Output:** `docs/specs/{group}/{00X}-{name}/plan.md`
 
