@@ -264,3 +264,4 @@ Before presenting, confirm:
 - [ ] plan-dod.md checklist passed
 - [ ] `status: draft` in frontmatter
 - [ ] Differential update used Edit, not Write
+- [ ] The blast-radius advisory (Step 8a) was presented, or silently skipped when there is no map, fewer than two groups, or no contract-graph edge naming this group as a provider
