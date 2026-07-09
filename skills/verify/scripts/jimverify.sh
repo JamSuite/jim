@@ -81,6 +81,11 @@
 #                                          a code-level-leak candidate, evidence
 #                                          location-only (matched content never
 #                                          emitted, Finding 2)
+#   CROSS-REF-CAPPED \t <consumer> \t <provider> \t <n-shown>   the per-path
+#                                          50-line CROSS-REF cap fired for this
+#                                          pair; <n-shown> facts were listed and
+#                                          more exist — the skill names the capped
+#                                          remainder, never a silent drop
 #   <consumer>><provider>#<entry-slug> \t <side> \t <outcome> \t <evidence>
 #                                          a face-declared provider-ref /
 #                                          consumer-ref pattern outcome
@@ -911,7 +916,7 @@ cmd_contracts_check() {
 
   # CROSS-REF facts: consumer territory referencing provider territory. The
   # provider path is a fixed string (never a regex), behind -e / --.
-  local C P tp cterr pterr l out ln loc
+  local C P tp cterr pterr l out ln loc pair_shown pair_capped emitted
   for C in "${groups[@]}"; do
     cterr="$(terr_of "$map" "$C")"
     [[ -z "$cterr" ]] && continue
@@ -923,15 +928,23 @@ cmd_contracts_check() {
       [[ "$P" == "$C" ]] && continue
       pterr="$(terr_of "$map" "$P")"
       [[ -z "$pterr" ]] && continue
+      pair_shown=0; pair_capped=0
       while IFS= read -r tp; do
         [[ -z "$tp" ]] && continue
-        out="$(grep -rHnF -e "$tp" -- "${csearch[@]}" 2>/dev/null | head -n 50)" || true
+        # head -n 51: emit at most 50 (unchanged), and a 51st line means the
+        # cap fired for this path — flag it, never drop it silently.
+        out="$(grep -rHnF -e "$tp" -- "${csearch[@]}" 2>/dev/null | head -n 51)" || true
         [[ -z "$out" ]] && continue
+        emitted=0
         while IFS= read -r ln; do
+          emitted=$((emitted + 1))
+          [[ $emitted -gt 50 ]] && { pair_capped=1; break; }
           loc="$(printf '%s' "$ln" | cut -d: -f1,2)"
           printf 'CROSS-REF\t%s\t%s\t%s\n' "$C" "$(printf '%s' "$loc" | tr '\t\n\r' '   ' | cut -c1-512)" "$P"
+          pair_shown=$((pair_shown + 1))
         done <<< "$out"
       done <<< "$pterr"
+      [[ $pair_capped -eq 1 ]] && printf 'CROSS-REF-CAPPED\t%s\t%s\t%s\n' "$C" "$P" "$pair_shown"
     done
   done
 

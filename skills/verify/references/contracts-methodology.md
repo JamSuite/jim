@@ -145,8 +145,8 @@ content is displayed or persisted — minimize to "secret-looking value at
    criticality and check-data.
 3. **C3 — run the floor.** `jimverify.sh contracts-check <map> <specs-root>`
    (add the change-set files-list as a 4th arg only in scoped/triggered runs).
-   Correlate `CROSS-REF`, edge pattern outcomes, `UNSCOPED-GROUP`, `COVERAGE`,
-   and `HYGIENE` records.
+   Correlate `CROSS-REF`, `CROSS-REF-CAPPED`, edge pattern outcomes,
+   `UNSCOPED-GROUP`, `COVERAGE`, and `HYGIENE` records.
 4. **C4 — classify.** Facts vs declared edges (above). In the whole-graph grain,
    compute dead surface.
 5. **C5 — appetite-gate and judge.** For each edge side still undecided and in
@@ -180,8 +180,10 @@ edges: <n> · appetite: <level> · territory: <group_territory>
 File the <v> violations as issues? [file all] [skip all] · per-row: f / e / s
 ```
 
-Close by naming every degradation: coverage, any `UNSCOPED-GROUP`, the appetite
-in force and any config fallback, and any capped judge remainder.
+Close by naming every degradation: coverage, any `UNSCOPED-GROUP`, any
+`CROSS-REF-CAPPED` pair (name the consumer→provider whose leak evidence was
+truncated at the floor's per-path cap), the appetite in force and any config
+fallback, and any capped judge remainder.
 
 ## Durable counters
 

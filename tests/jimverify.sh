@@ -880,6 +880,22 @@ case_jimverify_contracts_coverage_crossref_locationonly() {
     "$(printf '%s\n' "$OUT" | grep -c 'require')"
 }
 
+# AC: when a consumer's references into one provider territory exceed the
+# per-path 50-line cap, the floor still emits at most 50 CROSS-REF facts AND
+# names the truncation with a CROSS-REF-CAPPED marker carrying the shown count —
+# never a silent drop (issue #56; the "name every degradation" doctrine).
+case_jimverify_contracts_crossref_cap_named() {
+  local root; root="$(contracts_repo cccap)"
+  # 60 consumer lines reaching into accounts/ territory — over the 50-line cap.
+  printf 'x = require("accounts/m%s");\n' {1..60} > "$root/billing/bulk.js"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_eq "at most 50 cross-ref facts shown for the capped pair" "50" \
+    "$(printf '%s\n' "$OUT" | grep -c '^CROSS-REF	billing	')"
+  assert_match "capped pair named with shown count" \
+    '^CROSS-REF-CAPPED	billing	accounts	50$' "$OUT"
+}
+
 # AC: a provider-ref pattern check holds when the declared surface is present in
 # provider territory — the provider still honors the guarantee (spec 037 AC #2).
 case_jimverify_contracts_provider_holds() {
