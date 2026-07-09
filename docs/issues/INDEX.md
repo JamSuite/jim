@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 35
-- Closed: 34
+- Open: 34
+- Closed: 35
 
 ## Issues
 
@@ -68,7 +68,7 @@
 - `20260705-surface-capped-cross-ref-facts-in-contracts-check` — Surface capped CROSS-REF facts in contracts-check · status: open · num: 56 · priority: low · created: 2026-07-05T22:17:53Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/plan.md
 - `20260705-test-the-consumer-ref-abstain-on-absent-path-in-contracts-check` — Test the consumer-ref abstain-on-absent path in contracts-check · status: closed · num: 58 · priority: medium · created: 2026-07-05T22:44:11Z · labels: [verify, contract-graph, test] · origin: docs/specs/jim/037-verify-contracts/review.md
 - `20260705-untrusted-data-and-secret-redaction-gap-on-researcher-web-fetch-` — untrusted-data and secret-redaction gap on researcher web-fetch path · status: open · num: 53 · priority: critical · created: 2026-07-05T00:28:53Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
-- `20260705-wire-the-group-territory-floor-strength-label-in-contract-mode` — Wire the group_territory floor-strength label in contract mode · status: open · num: 60 · priority: low · created: 2026-07-05T22:44:12Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/review.md
+- `20260705-wire-the-group-territory-floor-strength-label-in-contract-mode` — Wire the group_territory floor-strength label in contract mode · status: closed · num: 60 · priority: low · created: 2026-07-05T22:44:12Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/review.md
 - `20260707-compute-graph-health-metrics-in-the-reconcile-pass` — Compute graph-health metrics in the reconcile pass · status: closed · num: 63 · priority: medium · created: 2026-07-07T03:07:44Z · labels: [000-blueprint, contract-graph, spec-groups] · origin: conversation
 - `20260707-extend-the-gate-presentation-rule-beyond-the-blueprint-surface` — Extend the gate-presentation rule beyond the blueprint surface · status: open · num: 67 · priority: medium · created: 2026-07-07T20:55:43Z · labels: [gate-presentation, follow-up] · origin: docs/specs/jim/040-blueprint-gate-presentation/spec.md
 - `20260707-route-scan-edge-emit-through-san-for-defense-in-depth` — route scan EDGE emit through san() for defense-in-depth · status: open · num: 65 · priority: low · created: 2026-07-07T11:03:53Z · labels: [partition, hardening] · origin: docs/specs/jim/038-partition-migration/review.md
