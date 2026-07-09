@@ -317,8 +317,9 @@ resolutions from U3a are already baked into the diff — a fold of a
 `critical`/`high` violation was explicitly confirmed at the fork.
 
 On write — **or when every proposed edit was withheld because each violation
-resolved fix** — record the guard's outcome and close the stage, always
-emitting all three counters (zeros included):
+resolved fix** — record the guard's outcome and close the stage, always emitting
+all three counters (zeros included), plus `edges_checked=/edge_violations=` when
+the Step-4a boundary-change trigger ran (`references/fork-grounding.md`):
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <blueprint-dir> blueprint finished violations=<n> folded=<n> fixed=<n>
@@ -484,7 +485,7 @@ Before presenting, confirm:
 - [ ] Update mode: every change-relevant invariant was violation-judged at some rung — engine-grounded where covered, U3a's fallback sweep where `skipped`/`unconfigured`/`failed`/no-data — under fail-closed precedence (a floor `violated` never overridden; an engine-holds-vs-sweep disagreement surfaced, not silently resolved), and the `grounding: N engine · M sweep` accounting line was shown.
 - [ ] Each divergence issue from a fix resolution was confirmed by the developer per issue — never filed unattended — and its body recorded the chosen resolution explicitly.
 - [ ] Unattended writes itemized each touched Invariants / Provides row with its classification; `critical`/`high` or Provides downgrades prompted instead of auto-writing.
-- [ ] The `blueprint finished` event carried `violations=` / `folded=` / `fixed=`; a fix-only run still recorded `finished` and committed. An unanswered fork recorded no `finished` and committed nothing.
+- [ ] The `blueprint finished` event carried `violations=` / `folded=` / `fixed=`; a fix-only run still recorded `finished` and committed. An unanswered fork recorded no `finished` and committed nothing. When the boundary-change trigger (`--contracts <group> --entries`) ran, the same event also carried `edges_checked=` / `edge_violations=` (the review-sensor counter names, never `contract_*`).
 - [ ] Update mode, absent-blueprint fallthrough: a completed first-time generate recorded `blueprint finished`, **then** stamped `last_full_generate` (fresh `now`, after the finished event), **then** committed as a **create** (pairing U1's `started`); only a declined generate was left started-only, with no watermark stamped.
 - [ ] Generate mode stamped `last_full_generate` on write, solely from `jimfile.sh now` — never a value derived from scanned code, a diff, a commit, or the ledger.
 - [ ] Update mode, regen-cadence (U2a): the count came from `updates-since` against `last_full_generate`; a trustworthy `N ≥ 1` was reported as "N targeted updates since last full generate" (suppressed at 0), and an rc-2 (no baseline / malformed watermark) was reported as "no baseline" and **never fired a regen**.

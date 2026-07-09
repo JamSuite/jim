@@ -66,6 +66,30 @@ records already cover the entries the engine checked; run a fresh
 `--contracts <group> --entries <file>` only for weakened entries the block did
 **not** cover — one engine opinion per edge per change, never a double-run.
 
+### Recording the boundary-change grounding (spec 037 AC #9)
+
+The trigger is informational — it never vetoes the write — but its outcome must
+still land in the run's **durable record**, not only the prompt/summary. When the
+boundary-change trigger ran (the `--contracts <group> --entries` grounding above,
+or edge records consumed from the handed-over block), append two counters to the
+stage's U4 `blueprint finished` event on the group's own `000-blueprint/ledger.md`:
+
+```
+edges_checked=<n>      edges the trigger checked across the weakened entries
+edge_violations=<n>    non-holding edge sides among them
+```
+
+**Reuse those exact names — never mint `contract_*`.** The `blueprint finished`
+event is a `jimledger.sh event` record, the same grammar family as the scoped
+`verify finished` event, which already carries `edges_checked=/edge_violations=`
+for this concept (`verify/SKILL.md`). One concept keeps one name across the
+ledger's `finished` events. (`contract_violations` is a *review.md frontmatter*
+field — a different layer, the mined review artifact — not a ledger-event key.)
+Appending them here mirrors the review-sensor path, so the unattended grounding
+is attributable in the same place a human would look for the run's outcome. Emit
+them only when the trigger ran; a stage that touched no Provides weakening emits
+just the three base counters.
+
 ## Fork coverage: engine records + fallback sweep (AC #8)
 
 Every recorded invariant the change could violate must still be violation-judged
