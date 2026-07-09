@@ -2,7 +2,7 @@
 title: "Plan-time blast-radius advisory"
 spec: "docs/specs/jim/042-plan-blast-radius/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Plan-time blast-radius advisory — Plan
