@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T08:08:24Z
-updated: 2026-07-07T03:28:37Z
+updated: 2026-07-09T06:34:57Z
 origin: docs/specs/jim/034-contract-graph/spec.md
 ---
 
@@ -45,9 +45,16 @@ which currently has nothing telling the developer it's time to use it.
 
 ## Why low
 
-Needs multi-group practice data before the signals mean anything — same
-calibration as the onboarding partitioner (#35). Filed so the deferral has a
-home instead of a dangling pointer.
+The split/merge signals need calibrated thresholds — what counts as *chronic*
+straddle, a face too *fat*, a blast radius too *broad*. That calibration reads
+real multi-group partitions, and those exist now: jim's blueprint audience is
+the multi-group projects built with it, so the calibration surface is available
+today, not a far-off someday. What this genuinely waits on is *accumulated
+reconcile history* from its input metrics — the spec-034 ledger counters and
+the graph-health metrics (#63, shipped as spec 039) — to form a trend line a
+sensor can read. Low because that trend has to build up across real reconciles,
+not because the data source is missing. Filed so the deferral has a home
+instead of a dangling pointer.
 
 ## Depends on
 

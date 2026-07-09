@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T07:02:15Z
-updated: 2026-07-09T05:52:46Z
+updated: 2026-07-09T06:34:57Z
 origin: docs/specs/jim/034-contract-graph/research.md
 ---
 
@@ -57,8 +57,10 @@ deliberately *different* from the derived graph? The strongest case for keeping
 it hand-declared is **forward-looking intent** — a planned dependency not yet
 wired, which only the declared column can express. If in practice the declared
 column always just chases the graph one reconcile behind, it is pure toil and
-should be derived. Which world we are in cannot be known without multi-group
-usage data — hence low priority, gated on that data.
+should be derived. Which world we are in is an empirical question, answerable by
+observing declared-vs-derived divergence across real multi-group partitions —
+jim's blueprint audience — which accrues as those projects run. Low because it
+wants that observation, not because the evidence is out of reach.
 
 Frame the eventual decision as **"is this column intent, or a lagging mirror of
 reality?"** — not "how do we remove the redundancy."
@@ -85,4 +87,5 @@ deliberate decision informed by multi-group practice — not a drive-by change.
 
 Spec 034 shipping (the graph to derive from), via
 [[20260630-add-the-cross-group-contract-graph-and-blast-radius]] (#21); and
-real multi-group usage data.
+observed declared-vs-derived divergence across real multi-group partitions —
+available as consumer projects run, not a blocker.
