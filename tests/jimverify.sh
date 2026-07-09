@@ -1162,8 +1162,12 @@ case_jimverify_health_crafted_cell_excluded() {
   assert_eq "crafted cell never a group" "" "$(printf '%s\n' "$OUT" | grep '\.\./evil' || true)"
 }
 
-# AC: measurements are deterministic — re-running over an unchanged map produces
-# byte-identical output (spec 039 AC #9).
+# AC: measurements are deterministic AND canonically ordered (spec 039 AC #9).
+# The run-twice check alone is weak: a dropped isort() stays byte-identical
+# run-to-run (awk hash iteration is stable within a build) while silently
+# reordering lines into hash order. Assert the CYCLE nodes come out sorted so an
+# isort(AN) regression is caught — FANIN_GROUP ordering is separately guarded by
+# case_jimverify_health_fanin_ties_sorted.
 case_jimverify_health_deterministic() {
   local m first
   m=$(hmap m-determ.md "billing orders catalog" '| billing | x | orders |
@@ -1173,6 +1177,28 @@ case_jimverify_health_deterministic() {
   run_jimverify health "$m"; first="$OUT"
   run_jimverify health "$m"
   assert_eq "identical across runs" "$first" "$OUT"
+  assert_eq "CYCLE nodes emitted in sorted order" "billing
+catalog
+orders" "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="CYCLE"{print $3}')"
+}
+
+# AC: a duplicated (consumer, provider) row counts once per raw row in EDGES (the
+# density numerator) but is deduped out of the graph structure — fan-in and cycles
+# read the deduped edge set (the `eseen` guard), so the duplicate never inflates a
+# provider's in-degree. Without dedup, b's fan-in would be 2 and it would stand
+# alone at the max; with dedup it ties c at 1.
+case_jimverify_health_duplicate_row() {
+  local m
+  m=$(hmap m-duprow.md "a b c" '| a | x | b |
+| a | y | b |
+| b | z | c |')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "EDGES counts raw rows incl the duplicate" "3" "$(tsv_field EDGES 2)"
+  assert_eq "fan-in dedupes the duplicate row" "1" "$(tsv_field FANIN 2)"
+  assert_eq "both providers tied at deduped fan-in" "b
+c" "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="FANIN_GROUP"{print $2}')"
+  assert_eq "no cycle from the duplicate row" "0" "$(tsv_field CYCLES 2)"
 }
 
 # ─── Section: health — territory coverage (spec 039 Task 2) ──────────────────
@@ -1278,6 +1304,40 @@ case_jimverify_health_coverage_no_git() {
   assert_exit "rc" 0 "$RC"
   assert_eq "coverage na" "na" "$(tsv_field UNCOVERED 2)"
   assert_match "reason no-git" '^UNCOVERED_NA_REASON	no-git$' "$OUT"
+}
+
+# AC: the territory prefix match is slash-anchored — a file under accountsfoo/ is
+# NOT covered by the accounts/ territory. Guards the trailing-slash prefix
+# (`index(f "/", t "/") == 1`): a bare-prefix match would wrongly absorb an
+# adjacent sibling directory.
+case_jimverify_health_coverage_adjacent_prefix() {
+  local root; root="$(health_git t2ap)"; hmap_territory "$root"
+  mkdir -p "$root/accountsfoo"
+  printf 'x\n' > "$root/accountsfoo/x.js"
+  git -C "$root" add accountsfoo && git -C "$root" commit -q -m "adjacent"
+  run_jimverify_in "$root" health BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "adjacent-prefix file stays uncovered" "1" "$(tsv_field UNCOVERED 2)"
+  assert_match "dir row for the sibling dir" '^UNCOVERED_DIR	accountsfoo/	1$' "$OUT"
+}
+
+# AC: an uncovered directory path longer than the 512-char cap is length-capped in
+# the UNCOVERED_DIR field (the coverage awk's san()), bounding alarm-fatigue output
+# from a pathological tree. Only the length cap is reachable via a real tracked
+# path: git ls-files C-escapes control bytes, so the same san()'s control-strip is
+# belt-only and cannot be exercised through the real coverage input.
+case_jimverify_health_coverage_dir_capped() {
+  local root; root="$(health_git t2cap)"; hmap_territory "$root"
+  local seg; seg=$(printf 'a%.0s' {1..200})     # 200 < NAME_MAX; three nest > 512
+  local deep="$seg/$seg/$seg"
+  mkdir -p "$root/$deep"
+  printf 'x\n' > "$root/$deep/f.js"
+  git -C "$root" add "$deep" && git -C "$root" commit -q -m "deep"
+  run_jimverify_in "$root" health BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the deep path is uncovered" "1" "$(tsv_field UNCOVERED 2)"
+  local dir; dir="$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="UNCOVERED_DIR"{print $2; exit}')"
+  assert_eq "UNCOVERED_DIR capped at 512 chars" "512" "${#dir}"
 }
 
 # ─── Section: scope-census — retirement staleness facts (spec 041 Task 1) ────
