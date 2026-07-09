@@ -145,12 +145,12 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] Extend `skills/plan/SKILL.md` `allowed-tools` (frontmatter, line 11) with
+1. [x] Extend `skills/plan/SKILL.md` `allowed-tools` (frontmatter, line 11) with
    the verb-scoped grant `Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh edges *)`,
    placed alongside the existing `Bash(...)` clauses.
    **Verify:** `grep -qF 'skills/verify/scripts/jimverify.sh edges *' skills/plan/SKILL.md`
 
-2. [ ] Insert a new `### 8a. Cross-group blast-radius advisory` step between the
+2. [x] Insert a new `### 8a. Cross-group blast-radius advisory` step between the
    Step-8 self-check and the Step-9 security offer, implementing: `SET map_doc = !`…jimfile.sh get blueprint``
    with an `IF map_doc != "NOT_FOUND"` gate; run `jimverify.sh edges <map>` in a
    fenced block; treat `rc 2` as "no graph → skip silently"; keep only rows whose
@@ -158,7 +158,7 @@ flowchart TD
    (covers AC #1 firing, AC #3 short-circuits, AC #4 read-only graph consumption).
    **Verify:** `grep -qF '### 8a. Cross-group blast-radius advisory' skills/plan/SKILL.md && grep -qF 'jimverify.sh edges' skills/plan/SKILL.md && grep -qF 'get blueprint' skills/plan/SKILL.md`
 
-3. [ ] Within Step 8a, add the presentation: `Read` the map's `## Contract Graph`
+3. [x] Within Step 8a, add the presentation: `Read` the map's `## Contract Graph`
    header for the `Last reconciled:` stamp; render the surviving rows in the
    advisory shape (dependents + `relies-on` entry + `graph as of <stamp>`); state
    it is advisory-only and files no issue; add the untrusted-display discipline
@@ -166,12 +166,12 @@ flowchart TD
    boundary, AC #2 non-blocking). Depends on task 2.
    **Verify:** `grep -qF 'graph as of' skills/plan/SKILL.md && grep -qiF 'advisory only' skills/plan/SKILL.md && grep -qiF 'untrusted' skills/plan/SKILL.md`
 
-4. [ ] Add one item to the plan skill's closing `## Validation Checklist`:
+4. [x] Add one item to the plan skill's closing `## Validation Checklist`:
    the blast-radius advisory was presented, or silently skipped when there is no
    map / fewer than two groups / no edge naming this group as a provider.
    **Verify:** `grep -qiF 'blast-radius advisory' skills/plan/SKILL.md`
 
-5. [ ] Regression: confirm the reused parser and the full deterministic suite
+5. [x] Regression: confirm the reused parser and the full deterministic suite
    still pass (nothing new to test; this guards against an incidental break).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimverify && bash skills/meta-test/scripts/run.sh`
 
