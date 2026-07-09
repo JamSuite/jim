@@ -2,7 +2,7 @@
 id: 20260704-harden-the-verify-floor-path-param-whitespace-dashes-only-id-mkd
 num: 51
 title: "Harden the verify floor: path-param whitespace, dashes-only Id, mkdir grant"
-status: open
+status: closed
 priority: low
 labels: [verify, hardening]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T23:53:21Z
-updated: 2026-07-04T23:53:21Z
+updated: 2026-07-09T08:30:13Z
 origin: docs/specs/jim/035-verify-engine/review.md
 ---
 
@@ -57,3 +57,33 @@ but each is a genuine, cheap improvement.
 
 Defense-in-depth thinness and contract precision. Low priority — grouped so they
 can be swept in one small pass rather than tracked as four separate tickets.
+
+## Resolution (2026-07-09)
+
+Swept in one pass; jimverify suite green at 72.
+
+1. **Path-param whitespace — fixed.** `safe_path_param` now rejects
+   leading/trailing whitespace before the leading-dash reject, so `scope= -rf`
+   (value `" -rf"`) no longer slips a dash value past the guard. Confirmed
+   `valid-relpath` is permissive about edge whitespace *and* leading dashes, so
+   the reject belongs here, not in the shared resolver. Regression case added to
+   `case_jimverify_check_bad_params_fail` (leading-space-dash scope → `failed`).
+2. **Separator silent drop — fixed.** The `/^:?-+:?$/` separator skip now binds
+   to the single row right after the header (via a one-shot `sep` flag) instead
+   of every row. A dashes-only Id in a data row now emits a `malformed` record
+   (invalid id) rather than vanishing — honoring "never a silent drop." New case
+   `case_jimverify_parse_dashes_only_id_not_dropped`. (A naive `nrow==0` gate was
+   rejected: the real separator doesn't bump `nrow`, so it would also swallow a
+   first dashes-only data row.)
+3. **Legacy criticality strictness — documented, not changed.** No behavior
+   change: an out-of-enum criticality legitimately degrades a row (including a
+   legacy Id-less one) to `malformed`/`failed`; the `judge` fallback covers an
+   unrecognized *Check* method, not criticality. Recorded the strictness in
+   `skills/blueprint/references/check-authoring.md`. The lenient alternative
+   (legacy rows always judge regardless of criticality) was left as an explicit
+   non-change pending a real need.
+4. **Unused `mkdir` grant — dropped.** Confirmed `mkdir` appears nowhere in
+   `verify/SKILL.md`'s body (`new.sh`/`index.sh` create their own dirs), so the
+   `Bash(mkdir *)` wildcard — the skill's only non-script grant — was removed.
+   Same finding class as #52 (allowed-tools exactness); kept the verify fix here
+   rather than widening #52's scope.
