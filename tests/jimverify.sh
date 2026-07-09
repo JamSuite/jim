@@ -309,6 +309,59 @@ case_jimverify_check_pattern_must_holds() {
   assert_eq "want-clean holds" "holds" "$(tsv_field want-clean 2)"
 }
 
+# verify_repo_count <name> — build a throwaway git repo whose territory holds a
+#   file with exactly three MARKER lines, and a blueprint whose verify-checks
+#   exercise the pattern count= parameter (exact, mismatch, malformed). Echo root.
+verify_repo_count() {
+  local name="$1"; local root="$TMP_BASE/$name"
+  mkdir -p "$root/skills/foo" "$root/docs/specs/g/000-blueprint"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+  printf 'alpha MARKER\nbeta MARKER\ngamma MARKER\ndelta plain\n' > "$root/skills/foo/code.sh"
+  cat > "$root/docs/specs/g/000-blueprint/spec.md" <<'EOF'
+## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| cnt-exact | marker appears exactly three times | low | pattern |
+| cnt-miss | marker count does not match | low | pattern |
+| cnt-bad | malformed count parameter | low | pattern |
+
+```verify-checks
+cnt-exact polarity=must regex=MARKER scope=skills/ count=3
+cnt-miss polarity=must regex=MARKER scope=skills/ count=5
+cnt-bad polarity=must regex=MARKER scope=skills/ count=three
+```
+EOF
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+## Groups
+
+### g
+
+- **Territory:** `skills/`
+EOF
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "seed"
+  printf '%s' "$root"
+}
+
+# AC: the pattern count= parameter runs exact-match semantics that override
+# polarity — an exact match holds, a mismatch is violated, and a non-numeric
+# count fails; each carries the documented evidence (spec 035 AC #4, issue #47).
+case_jimverify_check_pattern_count() {
+  local root; root="$(verify_repo_count t4cnt)"
+  run_jimverify_in "$root" check docs/specs/g/000-blueprint BLUEPRINT.md g
+  assert_exit  "rc" 0 "$RC"
+  assert_eq    "count exact holds"          "holds"    "$(tsv_field cnt-exact 2)"
+  assert_match "count exact evidence"       'matched 3 \(expected 3\)' "$(tsv_field cnt-exact 3)"
+  assert_eq    "count mismatch violated"    "violated" "$(tsv_field cnt-miss 2)"
+  assert_match "count mismatch evidence"    'matched 3, expected 5'    "$(tsv_field cnt-miss 3)"
+  assert_eq    "count non-numeric failed"   "failed"   "$(tsv_field cnt-bad 2)"
+  assert_match "count non-numeric evidence" 'invalid count parameter'  "$(tsv_field cnt-bad 3)"
+}
+
 # AC: structure existence / absence checks run deterministically — an existing
 # path holds, an absent glob holds (spec 035 AC #4).
 case_jimverify_check_structure_holds() {
