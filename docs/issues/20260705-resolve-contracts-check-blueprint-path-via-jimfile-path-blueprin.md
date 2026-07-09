@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:47:39Z
-updated: 2026-07-05T22:55:35Z
+updated: 2026-07-09T10:50:29Z
 origin: docs/specs/jim/000-blueprint/spec.md
 ---
 
@@ -48,15 +48,31 @@ resolved: fix the code
 
 ## Bundled follow-ups (folded 2026-07-05)
 
-Issues #58, #59, and #61 were folded into this umbrella — all four concerns live
-in `cmd_contracts_check` / `contract_ref_check` (`skills/verify/scripts/jimverify.sh`)
-and land in one hardening pass:
+Issues #58, #59, and #61 were folded into this umbrella, plus the self-loop face
+of #64 (2026-07-09). The concerns cluster in `cmd_contracts_check` /
+`contract_ref_check` — and, once the self-edge guard's layer is decided, reach
+the shared `cmd_edges` root and `cmd_health` (`skills/verify/scripts/jimverify.sh`)
+— landing in one hardening pass:
 
 - [ ] **Blueprint-path resolver** (this issue, high) — resolve each group's
   blueprint via `jimfile.sh path blueprint <group>` instead of hand-deriving
   `$specs_root/$g/000-blueprint/spec.md` (the `blueprint-slot-reserved` fix above).
-- [ ] **Self-edge guard** (was #61, low) — add `[[ "$C" == "$P" ]] && continue`
-  to the edge-outcome loop, mirroring the existing CROSS-REF self-pair skip.
+- [ ] **Self-edge guard** (was #61, low) — skip self-pairs (`consumer ==
+  provider`) so a self-edge never reads as a cross-group contract, mirroring the
+  existing CROSS-REF self-pair skip. **Layer decision (surfaced by folding #64's
+  health face, below):** placing the guard at the shared `cmd_edges` root — not
+  only in `cmd_contracts_check`'s edge-outcome loop — makes both the outcome loop
+  and `cmd_health` inherit it, and may make a per-loop
+  `[[ "$C" == "$P" ]] && continue` redundant. If dropped at `cmd_edges`, surface
+  it as a `HYGIENE` row, never a silent vanish (verify's name-every-degradation
+  doctrine).
+- [ ] **Health self-loop semantics** (from #64, low) — `cmd_health` currently
+  treats a surviving self-loop (`a→a`) as a 1-node cycle cluster; `cmd_edges` has
+  no self-guard, so it reaches health today. This is the health-side face of the
+  self-edge doctrine above: decide it here, consistently with the guard's layer,
+  and pin the resulting `cmd_health` behavior with a test. (The duplicate-row half
+  of #64's original combined bullet stayed in #64 — it is untouched by the
+  self-edge doctrine.)
 - [ ] **consumer-ref abstain test** (was #58, medium) — add a `contracts_repo`
   variant whose consumer lacks the declared usage; assert the consumer side emits
   **no** edge record (not `violated`/`failed`).
