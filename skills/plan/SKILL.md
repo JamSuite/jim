@@ -8,7 +8,7 @@ description: >
   (/jim:research), or code implementation (/jim:build).
 agent: architect
 argument-hint: "[spec-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:sec) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh edges *) Bash(mkdir *) Skill(jim:sec) Read Write Edit
 ---
 
 # /jim:plan
