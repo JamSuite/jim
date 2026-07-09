@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 32
-- Closed: 37
+- Open: 31
+- Closed: 38
 
 ## Issues
 
@@ -71,7 +71,7 @@
 - `20260705-wire-the-group-territory-floor-strength-label-in-contract-mode` — Wire the group_territory floor-strength label in contract mode · status: closed · num: 60 · priority: low · created: 2026-07-05T22:44:12Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/review.md
 - `20260707-compute-graph-health-metrics-in-the-reconcile-pass` — Compute graph-health metrics in the reconcile pass · status: closed · num: 63 · priority: medium · created: 2026-07-07T03:07:44Z · labels: [000-blueprint, contract-graph, spec-groups] · origin: conversation
 - `20260707-extend-the-gate-presentation-rule-beyond-the-blueprint-surface` — Extend the gate-presentation rule beyond the blueprint surface · status: open · num: 67 · priority: medium · created: 2026-07-07T20:55:43Z · labels: [gate-presentation, follow-up] · origin: docs/specs/jim/040-blueprint-gate-presentation/spec.md
-- `20260707-route-scan-edge-emit-through-san-for-defense-in-depth` — route scan EDGE emit through san() for defense-in-depth · status: open · num: 65 · priority: low · created: 2026-07-07T11:03:53Z · labels: [partition, hardening] · origin: docs/specs/jim/038-partition-migration/review.md
+- `20260707-route-scan-edge-emit-through-san-for-defense-in-depth` — route scan EDGE emit through san() for defense-in-depth · status: closed · num: 65 · priority: low · created: 2026-07-07T11:03:53Z · labels: [partition, hardening] · origin: docs/specs/jim/038-partition-migration/review.md
 - `20260707-spell-out-the-superseded-group-set-derivation-for-retire` — spell out the superseded-group set derivation for --retire · status: open · num: 66 · priority: low · created: 2026-07-07T11:03:54Z · labels: [partition, docs] · origin: docs/specs/jim/038-partition-migration/review.md
 - `20260707-strengthen-039-graph-health-test-coverage` — Strengthen 039 graph-health test coverage · status: open · num: 64 · priority: low · created: 2026-07-07T06:33:25Z · labels: [test, verify] · origin: docs/specs/jim/039-graph-health/review.md
 - `20260708-emitter-and-template-both-emit-the-issue-description-header` — Emitter and template both emit the issue Description header · status: open · num: 69 · priority: low · created: 2026-07-08T20:37:32Z · labels: [issues-system, emitter, template] · origin: conversation
