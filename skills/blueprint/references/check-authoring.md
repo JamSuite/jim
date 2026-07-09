@@ -22,6 +22,10 @@ this shape.
   detail; never an inline command.
 - **Criticality** — `critical` / `high` / `medium` / `low` (the spec 029 enum,
   unchanged). Drives appetite gating and the priority of any filed violation.
+  Strict: a value outside this lowercase enum degrades the whole row to a
+  `malformed` record (reported `failed`), even for a legacy Id-less table — the
+  `judge` fallback covers an unrecognized *Check* method, not an out-of-enum
+  criticality. Author criticality in the enum wording.
 - **Check** — one method from the closed vocabulary below. Anything the engine
   does not recognize (prose, blank) falls back to `judge` — a legacy blueprint
   with no structured check data still verifies, unchanged.

@@ -11,7 +11,7 @@ description: >
   fixing code (/jim:build) — the engine reports and offers issues, never fixes.
 agent: reviewer
 argument-hint: "[--appetite critical|high|medium|low] <group> | --from-review <spec-dir> <group> | --since <ref> <group> | --contracts [<group>] | --retirement [<group>]"
-allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(mkdir *) Agent(judge) Read Write Glob Grep
+allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Agent(judge) Read Write Glob Grep
 ---
 
 # /jim:verify
