@@ -128,9 +128,17 @@ content is displayed or persisted — minimize to "secret-looking value at
 
 1. **C1 — resolve grain and config.** Strip `--contracts [<group>]` (and
    `--entries <file>`) and `--appetite`. Resolve the map (`jimfile.sh get
-   blueprint`) and the specs root (`jimfile.sh get specs`). With no map, or
-   fewer than two blueprint-bearing groups, report there is nothing to check and
-   stop — no error litter (AC #1).
+   blueprint`) and the specs root (`jimfile.sh get specs`). Resolve the
+   configured floor-strength mode via `jimconf.sh get group_territory` (default
+   `declared-paths`; an unrecognized value is named as a config fallback, as the
+   skill does for appetite/model) for the report header. This names the
+   `directory`/`declared-paths`/`none` doctrine the map was *built* under — not a
+   knob the floor scan re-reads: the scan derives every territory from the map's
+   own declarations, so a group's realization of `none` surfaces separately as
+   `UNSCOPED-GROUP`. Naming the configured mode gives the reader the baseline the
+   per-group degradations are read against (AC #5). With no map, or fewer than
+   two blueprint-bearing groups, report there is nothing to check and stop — no
+   error litter (AC #1).
 2. **C2 — read the graph and faces.** `jimverify.sh edges <map>` for the edge
    list (rc 2 → name the degradation: no graph section — run `/jim:blueprint
    --reconcile`); `jimverify.sh faces <blueprint-spec>` per endpoint group for
@@ -158,7 +166,7 @@ language with an explicit code-vs-declaration provenance marker:
 
 ```
 Verify contracts — <project>: <g> groups, <b> with blueprints (coverage b/g)
-edges: <n> · appetite: <level> · territory: <mode>
+edges: <n> · appetite: <level> · territory: <group_territory>
 
   ✗ code-level breaking (high)   billing → accounts "identity lookup"
                                  provider-side: no longer guarantees read-after-write
