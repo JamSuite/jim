@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 37
-- Closed: 32
+- Open: 36
+- Closed: 33
 
 ## Issues
 
@@ -53,7 +53,7 @@
 - `20260704-fan-the-blueprint-update-into-every-affected-group` — Fan the blueprint update into every affected group · status: open · num: 41 · priority: medium · created: 2026-07-04T08:08:23Z · labels: [000-blueprint, cross-group] · origin: docs/specs/jim/034-contract-graph/spec.md
 - `20260704-harden-the-verify-floor-path-param-whitespace-dashes-only-id-mkd` — Harden the verify floor: path-param whitespace, dashes-only Id, mkdir grant · status: open · num: 51 · priority: low · created: 2026-07-04T23:53:21Z · labels: [verify, hardening] · origin: docs/specs/jim/035-verify-engine/review.md
 - `20260704-restructure-blueprint-skill-md-to-reclaim-line-budget-headroom` — Restructure blueprint SKILL.md to reclaim line-budget headroom · status: closed · num: 43 · priority: low · created: 2026-07-04T09:23:23Z · labels: [000-blueprint, refactor] · origin: docs/specs/jim/034-contract-graph/plan.md
-- `20260704-revisit-territory-conformance-volume-for-single-group-repos` — Revisit territory-conformance volume for single-group repos · status: open · num: 48 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, blueprint] · origin: docs/specs/jim/035-verify-engine/plan.md
+- `20260704-revisit-territory-conformance-volume-for-single-group-repos` — Revisit territory-conformance volume for single-group repos · status: closed · num: 48 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, blueprint] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-strengthen-commit-map-containment-or-amend-dd-4` — Strengthen commit-map containment or amend DD 4 · status: closed · num: 38 · priority: low · created: 2026-07-04T00:22:58Z · labels: [security, review] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-surface-face-freshness-in-the-reconcile-report` — Surface face freshness in the reconcile report · status: open · num: 44 · priority: low · created: 2026-07-04T09:23:24Z · labels: [000-blueprint, contract-graph] · origin: docs/specs/jim/034-contract-graph/plan.md
 - `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: closed · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/jim/033-context-map/review.md

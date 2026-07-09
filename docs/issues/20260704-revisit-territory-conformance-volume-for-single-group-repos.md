@@ -2,7 +2,7 @@
 id: 20260704-revisit-territory-conformance-volume-for-single-group-repos
 num: 48
 title: "Revisit territory-conformance volume for single-group repos"
-status: open
+status: closed
 priority: low
 labels: [verify, blueprint]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T23:41:11Z
-updated: 2026-07-04T23:41:11Z
+updated: 2026-07-09T07:42:01Z
 origin: docs/specs/jim/035-verify-engine/plan.md
 ---
 
@@ -50,3 +50,23 @@ stray; drowning that signal in project scaffolding weakens it. This is a
 practice-informed refinement, not a correctness bug — the design is
 intentional and the skill's attribution framing handles it; a trend-signal
 watch item.
+
+## Resolution (2026-07-09)
+
+Decided and shipped the **skill-summarization** option (of the three weighed
+above). `jimverify.sh` is unchanged — it still emits the raw set difference
+per DD #8, so the mechanical floor and its tests are untouched. The fix is in
+`skills/verify/SKILL.md`: Step 9a now partitions the set difference into
+**strays** (group code that plausibly belongs under a territory but fell
+outside — the exceptions, enumerated, and fed to 9c as violations) and
+**scaffolding** (docs / root config / license / CI / meta — bucketed to a
+single summary line, never enumerated). Step 9b's report gains a one-line
+`⚑ territory` row carrying the strays plus a scaffolding count. On a
+single-group repo whose territory is a strict subtree, the census collapses
+from ~240 lines to the strays that matter. (Also fixed a stale "Step 7"
+cross-ref in the Step 5 output note — attribution is Step 9a.)
+
+Not pursued: config-declared exclude globs and map-declared unowned paths.
+Both are mechanical but add a config / blueprint-schema surface; the noise
+lives in the *report*, so the presentation layer was the right place to fix
+it. The set difference stays whole for any consumer that wants it.
