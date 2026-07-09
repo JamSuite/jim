@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 38
-- Closed: 31
+- Open: 37
+- Closed: 32
 
 ## Issues
 
@@ -42,7 +42,7 @@
 - `20260702-tighten-update-guard-wording-and-checklist-gates` — Tighten update-guard wording and checklist gates · status: closed · num: 30 · priority: low · created: 2026-07-02T09:30:15Z · labels: [000-blueprint, fold-back] · origin: docs/specs/jim/031-blueprint-update-guard/review.md
 - `20260703-build-a-bottom-up-onboarding-partitioner-for-existing-codebases` — Build a bottom-up onboarding partitioner for existing codebases · status: closed · num: 35 · priority: low · created: 2026-07-03T20:48:04Z · labels: [spec-groups, onboarding] · origin: docs/specs/jim/033-context-map/spec.md
 - `20260703-build-the-partition-migration-skill` — Build the partition migration skill · status: closed · num: 34 · priority: medium · created: 2026-07-03T20:08:37Z · labels: [migration, spec-groups, 000-blueprint] · origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
-- `20260704-add-a-dedicated-test-for-the-pattern-count-parameter` — Add a dedicated test for the pattern count parameter · status: open · num: 47 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, test] · origin: docs/specs/jim/035-verify-engine/plan.md
+- `20260704-add-a-dedicated-test-for-the-pattern-count-parameter` — Add a dedicated test for the pattern count parameter · status: closed · num: 47 · priority: low · created: 2026-07-04T23:41:11Z · labels: [verify, test] · origin: docs/specs/jim/035-verify-engine/plan.md
 - `20260704-add-a-mint-new-handoff-row-to-the-blueprint-routing-table` — Add a mint-new handoff row to the blueprint routing table · status: closed · num: 37 · priority: low · created: 2026-07-04T00:22:58Z · labels: [blueprint, spec-groups] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` — Add a plan-time blast-radius advisory to /jim:plan · status: closed · num: 39 · priority: medium · created: 2026-07-04T06:09:52Z · labels: [000-blueprint, cross-group, plan] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260704-add-fable-to-review-model-s-validated-model-list` — Add fable to review_model's validated model list · status: closed · num: 46 · priority: low · created: 2026-07-04T22:05:36Z · labels: [review, config] · origin: docs/specs/jim/035-verify-engine/plan.md
