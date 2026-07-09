@@ -175,7 +175,7 @@ cmd_parse() {
       else
         printf "%s\t%s\t%s\t%s\t%s\n", san(id), san(crit), san(method), san(p), san(inv)
     }
-    BEGIN { FS = "|"; in_inv = 0; in_checks = 0; hdr = 0; fmt = 0; nrow = 0 }
+    BEGIN { FS = "|"; in_inv = 0; in_checks = 0; hdr = 0; sep = 0; fmt = 0; nrow = 0 }
 
     # verify-checks fenced block (anywhere in the file): <id> <key>=<value>...
     /^```verify-checks[ \t]*$/ { in_checks = 1; next }
@@ -190,18 +190,21 @@ cmd_parse() {
     }
 
     # Invariants section: from "## Invariants" to the next "## " heading.
-    /^##[ \t]+Invariants[ \t]*$/ { in_inv = 1; hdr = 0; next }
+    /^##[ \t]+Invariants[ \t]*$/ { in_inv = 1; hdr = 0; sep = 0; next }
     in_inv == 1 && /^##[ \t]/    { in_inv = 0 }
 
     in_inv == 1 && /^[ \t]*\|/ {
       c1 = trim($2)
-      if (c1 ~ /^:?-+:?$/) next                       # separator row
       if (hdr == 0) {                                 # header row → detect format
         hdr = 1
         ncols = NF - 2
         if (ncols >= 4 && tolower(c1) == "id") fmt = 4; else fmt = 3
         next
       }
+      if (sep == 0) {                                 # the one row right after the header
+        sep = 1
+        if (c1 ~ /^:?-+:?$/) next                     # a GFM separator → skip it once
+      }                                               # a dashes-only Id in any later row is data → malformed, never a silent drop
       nrow++
       if (fmt == 4) { rid[nrow] = trim($2); rinv[nrow] = trim($3); rcrit[nrow] = trim($4); rchk[nrow] = trim($5) }
       else          { rid[nrow] = "inv-" nrow; rinv[nrow] = trim($2); rcrit[nrow] = trim($3); rchk[nrow] = "judge" }
@@ -270,6 +273,10 @@ cmd_territory() {
 safe_path_param() {
   local v="$1"
   [[ -n "$v" ]] || return 1
+  # Reject leading/trailing whitespace: a leading space (e.g. `scope= -rf`)
+  # otherwise slips a dash value past the leading-dash reject below, and
+  # valid-relpath is permissive about edge whitespace (review Finding 3).
+  [[ "$v" == [[:space:]]* || "$v" == *[[:space:]] ]] && return 1
   [[ "$v" == -* ]] && return 1
   bash "$JIMFILE" valid-relpath "$v" >/dev/null 2>&1 || return 1
   return 0

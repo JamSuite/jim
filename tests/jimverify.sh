@@ -116,6 +116,23 @@ case_jimverify_parse_malformed_id() {
   assert_match "malformed method emitted" '	malformed	' "$OUT"
 }
 
+# AC: a dashes-only Id in a DATA row is a malformed record (invalid id), never
+# silently swallowed as if it were the table separator — the separator skip
+# binds only to the one row right after the header (issue #51, review Finding 4).
+case_jimverify_parse_dashes_only_id_not_dropped() {
+  local cfg
+  cfg=$(fixture inv-dashid.md '## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| --- | some rule | high | pattern |
+')
+  run_jimverify parse "$cfg"
+  assert_exit    "rc" 0 "$RC"
+  assert_nonempty "dashes-only id row not silently dropped" "$OUT"
+  assert_match   "dashes-only id → malformed" '	malformed	' "$OUT"
+}
+
 # AC: a registry check naming a non-slug entry degrades to malformed and the
 # raw name is never echoed into the record — the resolver-side twin of the
 # lookup-time gate (spec 035 AC #6, security Finding 1).
@@ -438,12 +455,14 @@ case_jimverify_check_bad_params_fail() {
 | abs-scope | absolute scope | high | pattern |
 | dotdot-scope | dotdot scope | high | pattern |
 | dash-scope | leading-dash scope | high | pattern |
+| space-dash-scope | leading-space-dash scope | high | pattern |
 | abs-exists | absolute exists | high | structure |
 
 ```verify-checks
 abs-scope polarity=must regex=x scope=/etc
 dotdot-scope polarity=must regex=x scope=../outside
 dash-scope polarity=must regex=x scope=-rf
+space-dash-scope polarity=must regex=x scope= -rf
 abs-exists exists=/etc/passwd
 ```
 EOF
@@ -460,6 +479,7 @@ EOF
   assert_eq "absolute scope → failed"   "failed" "$(tsv_field abs-scope 2)"
   assert_eq "dotdot scope → failed"     "failed" "$(tsv_field dotdot-scope 2)"
   assert_eq "leading-dash scope → failed" "failed" "$(tsv_field dash-scope 2)"
+  assert_eq "leading-space-dash scope → failed" "failed" "$(tsv_field space-dash-scope 2)"
   assert_eq "absolute exists → failed"  "failed" "$(tsv_field abs-exists 2)"
 }
 
