@@ -151,7 +151,10 @@ On approval, delegate every write (AC #7):
   (dependency-depth order from the aggregated graph, so each Requires points at
   an already-blueprinted provider), governed by `auto_blueprint` (AC #6). A fresh
   generate has nothing to downgrade, so unattended writes are safe.
-- **Retire (repartition).** For each superseded group, `Skill(jim:blueprint)
+- **Retire (repartition).** The superseded set is the old `BLUEPRINT.md`'s
+  groups minus the approved partition's (`old-map ∖ approved`) — every prior
+  group the new partition does not carry forward (a rename counts: old name
+  retired, new name freshly generated above). For each, `Skill(jim:blueprint)
   --retire <group>` marks its `000-blueprint` retired, pointing at the new map,
   so exactly one partition authority survives (AC #19).
 
