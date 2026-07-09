@@ -76,7 +76,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get review_model
 bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get review_fanout_cap
 ```
 
-A `--depth` argument (Argument Routing) overrides `review_depth` for this run. Validate `review_model` against `inherit` / `sonnet` / `opus` / `haiku` — treat anything else as `inherit`. Treat `review_fanout_cap` as a positive integer — on a non-positive or non-numeric value use `10` (a cap of `0` must never silently disable the fan-out).
+A `--depth` argument (Argument Routing) overrides `review_depth` for this run. Validate `review_model` against `inherit` / `haiku` / `sonnet` / `opus` / `fable` — treat anything else as `inherit`. Treat `review_fanout_cap` as a positive integer — on a non-positive or non-numeric value use `10` (a cap of `0` must never silently disable the fan-out).
 
 **4b. Triage the diff into a high-stakes set.** Classify each changed region by the deep read it warrants:
 
@@ -86,7 +86,7 @@ A `--depth` argument (Argument Routing) overrides `review_depth` for this run. V
 - a region implementing a spec AC, or a high-churn file → **whole-file read in context**
 - everything else → low-stakes; skim via the diff spine
 
-**4c. Investigate deeply (fan-out).** For each high-stakes region — and each spec AC — dispatch a focused `Agent(investigator)` with: the one target, its diff hunks, and the ground truth it must satisfy. Pass the Agent tool's `model` parameter = `review_model` when it is a concrete tier (`sonnet`/`opus`/`haiku`); omit it when `inherit` (the investigator then runs the session model).
+**4c. Investigate deeply (fan-out).** For each high-stakes region — and each spec AC — dispatch a focused `Agent(investigator)` with: the one target, its diff hunks, and the ground truth it must satisfy. Pass the Agent tool's `model` parameter = `review_model` when it is a concrete tier (`haiku`/`sonnet`/`opus`/`fable`); omit it when `inherit` (the investigator then runs the session model).
 
 - **Bound the fan-out** to `review_fanout_cap` total investigators, highest-risk first. If the high-stakes set exceeds the cap, name the un-investigated remainder in `review.md` (Step 8) — never present partial coverage as complete.
 - **`lean` depth:** skip the broad fan-out — investigate only security-relevant regions and assess the rest from the diff spine yourself.

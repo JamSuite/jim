@@ -158,7 +158,7 @@ Then resolve the per-group appetite override (runtime group, so fenced bash):
 bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get verify_appetite_<group>
 ```
 
-**Appetite precedence** (first non-empty wins): the `--appetite` run flag → `verify_appetite_<group>` → `verify_appetite` → the default `low`. **Degrade to thorough:** if the resolved appetite is not one of `critical`/`high`/`medium`/`low`, fall back to `low` (judge everything) and **note the fallback in the report** — a typo'd knob must never silently skip verification. Likewise treat `verify_fanout_cap` as a positive integer (non-positive/non-numeric → `10`; `0` never silently disables) and validate `verify_model` against `inherit`/`sonnet`/`opus`/`haiku`/`fable` (anything else → `inherit`).
+**Appetite precedence** (first non-empty wins): the `--appetite` run flag → `verify_appetite_<group>` → `verify_appetite` → the default `low`. **Degrade to thorough:** if the resolved appetite is not one of `critical`/`high`/`medium`/`low`, fall back to `low` (judge everything) and **note the fallback in the report** — a typo'd knob must never silently skip verification. Likewise treat `verify_fanout_cap` as a positive integer (non-positive/non-numeric → `10`; `0` never silently disables) and validate `verify_model` against `inherit`/`haiku`/`sonnet`/`opus`/`fable` (anything else → `inherit`).
 
 ### 2. Locate the blueprint and map
 
@@ -230,7 +230,7 @@ Rank criticality `critical`(4) > `high`(3) > `medium`(2) > `low`(1). A `judge` i
 
 **In scoped adapters**, restrict the to-be-judged set further to **change-selected** invariants (see **Judge change-selection**): an above-appetite invariant the change does not touch is `skipped` with reason `scope`, not judged.
 
-For each to-be-judged invariant, dispatch one `Agent(judge)` (highest criticality first) with: the invariant `id`, its **verbatim rule text inside a delimited untrusted block**, its criticality, and the group's **territory scope** paths (from Step 5's floor; the whole repo when `UNSCOPED`). Pass the Agent tool's `model` = `verify_model` when it is a concrete tier (`sonnet`/`opus`/`haiku`/`fable`); omit it when `inherit`.
+For each to-be-judged invariant, dispatch one `Agent(judge)` (highest criticality first) with: the invariant `id`, its **verbatim rule text inside a delimited untrusted block**, its criticality, and the group's **territory scope** paths (from Step 5's floor; the whole repo when `UNSCOPED`). Pass the Agent tool's `model` = `verify_model` when it is a concrete tier (`haiku`/`sonnet`/`opus`/`fable`); omit it when `inherit`.
 
 - **Bound the fan-out** to `verify_fanout_cap` judges total, highest-criticality first. If more invariants need judging than the cap allows, **name the un-judged remainder** in the report (AC #3) — never present partial coverage as complete.
 - **Followability:** before spawning, state which invariants you are judging and at what count; after, note how many judges ran.

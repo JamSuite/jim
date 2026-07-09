@@ -116,7 +116,7 @@ auto_review = "false"
 
 # Model for the investigator subagents (the per-spawn Agent model).
 # "inherit" (the default) runs them on the session model; or pin a tier:
-# "sonnet" | "opus" | "haiku". Anything else falls back to "inherit". The
+# "haiku" | "sonnet" | "opus" | "fable". Anything else falls back to "inherit". The
 # review's own orchestration and alignment verdict always run on the
 # session model, which jim does not set.
 # review_model = "inherit"
@@ -260,7 +260,7 @@ security_adhoc_path       = "docs/security"
 
 # Model for the judge subagents (the per-spawn Agent model). "inherit" (the
 # default) runs them on the session model; or pin a tier:
-# "sonnet" | "opus" | "haiku" | "fable". Anything else falls back to "inherit".
+# "haiku" | "sonnet" | "opus" | "fable". Anything else falls back to "inherit".
 # verify_model = "inherit"
 
 # Per-command timeout (seconds) for REGISTRY command execution only — the
