@@ -2,7 +2,7 @@
 id: 20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan
 num: 39
 title: "Add a plan-time blast-radius advisory to /jim:plan"
-status: open
+status: closed
 priority: medium
 labels: [000-blueprint, cross-group, plan]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T06:09:52Z
-updated: 2026-07-04T06:09:52Z
+updated: 2026-07-09T05:29:41Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
@@ -45,3 +45,15 @@ blast radius": a breaking-change detector that reads the map, not the diff.
 
 Spec 034 (the contract graph this advisory reads), and ≥2 reconciled group
 blueprints so the advisory has consumers to name.
+
+## Resolution
+
+Shipped as **spec 042** (Step 8a in `/jim:plan`); build + security (spec+plan) +
+post-build review all `aligned` (2026-07-09). One deliberate scope refinement
+from the framing above: the advisory does **not** make the "does the planned
+work touch a provides face" LLM judgment (the *What* section's second bullet).
+The C-mechanical design fork dropped that judgment for a purely mechanical
+contract-graph read (`jimverify.sh edges` under a verb-scoped grant) — it names
+**every** dependent group unconditionally and leaves relevance to the developer,
+who knows the plan. Exact (no false positives), cheaper (no reasoning pass), and
+honest (no prediction to hedge). Inert on jim's own single-group repo by design.
