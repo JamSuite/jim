@@ -800,6 +800,83 @@ case_jimpartition_preflight_old_bad_slug() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── Section: occurrences cases (Task 3) ─────────────────────────────────────
+
+# AC #4/#19: a dotted requires key's group half is a dotted-key hit; output is
+# location-only (file + line number + kind), never the matched content.
+case_jimpartition_occurrences_dotted_key() {
+  local dir T; dir="$(rename_repo occ_dot)"; T=$'\t'
+  run_jimpartition_in "$dir" occurrences cart docs/specs/orders/000-blueprint/spec.md
+  assert_exit "rc" 0 "$RC"
+  assert_match "dotted-key hit" "^HIT${T}docs/specs/orders/000-blueprint/spec\.md${T}[0-9]+${T}dotted-key$" "$OUT"
+}
+
+# AC #4: a path-segment mention (the territory path in the map) is a path hit.
+case_jimpartition_occurrences_path() {
+  local dir T; dir="$(rename_repo occ_path)"; T=$'\t'
+  run_jimpartition_in "$dir" occurrences cart BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_match "path hit" "^HIT${T}BLUEPRINT\.md${T}[0-9]+${T}path$" "$OUT"
+}
+
+# AC #6: config keys and values are distinguished — the orphaned per-group
+# appetite key is config-key; a territory path inside a command string value is
+# config-value.
+case_jimpartition_occurrences_config_kinds() {
+  local dir T; dir="$(rename_repo occ_cfg)"; T=$'\t'
+  run_jimpartition_in "$dir" occurrences cart jimconf.toml
+  assert_exit "rc" 0 "$RC"
+  assert_match "config-key hit"   "^HIT${T}jimconf\.toml${T}[0-9]+${T}config-key$"   "$OUT"
+  assert_match "config-value hit" "^HIT${T}jimconf\.toml${T}[0-9]+${T}config-value$" "$OUT"
+}
+
+# AC #4: a free-text mention is a prose hit.
+case_jimpartition_occurrences_prose() {
+  local dir T; dir="$(rename_repo occ_prose)"; T=$'\t'
+  run_jimpartition_in "$dir" occurrences cart docs/specs/billing/000-blueprint/spec.md
+  assert_exit "rc" 0 "$RC"
+  assert_match "prose hit" "^HIT${T}docs/specs/billing/000-blueprint/spec\.md${T}[0-9]+${T}prose$" "$OUT"
+}
+
+# Match rule: the slug matches only as a whole slug token — `cartel` (slug
+# continues with a letter) and the kebab surface `cart-session-api` (continues
+# with '-') never match.
+case_jimpartition_occurrences_token_boundary() {
+  local dir; dir="$(rename_repo occ_bound)"
+  printf 'the cartel runs a cart-session-api endpoint\n' > "$dir/boundary.txt"
+  run_jimpartition_in "$dir" occurrences cart boundary.txt
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no hit for cartel / cart-session-api" "0" "$(printf '%s\n' "$OUT" | grep -c '^HIT')"
+}
+
+# AC #19 structural guarantee: every emitted line is HIT<TAB>file<TAB>line<TAB>
+# kind — never the matched line's content. Distinctive surrounding words must
+# not leak into the output.
+case_jimpartition_occurrences_location_only() {
+  local dir T; dir="$(rename_repo occ_loc)"; T=$'\t'
+  run_jimpartition_in "$dir" occurrences cart \
+    docs/specs/orders/000-blueprint/spec.md docs/specs/billing/000-blueprint/spec.md jimconf.toml BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no 'reads' leak"      "0" "$(printf '%s\n' "$OUT" | grep -c 'reads')"
+  assert_eq "no 'settlement' leak" "0" "$(printf '%s\n' "$OUT" | grep -c 'settlement')"
+  assert_eq "all lines HIT-shaped" "0" \
+    "$(printf '%s\n' "$OUT" | grep -vcE "^HIT${T}[^${T}]+${T}[0-9]+${T}(dotted-key|path|config-key|config-value|prose)$")"
+}
+
+# rc 2 on an invalid slug (a map/blueprint-recorded name can never inject here).
+case_jimpartition_occurrences_invalid_slug() {
+  local dir; dir="$(rename_repo occ_badslug)"
+  run_jimpartition_in "$dir" occurrences 'Bad.Slug' BLUEPRINT.md
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 when no path arguments are given.
+case_jimpartition_occurrences_missing_paths() {
+  local dir; dir="$(rename_repo occ_nopath)"
+  run_jimpartition_in "$dir" occurrences cart
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

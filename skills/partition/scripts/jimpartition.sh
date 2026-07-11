@@ -52,6 +52,7 @@ usage: jimpartition.sh <subcommand> [args]
   aggregate <edges-file> <territories-file>     group edges → GEDGE/STRADDLE/UNASSIGNED
   coverage  <territories-file>                  uncovered dirs → UNCOVERED/TOTAL
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
+  occurrences <slug> <path>...                  whole-token hits → HIT file line kind
 USAGE
 }
 
@@ -985,6 +986,56 @@ cmd_rename_preflight() {
   return 0
 }
 
+# cmd_occurrences <slug> <path>... — enumerate whole-slug-token occurrences of
+#   <slug> across the given files, one HIT per (file, line, kind). Kind is a
+#   STRUCTURAL hint derived from the match's position only — dotted-key (slug is
+#   the group half of a dotted `slug.surface`), config-key / config-value (slug
+#   sits left / right of the `=` on a TOML-ish assignment line), path (slug is a
+#   `/`-bounded segment), else prose. The matched line CONTENT is never emitted
+#   (AC 19 is a structural guarantee, not a discipline): only file, line number,
+#   and kind leave this verb. rc 2 on an invalid slug or no paths.
+cmd_occurrences() {
+  local slug="${1:-}"
+  if [[ -z "$slug" ]]; then
+    echo "jimpartition occurrences: need <slug> <path>..." >&2; return 2
+  fi
+  shift
+  if ! valid_slug "$slug"; then
+    echo "jimpartition occurrences: invalid slug: $slug" >&2; return 2
+  fi
+  if [[ $# -eq 0 ]]; then
+    echo "jimpartition occurrences: need at least one <path>" >&2; return 2
+  fi
+  local f
+  for f in "$@"; do
+    [[ -f "$f" && -r "$f" ]] || continue
+    awk -v slug="$slug" -v file="$f" '
+      function outside(c) { return (c == "" || c !~ /[a-z0-9-]/) }
+      {
+        line = $0
+        # TOML-ish `key = value` assignment? capture the assignment = position.
+        eqpos = 0
+        if (match(line, /^[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*=/)) eqpos = index(line, "=")
+        split("", kseen)                 # dedupe kinds within this line
+        n = length(slug); i = 1
+        while ((p = index(substr(line, i), slug)) > 0) {
+          pos = i + p - 1
+          before = (pos > 1) ? substr(line, pos - 1, 1) : ""
+          after  = substr(line, pos + n, 1)
+          if (outside(before) && outside(after)) {
+            if (after == ".")            kind = "dotted-key"
+            else if (eqpos > 0)          kind = (pos < eqpos) ? "config-key" : "config-value"
+            else if (before == "/" || after == "/") kind = "path"
+            else                         kind = "prose"
+            if (!(kind in kseen)) { printf "HIT\t%s\t%d\t%s\n", file, NR, kind; kseen[kind] = 1 }
+          }
+          i = pos + 1
+        }
+      }' "$f"
+  done
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -995,6 +1046,7 @@ main() {
     aggregate) shift; cmd_aggregate "$@" ;;
     coverage)  shift; cmd_coverage "$@" ;;
     rename-preflight) shift; cmd_rename_preflight "$@" ;;
+    occurrences) shift; cmd_occurrences "$@" ;;
     *)         usage; return 2 ;;
   esac
 }
