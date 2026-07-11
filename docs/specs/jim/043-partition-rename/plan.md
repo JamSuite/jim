@@ -2,7 +2,7 @@
 title: "Partition group rename"
 spec: "docs/specs/jim/043-partition-rename/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Partition group rename — Plan
