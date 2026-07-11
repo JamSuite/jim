@@ -1044,6 +1044,100 @@ case_jimledger_commit_verify_non_repo() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── spec 043: rename-tracked (guarded sibling git mv) ───────────────────────
+
+# run_jimledger_in <dir> <args...> — invoke jimledger.sh with CWD=<dir> so the
+#   CWD-repo git verbs (rename-tracked, commit-rename) act on the fixture repo.
+run_jimledger_in() {
+  local dir="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$dir" && bash "$SCRIPT_JIMLEDGER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# rename_git_fixture <name> — a git repo with a tracked group spec dir and an
+#   identity-bearing territory dir, one commit. Print the repo root.
+rename_git_fixture() {
+  local name="$1"; local root="$TMP_BASE/$name"
+  mkdir -p "$root/docs/specs/cart/000-blueprint" "$root/modules/cart"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+  printf '# cart\n' > "$root/docs/specs/cart/000-blueprint/spec.md"
+  printf 'x\n'      > "$root/modules/cart/a.js"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "seed"
+  printf '%s' "$root"
+}
+
+# AC #10: rename-tracked renames a tracked group dir with git mv, staging the
+# rename (history-continuous move).
+case_jimledger_rename_tracked_renames_dir() {
+  local root; root="$(rename_git_fixture rt_ok)"
+  run_jimledger_in "$root" rename-tracked docs/specs/cart docs/specs/checkout
+  assert_exit "rc" 0 "$RC"
+  assert_eq "old gone"   "0" "$([[ -e "$root/docs/specs/cart" ]] && echo 1 || echo 0)"
+  assert_eq "new exists" "1" "$([[ -d "$root/docs/specs/checkout" ]] && echo 1 || echo 0)"
+  assert_match "staged rename visible" 'docs/specs/checkout/000-blueprint/spec\.md' \
+    "$(git -C "$root" diff --cached --name-only)"
+}
+
+# sec Finding 6: refuses an untracked source — rename-tracked only moves what git
+# already tracks.
+case_jimledger_rename_tracked_refuses_untracked() {
+  local root; root="$(rename_git_fixture rt_unt)"
+  mkdir -p "$root/docs/specs/scratch"
+  run_jimledger_in "$root" rename-tracked docs/specs/scratch docs/specs/checkout
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "names the refusal" "$ERR"
+}
+
+# sec Finding 6: an absolute source is rejected by the valid-relpath boundary.
+case_jimledger_rename_tracked_refuses_absolute() {
+  local root; root="$(rename_git_fixture rt_abs)"
+  run_jimledger_in "$root" rename-tracked /etc/passwd docs/specs/checkout
+  assert_exit "rc" 1 "$RC"
+}
+
+# sec Finding 6: a '..'-segment path is rejected by the valid-relpath boundary.
+case_jimledger_rename_tracked_refuses_dotdot() {
+  local root; root="$(rename_git_fixture rt_dd)"
+  run_jimledger_in "$root" rename-tracked docs/specs/../../etc docs/specs/checkout
+  assert_exit "rc" 1 "$RC"
+}
+
+# sec Finding 6: refuses when the target already exists (never clobbers).
+case_jimledger_rename_tracked_refuses_existing_target() {
+  local root; root="$(rename_git_fixture rt_ex)"
+  mkdir -p "$root/docs/specs/orders"
+  run_jimledger_in "$root" rename-tracked docs/specs/cart docs/specs/orders
+  assert_exit "rc" 1 "$RC"
+}
+
+# sec Finding 6: refuses a cross-parent move — the constraint that makes this a
+# sibling RENAME, never a general relocation primitive.
+case_jimledger_rename_tracked_refuses_cross_parent() {
+  local root; root="$(rename_git_fixture rt_cp)"
+  run_jimledger_in "$root" rename-tracked docs/specs/cart modules/checkout
+  assert_exit "rc" 1 "$RC"
+}
+
+# sec Finding 6: refuses a non-slug new basename.
+case_jimledger_rename_tracked_refuses_nonslug_basename() {
+  local root; root="$(rename_git_fixture rt_ns)"
+  run_jimledger_in "$root" rename-tracked docs/specs/cart docs/specs/Check_Out
+  assert_exit "rc" 1 "$RC"
+}
+
+# rc 2 on a missing argument (usage, distinct from a guard refusal).
+case_jimledger_rename_tracked_missing_args() {
+  local root; root="$(rename_git_fixture rt_ma)"
+  run_jimledger_in "$root" rename-tracked docs/specs/cart
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then

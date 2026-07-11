@@ -26,12 +26,14 @@
 # Security: commit/diff/ledger content is untrusted — never sourced or eval'd.
 # SHAs read from the ledger are validated via jimfile.sh `valid-id` before any
 # git range use (forecloses option injection). The script commits in exactly
-# four path-scoped places — `commit-review` (review.md + ledger.md, 028 AC
+# five path-scoped places — `commit-review` (review.md + ledger.md, 028 AC
 # #10), `commit-blueprint` (a group's spec.md + ledger.md, 030 AC #8),
-# `commit-map` (the project map + the specs-root ledger.md, spec 033), and
-# `commit-verify` (a group's ledger.md alone, spec 035 AC #11) — each with
-# literal paths, a `--` guard, and no `git add -A`; `/jim:build` commits
-# ledger.md at start/finish itself.
+# `commit-map` (the project map + the specs-root ledger.md, spec 033),
+# `commit-verify` (a group's ledger.md alone, spec 035 AC #11), and
+# `commit-rename` (a rename's explicit stage set, spec 043) — each with literal
+# paths, a `--` guard, and no `git add -A`; `/jim:build` commits ledger.md at
+# start/finish itself. `rename-tracked` (spec 043) additionally does a
+# sibling-constrained `git mv` — staging but not committing.
 
 set -uo pipefail
 export LC_ALL=C
@@ -46,6 +48,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   start   <spec-dir>                          record build start (base_sha)
   finish  <spec-dir>                          record build finish (head_sha)
   event   <spec-dir> <phase> <event> [k=v …]  append a generic event
+  rename-tracked <old-path> <new-path>        sibling-constrained git mv (spec 043)
   metrics <spec-dir>                          emit key=value metrics to stdout
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
@@ -238,6 +241,58 @@ cmd_commit_verify() {
   if [[ ! -d "$dir" ]]; then echo "jimledger: blueprint-dir not found: $dir" >&2; return 2; fi
   git -C "$dir" add -- ledger.md || return 2
   git -C "$dir" commit -q -m "chore(verify): record verification run" -- ledger.md || return 2
+}
+
+# cmd_rename_tracked <old-path> <new-path> — history-continuous `git mv` of a
+#   tracked path, constrained to a SIBLING rename so it can never relocate an
+#   arbitrary repo file (spec 043 sec Finding 6). Guards, all before git runs:
+#   both paths clear the jimfile valid-relpath boundary; dirname(old) ==
+#   dirname(new) with basename(new) a valid group slug (the sibling constraint);
+#   both resolve inside `git rev-parse --show-toplevel` (containment, backstopping
+#   valid-relpath against a symlink escape); <old> is tracked; <new> does not yet
+#   exist. Operates on the repo at CWD. rc 0 renamed · rc 1 guard refusal (named)
+#   · rc 2 usage.
+cmd_rename_tracked() {
+  local old="${1:-}" new="${2:-}"
+  if [[ -z "$old" || -z "$new" ]]; then
+    echo "jimledger rename-tracked: need <old-path> <new-path>" >&2; return 2
+  fi
+  if ! bash "$JIMFILE" valid-relpath "$old" >/dev/null 2>&1; then
+    echo "jimledger rename-tracked: unsafe old path rejected: $old" >&2; return 1
+  fi
+  if ! bash "$JIMFILE" valid-relpath "$new" >/dev/null 2>&1; then
+    echo "jimledger rename-tracked: unsafe new path rejected: $new" >&2; return 1
+  fi
+  # Sibling-rename constraint: same parent directory, new basename a valid slug.
+  local old_dir new_dir new_base
+  old_dir="$(dirname -- "$old")"; new_dir="$(dirname -- "$new")"; new_base="$(basename -- "$new")"
+  if [[ "$old_dir" != "$new_dir" ]]; then
+    echo "jimledger rename-tracked: not a sibling rename ($old_dir != $new_dir)" >&2; return 1
+  fi
+  if [[ ! "$new_base" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "jimledger rename-tracked: new basename not a valid slug: $new_base" >&2; return 1
+  fi
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "jimledger rename-tracked: not in a git repo" >&2; return 1
+  fi
+  # Containment: each path resolves inside the worktree top (rejects a shape-valid
+  # path that symlinks out of the tree before git runs).
+  local rp resolved
+  for rp in "$old" "$new"; do
+    if ! resolved="$(realpath -m -- "$rp" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "jimledger rename-tracked: path escapes worktree: $rp" >&2; return 1
+    fi
+  done
+  if [[ -z "$(git ls-files -- "$old" 2>/dev/null)" ]]; then
+    echo "jimledger rename-tracked: old path is not tracked: $old" >&2; return 1
+  fi
+  if [[ -e "$new" ]]; then
+    echo "jimledger rename-tracked: new path already exists: $new" >&2; return 1
+  fi
+  git mv -- "$old" "$new" || {
+    echo "jimledger rename-tracked: git mv failed: $old -> $new" >&2; return 1
+  }
 }
 
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
@@ -538,6 +593,7 @@ main() {
     files-range) shift; cmd_files_range "$@" ;;
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
+    rename-tracked) shift; cmd_rename_tracked "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;
     commit-map) shift; cmd_commit_map "$@" ;;
