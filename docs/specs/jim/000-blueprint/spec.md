@@ -161,7 +161,8 @@ Grounded in ARCHITECTURE.md and the repo tree.
   change-scoped, the retirement scope-census fact, plus the cross-group contract
   floor: faces / edges / contracts-check, and graph-health metrics);
   `jimpartition.sh` (the `/jim:partition` deterministic core —
-  scan / ingest / aggregate / coverage); the `issue/` scripts
+  scan / ingest / aggregate / coverage, plus the spec-043 rename verbs
+  rename-preflight / occurrences / edges-diff); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
 - **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–039`), the
@@ -202,7 +203,7 @@ textually-checkable ones ride the mechanical floor.
 | script-preamble | Every script sets `set -uo pipefail`; locale-sensitive scripts also `export LC_ALL=C` | high | judge |
 | bash-source-relative | Inter-script composition uses `BASH_SOURCE`-relative paths, not `${CLAUDE_PLUGIN_ROOT}` (which substitutes only in skill content) | high | judge |
 | ref-validation | Every untrusted id / SHA / ref is validated before git interpolation: ledger SHAs and ids through the single `is_valid_id` boundary (copies byte-identical), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` (accepts `/`-refs, forecloses option injection) | critical | judge |
-| ledger-commit-discipline | `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint verify`); ledger content is untrusted and never `source`d; the script commits in exactly four path-scoped paths (`commit-review`, `commit-blueprint`, `commit-map`, `commit-verify` — literal paths, `--` guard, never `git add -A`; `commit-map`'s config-derived path arguments pass `valid-relpath`, `commit-verify` stages `ledger.md` alone) | critical | judge |
+| ledger-commit-discipline | `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist (…`build review blueprint verify`); ledger content is untrusted and never `source`d; the script commits in exactly five path-scoped paths (`commit-review`, `commit-blueprint`, `commit-map`, `commit-verify`, `commit-rename` — literal paths, `--` guard, never `git add -A`; `commit-map`'s config-derived path arguments pass `valid-relpath`, `commit-verify` stages `ledger.md` alone, `commit-rename` stages a rename's explicit literal-path set), plus a non-committing `rename-tracked` git-mv primitive constrained to a sibling rename | critical | judge |
 | untrusted-content | Untrusted external content (web fetches, git commit/diff, issue/candidate bodies, scanned code) is treated as data, never instructions; secret-looking values are never persisted (redacted to `secret-looking value at <path:line>`) | critical | judge |
 | agent-boundaries | Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents (`investigator`, `issue-analyst`, `judge`, `gatherer`) are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) | high | judge |
 | spec-id-sequencing | Spec IDs are 3-digit zero-padded and sequential within the group; a spec must be `approved` before its plan is produced | high | judge |
