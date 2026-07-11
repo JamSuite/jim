@@ -87,6 +87,147 @@ repo_add() {
   git -C "$dir" add "$rel"
 }
 
+# rename_repo <name> — build a throwaway git repo modelling a multi-group jim
+#   project for the rename verbs: three groups (cart / orders / billing) each
+#   with a `000-blueprint/spec.md` carrying Provides/Requires faces (orders and
+#   billing require the dotted `cart.cart-session-api` surface), a frozen
+#   numbered spec under cart with historical body text, a `BLUEPRINT.md` map
+#   with a `## Groups` section (per-group Territory) and a `## Contract Graph`
+#   (orders→cart, billing→cart), an identity-bearing `modules/cart` territory,
+#   and a `jimconf.toml` carrying the per-group `verify_appetite_cart` key. One
+#   committed baseline so the tree is clean. Print the absolute repo dir.
+#
+#   Token discipline: the group slug `cart` appears as a whole slug token only
+#   in identity positions (group name, dotted requires group-half, spec-dir
+#   path, territory path, config-key suffix, prose); the surface `cart-session-
+#   api` embeds it inside a larger token, so the slug-token boundary must NOT
+#   flag it — this is the ratchet the occurrences/edges-diff cases lean on.
+rename_repo() {
+  local name="${1:?rename_repo needs a name}"
+  local root="$TMP_BASE/$name"
+  mkdir -p "$root"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+
+  # Identity-bearing territory + sibling group territories (real dirs so the
+  # map's Territory declarations point at tracked code).
+  mkdir -p "$root/modules/cart" "$root/modules/orders" "$root/modules/billing"
+  printf 'export const cartSessionApi = {};\n' > "$root/modules/cart/session.js"
+  printf 'export const orderApi = {};\n'        > "$root/modules/orders/order.js"
+  printf 'export const invoiceApi = {};\n'      > "$root/modules/billing/invoice.js"
+
+  # cart group blueprint — provides the (code-surface-named) session surface;
+  # its verify-check carries a modules/cart path fact.
+  mkdir -p "$root/docs/specs/cart/000-blueprint"
+  cat > "$root/docs/specs/cart/000-blueprint/spec.md" <<'EOF'
+# cart — group blueprint
+
+The cart group owns session state for checkout.
+
+## Provides
+
+- `cart-session-api` — the session surface other groups consume.
+
+## Requires
+
+## Invariants
+
+| Id | Invariant | Criticality | Check |
+| :--- | :--- | :--- | :--- |
+| session-shape | session objects carry an id | high | pattern |
+
+```verify-checks
+session-shape polarity=must regex=cartSessionApi scope=modules/cart/
+```
+EOF
+
+  # A frozen numbered spec under cart — historical body text (a keep forever).
+  mkdir -p "$root/docs/specs/cart/001-initial"
+  cat > "$root/docs/specs/cart/001-initial/spec.md" <<'EOF'
+# 001 initial cart design
+
+The cart group was introduced to hold session logic during checkout.
+EOF
+
+  # orders group blueprint — dotted requires into cart.
+  mkdir -p "$root/docs/specs/orders/000-blueprint"
+  cat > "$root/docs/specs/orders/000-blueprint/spec.md" <<'EOF'
+# orders — group blueprint
+
+## Provides
+
+- `order-api` — order lifecycle surface.
+
+## Requires
+
+- `cart.cart-session-api` — reads the session surface.
+EOF
+
+  # billing group blueprint — dotted requires into cart plus a prose mention.
+  mkdir -p "$root/docs/specs/billing/000-blueprint"
+  cat > "$root/docs/specs/billing/000-blueprint/spec.md" <<'EOF'
+# billing — group blueprint
+
+## Provides
+
+- `invoice-api` — invoice surface.
+
+## Requires
+
+- `cart.cart-session-api` — reads the session surface during settlement.
+
+Billing coordinates with the cart group when resolving disputes.
+EOF
+
+  # Project map — groups (with Territory), Relations, and a Contract Graph.
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+# Project Blueprint
+
+## Groups
+
+### cart
+
+- **Role:** domain
+- **Territory:** `modules/cart`
+
+### orders
+
+- **Role:** domain
+- **Territory:** `modules/orders`
+
+### billing
+
+- **Role:** domain
+- **Territory:** `modules/billing`
+
+## Relations
+
+- orders depends on cart for session state.
+
+## Contract Graph
+
+*Derived from the group blueprints' provides/requires faces. Last reconciled: 2026-07-11T00:00:00Z (via /jim:blueprint)*
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| orders | cart-session-api | cart |
+| billing | cart-session-api | cart |
+EOF
+
+  # Project config — a per-group appetite key (orphaned by a rename) and an
+  # operator command string embedding a cart territory path.
+  cat > "$root/jimconf.toml" <<'EOF'
+verify_appetite_cart = "streamlined"
+deps_command_graph = "scan modules/cart"
+EOF
+
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "chore: seed multi-group fixture"
+  printf '%s' "$root"
+}
+
 # ─── Section: coverage cases (Task 2) ────────────────────────────────────────
 
 # AC #4: tracked files under no proposed territory are reported, dirname-
@@ -529,6 +670,25 @@ case_jimpartition_aggregate_missing_args() {
   edges=$(fixture agg_ma_edges.txt "$(printf 'EDGE\tsrc/a.go\tsrc/b.go\timports')")
   run_jimpartition aggregate "$edges"
   assert_exit "rc" 2 "$RC"
+}
+
+# ─── Section: rename fixture smoke (Task 1) ──────────────────────────────────
+
+# AC #18: the multi-group rename fixture builds a clean, committed baseline with
+# three groups' blueprints, an identity-bearing cart territory, a project map
+# with a Contract Graph, and a per-group appetite key in config — the substrate
+# every rename scan/verify case below reads.
+case_jimpartition_rename_fixture_smoke() {
+  local dir; dir="$(rename_repo rn_smoke)"
+  assert_eq "clean committed tree" "" "$(git -C "$dir" status --porcelain)"
+  local files; files="$(git -C "$dir" ls-files)"
+  assert_match "cart blueprint tracked"   '^docs/specs/cart/000-blueprint/spec\.md$'   "$files"
+  assert_match "orders blueprint tracked" '^docs/specs/orders/000-blueprint/spec\.md$' "$files"
+  assert_match "cart numbered spec tracked" '^docs/specs/cart/001-initial/spec\.md$'   "$files"
+  assert_match "cart territory tracked"   '^modules/cart/'                             "$files"
+  assert_match "map tracked"              '^BLUEPRINT\.md$'                             "$files"
+  assert_match "config tracked"           '^jimconf\.toml$'                            "$files"
+  assert_match "appetite key present"     'verify_appetite_cart'                       "$(cat "$dir/jimconf.toml")"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
