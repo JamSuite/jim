@@ -877,6 +877,66 @@ case_jimpartition_occurrences_missing_paths() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── Section: edges-diff cases (Task 4) ──────────────────────────────────────
+
+# AC #14: after == before with old→new rewritten in the consumer/provider
+# columns (relies-on surface untouched) is identical-modulo-rename → rc 0, no
+# output. Exercises both a provider-column and a consumer-column rewrite.
+case_jimpartition_edges_diff_identical() {
+  local before after
+  before=$(fixture ed_id_before.tsv "$(printf 'orders\tcart-session-api\tcart\ncart\tledger feed\tvendor')")
+  after=$(fixture ed_id_after.tsv "$(printf 'orders\tcart-session-api\tcheckout\ncheckout\tledger feed\tvendor')")
+  run_jimpartition edges-diff "$before" "$after" cart checkout
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no divergence" "" "$OUT"
+}
+
+# AC #14: a dropped edge is a MISSING divergence → rc 1.
+case_jimpartition_edges_diff_dropped() {
+  local before after T; T=$'\t'
+  before=$(fixture ed_dr_before.tsv "$(printf 'orders\tcart-session-api\tcart\nbilling\tcart-session-api\tcart')")
+  after=$(fixture ed_dr_after.tsv "$(printf 'orders\tcart-session-api\tcheckout')")
+  run_jimpartition edges-diff "$before" "$after" cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "billing edge missing" "^MISSING${T}billing${T}cart-session-api${T}checkout$" "$OUT"
+}
+
+# AC #14: an extra edge not present modulo-rename is an EXTRA divergence → rc 1.
+case_jimpartition_edges_diff_extra() {
+  local before after T; T=$'\t'
+  before=$(fixture ed_ex_before.tsv "$(printf 'orders\tcart-session-api\tcart')")
+  after=$(fixture ed_ex_after.tsv "$(printf 'orders\tcart-session-api\tcheckout\nsurprise\tnew feed\tcheckout')")
+  run_jimpartition edges-diff "$before" "$after" cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "surprise edge extra" "^EXTRA${T}surprise${T}new feed${T}checkout$" "$OUT"
+}
+
+# AC #11 ratchet: rewriting the relies-on surface half (cart-session-api →
+# checkout-session-api) is a divergence — only the group-slug columns rename.
+case_jimpartition_edges_diff_surface_rewrite_divergent() {
+  local before after T; T=$'\t'
+  before=$(fixture ed_sr_before.tsv "$(printf 'orders\tcart-session-api\tcart')")
+  after=$(fixture ed_sr_after.tsv "$(printf 'orders\tcheckout-session-api\tcheckout')")
+  run_jimpartition edges-diff "$before" "$after" cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "expected surface untouched missing" "^MISSING${T}orders${T}cart-session-api${T}checkout$" "$OUT"
+  assert_match "rewritten surface extra"            "^EXTRA${T}orders${T}checkout-session-api${T}checkout$" "$OUT"
+}
+
+# rc 2 on a missing argument.
+case_jimpartition_edges_diff_missing_args() {
+  local before; before=$(fixture ed_ma.tsv "$(printf 'orders\tx\tcart')")
+  run_jimpartition edges-diff "$before" cart checkout
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 when an input file is absent.
+case_jimpartition_edges_diff_missing_file() {
+  local before; before=$(fixture ed_mf.tsv "$(printf 'orders\tx\tcart')")
+  run_jimpartition edges-diff "$before" "$TMP_BASE/no-such-after.tsv" cart checkout
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

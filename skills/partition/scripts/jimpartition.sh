@@ -53,6 +53,7 @@ usage: jimpartition.sh <subcommand> [args]
   coverage  <territories-file>                  uncovered dirs → UNCOVERED/TOTAL
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
+  edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
 USAGE
 }
 
@@ -1036,6 +1037,47 @@ cmd_occurrences() {
   return 0
 }
 
+# cmd_edges_diff <before-tsv> <after-tsv> <old> <new> — compare two persisted
+#   contract-graph edge sets (each a `jimverify.sh edges` capture: consumer TAB
+#   relies-on TAB provider per line) modulo the rename. The expected after-set is
+#   <before> with <old>→<new> rewritten ONLY in the consumer and provider columns
+#   (whole-field match); the relies-on surface column is compared untouched — the
+#   ratchet. Emits MISSING for an expected edge absent from <after> and EXTRA for
+#   an <after> edge not expected. rc 0 identical-modulo-rename · rc 1 divergent ·
+#   rc 2 usage.
+cmd_edges_diff() {
+  local before="${1:-}" after="${2:-}" old="${3:-}" new="${4:-}"
+  if [[ -z "$before" || -z "$after" || -z "$old" || -z "$new" ]]; then
+    echo "jimpartition edges-diff: need <before-tsv> <after-tsv> <old> <new>" >&2; return 2
+  fi
+  if [[ ! -f "$before" ]]; then echo "jimpartition edges-diff: before file not found: $before" >&2; return 2; fi
+  if [[ ! -f "$after"  ]]; then echo "jimpartition edges-diff: after file not found: $after" >&2; return 2; fi
+  if ! valid_slug "$old" || ! valid_slug "$new"; then
+    echo "jimpartition edges-diff: invalid slug" >&2; return 2
+  fi
+  local rc
+  {
+    awk 'NF{print "B\t" $0}' "$before"
+    awk 'NF{print "A\t" $0}' "$after"
+  } | awk -F'\t' -v old="$old" -v new="$new" '
+    function rw(c) { return (c == old) ? new : c }
+    $2 == "HYGIENE" { next }
+    {
+      c1 = $2; c2 = $3; c3 = $4
+      if (c1 == "" && c2 == "" && c3 == "") next
+      if ($1 == "B") want[rw(c1) "\t" c2 "\t" rw(c3)]++
+      else           have[c1 "\t" c2 "\t" c3]++
+    }
+    END {
+      diverge = 0
+      for (k in want) { d = want[k] - (k in have ? have[k] : 0); for (j = 0; j < d; j++) { print "MISSING\t" k; diverge = 1 } }
+      for (k in have) { d = have[k] - (k in want ? want[k] : 0); for (j = 0; j < d; j++) { print "EXTRA\t" k; diverge = 1 } }
+      exit (diverge ? 1 : 0)
+    }'
+  rc=$?
+  return $rc
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -1047,6 +1089,7 @@ main() {
     coverage)  shift; cmd_coverage "$@" ;;
     rename-preflight) shift; cmd_rename_preflight "$@" ;;
     occurrences) shift; cmd_occurrences "$@" ;;
+    edges-diff) shift; cmd_edges_diff "$@" ;;
     *)         usage; return 2 ;;
   esac
 }
