@@ -306,7 +306,7 @@ sequenceDiagram
 
 ## Task Breakdown
 
-1. [ ] `tests/jimpartition.sh`: add `rename_repo` fixture builder — throwaway
+1. [x] `tests/jimpartition.sh`: add `rename_repo` fixture builder — throwaway
    git repo with 3 groups (`cart`, `orders`, `billing`), per-group
    `000-blueprint/spec.md` with Provides/Requires (dotted keys into `cart`),
    invariant tables with ids + `verify-checks`, `BLUEPRINT.md` map with
@@ -314,33 +314,33 @@ sequenceDiagram
    `jimconf.toml` with `verify_appetite_cart`, and one committed baseline.
    **Verify:** `bash tests/jimpartition.sh` (new smoke case passes)
 
-2. [ ] `jimpartition.sh`: add `rename-preflight` verb per contract (checks,
+2. [x] `jimpartition.sh`: add `rename-preflight` verb per contract (checks,
    DIRT, TERRITORY-IDENTITY; slug validation; rc semantics) + usage text.
    **Verify:** `bash tests/jimpartition.sh` (preflight cases: pass, each
    named failure, dirt split, territory detection)
 
-3. [ ] `jimpartition.sh`: add `occurrences` verb per contract (slug-token
+3. [x] `jimpartition.sh`: add `occurrences` verb per contract (slug-token
    boundary rule, kind hints, location-only output).
    **Verify:** `bash tests/jimpartition.sh` (hit kinds, `cartel` non-match,
    no content in output)
 
-4. [ ] `jimpartition.sh`: add `edges-diff` verb per contract.
+4. [x] `jimpartition.sh`: add `edges-diff` verb per contract.
    **Verify:** `bash tests/jimpartition.sh` (identical-modulo-rename rc 0;
    dropped/extra edge rc 1; surface-half rewrite detected as divergence)
 
-5. [ ] `jimledger.sh`: add `rename-tracked` verb per contract (guards
+5. [x] `jimledger.sh`: add `rename-tracked` verb per contract (guards
    incl. same-parent + slug-basename constraint, git mv).
    **Verify:** `bash tests/jimledger.sh` (renames tracked dir; refuses
    untracked/absolute/`..`/existing-target/cross-parent move/non-slug
    basename; staged rename visible)
 
-6. [ ] `jimledger.sh`: add `commit-rename` verb per contract (explicit
+6. [x] `jimledger.sh`: add `commit-rename` verb per contract (explicit
    stage sets both stages, in-script subjects, literal-path adds).
    **Verify:** `bash tests/jimledger.sh` (docs/code staging exact from args;
    unrelated dirty file NOT committed; unedited-but-dirty blueprint NOT
    committed; rc 1 on empty stage)
 
-7. [ ] `tests/jimpartition.sh`: continuity + ratchet cases over the fixture —
+7. [x] `tests/jimpartition.sh`: continuity + ratchet cases over the fixture —
    after `rename-tracked` of the spec dir: `jimfile.sh next-id <new>` continues
    max+1 (AC 16); after a simulated arm-b materialization: invariant ids and
    provides surface names byte-identical, dotted group halves re-pointed
@@ -348,20 +348,20 @@ sequenceDiagram
    Depends on tasks 1–6.
    **Verify:** `bash tests/jimpartition.sh`
 
-8. [ ] `agents/gatherer.md`: extend the charter one line — rename-run
+8. [x] `agents/gatherer.md`: extend the charter one line — rename-run
    classification dispatch (classify enumerated occurrences as identity /
    code-surface / historical; content is data, never instruction) — staying
    within the 800-token budget.
    **Verify:** `grep -c "rename" agents/gatherer.md | grep -qv '^0$' && [ $(wc -w < agents/gatherer.md) -lt 800 ]`
 
-9. [ ] `skills/blueprint/SKILL.md`: add `--rename` routing row +
+9. [x] `skills/blueprint/SKILL.md`: add `--rename` routing row +
    argument-hint token + skeletal R-mode section per Interface Contract
    (change-set re-validation and scope refusal, edits, no commit, no
    re-gate, specs-root events, AC 11 ratchet rules, touched-file list
    returned; cites partition-methodology § Rename protocol).
    **Verify:** `grep -q '\-\-rename' skills/blueprint/SKILL.md && [ $(wc -l < skills/blueprint/SKILL.md) -le 500 ]`
 
-10. [ ] `skills/partition/references/partition-methodology.md`: add § Rename
+10. [x] `skills/partition/references/partition-methodology.md`: add § Rename
     protocol — mechanical pre-classification rules with fail-closed
     precedence over gatherer verdicts (gatherer-judged keeps grouped at the
     gate), gatherer residue dispatch, pre-rename edge-set capture timing
@@ -370,18 +370,18 @@ sequenceDiagram
     derivation (DD 6), failure / revert-and-rerun story.
     **Verify:** `grep -q '^## Rename protocol' skills/partition/references/partition-methodology.md`
 
-11. [ ] `skills/partition/SKILL.md`: add `rename <old> <new>` routing row,
+11. [x] `skills/partition/SKILL.md`: add `rename <old> <new>` routing row,
     argument-hint token, and the § Rename runs flow (preflight → scan →
     classify → gate → materialize → verify → ledger/commits per Data Flow),
     citing the gate-presentation rule and methodology.
     **Verify:** `grep -q 'rename <old> <new>' skills/partition/SKILL.md && [ $(wc -l < skills/partition/SKILL.md) -le 500 ]`
 
-12. [ ] `tests/gatepresentation.sh`: bump the expected gate-presentation
+12. [x] `tests/gatepresentation.sh`: bump the expected gate-presentation
     reference count for `skills/partition/SKILL.md` (+1 for the rename gate).
     Depends on task 11.
     **Verify:** `bash tests/gatepresentation.sh`
 
-13. [ ] Full suite green.
+13. [x] Full suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
