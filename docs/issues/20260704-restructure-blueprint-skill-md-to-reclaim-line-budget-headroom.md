@@ -2,8 +2,8 @@
 id: 20260704-restructure-blueprint-skill-md-to-reclaim-line-budget-headroom
 num: 43
 title: "Restructure blueprint SKILL.md to reclaim line-budget headroom"
-status: closed
-priority: low
+status: open
+priority: medium
 labels: [000-blueprint, refactor]
 relations:
   blocks: []
@@ -11,11 +11,35 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T09:23:23Z
-updated: 2026-07-05T08:51:16Z
+updated: 2026-07-11T19:25:38Z
 origin: docs/specs/jim/034-contract-graph/plan.md
 ---
 
-## Resolution
+## Reopened (2026-07-11) — the fix did not hold
+
+Spec 036's extraction restored ~45 lines of slack, but that headroom is
+gone again. The `--retire` superseded-set naming work refilled the body to
+**500/500**, and the spec-043 `/jim:partition rename` build hit the ceiling
+mid-task — exactly the "hitting it mid-spec forces an unplanned restructure
+inside an unrelated build" scenario the *Why* below warns about.
+
+That build spent the **first** lever this issue named ("consolidate the
+validation checklist"): the Update-mode / project-tier / reconcile bullets
+were merged by theme, 20 → 9, to fit the new `--rename` arm under the
+ceiling (all check clauses preserved). The **second, durable** lever
+remains undone and is now the whole ask:
+
+- Push the § Update mode / § Project tier (and any remaining fork) prose
+  into the existing references (`map-methodology.md`,
+  `reconcile-methodology.md`, `fork-grounding.md`), keeping only dispatch +
+  process skeletons in the body — the 033/034/036 precedent.
+
+`agents/gatherer.md` shows the same symptom at its own tier (**798/800**
+words after the spec-043 charter line), so the restructure should reclaim
+headroom in both progressive-disclosure surfaces. Priority raised low →
+medium: the ceiling now actively blocks feature work on contact.
+
+## Prior resolution (spec 036 — superseded by the reopen above)
 
 Closed by spec 036 (Task 5). The blueprint SKILL.md's violation-fork
 detail (U3a presentation, U3b issue offer) was extracted to
