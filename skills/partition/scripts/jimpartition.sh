@@ -51,6 +51,7 @@ usage: jimpartition.sh <subcommand> [args]
   ingest    <raw-file> <channel>                validate raw edges → EDGE/HYGIENE
   aggregate <edges-file> <territories-file>     group edges → GEDGE/STRADDLE/UNASSIGNED
   coverage  <territories-file>                  uncovered dirs → UNCOVERED/TOTAL
+  rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
 USAGE
 }
 
@@ -814,6 +815,176 @@ cmd_aggregate() {
   return 0
 }
 
+# ─── Section: rename (spec 043) ──────────────────────────────────────────────
+#
+# Three read-only verbs for /jim:partition rename. Like the rest of this script
+# they write nothing and run no operator command — the deterministic floor the
+# skill's classification/gate/materialize flow builds on. The git primitives
+# (rename-tracked, commit-rename) and every doc edit live elsewhere; these verbs
+# only observe (preflight facts, occurrence enumeration, edge-set comparison).
+
+# san_field <str> — control-strip + length-cap one field for emission. The
+#   rename verbs' bash-emitted lines carry map- and git-derived (untrusted)
+#   paths; this matches the awk san() the other verbs apply.
+san_field() {
+  printf '%s' "$1" | tr -d '\000-\037\177' | cut -c1-512
+}
+
+# slug_token_match <slug> <string> — 0 iff <slug> occurs in <string> as a whole
+#   slug token: bounded on both sides by a byte outside [a-z0-9-] (or a string
+#   edge). `cart` matches in `modules/cart`, `cart.x`, `verify_appetite_cart`;
+#   it never matches inside `cart-session-api` or `cartel`. The single boundary
+#   rule shared by rename-preflight (territory identity) and occurrences.
+slug_token_match() {
+  awk -v slug="$1" -v s="$2" '
+    BEGIN {
+      n = length(slug); i = 1
+      while ((p = index(substr(s, i), slug)) > 0) {
+        pos = i + p - 1
+        before = (pos > 1) ? substr(s, pos - 1, 1) : ""
+        after  = substr(s, pos + n, 1)
+        if (before !~ /[a-z0-9-]/ && after !~ /[a-z0-9-]/) exit 0
+        i = pos + 1
+      }
+      exit 1
+    }'
+}
+
+# map_group_slugs <map> — emit each group slug declared as an `### <slug>` H3 in
+#   the map's `## Groups` section (ends at the next H2). Slug-gated so a crafted
+#   heading can never smuggle a non-slug token.
+map_group_slugs() {
+  awk '
+    /^##[ \t]+Groups[ \t]*$/ { insec = 1; next }
+    insec && /^##[ \t]/ { insec = 0 }
+    insec && /^###[ \t]+/ {
+      s = $0; sub(/^###[ \t]+/, "", s); sub(/[ \t]+$/, "", s)
+      if (s ~ /^[a-z0-9][a-z0-9-]*$/) print s
+    }' "$1"
+}
+
+# old_group_territories <map> <group> — emit each backticked path on the
+#   `Territory` line(s) inside the given group's `### <group>` subsection.
+old_group_territories() {
+  awk -v grp="$2" '
+    /^##[ \t]+Groups[ \t]*$/ { insec = 1; next }
+    insec && /^##[ \t]/ { insec = 0 }
+    insec && /^###[ \t]+/ {
+      s = $0; sub(/^###[ \t]+/, "", s); sub(/[ \t]+$/, "", s)
+      cur = (s == grp) ? 1 : 0; next
+    }
+    insec && cur && /[Tt]erritory/ {
+      line = $0
+      while (match(line, /`[^`]+`/)) {
+        print substr(line, RSTART + 1, RLENGTH - 2)
+        line = substr(line, RSTART + RLENGTH)
+      }
+    }' "$1"
+}
+
+# emit_check <name> <pass|fail> <detail>
+emit_check() {
+  printf 'CHECK\t%s\t%s\t%s\n' "$1" "$2" "$(san_field "$3")"
+}
+
+# cmd_rename_preflight <map> <specs-dir> <old> <new> — structural preflight for a
+#   group rename. Emits CHECK facts (map-exists, old-mapped, new-slug-valid,
+#   new-collision, blueprint-exists, tree-clean), TERRITORY-IDENTITY lines for
+#   territories embedding <old>, and DIRT lines classifying each uncommitted path
+#   as affected (inside the group's spec dir or an identity territory) vs
+#   unrelated. rc 1 iff any STRUCTURAL check fails (tree-clean/dirt are not fatal
+#   — the dirty tree is a warn-and-confirm, not a refusal); rc 2 on usage.
+cmd_rename_preflight() {
+  local map="${1:-}" specs_dir="${2:-}" old="${3:-}" new="${4:-}"
+  if [[ -z "$map" || -z "$specs_dir" || -z "$old" || -z "$new" ]]; then
+    echo "jimpartition rename-preflight: need <map> <specs-dir> <old> <new>" >&2; return 2
+  fi
+  if ! valid_slug "$old"; then
+    echo "jimpartition rename-preflight: invalid old slug: $old" >&2; return 2
+  fi
+  if ! valid_relpath "$specs_dir"; then
+    echo "jimpartition rename-preflight: invalid specs-dir: $specs_dir" >&2; return 2
+  fi
+
+  local fail=0 groups=""
+
+  if [[ -f "$map" ]]; then
+    emit_check map-exists pass "$map"
+    groups="$(map_group_slugs "$map")"
+  else
+    emit_check map-exists fail "map not found: $map"; fail=1
+  fi
+
+  if printf '%s\n' "$groups" | grep -qxF -- "$old"; then
+    emit_check old-mapped pass "$old"
+  else
+    emit_check old-mapped fail "not a mapped group: $old"; fail=1
+  fi
+
+  local new_ok=0
+  if valid_slug "$new"; then
+    emit_check new-slug-valid pass "$new"; new_ok=1
+  else
+    emit_check new-slug-valid fail "not a valid group slug: $new"; fail=1
+  fi
+
+  if [[ $new_ok -eq 1 ]]; then
+    if printf '%s\n' "$groups" | grep -qxF -- "$new"; then
+      emit_check new-collision fail "collides with mapped group: $new"; fail=1
+    elif [[ -d "$specs_dir/$new" ]]; then
+      emit_check new-collision fail "collides with spec-group dir: $specs_dir/$new"; fail=1
+    else
+      emit_check new-collision pass "$new"
+    fi
+  else
+    emit_check new-collision fail "new slug invalid"; fail=1
+  fi
+
+  if [[ -d "$specs_dir/$old/000-blueprint" ]]; then
+    emit_check blueprint-exists pass "$specs_dir/$old/000-blueprint"
+  else
+    emit_check blueprint-exists fail "absent: $specs_dir/$old/000-blueprint"; fail=1
+  fi
+
+  # Territory identity — territories of <old> whose paths embed <old> as a slug
+  # token gate the code-move fork. Collected here so DIRT can classify against them.
+  local terr
+  local -a idterr=()
+  while IFS= read -r terr; do
+    [[ -z "$terr" ]] && continue
+    if slug_token_match "$old" "$terr"; then
+      printf 'TERRITORY-IDENTITY\t%s\n' "$(san_field "$terr")"
+      idterr+=("$terr")
+    fi
+  done < <([[ -f "$map" ]] && old_group_territories "$map" "$old")
+
+  # Tree cleanliness + dirt classification (non-fatal).
+  local status git_rc
+  status="$(git status --porcelain 2>/dev/null)"; git_rc=$?
+  if [[ $git_rc -ne 0 ]]; then
+    emit_check tree-clean fail "not a git work tree"
+  elif [[ -z "$status" ]]; then
+    emit_check tree-clean pass "clean"
+  else
+    emit_check tree-clean fail "uncommitted changes present"
+    local line path klass t affected_pref="$specs_dir/$old/"
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      path="${line:3}"                 # strip the 2-char status + space
+      path="${path##* -> }"            # on a rename line, keep the new path
+      klass="unrelated"
+      [[ "$path" == "$affected_pref"* ]] && klass="affected"
+      for t in "${idterr[@]}"; do
+        [[ "$path" == "$t" || "$path" == "$t/"* ]] && klass="affected"
+      done
+      printf 'DIRT\t%s\t%s\n' "$klass" "$(san_field "$path")"
+    done <<<"$status"
+  fi
+
+  [[ $fail -eq 1 ]] && return 1
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -823,6 +994,7 @@ main() {
     ingest)    shift; cmd_ingest "$@" ;;
     aggregate) shift; cmd_aggregate "$@" ;;
     coverage)  shift; cmd_coverage "$@" ;;
+    rename-preflight) shift; cmd_rename_preflight "$@" ;;
     *)         usage; return 2 ;;
   esac
 }

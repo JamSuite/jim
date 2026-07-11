@@ -691,6 +691,115 @@ case_jimpartition_rename_fixture_smoke() {
   assert_match "appetite key present"     'verify_appetite_cart'                       "$(cat "$dir/jimconf.toml")"
 }
 
+# ─── Section: rename-preflight cases (Task 2) ────────────────────────────────
+
+# AC #2/#3/#5: a clean rename passes every structural check, detects the
+# identity-bearing cart territory, and reports no dirt (dirt is not fatal → rc 0).
+case_jimpartition_preflight_clean_pass() {
+  local dir T; dir="$(rename_repo rp_clean)"; T=$'\t'
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit "rc" 0 "$RC"
+  assert_match "map-exists pass"       "^CHECK${T}map-exists${T}pass"       "$OUT"
+  assert_match "old-mapped pass"       "^CHECK${T}old-mapped${T}pass"       "$OUT"
+  assert_match "new-slug-valid pass"   "^CHECK${T}new-slug-valid${T}pass"   "$OUT"
+  assert_match "new-collision pass"    "^CHECK${T}new-collision${T}pass"    "$OUT"
+  assert_match "blueprint-exists pass" "^CHECK${T}blueprint-exists${T}pass" "$OUT"
+  assert_match "tree-clean pass"       "^CHECK${T}tree-clean${T}pass"       "$OUT"
+  assert_match "territory identity"    "^TERRITORY-IDENTITY${T}modules/cart$" "$OUT"
+  assert_eq    "no dirt"               "0" "$(printf '%s\n' "$OUT" | grep -c '^DIRT')"
+  assert_eq    "only cart territory"   "0" "$(printf '%s\n' "$OUT" | grep -c 'modules/orders')"
+}
+
+# AC #2: a missing map fails the map-exists check with rc 1 (nothing written).
+case_jimpartition_preflight_no_map() {
+  local dir T; dir="$(rename_repo rp_nomap)"; T=$'\t'
+  run_jimpartition_in "$dir" rename-preflight no-such-map.md docs/specs cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "map-exists fail" "^CHECK${T}map-exists${T}fail" "$OUT"
+}
+
+# AC #2: an old name that is not a mapped group fails old-mapped with rc 1.
+case_jimpartition_preflight_old_not_mapped() {
+  local dir T; dir="$(rename_repo rp_oldnm)"; T=$'\t'
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs nonesuch checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "old-mapped fail" "^CHECK${T}old-mapped${T}fail" "$OUT"
+}
+
+# AC #2: a new name that is not a valid group slug fails new-slug-valid with rc 1.
+case_jimpartition_preflight_new_bad_slug() {
+  local dir T; dir="$(rename_repo rp_badslug)"; T=$'\t'
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart 'Bad_New'
+  assert_exit "rc" 1 "$RC"
+  assert_match "new-slug-valid fail" "^CHECK${T}new-slug-valid${T}fail" "$OUT"
+}
+
+# AC #2: a new name colliding with an existing mapped group fails new-collision.
+case_jimpartition_preflight_new_collision_group() {
+  local dir T; dir="$(rename_repo rp_coll)"; T=$'\t'
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart orders
+  assert_exit "rc" 1 "$RC"
+  assert_match "new-collision fail" "^CHECK${T}new-collision${T}fail" "$OUT"
+}
+
+# AC #2: a new name colliding with an existing spec-group directory (not yet in
+# the map) also fails new-collision — the directory is authority too.
+case_jimpartition_preflight_new_collision_dir() {
+  local dir T; dir="$(rename_repo rp_colld)"; T=$'\t'
+  mkdir -p "$dir/docs/specs/archived/000-blueprint"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart archived
+  assert_exit "rc" 1 "$RC"
+  assert_match "new-collision fail" "^CHECK${T}new-collision${T}fail" "$OUT"
+}
+
+# AC #2: a group whose 000-blueprint is absent fails blueprint-exists with rc 1.
+# The removal is committed so the tree stays clean and isolates the check.
+case_jimpartition_preflight_blueprint_absent() {
+  local dir T; dir="$(rename_repo rp_nobp)"; T=$'\t'
+  git -C "$dir" rm -q -r docs/specs/cart/000-blueprint >/dev/null
+  git -C "$dir" commit -q -m "chore: drop cart blueprint"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "blueprint-exists fail" "^CHECK${T}blueprint-exists${T}fail" "$OUT"
+}
+
+# AC #3: a dirty tree is not fatal (rc 0) but names dirt inside the affected path
+# set file-by-file (affected) distinct from unrelated dirt elsewhere.
+case_jimpartition_preflight_dirt_split() {
+  local dir T; dir="$(rename_repo rp_dirt)"; T=$'\t'
+  printf 'wip\n' > "$dir/docs/specs/cart/000-blueprint/notes.txt"   # inside affected set
+  printf 'x\n'   > "$dir/unrelated.txt"                              # unrelated dirt
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit "rc" 0 "$RC"
+  assert_match "tree-clean fail" "^CHECK${T}tree-clean${T}fail" "$OUT"
+  assert_match "affected dirt named" "^DIRT${T}affected${T}docs/specs/cart/000-blueprint/notes\.txt$" "$OUT"
+  assert_match "unrelated dirt named" "^DIRT${T}unrelated${T}unrelated\.txt$" "$OUT"
+}
+
+# AC #5: dirt inside the identity-bearing territory is classified affected too.
+case_jimpartition_preflight_dirt_territory_affected() {
+  local dir T; dir="$(rename_repo rp_dirtt)"; T=$'\t'
+  printf 'wip\n' > "$dir/modules/cart/extra.js"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit "rc" 0 "$RC"
+  assert_match "territory dirt affected" "^DIRT${T}affected${T}modules/cart/extra\.js$" "$OUT"
+}
+
+# rc 2 on a missing argument (usage error, distinct from a structural failure).
+case_jimpartition_preflight_missing_args() {
+  local dir; dir="$(rename_repo rp_noargs)"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 on an <old> that is not even a valid slug — a usage error before any
+# map/filesystem work (the input boundary, not a named CHECK).
+case_jimpartition_preflight_old_bad_slug() {
+  local dir; dir="$(rename_repo rp_oldbad)"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs 'Bad/Old' checkout
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
