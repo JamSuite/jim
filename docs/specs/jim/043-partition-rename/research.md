@@ -32,6 +32,7 @@ date: "2026-07-11"
 - `skills/verify/scripts/jimverify.sh:758-790` — `edges <map-path>` → TSV `consumer\trelies-on\tprovider`: the deterministic input for AC 14's edge-set-modulo-name comparison.
 - `skills/verify/scripts/jimverify.sh:675-754` — `faces <blueprint>` parses dotted `{group}.{surface}` requires targets (:748-749): the deterministic enumerator for the group-half re-point set (AC 10) and Insight 4's pre-gate prevention.
 - `skills/blueprint/assets/blueprint-template.md:50` — the dotted requires face format (`` `{other-group}.{surface}` ``); the group prefix is what a rename rewrites.
+- `skills/conf/scripts/jimconf.sh:97-156` — the dynamic-suffix key families (`verify_appetite_<group>`, `verify_command_<name>`, `deps_command_<name>`): the config-tier identity residue spec AC 4/AC 6 fold into the scan. The `<group>` suffix embeds the group name in the key itself; suffixes are slug-gated before lookup, so an orphaned old-name key resolves silently to default — the staleness AC 6 makes visible.
 
 **Tests (new files)**
 
