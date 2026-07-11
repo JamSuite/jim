@@ -44,7 +44,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:vision` | Create/update project vision |
 | `/jim:arch` | Create/update technical architecture |
 | `/jim:blueprint` | Living blueprints — a group's current-state `000-blueprint` (`<group>`), the project-tier context map (bare), the cross-group contract graph (`--reconcile`) |
-| `/jim:partition` | Migrate a project onto the blueprint partition doctrine — extract the code's dependency graph, propose a context map, materialize via the blueprint surface after a hard gate; auto-detects greenfield/repartition, and `path`/`directory` assess territory-mode readiness |
+| `/jim:partition` | Migrate a project onto the blueprint partition doctrine — extract the code's dependency graph, propose a context map, materialize via the blueprint surface after a hard gate; auto-detects greenfield/repartition, `path`/`directory` assess territory-mode readiness, and `rename <old> <new>` migrates a group's identity across the partition's artifacts in one gated operation |
 | `/jim:roadmap` | Create/update execution roadmap |
 | `/jim:debug` | Diagnose failures, produce debug report |
 | `/jim:sec` | Design-time security analysis of specs, plans, or arbitrary files; produces `security.md` |
