@@ -58,6 +58,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md
   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
   commit-verify <blueprint-dir>               commit ledger.md only (verify self-commit)
+  commit-rename <specs-dir> <old> <new> <docs|code> <path...>  commit a rename stage set (spec 043)
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
   last-reconcile <specs-dir>                  prior reconcile event: iso + documented counters
 USAGE
@@ -293,6 +294,66 @@ cmd_rename_tracked() {
   git mv -- "$old" "$new" || {
     echo "jimledger rename-tracked: git mv failed: $old -> $new" >&2; return 1
   }
+}
+
+# cmd_commit_rename <specs-dir> <old> <new> <docs|code> <path...> — the fifth
+#   path-scoped commit site: land one atomic commit of a rename's stage set,
+#   composed from explicit literal paths only (no globs — sec Finding 7), so an
+#   uncommitted change outside the set can never ride it (AC 12). The `docs` stage
+#   auto-includes the moved spec-dir PAIR (<specs-dir>/<old> deleted +
+#   <specs-dir>/<new> added, both already staged by rename-tracked) so the rename
+#   commits atomically; the explicit args are the touched blueprint files. The
+#   `code` stage takes its complete set (the moved territory pair + each
+#   import-fixed file) as explicit args. `git add` runs only on paths that still
+#   exist (a gone old path is already staged; adding it would error); the commit
+#   pathspec covers the whole set so the staged deletion lands with it. Subjects
+#   are composed in-script from the slug-validated <old>/<new> only. rc 0
+#   committed · rc 1 nothing staged / guard refusal · rc 2 usage.
+cmd_commit_rename() {
+  local specs_dir="${1:-}" old="${2:-}" new="${3:-}" stage="${4:-}"
+  if [[ -z "$specs_dir" || -z "$old" || -z "$new" || -z "$stage" ]]; then
+    echo "jimledger commit-rename: need <specs-dir> <old> <new> <docs|code> <path...>" >&2; return 2
+  fi
+  shift 4
+  case "$stage" in docs|code) ;; *) echo "jimledger commit-rename: stage must be docs or code: $stage" >&2; return 2 ;; esac
+  if [[ ! "$old" =~ ^[a-z0-9][a-z0-9-]*$ || ! "$new" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "jimledger commit-rename: old/new must be valid group slugs" >&2; return 2
+  fi
+  if [[ "$stage" == "code" && $# -eq 0 ]]; then
+    echo "jimledger commit-rename: code stage needs explicit <path...>" >&2; return 2
+  fi
+  if ! bash "$JIMFILE" valid-relpath "$specs_dir" >/dev/null 2>&1; then
+    echo "jimledger commit-rename: unsafe specs-dir rejected: $specs_dir" >&2; return 1
+  fi
+  local -a paths=()
+  [[ "$stage" == "docs" ]] && paths+=("${specs_dir%/}/$old" "${specs_dir%/}/$new")
+  paths+=("$@")
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "jimledger commit-rename: not in a git repo" >&2; return 1
+  fi
+  local p resolved
+  for p in "${paths[@]}"; do
+    if ! bash "$JIMFILE" valid-relpath "$p" >/dev/null 2>&1; then
+      echo "jimledger commit-rename: unsafe path rejected: $p" >&2; return 1
+    fi
+    if ! resolved="$(realpath -m -- "$p" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "jimledger commit-rename: path escapes worktree: $p" >&2; return 1
+    fi
+  done
+  # Stage only paths that still exist — a git-mv'd old path is already staged and
+  # `git add` on a vanished path errors. Never a blanket add.
+  for p in "${paths[@]}"; do
+    [[ -e "$p" ]] || continue
+    git add -- "$p" || { echo "jimledger commit-rename: git add failed: $p" >&2; return 1; }
+  done
+  if git diff --cached --quiet -- "${paths[@]}"; then
+    echo "jimledger commit-rename: nothing staged for the given paths" >&2; return 1
+  fi
+  local subject
+  if [[ "$stage" == "docs" ]]; then subject="docs(specs): rename group $old to $new"
+  else                              subject="refactor($new): rename territory $old to $new"; fi
+  git commit -q -m "$subject" -- "${paths[@]}" || { echo "jimledger commit-rename: commit failed" >&2; return 1; }
 }
 
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
@@ -594,6 +655,7 @@ main() {
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
     rename-tracked) shift; cmd_rename_tracked "$@" ;;
+    commit-rename) shift; cmd_commit_rename "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;
     commit-map) shift; cmd_commit_map "$@" ;;

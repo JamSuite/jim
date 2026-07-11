@@ -1138,6 +1138,96 @@ case_jimledger_rename_tracked_missing_args() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── spec 043: commit-rename (explicit-stage rename commits) ─────────────────
+
+# AC #12 / sec Finding 7: the docs commit stages the moved spec-dir pair (script-
+# derived from specs-dir/old/new) plus exactly the touched blueprint args — an
+# unedited-but-dirty sibling blueprint and an unrelated dirty file never ride it.
+# The rename lands atomically (old deletion + new addition in one commit).
+case_jimledger_commit_rename_docs_scoped() {
+  local root; root="$(rename_git_fixture cr_docs)"
+  mkdir -p "$root/docs/specs/orders/000-blueprint" "$root/docs/specs/billing/000-blueprint"
+  printf 'requires cart\n' > "$root/docs/specs/orders/000-blueprint/spec.md"
+  printf 'mentions cart\n'  > "$root/docs/specs/billing/000-blueprint/spec.md"
+  git -C "$root" add -A && git -C "$root" commit -q -m "add siblings"
+  run_jimledger_in "$root" rename-tracked docs/specs/cart docs/specs/checkout
+  assert_exit "rename rc" 0 "$RC"
+  printf 'requires checkout\n' > "$root/docs/specs/orders/000-blueprint/spec.md"  # arm-touched
+  printf 'stray edit\n'        > "$root/docs/specs/billing/000-blueprint/spec.md" # dirty, NOT in stage set
+  printf 'unrelated\n'         > "$root/loose.txt"                                 # unrelated dirt
+  run_jimledger_in "$root" commit-rename docs/specs cart checkout docs \
+    docs/specs/orders/000-blueprint/spec.md
+  assert_exit "rc" 0 "$RC"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "moved dir committed"   'docs/specs/checkout/000-blueprint/spec\.md' "$committed"
+  assert_match "orders edit committed" 'docs/specs/orders/000-blueprint/spec\.md'   "$committed"
+  assert_eq "old path gone from HEAD tree" "0" "$(git -C "$root" ls-tree -r --name-only HEAD | grep -c '^docs/specs/cart/')"
+  assert_eq "billing NOT committed" "0" "$(echo "$committed" | grep -c 'billing')"
+  assert_eq "loose NOT committed"   "0" "$(echo "$committed" | grep -c 'loose')"
+  assert_eq "billing still dirty"   "1" "$(git -C "$root" status --porcelain docs/specs/billing | grep -c '^ M')"
+  assert_eq "subject" "docs(specs): rename group cart to checkout" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC #8/#12: the code commit stages exactly the territory pair + import-fixed
+# files given as explicit args; an unrelated dirty file never rides it; the
+# subject names the new territory.
+case_jimledger_commit_rename_code_scoped() {
+  local root; root="$(rename_git_fixture cr_code)"
+  printf 'import "modules/cart"\n' > "$root/app.js"
+  git -C "$root" add -A && git -C "$root" commit -q -m "add app"
+  run_jimledger_in "$root" rename-tracked modules/cart modules/checkout
+  assert_exit "rename rc" 0 "$RC"
+  printf 'import "modules/checkout"\n' > "$root/app.js"   # import fix (unstaged)
+  printf 'stray\n' > "$root/loose.txt"                    # unrelated dirt
+  run_jimledger_in "$root" commit-rename docs/specs cart checkout code \
+    modules/cart modules/checkout app.js
+  assert_exit "rc" 0 "$RC"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "territory move committed" 'modules/checkout/a\.js' "$committed"
+  assert_match "import fix committed"     '^app\.js$'              "$committed"
+  assert_eq "loose NOT committed" "0" "$(echo "$committed" | grep -c 'loose')"
+  assert_eq "subject" "refactor(checkout): rename territory cart to checkout" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC #12: rc 1 when nothing is staged for the given paths (a guard refusal, never
+# a false-success empty commit).
+case_jimledger_commit_rename_empty_stage_rc1() {
+  local root; root="$(rename_git_fixture cr_empty)"
+  run_jimledger_in "$root" commit-rename docs/specs cart checkout docs \
+    docs/specs/cart/000-blueprint/spec.md
+  assert_exit "rc" 1 "$RC"
+}
+
+# sec Finding 7: an unsafe stage path is refused before git runs (rc 1).
+case_jimledger_commit_rename_unsafe_path_rc1() {
+  local root; root="$(rename_git_fixture cr_unsafe)"
+  run_jimledger_in "$root" commit-rename docs/specs cart checkout code ../escape
+  assert_exit "rc" 1 "$RC"
+}
+
+# rc 2 on missing args (no stage token).
+case_jimledger_commit_rename_missing_args() {
+  local root; root="$(rename_git_fixture cr_ma)"
+  run_jimledger_in "$root" commit-rename docs/specs cart checkout
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 on an unrecognized stage token.
+case_jimledger_commit_rename_bad_stage() {
+  local root; root="$(rename_git_fixture cr_bs)"
+  run_jimledger_in "$root" commit-rename docs/specs cart checkout sideways \
+    docs/specs/cart/000-blueprint/spec.md
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 when the code stage is given no explicit paths (the territory pair is
+# never auto-derived — only the docs spec-dir pair is).
+case_jimledger_commit_rename_code_needs_paths() {
+  local root; root="$(rename_git_fixture cr_cnp)"
+  run_jimledger_in "$root" commit-rename docs/specs cart checkout code
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
