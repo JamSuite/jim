@@ -2,7 +2,7 @@
 id: 20260712-emit-the-unarmed-knob-notice-on-the-nothing-to-reconcile-reconci
 num: 75
 title: "Emit the unarmed-knob notice on the nothing-to-reconcile reconcile"
-status: open
+status: closed
 priority: low
 labels: [blueprint, partition, health]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-12T10:12:32Z
-updated: 2026-07-12T10:12:32Z
+updated: 2026-07-12T19:50:46Z
 origin: docs/specs/jim/044-partition-health/review.md
 ---
 
@@ -55,3 +55,27 @@ Either:
 A one-line skill-prose change to `skills/blueprint/SKILL.md`; no script change
 is needed. Low priority — the feature targets multi-group projects, so the gap
 only bites during the sub-two-group ramp-up.
+
+## Resolution
+
+Closed via **proposal 2** — the AC over-promised relative to the mechanism it
+governs. The unarmed notice is a property of the health hook, and the health
+hook is by construction a full-run-path construct
+(`skills/blueprint/SKILL.md:431`); the nothing-to-reconcile note already covers
+health on the short-circuit path
+(`skills/blueprint/references/reconcile-methodology.md:354-356`). Scoping the AC
+to the full-run path makes the current behavior correct by definition, and the
+guarantee "the fail-open knob is never invisible" is honored the moment a
+project crosses into two-plus groups — the first run on which health can
+structurally fire.
+
+Proposal 1 was rejected: as written it would emit "no thresholds configured —
+hook unarmed" unconditionally on the short-circuit path, misattributing the
+cause for an operator who *did* configure thresholds (nothing fires there
+because there are fewer than two groups, not because thresholds are missing). A
+faithful version would add knob resolution and a bespoke message to the cheap
+fast-exit branch to cover a transient, structurally-inert window — not worth the
+cost.
+
+AC #5 and AC #6 in `docs/specs/jim/044-partition-health/spec.md` now scope the
+unarmed notice to the full-run path.
