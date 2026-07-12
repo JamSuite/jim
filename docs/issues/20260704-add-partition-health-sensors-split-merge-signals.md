@@ -2,7 +2,7 @@
 id: 20260704-add-partition-health-sensors-split-merge-signals
 num: 42
 title: "Add partition-health sensors (split/merge signals)"
-status: open
+status: closed
 priority: low
 labels: [000-blueprint, cross-group, spec-groups]
 relations:
@@ -11,9 +11,14 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T08:08:24Z
-updated: 2026-07-09T06:34:57Z
+updated: 2026-07-12T10:37:04Z
 origin: docs/specs/jim/034-contract-graph/spec.md
 ---
+
+> **Resolved by spec 044 (partition-health sensors) — 2026-07-12.** The
+> split/merge trend sensors and the silent reconcile-tail threshold hook
+> shipped in `docs/specs/jim/044-partition-health/`; this issue's scope is
+> fully covered.
 
 ## Description
 

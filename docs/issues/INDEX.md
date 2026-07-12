@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 36
-- Closed: 39
+- Open: 34
+- Closed: 41
 
 ## Issues
 
@@ -46,7 +46,7 @@
 - `20260704-add-a-mint-new-handoff-row-to-the-blueprint-routing-table` — Add a mint-new handoff row to the blueprint routing table · status: closed · num: 37 · priority: low · created: 2026-07-04T00:22:58Z · labels: [blueprint, spec-groups] · origin: docs/specs/jim/033-context-map/review.md
 - `20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan` — Add a plan-time blast-radius advisory to /jim:plan · status: closed · num: 39 · priority: medium · created: 2026-07-04T06:09:52Z · labels: [000-blueprint, cross-group, plan] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260704-add-fable-to-review-model-s-validated-model-list` — Add fable to review_model's validated model list · status: closed · num: 46 · priority: low · created: 2026-07-04T22:05:36Z · labels: [review, config] · origin: docs/specs/jim/035-verify-engine/plan.md
-- `20260704-add-partition-health-sensors-split-merge-signals` — Add partition-health sensors (split/merge signals) · status: open · num: 42 · priority: low · created: 2026-07-04T08:08:24Z · labels: [000-blueprint, cross-group, spec-groups] · origin: docs/specs/jim/034-contract-graph/spec.md
+- `20260704-add-partition-health-sensors-split-merge-signals` — Add partition-health sensors (split/merge signals) · status: closed · num: 42 · priority: low · created: 2026-07-04T08:08:24Z · labels: [000-blueprint, cross-group, spec-groups] · origin: docs/specs/jim/034-contract-graph/spec.md
 - `20260704-complete-the-jim-verify-check-verb-test-matrix` — Complete the /jim:verify check-verb test matrix · status: open · num: 49 · priority: medium · created: 2026-07-04T23:53:20Z · labels: [verify, test] · origin: docs/specs/jim/035-verify-engine/review.md
 - `20260704-degrade-verify-registry-timeout-on-junk-config-in-the-verify-ski` — Degrade verify_registry_timeout on junk config in the verify skill · status: open · num: 50 · priority: medium · created: 2026-07-04T23:53:20Z · labels: [verify, config] · origin: docs/specs/jim/035-verify-engine/review.md
 - `20260704-derive-the-map-relations-column-from-the-contract-graph` — Derive the map Relations column from the contract graph · status: open · num: 40 · priority: low · created: 2026-07-04T07:02:15Z · labels: [000-blueprint, cross-group, architecture] · origin: docs/specs/jim/034-contract-graph/research.md
@@ -76,7 +76,7 @@
 - `20260707-strengthen-039-graph-health-test-coverage` — Strengthen 039 graph-health test coverage · status: closed · num: 64 · priority: low · created: 2026-07-07T06:33:25Z · labels: [test, verify] · origin: docs/specs/jim/039-graph-health/review.md
 - `20260708-emitter-and-template-both-emit-the-issue-description-header` — Emitter and template both emit the issue Description header · status: open · num: 69 · priority: low · created: 2026-07-08T20:37:32Z · labels: [issues-system, emitter, template] · origin: conversation
 - `20260708-partition-spec-migration-mode` — Extend /jim:partition with a spec-migration mode (move specs into new groups) · status: open · num: 68 · priority: medium · created: 2026-07-08T07:53:09Z · labels: [partition, migration, freeze-history] · origin: conversation
-- `20260711-add-a-territory-name-mismatch-partition-health-sensor` — Add a territory-name-mismatch partition-health sensor · status: open · num: 71 · priority: low · created: 2026-07-11T09:10:28Z · labels: [partition, health, blueprint] · origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
+- `20260711-add-a-territory-name-mismatch-partition-health-sensor` — Add a territory-name-mismatch partition-health sensor · status: closed · num: 71 · priority: low · created: 2026-07-11T09:10:28Z · labels: [partition, health, blueprint] · origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
 - `20260711-blueprint-present-tense-discipline-enforcement` — Enforce present-tense discipline at /jim:blueprint draft composition · status: open · num: 70 · priority: medium · created: 2026-07-11T07:57:56Z · labels: [blueprint, doctrine, drafting] · origin: conversation
 - `20260712-add-partition-stage-metrics-to-the-review-ledger-allowlist` — Add partition stage metrics to the review ledger allowlist · status: open · num: 73 · priority: low · created: 2026-07-12T08:06:17Z · labels: [ledger, review, partition] · origin: docs/specs/jim/044-partition-health/plan.md
 - `20260712-compute-reconcile-face-size-counters-deterministically` — Compute reconcile face-size counters deterministically · status: open · num: 74 · priority: low · created: 2026-07-12T09:55:16Z · labels: [partition, blueprint, reconcile, hardening] · origin: docs/specs/jim/044-partition-health/plan.md

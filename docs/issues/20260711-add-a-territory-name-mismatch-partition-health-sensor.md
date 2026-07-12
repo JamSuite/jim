@@ -2,7 +2,7 @@
 id: 20260711-add-a-territory-name-mismatch-partition-health-sensor
 num: 71
 title: "Add a territory-name-mismatch partition-health sensor"
-status: open
+status: closed
 priority: low
 labels: [partition, health, blueprint]
 relations:
@@ -11,9 +11,13 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-11T09:10:28Z
-updated: 2026-07-11T09:10:28Z
+updated: 2026-07-12T10:37:04Z
 origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
 ---
+
+> **Resolved by spec 044 (partition-health sensors) — 2026-07-12.** Folded into
+> 044 as the `jimpartition.sh identity-check` name-mismatch sensor (foreign +
+> retired classes); shipped in `docs/specs/jim/044-partition-health/`.
 
 ## Description
 
