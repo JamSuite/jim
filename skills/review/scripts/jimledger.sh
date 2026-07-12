@@ -18,7 +18,7 @@
 #   commit-review <spec-dir> [verdict]         commit review.md + ledger.md (path-scoped)
 #   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md (path-scoped)
 #   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
-#   commit-verify <blueprint-dir>             commit ledger.md only (verify self-commit)
+#   commit-verify <blueprint-dir> [verify|health]  commit ledger.md only (verify/health self-commit)
 #   updates-since <blueprint-dir> <iso>       count blueprint finished events after <iso>
 #   reconcile-series <specs-dir>              full reconcile event series → EVENT/EXCLUDED
 #
@@ -58,7 +58,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   commit-review <spec-dir> [verdict]          commit review.md + ledger.md (path-scoped)
   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md
   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
-  commit-verify <blueprint-dir>               commit ledger.md only (verify self-commit)
+  commit-verify <blueprint-dir> [verify|health]  commit ledger.md only (verify/health self-commit)
   commit-rename <specs-dir> <old> <new> <docs|code> <path...>  commit a rename stage set (spec 043)
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
   last-reconcile <specs-dir>                  prior reconcile event: iso + documented counters
@@ -229,21 +229,28 @@ cmd_commit_map() {
   git commit -q -m "docs(blueprint): $mode project map" -- "$map" "$ledger" || return 2
 }
 
-# cmd_commit_verify <blueprint-dir> — path-scoped commit of a verification run's
-#   self-recorded ledger event: ledger.md alone inside <blueprint-dir>. A verify
-#   run writes NO artifact (no verdict is persisted — spec 035 AC #11) and is
-#   on-demand with no approval gesture to ride, so it self-commits its own ledger
-#   record, modeled on commit-blueprint's fix-only path (ledger.md alone falls
-#   out of pathspec staging for free). The subject is a fixed literal — no mode,
-#   no verdict, no untrusted input reaches the commit message. Literal path,
-#   `--` guard, never `git add -A`. Any git failure returns non-zero so the
-#   caller degrades with the ledger left intact on disk.
+# cmd_commit_verify <blueprint-dir> [verify|health] — path-scoped commit of a
+#   read-only run's self-recorded ledger event: ledger.md alone inside
+#   <blueprint-dir>. A verify run (spec 035) and a partition-health run (spec 044)
+#   both write NO artifact and are on-demand with no approval gesture to ride, so
+#   each self-commits its own ledger record, modeled on commit-blueprint's
+#   fix-only path (ledger.md alone falls out of pathspec staging for free). The
+#   optional mode selects the subject from a two-entry whitelist (default
+#   `verify`); an unrecognized mode is rejected rc 2 so no untrusted input ever
+#   reaches the commit message. Literal path, `--` guard, never `git add -A`. Any
+#   git failure returns non-zero so the caller degrades with the ledger intact.
 cmd_commit_verify() {
-  local dir="${1:-}"
-  if [[ -z "$dir" ]]; then echo "jimledger commit-verify: need <blueprint-dir>" >&2; return 2; fi
+  local dir="${1:-}" mode="${2:-verify}"
+  if [[ -z "$dir" ]]; then echo "jimledger commit-verify: need <blueprint-dir> [verify|health]" >&2; return 2; fi
   if [[ ! -d "$dir" ]]; then echo "jimledger: blueprint-dir not found: $dir" >&2; return 2; fi
+  local subject
+  case "$mode" in
+    verify) subject="chore(verify): record verification run" ;;
+    health) subject="chore(health): record partition-health run" ;;
+    *) echo "jimledger commit-verify: mode must be verify or health: $mode" >&2; return 2 ;;
+  esac
   git -C "$dir" add -- ledger.md || return 2
-  git -C "$dir" commit -q -m "chore(verify): record verification run" -- ledger.md || return 2
+  git -C "$dir" commit -q -m "$subject" -- ledger.md || return 2
 }
 
 # cmd_rename_tracked <old-path> <new-path> — history-continuous `git mv` of a
@@ -593,18 +600,20 @@ cmd_updates_since() {
     END { print n+0 }' "$ledger"
 }
 
-# Shared reconcile-counter contract (specs 034/039). `last-reconcile` and
-# `reconcile-series` validate the `op=reconcile` finished event against ONE
+# Shared reconcile-counter contract (specs 034/039/044 — 15 keys). `last-reconcile`
+# and `reconcile-series` validate the `op=reconcile` finished event against ONE
 # whitelist, so the injection-proof key set — the only channel from the
 # hand-editable ledger into the health report — lives in a single place. Three
-# value classes: INT (non-negative integer), NA (integer or the literal `na`,
-# = not-computable, the 039 carve-out), SLUG (sorted comma-joined group slugs,
-# ≤256 bytes — reserved for the spec 044 attribution keys). ORDER is the
-# canonical print order both verbs emit.
-RECONCILE_INT_KEYS="edges leaks breaking dead unresolved undeclared stale"
+# value classes: INT (non-negative integer — the 7 finding counters plus 044's
+# faces/faces_max), NA (integer or the literal `na` = not-computable, the 039
+# carve-out), SLUG (sorted comma-joined group slugs, ≤256 bytes, each element
+# slug-valid — 044's faces_max_group / fanin_group attribution keys, present
+# only when the metric > 0, display data never consumed by threshold
+# predicates). ORDER is the canonical print order both verbs emit.
+RECONCILE_INT_KEYS="edges leaks breaking dead unresolved undeclared stale faces faces_max"
 RECONCILE_NA_KEYS="groups cycles fanin uncovered"
-RECONCILE_SLUG_KEYS=""
-RECONCILE_KEY_ORDER="edges leaks breaking dead unresolved undeclared stale groups cycles fanin uncovered"
+RECONCILE_SLUG_KEYS="faces_max_group fanin_group"
+RECONCILE_KEY_ORDER="edges leaks breaking dead unresolved undeclared stale groups cycles fanin uncovered faces faces_max faces_max_group fanin_group"
 
 # RECONCILE_AWK — the shared validator/emitter, parameterized by -v MODE and the
 # four -v key lists above. Untrusted ledger, parsed only (no source/eval).

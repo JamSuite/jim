@@ -1314,6 +1314,76 @@ case_jimledger_commit_rename_code_needs_paths() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── spec 044: counter contract v3 (faces + attribution) + commit-verify mode ─
+
+# AC: reconcile-series carries the four new counters — faces / faces_max
+# (int-only) and the slug-validated attribution keys faces_max_group /
+# fanin_group — through the EVENT payload (spec 044 Task 3, DD #4).
+case_jimledger_reconcile_series_faces_attribution() {
+  local sd; sd="$(empty_dir t44rsf/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=5;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=3;cycles=0;fanin=3;uncovered=0;faces=14;faces_max=9;faces_max_group=platform;fanin_group=platform\n' > "$sd/ledger.md"
+  run_jimledger reconcile-series "$sd"
+  assert_exit "rc" 0 "$RC"
+  local ev; ev="$(printf '%s\n' "$OUT" | grep '^EVENT')"
+  assert_match "faces carried"           'faces=14'                  "$ev"
+  assert_match "faces_max carried"       'faces_max=9'               "$ev"
+  assert_match "faces_max_group carried" 'faces_max_group=platform'  "$ev"
+  assert_match "fanin_group carried"     'fanin_group=platform'      "$ev"
+}
+
+# AC: the attribution keys are slug-list validated — a sorted comma-joined
+# multi-slug value is accepted; a non-slug element makes the event malformed
+# (EXCLUDED); faces is int-only so `na` is malformed (spec 044 Task 3, DD #4).
+case_jimledger_reconcile_series_attribution_validation() {
+  local sd; sd="$(empty_dir t44rsav/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=1;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;faces=4;faces_max=2;faces_max_group=orders,shipping\n' > "$sd/ledger.md"
+  run_jimledger reconcile-series "$sd"
+  assert_match "multi-slug accepted" 'faces_max_group=orders,shipping' "$(printf '%s\n' "$OUT" | grep '^EVENT')"
+  printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=1;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;faces=4;faces_max=2;faces_max_group=Platform\n' > "$sd/ledger.md"
+  run_jimledger reconcile-series "$sd"
+  assert_exit "malformed slug rc" 1 "$RC"
+  assert_match "names attribution key" 'bad-value:faces_max_group' "$(printf '%s\n' "$OUT" | grep '^EXCLUDED')"
+  printf '300\t2026-03-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=1;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;faces=na;faces_max=0\n' > "$sd/ledger.md"
+  run_jimledger reconcile-series "$sd"
+  assert_match "faces na excluded (int-only)" 'bad-value:faces' "$(printf '%s\n' "$OUT" | grep '^EXCLUDED')"
+}
+
+# AC: last-reconcile also carries the four new counters — the shared 15-key
+# whitelist means both verbs validate against one contract (spec 044 Task 3).
+case_jimledger_last_reconcile_faces_attribution() {
+  local sd; sd="$(empty_dir t44lrf/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=5;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=3;cycles=0;fanin=3;uncovered=0;faces=14;faces_max=9;faces_max_group=platform;fanin_group=platform\n' > "$sd/ledger.md"
+  run_jimledger last-reconcile "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "faces present"           '^faces=14$'                 "$OUT"
+  assert_match "faces_max present"       '^faces_max=9$'              "$OUT"
+  assert_match "faces_max_group present" '^faces_max_group=platform$' "$OUT"
+  assert_match "fanin_group present"     '^fanin_group=platform$'     "$OUT"
+}
+
+# AC: commit-verify's health mode selects the partition-health subject; verify
+# (explicit or default) keeps the verification subject; an unrecognized mode is
+# rejected rc 2 with no commit (spec 044 Task 3, DD #6).
+case_jimledger_commit_verify_health_mode() {
+  local sd root; sd="$(git_fixture t44cvh)"; root="${sd%/spec}"
+  printf 'l\n' > "$sd/ledger.md"
+  run_jimledger commit-verify "$sd" health
+  assert_exit "health rc" 0 "$RC"
+  assert_eq "health subject" "chore(health): record partition-health run" "$(git -C "$root" log -1 --format=%s)"
+}
+
+case_jimledger_commit_verify_mode_whitelist() {
+  local sd root; sd="$(git_fixture t44cvm)"; root="${sd%/spec}"
+  printf 'l\n' > "$sd/ledger.md"
+  run_jimledger commit-verify "$sd" verify
+  assert_exit "verify rc" 0 "$RC"
+  assert_eq "verify subject" "chore(verify): record verification run" "$(git -C "$root" log -1 --format=%s)"
+  printf 'l2\n' > "$sd/ledger.md"
+  run_jimledger commit-verify "$sd" 'x`touch /tmp/nope`'
+  assert_exit "bad-mode rc" 2 "$RC"
+  assert_eq "no new commit landed" "chore(verify): record verification run" "$(git -C "$root" log -1 --format=%s)"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
