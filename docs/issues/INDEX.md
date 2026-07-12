@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 32
+- Open: 34
 - Closed: 39
 
 ## Issues
@@ -78,6 +78,8 @@
 - `20260708-partition-spec-migration-mode` — Extend /jim:partition with a spec-migration mode (move specs into new groups) · status: open · num: 68 · priority: medium · created: 2026-07-08T07:53:09Z · labels: [partition, migration, freeze-history] · origin: conversation
 - `20260711-add-a-territory-name-mismatch-partition-health-sensor` — Add a territory-name-mismatch partition-health sensor · status: open · num: 71 · priority: low · created: 2026-07-11T09:10:28Z · labels: [partition, health, blueprint] · origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
 - `20260711-blueprint-present-tense-discipline-enforcement` — Enforce present-tense discipline at /jim:blueprint draft composition · status: open · num: 70 · priority: medium · created: 2026-07-11T07:57:56Z · labels: [blueprint, doctrine, drafting] · origin: conversation
+- `20260712-add-partition-stage-metrics-to-the-review-ledger-allowlist` — Add partition stage metrics to the review ledger allowlist · status: open · num: 73 · priority: low · created: 2026-07-12T08:06:17Z · labels: [ledger, review, partition] · origin: docs/specs/jim/044-partition-health/plan.md
+- `20260712-record-and-sense-chronic-domain-domain-straddle-flags` — Record and sense chronic domain-domain straddle flags · status: open · num: 72 · priority: low · created: 2026-07-12T07:21:07Z · labels: [partition, health, spec-advisor] · origin: docs/specs/jim/044-partition-health/spec.md
 
 ## Graph
 
@@ -118,6 +120,7 @@
 - `20260707-compute-graph-health-metrics-in-the-reconcile-pass` --related-to--> `20260630-build-the-invariant-verification-engine`
 - `20260708-partition-spec-migration-mode` --related-to--> `20260703-build-the-partition-migration-skill`
 - `20260711-add-a-territory-name-mismatch-partition-health-sensor` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
+- `20260712-record-and-sense-chronic-domain-domain-straddle-flags` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
 
 ## Integrity Warnings
 
