@@ -1115,6 +1115,85 @@ case_jimpartition_health_eval_bad_args_rc2() {
   assert_nonempty "stderr explains" "$ERR"
 }
 
+# ─── spec 044: identity-check (territory name-mismatch sensor) ────────────────
+
+# identity_map <name> <groups-body> — write a BLUEPRINT.md with a ## Groups
+#   section (the given body) and print its path.
+identity_map() {
+  local name="$1" body="$2"
+  local p="$TMP_BASE/$name.md"
+  { printf '# Map\n\n## Groups\n\n'; printf '%s\n' "$body"; printf '\n## Contract Graph\n'; } > "$p"
+  printf '%s' "$p"
+}
+
+# AC: a group whose territory path embeds ANOTHER current group's slug as a
+# whole token is flagged foreign; the group's own-name territory is never
+# flagged (spec 044 AC #8, Task 5).
+case_jimpartition_identity_check_foreign() {
+  local map; map="$(identity_map t44icf '### payments
+- Territory: `src/orders/**`
+
+### orders
+- Territory: `src/orders/**`')"
+  run_jimpartition identity-check "$map"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "foreign mismatch flagged" "$(printf 'MISMATCH\tpayments\tsrc/orders/**\torders\tforeign')" "$(printf '%s\n' "$OUT" | grep '^MISMATCH')"
+  assert_eq "orders own territory clean" "0" "$(printf '%s\n' "$OUT" | grep -c '^MISMATCH	orders')"
+}
+
+# AC: a territory embedding a RETIRED slug (old= from a partition op=rename
+# event) is flagged retired, but only when a specs-dir with the ledger is given
+# — the stalled docs-only rename of issue #71 (spec 044 AC #8, DD #5, Task 5).
+case_jimpartition_identity_check_retired() {
+  local w; w="$TMP_BASE/t44icr"; mkdir -p "$w/spec"
+  local map; map="$(identity_map t44icr_map '### payments
+- Territory: `src/billing/**`
+
+### orders
+- Territory: `src/orders/**`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=rename;old=billing;new=payments\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "retired mismatch flagged" "$(printf 'MISMATCH\tpayments\tsrc/billing/**\tbilling\tretired')" "$(printf '%s\n' "$OUT" | grep '^MISMATCH')"
+  run_jimpartition identity-check "$map"
+  assert_eq "no retired class without specs-dir" "0" "$(printf '%s\n' "$OUT" | grep -c '^MISMATCH')"
+}
+
+# AC: a territory embedding no identity token is not a mismatch — the
+# false-positive guard (spec 044 AC #8, Task 5).
+case_jimpartition_identity_check_token_free_silent() {
+  local map; map="$(identity_map t44ictf '### payments
+- Territory: `src/lib/**`
+
+### orders
+- Territory: `src/orders/**`')"
+  run_jimpartition identity-check "$map"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no mismatch at all" "0" "$(printf '%s\n' "$OUT" | grep -c '^MISMATCH')"
+}
+
+# AC: a non-slug group heading is not a group — it is neither scanned nor a
+# foreign-match target (map_group_slugs slug-gates the H3s; spec 044 Task 5).
+case_jimpartition_identity_check_nonslug_excluded() {
+  local map; map="$(identity_map t44icn '### Payments
+- Territory: `src/orders/**`
+
+### orders
+- Territory: `src/orders/**`')"
+  run_jimpartition identity-check "$map"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "non-slug group excluded" "0" "$(printf '%s\n' "$OUT" | grep -c '^MISMATCH')"
+}
+
+# AC: an absent map is rejected rc 2; a missing map argument is rc 2.
+case_jimpartition_identity_check_no_map_rc2() {
+  run_jimpartition identity-check "$TMP_BASE/nonexistent-map.md"
+  assert_exit "absent map rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  run_jimpartition identity-check
+  assert_exit "missing arg rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

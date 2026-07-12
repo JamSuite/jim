@@ -63,6 +63,7 @@ usage: jimpartition.sh <subcommand> [args]
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
   health-eval <specs-dir>                        threshold eval over reconcile series → THRESHOLDS/INVALID/CROSSED
+  identity-check <map> [<specs-dir>]             territory name-mismatch sensor → MISMATCH foreign|retired
 USAGE
 }
 
@@ -1179,6 +1180,71 @@ cmd_health_eval() {
   return 0
 }
 
+# cmd_identity_check <map> [<specs-dir>] — deterministic name-mismatch sensor.
+#   For each mapped group G and each of its declared territory paths P, emit a
+#   MISMATCH when P embeds an identity token conflicting with G's own name:
+#     foreign — P whole-token-matches another CURRENT group's slug
+#     retired — P whole-token-matches an `old=` slug from a
+#               `partition finished op=rename` event (only when <specs-dir> is
+#               given; whitelisted, slug-gated parse) — the stalled docs-only
+#               rename of issue #71.
+#   A path embedding no conflicting token is not a mismatch (the false-positive
+#   guard, spec 044 AC #8). Reuses map_group_slugs / old_group_territories /
+#   slug_token_match. rc: 0 (clean or mismatches) · 2 absent/invalid map.
+cmd_identity_check() {
+  local map="${1:-}" specs_dir="${2:-}"
+  if [[ -z "$map" ]]; then
+    echo "jimpartition identity-check: need <map> [<specs-dir>]" >&2; return 2
+  fi
+  if [[ ! -f "$map" ]]; then
+    echo "jimpartition identity-check: map not found: $map" >&2; return 2
+  fi
+
+  local groups
+  groups="$(map_group_slugs "$map")"
+
+  # Retired slugs: old= from `partition finished op=rename` events, whitelisted
+  # and slug-gated so a hand-edited ledger cannot inject a non-slug token. Only
+  # consulted when a specs-dir with a ledger is supplied.
+  local retired=""
+  if [[ -n "$specs_dir" && -f "$specs_dir/ledger.md" ]]; then
+    retired="$(awk -F'\t' '
+      $3 == "partition" && $4 == "finished" {
+        if (index(";" $5 ";", ";op=rename;") == 0) next
+        n = split($5, pairs, ";")
+        for (j = 1; j <= n; j++) {
+          if (index(pairs[j], "old=") == 1) {
+            v = substr(pairs[j], 5)
+            if (v ~ /^[a-z0-9][a-z0-9-]*$/) print v
+          }
+        }
+      }' "$specs_dir/ledger.md" | sort -u)"
+  fi
+
+  local g terr other r
+  while IFS= read -r g; do
+    [[ -z "$g" ]] && continue
+    while IFS= read -r terr; do
+      [[ -z "$terr" ]] && continue
+      while IFS= read -r other; do
+        [[ -z "$other" || "$other" == "$g" ]] && continue
+        if slug_token_match "$other" "$terr"; then
+          printf 'MISMATCH\t%s\t%s\t%s\tforeign\n' "$g" "$(san_field "$terr")" "$other"
+        fi
+      done <<<"$groups"
+      if [[ -n "$retired" ]]; then
+        while IFS= read -r r; do
+          [[ -z "$r" || "$r" == "$g" ]] && continue
+          if slug_token_match "$r" "$terr"; then
+            printf 'MISMATCH\t%s\t%s\t%s\tretired\n' "$g" "$(san_field "$terr")" "$r"
+          fi
+        done <<<"$retired"
+      fi
+    done < <(old_group_territories "$map" "$g")
+  done <<<"$groups"
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -1192,6 +1258,7 @@ main() {
     occurrences) shift; cmd_occurrences "$@" ;;
     edges-diff) shift; cmd_edges_diff "$@" ;;
     health-eval) shift; cmd_health_eval "$@" ;;
+    identity-check) shift; cmd_identity_check "$@" ;;
     *)         usage; return 2 ;;
   esac
 }
