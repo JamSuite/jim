@@ -296,3 +296,36 @@ security_adhoc_path       = "docs/security"
 # and PRINT the exact line for you to paste here — it never writes it itself.
 # deps_command_events = "scripts/jim-extract-events.sh"
 # deps_command_di = "node scripts/extract-di-graph.js"
+
+# Partition-health sensors (spec 044). /jim:blueprint's reconcile pass ends with
+# a silent threshold hook: when a configured threshold crosses, it offers (or,
+# under the knobs below, runs or holds on) the read-only /jim:partition health
+# sensor. All disabled by default — with no threshold set the hook produces no
+# output and spends nothing on interpretation.
+
+# Arm the reconcile-tail hook. require_health holds the reconcile-carrying run's
+# completion until the health check has run to completion; auto_health runs it
+# unattended; with both unset a crossing yields one conversational offer. A knob
+# set truthy with no valid threshold configured is noted in the report (the hook
+# is unarmed — the fail-open knob is never invisible). Default "false".
+# require_health = "false"
+# auto_health = "false"
+
+# Per-signal threshold knobs — bare-name positive integers, disabled at "0" (the
+# default). A malformed or non-positive value disables that threshold and is
+# noted in the reconcile report (the blueprint_regen_threshold semantics). A
+# crossing is the hook's arming condition; with none crossed, require_health
+# holds nothing. The four latest-value predicates fire when the newest
+# reconcile's counter is >= N (an `na` value never crosses); breaking_runs fires
+# on the trailing run of consecutive reconciles carrying breaking>0.
+#   health_threshold_cycles        — latest cycle-cluster count >= N
+#   health_threshold_fanin         — latest max provider fan-in >= N
+#   health_threshold_uncovered     — latest uncovered-dir count >= N
+#   health_threshold_faces_max     — latest largest provides face >= N
+#   health_threshold_breaking_runs — trailing consecutive reconciles with breaking>0 >= N
+# Worked example: arm the cycle sensor at two cycle clusters, the rest disabled —
+# health_threshold_cycles = "2"
+# health_threshold_fanin = "0"
+# health_threshold_uncovered = "0"
+# health_threshold_faces_max = "0"
+# health_threshold_breaking_runs = "0"
