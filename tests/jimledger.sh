@@ -894,6 +894,92 @@ case_jimledger_last_reconcile_na_health_only() {
   assert_exit "edges=na rejected" 2 "$RC"
 }
 
+# ─── spec 044: reconcile-series (trend event series) ─────────────────────────
+
+# AC: reconcile-series emits one EVENT line per op=reconcile finished event,
+# oldest-first, each carrying the whitelisted counters; non-reconcile events
+# and reconcile started events are skipped, and op/tier tokens are dropped from
+# the EVENT payload (spec 044 Task 2, DD #2).
+case_jimledger_reconcile_series_orders_and_filters() {
+  local sd; sd="$(empty_dir t44rso/spec)"
+  {
+    printf '100\t2026-01-01T00:00:00Z\tblueprint\tstarted\ttier=project;op=reconcile\n'
+    printf '150\t2026-01-05T00:00:00Z\tplan\tfinished\t\n'
+    printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=5;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=3;cycles=0;fanin=2;uncovered=1\n'
+    printf '300\t2026-03-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=9;leaks=1;breaking=1;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=0\n'
+  } > "$sd/ledger.md"
+  run_jimledger reconcile-series "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "two EVENT lines" "2" "$(printf '%s\n' "$OUT" | grep -c '^EVENT')"
+  local first last
+  first="$(printf '%s\n' "$OUT" | grep '^EVENT' | head -1)"
+  last="$(printf '%s\n' "$OUT" | grep '^EVENT' | tail -1)"
+  assert_match "oldest first iso" '2026-02-01T00:00:00Z' "$first"
+  assert_match "oldest edges=5"   'edges=5'              "$first"
+  assert_match "newest iso"       '2026-03-01T00:00:00Z' "$last"
+  assert_match "newest cycles=1"  'cycles=1'             "$last"
+  assert_eq "op/tier dropped from EVENTs" "0" "$(printf '%s\n' "$OUT" | grep '^EVENT' | grep -c 'op=reconcile\|tier=')"
+}
+
+# AC: a malformed reconcile event (a documented counter with a bad value) is
+# excluded from the series and the exclusion is named, while valid events on
+# either side are kept — the series-grain degradation of spec AC #13.
+case_jimledger_reconcile_series_excludes_malformed() {
+  local sd; sd="$(empty_dir t44rsx/spec)"
+  {
+    printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=5;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0\n'
+    printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=oops;leaks=0\n'
+    printf '300\t2026-03-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=7;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0\n'
+  } > "$sd/ledger.md"
+  run_jimledger reconcile-series "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "two valid EVENTs kept" "2" "$(printf '%s\n' "$OUT" | grep -c '^EVENT')"
+  assert_eq "one EXCLUDED named"    "1" "$(printf '%s\n' "$OUT" | grep -c '^EXCLUDED')"
+  assert_match "exclusion names the bad key" 'bad-value:edges' "$(printf '%s\n' "$OUT" | grep '^EXCLUDED')"
+}
+
+# AC: an `na` health counter passes through the series verbatim (not-computable,
+# never coerced to a number); an int-only counter carrying `na` is malformed and
+# excluded (spec 044 Task 2/AC #13; the 039 int-or-na carve-out at series grain).
+case_jimledger_reconcile_series_na_passthrough() {
+  local sd; sd="$(empty_dir t44rsna/spec)"
+  {
+    printf '100\t2026-01-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=0;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=2;cycles=0;fanin=0;uncovered=na\n'
+    printf '200\t2026-02-01T00:00:00Z\tblueprint\tfinished\ttier=project;op=reconcile;edges=na;leaks=0\n'
+  } > "$sd/ledger.md"
+  run_jimledger reconcile-series "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_match "uncovered=na carried" 'uncovered=na' "$(printf '%s\n' "$OUT" | grep '^EVENT')"
+  assert_eq "edges=na excluded (int-only)" "1" "$(printf '%s\n' "$OUT" | grep -c '^EXCLUDED')"
+}
+
+# AC: a missing ledger yields rc 1 and no output (no series to read).
+case_jimledger_reconcile_series_missing_ledger_rc1() {
+  local sd; sd="$(empty_dir t44rsm/spec)"
+  run_jimledger reconcile-series "$sd"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no output" "" "$OUT"
+}
+
+# AC: a ledger with no valid reconcile finished event yields rc 1 (zero valid
+# events) even though other events exist.
+case_jimledger_reconcile_series_no_events_rc1() {
+  local sd; sd="$(empty_dir t44rsn/spec)"
+  {
+    printf '100\t2026-01-01T00:00:00Z\tplan\tfinished\t\n'
+    printf '200\t2026-02-01T00:00:00Z\tblueprint\tstarted\ttier=project;op=reconcile\n'
+  } > "$sd/ledger.md"
+  run_jimledger reconcile-series "$sd"
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: a missing spec-dir argument is a usage error (rc 2).
+case_jimledger_reconcile_series_bad_args_rc2() {
+  run_jimledger reconcile-series
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
 # AC: commit-map commits the project map + specs-root ledger in one
 # path-scoped commit in the CWD repo, leaving unrelated changes untouched —
 # never git add -A (spec 033 Task 3, AC #10, plan DD 4).

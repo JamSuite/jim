@@ -20,6 +20,7 @@
 #   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
 #   commit-verify <blueprint-dir>             commit ledger.md only (verify self-commit)
 #   updates-since <blueprint-dir> <iso>       count blueprint finished events after <iso>
+#   reconcile-series <specs-dir>              full reconcile event series → EVENT/EXCLUDED
 #
 # Ledger line format (TAB-separated): <epoch>\t<iso8601>\t<phase>\t<event>\t<kv>
 #
@@ -61,6 +62,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   commit-rename <specs-dir> <old> <new> <docs|code> <path...>  commit a rename stage set (spec 043)
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
   last-reconcile <specs-dir>                  prior reconcile event: iso + documented counters
+  reconcile-series <specs-dir>                full reconcile event series → EVENT/EXCLUDED
 USAGE
 }
 
@@ -591,6 +593,100 @@ cmd_updates_since() {
     END { print n+0 }' "$ledger"
 }
 
+# Shared reconcile-counter contract (specs 034/039). `last-reconcile` and
+# `reconcile-series` validate the `op=reconcile` finished event against ONE
+# whitelist, so the injection-proof key set — the only channel from the
+# hand-editable ledger into the health report — lives in a single place. Three
+# value classes: INT (non-negative integer), NA (integer or the literal `na`,
+# = not-computable, the 039 carve-out), SLUG (sorted comma-joined group slugs,
+# ≤256 bytes — reserved for the spec 044 attribution keys). ORDER is the
+# canonical print order both verbs emit.
+RECONCILE_INT_KEYS="edges leaks breaking dead unresolved undeclared stale"
+RECONCILE_NA_KEYS="groups cycles fanin uncovered"
+RECONCILE_SLUG_KEYS=""
+RECONCILE_KEY_ORDER="edges leaks breaking dead unresolved undeclared stale groups cycles fanin uncovered"
+
+# RECONCILE_AWK — the shared validator/emitter, parameterized by -v MODE and the
+# four -v key lists above. Untrusted ledger, parsed only (no source/eval).
+#   MODE=series → one EVENT\t<iso>\t<k=v>… line per valid reconcile event
+#                 (file order = oldest→newest), and EXCLUDED\t<line>\t<reason>
+#                 for a malformed one (the named series-grain degradation);
+#                 END exits 1 iff no valid EVENT was emitted.
+#   MODE=last   → the LAST reconcile event's iso + counters; END exits 1 on no
+#                 prior event, 2 on a malformed one.
+# validate() fills the global vals[] and returns the first bad key ("" = clean).
+IFS= read -r -d '' RECONCILE_AWK <<'AWK' || true
+function valid_sluglist(s,   m, parts, i) {
+  if (length(s) == 0 || length(s) > 256) return 0
+  m = split(s, parts, ",")
+  for (i = 1; i <= m; i++) if (parts[i] !~ /^[a-z0-9][a-z0-9-]*$/) return 0
+  return 1
+}
+function validate(kv,   n, pairs, j, p, eq, key, val, t) {
+  split("", vals)
+  n = split(kv, pairs, ";")
+  for (j = 1; j <= n; j++) {
+    p = pairs[j]
+    if (p == "") continue
+    eq = index(p, "=")
+    if (eq == 0) continue
+    key = substr(p, 1, eq - 1)
+    val = substr(p, eq + 1)
+    if (!(key in doc)) continue                 # whitelist: drop unknown/op/tier
+    t = typ[key]
+    if (t == "int")       { if (val ~ /^[0-9]+$/)               { vals[key] = val; continue } }
+    else if (t == "na")   { if (val ~ /^[0-9]+$/ || val == "na") { vals[key] = val; continue } }
+    else if (t == "slug") { if (valid_sluglist(val))            { vals[key] = val; continue } }
+    return key                                   # documented key, bad value
+  }
+  return ""
+}
+BEGIN {
+  ni = split(INTKEYS, IK, " ");  for (i = 1; i <= ni; i++) { doc[IK[i]] = 1; typ[IK[i]] = "int" }
+  nn = split(NAKEYS, NK, " ");   for (i = 1; i <= nn; i++) { doc[NK[i]] = 1; typ[NK[i]] = "na" }
+  ns = split(SLUGKEYS, SK, " "); for (i = 1; i <= ns; i++) { doc[SK[i]] = 1; typ[SK[i]] = "slug" }
+  nord = split(ORDER, ORD, " ")
+  any = 0; found = 0
+}
+$3 == "blueprint" && $4 == "finished" {
+  if (index(";" $5 ";", ";op=reconcile;") == 0) next
+  if (MODE == "series") {
+    bad = validate($5)
+    if (bad != "") { print "EXCLUDED\t" NR "\tbad-value:" bad; next }
+    line = "EVENT\t" $2
+    for (idx = 1; idx <= nord; idx++) if (ORD[idx] in vals) line = line "\t" ORD[idx] "=" vals[ORD[idx]]
+    print line
+    any = 1
+  } else {
+    found = 1; last_iso = $2; last_kv = $5
+  }
+}
+END {
+  if (MODE == "series") { if (!any) exit 1; exit 0 }
+  if (!found) exit 1
+  bad = validate(last_kv)
+  if (bad != "") exit 2
+  print last_iso
+  for (idx = 1; idx <= nord; idx++) if (ORD[idx] in vals) print ORD[idx] "=" vals[ORD[idx]]
+}
+AWK
+
+# cmd_reconcile_series <specs-dir> — emit the full op=reconcile finished event
+#   series (oldest→newest) as EVENT/EXCLUDED records, the trend sensor's input
+#   (spec 044). Reuses the shared whitelist so a tampered ledger line can inject
+#   no counter key. rc: 0 ≥1 valid EVENT · 1 no ledger / zero valid events ·
+#   2 bad args.
+cmd_reconcile_series() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger reconcile-series: need <specs-dir>" >&2; return 2; fi
+  local ledger="$dir/ledger.md"
+  if [[ ! -f "$ledger" ]]; then return 1; fi
+  awk -F'\t' -v MODE=series \
+    -v INTKEYS="$RECONCILE_INT_KEYS" -v NAKEYS="$RECONCILE_NA_KEYS" \
+    -v SLUGKEYS="$RECONCILE_SLUG_KEYS" -v ORDER="$RECONCILE_KEY_ORDER" \
+    "$RECONCILE_AWK" "$ledger"
+}
+
 # cmd_last_reconcile <specs-dir> — print the immediately preceding reconcile
 #   event's iso and its documented counters, for spec 039's health delta. The
 #   prior is the LAST `blueprint finished` line whose kv carries `op=reconcile`.
@@ -610,37 +706,10 @@ cmd_last_reconcile() {
   if [[ -z "$dir" ]]; then echo "jimledger last-reconcile: need <specs-dir>" >&2; return 2; fi
   local ledger="$dir/ledger.md"
   if [[ ! -f "$ledger" ]]; then return 1; fi
-  awk -F'\t' '
-    BEGIN {
-      nk = split("edges leaks breaking dead unresolved undeclared stale groups cycles fanin uncovered", K, " ")
-      for (i = 1; i <= nk; i++) doc[K[i]] = 1
-      split("groups cycles fanin uncovered", H, " ")
-      for (i in H) health[H[i]] = 1
-      found = 0
-    }
-    $3 == "blueprint" && $4 == "finished" {
-      if (index(";" $5 ";", ";op=reconcile;") == 0) next
-      found = 1; iso = $2; kv = $5
-    }
-    END {
-      if (!found) exit 1
-      n = split(kv, pairs, ";")
-      for (j = 1; j <= n; j++) {
-        p = pairs[j]
-        if (p == "") continue
-        eq = index(p, "=")
-        if (eq == 0) continue
-        key = substr(p, 1, eq - 1)
-        val = substr(p, eq + 1)
-        if (!(key in doc)) continue                       # whitelist: drop unknown/op/tier
-        if (val ~ /^[0-9]+$/) { vals[key] = val; continue }
-        if ((key in health) && val == "na") { vals[key] = val; continue }
-        exit 2                                            # documented key, bad value → malformed
-      }
-      print iso
-      for (idx = 1; idx <= nk; idx++) if (K[idx] in vals) print K[idx] "=" vals[K[idx]]
-    }
-  ' "$ledger"
+  awk -F'\t' -v MODE=last \
+    -v INTKEYS="$RECONCILE_INT_KEYS" -v NAKEYS="$RECONCILE_NA_KEYS" \
+    -v SLUGKEYS="$RECONCILE_SLUG_KEYS" -v ORDER="$RECONCILE_KEY_ORDER" \
+    "$RECONCILE_AWK" "$ledger"
 }
 
 main() {
@@ -662,6 +731,7 @@ main() {
     commit-verify) shift; cmd_commit_verify "$@" ;;
     updates-since) shift; cmd_updates_since "$@" ;;
     last-reconcile) shift; cmd_last_reconcile "$@" ;;
+    reconcile-series) shift; cmd_reconcile_series "$@" ;;
     *) usage; return 2 ;;
   esac
 }
