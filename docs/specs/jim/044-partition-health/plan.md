@@ -2,7 +2,7 @@
 title: "Partition-health sensors"
 spec: "docs/specs/jim/044-partition-health/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Partition-health sensors — Plan
