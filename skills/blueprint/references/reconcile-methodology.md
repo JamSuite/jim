@@ -246,7 +246,7 @@ counters still land on the ledger (spec 034 AC #13).
 ## Outcome counters
 
 The `blueprint finished` event (specs-root ledger, `tier=project
-op=reconcile`) always carries all eleven counters, zeros included:
+op=reconcile`) always carries the fifteen counters, zeros included:
 
 - `edges=` — rows in the written graph (reconciled edges);
 - `leaks=` / `breaking=` / `dead=` / `unresolved=` / `undeclared=` /
@@ -255,28 +255,55 @@ op=reconcile`) always carries all eleven counters, zeros included:
 - `groups=` / `cycles=` / `fanin=` / `uncovered=` — the graph-health
   measurements (spec 039): mapped group count, cycle-cluster count, max
   provider fan-in, and uncovered tracked-path count.
+- `faces=` / `faces_max=` — the aggregate face-size measurements (spec
+  044): the total `provides` entries across all blueprint-bearing groups,
+  and the maximum any single group carries. Counted at Step 2a from
+  `jimverify.sh faces <group-blueprint>` (the `provides` rows per group).
 
-The seven finding counters are always non-negative integers. The four
-health counters extend the contract with one documented carve-out —
-**int-or-na**: a non-negative integer, or the literal `na` when the
-measurement is not computable (`uncovered` under a territory-less map or a
-non-git tree; and all four on the nothing-to-reconcile short-circuit, where
-no graph is derived — never a zero that would read as a measurement,
-AC #8). `na` never reads as `0`.
+Two concentration counters additionally carry a **slug-validated
+attribution key** naming the group(s) at the maximum, so a rising trend's
+identity survives history (a growing `faces_max` reads as one group
+fattening versus a lead change):
+
+- `faces_max_group=` — the group(s) at the `faces_max` maximum;
+- `fanin_group=` — the group(s) at the `fanin` maximum (spec 039's
+  `FANIN_GROUP` facts).
+
+Each attribution value is the **sorted, comma-joined** slug(s) at the max
+(ties → all), each element a valid group slug, the whole value ≤ 256 bytes
+— the spec 043 `old=`/`new=` bounded-value precedent, the 028 Finding-1
+pattern. An attribution key is emitted **only when its metric is > 0**; a
+`faces_max=0` / `fanin=0` (or `na`) carries no attribution. These keys are
+**display data only** — never consumed by a threshold predicate. Events
+predating spec 044 simply lack the four new keys; the face-growth trend
+then reports insufficient history (never fabricated zeros), and a backfill
+of historical events is out of scope.
+
+The seven finding counters and the two face counters are always
+non-negative integers. The four health counters extend the contract with
+one documented carve-out — **int-or-na**: a non-negative integer, or the
+literal `na` when the measurement is not computable (`uncovered` under a
+territory-less map or a non-git tree; and all four on the
+nothing-to-reconcile short-circuit, where no graph is derived — never a
+zero that would read as a measurement, AC #8). `na` never reads as `0`.
 
 Every counter is a **script-emitted value, never a value lifted from
-content**: the seven come from the classifier, the four from the
-`jimverify.sh health` verb, whose sanitized integers the skill copies
-verbatim. No counter is ever interpolated from graph or face text, and a
-health value that is not a non-negative integer is emitted as `na` or not
-at all — it never rides the kv field (spec 034 discipline; security
-Findings 3/4).
+content**: the seven findings come from the classifier, the four health
+and two face counters from the `jimverify.sh health` / `faces` verbs, whose
+sanitized integers the skill copies verbatim, and the attribution slugs
+from those same verbs' group facts. No counter is ever interpolated from
+graph or face text, and a health value that is not a non-negative integer
+is emitted as `na` or not at all — it never rides the kv field (spec 034
+discipline; security Findings 3/4).
 
 Consumers extracting these values must shape-validate — fixed key set,
 non-negative integers with the documented int-or-na carve-out on the four
-health keys (the spec 028 pattern, extended). `jimledger.sh last-reconcile`
-performs exactly this validation and whitelists its output to these eleven
-keys, dropping every other kv token.
+health keys and the slug-list carve-out on the two attribution keys (the
+spec 028 pattern, extended). `jimledger.sh last-reconcile` (the latest
+event) and `jimledger.sh reconcile-series` (the full trend series, spec
+044) both validate against one shared fifteen-key whitelist, dropping every
+other kv token; `reconcile-series` additionally excludes a malformed event
+from the series and names the exclusion (the series-grain degradation).
 
 ## Graph health
 
@@ -342,3 +369,100 @@ the finished event as `na` (§ Outcome counters).
 - **Generate mode:** the graph is written alongside the blueprint and both
   commits stay with the developer (generate's existing convention); the
   reconcile events ride them.
+
+## Regen cadence
+
+The blueprint *update* flow (U2a) measures how many targeted updates have
+accumulated since the last full generate and, past an opt-in threshold,
+regenerates the whole group instead of applying another targeted diff —
+reconciling the drift the diff lens cannot see. The mechanics:
+
+**Measure.** A blueprint already exists (U2 did not fall through). Before
+composing the targeted diff, read the blueprint's `last_full_generate`
+watermark and count the updates accumulated since it:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh updates-since <blueprint-dir> <last_full_generate>
+```
+
+- **rc 2** — no full-generate baseline is recorded (a pre-feature blueprint
+  or a malformed watermark). The count is **not trustworthy**: never
+  trigger a regen on it. Note "no full-generate baseline recorded" for the
+  U4 summary and continue to U3.
+- **rc 0, count N** — hold `N` for the U4 signal.
+
+**Gate.** Read the opt-in threshold `blueprint_regen_threshold`
+(`jimconf.sh get`). Treat it as **disabled** unless it is a **positive
+integer** — `0`, empty, negative, or non-numeric all mean signal-only
+(never fire). This fail-safe keeps a typo'd knob from mis-triggering an
+unattended regen.
+
+**Fire.** When the threshold is a positive integer AND a trustworthy `N`
+was obtained AND `N ≥ threshold`: **regenerate instead of a targeted
+update.** A full whole-group regeneration re-scans the group — including the
+change this update would have folded — and re-stamps the watermark,
+resetting the count. Under `auto_blueprint` it writes unattended, still
+graded by Step 4a (a `critical`/`high` invariant or a Provides downgrade
+prompts); otherwise present it per the gate-presentation rule
+(`skills/blueprint/references/gate-presentation.md`) and wait. Then close
+the stage exactly as the U2 fallthrough does — record `blueprint finished`,
+stamp `last_full_generate` from a fresh `now` **after** that event, then
+`commit-blueprint <blueprint-dir> update` (an existing blueprint is
+updated, not created), and run the reconcile pass (§ Reconcile). Report
+"regen threshold N reached — ran a full regeneration" and **stop**: do not
+run U3/U4. Otherwise, continue to U3 with the targeted update; a trustworthy
+`N ≥ 1` is reported at U4.
+
+## Health hook
+
+After § Reconcile Step 3 records the `blueprint finished op=reconcile`
+event and commits the map, a deterministic threshold hook evaluates the
+fresh trend and — only on a crossing — offers or runs the partition-health
+sensor (spec 044). The hook is **silent by default**: with no thresholds
+configured it produces no output and spends nothing on interpretation.
+
+**Evaluation.** Run, once, after the event is recorded (so the just-recorded
+counters are already part of the series the hook reads):
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/skills/partition/scripts/jimpartition.sh health-eval <specs-root>
+```
+
+It emits `THRESHOLDS <active> <disabled>`, an `INVALID <key>` line per
+set-but-malformed threshold (disabled and noted, the
+`blueprint_regen_threshold` semantics of spec 032), and a `CROSSED <signal>
+<observed> <threshold>` line per crossing. Firing derives **only** from
+these whitelisted counter facts (the trusted channel) — never from claims
+embedded in map, blueprint, or issue content.
+
+**The five thresholds** are per-signal integer knobs, unset (`0`) by
+default: `health_threshold_cycles` / `_fanin` / `_uncovered` / `_faces_max`
+fire when the *latest* event's counter is ≥ N (an `na` never crosses), and
+`health_threshold_breaking_runs` fires when the trailing run of consecutive
+events carrying `breaking>0` is ≥ N (a single noisy reconcile never arms
+it).
+
+**On a crossing** (any `CROSSED` line), the two knobs `require_health` /
+`auto_health` select the behavior:
+
+- **default** (both unset) — one conversational offer to run the health
+  check (`Skill(jim:partition)` with the `health` argument);
+- **`auto_health = "true"`** — run the health check unattended;
+- **`require_health = "true"`** — hold the reconcile-carrying run's
+  *completion* until the health check has run to completion (the
+  `require_review` / `require_blueprint` completion-hold pattern, specs
+  026/030).
+
+A crossing is the gate's **arming condition**: with no threshold configured
+or none crossed, `require_health` holds nothing. "Run to completion" means
+the report was delivered, its issue offer answered (any answer counts — the
+spec 031 any-answered-fork rule), and the run's stage event recorded — the
+ledger event is the gate's **enforcement token**. In every mode it is the
+uncompleted phase that can block; the findings themselves never gate.
+
+**Unarmed notice.** When `require_health` or `auto_health` is truthy but no
+valid threshold is configured (`THRESHOLDS` reports `0` active), the report
+notes in one line — "health knobs set but no thresholds configured — hook
+unarmed" — so the fail-open knob is never invisible (mirroring the
+junk-value `INVALID` noting). This is the only output the hook produces when
+nothing crosses.
