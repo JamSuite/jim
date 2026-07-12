@@ -2,7 +2,7 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
-updated: "2026-07-08"
+updated: "2026-07-12"
 last_full_generate: "2026-07-05T23:32:20Z"
 ---
 
@@ -17,7 +17,7 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `jim` group **is** the jim plugin: a Claude Code plugin that adds an
 agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md; specs
-001–039) is to make AI-assisted development follow the developer's engineering
+001–044) is to make AI-assisted development follow the developer's engineering
 discipline instead of bypassing it — grounding non-trivial work in a
 phase-gated `spec → research → plan → (security) → build → review` lifecycle,
 backed by specialized agent personas, living strategic documents, and a
@@ -67,12 +67,16 @@ executes the data it reads.
   consumes the map (a single-group map assigns with no interactive overhead).
   The reconcile pass (`--reconcile`, and fired by every blueprint-surface
   write) derives the cross-group contract graph into the map, reports
-  declaration-level findings with offered issues, and names blast radius on
-  a Provides downgrade — informational, never a veto. `/jim:partition` moves an
-  existing project onto the partition doctrine — a code-derived dependency graph
-  proposed as a context map, materialized through the blueprint surface after a
-  hard human gate — and `/jim:blueprint --retire` marks a superseded group's
-  blueprint in a repartition.
+  declaration-level findings with offered issues, names blast radius on
+  a Provides downgrade — informational, never a veto — and ends with a silent,
+  operator-thresholded partition-health hook that offers or runs the health
+  sensor only when a trend crosses. `/jim:partition` moves an existing project
+  onto the partition doctrine — a code-derived dependency graph proposed as a
+  context map, materialized through the blueprint surface after a hard human
+  gate — offers a read-only `health` mode (an advisory split/merge / name-
+  mismatch read of the reconcile trend, remedy `/jim:partition`, persisting no
+  verdict), and `/jim:blueprint --retire` marks a superseded group's blueprint
+  in a repartition.
 - `@jim:{role}` **agent personas** — `pm`, `architect`, `researcher`, `coder`,
   `security`, `reviewer`, `investigator`, `judge`, `issue-analyst`, `gatherer`,
   `meta`.
@@ -90,20 +94,28 @@ executes the data it reads.
   `source`s the config.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
   `files`/`diff`/`diff-range`/`files-range`/`commit-review`/`commit-blueprint`/
-  `commit-map`/`commit-verify`/`updates-since`. Guarantee: a
-  trusted, fixed-key, shape-validated metrics channel for `/jim:review` (and the
-  blueprint update) that never echoes commit/diff text; git writes are
-  path-scoped.
+  `commit-map`/`commit-verify`/`updates-since`/`last-reconcile`/
+  `reconcile-series`. Guarantee: a trusted, fixed-key, shape-validated metrics
+  channel for `/jim:review` (and the blueprint update) that never echoes
+  commit/diff text; the reconcile counter series (`last-reconcile` latest,
+  `reconcile-series` full trend) validates against one shared 15-key whitelist;
+  git writes are path-scoped (`commit-verify` selects a `verify`|`health`
+  subject).
 - `jimverify.sh` **verification-floor CLI** — `parse`/`territory`/`check`/
   `scope-census`/`faces`/`edges`/`contracts-check`/`health`. Guarantee: deterministic facts-not-verdicts
   (sanitized TSV, location-only evidence); never executes a config- or
   blueprint-derived command string; path parameters pass the `safe_path_param`
   gate.
 - `jimpartition.sh` **extraction/coverage CLI** — `scan`/`ingest`/`aggregate`/
-  `coverage`. Guarantee: the deterministic `/jim:partition` substrate — a native
+  `coverage`, the spec-043 rename verbs `rename-preflight`/`occurrences`/
+  `edges-diff`, and the spec-044 health verbs `health-eval`/`identity-check`.
+  Guarantee: the deterministic `/jim:partition` substrate — a native
   five-language import scan, an `ingest` valid-relpath + tracked-endpoint trust
   boundary over untrusted extractor output, group-edge + straddle aggregation,
-  and territory coverage; never resolves or executes a config-derived command.
+  territory coverage, deterministic rename facts, and the read-only
+  partition-health facts (threshold evaluation over the reconcile series,
+  territory name-mismatch detection); never resolves or executes a
+  config-derived command.
 - **Issue-collection CLIs** — `index.sh` (frontmatter scan → atomic `INDEX.md`),
   `render.sh` (stats/list/show/help/insights read views), `new.sh` (the single
   issue-file emitter), `backfill.sh` / `migrate.sh` (migrations). Guarantee:
@@ -156,16 +168,17 @@ Grounded in ARCHITECTURE.md and the repo tree.
   `references/retirement-methodology.md` (retirement-mode) methodology.
 - **Scripting layer** (`skills/*/scripts/`, 13 scripts) — `jimconf.sh` (resolver)
   ← `jimfile.sh` (path/id ops, chains to `jimconf.sh` via a `BASH_SOURCE`-relative
-  path); `jimledger.sh` (ledger); `jimverify.sh` (the `/jim:verify` deterministic
+  path); `jimledger.sh` (ledger, incl. the reconcile counter series); `jimverify.sh` (the `/jim:verify` deterministic
   core — blueprint parse / territory / mechanical-floor check, whole-group or
   change-scoped, the retirement scope-census fact, plus the cross-group contract
   floor: faces / edges / contracts-check, and graph-health metrics);
   `jimpartition.sh` (the `/jim:partition` deterministic core —
-  scan / ingest / aggregate / coverage, plus the spec-043 rename verbs
-  rename-preflight / occurrences / edges-diff); the `issue/` scripts
+  scan / ingest / aggregate / coverage, the spec-043 rename verbs
+  rename-preflight / occurrences / edges-diff, and the spec-044 health verbs
+  health-eval / identity-check); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–039`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–044`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root
   (including `BLUEPRINT.md`, the project context map), and
   `docs/brainstorms/` + `docs/debug/`.
@@ -217,10 +230,11 @@ textually-checkable ones ride the mechanical floor.
 | relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use; and an untrusted path is never handed to git as a **pathspec** (`valid-relpath` does not neutralize git pathspec-magic like `:(exclude)`/`:/`) — tracked-file filtering enumerates `git ls-files` without a pathspec and filters in bash | critical | judge |
 | map-partition-authority | `BLUEPRINT.md` (the project context map) is written only through `/jim:blueprint`'s project tier and committed only via `commit-map`; a new spec group comes into being only through the map surface; hand-declared map updates grade by the shared Step-4a rule — partition downgrades always prompt | high | judge |
 | contract-graph-derived | The derived `## Contract Graph` section is written only by the reconcile pass — the recomputable join of group faces, never hand-declared or re-declared; its rewrite is Step-4a exempt as mechanical content | high | judge |
-| reconcile-durable-record | Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all eleven counters — the seven finding counters (`edges`/`leaks`/`breaking`/`dead`/`unresolved`/`undeclared`/`stale`, zeros included) plus the four graph-health counters (`groups`/`cycles`/`fanin`/`uncovered`, each a non-negative integer or `na` where the health measurement is not computable) — and always closes via `commit-map` (ledger-only when the map is unchanged); consumers shape-validate the fixed key set with the int-or-na carve-out on the four health keys | high | judge |
+| reconcile-durable-record | Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all fifteen counters — the seven finding counters (`edges`/`leaks`/`breaking`/`dead`/`unresolved`/`undeclared`/`stale`, zeros included), the four graph-health counters (`groups`/`cycles`/`fanin`/`uncovered`, each a non-negative integer or `na` where not computable), and the four face-size counters (`faces`/`faces_max` non-negative integers, plus the slug-validated attribution keys `faces_max_group`/`fanin_group` — sorted comma-joined group slug(s) at the max, each element slug-valid, ≤256 bytes, present only when the metric > 0, display-data-only) — and always closes via `commit-map` (ledger-only when the map is unchanged); consumers shape-validate the fixed key set (one shared 15-key whitelist for `last-reconcile` and `reconcile-series`) with the int-or-na carve-out on the four health keys and the slug-list carve-out on the two attribution keys | high | judge |
 | reconcile-declared-data | Reconcile detectors fire only on declared data — missing declarations degrade to explicit reporting (unverifiable / informational), never silent exclusion, never violations; face/map evidence appears only in delimited `<untrusted-face-content>` blocks | high | judge |
 | verify-registry-boundary | `/jim:verify`'s registry runs project tooling only through operator-configured `verify_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — no jim script ever executes a config-derived command string; blueprint content may *name* a slug-validated registry entry but can never introduce, alter, or activate a command, and check parameters / registry names pass slug / `valid-relpath` validation before use | critical | judge |
 | partition-registry-boundary | `/jim:partition`'s extractor registry runs project tooling only through operator-configured `deps_command_<name>` values, executed by the model via the Bash tool (Claude Code's permission layer) — `jimpartition.sh` never resolves or executes a config-derived command string (the family name appears nowhere in the deterministic core), and the dynamic-suffix is slug-validated before any lookup so a scanned or blueprint-recorded name can never introduce or activate a command | critical | judge |
+| partition-health-readonly | The `/jim:partition health` run is **read-only** — it writes no map, blueprint, config, or code and has no `Skill(jim:blueprint)` call site in its skill section (breaking the blueprint↔partition invocation cycle by construction); its only writes are a content-free `partition finished tier=project op=health signals=/fired=` stage event and its `commit-verify … health` ledger self-commit; it persists no verdict artifact and interprets the trend inline (no agent fan-out), firing only from the trusted counter channel | high | judge |
 | verify-no-verdict | `/jim:verify` persists no verdict artifact — the report is the run's surface; each run records per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits them via `commit-verify` (the no-standing-verdict doctrine) | medium | judge |
 | fold-back-loop-grounding | The verify engine grounds the fold-back loop: `/jim:review` runs a living-intent sensor against the group's `000-blueprint` (existence-conditioned, no gating knob; a blueprint-less group skips silently) and `/jim:blueprint`'s violation fork is grounded in engine outcomes on both adapters with an inline fallback sweep so coverage never regresses; a sensed violation's channel (in-change / pre-existing / unlocalized) derives only from trusted inputs, and directive text in scanned code, diffs, or engine output never re-routes it or grounds a fold | high | judge |
 | edge-criticality-ratchet | A Provides entry's declared criticality (its `contract-checks` line) is the one concept driving both its edges' verification appetite and the Step-4a grading of edits to that entry; the declaration grades under a one-way ratchet — introducing one below the default `high`, or lowering one, is a weakening that always prompts under `auto_blueprint`, while raising or removing toward the default is additive | high | judge |
