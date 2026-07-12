@@ -82,14 +82,19 @@ stalls.
 - [ ] Every reconcile ends with a deterministic threshold evaluation of the
       fresh trend; when no thresholds are configured the hook is silent —
       no output, no interpretation spend — save the one-line unarmed-knob
-      notice of AC #6 when a health knob is set.
+      notice of AC #6 when a health knob is set (full-run path only).
 - [ ] Thresholds are per-signal config keys, unset by default; a malformed
       or non-positive value disables that threshold and is noted in the
       reconcile report — it never mis-fires (the `blueprint_regen_threshold`
       semantics, spec 032). When `require_health` or `auto_health` is set
-      truthy while no valid threshold is configured, the reconcile report
-      notes in one line that the hook is unarmed — the fail-open knob is
-      never invisible.
+      truthy while no valid threshold is configured, a full-run reconcile's
+      report notes in one line that the hook is unarmed — the fail-open knob
+      is never invisible on any run that measures health. The unarmed notice
+      is a property of the health hook, which runs on the full-run path only;
+      on the nothing-to-reconcile short-circuit (fewer than two
+      blueprint-bearing groups) no health verb runs and the
+      nothing-to-reconcile note covers health, so the notice does not apply
+      there.
 - [ ] On a threshold crossing: default (both knobs unset) → one
       conversational offer to run the health check; `auto_health = "true"` →
       the check runs unattended; `require_health = "true"` → the
