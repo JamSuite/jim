@@ -80,7 +80,14 @@ case_no_config_returns_defaults() {
               "verify_appetite:low" \
               "verify_fanout_cap:10" \
               "verify_model:inherit" \
-              "verify_registry_timeout:120"; do
+              "verify_registry_timeout:120" \
+              "require_health:false" \
+              "auto_health:false" \
+              "health_threshold_cycles:0" \
+              "health_threshold_fanin:0" \
+              "health_threshold_uncovered:0" \
+              "health_threshold_faces_max:0" \
+              "health_threshold_breaking_runs:0"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
@@ -273,7 +280,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "42" "$line_count"
+  assert_eq    "list line count"                  "49" "$line_count"
   assert_match "blueprint_regen_threshold line"    '^blueprint_regen_threshold=0$'          "$OUT"
   assert_match "blueprint line"                    '^blueprint=BLUEPRINT\.md$'              "$OUT"
   assert_match "group_axis line"                   '^group_axis=vertical$'                  "$OUT"
@@ -314,6 +321,13 @@ case_list_outputs_all_keys() {
   assert_match "verify_fanout_cap line"            '^verify_fanout_cap=10$'                 "$OUT"
   assert_match "verify_model line"                 '^verify_model=inherit$'                 "$OUT"
   assert_match "verify_registry_timeout line"      '^verify_registry_timeout=120$'          "$OUT"
+  assert_match "require_health line"               '^require_health=false$'                 "$OUT"
+  assert_match "auto_health line"                  '^auto_health=false$'                    "$OUT"
+  assert_match "health_threshold_cycles line"      '^health_threshold_cycles=0$'            "$OUT"
+  assert_match "health_threshold_fanin line"       '^health_threshold_fanin=0$'             "$OUT"
+  assert_match "health_threshold_uncovered line"   '^health_threshold_uncovered=0$'         "$OUT"
+  assert_match "health_threshold_faces_max line"   '^health_threshold_faces_max=0$'         "$OUT"
+  assert_match "health_threshold_breaking_runs line" '^health_threshold_breaking_runs=0$'   "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -321,7 +335,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -359,7 +373,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "42" "$line_count"
+  assert_eq "list still emits all keys" "49" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -979,6 +993,50 @@ case_deps_command_bare_key_unknown() {
   assert_exit     "bare rc"         1  "$RC"
   assert_eq       "stdout empty"    "" "$OUT"
   assert_nonempty "stderr explains" "$ERR"
+}
+
+# ─── spec 044: partition-health config family ────────────────────────────────
+
+# AC: require_health / auto_health default to "false" and resolve from config
+# (spec 044 Task 1). Bare-name gate flags dispatched by the require_*/auto_*
+# arms; they arm the reconcile-tail health hook only when a threshold crosses.
+case_jimconf_health_knobs_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_health_knobs)
+  run -c "$dir/absent.toml" get require_health
+  assert_exit "require_health default rc" 0       "$RC"
+  assert_eq   "require_health default"    "false" "$OUT"
+  run -c "$dir/absent.toml" get auto_health
+  assert_eq   "auto_health default"       "false" "$OUT"
+  cfg=$(fixture jc-health-knobs.toml 'require_health = "true"
+auto_health = "true"')
+  run -c "$cfg" get require_health
+  assert_eq   "require_health configured" "true"  "$OUT"
+  run -c "$cfg" get auto_health
+  assert_eq   "auto_health configured"    "true"  "$OUT"
+}
+
+# AC: the five health_threshold_* keys default to "0" (disabled) and resolve
+# from config (spec 044 Task 1, DD #3). Bare-name integer knobs dispatched by
+# the new health_* arm in resolve(); "0" is the unset/disabled sentinel.
+case_jimconf_health_thresholds_default_and_resolve() {
+  local dir cfg sig
+  dir=$(empty_dir jc_health_thresholds)
+  for sig in cycles fanin uncovered faces_max breaking_runs; do
+    run -c "$dir/absent.toml" get "health_threshold_$sig"
+    assert_exit "health_threshold_$sig default rc" 0   "$RC"
+    assert_eq   "health_threshold_$sig default"    "0" "$OUT"
+  done
+  cfg=$(fixture jc-health-thresh.toml 'health_threshold_cycles = "2"
+health_threshold_fanin = "4"
+health_threshold_uncovered = "1"
+health_threshold_faces_max = "12"
+health_threshold_breaking_runs = "3"')
+  run -c "$cfg" get health_threshold_cycles;        assert_eq "cycles configured"        "2"  "$OUT"
+  run -c "$cfg" get health_threshold_fanin;         assert_eq "fanin configured"         "4"  "$OUT"
+  run -c "$cfg" get health_threshold_uncovered;     assert_eq "uncovered configured"     "1"  "$OUT"
+  run -c "$cfg" get health_threshold_faces_max;     assert_eq "faces_max configured"     "12" "$OUT"
+  run -c "$cfg" get health_threshold_breaking_runs; assert_eq "breaking_runs configured" "3"  "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

@@ -39,7 +39,7 @@ set -uo pipefail
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug blueprint pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback auto_blueprint require_blueprint blueprint_regen_threshold group_axis group_territory require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project verify_appetite verify_fanout_cap verify_model verify_registry_timeout)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug blueprint pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback auto_blueprint require_blueprint blueprint_regen_threshold group_axis group_territory require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project verify_appetite verify_fanout_cap verify_model verify_registry_timeout require_health auto_health health_threshold_cycles health_threshold_fanin health_threshold_uncovered health_threshold_faces_max health_threshold_breaking_runs)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -89,6 +89,13 @@ default_for() {
     verify_fanout_cap)           echo "10" ;;
     verify_model)                echo "inherit" ;;
     verify_registry_timeout)     echo "120" ;;
+    require_health)              echo "false" ;;
+    auto_health)                 echo "false" ;;
+    health_threshold_cycles)        echo "0" ;;
+    health_threshold_fanin)         echo "0" ;;
+    health_threshold_uncovered)     echo "0" ;;
+    health_threshold_faces_max)     echo "0" ;;
+    health_threshold_breaking_runs) echo "0" ;;
     *) return 1 ;;
   esac
 }
@@ -164,7 +171,7 @@ resolve() {
       return 0
       ;;
   esac
-  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* || "$cli_key" == issue_id_* || "$cli_key" == review_* || "$cli_key" == group_* || "$cli_key" == verify_* || "$cli_key" == "blueprint_regen_threshold" ]]; then
+  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* || "$cli_key" == issue_id_* || "$cli_key" == review_* || "$cli_key" == group_* || "$cli_key" == verify_* || "$cli_key" == health_* || "$cli_key" == "blueprint_regen_threshold" ]]; then
     # Bare-name keys (no _path suffix). The auto_*/require_* prefixes signal
     # automated/mandatory behaviors; issue_capture is a human-in-the-loop
     # feature flag (spec 018 DD #1); the issue_list_* family configures the
@@ -177,7 +184,10 @@ resolve() {
     # verify_* family (verify_appetite / verify_fanout_cap / verify_model /
     # verify_registry_timeout, spec 035) are bare verification knobs (the
     # dynamic verify_command_* / verify_appetite_* suffixes are handled above,
-    # before this point). All resolve to their bare TOML name.
+    # before this point); the health_* family (require_health / auto_health via
+    # the require_/auto_ arms, plus the five bare-name health_threshold_* integer
+    # knobs, spec 044) are the partition-health sensor knobs. All resolve to
+    # their bare TOML name.
     toml_key="$cli_key"
   else
     toml_key="${cli_key}_path"
