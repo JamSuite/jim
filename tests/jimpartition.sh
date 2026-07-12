@@ -1009,6 +1009,112 @@ case_jimpartition_rename_zero_unclassified_sweep() {
   assert_match "historical mention preserved" '^HIT.*prose$' "$OUT"
 }
 
+# ─── spec 044: health-eval (threshold evaluation over the reconcile series) ───
+
+# recline <iso> <breaking> <cycles> <fanin> <uncovered> <faces_max>
+#   One `blueprint finished op=reconcile` ledger line with the given counters
+#   (edges/faces fixed, other finding counters zeroed). The epoch field is a
+#   constant — the series verb keys on iso/phase/event/kv only.
+recline() {
+  printf '1\t%s\tblueprint\tfinished\ttier=project;op=reconcile;edges=5;leaks=0;breaking=%s;dead=0;unresolved=0;undeclared=0;stale=0;groups=3;cycles=%s;fanin=%s;uncovered=%s;faces=10;faces_max=%s\n' \
+    "$1" "$2" "$3" "$4" "$5" "$6"
+}
+
+# health_fixture <name> <ledger-content> [<jimconf-content>]
+#   Build a working dir with spec/ledger.md (the reconcile series) and an
+#   optional jimconf.toml (threshold config). Print the working-dir path; the
+#   specs-dir is <printed>/spec, and health-eval is invoked with CWD=<printed>
+#   so jimconf.sh resolves ./jimconf.toml.
+health_fixture() {
+  local name="$1" ledger="$2" conf="${3:-}"
+  local w="$TMP_BASE/$name"
+  mkdir -p "$w/spec"
+  printf '%s\n' "$ledger" > "$w/spec/ledger.md"
+  [[ -n "$conf" ]] && printf '%s\n' "$conf" > "$w/jimconf.toml"
+  printf '%s' "$w"
+}
+
+# AC: with no thresholds configured, health-eval reports all five disabled and
+# fires nothing — the silent-hook path (spec 044 AC #5, Task 4).
+case_jimpartition_health_eval_no_thresholds() {
+  local w; w="$(health_fixture t44hent "$(recline 2026-01-01T00:00:00Z 0 2 3 1 5)")"
+  run_jimpartition_in "$w" health-eval "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "all five disabled" "$(printf 'THRESHOLDS\t0\t5')" "$(printf '%s\n' "$OUT" | grep '^THRESHOLDS')"
+  assert_eq "no CROSSED" "0" "$(printf '%s\n' "$OUT" | grep -c '^CROSSED')"
+}
+
+# AC: a junk threshold value disables that key and is noted with INVALID; a
+# valid sibling still arms (spec 032 semantics; spec 044 AC #6, Task 4).
+case_jimpartition_health_eval_junk_invalid() {
+  local w; w="$(health_fixture t44hei "$(recline 2026-01-01T00:00:00Z 0 0 2 0 5)" 'health_threshold_cycles = "abc"
+health_threshold_fanin = "2"')"
+  run_jimpartition_in "$w" health-eval "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "cycles noted invalid" 'INVALID[[:space:]]health_threshold_cycles' "$OUT"
+  assert_eq "one active four disabled" "$(printf 'THRESHOLDS\t1\t4')" "$(printf '%s\n' "$OUT" | grep '^THRESHOLDS')"
+}
+
+# AC: a latest-value predicate fires when the newest event's counter meets the
+# threshold; observed value + threshold ride the CROSSED fact (spec 044 Task 4).
+case_jimpartition_health_eval_latest_fires() {
+  local w; w="$(health_fixture t44hef "$( { recline 2026-01-01T00:00:00Z 0 0 3 1 5; recline 2026-02-01T00:00:00Z 0 2 3 1 5; } )" 'health_threshold_cycles = "2"')"
+  run_jimpartition_in "$w" health-eval "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "cycles crossed at latest" 'CROSSED[[:space:]]cycles[[:space:]]2[[:space:]]2' "$OUT"
+}
+
+# AC: a latest-value predicate does NOT fire when the newest event is below the
+# threshold, even if an earlier event crossed it (spec 044 Task 4).
+case_jimpartition_health_eval_latest_below_no_fire() {
+  local w; w="$(health_fixture t44henf "$( { recline 2026-01-01T00:00:00Z 0 5 3 1 5; recline 2026-02-01T00:00:00Z 0 1 3 1 5; } )" 'health_threshold_cycles = "2"')"
+  run_jimpartition_in "$w" health-eval "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no CROSSED" "0" "$(printf '%s\n' "$OUT" | grep -c '^CROSSED')"
+}
+
+# AC: an `na` latest value never crosses — a not-computable coverage read is
+# never treated as healthy or as a numeric crossing (spec 044 AC #13, Task 4).
+case_jimpartition_health_eval_na_never_crosses() {
+  local w; w="$(health_fixture t44hena "$(recline 2026-01-01T00:00:00Z 0 0 3 na 5)" 'health_threshold_uncovered = "1"')"
+  run_jimpartition_in "$w" health-eval "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "na does not cross" "0" "$(printf '%s\n' "$OUT" | grep -c '^CROSSED')"
+}
+
+# AC: breaking_runs fires on the trailing consecutive count of events with
+# breaking>0 (a single noisy reconcile does not arm); observed = run length
+# (spec 044 DD #3, Task 4).
+case_jimpartition_health_eval_breaking_run_fires() {
+  local w; w="$(health_fixture t44hebr "$( { recline 2026-01-01T00:00:00Z 0 0 3 1 5; recline 2026-02-01T00:00:00Z 1 0 3 1 5; recline 2026-03-01T00:00:00Z 1 0 3 1 5; } )" 'health_threshold_breaking_runs = "2"')"
+  run_jimpartition_in "$w" health-eval "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "breaking run crosses" 'CROSSED[[:space:]]breaking_runs[[:space:]]2[[:space:]]2' "$OUT"
+}
+
+# AC: a broken trailing run does not arm breaking_runs — the last event carries
+# breaking but the prior event reset the run (spec 044 DD #3, Task 4).
+case_jimpartition_health_eval_breaking_run_broken() {
+  local w; w="$(health_fixture t44hebb "$( { recline 2026-01-01T00:00:00Z 1 0 3 1 5; recline 2026-02-01T00:00:00Z 0 0 3 1 5; recline 2026-03-01T00:00:00Z 1 0 3 1 5; } )" 'health_threshold_breaking_runs = "2"')"
+  run_jimpartition_in "$w" health-eval "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no CROSSED" "0" "$(printf '%s\n' "$OUT" | grep -c '^CROSSED')"
+}
+
+# AC: with no reconcile series, health-eval returns rc 1 (nothing to evaluate).
+case_jimpartition_health_eval_no_series_rc1() {
+  local w; w="$(health_fixture t44hens "$(printf '1\t2026-01-01T00:00:00Z\tplan\tfinished\t')" 'health_threshold_cycles = "1"')"
+  run_jimpartition_in "$w" health-eval "$w/spec"
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: a missing specs-dir argument is a usage error (rc 2).
+case_jimpartition_health_eval_bad_args_rc2() {
+  run_jimpartition health-eval
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

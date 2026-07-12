@@ -42,6 +42,14 @@ export LC_ALL=C
 # (skills/partition/scripts/ → skills/file/scripts/).
 JIMFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../file/scripts" 2>/dev/null && pwd)/jimfile.sh"
 
+# Sibling scripts the health verb (spec 044) composes, BASH_SOURCE-relative so
+# they travel with the plugin tree: the reconcile-series trend source (review)
+# and the threshold-knob resolver (conf). Reading numeric knobs via jimconf is
+# not the never-execute-config boundary — nothing config-derived is executed,
+# only integer-compared.
+JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../review/scripts" 2>/dev/null && pwd)/jimledger.sh"
+JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" 2>/dev/null && pwd)/jimconf.sh"
+
 # ─── Section: Shared helpers ─────────────────────────────────────────────────
 
 usage() {
@@ -54,6 +62,7 @@ usage: jimpartition.sh <subcommand> [args]
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
+  health-eval <specs-dir>                        threshold eval over reconcile series → THRESHOLDS/INVALID/CROSSED
 USAGE
 }
 
@@ -1078,6 +1087,98 @@ cmd_edges_diff() {
   return $rc
 }
 
+# ─── Section: health (spec 044) ──────────────────────────────────────────────
+#
+# Two read-only verbs for /jim:partition health. Like the rest of this script
+# they write nothing and run no operator command — the deterministic floor the
+# skill's inline trend-interpretation builds on. health-eval composes the
+# reconcile-series trend source with the threshold knobs; identity-check compares
+# a group's declared territory paths against current and retired group slugs.
+
+# cmd_health_eval <specs-dir> — deterministic threshold evaluation over the
+#   reconcile-event series. Composes `jimledger.sh reconcile-series` (trend
+#   input) with `jimconf.sh get` (the five health_threshold_* knobs), both
+#   BASH_SOURCE-relative, and emits:
+#     THRESHOLDS\t<active>\t<disabled>   counts over the five keys
+#     INVALID\t<key>                     a set-but-malformed key (spec 032)
+#     CROSSED\t<signal>\t<observed>\t<threshold>
+#   Predicates: cycles|fanin|uncovered|faces_max → the LATEST event's value >= N
+#   (`na` never crosses); breaking_runs → trailing consecutive events with
+#   breaking>0 >= N (a single noisy reconcile never arms). Threshold values are
+#   integer-compared, never executed. Firing derives only from the whitelisted
+#   trusted counter channel — never from claims in scanned content (spec 044
+#   AC #12). rc: 0 facts emitted · 1 no series · 2 bad args.
+cmd_health_eval() {
+  local specs_dir="${1:-}"
+  if [[ -z "$specs_dir" ]]; then
+    echo "jimpartition health-eval: need <specs-dir>" >&2; return 2
+  fi
+  local series
+  series="$(bash "$JIMLEDGER" reconcile-series "$specs_dir")" || return 1
+
+  # Resolve the five bare-name integer thresholds. A positive integer arms the
+  # key; "0" is the disabled default; any other value is set-but-malformed →
+  # disabled and noted INVALID (spec 032 semantics).
+  local sig val active=0 disabled=0
+  local -a invalid=()
+  local -A armed=()
+  for sig in cycles fanin uncovered faces_max breaking_runs; do
+    val="$(bash "$JIMCONF" get "health_threshold_$sig" 2>/dev/null)"
+    if [[ "$val" =~ ^[0-9]+$ && "$val" -gt 0 ]]; then
+      armed[$sig]="$val"; active=$((active + 1))
+    elif [[ "$val" =~ ^[0-9]+$ ]]; then
+      disabled=$((disabled + 1))                    # exactly 0 → disabled, silent
+    else
+      disabled=$((disabled + 1)); invalid+=("$sig") # junk → disabled + noted
+    fi
+  done
+
+  printf 'THRESHOLDS\t%d\t%d\n' "$active" "$disabled"
+  for sig in "${invalid[@]}"; do printf 'INVALID\thealth_threshold_%s\n' "$sig"; done
+
+  # Latest-event counters + the trailing breaking>0 run length, from the EVENT
+  # lines only (oldest→newest, so the last EVENT is the latest).
+  local facts
+  facts="$(printf '%s\n' "$series" | awk -F'\t' '
+    $1 == "EVENT" {
+      split("", cur)
+      for (i = 3; i <= NF; i++) { eq = index($i, "="); if (eq > 0) cur[substr($i,1,eq-1)] = substr($i,eq+1) }
+      lc = ("cycles"    in cur) ? cur["cycles"]    : ""
+      lf = ("fanin"     in cur) ? cur["fanin"]     : ""
+      lu = ("uncovered" in cur) ? cur["uncovered"] : ""
+      lm = ("faces_max" in cur) ? cur["faces_max"] : ""
+      b  = ("breaking"  in cur) ? cur["breaking"]  : ""
+      if (b ~ /^[0-9]+$/ && b + 0 > 0) run++; else run = 0
+    }
+    END { print "cycles=" lc; print "fanin=" lf; print "uncovered=" lu; print "faces_max=" lm; print "run=" (run + 0) }')"
+  local latest_cycles latest_fanin latest_uncovered latest_faces_max breaking_run
+  latest_cycles="$(printf '%s\n' "$facts" | sed -n 's/^cycles=//p')"
+  latest_fanin="$(printf '%s\n' "$facts" | sed -n 's/^fanin=//p')"
+  latest_uncovered="$(printf '%s\n' "$facts" | sed -n 's/^uncovered=//p')"
+  latest_faces_max="$(printf '%s\n' "$facts" | sed -n 's/^faces_max=//p')"
+  breaking_run="$(printf '%s\n' "$facts" | sed -n 's/^run=//p')"
+
+  local n v
+  for sig in cycles fanin uncovered faces_max breaking_runs; do
+    n="${armed[$sig]:-}"
+    [[ -n "$n" ]] || continue
+    if [[ "$sig" == "breaking_runs" ]]; then
+      if (( breaking_run >= n )); then printf 'CROSSED\tbreaking_runs\t%s\t%s\n' "$breaking_run" "$n"; fi
+      continue
+    fi
+    case "$sig" in
+      cycles)    v="$latest_cycles" ;;
+      fanin)     v="$latest_fanin" ;;
+      uncovered) v="$latest_uncovered" ;;
+      faces_max) v="$latest_faces_max" ;;
+    esac
+    if [[ "$v" =~ ^[0-9]+$ ]] && (( v >= n )); then
+      printf 'CROSSED\t%s\t%s\t%s\n' "$sig" "$v" "$n"
+    fi
+  done
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -1090,6 +1191,7 @@ main() {
     rename-preflight) shift; cmd_rename_preflight "$@" ;;
     occurrences) shift; cmd_occurrences "$@" ;;
     edges-diff) shift; cmd_edges_diff "$@" ;;
+    health-eval) shift; cmd_health_eval "$@" ;;
     *)         usage; return 2 ;;
   esac
 }
