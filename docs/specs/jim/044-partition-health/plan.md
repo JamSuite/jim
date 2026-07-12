@@ -294,19 +294,19 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] `tests/jimconf.sh` + `jimconf.sh`: add the 7 keys (`KEYS`,
+1. [x] `tests/jimconf.sh` + `jimconf.sh`: add the 7 keys (`KEYS`,
    `default_for`, `health_*` prefix arm in `resolve()`); cases for defaults
    (`"false"`/`"0"`) and configured-value resolution.
    **Verify:** `bash tests/jimconf.sh`
 
-2. [ ] `tests/jimledger.sh` + `jimledger.sh`: `reconcile-series` verb —
+2. [x] `tests/jimledger.sh` + `jimledger.sh`: `reconcile-series` verb —
    cases: multi-event series ordering, non-reconcile events skipped,
    malformed event → `EXCLUDED` + valid ones kept, `na` passthrough,
    rc 1 empty, rc 2 bad args. Factor the whitelist/int-or-na awk shared
    with `last-reconcile`.
    **Verify:** `bash tests/jimledger.sh`
 
-3. [ ] `tests/jimledger.sh` + `jimledger.sh`: extend the shared key list
+3. [x] `tests/jimledger.sh` + `jimledger.sh`: extend the shared key list
    with `faces`/`faces_max` (int-only) and `faces_max_group`/`fanin_group`
    (slug-list: per-element slug validation, ≤256 bytes, malformed → the
    same fail-closed path as a malformed int) — `last-reconcile` and
@@ -315,20 +315,20 @@ flowchart TD
    rc 2; subject assertion per mode). Depends on task 2.
    **Verify:** `bash tests/jimledger.sh`
 
-4. [ ] `tests/jimpartition.sh` + `jimpartition.sh`: `health-eval` verb —
+4. [x] `tests/jimpartition.sh` + `jimpartition.sh`: `health-eval` verb —
    cases: no thresholds → `THRESHOLDS 0 5` and no `CROSSED`; junk value →
    `INVALID` + disabled; latest-value predicates fire/don't-fire; `na`
    never crosses; `breaking_runs` trailing-run predicate; rc 1 no series.
    Uses `-c`-style temp config + fixture ledger. Depends on tasks 1, 2.
    **Verify:** `bash tests/jimpartition.sh`
 
-5. [ ] `tests/jimpartition.sh` + `jimpartition.sh`: `identity-check` verb —
+5. [x] `tests/jimpartition.sh` + `jimpartition.sh`: `identity-check` verb —
    cases: foreign-token mismatch, retired-token via `op=rename` event,
    token-free territories → silent, non-slug map cells excluded, rc 2 no
    map.
    **Verify:** `bash tests/jimpartition.sh`
 
-6. [ ] `reconcile-methodology.md`: § Outcome counters 11→15 (+`faces=`,
+6. [x] `reconcile-methodology.md`: § Outcome counters 11→15 (+`faces=`,
    `faces_max=` int-only; +`faces_max_group=`, `fanin_group=` slug-list
    attribution keys with the metric>0 presence rule; consumers named); new
    § Regen cadence (receives
@@ -337,7 +337,7 @@ flowchart TD
    #5–#7).
    **Verify:** `grep -c '^## ' skills/blueprint/references/reconcile-methodology.md | awk '{exit !($1>=5)}' && grep -q 'faces_max' skills/blueprint/references/reconcile-methodology.md`
 
-7. [ ] `skills/blueprint/SKILL.md`: shrink U2a to summary + methodology
+7. [x] `skills/blueprint/SKILL.md`: shrink U2a to summary + methodology
    pointer; Step 2a gains the per-group `faces` provides count plus the
    max-holder attribution (faces from the counts, fanin from `jimverify.sh
    health`'s `FANIN_GROUP` rows); Step 3 event line carries 15 counters;
@@ -349,7 +349,7 @@ flowchart TD
    Depends on task 6.
    **Verify:** `test $(wc -l < skills/blueprint/SKILL.md) -le 500 && grep -q 'health-eval' skills/blueprint/SKILL.md && grep -q 'Skill(jim:partition)' skills/blueprint/SKILL.md`
 
-8. [ ] `skills/partition/SKILL.md` + `partition-methodology.md` +
+8. [x] `skills/partition/SKILL.md` + `partition-methodology.md` +
    `tests/gatepresentation.sh`: routing row `health`; `## Health runs`
    section (mode announcement, script calls, inline read, insufficient
    history, `<untrusted-*>` delimiters, issue offer, ledger events +
@@ -358,11 +358,11 @@ flowchart TD
    expected count in the gate-presentation test. Depends on tasks 4, 5.
    **Verify:** `bash tests/gatepresentation.sh && test $(wc -l < skills/partition/SKILL.md) -le 500 && grep -q '§ Health' skills/partition/references/partition-methodology.md`
 
-9. [ ] `jimconf.toml.example`: document the 7 keys with the disabled-by-
+9. [x] `jimconf.toml.example`: document the 7 keys with the disabled-by-
    default semantics and one worked threshold example.
    **Verify:** `grep -c 'health_' jimconf.toml.example | awk '{exit !($1>=7)}'`
 
-10. [ ] Full suite green.
+10. [x] Full suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
