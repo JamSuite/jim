@@ -157,7 +157,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **Aggregator core.** Add `cmd_faces_aggregate` to `jimverify.sh`: enumerate
+1. [x] **Aggregator core.** Add `cmd_faces_aggregate` to `jimverify.sh`: enumerate
    groups via `groups_of`, apply the `^[a-z0-9][a-z0-9-]*$` guard before path use
    (skip failing tokens, no file access), count `provides` rows per
    blueprint-bearing group via `cmd_faces`, and emit `FACES_TOTAL`, `FACES_MAX`,
@@ -169,7 +169,7 @@ flowchart TD
    **Verify:** `bash tests/jimverify.sh faces_aggregate` (new cases pass) and
    `bash tests/jimverify.sh` (all existing jimverify cases still pass).
 
-2. [ ] **Fan-in holders.** Extend `cmd_faces_aggregate` to emit `FANIN_GROUP` —
+2. [x] **Fan-in holders.** Extend `cmd_faces_aggregate` to emit `FANIN_GROUP` —
    the sorted, comma-joined holders read from `cmd_health "$map"`'s `FANIN_GROUP`
    rows (≤256-byte cap, emitted only when fan-in > 0; omitted when `cmd_health`
    yields no fan-in holders). `cmd_health` itself is not modified. Add cases:
@@ -177,7 +177,7 @@ flowchart TD
    **Verify:** `bash tests/jimverify.sh faces_aggregate` passes and
    `bash tests/jimverify.sh` (whole file) passes.
 
-3. [ ] **Rewrite Step 2a.** In `skills/blueprint/SKILL.md` § Reconcile Step 2a,
+3. [x] **Rewrite Step 2a.** In `skills/blueprint/SKILL.md` § Reconcile Step 2a,
    replace the per-group LLM counting/sum/max/holder-derivation with a single
    `jimverify.sh faces-aggregate <map-path> <specs-root>` call and copy
    `FACES_TOTAL`/`FACES_MAX`/`FACES_MAX_GROUP`/`FANIN_GROUP` verbatim onto the
@@ -186,14 +186,14 @@ flowchart TD
    `faces-aggregate`.
    **Verify:** `grep -q 'faces-aggregate' skills/blueprint/SKILL.md && ! grep -qi 'count each blueprint-bearing group' skills/blueprint/SKILL.md`
 
-4. [ ] **Reword the contract.** In `reconcile-methodology.md` § Outcome counters,
+4. [x] **Reword the contract.** In `reconcile-methodology.md` § Outcome counters,
    describe `faces=`/`faces_max=`/`faces_max_group=`/`fanin_group=` as
    `faces-aggregate`-emitted (drop the "Counted at Step 2a" LLM-counting wording),
    so the "every counter is a script-emitted value, never a value lifted from
    content" statement reads true for all fifteen counters.
    **Verify:** `grep -q 'faces-aggregate' skills/blueprint/references/reconcile-methodology.md && ! grep -q 'Counted at Step 2a from' skills/blueprint/references/reconcile-methodology.md`
 
-5. [ ] **Regression gate.** Run the full suite; existing tests must pass with no
+5. [x] **Regression gate.** Run the full suite; existing tests must pass with no
    edits to their bodies (additive-only change).
    **Verify:** `bash skills/meta-test/scripts/run.sh`
 
