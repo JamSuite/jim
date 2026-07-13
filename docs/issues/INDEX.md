@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 33
+- Open: 34
 - Closed: 42
 
 ## Issues
@@ -82,6 +82,7 @@
 - `20260712-compute-reconcile-face-size-counters-deterministically` — Compute reconcile face-size counters deterministically · status: open · num: 74 · priority: low · created: 2026-07-12T09:55:16Z · labels: [partition, blueprint, reconcile, hardening] · origin: docs/specs/jim/044-partition-health/plan.md
 - `20260712-emit-the-unarmed-knob-notice-on-the-nothing-to-reconcile-reconci` — Emit the unarmed-knob notice on the nothing-to-reconcile reconcile · status: closed · num: 75 · priority: low · created: 2026-07-12T10:12:32Z · labels: [blueprint, partition, health] · origin: docs/specs/jim/044-partition-health/review.md
 - `20260712-record-and-sense-chronic-domain-domain-straddle-flags` — Record and sense chronic domain-domain straddle flags · status: open · num: 72 · priority: low · created: 2026-07-12T07:21:07Z · labels: [partition, health, spec-advisor] · origin: docs/specs/jim/044-partition-health/spec.md
+- `20260713-align-nothing-to-reconcile-face-counters-with-ledger-int-typing` — Align nothing-to-reconcile face counters with ledger int-typing · status: open · num: 76 · priority: medium · created: 2026-07-13T07:15:20Z · labels: [reconcile, ledger] · origin: docs/specs/jim/045-reconcile-face-counters/review.md
 
 ## Graph
 
