@@ -2,7 +2,7 @@
 title: "Compute reconcile face-size counters deterministically"
 spec: "spec.md"
 type: refactor
-status: approved
+status: complete
 ---
 
 # Compute reconcile face-size counters deterministically — Plan
