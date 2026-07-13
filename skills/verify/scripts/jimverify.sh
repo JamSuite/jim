@@ -1144,7 +1144,7 @@ join_slugs_cap() {
 #     FANIN_GROUP      sorted comma-joined graph fan-in max holders, sourced
 #                      read-only from cmd_health — emitted ONLY when fan-in > 0
 #   Groups are enumerated via groups_of; a token is used in path construction
-#   ONLY IF it matches ^[a-z0-9][a-z0-9-]*$ (mirroring cmd_contracts_check:905) —
+#   ONLY IF it matches ^[a-z0-9][a-z0-9-]*$ (mirroring cmd_contracts_check) —
 #   a crafted / '..'-bearing heading is skipped with NO file access. The provides
 #   count reuses cmd_faces (field 1 == provides, malformed rows included), so the
 #   counting semantics match the Step-2a LLM path it replaces. rc 2 on a missing
