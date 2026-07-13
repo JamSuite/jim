@@ -2,7 +2,7 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
-updated: "2026-07-12"
+updated: "2026-07-13"
 last_full_generate: "2026-07-05T23:32:20Z"
 ---
 
@@ -102,10 +102,11 @@ executes the data it reads.
   git writes are path-scoped (`commit-verify` selects a `verify`|`health`
   subject).
 - `jimverify.sh` **verification-floor CLI** — `parse`/`territory`/`check`/
-  `scope-census`/`faces`/`edges`/`contracts-check`/`health`. Guarantee: deterministic facts-not-verdicts
+  `scope-census`/`faces`/`edges`/`contracts-check`/`health`/`faces-aggregate`. Guarantee: deterministic facts-not-verdicts
   (sanitized TSV, location-only evidence); never executes a config- or
   blueprint-derived command string; path parameters pass the `safe_path_param`
-  gate.
+  gate; the reconcile face-size counters (`faces-aggregate`) are script-emitted
+  and copied verbatim, never assembled by LLM arithmetic over face content.
 - `jimpartition.sh` **extraction/coverage CLI** — `scan`/`ingest`/`aggregate`/
   `coverage`, the spec-043 rename verbs `rename-preflight`/`occurrences`/
   `edges-diff`, and the spec-044 health verbs `health-eval`/`identity-check`.
@@ -171,7 +172,8 @@ Grounded in ARCHITECTURE.md and the repo tree.
   path); `jimledger.sh` (ledger, incl. the reconcile counter series); `jimverify.sh` (the `/jim:verify` deterministic
   core — blueprint parse / territory / mechanical-floor check, whole-group or
   change-scoped, the retirement scope-census fact, plus the cross-group contract
-  floor: faces / edges / contracts-check, and graph-health metrics);
+  floor: faces / edges / contracts-check, graph-health metrics, and the reconcile
+  face-size counter aggregation: faces-aggregate);
   `jimpartition.sh` (the `/jim:partition` deterministic core —
   scan / ingest / aggregate / coverage, the spec-043 rename verbs
   rename-preflight / occurrences / edges-diff, and the spec-044 health verbs
