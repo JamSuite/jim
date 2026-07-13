@@ -1534,6 +1534,117 @@ case_jimverify_scope_census_no_args_rc2() {
   assert_match "need message" 'need <blueprint-dir>' "$ERR"
 }
 
+# ─── Section: faces-aggregate — deterministic reconcile counters (spec 045) ──
+
+# fa_repo <name> <graph> <group:count>... — build a project for faces-aggregate:
+#   a BLUEPRINT.md with a `## Groups` section (one `### <g>` per pair) and, when
+#   <graph> is non-empty, a `## Contract Graph` whose body is the literal <graph>
+#   rows; plus each group's docs/specs/<g>/000-blueprint/spec.md carrying <count>
+#   Provides entries. No git needed — faces-aggregate reads files as data. Echo root.
+fa_repo() {
+  local name="$1" graph="$2"; shift 2
+  local root="$TMP_BASE/$name" pair grp cnt i pv groups_body=""
+  mkdir -p "$root"
+  for pair in "$@"; do
+    grp="${pair%%:*}"; cnt="${pair##*:}"
+    groups_body="$groups_body### $grp
+"
+    mkdir -p "$root/docs/specs/$grp/000-blueprint"
+    pv="## Provides
+"
+    for ((i = 1; i <= cnt; i++)); do pv="$pv
+- \`$grp surface $i\`"; done
+    printf '%s\n' "$pv" > "$root/docs/specs/$grp/000-blueprint/spec.md"
+  done
+  {
+    printf '# Blueprint — fa\n\n## Groups\n\n%s\n' "$groups_body"
+    [[ -n "$graph" ]] && printf '## Contract Graph\n\n| Consumer | Relies on | Provider |\n| :--- | :--- | :--- |\n%s\n' "$graph"
+  } > "$root/BLUEPRINT.md"
+  printf '%s' "$root"
+}
+
+# AC: faces-aggregate emits FACES_TOTAL (Σ provides over blueprint-bearing
+# groups), FACES_MAX (per-group max), and FACES_MAX_GROUP (the max holder) — the
+# three face measurements in one deterministic call (spec 045 AC #1).
+case_jimverify_faces_aggregate_total_max_holder() {
+  local root; root="$(fa_repo faTMH "" accounts:3 billing:1)"
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_eq "total sums provides across groups" "4" "$(tsv_field FACES_TOTAL 2)"
+  assert_eq "max is the per-group maximum"       "3" "$(tsv_field FACES_MAX 2)"
+  assert_eq "max holder named"           "accounts" "$(tsv_field FACES_MAX_GROUP 2)"
+}
+
+# AC: on a tie every group at the max is named, sorted ascending and comma-joined
+# — ties → all holders (spec 045 AC #1/#4).
+case_jimverify_faces_aggregate_max_ties_sorted() {
+  local root; root="$(fa_repo faTie "" zebra:2 alpha:2 mid:1)"
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_eq "max" "2" "$(tsv_field FACES_MAX 2)"
+  assert_eq "both max holders, sorted comma-joined" "alpha,zebra" "$(tsv_field FACES_MAX_GROUP 2)"
+}
+
+# AC: the all-zero case — every group's provides face is empty — yields FACES_MAX
+# 0 and NO FACES_MAX_GROUP attribution key (the emit-only-when->0 rule, AC #6).
+case_jimverify_faces_aggregate_all_zero_no_attribution() {
+  local root; root="$(fa_repo faZero "" alpha:0 bravo:0)"
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_eq "total 0" "0" "$(tsv_field FACES_TOTAL 2)"
+  assert_eq "max 0"   "0" "$(tsv_field FACES_MAX 2)"
+  assert_eq "no FACES_MAX_GROUP emitted" "" "$(printf '%s\n' "$OUT" | grep '^FACES_MAX_GROUP	' || true)"
+}
+
+# AC: the holder attribution is byte-capped at 256 with every element a whole
+# valid group slug — the value the ledger consumer's valid_sluglist accepts
+# (spec 045 AC #4; jimledger RECONCILE_SLUG_KEYS parity).
+case_jimverify_faces_aggregate_holder_cap_256() {
+  local pairs=() i
+  for ((i = 1; i <= 40; i++)); do pairs+=("$(printf 'grp-%04d:1' "$i")"); done
+  local root; root="$(fa_repo faCap "" "${pairs[@]}")"
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  local v; v="$(tsv_field FACES_MAX_GROUP 2)"
+  assert_nonempty "holder value present" "$v"
+  assert_eq "holder value <= 256 bytes" "1" "$([ "${#v}" -le 256 ] && echo 1 || echo 0)"
+  assert_match "holder value is a valid slug-list" '^[a-z0-9][a-z0-9-]*(,[a-z0-9][a-z0-9-]*)*$' "$v"
+}
+
+# AC: a crafted / `..`-bearing `## Groups` heading is slug-guarded BEFORE path
+# construction — the token is skipped and its (decoy) blueprint is never read, so
+# it contributes nothing to the counters (spec 045 AC #2; security.md Finding 1).
+case_jimverify_faces_aggregate_crafted_heading_no_file_access() {
+  local root; root="$(fa_repo faEvil "" accounts:2)"
+  # A decoy blueprint the crafted `### ../evil` heading would resolve to iff the
+  # guard were absent (docs/specs/../evil → docs/evil), with a high provides count.
+  mkdir -p "$root/docs/evil/000-blueprint"
+  printf '## Provides\n\n- `a`\n- `b`\n- `c`\n- `d`\n- `e`\n' \
+    > "$root/docs/evil/000-blueprint/spec.md"
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+# Blueprint — fa
+
+## Groups
+
+### accounts
+
+### ../evil
+EOF
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_eq "only the valid group counted (decoy never read)" "2" "$(tsv_field FACES_TOTAL 2)"
+  assert_eq "max unaffected by the decoy's 5 provides"        "2" "$(tsv_field FACES_MAX 2)"
+  assert_eq "crafted token never a holder" "accounts" "$(tsv_field FACES_MAX_GROUP 2)"
+  assert_eq "no traversal token in output" "" "$(printf '%s\n' "$OUT" | grep -F '..' || true)"
+}
+
+# AC: missing args exit 2 with a usage message on stderr (mirrors sibling verbs).
+case_jimverify_faces_aggregate_no_args_rc2() {
+  run_jimverify faces-aggregate
+  assert_exit "rc" 2 "$RC"
+  assert_match "need message" 'need <map-path>' "$ERR"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.

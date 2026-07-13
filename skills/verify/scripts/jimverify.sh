@@ -142,6 +142,7 @@ usage: jimverify.sh <subcommand> [args]
   edges     <map-path>                        persisted Contract Graph → consumer/relies-on/provider
   contracts-check <map-path> <specs-root> [files-list]  cross-group floor: CROSS-REF facts + edge outcomes
   health    <map-path>                        graph-quality metrics: groups/edges/cycles/fan-in/coverage
+  faces-aggregate <map-path> <specs-root>    reconcile face counters: FACES_TOTAL/FACES_MAX/FACES_MAX_GROUP
 USAGE
 }
 
@@ -1116,6 +1117,76 @@ cmd_health() {
   return 0
 }
 
+# ─── Section: faces-aggregate — deterministic reconcile counters (spec 045) ──
+
+# join_slugs_cap — read already-valid group slugs on stdin (one per line), sort
+#   ascending (LC_ALL=C byte order, matching cmd_health's isort), comma-join, and
+#   cap the result at 256 bytes on element boundaries so every emitted element
+#   stays a whole valid slug — the shape jimledger's valid_sluglist accepts
+#   (RECONCILE_SLUG_KEYS: ≤256 bytes, each element slug-valid). Prints the joined
+#   value (empty if no input). Inputs are pre-validated by the caller's slug guard,
+#   so this is pure shaping — no path or content ever flows through it.
+join_slugs_cap() {
+  sort | awk '
+    $0 == "" { next }
+    { cand = (out == "") ? $0 : out "," $0; if (length(cand) <= 256) out = cand }
+    END { print out }
+  '
+}
+
+# cmd_faces_aggregate <map-path> <specs-root> — emit the reconcile face-size
+#   counters ready to copy verbatim onto the `blueprint finished` event, so
+#   Step 2a does no arithmetic (spec 045):
+#     FACES_TOTAL      Σ provides-face rows over blueprint-bearing groups (≥ 0)
+#     FACES_MAX        max provides rows any single group carries (≥ 0)
+#     FACES_MAX_GROUP  sorted comma-joined holders of FACES_MAX — emitted ONLY
+#                      when FACES_MAX > 0; ≤ 256 bytes, each element a valid slug
+#   Groups are enumerated via groups_of; a token is used in path construction
+#   ONLY IF it matches ^[a-z0-9][a-z0-9-]*$ (mirroring cmd_contracts_check:905) —
+#   a crafted / '..'-bearing heading is skipped with NO file access. The provides
+#   count reuses cmd_faces (field 1 == provides, malformed rows included), so the
+#   counting semantics match the Step-2a LLM path it replaces. rc 2 on a missing
+#   arg or unreadable map.
+cmd_faces_aggregate() {
+  local map="${1:-}" specs_root="${2:-}"
+  if [[ -z "$map" || -z "$specs_root" ]]; then
+    echo "jimverify faces-aggregate: need <map-path> <specs-root>" >&2; return 2
+  fi
+  if [[ ! -f "$map" ]]; then echo "jimverify faces-aggregate: map not found: $map" >&2; return 2; fi
+
+  # Enumerate blueprint-bearing groups; slug-guard BEFORE path construction (the
+  # map is untrusted and groups_of is deliberately permissive), then count the
+  # group's provides face via cmd_faces. A failing token → skipped, no file access.
+  local g bp n total=0 maxf=0
+  local -a gnames=() gcounts=()
+  while IFS= read -r g; do
+    [[ -z "$g" ]] && continue
+    [[ "$g" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
+    bp="$specs_root/$g/000-blueprint/spec.md"
+    [[ -f "$bp" ]] || continue
+    n="$(cmd_faces "$bp" 2>/dev/null | awk -F'\t' '$1=="provides"{c++} END{print c+0}')"
+    total=$((total + n))
+    gnames+=("$g"); gcounts+=("$n")
+    [[ "$n" -gt "$maxf" ]] && maxf="$n"
+  done < <(groups_of "$map")
+
+  printf 'FACES_TOTAL\t%s\n' "$total"
+  printf 'FACES_MAX\t%s\n' "$maxf"
+
+  # FACES_MAX_GROUP: sorted comma-joined holders of the max, emitted only when > 0.
+  if [[ "$maxf" -gt 0 ]]; then
+    local i joined
+    joined="$(
+      for i in "${!gnames[@]}"; do
+        [[ "${gcounts[$i]}" -eq "$maxf" ]] && printf '%s\n' "${gnames[$i]}"
+      done | join_slugs_cap
+    )"
+    [[ -n "$joined" ]] && printf 'FACES_MAX_GROUP\t%s\n' "$joined"
+  fi
+
+  return 0
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 main() {
@@ -1129,6 +1200,7 @@ main() {
     edges)           shift; cmd_edges "$@" ;;
     contracts-check) shift; cmd_contracts_check "$@" ;;
     health)          shift; cmd_health "$@" ;;
+    faces-aggregate) shift; cmd_faces_aggregate "$@" ;;
     *) usage; return 2 ;;
   esac
 }
