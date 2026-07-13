@@ -1645,6 +1645,40 @@ case_jimverify_faces_aggregate_no_args_rc2() {
   assert_match "need message" 'need <map-path>' "$ERR"
 }
 
+# AC: faces-aggregate co-emits FANIN_GROUP — the graph fan-in max holder, sourced
+# read-only from cmd_health, ready to copy verbatim onto the event (spec 045 AC #3).
+case_jimverify_faces_aggregate_fanin_single() {
+  local root; root="$(fa_repo faFan '| alpha | x | acct |
+| bravo | y | acct |
+| gamma | z | cat |' acct:1 cat:1 alpha:1 bravo:1 gamma:1)"
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_eq "fan-in max holder" "acct" "$(tsv_field FANIN_GROUP 2)"
+}
+
+# AC: on a fan-in tie every max-holder is named, sorted and comma-joined — ties →
+# all holders (spec 045 AC #3/#4; mirrors cmd_health's fan-in ties → all sorted).
+case_jimverify_faces_aggregate_fanin_ties_sorted() {
+  local root; root="$(fa_repo faFanTie '| alpha | x | acct |
+| bravo | y | acct |
+| gamma | z | cat |
+| delta | w | cat |' acct:1 cat:1 alpha:1 bravo:1 gamma:1 delta:1)"
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_eq "both fan-in max holders, sorted comma-joined" "acct,cat" "$(tsv_field FANIN_GROUP 2)"
+}
+
+# AC: with no graph fan-in (an absent Contract Graph), FANIN_GROUP is omitted —
+# the emit-only-when->0 rule — while the face counters still emit (spec 045 AC #3
+# boundary; interface contract rc 0).
+case_jimverify_faces_aggregate_fanin_zero_omitted() {
+  local root; root="$(fa_repo faNoFan "" solo:2)"
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  assert_exit "rc" 0 "$RC"
+  assert_eq "faces still emitted" "2" "$(tsv_field FACES_TOTAL 2)"
+  assert_eq "no FANIN_GROUP without graph fan-in" "" "$(printf '%s\n' "$OUT" | grep '^FANIN_GROUP	' || true)"
+}
+
 # ─── Section: dispatch ───────────────────────────────────────────────────────
 
 # AC: no subcommand exits 2 with usage on stderr.

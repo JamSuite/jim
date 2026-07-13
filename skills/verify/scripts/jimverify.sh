@@ -142,7 +142,7 @@ usage: jimverify.sh <subcommand> [args]
   edges     <map-path>                        persisted Contract Graph → consumer/relies-on/provider
   contracts-check <map-path> <specs-root> [files-list]  cross-group floor: CROSS-REF facts + edge outcomes
   health    <map-path>                        graph-quality metrics: groups/edges/cycles/fan-in/coverage
-  faces-aggregate <map-path> <specs-root>    reconcile face counters: FACES_TOTAL/FACES_MAX/FACES_MAX_GROUP
+  faces-aggregate <map-path> <specs-root>    reconcile face counters: FACES_TOTAL/FACES_MAX/FACES_MAX_GROUP/FANIN_GROUP
 USAGE
 }
 
@@ -1134,13 +1134,15 @@ join_slugs_cap() {
   '
 }
 
-# cmd_faces_aggregate <map-path> <specs-root> — emit the reconcile face-size
-#   counters ready to copy verbatim onto the `blueprint finished` event, so
-#   Step 2a does no arithmetic (spec 045):
+# cmd_faces_aggregate <map-path> <specs-root> — emit the reconcile face-size and
+#   fan-in concentration counters ready to copy verbatim onto the `blueprint
+#   finished` event, so Step 2a does no arithmetic (spec 045):
 #     FACES_TOTAL      Σ provides-face rows over blueprint-bearing groups (≥ 0)
 #     FACES_MAX        max provides rows any single group carries (≥ 0)
 #     FACES_MAX_GROUP  sorted comma-joined holders of FACES_MAX — emitted ONLY
 #                      when FACES_MAX > 0; ≤ 256 bytes, each element a valid slug
+#     FANIN_GROUP      sorted comma-joined graph fan-in max holders, sourced
+#                      read-only from cmd_health — emitted ONLY when fan-in > 0
 #   Groups are enumerated via groups_of; a token is used in path construction
 #   ONLY IF it matches ^[a-z0-9][a-z0-9-]*$ (mirroring cmd_contracts_check:905) —
 #   a crafted / '..'-bearing heading is skipped with NO file access. The provides
@@ -1183,6 +1185,15 @@ cmd_faces_aggregate() {
     )"
     [[ -n "$joined" ]] && printf 'FACES_MAX_GROUP\t%s\n' "$joined"
   fi
+
+  # FANIN_GROUP: the graph fan-in max holders, read read-only from cmd_health's
+  # already-sorted FANIN_GROUP rows (cmd_health emits them only when fan-in > 0,
+  # and none at all when the map carries no Contract Graph), re-shaped through the
+  # same sort/join/cap. cmd_health is untouched — fanin_group is a graph-derived
+  # attribution kept cohesive to its source (DD #2).
+  local fanin
+  fanin="$(cmd_health "$map" 2>/dev/null | awk -F'\t' '$1=="FANIN_GROUP"{print $2}' | join_slugs_cap)"
+  [[ -n "$fanin" ]] && printf 'FANIN_GROUP\t%s\n' "$fanin"
 
   return 0
 }
