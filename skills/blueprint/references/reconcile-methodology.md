@@ -257,8 +257,8 @@ op=reconcile`) always carries the fifteen counters, zeros included:
   provider fan-in, and uncovered tracked-path count.
 - `faces=` / `faces_max=` — the aggregate face-size measurements (spec
   044): the total `provides` entries across all blueprint-bearing groups,
-  and the maximum any single group carries. Counted at Step 2a from
-  `jimverify.sh faces <group-blueprint>` (the `provides` rows per group).
+  and the maximum any single group carries. Emitted by `jimverify.sh
+  faces-aggregate` as `FACES_TOTAL` / `FACES_MAX` and copied verbatim.
 
 Two concentration counters additionally carry a **slug-validated
 attribution key** naming the group(s) at the maximum, so a rising trend's
@@ -266,13 +266,13 @@ identity survives history (a growing `faces_max` reads as one group
 fattening versus a lead change):
 
 - `faces_max_group=` — the group(s) at the `faces_max` maximum;
-- `fanin_group=` — the group(s) at the `fanin` maximum (spec 039's
-  `FANIN_GROUP` facts).
+- `fanin_group=` — the group(s) at the `fanin` maximum.
 
-Each attribution value is the **sorted, comma-joined** slug(s) at the max
-(ties → all), each element a valid group slug, the whole value ≤ 256 bytes
-— the spec 043 `old=`/`new=` bounded-value precedent, the 028 Finding-1
-pattern. An attribution key is emitted **only when its metric is > 0**; a
+Both attribution keys are emitted by `jimverify.sh faces-aggregate`
+(`FACES_MAX_GROUP` / `FANIN_GROUP`), which owns the shaping. Each value is
+the **sorted, comma-joined** slug(s) at the max (ties → all), each element a
+valid group slug, the whole value ≤ 256 bytes — the spec 043 `old=`/`new=`
+bounded-value precedent, the 028 Finding-1 pattern. An attribution key is emitted **only when its metric is > 0**; a
 `faces_max=0` / `fanin=0` (or `na`) carries no attribution. These keys are
 **display data only** — never consumed by a threshold predicate. Events
 predating spec 044 simply lack the four new keys; the face-growth trend
@@ -289,9 +289,9 @@ zero that would read as a measurement, AC #8). `na` never reads as `0`.
 
 Every counter is a **script-emitted value, never a value lifted from
 content**: the seven findings come from the classifier, the four health
-and two face counters from the `jimverify.sh health` / `faces` verbs, whose
-sanitized integers the skill copies verbatim, and the attribution slugs
-from those same verbs' group facts. No counter is ever interpolated from
+counters from `jimverify.sh health`, and the two face counters plus the two
+attribution slugs from `jimverify.sh faces-aggregate`, whose sanitized
+integers and group slugs the skill copies verbatim. No counter is ever interpolated from
 graph or face text, and a health value that is not a non-negative integer
 is emitted as `na` or not at all — it never rides the kv field (spec 034
 discipline; security Findings 3/4).
