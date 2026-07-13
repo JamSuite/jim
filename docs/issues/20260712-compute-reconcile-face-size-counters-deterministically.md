@@ -2,7 +2,7 @@
 id: 20260712-compute-reconcile-face-size-counters-deterministically
 num: 74
 title: "Compute reconcile face-size counters deterministically"
-status: open
+status: closed
 priority: low
 labels: [partition, blueprint, reconcile, hardening]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-12T09:55:16Z
-updated: 2026-07-12T09:55:16Z
+updated: 2026-07-13T07:30:06Z
 origin: docs/specs/jim/044-partition-health/plan.md
 ---
 

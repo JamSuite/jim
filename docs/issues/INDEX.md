@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 34
-- Closed: 42
+- Open: 33
+- Closed: 43
 
 ## Issues
 
@@ -79,7 +79,7 @@
 - `20260711-add-a-territory-name-mismatch-partition-health-sensor` — Add a territory-name-mismatch partition-health sensor · status: closed · num: 71 · priority: low · created: 2026-07-11T09:10:28Z · labels: [partition, health, blueprint] · origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
 - `20260711-blueprint-present-tense-discipline-enforcement` — Enforce present-tense discipline at /jim:blueprint draft composition · status: open · num: 70 · priority: medium · created: 2026-07-11T07:57:56Z · labels: [blueprint, doctrine, drafting] · origin: conversation
 - `20260712-add-partition-stage-metrics-to-the-review-ledger-allowlist` — Add partition stage metrics to the review ledger allowlist · status: open · num: 73 · priority: low · created: 2026-07-12T08:06:17Z · labels: [ledger, review, partition] · origin: docs/specs/jim/044-partition-health/plan.md
-- `20260712-compute-reconcile-face-size-counters-deterministically` — Compute reconcile face-size counters deterministically · status: open · num: 74 · priority: low · created: 2026-07-12T09:55:16Z · labels: [partition, blueprint, reconcile, hardening] · origin: docs/specs/jim/044-partition-health/plan.md
+- `20260712-compute-reconcile-face-size-counters-deterministically` — Compute reconcile face-size counters deterministically · status: closed · num: 74 · priority: low · created: 2026-07-12T09:55:16Z · labels: [partition, blueprint, reconcile, hardening] · origin: docs/specs/jim/044-partition-health/plan.md
 - `20260712-emit-the-unarmed-knob-notice-on-the-nothing-to-reconcile-reconci` — Emit the unarmed-knob notice on the nothing-to-reconcile reconcile · status: closed · num: 75 · priority: low · created: 2026-07-12T10:12:32Z · labels: [blueprint, partition, health] · origin: docs/specs/jim/044-partition-health/review.md
 - `20260712-record-and-sense-chronic-domain-domain-straddle-flags` — Record and sense chronic domain-domain straddle flags · status: open · num: 72 · priority: low · created: 2026-07-12T07:21:07Z · labels: [partition, health, spec-advisor] · origin: docs/specs/jim/044-partition-health/spec.md
 - `20260713-align-nothing-to-reconcile-face-counters-with-ledger-int-typing` — Align nothing-to-reconcile face counters with ledger int-typing · status: open · num: 76 · priority: medium · created: 2026-07-13T07:15:20Z · labels: [reconcile, ledger] · origin: docs/specs/jim/045-reconcile-face-counters/review.md
