@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 6
+- Open: 11
 - Closed: 5
 
 ## Issues
@@ -18,6 +18,11 @@
 - `20260620-commit-planning-artifacts-before-the-build-phase` — Commit planning artifacts before the build phase · status: open · num: 9 · priority: medium · created: 2026-06-20T11:07:00Z · labels: [workflow, enhancement] · origin: conversation
 - `20260620-extract-duplicated-candidate-batch-block-into-a-shared-contract` — Extract duplicated candidate-batch block into a shared contract · status: closed · num: 8 · priority: medium · created: 2026-06-20T07:17:42Z · labels: [refactor, candidate-batch, consistency] · origin: docs/specs/jim/024-issue-pipeline-ownership/research.md
 - `20260620-single-source-the-interactive-candidate-batch-ux-into-the-shared` — Single-source the interactive candidate-batch UX into the shared contract · status: open · num: 11 · priority: low · created: 2026-06-20T23:31:27Z · labels: [refactor, candidate-batch, consistency] · origin: docs/specs/jim/025-issue-candidate-batch-extraction/plan.md
+- `20260717-automate-the-competitive-landscape-prior-art-research-refresh-as` — Automate the competitive-landscape / prior-art research refresh as a jim skill · status: open · num: 14 · priority: high · created: 2026-07-17T22:09:46Z · labels: [skill, research, prior-art, workflow, meta] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
+- `20260717-compare-joe-s-jim-review-skill-against-osmani-code-review-and-qu` — Compare Joe's jim:review skill against Osmani code-review-and-quality blueprint · status: open · num: 13 · priority: high · created: 2026-07-17T20:53:35Z · labels: [review, skill, prior-art] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
+- `20260717-evaluate-optional-ears-when-then-testable-ac-grammar-and-a-spec-` — Evaluate optional EARS/WHEN-THEN testable-AC grammar and a spec-check testability lint · status: open · num: 16 · priority: medium · created: 2026-07-17T22:22:04Z · labels: [spec, spec-check, testability, grammar] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
+- `20260717-post-approval-correction-evolution-flow-edit-approved-plans-and-` — Post-approval correction/evolution flow: edit approved plans and propagate fixes to code and migrations · status: open · num: 15 · priority: high · created: 2026-07-17T22:21:05Z · labels: [skill, plan, correction, lifecycle, workflow] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
+- `20260717-reconcile-brainstorm-skill-passive-capture-stance-with-active-ev` — Reconcile brainstorm skill's passive-capture stance with users' expectation of active evaluation · status: open · num: 12 · priority: medium · created: 2026-07-17T18:07:21Z · labels: [brainstorm, skill, ux] · origin: conversation
 
 ## Graph
 

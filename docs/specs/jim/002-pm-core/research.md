@@ -33,11 +33,11 @@ These are the files that must be created or modified to implement 002-pm-core.
 
 | # | Source | Type | URL / Path |
 |---|--------|------|------------|
-| 1 | Claude Code Skills docs | Official | `https://code.claude.com/docs/en/skills` |
+| 1 | Claude Code Skills docs | Official | `https://code.claude.com/docs/en/skills` *(live; evolved since cited — custom commands have merged into skills, and the page now cites the `agentskills.io` open standard, 2026-07-17)* |
 | 2 | Claude Code Sub-agents docs | Official | `https://code.claude.com/docs/en/sub-agents` |
 | 3 | deanpeters/Product-Manager-Skills | Prior art repo | `https://github.com/deanpeters/Product-Manager-Skills` |
 | 4 | automazeio/ccpm | Prior art repo | `https://github.com/automazeio/ccpm` |
-| 5 | gsd-build/get-shit-done | Prior art repo | `https://github.com/gsd-build/get-shit-done` |
+| 5 | open-gsd/gsd-core (formerly gsd-build/get-shit-done) | Prior art repo | `https://github.com/open-gsd/gsd-core` |
 | 6 | V1 PM agent | Local prior art | `docs/prior-art/V1SDLC/v1-agent-pm.md` |
 | 7 | V1 PM skill | Local prior art | `docs/prior-art/V1SDLC/v1-pm-skill.md` |
 | 8 | V1 Spec Template | Local prior art | `docs/prior-art/V1SDLC/V1-SPEC_TEMPLATE.md` |

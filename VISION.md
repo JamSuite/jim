@@ -32,11 +32,15 @@ Jim provides an agentic SDLC workflow for Claude Code via `/jim:spec`, `/jim:pla
 |----------|------|------|
 | **Raw Claude Code (no plugin)** | Zero overhead, maximum flexibility | No structure; quality depends entirely on prompt discipline; no institutional memory |
 | **Custom CLAUDE.md prompts** | Simple; no dependencies | Fragile; no separation of concerns between agents; hard to share across projects |
-| **SuperClaude** | Rich prompt engineering for Claude Code; personality and capability modes | Prompt-based, not workflow-based; no spec→plan→build lifecycle; no agile feedback loop |
+| **Spec-driven frameworks** (GitHub Spec Kit, OpenSpec, Amazon Kiro, cc-sdd) | Real spec→plan→tasks→implement pipelines; testable-AC grammars (EARS / WHEN-THEN); cross-artifact consistency linting; often agent-agnostic across many coding agents | Template/generation-centric; thin on collaborative interview, codebase research, and design-time security; several optimize for autonomy over human-in-loop transparency; no strategic vision/roadmap layer |
+| **Skill collections** (obra/superpowers, Matt Pocock, Addy Osmani) | High-craft individual skills (TDD, brainstorming, planning, review) with strong meta-authoring conventions; very large adoption | À-la-carte skills, not an integrated lifecycle; no compounding spec/research/plan archive; no strategic-alignment gating |
+| **SuperClaude (v4)** | Now ships installable skills, ~20 agents, and a confidence-check gate — no longer purely prompt-based | Capability/behavioral-mode oriented rather than a spec→plan→build lifecycle; no agile feedback loop or institutional-memory archive |
+| **GSD** (`open-gsd/gsd-core`, formerly `gsd-build/get-shit-done`) | Phase-gated pipeline with dependency-wave parallelism and per-phase verification | Leans autonomous (executor may deviate without permission); state files add bloat; not native to Claude Code's agent/skill model |
 | **V1SDLC (Jim's predecessor)** | Proved the spec→research→plan→build model works | Manual phase transitions; no plugin distribution; limited agile feedback |
-| **GSD and similar frameworks** | Structured development with decision tracking | State files add workflow bloat; not native to Claude Code's agent/skill model |
 
-**Differentiation:** Jim is a convention-over-configuration agentic SDLC native to Claude Code, with specialized agents that maintain domain context and living documents that support agile iteration. The historical record of specs, research, and plans compounds as institutional memory.
+*Competitive landscape refreshed 2026-07-17 — see `docs/research/20260717-competitive-landscape-sdd-skills.md` for the full survey, per-skill study anchors, and gap analysis.*
+
+**Differentiation:** Jim is a convention-over-configuration agentic SDLC native to Claude Code, with specialized agents that maintain domain context and living documents that support agile iteration. The historical record of specs, research, and plans compounds as institutional memory. As the spec-driven ecosystem exploded through 2026, jim's edge sharpened rather than blurred: where most competitors optimize for autonomy and template generation, jim optimizes for the *integrated, human-in-the-loop* path — collaborative spec interview, grounded research, design-time security, and strategic alignment — keeping the developer in control at every gate.
 
 **Trade-offs:** Overhead for trivial changes; currently Claude Code-only (cross-agent support is a future goal).
 
