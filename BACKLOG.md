@@ -170,6 +170,8 @@ Two changes:
 1. Rename "Chosen recommendation:" to "Proposed recommendation:" (or similar) — the wording should reflect that no decision has been made yet.
 2. After the user confirms which option to take and the fix is applied (likely via a /jim:build handoff), append a `## Resolution` section to the debug report capturing: chosen option, code changes (file:line refs), test outcome, follow-ups.
 
+when acting on a /jim:debug report, update the report with chosen-implementation details, not just the original diagnosis 
+
 Open question for the interview: should /jim:debug actively offer a /jim:build handoff after confirmation, or stay strictly diagnostic and let the user dispatch the build separately? The user has expressed appetite for the handoff path.
 
 Prior art: skills/debug/SKILL.md and the debug reports under docs/debug/ (e.g. docs/debug/20260510-claude-code-bash-injection-permissions.md).
@@ -177,6 +179,8 @@ Prior art: skills/debug/SKILL.md and the debug reports under docs/debug/ (e.g. d
 
 
 ## Task 0006: VISION.md — vision statement + competitive landscape
+
+
 
 **Origin:** Z_STUFF_TO_DO line 28, the "what is the intention?" section (lines 70–91), plus user request 2026-05-13 to position jim against `addyosmani/agent-skills` and `garrytan/gstack`.
 
@@ -207,6 +211,8 @@ Update VISION.md with two additions:
    - https://github.com/addyosmani/agent-skills — curated library of individual Claude Code skills. jim differs by being an opinionated SDLC workflow (spec → plan → research → build → review) rather than a skill catalog.
    - https://github.com/garrytan/gstack — opinionated dev stack for small teams / solo builders. Useful to articulate jim's positioning in the same "small team productivity" space.
    For each: 2–3 sentences describing the project, then 1–2 sentences on what jim does differently and why a user might pick one over the other. Honest positioning, not marketing.
+
+ALSO `jim:vision` should write the vision out to VISION.md as it's creating it; not wait until the end of the interview to write the file 
 
 Confirm with me before writing. If WebFetch fails on either repo URL, stop and ask me to paste the README content.
 ```

@@ -2,6 +2,13 @@
 
 *2026-05-12*
 
+> **Superseded (2026-07-17) by [`20260717-jim-arch-knowledge-corpus.md`](20260717-jim-arch-knowledge-corpus.md).**
+> That doc widens the frame from *how-tos* to the whole knowledge corpus and resolves the command-model
+> question left open here: no standalone `/jim:howtos` command — "howto" becomes one `kind:` on a
+> knowledge-rung ladder managed by an upgraded `/jim:arch`. This doc is retained for its 9-project
+> prior-art survey, the Kiro mapping, the ARCHITECTURE↔topic boundary rule, and the proactive-suggestion
+> heuristics, all of which the successor carries forward.
+
 Seeded by a Gemini CLI draft; refined collaboratively. Working document — not a spec yet.
 
 ## Problem Statement
