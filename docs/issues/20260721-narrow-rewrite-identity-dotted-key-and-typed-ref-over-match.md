@@ -2,7 +2,7 @@
 id: 20260721-narrow-rewrite-identity-dotted-key-and-typed-ref-over-match
 num: 77
 title: "Narrow rewrite-identity dotted-key and typed-ref over-match"
-status: open
+status: closed
 priority: low
 labels: [046, rewrite-identity, hardening]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-21T05:45:35Z
-updated: 2026-07-21T05:45:35Z
+updated: 2026-07-21T19:39:01Z
 origin: docs/specs/jim/046-spec-migration/review.md
 ---
 

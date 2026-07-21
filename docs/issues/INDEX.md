@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 35
-- Closed: 44
+- Open: 33
+- Closed: 46
 
 ## Issues
 
@@ -83,9 +83,9 @@
 - `20260712-emit-the-unarmed-knob-notice-on-the-nothing-to-reconcile-reconci` — Emit the unarmed-knob notice on the nothing-to-reconcile reconcile · status: closed · num: 75 · priority: low · created: 2026-07-12T10:12:32Z · labels: [blueprint, partition, health] · origin: docs/specs/jim/044-partition-health/review.md
 - `20260712-record-and-sense-chronic-domain-domain-straddle-flags` — Record and sense chronic domain-domain straddle flags · status: open · num: 72 · priority: low · created: 2026-07-12T07:21:07Z · labels: [partition, health, spec-advisor] · origin: docs/specs/jim/044-partition-health/spec.md
 - `20260713-align-nothing-to-reconcile-face-counters-with-ledger-int-typing` — Align nothing-to-reconcile face counters with ledger int-typing · status: open · num: 76 · priority: medium · created: 2026-07-13T07:15:20Z · labels: [reconcile, ledger] · origin: docs/specs/jim/045-reconcile-face-counters/review.md
-- `20260721-fill-rewrite-identity-guard-and-negative-branch-test-gaps` — Fill rewrite-identity guard and negative-branch test gaps · status: open · num: 78 · priority: medium · created: 2026-07-21T05:45:36Z · labels: [046, test-coverage] · origin: docs/specs/jim/046-spec-migration/review.md
+- `20260721-fill-rewrite-identity-guard-and-negative-branch-test-gaps` — Fill rewrite-identity guard and negative-branch test gaps · status: closed · num: 78 · priority: medium · created: 2026-07-21T05:45:36Z · labels: [046, test-coverage] · origin: docs/specs/jim/046-spec-migration/review.md
 - `20260721-floor-next-id-for-group-names-retired-by-rename` — Floor next-id for group names retired by rename · status: open · num: 79 · priority: medium · created: 2026-07-21T18:50:19Z · labels: [partition, rename, ledger] · origin: docs/specs/jim/047-partition-split/spec.md
-- `20260721-narrow-rewrite-identity-dotted-key-and-typed-ref-over-match` — Narrow rewrite-identity dotted-key and typed-ref over-match · status: open · num: 77 · priority: low · created: 2026-07-21T05:45:35Z · labels: [046, rewrite-identity, hardening] · origin: docs/specs/jim/046-spec-migration/review.md
+- `20260721-narrow-rewrite-identity-dotted-key-and-typed-ref-over-match` — Narrow rewrite-identity dotted-key and typed-ref over-match · status: closed · num: 77 · priority: low · created: 2026-07-21T05:45:35Z · labels: [046, rewrite-identity, hardening] · origin: docs/specs/jim/046-spec-migration/review.md
 
 ## Graph
 

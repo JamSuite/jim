@@ -2,7 +2,7 @@
 id: 20260721-fill-rewrite-identity-guard-and-negative-branch-test-gaps
 num: 78
 title: "Fill rewrite-identity guard and negative-branch test gaps"
-status: open
+status: closed
 priority: medium
 labels: [046, test-coverage]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-21T05:45:36Z
-updated: 2026-07-21T05:45:36Z
+updated: 2026-07-21T19:39:01Z
 origin: docs/specs/jim/046-spec-migration/review.md
 ---
 
