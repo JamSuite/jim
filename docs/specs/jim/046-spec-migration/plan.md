@@ -198,13 +198,13 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **Add the `spec_migration` config key.** In
+1. [x] **Add the `spec_migration` config key.** In
    `skills/conf/scripts/jimconf.sh`, add `spec_migration` to `KEYS`
    (line 42) and a `default_for` case returning `"rewrite"`. First add a case to
    `tests/jimconf.sh` asserting the default and a set value resolve (red→green).
    **Verify:** `bash tests/jimconf.sh && bash skills/conf/scripts/jimconf.sh get spec_migration | grep -qx rewrite`
 
-2. [ ] **Add the `rewrite-identity` verb.** In
+2. [x] **Add the `rewrite-identity` verb.** In
    `skills/partition/scripts/jimpartition.sh`, add the dispatch entry and
    `cmd_rewrite_identity` per the Interface Contract — including the
    write-primitive containment guard (security Finding 5). Write the
@@ -216,13 +216,13 @@ flowchart TD
    malformed-`group:` input errors location-only with no content echoed
    (Finding 6) — red→green. **Verify:** `bash tests/jimpartition.sh`
 
-3. [ ] **Add the freeze-on-doubt rule to the gatherer.** In `agents/gatherer.md`,
+3. [x] **Add the freeze-on-doubt rule to the gatherer.** In `agents/gatherer.md`,
    extend the rename-classification branch: under the rewrite mode, an ambiguous
    prose `<old>` mention (group identity vs domain word) is classified *keep*
    (freeze-on-doubt) — default to not-rewrite when unsure.
    **Verify:** `grep -qi 'freeze-on-doubt' agents/gatherer.md`
 
-4. [ ] **Reconcile the doctrine in the methodology.** In
+4. [x] **Reconcile the doctrine in the methodology.** In
    `skills/partition/references/partition-methodology.md` § Rename protocol: make
    the numbered-body classification (`:246`) mode-conditional
    (rewrite→identity/freeze-on-doubt, forward/immutable→historical); add the
@@ -232,35 +232,35 @@ flowchart TD
    mapping + composition rule (AC 8/9).
    **Verify:** `grep -q 'spec_migration' skills/partition/references/partition-methodology.md && grep -qi 'composition rule\|no continuing group' skills/partition/references/partition-methodology.md`
 
-5. [ ] **Resolve and gate the mode in the rename skill.** In
+5. [x] **Resolve and gate the mode in the rename skill.** In
    `skills/partition/SKILL.md` § Rename runs: resolve/validate
    `spec_migration` (degrade-to-rewrite + note; config/developer only —
    AC 10); state `immutable` is not applicable to rename and proceed as forward
    (AC 6). **Verify:** `grep -q 'spec_migration' skills/partition/SKILL.md && grep -qi 'immutable' skills/partition/SKILL.md`
 
-6. [ ] **Wire rewrite orchestration + scrubbed gate diffs.** In `SKILL.md`
+6. [x] **Wire rewrite orchestration + scrubbed gate diffs.** In `SKILL.md`
    Materialize step 5: under rewrite, call `rewrite-identity` for the mechanical
    fields and `Edit` gatherer-approved prose; present each body edit as a
    secret-scrubbed old→new diff at the gate (AC 12).
    **Verify:** `grep -q 'rewrite-identity' skills/partition/SKILL.md && grep -qi 'scrub' skills/partition/SKILL.md`
 
-7. [ ] **Record and reference freeze-on-doubt; add the ledger keys.** In
+7. [x] **Record and reference freeze-on-doubt; add the ledger keys.** In
    `SKILL.md`: list frozen mentions by location at the gate, add
    `identity=<mode> frozen=<count>` to the `partition finished … op=rename` event,
    and offer the frozen locations as one candidate (AC 13).
    **Verify:** `grep -q 'identity=' skills/partition/SKILL.md && grep -q 'frozen=' skills/partition/SKILL.md`
 
-8. [ ] **Make the freeze-history invariant mode-conditional.** In `SKILL.md`
+8. [x] **Make the freeze-history invariant mode-conditional.** In `SKILL.md`
    § Security and data discipline (`:384-387`) and the two checklist lines
    (`:407`, `:409`): reword "no mode edits a numbered spec's content" to the
    mode-conditional rule (rewrite edits identity; forward/immutable freeze).
    **Verify:** `grep -qi 'spec_migration\|rewrite mode' skills/partition/SKILL.md`
 
-9. [ ] **Document the key in the example config.** In `jimconf.toml.example`, add
+9. [x] **Document the key in the example config.** In `jimconf.toml.example`, add
    a commented `spec_migration` line naming the three values and the
    `rewrite` default. **Verify:** `grep -q 'spec_migration' jimconf.toml.example`
 
-10. [ ] **Full deterministic suite green.** Run the two touched script suites
+10. [x] **Full deterministic suite green.** Run the two touched script suites
     to confirm no regression. **Verify:** `bash tests/jimconf.sh && bash tests/jimpartition.sh`
 
 ## Requirements Coverage Summary
