@@ -1554,6 +1554,114 @@ case_jimpartition_renumber_map_usage_rc2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── Section: rewrite-refs cases (spec 047 Task 7) ───────────────────────────
+
+# AC 8: a typed group/NNN reference is rewritten whole-token to its remap target;
+# the REWROTE record is location-only (no surrounding prose leaks).
+case_jimpartition_rewrite_refs_typed_ref() {
+  local dir; dir="$(git_init rr_typed)"
+  repo_add "$dir" doc.md 'see cart/006 for details'
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv doc.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "ref rewritten" "see checkout/001 for details" "$(cat "$dir/doc.md")"
+  assert_match "location-only record" $'REWROTE\tdoc.md\t1\ttyped-ref' "$OUT"
+  assert_eq "no content leaked" "0" "$(printf '%s\n' "$OUT" | grep -c 'details')"
+}
+
+# AC 8: a spec-directory path prefix (an issue origin: line) is rewritten — the
+# dash after the number is a permitted delimiter; kind is path.
+case_jimpartition_rewrite_refs_dir_path() {
+  local dir; dir="$(git_init rr_path)"
+  repo_add "$dir" issue.md 'origin: docs/specs/cart/006-checkout'
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv issue.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "path prefix rewritten" "origin: docs/specs/checkout/001-checkout" "$(cat "$dir/issue.md")"
+  assert_match "path kind" $'REWROTE\tissue.md\t1\tpath' "$OUT"
+}
+
+# security Finding 8: the boundary rule leaves cart/0060, cart/006abc, cart/006x,
+# xcart/006, and cart-x/006 untouched (a longer digit / alnum after the number,
+# or an alnum-dash before the group, breaks the whole-token match).
+case_jimpartition_rewrite_refs_boundary_negatives() {
+  local dir; dir="$(git_init rr_bound)"
+  repo_add "$dir" neg.md $'a cart/0060 b\nc cart/006abc d\ne cart/006x f\ng xcart/006 h\ni cart-x/006 j'
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  local before; before="$(cat "$dir/neg.md")"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv neg.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no rewrites emitted" "0" "$(printf '%s\n' "$OUT" | grep -c 'REWROTE')"
+  assert_eq "file byte-unchanged" "$before" "$(cat "$dir/neg.md")"
+}
+
+# AC 8: the remap IS the whitelist — a reference to an unmoved number (absent from
+# the remap) is never touched, only the moved one is.
+case_jimpartition_rewrite_refs_whitelist() {
+  local dir; dir="$(git_init rr_wl)"
+  repo_add "$dir" doc.md $'moved cart/006\nunmoved cart/003'
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv doc.md
+  assert_exit "rc" 0 "$RC"
+  assert_match "moved rewritten"  'moved checkout/001' "$(cat "$dir/doc.md")"
+  assert_match "unmoved retained" 'unmoved cart/003'   "$(cat "$dir/doc.md")"
+}
+
+# AC 8: a second run over the already-rewritten file makes no change (idempotent).
+case_jimpartition_rewrite_refs_idempotent() {
+  local dir; dir="$(git_init rr_idem)"
+  repo_add "$dir" doc.md 'see cart/006'
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv doc.md
+  local after1; after1="$(cat "$dir/doc.md")"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv doc.md
+  assert_exit "second run rc" 0 "$RC"
+  assert_eq "no rewrites on second run" "0" "$(printf '%s\n' "$OUT" | grep -c 'REWROTE')"
+  assert_eq "file stable" "$after1" "$(cat "$dir/doc.md")"
+}
+
+# security Finding 8 (guard-before-edit): a multi-file batch with one guard-failing
+# (untracked) target edits NOTHING — the good file is left byte-unchanged, rc 2.
+case_jimpartition_rewrite_refs_guard_abort() {
+  local dir; dir="$(git_init rr_guard)"
+  repo_add "$dir" good.md 'see cart/006'
+  printf 'later cart/006\n' > "$dir/bad.md"   # on disk, never staged → untracked
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv good.md bad.md
+  assert_exit "rc" 2 "$RC"
+  assert_eq "good file untouched" "see cart/006" "$(cat "$dir/good.md")"
+}
+
+# rc 2: a malformed remap line (a number that is not 3 digits) is rejected before
+# any edit — the target file is untouched.
+case_jimpartition_rewrite_refs_malformed_remap_rc2() {
+  local dir; dir="$(git_init rr_badmap)"
+  repo_add "$dir" doc.md 'see cart/006'
+  printf 'cart/6\tcheckout/001\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv doc.md
+  assert_exit "rc" 2 "$RC"
+  assert_eq "target untouched" "see cart/006" "$(cat "$dir/doc.md")"
+}
+
+# rc 2: a target symlinked OUT of the worktree is refused by the containment guard.
+case_jimpartition_rewrite_refs_symlink_escape_rc2() {
+  local dir; dir="$(git_init rr_sym)"
+  mkdir -p "$TMP_BASE/rr_outside"
+  printf 'cart/006\n' > "$TMP_BASE/rr_outside/target.md"
+  ln -s "$TMP_BASE/rr_outside/target.md" "$dir/link.md"
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv link.md
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2 on usage (no target files).
+case_jimpartition_rewrite_refs_usage_rc2() {
+  local dir; dir="$(git_init rr_usage)"
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

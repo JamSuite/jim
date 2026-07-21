@@ -64,6 +64,7 @@ usage: jimpartition.sh <subcommand> [args]
   renumber-map <old> <targets-csv> <assign-file>   split spec renumber remap → MAP (spec 047)
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
+  rewrite-refs <remap-file> <file>...           remap-keyed ref rewrite → REWROTE file line kind (spec 047)
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
   health-eval <specs-dir>                        threshold eval over reconcile series → THRESHOLDS/INVALID/CROSSED
   identity-check <map> [<specs-dir>]             territory name-mismatch sensor → MISMATCH foreign|retired
@@ -1448,6 +1449,123 @@ cmd_rewrite_identity() {
   return 0
 }
 
+# cmd_rewrite_refs <remap-file> <file>... — rewrite whole-token `group/NNN`
+#   references to their remap targets, in place, across the given files (spec 047).
+#   The sibling of rewrite-identity for the wider reference surface: where
+#   rewrite-identity carries one global <old>→<new> group rename, this carries a
+#   per-occurrence remap TABLE — and that table IS the whitelist (security
+#   Finding 4): only a `<og>/<onum>` present in the remap is ever touched, so a
+#   reference to an unmoved spec is unrewritable by construction. Each remap line
+#   is `<og>/<onum>\t<ng>/<nnum>`, slug-and-3-digit gated in bash; a malformed
+#   line → rc 2 before any edit. The match is whole-token (security Finding 8):
+#   the char before <og> is not [a-z0-9-] and the char after <onum> is not
+#   [a-z0-9] — a dash or any other delimiter after the number is permitted, so a
+#   typed ref (`cart/006`) and a dir-path prefix (`docs/specs/cart/006-foo`) both
+#   match while `cart/0060`, `cart/006abc`, `cart/006x`, `xcart/006` never do.
+#   Both halves are rewritten; everything else is verbatim. The guard pass runs
+#   over ALL files before ANY edit (the rewrite-identity loop-separation
+#   precedent): each target is valid_relpath, resolves under the worktree top, and
+#   is tracked; any failure aborts rc 2 with zero files touched. Emits one
+#   location-only `REWROTE\t<file>\t<line>\t<typed-ref|path>` per edit. rc: 0
+#   applied (zero edits is success) · 2 usage / malformed remap / containment.
+cmd_rewrite_refs() {
+  local remap="${1:-}"
+  if [[ -z "$remap" ]]; then
+    echo "jimpartition rewrite-refs: need <remap-file> <file>..." >&2; return 2
+  fi
+  shift
+  if [[ ! -f "$remap" ]]; then
+    echo "jimpartition rewrite-refs: remap-file not found: $remap" >&2; return 2
+  fi
+  if [[ $# -eq 0 ]]; then
+    echo "jimpartition rewrite-refs: need at least one <file>" >&2; return 2
+  fi
+
+  # Parse + validate the remap (the whitelist); any malformed line aborts rc 2
+  # before any file is touched. Normalized rows land in $parsed as
+  # `<og>\t<onum>\t<ng>\t<nnum>` for the awk lookup.
+  local parsed
+  if ! parsed="$(mktemp 2>/dev/null)"; then
+    echo "jimpartition rewrite-refs: cannot create temp" >&2; return 2
+  fi
+  local line og_on ng_nn rest og onum ng nnum
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" ]] && continue
+    IFS=$'\t' read -r og_on ng_nn rest <<<"$line"
+    if [[ -z "${og_on:-}" || -z "${ng_nn:-}" || -n "${rest:-}" ]]; then
+      echo "jimpartition rewrite-refs: malformed remap line: $line" >&2; rm -f "$parsed"; return 2
+    fi
+    og="${og_on%%/*}"; onum="${og_on#*/}"
+    ng="${ng_nn%%/*}"; nnum="${ng_nn#*/}"
+    if ! valid_slug "$og" || ! valid_slug "$ng" \
+       || [[ ! "$onum" =~ ^[0-9]{3}$ || ! "$nnum" =~ ^[0-9]{3}$ ]]; then
+      echo "jimpartition rewrite-refs: malformed remap line: $line" >&2; rm -f "$parsed"; return 2
+    fi
+    printf '%s\t%s\t%s\t%s\n' "$og" "$onum" "$ng" "$nnum" >> "$parsed"
+  done < "$remap"
+
+  # Guard pass — run over ALL targets before ANY edit (rewrite-identity precedent).
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "jimpartition rewrite-refs: not in a git repo" >&2; rm -f "$parsed"; return 2
+  fi
+  local f resolved
+  for f in "$@"; do
+    if ! valid_relpath "$f"; then
+      echo "jimpartition rewrite-refs: unsafe path rejected: $(san_field "$f")" >&2; rm -f "$parsed"; return 2
+    fi
+    if ! resolved="$(realpath -m -- "$f" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "jimpartition rewrite-refs: path escapes worktree: $(san_field "$f")" >&2; rm -f "$parsed"; return 2
+    fi
+    if [[ -z "$(git ls-files -- "$f" 2>/dev/null)" ]]; then
+      echo "jimpartition rewrite-refs: path not tracked: $(san_field "$f")" >&2; rm -f "$parsed"; return 2
+    fi
+  done
+
+  # Edit pass — every guard passed. The awk loads the remap (keyed on FILENAME so
+  # an empty remap never mis-reads the target's first line), then does the
+  # boundary-gated whole-token rewrite per line; location-only records to a side
+  # file. og/onum/ng/nnum are slug/digit gated above, so none carries a regex or
+  # quote metacharacter.
+  local rwtmp tmp_out rec
+  if ! rwtmp="$(mktemp -d 2>/dev/null)"; then
+    echo "jimpartition rewrite-refs: cannot create temp dir" >&2; rm -f "$parsed"; return 2
+  fi
+  tmp_out="$rwtmp/out"; rec="$rwtmp/rec"
+  for f in "$@"; do
+    : > "$rec"
+    awk -F'\t' -v file="$f" -v recfile="$rec" '
+      BEGIN { rf = ARGV[1] }
+      FILENAME == rf { SRC[FNR] = $1 "/" $2; DST[FNR] = $3 "/" $4; nmap = FNR; next }
+      {
+        line = $0; out = ""; i = 1; L = length(line)
+        while (i <= L) {
+          matched = 0
+          for (m = 1; m <= nmap; m++) {
+            s = SRC[m]; sl = length(s)
+            if (substr(line, i, sl) == s) {
+              before = (i > 1) ? substr(line, i - 1, 1) : ""
+              ap = i + sl; after = (ap <= L) ? substr(line, ap, 1) : ""
+              if (before !~ /[a-z0-9-]/ && after !~ /[a-z0-9]/) {
+                out = out DST[m]
+                print "REWROTE\t" file "\t" FNR "\t" (before == "/" ? "path" : "typed-ref") > recfile
+                i += sl; matched = 1; break
+              }
+            }
+          }
+          if (!matched) { out = out substr(line, i, 1); i++ }
+        }
+        print out
+      }' "$parsed" "$f" > "$tmp_out"
+    if [[ -s "$rec" ]]; then
+      cat -- "$tmp_out" > "$f"
+      cat -- "$rec"
+    fi
+  done
+  rm -rf -- "$rwtmp"; rm -f "$parsed"
+  return 0
+}
+
 # ─── Section: health (spec 044) ──────────────────────────────────────────────
 #
 # Two read-only verbs for /jim:partition health. Like the rest of this script
@@ -1619,6 +1737,7 @@ main() {
     renumber-map) shift; cmd_renumber_map "$@" ;;
     occurrences) shift; cmd_occurrences "$@" ;;
     rewrite-identity) shift; cmd_rewrite_identity "$@" ;;
+    rewrite-refs) shift; cmd_rewrite_refs "$@" ;;
     edges-diff) shift; cmd_edges_diff "$@" ;;
     health-eval) shift; cmd_health_eval "$@" ;;
     identity-check) shift; cmd_identity_check "$@" ;;
