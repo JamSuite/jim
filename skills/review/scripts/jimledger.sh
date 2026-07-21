@@ -50,6 +50,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   finish  <spec-dir>                          record build finish (head_sha)
   event   <spec-dir> <phase> <event> [k=v …]  append a generic event
   rename-tracked <old-path> <new-path>        sibling-constrained git mv (spec 043)
+  move-spec-dir <specs-dir> <og> <src-base> <ng> <dst-base>  cross-parent spec-dir git mv (spec 047)
   metrics <spec-dir>                          emit key=value metrics to stdout
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
@@ -363,6 +364,72 @@ cmd_commit_rename() {
   if [[ "$stage" == "docs" ]]; then subject="docs(specs): rename group $old to $new"
   else                              subject="refactor($new): rename territory $old to $new"; fi
   git commit -q -m "$subject" -- "${paths[@]}" || { echo "jimledger commit-rename: commit failed" >&2; return 1; }
+}
+
+# cmd_move_spec_dir <specs-dir> <old-group> <src-basename> <new-group> <dst-basename>
+#   — cross-parent, history-continuous `git mv` of one spec directory: the move +
+#   renumber primitive split needs (spec 047). Where rename-tracked is a
+#   SIBLING-only rename, this deliberately crosses parents, so its bound set is
+#   NARROWER instead of wider (security Finding 1): both endpoints must resolve
+#   under <specs-dir> — never an arbitrary repo file — and each basename must be a
+#   spec-dir shape (NNN-slug or NNN-wip). Guards, all before git runs: 5 args;
+#   specs-dir clears the jimfile valid-relpath boundary; both groups are valid
+#   slugs; both basenames match the spec-dir shape; the specs anchor and both
+#   endpoints resolve inside `git rev-parse --show-toplevel` AND inside the specs
+#   subtree (realpath -m, so a symlinked group dir cannot slip an endpoint out of
+#   either); <src> is tracked; <dst> does not yet exist (its parent is created).
+#   Operates on the repo at CWD. rc 0 moved+staged · rc 1 named guard refusal ·
+#   rc 2 usage.
+cmd_move_spec_dir() {
+  local specs_dir="${1:-}" og="${2:-}" src_base="${3:-}" ng="${4:-}" dst_base="${5:-}"
+  if [[ -z "$specs_dir" || -z "$og" || -z "$src_base" || -z "$ng" || -z "$dst_base" ]]; then
+    echo "jimledger move-spec-dir: need <specs-dir> <old-group> <src-basename> <new-group> <dst-basename>" >&2
+    return 2
+  fi
+  if ! bash "$JIMFILE" valid-relpath "$specs_dir" >/dev/null 2>&1; then
+    echo "jimledger move-spec-dir: unsafe specs-dir rejected: $specs_dir" >&2; return 1
+  fi
+  if [[ ! "$og" =~ ^[a-z0-9][a-z0-9-]*$ || ! "$ng" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "jimledger move-spec-dir: old/new group must be valid slugs" >&2; return 1
+  fi
+  local shape='^[0-9]{3}(-[a-z0-9][a-z0-9-]*|-wip)$'
+  if [[ ! "$src_base" =~ $shape || ! "$dst_base" =~ $shape ]]; then
+    echo "jimledger move-spec-dir: basenames must be NNN-slug or NNN-wip: $src_base / $dst_base" >&2; return 1
+  fi
+  local sd="${specs_dir%/}" src dst
+  src="$sd/$og/$src_base"; dst="$sd/$ng/$dst_base"
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "jimledger move-spec-dir: not in a git repo" >&2; return 1
+  fi
+  # Containment: the specs anchor and both endpoints resolve inside the worktree
+  # top AND inside the specs subtree (rejecting a shape-valid path that symlinks
+  # out of either before git runs). realpath -m so a not-yet-existing dst resolves.
+  local specs_abs
+  if ! specs_abs="$(realpath -m -- "$sd" 2>/dev/null)" || { [[ "$specs_abs" != "$top" && "$specs_abs" != "$top"/* ]]; }; then
+    echo "jimledger move-spec-dir: specs-dir escapes worktree: $specs_dir" >&2; return 1
+  fi
+  local rp resolved
+  for rp in "$src" "$dst"; do
+    if ! resolved="$(realpath -m -- "$rp" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "jimledger move-spec-dir: path escapes worktree: $rp" >&2; return 1
+    fi
+    if [[ "$resolved" != "$specs_abs"/* ]]; then
+      echo "jimledger move-spec-dir: path escapes specs subtree: $rp" >&2; return 1
+    fi
+  done
+  if [[ -z "$(git ls-files -- "$src" 2>/dev/null)" ]]; then
+    echo "jimledger move-spec-dir: source not tracked: $src" >&2; return 1
+  fi
+  if [[ -e "$dst" ]]; then
+    echo "jimledger move-spec-dir: destination already exists: $dst" >&2; return 1
+  fi
+  mkdir -p -- "$(dirname -- "$dst")" || {
+    echo "jimledger move-spec-dir: cannot create destination parent" >&2; return 1
+  }
+  git mv -- "$src" "$dst" || {
+    echo "jimledger move-spec-dir: git mv failed: $src -> $dst" >&2; return 1
+  }
 }
 
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
@@ -733,6 +800,7 @@ main() {
     finish)  shift; cmd_finish "$@" ;;
     event)   shift; cmd_event "$@" ;;
     rename-tracked) shift; cmd_rename_tracked "$@" ;;
+    move-spec-dir) shift; cmd_move_spec_dir "$@" ;;
     commit-rename) shift; cmd_commit_rename "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;

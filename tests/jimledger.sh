@@ -1384,6 +1384,99 @@ case_jimledger_commit_verify_mode_whitelist() {
   assert_eq "no new commit landed" "chore(verify): record verification run" "$(git -C "$root" log -1 --format=%s)"
 }
 
+# ─── spec 047: move-spec-dir (cross-parent guarded git mv) ───────────────────
+
+# move_git_fixture <name> — a git repo with one tracked numbered spec dir under a
+#   group (docs/specs/cart/006-foo), one commit. Print the repo root.
+move_git_fixture() {
+  local name="$1"; local root="$TMP_BASE/$name"
+  mkdir -p "$root/docs/specs/cart/006-foo"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+  printf '# foo\n' > "$root/docs/specs/cart/006-foo/spec.md"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "seed"
+  printf '%s' "$root"
+}
+
+# security Finding 1: the happy cross-parent move+renumber — cart/006-foo becomes
+# checkout/001-foo in one history-continuous git mv, staged (the primitive
+# rename-tracked structurally refuses).
+case_jimledger_move_spec_dir_moves() {
+  local root; root="$(move_git_fixture msd_ok)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout 001-foo
+  assert_exit "rc" 0 "$RC"
+  assert_eq "old gone"   "0" "$([[ -e "$root/docs/specs/cart/006-foo" ]] && echo 1 || echo 0)"
+  assert_eq "new exists" "1" "$([[ -f "$root/docs/specs/checkout/001-foo/spec.md" ]] && echo 1 || echo 0)"
+  assert_match "staged move visible" 'docs/specs/checkout/001-foo/spec\.md' \
+    "$(git -C "$root" diff --cached --name-only)"
+}
+
+# security Finding 1: an endpoint that resolves inside the worktree but OUTSIDE the
+# specs subtree is refused — the specs-scoping bound that keeps this from
+# relocating an arbitrary repo file.
+case_jimledger_move_spec_dir_refuses_outside_specs() {
+  local root; root="$(move_git_fixture msd_out)"
+  mkdir -p "$root/modules"
+  ln -s ../../modules "$root/docs/specs/sneaky"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo sneaky 001-foo
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "names the refusal" "$ERR"
+}
+
+# security Finding 1: refuses an untracked source — move-spec-dir only moves what
+# git already tracks (history-continuous).
+case_jimledger_move_spec_dir_refuses_untracked_src() {
+  local root; root="$(move_git_fixture msd_unt)"
+  mkdir -p "$root/docs/specs/cart/007-bar"
+  printf 'x\n' > "$root/docs/specs/cart/007-bar/spec.md"   # on disk, never added
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 007-bar checkout 001-bar
+  assert_exit "rc" 1 "$RC"
+}
+
+# security Finding 1: refuses when the destination already exists (never clobbers).
+case_jimledger_move_spec_dir_refuses_existing_dst() {
+  local root; root="$(move_git_fixture msd_ex)"
+  mkdir -p "$root/docs/specs/checkout/001-foo"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout 001-foo
+  assert_exit "rc" 1 "$RC"
+}
+
+# security Finding 1: a basename that is not an NNN-slug / NNN-wip spec-dir shape
+# is refused (bounds the move to spec directories).
+case_jimledger_move_spec_dir_refuses_bad_basename() {
+  local root; root="$(move_git_fixture msd_bb)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout foo
+  assert_exit "rc" 1 "$RC"
+}
+
+# security Finding 1: a '..'-segment specs-dir is rejected by the valid-relpath
+# boundary before any git.
+case_jimledger_move_spec_dir_refuses_dotdot() {
+  local root; root="$(move_git_fixture msd_dd)"
+  run_jimledger_in "$root" move-spec-dir ../escape cart 006-foo checkout 001-foo
+  assert_exit "rc" 1 "$RC"
+}
+
+# security Finding 1: a group dir symlinked OUT of the worktree is refused — the
+# containment guard resolves the symlink before git runs.
+case_jimledger_move_spec_dir_refuses_symlink_escape() {
+  local root; root="$(move_git_fixture msd_sym)"
+  mkdir -p "$TMP_BASE/msd_outside"
+  ln -s "$TMP_BASE/msd_outside" "$root/docs/specs/out"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo out 001-foo
+  assert_exit "rc" 1 "$RC"
+}
+
+# rc 2 on a missing argument (usage, distinct from a guard refusal).
+case_jimledger_move_spec_dir_usage_rc2() {
+  local root; root="$(move_git_fixture msd_ma)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
