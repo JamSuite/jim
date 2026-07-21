@@ -11,9 +11,54 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-08T07:53:09Z
-updated: 2026-07-08T07:53:09Z
+updated: 2026-07-16T19:25:25Z
 origin: conversation
 ---
+
+## Update 2026-07-16 — rename now moves the dir; split/merge blocked on this
+
+Verified against the jim source this session. The Context below was written
+pre-043 and describes **repartition** mode (spec 038), which still does not move
+specs. But the **rename** verb (spec 043, shipped 2026-07-11) changed the
+picture, and the split/merge design line now blocks on the unresolved fork this
+issue tracks.
+
+**What rename does today.** Two distinct things to numbered specs:
+
+- **Directory** — `jimledger.sh rename-tracked` git-mv's the *whole* spec dir
+  `docs/specs/<old>/ → docs/specs/<new>/` (history-continuous; in-flight `wip`
+  dirs ride along). Numbered specs *physically move* into the new group's dir.
+- **Internal identity** — numbered-spec (`NNN-*`) body is classified
+  **historical** and frozen: `group:` frontmatter, body mentions, and
+  `Spec: <old>/NNN` trailers keep the old name. (The `000-blueprint` *is*
+  re-identified — only specs 001+ freeze.)
+
+So the state is **"half-moved"**: files sit under the new dir but still identify
+as the old group. Severity is **archive-coherence, not functional** — group is
+*path-derived* (the directory name); no script reads a numbered spec's `group:`
+frontmatter or `Spec:` trailer. But it undercuts VISION's "archive as a reliable
+reference": a spec filed under `<new>/` that reads `group: <old>` is incoherent
+to a reader.
+
+**This reframes #68.** The issue as filed covers repartition's
+*don't-move-at-all*. The rename era opened a **second, narrower gap this text
+didn't name**: dir moves, identity freezes. Both reduce to one unanswered design
+fork:
+
+> **What does a spec's recorded group identity mean when the group's identity
+> changes — an immutable historical fact, or a live pointer that should track the
+> move?**
+
+**Why this now blocks split/merge.** In rename the domain continues under a new
+name, so a frozen `Spec: <old>/NNN` is arguably a truthful historical fact. In
+**split** (1→N) and **merge** (N→1) the source identity *ceases to exist* — every
+moved spec points at a group that is simply gone, and split must additionally
+*decide which child* each spec belongs to. Both split arms are in scope
+(extraction *and* symmetric N-way); the symmetric arm makes this unavoidable.
+Split/merge mechanism design is **tabled** on this issue.
+
+Full blocking context and the tabled split brainstorm:
+[docs/brainstorms/20260716-partition-split.md](../brainstorms/20260716-partition-split.md).
 
 ## Description
 
