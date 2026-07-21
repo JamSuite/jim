@@ -383,6 +383,172 @@ deferred operations:
   cannot honor. This is why a pure rename exposes only `rewrite`/`forward`
   (AC #6): it is the degenerate, home-relocating case.
 
+## § Split protocol
+
+The `split` verb fissions one spec group into N children and proves the result
+(spec 047), reusing the rename engine's ripple mechanics. `/jim:partition`
+orchestrates; the doc edits run through `Skill(jim:blueprint) --split`, which
+defers every commit to the orchestrator. The whole run is a **single gate**:
+everything below the preflight is composed, presented once, and materialized only
+on approval.
+
+**Arms.** A split is **extraction** when `<old>` is among the targets (the
+remainder continues under its own identity, directory, and numbering) or
+**symmetric** when it is not (the source group is retired). The `spec_migration`
+mode (spec 046) resolves exactly as for rename — from operator config or an
+explicit developer instruction, never from scanned content — and `immutable` IS
+applicable here (unlike rename): the split/merge-native mode leaves the source in
+place (§ Rename protocol → Modes across split and merge).
+
+**Preflight and mode.**
+
+1. `jimpartition.sh split-preflight <map> <specs-dir> <old> <new>...`. The `ARM`
+   line names extraction vs symmetric. Any CHECK `fail` (missing map, `<old>` not
+   mapped, absent `000-blueprint`, `<2` targets, a duplicate target, an invalid
+   target slug, a target colliding with an existing group / dir — the exemption is
+   a target equal to `<old>`, the extraction remainder) refuses with the named
+   reason, writing nothing (AC 1, 2). A dirty tree warns-and-confirms naming
+   `DIRT affected` vs `unrelated` (rename parity, AC 2); a decline stops.
+2. Resolve `spec_migration` from config (degrade-to-`rewrite`, named). Record
+   `partition started tier=project op=split old=<old> new=<t1>,<t2>[,...]` on the
+   specs-root ledger.
+
+**Substrate and occupant enumeration.** Scan once (`jimpartition.sh scan` → the
+EDGE substrate), then enumerate every occupant of the source group as a proposed,
+editable row (AC 3): each numbered spec, each in-flight `wip` dir, each `Provides`
+surface, each `Invariant`, each territory path, each `requires` edge, and each
+group-scoped config key (`verify_appetite_<old>`). Nothing is materialized before
+the gate.
+
+**Assignment proposal — substrate-grounded.** Propose each occupant's child owner
+by clustering over the substrate: territory-subtree locality plus requires-locality
+(`jimpartition.sh aggregate` over the *proposed child* territories). `GEDGE` rows
+are the candidate cross-child `requires` edges (counts = call-site evidence);
+`STRADDLE` rows are the spanning units. Fan out `Agent(gatherer)` — one read-only
+dispatch per proposed child, batched under `verify_fanout_cap`, completing before
+any `Skill(jim:blueprint)` call (one-level nesting) — for the per-child evidence
+and prose residue. Every gatherer suggestion is evidence only; the gate binds
+(security Finding 6).
+
+**Revealed edges.** A formerly-internal dependency the assignment turns cross-child
+is a candidate `requires` edge, surfaced with its call-site evidence and confirmed
+or rejected individually at the gate — never auto-applied (AC 4). The post-split
+graph equals the external re-points plus the confirmed reveals, so a reconcile
+immediately after a clean split reports no new finding.
+
+**Spanning cases — surfaced, never silently placed.**
+
+- A **spanning invariant** (an `Invariant` the substrate shows serving >1 child)
+  gets a proposed **primary owner** (editable at the gate); the invariant id
+  ratchets unchanged (never split, duplicated, or renamed), and a cross-child
+  contract issue is offered via `new.sh` carrying the id and text, the children it
+  spans, the per-side evidence, and a concrete imperative — author the boundary
+  contract, or re-key into per-side invariants under it (AC 5).
+- A **spanning territory file** (a path serving >1 child) gets a **provisional
+  owner** so coverage has no gap, plus an offered code-split issue routed to the
+  normal spec→plan→build workflow. The split performs no code moves (AC 6).
+
+**Renumber map.** `jimpartition.sh renumber-map <old> <targets-csv> <assign-file>`
+computes the full remap the gate presents verbatim: a continuing remainder keeps
+its numbers (gaps preserved); each fresh child renumbers its arrivals to a dense
+`001..N` by source order; wip dirs ride in sequence. Vacated ids are never
+re-minted — `next-id` floors past them via the `op=split` ledger event
+(`jimledger.sh vacated-max`, AC 11).
+
+**Reference sweep assembly.** Under `rewrite`, the reference set is
+`git ls-files -- <specs-root> <issues-dir> <brainstorms-dir> <debug-dir>` (dirs
+resolved via `jimfile.sh`, never hand-typed) filtered to `*.md`; the remap from
+`renumber-map` is the whitelist fed to `jimpartition.sh rewrite-refs`. Typed
+`group/NNN` refs and spec-dir paths — including issue `origin:` frontmatter and
+sibling-artifact self-refs (research / plan / security / review `spec:` values) —
+re-point per the remap across the whole archive, the issue / brainstorm / debug
+docs, and a moved dir's own siblings, so no live artifact points at an id that left
+(AC 8). A bare group-name mention (which a symmetric split gives no single
+successor) takes freeze-on-doubt (AC 10). Strategic docs (ROADMAP / README /
+WORKFLOW) are advisory-listed, never edited (043 parity). Under `forward` /
+`immutable` no reference is edited — the ledger remap is the bridge.
+
+**The single gate (spec 040).** Compose one gate presenting the entire change-set
+per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`):
+the assignment rows (rangeable, e.g. `006–009 → checkout/001–004`), the revealed
+edges (each confirm / reject), the spanning rows, the spec remap, the config rows
+(an offered `verify_appetite_<old>` disposition + per-child adds), a **REFERENCES**
+block (the non-spec re-points and the freeze-on-doubt list, by `file:line`), and
+the informational out-of-scope mentions. Under `rewrite`, every artifact edit —
+spec bodies and non-spec references alike — is a **secret-scrubbed old→new diff**,
+never a bare changed-file count (AC 15). On the **symmetric** arm the gate carries
+an explicit **`RETIRES <old>`** row — the standalone `--retire` prompt is skipped
+downstream (the blueprint arm honors the split authorization), so this gate line IS
+the retirement authorization (security Finding 10). Approval is all-or-nothing; a
+decline writes nothing (`outcome=declined`).
+
+**Materialize** (on approval), in order:
+
+1. *Move the spec dirs* — `jimledger.sh move-spec-dir <specs-dir> <old> <src-base>
+   <child> <dst-base>` per moved dir (the cross-parent, history-continuous move +
+   renumber). Under `forward` the file relocates and renumbers with the body
+   byte-frozen; under `immutable` nothing moves (the source dir stays — on a
+   symmetric split it becomes the retired group's frozen archive) and the gate
+   states this plainly (AC 9).
+2. *Rewrite identity* (`rewrite` only) — `jimpartition.sh rewrite-identity <old>
+   <child> <spec-file>...` per target child (batch-by-target) for the moved bodies'
+   group half, then `rewrite-refs <remap> <file>...` over the assembled sweep set
+   for the archive-wide + non-spec re-points. Touched issue files get an `updated:`
+   refresh (`jimfile.sh now`, spec 022) and ONE `INDEX.md` regeneration after the
+   batch.
+3. *Doc fission* — `Skill(jim:blueprint) --split <old> --targets <csv> --changes
+   <file>`: map fission, in-place remainder edit, kernel-first fresh children,
+   symmetric-source retirement (no re-prompt), Contract Graph rewrite. It defers
+   commits and returns the touched-file list (the blueprint-side arm mechanics live
+   in `../../blueprint/references/migrate-arms.md` § Split arm).
+4. *Commits* — the fixed **two-commit** choreography: `jimledger.sh commit-split
+   <specs-dir> <old> <targets-csv> <path>...` (the docs: moved spec-dir pairs,
+   touched blueprints, reference edits, issue `INDEX.md`), then `commit-map` (the
+   map + specs-root ledger). There is no code commit — a split is assignment-only
+   (AC 6).
+
+**Verify.**
+
+1. *Zero-unclassified sweep* — re-run `occurrences <old>` over the full scanned
+   artifact set (per child across the spec archive, plus the issue / brainstorm /
+   debug reference classes). Mode-dependent: under `rewrite` a surviving old-name
+   identity mention or a stale moved-spec reference is a **failure**; under
+   `forward` / `immutable` it is a classified keep (AC 16).
+2. *Graph check* — compose the expected after-graph (baseline edges re-pointed per
+   the assignment + the gate-confirmed reveals) and `jimpartition.sh edges-diff
+   <expected> <actual> <g> <g>` with old == new (the identity degrades it to a pure
+   multiset diff). rc 0 is the done-condition (AC 16), never conflated with health.
+3. *Reconcile + health* — run the reconcile to clean with graph health presented
+   alongside, never conflated (038 parity). Any check the environment cannot run is
+   named **verification owed** — the command from operator config or an explicit
+   developer instruction only, never synthesized (AC 16).
+
+**Close.** `partition finished tier=project op=split old=<old> new=<t1>,<t2>[,...]
+identity=<mode> frozen=<count> outcome=<split|blocked|declined>
+moved=<og/onum:ng/nnum>[,...]` on the specs-root ledger, then `commit-map`. The
+`moved=` remap is the durable old→new bridge in every mode, carried as one or more
+repeatable `moved=` pairs each chunked to ≤256 bytes at element boundaries (never
+silent truncation). `frozen=<count>` tallies the freeze-on-doubt mentions left
+unrewritten — display-data-only bounded values; offer their `file:line` locations
+as one tracked follow-up through the candidate batch (AC 10, 12).
+
+**Failure and recovery.** As with rename there is no mid-run resume: recovery is
+**revert-and-rerun** from the clean-tree precondition (043 parity). A split's
+materialize spans several `move-spec-dir` git-mv operations and a multi-file
+`rewrite-refs` sweep before the two commits land, so a mid-materialize failure can
+leave partially-staged moves or a partially-applied sweep; the developer reverts to
+the pre-run state (`git reset` / `checkout`) and re-runs from a clean tree — which
+is why the dirty-tree confirm names the weakened revert guarantee up front
+(security Finding 9).
+
+**Merge duality (forward-compat note; spec Insight 7).** The change-set shapes stay
+`(sources, targets, assignment)`-parameterized so merge is a future *arm*, not a
+new engine: split renumbers fresh children ↔ merge renumber-appends absorbed
+sources (id collision dissolves — never two `001`s to reconcile); split reveals
+internal→cross-group edges ↔ merge collapses cross-group→internal and re-points
+third-party edges; one invariant spanning N children ↔ N invariants colliding in
+one group. Merge's three judgment problems stay deferred to its own spec.
+
 ## § Scrub — the redaction reminder
 
 Before any value reaches a persisted, possibly-public artifact — a map,
