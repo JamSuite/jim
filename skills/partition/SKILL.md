@@ -352,12 +352,12 @@ the specs-root ledger.
    invariants, territories, requires, config keys) as an editable row; propose child
    owners by `aggregate` over the *proposed child* territories (`GEDGE` = revealed
    cross-child edges + counts, `STRADDLE` = spanning units); fan out `Agent(gatherer)`
-   per child. A spanning invariant / file gets a proposed owner + a `new.sh` issue
-   (AC 3–6).
+   per child. A spanning invariant/file gets a proposed owner + a `new.sh` issue (AC 3–6).
 3. **Renumber** — `renumber-map <old> <targets-csv> <assign-file>`: the remainder
    keeps its numbers, fresh children densify to `001..N`, wip rides in sequence;
    vacated ids never re-mint (`next-id` floors via the `op=split` event, AC 11).
-4. **The single gate (spec 040)** — one presentation of the whole change-set:
+4. **The single gate (spec 040)** — one presentation of the whole change-set per the
+   gate-presentation rule (`skills/blueprint/references/gate-presentation.md`):
    rangeable assignment rows, revealed edges (confirm each), spanning rows, the
    spec remap, config rows, a **REFERENCES** block (non-spec re-points +
    freeze-on-doubt list), out-of-scope mentions. Under `rewrite` every edit is a
