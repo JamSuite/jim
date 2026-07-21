@@ -2,7 +2,7 @@
 title: "Spec migration"
 spec: "docs/specs/jim/046-spec-migration/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Spec migration — Plan
