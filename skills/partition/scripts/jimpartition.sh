@@ -1695,21 +1695,33 @@ cmd_identity_check() {
   local groups
   groups="$(map_group_slugs "$map")"
 
-  # Retired slugs: old= from `partition finished op=rename` events, whitelisted
-  # and slug-gated so a hand-edited ledger cannot inject a non-slug token. Only
-  # consulted when a specs-dir with a ledger is supplied.
+  # Retired slugs: old= from `partition finished` op=rename AND op=split events,
+  # whitelisted and slug-gated so a hand-edited ledger cannot inject a non-slug
+  # token. A rename always retires old=; a split retires old= only when it is NOT
+  # among the comma-split new= list (a symmetric split — an extraction keeps the
+  # remainder live). Every new= token is slug-gated, so a malformed sibling is
+  # ignored. Only consulted when a specs-dir with a ledger is supplied.
   local retired=""
   if [[ -n "$specs_dir" && -f "$specs_dir/ledger.md" ]]; then
     retired="$(awk -F'\t' '
       $3 == "partition" && $4 == "finished" {
-        if (index(";" $5 ";", ";op=rename;") == 0) next
+        is_rename = (index(";" $5 ";", ";op=rename;") > 0)
+        is_split  = (index(";" $5 ";", ";op=split;")  > 0)
+        if (!is_rename && !is_split) next
+        oldv = ""; newv = ""
         n = split($5, pairs, ";")
         for (j = 1; j <= n; j++) {
-          if (index(pairs[j], "old=") == 1) {
-            v = substr(pairs[j], 5)
-            if (v ~ /^[a-z0-9][a-z0-9-]*$/) print v
-          }
+          if (index(pairs[j], "old=") == 1)      oldv = substr(pairs[j], 5)
+          else if (index(pairs[j], "new=") == 1) newv = substr(pairs[j], 5)
         }
+        if (oldv !~ /^[a-z0-9][a-z0-9-]*$/) next
+        if (is_rename) { print oldv; next }
+        m = split(newv, na, ",")
+        keep = 0
+        for (k = 1; k <= m; k++) {
+          if (na[k] ~ /^[a-z0-9][a-z0-9-]*$/ && na[k] == oldv) keep = 1
+        }
+        if (!keep) print oldv
       }' "$specs_dir/ledger.md" | sort -u)"
   fi
 

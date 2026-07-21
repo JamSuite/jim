@@ -259,7 +259,8 @@ split_repo() {
   printf 'export const catalogQueryApi = {};\n' > "$root/modules/cart/catalog.js"
   printf 'import { catalogQueryApi } from "../catalog";\nexport const checkoutFlow = {};\n' \
                                                 > "$root/modules/cart/checkout/flow.js"
-  printf 'export const orderApi = {};\n'        > "$root/modules/orders/order.js"
+  printf 'import { catalogQueryApi } from "../cart/catalog";\nexport const orderApi = {};\n' \
+                                                > "$root/modules/orders/order.js"
 
   mkdir -p "$root/docs/specs/cart/000-blueprint"
   cat > "$root/docs/specs/cart/000-blueprint/spec.md" <<'EOF'
@@ -1757,6 +1758,67 @@ case_jimpartition_rewrite_refs_usage_rc2() {
   printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
   run_jimpartition_in "$dir" rewrite-refs remap.tsv
   assert_exit "rc" 2 "$RC"
+}
+
+# ─── Section: identity-check op=split arm + aggregate reveal (spec 047 Task 9) ─
+
+# AC 17: a symmetric split retires the source slug (old ∉ new) — a surviving
+# group's territory that still embeds `cart` is flagged retired.
+case_jimpartition_identity_check_split_symmetric_retired() {
+  local w; w="$TMP_BASE/icsr"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icsr_map '### shop
+- Territory: `modules/shop`
+
+### store
+- Territory: `services/cart/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=shop,store\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "symmetric split retires cart" 'MISMATCH.*store.*cart.*retired' "$OUT"
+}
+
+# AC 17: an extraction split (old ∈ new — the remainder continues) does NOT retire
+# the source slug.
+case_jimpartition_identity_check_split_extraction_none() {
+  local w; w="$TMP_BASE/icen"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icen_map '### shop
+- Territory: `modules/shop`
+
+### store
+- Territory: `services/cart/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "extraction keeps cart live" "0" "$(printf '%s\n' "$OUT" | grep -c 'retired')"
+}
+
+# AC 17: a malformed new= token is ignored, and the retirement of a valid old=
+# slug is still determined correctly (cart ∉ {shop,store}).
+case_jimpartition_identity_check_split_malformed_new_ignored() {
+  local w; w="$TMP_BASE/icmn"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icmn_map '### shop
+- Territory: `modules/shop`
+
+### store
+- Territory: `services/cart/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=shop,BAD!,store\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "malformed sibling ignored, cart retired" 'MISMATCH.*store.*cart.*retired' "$OUT"
+}
+
+# AC 4: the revealed-edge floor — projecting the substrate onto proposed child
+# territories surfaces the cross-child requires edge (GEDGE) a naive split would
+# miss, plus a straddling provider (STRADDLE), as deterministic gate evidence.
+case_jimpartition_aggregate_split_reveal() {
+  local dir edges terr; dir="$(split_repo agg_reveal)"
+  run_jimpartition_in "$dir" scan
+  edges="$dir/edges.tsv"; printf '%s\n' "$OUT" > "$edges"
+  terr=$(terr_file "$dir" terr.tsv $'GROUP\tcart\tmodules/cart\nGROUP\tcheckout\tmodules/cart/checkout\nGROUP\torders\tmodules/orders')
+  run_jimpartition_in "$dir" aggregate edges.tsv terr.tsv
+  assert_exit "rc" 0 "$RC"
+  assert_match "revealed cross-child requires edge" 'GEDGE.*checkout.*cart' "$OUT"
+  assert_match "straddling provider surfaced"       'STRADDLE.*catalog'      "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
