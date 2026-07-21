@@ -1536,6 +1536,55 @@ case_jimledger_vacated_max_bad_group_rc2() {
   assert_exit "missing arg rc" 2 "$RC"
 }
 
+# ─── spec 047: commit-split (the split's docs commit) ────────────────────────
+
+# DD 9 / security Finding 7: commit-split stages EXACTLY the explicit set — the
+# moved spec-dir pair (old deletion, already staged by move-spec-dir; new add) and
+# an authored child blueprint — while unrelated dirt never rides it. The subject
+# is composed in-script from the slug-validated old + targets.
+case_jimledger_commit_split_scoped() {
+  local root; root="$(move_git_fixture cs_ok)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout 001-foo
+  assert_exit "move rc" 0 "$RC"
+  mkdir -p "$root/docs/specs/checkout/000-blueprint"
+  printf '# checkout\n' > "$root/docs/specs/checkout/000-blueprint/spec.md"   # new child blueprint
+  printf 'unrelated\n'  > "$root/loose.txt"                                    # unrelated dirt
+  run_jimledger_in "$root" commit-split docs/specs cart cart,checkout \
+    docs/specs/cart/006-foo docs/specs/checkout/001-foo \
+    docs/specs/checkout/000-blueprint/spec.md
+  assert_exit "rc" 0 "$RC"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "moved dir committed"       'docs/specs/checkout/001-foo/spec\.md'        "$committed"
+  assert_match "child blueprint committed" 'docs/specs/checkout/000-blueprint/spec\.md'  "$committed"
+  assert_eq "old path gone from HEAD tree" "0" "$(git -C "$root" ls-tree -r --name-only HEAD | grep -c '^docs/specs/cart/006')"
+  assert_eq "loose NOT committed" "0" "$(echo "$committed" | grep -c 'loose')"
+  assert_eq "subject" "docs(specs): split group cart into cart, checkout" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# rc 1 when nothing is staged for the given paths (a guard refusal, never a
+# false-success empty commit).
+case_jimledger_commit_split_empty_stage_rc1() {
+  local root; root="$(move_git_fixture cs_empty)"
+  run_jimledger_in "$root" commit-split docs/specs cart cart,checkout docs/specs/cart/006-foo
+  assert_exit "rc" 1 "$RC"
+}
+
+# security Finding 7: an unsafe stage path is refused before git runs (rc 1).
+case_jimledger_commit_split_unsafe_path_rc1() {
+  local root; root="$(move_git_fixture cs_unsafe)"
+  run_jimledger_in "$root" commit-split docs/specs cart cart,checkout ../escape
+  assert_exit "rc" 1 "$RC"
+}
+
+# rc 2 on usage: no explicit paths, or a target set below the split arity of two.
+case_jimledger_commit_split_usage_rc2() {
+  local root; root="$(move_git_fixture cs_ma)"
+  run_jimledger_in "$root" commit-split docs/specs cart cart,checkout
+  assert_exit "no paths rc" 2 "$RC"
+  run_jimledger_in "$root" commit-split docs/specs cart cart docs/specs/cart/006-foo
+  assert_exit "arity<2 rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then

@@ -62,6 +62,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
   commit-verify <blueprint-dir> [verify|health]  commit ledger.md only (verify/health self-commit)
   commit-rename <specs-dir> <old> <new> <docs|code> <path...>  commit a rename stage set (spec 043)
+  commit-split <specs-dir> <old> <targets-csv> <path...>  commit a split stage set (spec 047)
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
   last-reconcile <specs-dir>                  prior reconcile event: iso + documented counters
   reconcile-series <specs-dir>                full reconcile event series → EVENT/EXCLUDED
@@ -365,6 +366,76 @@ cmd_commit_rename() {
   if [[ "$stage" == "docs" ]]; then subject="docs(specs): rename group $old to $new"
   else                              subject="refactor($new): rename territory $old to $new"; fi
   git commit -q -m "$subject" -- "${paths[@]}" || { echo "jimledger commit-rename: commit failed" >&2; return 1; }
+}
+
+# cmd_commit_split <specs-dir> <old> <targets-csv> <path>... — the split's docs
+#   commit (spec 047, DD 9): one atomic commit of the fission's COMPLETE stage set,
+#   composed from explicit literal paths only. Unlike commit-rename's docs arm, a
+#   split has no single old→new pair to auto-derive — N spec dirs move across N
+#   children — so the orchestrator passes the whole set: every moved spec-dir's
+#   old AND new path, the touched child / remainder / retired blueprints, the
+#   reference-edit files, and the issue INDEX.md (the map + specs-root ledger
+#   commit separately via commit-map). Guards mirror commit-rename: <old> and each
+#   target are valid group slugs; the target set has the split arity (≥2); every
+#   path clears valid-relpath and resolves inside the worktree top. `git add` runs
+#   only on paths that still exist (a moved old dir is already staged as a deletion
+#   by move-spec-dir; re-adding a vanished path errors) while the commit pathspec
+#   covers the whole set so the staged deletions land. Subject is composed
+#   in-script from the slug-validated <old> + targets only, never from path text.
+#   Operates on the repo at CWD. rc 0 committed · rc 1 nothing staged / guard · rc 2 usage.
+cmd_commit_split() {
+  local specs_dir="${1:-}" old="${2:-}" targets_csv="${3:-}"
+  if [[ -z "$specs_dir" || -z "$old" || -z "$targets_csv" ]]; then
+    echo "jimledger commit-split: need <specs-dir> <old> <targets-csv> <path...>" >&2; return 2
+  fi
+  shift 3
+  if [[ $# -eq 0 ]]; then
+    echo "jimledger commit-split: need explicit <path...>" >&2; return 2
+  fi
+  if [[ ! "$old" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "jimledger commit-split: old must be a valid group slug" >&2; return 2
+  fi
+  # Parse + validate the target set; compose the ", "-joined display list from the
+  # slug-validated tokens only (never from any path or ledger text).
+  local -a targets=()
+  local tlist="" t
+  IFS=',' read -r -a targets <<< "$targets_csv"
+  if [[ ${#targets[@]} -lt 2 ]]; then
+    echo "jimledger commit-split: need >=2 targets" >&2; return 2
+  fi
+  for t in "${targets[@]}"; do
+    if [[ ! "$t" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+      echo "jimledger commit-split: invalid target slug: $t" >&2; return 2
+    fi
+    tlist="${tlist:+$tlist, }$t"
+  done
+  if ! bash "$JIMFILE" valid-relpath "$specs_dir" >/dev/null 2>&1; then
+    echo "jimledger commit-split: unsafe specs-dir rejected: $specs_dir" >&2; return 1
+  fi
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "jimledger commit-split: not in a git repo" >&2; return 1
+  fi
+  local -a paths=("$@")
+  local p resolved
+  for p in "${paths[@]}"; do
+    if ! bash "$JIMFILE" valid-relpath "$p" >/dev/null 2>&1; then
+      echo "jimledger commit-split: unsafe path rejected: $p" >&2; return 1
+    fi
+    if ! resolved="$(realpath -m -- "$p" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "jimledger commit-split: path escapes worktree: $p" >&2; return 1
+    fi
+  done
+  for p in "${paths[@]}"; do
+    [[ -e "$p" ]] || continue
+    git add -- "$p" || { echo "jimledger commit-split: git add failed: $p" >&2; return 1; }
+  done
+  if git diff --cached --quiet -- "${paths[@]}"; then
+    echo "jimledger commit-split: nothing staged for the given paths" >&2; return 1
+  fi
+  git commit -q -m "docs(specs): split group $old into $tlist" -- "${paths[@]}" || {
+    echo "jimledger commit-split: commit failed" >&2; return 1
+  }
 }
 
 # cmd_move_spec_dir <specs-dir> <old-group> <src-basename> <new-group> <dst-basename>
@@ -847,6 +918,7 @@ main() {
     move-spec-dir) shift; cmd_move_spec_dir "$@" ;;
     vacated-max) shift; cmd_vacated_max "$@" ;;
     commit-rename) shift; cmd_commit_rename "$@" ;;
+    commit-split) shift; cmd_commit_split "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;
     commit-map) shift; cmd_commit_map "$@" ;;
