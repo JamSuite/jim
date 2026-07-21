@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 35
-- Closed: 43
+- Open: 34
+- Closed: 44
 
 ## Issues
 
@@ -75,7 +75,7 @@
 - `20260707-spell-out-the-superseded-group-set-derivation-for-retire` — spell out the superseded-group set derivation for --retire · status: closed · num: 66 · priority: low · created: 2026-07-07T11:03:54Z · labels: [partition, docs] · origin: docs/specs/jim/038-partition-migration/review.md
 - `20260707-strengthen-039-graph-health-test-coverage` — Strengthen 039 graph-health test coverage · status: closed · num: 64 · priority: low · created: 2026-07-07T06:33:25Z · labels: [test, verify] · origin: docs/specs/jim/039-graph-health/review.md
 - `20260708-emitter-and-template-both-emit-the-issue-description-header` — Emitter and template both emit the issue Description header · status: open · num: 69 · priority: low · created: 2026-07-08T20:37:32Z · labels: [issues-system, emitter, template] · origin: conversation
-- `20260708-partition-spec-migration-mode` — Extend /jim:partition with a spec-migration mode (move specs into new groups) · status: open · num: 68 · priority: medium · created: 2026-07-08T07:53:09Z · labels: [partition, migration, freeze-history] · origin: conversation
+- `20260708-partition-spec-migration-mode` — Extend /jim:partition with a spec-migration mode (move specs into new groups) · status: closed · num: 68 · priority: medium · created: 2026-07-08T07:53:09Z · labels: [partition, migration, freeze-history] · origin: conversation
 - `20260711-add-a-territory-name-mismatch-partition-health-sensor` — Add a territory-name-mismatch partition-health sensor · status: closed · num: 71 · priority: low · created: 2026-07-11T09:10:28Z · labels: [partition, health, blueprint] · origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
 - `20260711-blueprint-present-tense-discipline-enforcement` — Enforce present-tense discipline at /jim:blueprint draft composition · status: open · num: 70 · priority: medium · created: 2026-07-11T07:57:56Z · labels: [blueprint, doctrine, drafting] · origin: conversation
 - `20260712-add-partition-stage-metrics-to-the-review-ledger-allowlist` — Add partition stage metrics to the review ledger allowlist · status: open · num: 73 · priority: low · created: 2026-07-12T08:06:17Z · labels: [ledger, review, partition] · origin: docs/specs/jim/044-partition-health/plan.md

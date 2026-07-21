@@ -2,7 +2,7 @@
 id: 20260708-partition-spec-migration-mode
 num: 68
 title: "Extend /jim:partition with a spec-migration mode (move specs into new groups)"
-status: open
+status: closed
 priority: medium
 labels: [partition, migration, freeze-history]
 relations:
@@ -11,9 +11,34 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-08T07:53:09Z
-updated: 2026-07-16T19:25:25Z
+updated: 2026-07-21T06:05:54Z
 origin: conversation
 ---
+
+## Resolved 2026-07-21 — shipped as spec 046 (spec-migration)
+
+The design fork this issue tracks — *is a moved spec's recorded group identity
+an immutable historical fact, or a live pointer that should track the move?* — is
+settled. Spec 046 makes it a project-level `spec_migration` preference (`rewrite`
+default / `forward` / `immutable`) and records the reconciled doctrine: the spec
+**directory** is the live group binding, a numbered spec's **body** identity is
+preference-governed, and the ledger `op=rename` event is the durable old→new
+bridge in every mode (the `000-blueprint` re-identifies in every mode; the
+preference governs numbered specs 001+).
+
+**Shipped for rename.** `rewrite` re-homes a moved numbered spec's identity via
+the deterministic `jimpartition.sh rewrite-identity` verb (mechanical floor +
+gatherer freeze-on-doubt on ambiguous prose); `forward` freezes bodies behind the
+ledger alias; `immutable` is stated not-applicable to a rename and runs as
+`forward`. Built, reviewed `aligned`, ARCHITECTURE.md / WORKFLOW.md / README.md
+refreshed.
+
+**Split/merge re-homing** — per-child assignment and merge id-collision — was
+explicitly deferred to its own future specs and is now **unblocked** against the
+settled doctrine. Its design proceeds via the tabled brainstorm
+[docs/brainstorms/20260716-partition-split.md](../brainstorms/20260716-partition-split.md),
+not this issue. Closing: the freeze-history fork is resolved and the tabling on
+split/merge is lifted.
 
 ## Update 2026-07-16 — rename now moves the dir; split/merge blocked on this
 
