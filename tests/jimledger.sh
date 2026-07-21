@@ -1526,6 +1526,20 @@ case_jimledger_vacated_max_no_ledger_rc1() {
   assert_exit "rc" 1 "$RC"
 }
 
+# AC 19: the remap ledger event round-trips end-to-end — an op=split event written
+# through the real `event` verb (not a hand-crafted ledger line) is read back by
+# vacated-max, proving the emit grammar and the parse grammar agree.
+case_jimledger_vacated_max_event_roundtrip() {
+  local sd; sd="$(empty_dir vm_rt/spec)"
+  run_jimledger event "$sd" partition finished \
+    tier=project op=split old=cart new=cart,checkout \
+    moved=cart/006:checkout/001,cart/009:checkout/004
+  assert_exit "event rc" 0 "$RC"
+  run_jimledger vacated-max "$sd" cart
+  assert_exit "vacated-max rc" 0 "$RC"
+  assert_eq "floor read back from the emitted event" "009" "$OUT"
+}
+
 # rc 2 on a missing arg or an invalid group slug (usage, distinct from no-ledger).
 case_jimledger_vacated_max_bad_group_rc2() {
   local sd; sd="$(empty_dir vm_badgrp/spec)"
