@@ -7,9 +7,10 @@ Follow-on to [`20260711-partition-migrate-capabilities`](20260711-partition-migr
 Scope here: the **split** mechanism (1 group → N), with **merge** (N → 1) noted
 as the inverse over the same engine.
 
-**Status at close: tabled.** A verified blocker — spec identity on group-move,
-tracked as issue #68 — must be resolved before split/merge mechanism design
-continues. See *The blocker* below.
+**Status: resumed & closed 2026-07-21 — all forks decided, ready for `/jim:spec`.**
+The blocker (issue #68, spec identity on group-move) was resolved by spec 046
+(spec-migration); every design fork below is now ratified. See *Decisions —
+session 2* for the closing decisions and *The blocker* for how #68 was settled.
 
 ## The core asymmetry: rename relabels, split decides
 
@@ -78,14 +79,14 @@ grounded in the import substrate — edit any row, then approve
     checkout requires cart.catalog-query-api   (3 call sites)   [confirm]
   INVARIANTS → owner   (ids ratchet unchanged — assigned whole, never split)
     inv-9c1d session-ttl        → checkout
-    inv-3fa2 price-consistency  → SPANS both — keep with cart? [decision]
-  SPEC HISTORY
-    docs/specs/cart/001–006     (disposition depends on #68 — see blocker)
-    checkout                    fresh dir, next-id 001
+    inv-3fa2 price-consistency  → SPANS both — owner cart + cross-child issue
+  SPEC HISTORY   (spec_migration=rewrite: assigned child, fresh child renumbers)
+    docs/specs/cart/001–005     → cart   (remainder keeps its numbers)
+    docs/specs/cart/006–009     → checkout/001–004   (fresh child, renumbered)
   TERRITORY (assignment only — no code moves)
     modules/cart/checkout/**    → checkout
     modules/cart/**             → cart
-    modules/cart/shared.ts      → SPANS both — file code-split issue [decision]
+    modules/cart/shared.ts      → SPANS both — owner cart + code-split issue
   CONFIG
     verify_appetite_cart stays; checkout → default (offer add)
   OUT-OF-SCOPE MENTIONS (informational)  ROADMAP.md:20, README.md:44
@@ -115,47 +116,143 @@ Consequence: the symmetric arm is exactly the one that collides head-on with the
 a nonexistent identity, with no continuing name to fall back on). Extraction
 sidesteps it only for the *remainder*, not the extracted child.
 
-### B. Assignment mechanism — OPEN (leaning: proposed-default-then-edit)
+### B. Assignment mechanism — DECIDED: proposed-default-then-edit
 
 jim already proposes a grounded map at greenfield `/jim:partition` behind a hard
 gate; split is the same doctrine scoped to one group. A gatherer/substrate
 proposal (cluster by territory subtree + requires-locality), the developer edits
 rows, one all-or-nothing gate ratifies. Keeps the single-gate doctrine intact.
 Declarative-manifest and pure-interactive alternatives weighed against
-(heavier authoring / multi-gate creep respectively). Not ratified.
+(heavier authoring / multi-gate creep respectively).
 
-### C. Spec-history disposition — BLOCKED on #68
+**Decision (jrko):** proposed-default-then-edit, one hard gate. With #68 resolved,
+fork C collapses into this fork: **numbered specs are assignment occupants too** —
+each proposed a child from the same territory + import substrate, alongside
+surfaces, invariants, territory paths, and requires-edges. Assignment decides
+*which child*; the `spec_migration` knob (fork C) then decides *how that spec's
+identity moves* (rewrite / forward / immutable).
 
-This is the fork the whole session pivoted on. Forces the freeze-history crux
-(#68). Deferred until #68 is resolved — see *The blocker*.
+### C. Spec-history disposition — RESOLVED (spec 046) → collapses into B
 
-### D. Revealed internal edges — OPEN (leaning: detect-and-propose)
+The fork the whole session pivoted on. **Spec 046 (spec-migration) settled it:**
+identity-on-move is a project preference — `spec_migration = rewrite` (default)
+`| forward | immutable` — with the reconciled doctrine that the spec *directory*
+is the live group binding, a numbered spec's *body* identity is governed by the
+preference, and the ledger `op=` event is the durable old→new bridge in every mode
+(the `000-blueprint` re-identifies in every mode regardless). **Split does not
+reopen freeze-history — it applies the knob.** So spec-history disposition stops
+being a policy question and becomes pure *assignment* (which child) — fork B.
+
+**Numbering on move — DECIDED: fresh-vs-continuing, per destination.** The one
+mechanic 046 handed to split. `rewrite-identity` (046) keeps a spec's number and
+rewrites only the group half — correct for rename, where the whole dir moves 1:1.
+Split is different, and fork A already says so (*"only the extracted child is
+fresh"*):
+
+- **Continuing destination** (the extraction remainder; a rename target) — keeps
+  its numbers (fork A's "for free"). Interleaved-extraction gaps are truthful:
+  they mark what left. The remainder never re-histories.
+- **Fresh / absorbing destination** (an extracted child; every child of a
+  symmetric split) — renumbers to a clean `001..N`, ordered by original number.
+  Worked example under `rewrite`: `cart/001–005` stay, `cart/006–009 →
+  checkout/001–004`, bodies' `group:` rewritten, `next-id checkout = 005`.
+- The **ledger `op=` event** records the per-spec `(old-group/old-num →
+  new-group/new-num)` map — the same alias substrate 046 built, carrying a *set*
+  of remaps instead of rename's single group swap.
+- Under **`immutable`** nothing moves, so no renumber: extracted specs stay frozen
+  in the source dir and the fresh child inherits nothing (the point-in-time-
+  fidelity trade-off). `rewrite` (default) is the renumber-in norm.
+
+Substrate note for the plan: `rewrite-identity` is **group-only (keeps `NNN`)** —
+a fresh child's renumber needs an extension arm (rename the `NNN-slug.md` file
+*and* update in-body typed self-refs), so "reuse the shipped primitives" is not
+quite free. (A `forward`-mode wrinkle — renumbered filename vs frozen body number,
+reconciled only via the ledger — is a plan-time detail.)
+
+### D. Revealed internal edges — DECIDED: detect-and-propose
 
 Detect from the import substrate and propose the new `requires` edges the split
 reveals; propose, never auto-apply; human-confirmed at the gate. This is the
-feature's whole justification. Not ratified.
+feature's whole justification.
 
-### E. Territory / code — OPEN (leaning: assignment-only, no code moves)
+**Decision (jrko):** detect-and-propose — grounded in real imports, presented at
+the gate with call-site counts, never auto-applied. See the **spanning invariant**
+(below): its invariant-side twin — the cross-group *contract* a shared invariant
+reveals, the part imports cannot see.
+
+### E. Territory / code — DECIDED: assignment-only, no code moves
 
 Split's territory step points each child at existing paths; where code is not
 cleanly separable (the spanning file), file a tracked code-split issue routed to
 normal spec→plan→build. Rename's move-now worked because a whole dir moved
 atomically; split has no atomic-move equivalent (multi-file code partition is
-unbounded judgment work). Not ratified.
+unbounded judgment work).
 
-### F. Own verb vs generalized core — OPEN (leaning: own verb, shared shape)
+**Decision (jrko):** assignment-only. The spanning file is surfaced, assigned a
+provisional owner so territory coverage has no gap, and filed as a code-split
+issue. Solve at the root; route judgment to the workflow that owns it.
+
+### F. Own verb vs generalized core — DECIDED: own verb, shared shape
 
 Insight 2 hints at unifying rename/split/merge as one `(sources, targets,
-assignment)` transform (rename = 1→1 identity, split = 1→N, merge = N→1). Lean:
-build split as its own verb reusing the shipped primitives, but design its
-change-set + edge-derivation as the shared shape so **merge** slots in later —
-the same forward-compat discipline rename used for split. Generalizing the core
-now is unproven need. Not ratified.
+assignment)` transform (rename = 1→1 identity, split = 1→N, merge = N→1). Build
+split as its own verb reusing the shipped primitives, but design its change-set +
+edge-derivation as the shared shape so **merge** slots in later — the same
+forward-compat discipline rename used for split. Generalizing the core now is
+unproven need.
 
-## The blocker — spec identity on group-move (issue #68)
+**Decision (jrko):** own verb, shared shape — and pin merge's forward-compat to
+*notes, not code* (option A). The shared shape is the **split/merge duality**;
+naming it is the deliverable:
+
+| Axis | Split (1→N) | Merge (N→1) |
+| :--- | :--- | :--- |
+| Numbering | renumber fresh children | renumber-append absorbed sources |
+| Edges (fork D) | reveal internal → cross-group | collapse cross-group → internal, re-point 3rd-party |
+| Spanning thing | one invariant spans N children | N invariants collide into one group |
+
+If the split spec makes each row a *parameter* of the change-set / `edges-diff` /
+ledger shapes, merge is a new arm, not a new engine. Merge's *arity + numbering*
+are pinned by these notes (spec-number collision dissolves — renumber-append means
+there's never two `001`s to reconcile). Its three genuinely net-new judgment
+problems — **invariant-id collision**, **edge dissolution-vs-re-point**, and
+**provides-surface name collision** — are named and **deferred to merge's own
+spec**, so merge inherits a known list, not a surprise.
+
+### Spanning invariant — DECIDED: owner + cross-child contract issue
+
+An invariant that genuinely constrains *both* children after the split
+(`inv-3fa2 price-consistency` across catalog + checkout). Invariant ids are keys
+(verify history, check-data, filed issues join on them), so it can be neither
+**split** (breaks the join) nor **duplicated** (ambiguous per-invariant join). It
+must live in exactly one blueprint; the open question was the *other* child's
+obligation.
+
+**Decision (jrko):** the engine surfaces it, proposes a **primary owner from the
+substrate** (the child holding the most code it references — editable at the gate,
+fork-B consistent) so `inv-3fa2` stays live and coverage is not lost, and files a
+tracked **cross-child contract** issue routed to spec→plan→build. The issue
+carries the id + text, the two children it spans, the per-side substrate evidence,
+and a concrete imperative (author a boundary contract, or re-key into per-side
+invariants under a shared contract). This is the invariant-side twin of fork D:
+where imports reveal the mechanical `requires` edge, a mutual semantic guarantee
+is the part imports cannot see, so it drops to the same human-routed follow-up as
+the spanning file (fork E). Rejected: *owner-only* (silently under-covers the
+symmetric case — a `requires` edge is directional, the guarantee is mutual) and
+*block-until-resolved* (chicken-and-egg — you cannot author the boundary contract
+until the split gives both sides identities to contract between).
+
+## The blocker — spec identity on group-move (issue #68) — RESOLVED
+
+**Resolved 2026-07-21 by spec 046 (spec-migration), shipped & reviewed
+`aligned`; issue #68 closed.** Identity-on-move is now the `spec_migration`
+preference (`rewrite` default / `forward` / `immutable`); the reconciled doctrine
+and the `rewrite-identity` verb are in place. The analysis below is the
+pre-resolution record of *why* it blocked — kept for context; fork C above carries
+the resolution.
 
 Surfaced from a real `/jim:partition rename` run in a consumer project. Verified
-this session against the jim source.
+against the jim source.
 
 ### What rename does today (verified, spec 043, shipped)
 
@@ -203,19 +300,41 @@ already flags: move-vs-forward (physical relocation vs a redirect/alias over an
 untouched archive), id + trailer semantics (ids are per-group; re-homing implies
 new ids or collisions), git-history continuity, and `--retire` interaction.
 
-## Decisions this session
+## Decisions — session 1 (2026-07-16)
 
 - **Both split arms in scope** — extraction *and* symmetric N-way (fork A).
-- **#68 is a real, verified blocker** — still open, unaddressed by any spec or
-  branch; the rename era already opened a narrower version of it that the issue
-  text doesn't yet capture.
-- **Table the split brainstorm; resolve #68 first.** Update #68 to reflect
-  current rename behavior and reference this doc as the blocking context.
+- **#68 is a real, verified blocker** — the rename era opened a narrower version
+  of it than the issue text captured.
+- **Table the split brainstorm; resolve #68 first.** Update #68 to reflect current
+  rename behavior and reference this doc as the blocking context.
 
-## Open, for when this resumes
+## Decisions — session 2, resumed (2026-07-21)
 
-- Fork B (assignment mechanism), D (revealed edges), E (territory), F (own verb
-  vs generalized core) — leanings recorded above, none ratified.
-- Merge specifics — the inverse over the same engine; collapse-map assignment,
-  edge-set union, dual-source retire. Deferred with split.
-- Spanning invariants and spanning files — the engine must surface, never guess.
+#68 resolved by spec 046; brainstorm resumed and closed. Every fork ratified:
+
+- **B — assignment:** proposed-default-then-edit, single gate; numbered specs are
+  assignment occupants, the `spec_migration` knob governs their identity.
+- **C — spec-history:** resolved by 046 (apply the knob), collapses into B.
+  **Numbering:** fresh destinations renumber to `001..N`; the continuing remainder
+  keeps its numbers; the ledger `op=` event carries the per-spec remap set.
+- **D — revealed edges:** detect-and-propose from imports, human-confirmed.
+- **E — territory:** assignment-only; spanning file → provisional owner + tracked
+  code-split issue.
+- **F — verb shape:** own `split` verb, shared shape; merge pinned as
+  forward-compat *notes* (the duality table), its three judgment problems named
+  and deferred to merge's own spec.
+- **Spanning invariant:** primary owner (proposed, editable) + tracked cross-child
+  contract issue — the invariant-side twin of fork D.
+
+## Ready for `/jim:spec`
+
+**Scope for the split spec** = forks B–F + numbering + spanning-invariant, over
+the extraction *and* symmetric arms; merge is forward-compat notes only.
+
+**Deferred to merge's own spec:** invariant-id collision, edge dissolution-vs-
+re-point, provides-surface name collision.
+
+**Named substrate work the plan inherits:** `rewrite-identity` grows a
+number-remap arm (fresh-child renumber); `edges-diff` grows the reveal-edges
+(fork D) derivation; blueprint gains a `--split` create-N arm; the ledger `op=`
+event carries a per-spec remap set.
