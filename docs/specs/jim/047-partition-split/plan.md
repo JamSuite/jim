@@ -319,7 +319,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] `jimledger.sh`: add `move-spec-dir` per Interface Contracts — the
+1. [x] `jimledger.sh`: add `move-spec-dir` per Interface Contracts — the
    bound set of security Finding 1 (specs-scoped endpoints, basename shapes,
    tracked source, absent destination, realpath containment), single `git mv`.
    Tests in `tests/jimledger.sh`: happy cross-parent move+renumber staged;
@@ -327,20 +327,20 @@ flowchart TD
    shape, `..`/absolute path, cross-repo symlink escape; usage rc 2.
    **Verify:** `bash skills/meta-test/scripts/run.sh move_spec_dir`
 
-2. [ ] `jimledger.sh`: add `vacated-max` — whitelisted `op=split` parse,
+2. [x] `jimledger.sh`: add `vacated-max` — whitelisted `op=split` parse,
    per-element charset gate, invalid elements inert (security Finding 2).
    Tests: floored max from one event; multiple `moved=` pairs iterated;
    malformed element ignored while valid siblings count; op=rename-only
    ledger → empty; no ledger → rc 1.
    **Verify:** `bash skills/meta-test/scripts/run.sh vacated_max`
 
-3. [ ] `jimledger.sh`: add `commit-split` — explicit literal-path staging,
+3. [x] `jimledger.sh`: add `commit-split` — explicit literal-path staging,
    script-composed message. Tests: stages exactly the given set (unrelated
    dirt excluded), message shape, empty-stage rc 1, unsafe path rc 1,
    usage rc 2.
    **Verify:** `bash skills/meta-test/scripts/run.sh commit_split`
 
-4. [ ] `jimfile.sh`: extend `cmd_next_id` with the vacated floor
+4. [x] `jimfile.sh`: extend `cmd_next_id` with the vacated floor
    (BASH_SOURCE-relative `vacated-max`, degrade when absent) and the >999
    refusal. Tests in `tests/jimfile.sh`: tail-move floor raises next-id;
    dir-max wins when higher (monotonic merge); no ledger → dir behavior;
@@ -349,7 +349,7 @@ flowchart TD
    task 2.
    **Verify:** `bash skills/meta-test/scripts/run.sh next_id`
 
-5. [ ] `jimpartition.sh`: add `split-preflight` (reusing `emit_check` /
+5. [x] `jimpartition.sh`: add `split-preflight` (reusing `emit_check` /
    `map_group_slugs` / `old_group_territories` / `slug_token_match` /
    `san_field`) with the `ARM` fact and per-target checks incl. the
    extraction exception. Tests over a new `split_repo` fixture (extend
@@ -362,14 +362,14 @@ flowchart TD
    dirty-tree DIRT classification, usage/invalid-slug rc 2.
    **Verify:** `bash skills/meta-test/scripts/run.sh split_preflight`
 
-6. [ ] `jimpartition.sh`: add `renumber-map`. Tests: extraction tail move
+6. [x] `jimpartition.sh`: add `renumber-map`. Tests: extraction tail move
    (`006–009 → checkout/001–004`, remainder keeps), interleaved extraction
    (gaps preserved in remainder, fresh child dense), symmetric (all fresh,
    both children renumber from 001), wip row rides in sequence, unknown
    child / duplicate source / bad shape rc 1, usage rc 2.
    **Verify:** `bash skills/meta-test/scripts/run.sh renumber_map`
 
-7. [ ] `jimpartition.sh`: add `rewrite-refs` per Interface Contracts —
+7. [x] `jimpartition.sh`: add `rewrite-refs` per Interface Contracts —
    remap-file gate first (malformed line → rc 2, zero edits), guard pass
    before edit pass (the `rewrite-identity` loop-separation precedent).
    Tests: typed ref rewritten; dir-path prefix rewritten (issue `origin:`
@@ -381,7 +381,7 @@ flowchart TD
    rc 2; location-only output.
    **Verify:** `bash skills/meta-test/scripts/run.sh rewrite_refs`
 
-8. [ ] `rewrite-identity` hardening (closes issues #77 + #78, security
+8. [x] `rewrite-identity` hardening (closes issues #77 + #78, security
    Finding 4 precondition): narrow the dotted-key rule past a file-extension
    suffix set and the typed-ref rule to `group:`-adjacent shapes where
    safe (#77, keeping the gate diff as the net); add the missing negative /
@@ -390,7 +390,7 @@ flowchart TD
    refusal, invalid `<new>` slug, not-in-a-git-repo (#78).
    **Verify:** `bash skills/meta-test/scripts/run.sh rewrite_identity`
 
-9. [ ] `jimpartition.sh`: extend `identity-check` with the `op=split`
+9. [x] `jimpartition.sh`: extend `identity-check` with the `op=split`
    retired-slug arm (retired iff `old=` ∉ `new=` list, slug-gated). Tests:
    symmetric-split event yields `retired` mismatch on a territory embedding
    the old slug; extraction event (old ∈ new) yields none; malformed
@@ -399,14 +399,14 @@ flowchart TD
    `STRADDLE` facts (AC 4's deterministic floor evidence).
    **Verify:** `bash skills/meta-test/scripts/run.sh identity_check`
 
-10. [ ] Blueprint surface: create `references/migrate-arms.md` carrying the
+10. [x] Blueprint surface: create `references/migrate-arms.md` carrying the
     full `--rename` + `--split` arm protocols (extraction from SKILL.md +
     the new arm per DD 10, incl. the target-set row validation of security
     Finding 3 and the no-re-prompt retirement rule); slim both arms to
     stubs in `skills/blueprint/SKILL.md` and add the `--split` routing row.
     **Verify:** `test $(wc -l < skills/blueprint/SKILL.md) -le 500 && grep -q '\-\-split' skills/blueprint/SKILL.md && grep -q 'migrate-arms' skills/blueprint/SKILL.md`
 
-11. [ ] `agents/gatherer.md`: add the third dispatch role — split assignment
+11. [x] `agents/gatherer.md`: add the third dispatch role — split assignment
     evidence (child slug + proposed territory + substrate slice in;
     structured per-child evidence out), spanning-case disambiguation, and
     non-spec prose classification under the same freeze-on-doubt default;
@@ -414,7 +414,7 @@ flowchart TD
     (security Finding 6).
     **Verify:** `grep -q 'split' agents/gatherer.md && grep -c 'freeze-on-doubt' agents/gatherer.md | grep -qv '^0$'`
 
-12. [ ] Partition skill surface: add the `split <old> into <new>...` routing
+12. [x] Partition skill surface: add the `split <old> into <new>...` routing
     row + argument-hint + compact § Split runs (preflight → mode → substrate
     → proposal/fan-out → renumber → gate → materialize → verify → close) +
     the validation-checklist bullet in `skills/partition/SKILL.md`; write
@@ -435,7 +435,7 @@ flowchart TD
     Insight 7).
     **Verify:** `test $(wc -l < skills/partition/SKILL.md) -le 500 && grep -q 'Split runs' skills/partition/SKILL.md && grep -q 'Split protocol' skills/partition/references/partition-methodology.md`
 
-13. [ ] Full-suite gate: every per-script suite green; line budgets hold.
+13. [x] Full-suite gate: every per-script suite green; line budgets hold.
     **Verify:** `bash skills/meta-test/scripts/run.sh 2>&1 | tail -3 && test $(wc -l < skills/partition/SKILL.md) -le 500 && test $(wc -l < skills/blueprint/SKILL.md) -le 500`
 
 ## Requirements Coverage Summary
