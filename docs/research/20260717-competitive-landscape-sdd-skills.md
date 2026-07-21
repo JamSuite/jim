@@ -8,6 +8,8 @@ date: "2026-07-17"
 
 # Research: Competitive Landscape Refresh — SDD Skills & Frameworks (2026-07)
 
+A capture of all URL's from this file is in 20260717-competitive-landscape.csv 
+
 ## Scope & Method
 
 **Goal:** refresh jim's competitive-landscape picture (some references drifted since our last survey) and produce a *per-skill study guide* — Tier 1/2/3 external implementations we can study to evolve each core jim capability: **brainstorm, spec, research, plan, build, security** (plus a cross-cutting **meta / skill-authoring** lane, since jim itself is a Claude Code skills project).
