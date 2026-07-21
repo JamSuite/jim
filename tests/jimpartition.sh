@@ -1194,6 +1194,133 @@ case_jimpartition_identity_check_no_map_rc2() {
   assert_exit "missing arg rc" 2 "$RC"
 }
 
+# ─── Section: rewrite-identity cases (spec 046) ──────────────────────────────
+
+# rewrite_repo <name> — a rename_repo whose frozen numbered cart/001-initial
+#   spec is enriched with the three structural identity positions the verb
+#   rewrites (frontmatter `group:` value, a dotted requires group-half, a typed
+#   `Spec: <group>/NNN` ref) plus two free-prose `cart` mentions (the
+#   freeze-on-doubt boundary). Committed so the tree is clean and the numbered
+#   spec is tracked (the containment guard rejects an untracked target). Prints
+#   the repo dir.
+rewrite_repo() {
+  local repo; repo="$(rename_repo "$1")"
+  cat > "$repo/docs/specs/cart/001-initial/spec.md" <<'EOF'
+---
+group: "cart"
+---
+
+# 001 initial cart design
+
+Requires `cart.cart-session-api` from the cart group.
+Supersedes Spec: cart/000 during checkout.
+
+The cart group was introduced to hold session logic during checkout.
+EOF
+  git -C "$repo" add -A
+  git -C "$repo" commit -q -m "enrich numbered spec with identity positions"
+  printf '%s' "$repo"
+}
+
+# AC #10/#11: rewrite edits the three structurally-unambiguous identity
+# positions (group: frontmatter, dotted-key group-half, typed group/NNN ref) and
+# leaves the dotted surface half and free prose untouched (freeze-on-doubt).
+case_jimpartition_rewrite_identity_structural() {
+  local repo body spec T; T=$'\t'
+  repo="$(rewrite_repo rwid_struct)"
+  spec="docs/specs/cart/001-initial/spec.md"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/$spec")"
+  assert_match "group rewritten"        '^group: "checkout"$'          "$body"
+  assert_eq    "no old group remains"   "0" "$(printf '%s\n' "$body" | grep -c '^group: "cart"$')"
+  assert_match "dotted group-half rewritten"  'checkout\.cart-session-api' "$body"
+  assert_match "typed ref rewritten"          'Spec: checkout/000'         "$body"
+  assert_match "prose cart mention preserved" 'the cart group'             "$body"
+  assert_match "group record"  "^REWROTE${T}[^${T}]+${T}[0-9]+${T}group$"      "$OUT"
+  assert_match "dotted record" "^REWROTE${T}[^${T}]+${T}[0-9]+${T}dotted-key$" "$OUT"
+  assert_match "typed record"  "^REWROTE${T}[^${T}]+${T}[0-9]+${T}typed-ref$"  "$OUT"
+}
+
+# AC #10 / security Finding 6: success output is location-only — never the
+# matched or surrounding line content.
+case_jimpartition_rewrite_identity_location_only() {
+  local repo spec T; T=$'\t'
+  repo="$(rewrite_repo rwid_loc)"; spec="docs/specs/cart/001-initial/spec.md"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no 'session' leak"  "0" "$(printf '%s\n' "$OUT" | grep -c 'session')"
+  assert_eq "no 'Requires' leak" "0" "$(printf '%s\n' "$OUT" | grep -c 'Requires')"
+  assert_eq "all lines REWROTE-shaped" "0" \
+    "$(printf '%s\n' "$OUT" | grep -vcE "^REWROTE${T}[^${T}]+${T}[0-9]+${T}(group|dotted-key|typed-ref)$")"
+}
+
+# AC #11: a second identical run rewrites nothing (idempotent) — the file is
+# byte-stable and no REWROTE line is emitted.
+case_jimpartition_rewrite_identity_idempotent() {
+  local repo spec before after
+  repo="$(rewrite_repo rwid_idem)"; spec="docs/specs/cart/001-initial/spec.md"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "first run rc" 0 "$RC"
+  before="$(cat "$repo/$spec")"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "second run rc" 0 "$RC"
+  assert_eq "no rewrites second run" "" "$OUT"
+  after="$(cat "$repo/$spec")"
+  assert_eq "file byte-stable" "$before" "$after"
+}
+
+# security Finding 5: a target that symlinks out of the worktree is refused
+# before any edit (containment guard), leaving the outside file untouched.
+case_jimpartition_rewrite_identity_symlink_escape() {
+  local repo outside
+  repo="$(rewrite_repo rwid_sym)"
+  outside="$TMP_BASE/rwid_outside_target.md"
+  printf -- '---\ngroup: "cart"\n---\n' > "$outside"
+  ln -s "$outside" "$repo/docs/specs/cart/escape.md"
+  git -C "$repo" add -A && git -C "$repo" commit -q -m "add escaping symlink"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout docs/specs/cart/escape.md
+  assert_exit "symlink-escape rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_match "outside target intact" 'group: "cart"' "$(cat "$outside")"
+}
+
+# security Finding 5: an untracked target is refused (the verb edits only
+# tracked numbered specs).
+case_jimpartition_rewrite_identity_untracked() {
+  local repo
+  repo="$(rewrite_repo rwid_untrack)"
+  printf -- '---\ngroup: "cart"\n---\n' > "$repo/docs/specs/cart/002-untracked.md"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout docs/specs/cart/002-untracked.md
+  assert_exit "untracked rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC #3 / security Finding 6: a malformed frontmatter group value errors
+# location-only (rc 2), echoes no content, and applies no edit.
+case_jimpartition_rewrite_identity_malformed_group() {
+  local repo spec
+  repo="$(rewrite_repo rwid_malformed)"; spec="docs/specs/cart/001-initial/spec.md"
+  printf -- '---\ngroup: "not a slug!"\n---\n\n# body\n' > "$repo/$spec"
+  git -C "$repo" add -A && git -C "$repo" commit -q -m "malformed group value"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "malformed rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_eq "no content echoed" "0" "$(printf '%s\n' "$ERR" | grep -c 'not a slug')"
+  assert_match "file left unedited" 'not a slug!' "$(cat "$repo/$spec")"
+}
+
+# rc 2 on an invalid slug and on no file arguments (a recorded name can never
+# inject; usage is a caller error).
+case_jimpartition_rewrite_identity_usage() {
+  local repo
+  repo="$(rewrite_repo rwid_usage)"
+  run_jimpartition_in "$repo" rewrite-identity 'Bad.Slug' checkout docs/specs/cart/001-initial/spec.md
+  assert_exit "invalid old slug rc" 2 "$RC"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout
+  assert_exit "no files rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

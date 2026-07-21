@@ -61,6 +61,7 @@ usage: jimpartition.sh <subcommand> [args]
   coverage  <territories-file>                  uncovered dirs → UNCOVERED/TOTAL
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
+  rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
   health-eval <specs-dir>                        threshold eval over reconcile series → THRESHOLDS/INVALID/CROSSED
   identity-check <map> [<specs-dir>]             territory name-mismatch sensor → MISMATCH foreign|retired
@@ -1088,6 +1089,147 @@ cmd_edges_diff() {
   return $rc
 }
 
+# ─── Section: rewrite-identity (spec 046) ────────────────────────────────────
+#
+# The ONE in-place file-mutating verb in this otherwise stdout-only substrate
+# script. It carries the deterministic mechanical floor of a `rewrite`-mode group
+# migration: the structurally-unambiguous identity edits in a moved numbered
+# spec's body. Free prose is never touched — that judgment is the read-only
+# gatherer's (freeze-on-doubt). As the first mutating verb it clears the
+# write-primitive containment guard (each target under the worktree top, a
+# symlink escape or non-tracked path refused) BEFORE any edit, so the
+# deterministic path is safer than a raw skill Edit (security Finding 5).
+
+# rewrite_scan_malformed <file> — read-only pre-scan: emit `<file>:<line>`
+#   (location-only, NO content) for each frontmatter `group:` line whose value is
+#   not a single slug token. A corrupt identity frontmatter is fail-closed —
+#   the verb refuses to guess rather than risk corrupting substance (AC 3;
+#   security Finding 6 keeps the signal location-only).
+rewrite_scan_malformed() {
+  awk -v file="$1" '
+    NR == 1 && $0 == "---" { infm = 1; next }
+    infm && $0 == "---"    { infm = 0; next }
+    infm && /^[ \t]*group:[ \t]/ {
+      val = $0; sub(/^[ \t]*group:[ \t]*/, "", val); sub(/[ \t]*$/, "", val)
+      if (val ~ /^".*"$/)              v = substr(val, 2, length(val) - 2)
+      else if (val ~ /^\047.*\047$/)   v = substr(val, 2, length(val) - 2)
+      else                             v = val
+      if (v !~ /^[a-z0-9][a-z0-9-]*$/) print file ":" NR
+    }' "$1"
+}
+
+# cmd_rewrite_identity <old> <new> <file>... — rewrite whole-token identity
+#   occurrences of <old> to <new>, in place, in each numbered-spec <file>:
+#   frontmatter `group:` value, dotted-key group-halves (`<old>.<surface>` — the
+#   surface half untouched), and typed group/NNN refs (`<old>/<digit>`). Free
+#   prose is left for the gatherer. Emits one location-only
+#   `REWROTE\t<file>\t<line>\t<kind>` per edit; success and error output alike
+#   never carry matched or surrounding content (security Finding 6). rc: 0
+#   applied (zero edits is success) · 2 usage / invalid slug / a target that
+#   fails the containment guard / a malformed identity frontmatter.
+cmd_rewrite_identity() {
+  local old="${1:-}" new="${2:-}"
+  if [[ -z "$old" || -z "$new" ]]; then
+    echo "jimpartition rewrite-identity: need <old> <new> <file>..." >&2; return 2
+  fi
+  shift 2
+  if [[ $# -eq 0 ]]; then
+    echo "jimpartition rewrite-identity: need at least one <file>" >&2; return 2
+  fi
+  if ! valid_slug "$old" || ! valid_slug "$new"; then
+    echo "jimpartition rewrite-identity: invalid slug" >&2; return 2
+  fi
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "jimpartition rewrite-identity: not in a git repo" >&2; return 2
+  fi
+
+  # Guard pass — run to completion over ALL targets before any edit (the
+  # write-primitive containment precedent, jimledger commit-map :204-227): each
+  # path shape-valid, resolved inside the worktree top (rejecting a symlink
+  # escape), and tracked; and no target carries a malformed identity frontmatter.
+  # Any failure aborts with a location-only reason and no file touched.
+  local f resolved
+  for f in "$@"; do
+    if ! valid_relpath "$f"; then
+      echo "jimpartition rewrite-identity: unsafe path rejected: $(san_field "$f")" >&2; return 2
+    fi
+    if ! resolved="$(realpath -m -- "$f" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "jimpartition rewrite-identity: path escapes worktree: $(san_field "$f")" >&2; return 2
+    fi
+    if [[ -z "$(git ls-files -- "$f" 2>/dev/null)" ]]; then
+      echo "jimpartition rewrite-identity: path not tracked: $(san_field "$f")" >&2; return 2
+    fi
+    local bad
+    bad="$(rewrite_scan_malformed "$f")"
+    if [[ -n "$bad" ]]; then
+      echo "jimpartition rewrite-identity: malformed group frontmatter at $(san_field "$bad")" >&2; return 2
+    fi
+  done
+
+  # Edit pass — every guard passed. Each file's rewrite runs in one awk: the
+  # rewritten body to a temp, the location-only REWROTE records to a side file.
+  # old/new are slug-gated above, so neither can carry a regex/quote
+  # metacharacter into awk (-v literals).
+  local rwtmp tmp_out rec
+  if ! rwtmp="$(mktemp -d 2>/dev/null)"; then
+    echo "jimpartition rewrite-identity: cannot create temp dir" >&2; return 2
+  fi
+  tmp_out="$rwtmp/out"; rec="$rwtmp/rec"
+  for f in "$@"; do
+    : > "$rec"
+    awk -v old="$old" -v new="$new" -v file="$f" -v recfile="$rec" '
+      BEGIN { oldn = length(old) }
+      {
+        line = $0
+        if (NR == 1 && line == "---") { infm = 1; print; next }
+        if (infm && line == "---")    { infm = 0; print; next }
+        if (infm && line ~ /^[ \t]*group:[ \t]/) {
+          val = line; sub(/^[ \t]*group:[ \t]*/, "", val); sub(/[ \t]*$/, "", val)
+          q = ""
+          if (val ~ /^".*"$/)            { q = "\""; v = substr(val, 2, length(val) - 2) }
+          else if (val ~ /^\047.*\047$/) { q = "\047"; v = substr(val, 2, length(val) - 2) }
+          else                           { v = val }
+          if (v == old) {
+            ind = line; sub(/group:.*/, "", ind)
+            printf "%sgroup: %s%s%s\n", ind, q, new, q
+            print "REWROTE\t" file "\t" NR "\tgroup" > recfile
+            next
+          }
+          print line; next
+        }
+        # Body token scan: rewrite <old> only as a whole slug token in a
+        # dotted-key (<old>.[a-z0-9]) or typed group/NNN ref (<old>/[0-9])
+        # position; leave prose and code-path segments to the gatherer.
+        out = ""; i = 1
+        while ((p = index(substr(line, i), old)) > 0) {
+          pos = i + p - 1
+          before = (pos > 1) ? substr(line, pos - 1, 1) : ""
+          after  = substr(line, pos + oldn, 1)
+          after2 = substr(line, pos + oldn + 1, 1)
+          isbound = (before !~ /[a-z0-9-]/ && after !~ /[a-z0-9-]/)
+          dotted  = (after == "." && after2 ~ /[a-z0-9]/)
+          typed   = (after == "/" && after2 ~ /[0-9]/)
+          if (isbound && (dotted || typed)) {
+            out = out substr(line, i, pos - i) new
+            print "REWROTE\t" file "\t" NR "\t" (dotted ? "dotted-key" : "typed-ref") > recfile
+          } else {
+            out = out substr(line, i, pos - i + oldn)
+          }
+          i = pos + oldn
+        }
+        out = out substr(line, i)
+        print out
+      }' "$f" > "$tmp_out"
+    if [[ -s "$rec" ]]; then
+      cat -- "$tmp_out" > "$f"
+      cat -- "$rec"
+    fi
+  done
+  rm -rf -- "$rwtmp"
+  return 0
+}
+
 # ─── Section: health (spec 044) ──────────────────────────────────────────────
 #
 # Two read-only verbs for /jim:partition health. Like the rest of this script
@@ -1256,6 +1398,7 @@ main() {
     coverage)  shift; cmd_coverage "$@" ;;
     rename-preflight) shift; cmd_rename_preflight "$@" ;;
     occurrences) shift; cmd_occurrences "$@" ;;
+    rewrite-identity) shift; cmd_rewrite_identity "$@" ;;
     edges-diff) shift; cmd_edges_diff "$@" ;;
     health-eval) shift; cmd_health_eval "$@" ;;
     identity-check) shift; cmd_identity_check "$@" ;;
