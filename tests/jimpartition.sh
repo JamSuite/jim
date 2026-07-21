@@ -1477,6 +1477,83 @@ case_jimpartition_split_preflight_usage_rc2() {
   assert_exit "invalid old slug rc" 2 "$RC"
 }
 
+# ─── Section: renumber-map cases (spec 047 Task 6) ───────────────────────────
+
+# AC 7/11: extraction tail move — the continuing remainder (child == old) keeps
+# its numbers; the fresh child renumbers its arrivals to a dense 001..N by source
+# order.
+case_jimpartition_renumber_map_extraction_tail() {
+  local assign
+  assign=$(fixture rm-tail.txt $'001\tcart\n002\tcart\n005\tcart\n006\tcheckout\n007\tcheckout\n008\tcheckout\n009\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign"
+  assert_exit "rc" 0 "$RC"
+  assert_match "remainder keeps 005" $'MAP\tcart/005\tcart/005'      "$OUT"
+  assert_match "006 -> checkout/001" $'MAP\tcart/006\tcheckout/001'  "$OUT"
+  assert_match "009 -> checkout/004" $'MAP\tcart/009\tcheckout/004'  "$OUT"
+}
+
+# AC 7: interleaved extraction — the remainder preserves its numbering gaps while
+# the fresh child is dense from 001.
+case_jimpartition_renumber_map_interleaved() {
+  local assign
+  assign=$(fixture rm-inter.txt $'001\tcart\n003\tcart\n005\tcheckout\n007\tcheckout\n009\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign"
+  assert_exit "rc" 0 "$RC"
+  assert_match "gap 003 preserved" $'MAP\tcart/003\tcart/003'     "$OUT"
+  assert_match "fresh dense 005->001" $'MAP\tcart/005\tcheckout/001' "$OUT"
+  assert_match "fresh dense 009->003" $'MAP\tcart/009\tcheckout/003' "$OUT"
+}
+
+# AC 7: symmetric split — old ∉ targets, so BOTH children are fresh and each
+# renumbers from 001.
+case_jimpartition_renumber_map_symmetric() {
+  local assign
+  assign=$(fixture rm-sym.txt $'001\tshop\n002\tshop\n003\tstore\n004\tstore')
+  run_jimpartition renumber-map cart shop,store "$assign"
+  assert_exit "rc" 0 "$RC"
+  assert_match "shop from 001"  $'MAP\tcart/001\tshop/001'  "$OUT"
+  assert_match "store from 001" $'MAP\tcart/003\tstore/001' "$OUT"
+}
+
+# AC 11: a wip row rides the renumber in source order, keeping its -wip suffix.
+case_jimpartition_renumber_map_wip_rides() {
+  local assign
+  assign=$(fixture rm-wip.txt $'006\tcheckout\n007\tcheckout\n010-wip\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign"
+  assert_exit "rc" 0 "$RC"
+  assert_match "wip renumbered, suffix kept" $'MAP\tcart/010-wip\tcheckout/003-wip' "$OUT"
+}
+
+# rc 1: an assignment to a child not in the target set.
+case_jimpartition_renumber_map_unknown_child_rc1() {
+  local assign
+  assign=$(fixture rm-unk.txt $'006\tnonesuch')
+  run_jimpartition renumber-map cart cart,checkout "$assign"
+  assert_exit "rc" 1 "$RC"
+}
+
+# rc 1: the same source id assigned twice.
+case_jimpartition_renumber_map_duplicate_source_rc1() {
+  local assign
+  assign=$(fixture rm-dup.txt $'006\tcheckout\n006\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign"
+  assert_exit "rc" 1 "$RC"
+}
+
+# rc 1: a source token that is not an NNN / NNN-wip shape.
+case_jimpartition_renumber_map_bad_shape_rc1() {
+  local assign
+  assign=$(fixture rm-bad.txt $'6\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign"
+  assert_exit "rc" 1 "$RC"
+}
+
+# rc 2 on usage (missing args).
+case_jimpartition_renumber_map_usage_rc2() {
+  run_jimpartition renumber-map cart cart,checkout
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

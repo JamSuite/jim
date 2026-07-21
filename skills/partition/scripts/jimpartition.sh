@@ -61,6 +61,7 @@ usage: jimpartition.sh <subcommand> [args]
   coverage  <territories-file>                  uncovered dirs → UNCOVERED/TOTAL
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
   split-preflight <map> <specs-dir> <old> <new>...  ARM/CHECK/DIRT/TERRITORY-IDENTITY (spec 047)
+  renumber-map <old> <targets-csv> <assign-file>   split spec renumber remap → MAP (spec 047)
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
@@ -1129,6 +1130,92 @@ cmd_split_preflight() {
   return 0
 }
 
+# cmd_renumber_map <old> <targets-csv> <assign-file> — compute the full spec
+#   renumber remap for a split (spec 047), the deterministic id arithmetic the
+#   gate presents verbatim (no LLM arithmetic — the 045 doctrine). Each assign
+#   line is `<NNN[-wip]>\t<child>` (child ∈ targets). Emits one
+#   `MAP\t<old>/<src>\t<child>/<new>` per assignment: a continuing child
+#   (child == old) keeps its numbers; a fresh child renumbers its arrivals to a
+#   dense 001..N ordered by ascending source number (a `-wip` row rides in the
+#   same sequence, suffix preserved). rc 0 · 1 validation (unknown child,
+#   duplicate source, bad shape) · 2 usage.
+cmd_renumber_map() {
+  local old="${1:-}" targets_csv="${2:-}" assign="${3:-}"
+  if [[ -z "$old" || -z "$targets_csv" || -z "$assign" ]]; then
+    echo "jimpartition renumber-map: need <old> <targets-csv> <assign-file>" >&2; return 2
+  fi
+  if ! valid_slug "$old"; then
+    echo "jimpartition renumber-map: invalid old slug: $old" >&2; return 2
+  fi
+  if [[ ! -f "$assign" ]]; then
+    echo "jimpartition renumber-map: assign-file not found: $assign" >&2; return 2
+  fi
+  local -a targets=()
+  IFS=',' read -r -a targets <<< "$targets_csv"
+  if [[ ${#targets[@]} -lt 2 ]]; then
+    echo "jimpartition renumber-map: need >=2 targets" >&2; return 2
+  fi
+  local t
+  for t in "${targets[@]}"; do
+    valid_slug "$t" || { echo "jimpartition renumber-map: invalid target slug: $t" >&2; return 2; }
+  done
+
+  local rowsfile
+  rowsfile="$(mktemp 2>/dev/null)" || { echo "jimpartition renumber-map: cannot create temp" >&2; return 2; }
+
+  # Validate every assignment; accumulate `<child>\t<NNN>\t<src>` rows. Any bad
+  # line aborts with rc 1 and no output.
+  local line src child rest nnn ok rc=0
+  local -A seen=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" ]] && continue
+    IFS=$'\t' read -r src child rest <<<"$line"
+    if [[ -z "${src:-}" || -z "${child:-}" || -n "${rest:-}" ]]; then
+      echo "jimpartition renumber-map: malformed assign line: $line" >&2; rc=1; break
+    fi
+    if [[ ! "$src" =~ ^[0-9]{3}(-wip)?$ ]]; then
+      echo "jimpartition renumber-map: bad source shape: $src" >&2; rc=1; break
+    fi
+    ok=0
+    for t in "${targets[@]}"; do [[ "$child" == "$t" ]] && ok=1; done
+    if [[ $ok -eq 0 ]]; then
+      echo "jimpartition renumber-map: unknown child (not in targets): $child" >&2; rc=1; break
+    fi
+    if [[ -n "${seen[$src]:-}" ]]; then
+      echo "jimpartition renumber-map: duplicate source: $src" >&2; rc=1; break
+    fi
+    seen[$src]=1
+    nnn="${src%%-*}"
+    printf '%s\t%s\t%s\n' "$child" "$nnn" "$src" >> "$rowsfile"
+  done < "$assign"
+
+  if [[ $rc -ne 0 ]]; then rm -f "$rowsfile"; return 1; fi
+
+  # Global numeric sort by source NNN; per-child filtering below then sees each
+  # child's arrivals in ascending source order.
+  local sorted="$rowsfile.sorted"
+  sort -t$'\t' -k2,2n -k3,3 "$rowsfile" > "$sorted"
+
+  local ch seq srctok suffix newtok _c _n
+  for ch in "${targets[@]}"; do
+    seq=0
+    while IFS=$'\t' read -r _c _n srctok; do
+      [[ -z "${srctok:-}" ]] && continue
+      suffix=""
+      [[ "$srctok" == *-wip ]] && suffix="-wip"
+      if [[ "$ch" == "$old" ]]; then
+        newtok="$srctok"                       # continuing child keeps its number
+      else
+        seq=$(( seq + 1 ))
+        newtok="$(printf '%03d' "$seq")$suffix" # fresh child: dense 001..N
+      fi
+      printf 'MAP\t%s/%s\t%s/%s\n' "$old" "$srctok" "$ch" "$newtok"
+    done < <(awk -F'\t' -v c="$ch" '$1==c' "$sorted")
+  done
+  rm -f "$rowsfile" "$sorted"
+  return 0
+}
+
 # cmd_occurrences <slug> <path>... — enumerate whole-slug-token occurrences of
 #   <slug> across the given files, one HIT per (file, line, kind). Kind is a
 #   STRUCTURAL hint derived from the match's position only — dotted-key (slug is
@@ -1529,6 +1616,7 @@ main() {
     coverage)  shift; cmd_coverage "$@" ;;
     rename-preflight) shift; cmd_rename_preflight "$@" ;;
     split-preflight) shift; cmd_split_preflight "$@" ;;
+    renumber-map) shift; cmd_renumber_map "$@" ;;
     occurrences) shift; cmd_occurrences "$@" ;;
     rewrite-identity) shift; cmd_rewrite_identity "$@" ;;
     edges-diff) shift; cmd_edges_diff "$@" ;;
