@@ -11,9 +11,25 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T09:23:23Z
-updated: 2026-07-11T19:25:38Z
+updated: 2026-07-21T21:22:29Z
 origin: docs/specs/jim/034-contract-graph/plan.md
 ---
+
+## Update (2026-07-21) — spec 047 hit it again; gatherer.md now over budget
+
+The `/jim:partition split` build (spec 047) is another instance of the ceiling
+forcing an unplanned extraction mid-build: blueprint SKILL.md was at
+**498/500**, so the new `--split` arm could only land by extracting **both**
+migrate arms' protocols to a new `references/migrate-arms.md` — and the body is
+**back at 500/500**. Still the targeted-lever pattern, not the durable
+§ Update mode / § Project tier → references restructure this issue asks for.
+
+`agents/gatherer.md` worsened too: the split dispatch-role paragraph took it
+from ~798 to **905 words**, past its own progressive-disclosure budget. The
+`skill-budget` invariant that would flag it is `registry:skill-line-budget` and
+currently **unconfigured**, so nothing caught it during the 047 review. Both
+progressive-disclosure surfaces this issue names are now at/over the ceiling —
+the durable restructure is overdue.
 
 ## Reopened (2026-07-11) — the fix did not hold
 

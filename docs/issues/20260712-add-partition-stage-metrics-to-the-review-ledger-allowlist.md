@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-12T08:06:17Z
-updated: 2026-07-12T08:06:17Z
+updated: 2026-07-21T21:22:29Z
 origin: docs/specs/jim/044-partition-health/plan.md
 ---
 
@@ -22,7 +22,8 @@ origin: docs/specs/jim/044-partition-health/plan.md
 Surfaced while planning spec 044 (partition-health sensors). `/jim:partition`
 records first-class stage events on the specs-root ledger — `partition
 started`/`finished tier=project` since spec 038, `op=rename` since spec 043,
-and `op=health` once spec 044 ships — but `jimledger.sh`'s per-stage metrics
+`op=health` since spec 044, and `op=split` since spec 047 — but
+`jimledger.sh`'s per-stage metrics
 allowlist (`LEDGER_STAGES`, consumed by `cmd_metrics`) still reads `spec
 research plan sec build review blueprint verify`. The events are durable and
 parse fine via the generic `event` verb; they are simply invisible to the
