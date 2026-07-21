@@ -298,14 +298,21 @@ The resolved mode is recorded on the close event as `identity=<mode>` (step 7).
    code-surface / historical keeps, the code-move fork (when a territory is
    identity-bearing), the config split (an offered `verify_appetite_<old>` Edit
    vs. informational command / territory rows), and the informational
-   out-of-scope mentions (ARCHITECTURE.md excluded). Evidence is location-only
+   out-of-scope mentions (ARCHITECTURE.md excluded). Under `rewrite`, present each
+   numbered-body identity edit as a **secret-scrubbed old→new diff** — the changed
+   lines, never a bare changed-file count (AC #12). Evidence is location-only
    and scrubbed (AC #19). All-or-nothing; a decline writes nothing.
 5. **Materialize** (on approval): the chosen code-move arm — *move-now*
    (`rename-tracked` per territory pair + import-fix Edits + `commit-rename
    code`) or *docs-only* (a confirmed code-move issue via `new.sh`, territory
-   left truthful) → `rename-tracked` the spec dir → `Skill(jim:blueprint)
-   --rename <old> <new> --changes <file>` for the doc edits (it defers commits
-   and returns the touched-file list) → `commit-rename docs` → the offered
+   left truthful) → `rename-tracked` the spec dir → **under `rewrite`, migrate
+   each moved numbered body: `jimpartition.sh rewrite-identity <old> <new>
+   <spec-file>...` for the mechanical identity fields, then `Edit` the
+   gatherer-approved high-confidence prose (ambiguous prose left frozen —
+   freeze-on-doubt); `forward`/`immutable` skip this, bodies stay byte-frozen** →
+   `Skill(jim:blueprint) --rename <old> <new> --changes <file>` for the doc edits
+   (it defers commits and returns the touched-file list) → `commit-rename docs`
+   (the moved spec-dir pair auto-stages the edited bodies) → the offered
    `verify_appetite_<old>` config Edit if approved. Invariant ids and provides
    surface names ratchet unchanged (AC #11); commits land as the fixed
    three-commit choreography (AC #12).
