@@ -300,7 +300,8 @@ The resolved mode is recorded on the close event as `identity=<mode>` (step 7).
    vs. informational command / territory rows), and the informational
    out-of-scope mentions (ARCHITECTURE.md excluded). Under `rewrite`, present each
    numbered-body identity edit as a **secret-scrubbed old→new diff** — the changed
-   lines, never a bare changed-file count (AC #12). Evidence is location-only
+   lines, never a bare changed-file count (AC #12) — and list each freeze-on-doubt
+   prose mention left frozen by `file:line` (AC #13). Evidence is location-only
    and scrubbed (AC #19). All-or-nothing; a decline writes nothing.
 5. **Materialize** (on approval): the chosen code-move arm — *move-now*
    (`rename-tracked` per territory pair + import-fix Edits + `commit-rename
@@ -323,8 +324,15 @@ The resolved mode is recorded on the close event as `identity=<mode>` (step 7).
    command from operator config or an explicit developer instruction only, never
    synthesized (AC #17).
 7. **Close** — `partition finished tier=project op=rename old=<old> new=<new>
-   outcome=<renamed|blocked|declined>` on the specs-root ledger, then
-   `commit-map` (map + ledger).
+   identity=<mode> frozen=<count> outcome=<renamed|blocked|declined>` on the
+   specs-root ledger, then `commit-map` (map + ledger). `identity=<mode>` is the
+   resolved `spec_migration` mode (the durable record of how this move handled
+   identity, AC #2); `frozen=<count>` is the non-negative number of
+   freeze-on-doubt prose mentions left unrewritten — display-data-only bounded
+   values, the spec 044 `faces_max_group=` precedent. Offer the frozen
+   `file:line` locations as one tracked follow-up through the standard candidate
+   batch, so a deliberately-frozen mention stays traceable rather than vanishing
+   (AC #13).
 
 ## Health runs (`health`)
 
