@@ -177,6 +177,83 @@ case_jimfile_next_id_ignores_000_blueprint() {
   assert_eq "000-blueprint ignored; max is 002" "003" "$OUT"
 }
 
+# ─── spec 047: next-id vacated-id floor (consults the specs-root ledger) ──────
+
+# AC 11: a tail-move split vacated cart/006..009 — the floor raises next-id past
+# the directory max, so cart never re-mints a moved id.
+case_jimfile_next_id_split_floor_raises() {
+  local specs cfg
+  specs=$(empty_dir nextid_floor)
+  mkdir -p "$specs/cart/001-a" "$specs/cart/005-e"
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001,cart/009:checkout/004\n' > "$specs/ledger.md"
+  cfg=$(fixture nextid-floor.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id cart
+  assert_exit "rc" 0 "$RC"
+  assert_eq "floor 009 raises to 010" "010" "$OUT"
+}
+
+# AC 11: the merge is monotonic — when the directory max exceeds the vacated
+# floor, the directory wins (floor only ever raises, never lowers).
+case_jimfile_next_id_dir_max_wins() {
+  local specs cfg
+  specs=$(empty_dir nextid_dirwins)
+  mkdir -p "$specs/cart/012-l"
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001,cart/009:checkout/004\n' > "$specs/ledger.md"
+  cfg=$(fixture nextid-dirwins.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id cart
+  assert_eq "dir max 012 wins over floor 009" "013" "$OUT"
+}
+
+# AC 11: no specs-root ledger → the floor consult degrades and next-id keeps its
+# directory-only behavior (older checkouts unaffected).
+case_jimfile_next_id_no_ledger_dir_behavior() {
+  local specs cfg
+  specs=$(empty_dir nextid_noledger)
+  mkdir -p "$specs/cart/001-a" "$specs/cart/002-b"
+  cfg=$(fixture nextid-noledger.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id cart
+  assert_exit "rc" 0 "$RC"
+  assert_eq "pure dir max+1" "003" "$OUT"
+}
+
+# AC 11 / security Finding 2: a malformed moved= element is inert end-to-end — a
+# valid sibling still floors next-id (fail-closed floor).
+case_jimfile_next_id_ignores_malformed_moved() {
+  local specs cfg
+  specs=$(empty_dir nextid_badmoved)
+  mkdir -p "$specs/cart/002-b"
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=GARBAGE,cart/006:checkout/001\n' > "$specs/ledger.md"
+  cfg=$(fixture nextid-badmoved.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id cart
+  assert_eq "valid sibling floors to 007" "007" "$OUT"
+}
+
+# AC 11: a group name retired by a symmetric split and later re-minted floors
+# PAST the old archive — a fresh empty cart/ still gets 004, never 001, so a
+# vacated id never comes to mean two specs.
+case_jimfile_next_id_retired_group_remint_floors() {
+  local specs cfg
+  specs=$(empty_dir nextid_remint)
+  mkdir -p "$specs/cart"   # re-minted, empty
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=shop,store;moved=cart/001:shop/001,cart/003:store/001\n' > "$specs/ledger.md"
+  cfg=$(fixture nextid-remint.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id cart
+  assert_eq "floors past old archive" "004" "$OUT"
+}
+
+# AC 11: id-space exhaustion — a next id above 999 is refused rc 1 with a stderr
+# message, never emitting a 4-digit id.
+case_jimfile_next_id_999_exhaustion_rc1() {
+  local specs cfg
+  specs=$(empty_dir nextid_exhaust)
+  mkdir -p "$specs/cart/999-z"
+  cfg=$(fixture nextid-exhaust.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id cart
+  assert_exit "rc" 1 "$RC"
+  assert_match "names exhaustion" "id space exhausted" "$ERR"
+  assert_eq "no id printed" "" "$OUT"
+}
+
 # AC: mv-spec renames the {id}-wip dir to {id}-{name}; the ledger travels with it
 case_jimfile_mv_spec_renames_wip() {
   local specs cfg

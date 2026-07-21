@@ -74,6 +74,12 @@ export LC_ALL=C
 # travels with the plugin tree (skills/file/scripts/ → skills/conf/scripts/).
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
 
+# Path to the sibling jimledger.sh (spec 047 vacated-id floor). BASH_SOURCE-relative
+# like JIMCONF (skills/file/scripts/ → skills/review/scripts/). Consulted
+# best-effort by next-id — an older checkout without the review skill resolves to
+# a non-existent path and degrades to directory-only id derivation.
+JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../review/scripts" 2>/dev/null && pwd)/jimledger.sh"
+
 # Valid artifact kinds. Drives `path <kind>` validation and `kinds` output.
 readonly KINDS=(spec plan research debug brainstorm issue blueprint)
 
@@ -323,7 +329,28 @@ cmd_next_id() {
       fi
     done
   fi
-  printf '%03d\n' $(( max + 1 ))
+  # Vacated-id floor (spec 047, AC 11): consult the specs-root ledger's op=split
+  # remap so the group never re-mints an id a split moved out — the tail-move and
+  # retired-group-re-mint cases. Best-effort and monotonic: an absent script, a
+  # non-zero rc, or empty output leaves the floor unset, and the floor only ever
+  # raises max, never lowers it (older checkouts degrade to directory-only).
+  if [[ -f "$JIMLEDGER" ]]; then
+    local floor floor_clean
+    floor="$(bash "$JIMLEDGER" vacated-max "$specs_root" "$group" 2>/dev/null)" || floor=""
+    if [[ "$floor" =~ ^[0-9]{3}$ ]]; then
+      floor_clean="$(printf '%s' "$floor" | sed 's/^0*//')"
+      [[ -z "$floor_clean" ]] && floor_clean=0
+      if (( floor_clean > max )); then
+        max=$floor_clean
+      fi
+    fi
+  fi
+  local next=$(( max + 1 ))
+  if (( next > 999 )); then
+    echo "error: id space exhausted for $group (next id would exceed 999)" >&2
+    return 1
+  fi
+  printf '%03d\n' "$next"
 }
 
 # cmd_mv_spec <group> <id> <new-name>
