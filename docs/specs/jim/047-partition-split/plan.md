@@ -2,7 +2,7 @@
 title: "Partition split"
 spec: "docs/specs/jim/047-partition-split/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Partition split — Plan
