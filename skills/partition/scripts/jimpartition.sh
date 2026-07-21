@@ -1398,7 +1398,7 @@ cmd_rewrite_identity() {
   for f in "$@"; do
     : > "$rec"
     awk -v old="$old" -v new="$new" -v file="$f" -v recfile="$rec" \
-        -v exts="js ts jsx tsx mjs cjs md json py rb go rs ex exs sh bash toml yaml yml txt html css cfg ini xml csv" '
+        -v exts="js ts jsx tsx mjs cjs rs ex exs go py rb java c h cc cpp cxx hh hpp hxx cs php kt kts swift scala sc clj cljs cljc hs pl pm lua dart r md json sh bash toml yaml yml txt html css cfg ini xml csv" '
       BEGIN {
         oldn = length(old)
         ne = split(exts, ea, " "); for (ei = 1; ei <= ne; ei++) EXT[ea[ei]] = 1

@@ -1414,6 +1414,7 @@ origin: cart/006
 Requires `cart.cart-session-api` from the cart group.
 Supersedes Spec: cart/000 during checkout.
 Config lives in cart.json and cart.py files.
+Handlers live in cart.java and cart.c and cart.rb sources.
 The path cart/handlers holds code.
 EOF
   git -C "$repo" add -A
@@ -1433,6 +1434,20 @@ case_jimpartition_rewrite_identity_skips_extension_dotted() {
   assert_match "cart.json filename untouched" 'cart\.json'                 "$body"
   assert_match "cart.py filename untouched"   'cart\.py'                   "$body"
   assert_match "real dotted-key rewritten"    'checkout\.cart-session-api' "$body"
+}
+
+# #77: the extension-exclusion set covers the source extensions classify_ext
+# recognizes — a C-family / compiled-lang filename mention (cart.java / cart.c /
+# cart.rb) is a filename, not a group.surface dotted-key, so it is left untouched.
+case_jimpartition_rewrite_identity_skips_cfamily_extension() {
+  local repo spec body; repo="$(rwid_hard_repo rwid_cfam)"
+  spec="docs/specs/cart/001-initial/spec.md"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/$spec")"
+  assert_match "cart.java untouched" 'cart\.java' "$body"
+  assert_match "cart.c untouched"    'cart\.c'    "$body"
+  assert_match "cart.rb untouched"   'cart\.rb'   "$body"
 }
 
 # #77: a non-group frontmatter field is skipped — identity in frontmatter is
