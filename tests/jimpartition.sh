@@ -1393,6 +1393,103 @@ case_jimpartition_rewrite_identity_usage() {
   assert_exit "no files rc" 2 "$RC"
 }
 
+# ─── rewrite-identity hardening (spec 047 Task 8; closes #77 / #78) ───────────
+
+# rwid_hard_repo <name> — a rename_repo whose numbered cart spec carries the
+#   over-match positions #77/#78 name: a real dotted-key (rewritten), a typed body
+#   ref (rewritten), a non-group frontmatter field, a file-extension dotted
+#   (cart.json / cart.py — filenames, not group.surface), and a cart/handlers path
+#   segment (a subdir, not a typed ref). Committed clean. Prints the repo dir.
+rwid_hard_repo() {
+  local repo; repo="$(rename_repo "$1")"
+  cat > "$repo/docs/specs/cart/001-initial/spec.md" <<'EOF'
+---
+group: "cart"
+origin: cart/006
+---
+
+# 001 initial cart design
+
+Requires `cart.cart-session-api` from the cart group.
+Supersedes Spec: cart/000 during checkout.
+Config lives in cart.json and cart.py files.
+The path cart/handlers holds code.
+EOF
+  git -C "$repo" add -A
+  git -C "$repo" commit -q -m "enrich spec with over-match positions"
+  printf '%s' "$repo"
+}
+
+# #77: the dotted-key rule excludes a bare file-extension suffix — cart.json /
+# cart.py are filenames, left untouched, while a real group.surface dotted-key
+# still rewrites.
+case_jimpartition_rewrite_identity_skips_extension_dotted() {
+  local repo spec body; repo="$(rwid_hard_repo rwid_ext)"
+  spec="docs/specs/cart/001-initial/spec.md"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/$spec")"
+  assert_match "cart.json filename untouched" 'cart\.json'                 "$body"
+  assert_match "cart.py filename untouched"   'cart\.py'                   "$body"
+  assert_match "real dotted-key rewritten"    'checkout\.cart-session-api' "$body"
+}
+
+# #77: a non-group frontmatter field is skipped — identity in frontmatter is
+# ONLY `group:`; a cart/NNN-shaped value elsewhere is left for rewrite-refs.
+case_jimpartition_rewrite_identity_skips_nongroup_frontmatter() {
+  local repo spec body; repo="$(rwid_hard_repo rwid_fm)"
+  spec="docs/specs/cart/001-initial/spec.md"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/$spec")"
+  assert_match "group identity rewritten"   '^group: "checkout"$' "$body"
+  assert_match "non-group frontmatter kept" '^origin: cart/006$'  "$body"
+}
+
+# #78: a cart/subdir path segment is left untouched — only <old>/<digit> is a
+# typed ref (the after2 alpha-negative branch).
+case_jimpartition_rewrite_identity_path_segment_untouched() {
+  local repo spec; repo="$(rwid_hard_repo rwid_seg)"
+  spec="docs/specs/cart/001-initial/spec.md"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "path segment kept" 'cart/handlers' "$(cat "$repo/$spec")"
+}
+
+# #78: a multi-file batch with one guard-failing (untracked) target edits nothing
+# — the good tracked spec is left unedited (all guards before any edit).
+case_jimpartition_rewrite_identity_guard_abort() {
+  local repo good; repo="$(rwid_hard_repo rwid_ga)"
+  good="docs/specs/cart/001-initial/spec.md"
+  printf -- '---\ngroup: "cart"\n---\n' > "$repo/docs/specs/cart/002-untracked.md"  # untracked
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$good" docs/specs/cart/002-untracked.md
+  assert_exit "rc" 2 "$RC"
+  assert_match "good file unedited" '^group: "cart"$' "$(cat "$repo/$good")"
+}
+
+# #78: a '..'-segment target is refused by the valid_relpath boundary (rc 2).
+case_jimpartition_rewrite_identity_dotdot_rejected() {
+  local repo; repo="$(rwid_hard_repo rwid_dd)"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout ../escape.md
+  assert_exit "rc" 2 "$RC"
+}
+
+# #78: an invalid <new> slug is a usage error (rc 2) — distinct from the existing
+# invalid-<old> case.
+case_jimpartition_rewrite_identity_invalid_new_slug() {
+  local repo; repo="$(rwid_hard_repo rwid_bn)"
+  run_jimpartition_in "$repo" rewrite-identity cart 'Bad_New' docs/specs/cart/001-initial/spec.md
+  assert_exit "rc" 2 "$RC"
+}
+
+# #78: outside a git repo the containment top cannot resolve → rc 2 before any edit.
+case_jimpartition_rewrite_identity_no_git_repo() {
+  local d; d="$(empty_dir rwid_nogit)"
+  printf -- '---\ngroup: "cart"\n---\n' > "$d/spec.md"
+  run_jimpartition_in "$d" rewrite-identity cart checkout spec.md
+  assert_exit "rc" 2 "$RC"
+}
+
 # ─── Section: split-preflight cases (spec 047 Task 5) ────────────────────────
 
 # AC 1/2: a clean extraction preflight — old ∈ targets, so the ARM is extraction,

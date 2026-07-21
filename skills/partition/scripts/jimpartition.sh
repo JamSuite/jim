@@ -1397,8 +1397,12 @@ cmd_rewrite_identity() {
   tmp_out="$rwtmp/out"; rec="$rwtmp/rec"
   for f in "$@"; do
     : > "$rec"
-    awk -v old="$old" -v new="$new" -v file="$f" -v recfile="$rec" '
-      BEGIN { oldn = length(old) }
+    awk -v old="$old" -v new="$new" -v file="$f" -v recfile="$rec" \
+        -v exts="js ts jsx tsx mjs cjs md json py rb go rs ex exs sh bash toml yaml yml txt html css cfg ini xml csv" '
+      BEGIN {
+        oldn = length(old)
+        ne = split(exts, ea, " "); for (ei = 1; ei <= ne; ei++) EXT[ea[ei]] = 1
+      }
       {
         line = $0
         if (NR == 1 && line == "---") { infm = 1; print; next }
@@ -1417,9 +1421,11 @@ cmd_rewrite_identity() {
           }
           print line; next
         }
+        if (infm) { print line; next }   # #77: only `group:` is an identity field in frontmatter
         # Body token scan: rewrite <old> only as a whole slug token in a
-        # dotted-key (<old>.[a-z0-9]) or typed group/NNN ref (<old>/[0-9])
-        # position; leave prose and code-path segments to the gatherer.
+        # dotted-key (<old>.<surface>, excluding a bare file-extension suffix)
+        # or typed group/NNN ref (<old>/[0-9]) position; leave prose and
+        # code-path segments (and filenames) to the gatherer.
         out = ""; i = 1
         while ((p = index(substr(line, i), old)) > 0) {
           pos = i + p - 1
@@ -1427,7 +1433,15 @@ cmd_rewrite_identity() {
           after  = substr(line, pos + oldn, 1)
           after2 = substr(line, pos + oldn + 1, 1)
           isbound = (before !~ /[a-z0-9-]/ && after !~ /[a-z0-9-]/)
-          dotted  = (after == "." && after2 ~ /[a-z0-9]/)
+          # The dotted suffix is the identifier run after the dot; a bare
+          # file-extension suffix (cart.json) is a filename, not a group.surface
+          # dotted-key, so it is excluded (#77).
+          dotsuffix = ""
+          if (after == ".") {
+            k = pos + oldn + 1
+            while (k <= length(line) && substr(line, k, 1) ~ /[a-z0-9-]/) { dotsuffix = dotsuffix substr(line, k, 1); k++ }
+          }
+          dotted  = (after == "." && after2 ~ /[a-z0-9]/ && !(dotsuffix in EXT))
           typed   = (after == "/" && after2 ~ /[0-9]/)
           if (isbound && (dotted || typed)) {
             out = out substr(line, i, pos - i) new
