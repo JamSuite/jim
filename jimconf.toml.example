@@ -91,6 +91,22 @@ group_axis = "vertical"
 # engine (issue #22). Territory entries are optional-when-unknown.
 group_territory = "declared-paths"
 
+# --- Spec migration (spec 046) --------------------------------------------
+
+# Identity-on-move preference: how a group move (rename today; split/merge
+# later) treats a numbered spec's recorded group identity.
+#   rewrite   : jim edits the moved specs' recorded identity — group:
+#               frontmatter, dotted-key group-halves, and typed group/NNN refs —
+#               to the new owner, keeping substance byte-unchanged; ambiguous
+#               prose is left frozen on doubt (default)
+#   forward   : the moved bodies stay byte-frozen; the ledger op=rename event is
+#               the durable old->new alias
+#   immutable : split/merge-only; a rename relocates the group's home, which
+#               immutable cannot honor, so a rename states that and runs as forward
+# A malformed or unrecognized value degrades to "rewrite", named in the run
+# output. Governs numbered specs 001+; the 000-blueprint re-identifies always.
+# spec_migration = "rewrite"
+
 # --- Post-build review gate -----------------------------------------------
 
 # Post-build review (/jim:review) verifies what the build shipped against the
