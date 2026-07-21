@@ -27,14 +27,16 @@
 # Security: commit/diff/ledger content is untrusted — never sourced or eval'd.
 # SHAs read from the ledger are validated via jimfile.sh `valid-id` before any
 # git range use (forecloses option injection). The script commits in exactly
-# five path-scoped places — `commit-review` (review.md + ledger.md, 028 AC
+# six path-scoped places — `commit-review` (review.md + ledger.md, 028 AC
 # #10), `commit-blueprint` (a group's spec.md + ledger.md, 030 AC #8),
 # `commit-map` (the project map + the specs-root ledger.md, spec 033),
-# `commit-verify` (a group's ledger.md alone, spec 035 AC #11), and
-# `commit-rename` (a rename's explicit stage set, spec 043) — each with literal
-# paths, a `--` guard, and no `git add -A`; `/jim:build` commits ledger.md at
-# start/finish itself. `rename-tracked` (spec 043) additionally does a
-# sibling-constrained `git mv` — staging but not committing.
+# `commit-verify` (a group's ledger.md alone, spec 035 AC #11),
+# `commit-rename` (a rename's explicit stage set, spec 043), and `commit-split`
+# (a split's explicit docs stage set, spec 047) — each with literal paths, a
+# `--` guard, and no `git add -A`; `/jim:build` commits ledger.md at
+# start/finish itself. `rename-tracked` (spec 043, sibling) and `move-spec-dir`
+# (spec 047, cross-parent) additionally do a guarded `git mv` — staging but not
+# committing.
 
 set -uo pipefail
 export LC_ALL=C
