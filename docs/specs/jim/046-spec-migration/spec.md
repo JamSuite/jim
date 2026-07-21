@@ -164,7 +164,7 @@ evaluate, not a directive.*
 - **Relates to AC:** *"a project-level preference selects among three
   behaviors … default `rewrite`"* (AC 1)
 - **Surfaced as:** a jim config key (shape along the lines of
-  `spec_identity_on_move = rewrite|forward|immutable`).
+  `spec_migration = rewrite|forward|immutable`).
 - **Levelled-up requirement (already in the ACs):** a project-level preference
   with three named behaviors and a `rewrite` default.
 - **Deflection reason:** Premature Tech — the key name, namespace, default

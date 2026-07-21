@@ -4,7 +4,7 @@ status: Active
 date: "2026-07-21"
 ---
 
-# Research: Spec identity on group move
+# Research: Spec migration
 
 Grounds spec 046 against jim's shipped rename engine (spec 043). Headline: the
 preference is **largely a classification gate on machinery that already exists**,
@@ -29,7 +29,7 @@ not new subsystems.
   (`:144-223`); bare-selector enum precedents `group_axis`/`group_territory`
   (`:65-66`); per-group dynamic family `verify_appetite_<group>` (`:112-117`,
   `:157-173`, slug-charset-validated suffix). Grounds a new bare key
-  `spec_identity_on_move` (default `rewrite`).
+  `spec_migration` (default `rewrite`).
 - **Skill-side value validation** — `skills/verify/SKILL.md:161` (degrade to safe
   default + note fallback in the report). The template for validating
   `rewrite|forward|immutable` → fall back to `rewrite`, note it.
@@ -54,7 +54,7 @@ not new subsystems.
   a rewrite-specific classification path.
 - **Config: read-then-validate-skill-side.** jimconf returns the trimmed value or
   the default-on-empty and never enum-validates; the consuming skill validates and
-  degrades (`verify/SKILL.md:161`). Follow it for `spec_identity_on_move`.
+  degrades (`verify/SKILL.md:161`). Follow it for `spec_migration`.
 - **Commit staging: literal-path, moved-pair auto-staged.** `commit-rename docs`
   stages `<specs-dir>/<old>` + `<specs-dir>/<new>` (`:338`). Because the whole
   moved pair is staged, `rewrite`'s edited numbered bodies under
@@ -89,7 +89,7 @@ not new subsystems.
 *Options and trade-offs for the architect — not decisions.*
 
 1. **Build the knob as a classification gate on the existing rename engine**, not
-   new machinery: `spec_identity_on_move` selects whether numbered-body identity
+   new machinery: `spec_migration` selects whether numbered-body identity
    occurrences classify `identity` (rewrite) or `historical` (forward/immutable).
    Confirms the spec's "largely a classification flip" framing.
 2. **Rewrite = mechanical floor + gatherer residue**, reusing the methodology split
