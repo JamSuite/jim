@@ -51,6 +51,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   event   <spec-dir> <phase> <event> [k=v …]  append a generic event
   rename-tracked <old-path> <new-path>        sibling-constrained git mv (spec 043)
   move-spec-dir <specs-dir> <og> <src-base> <ng> <dst-base>  cross-parent spec-dir git mv (spec 047)
+  vacated-max <specs-dir> <group>             highest split-vacated id for <group> (spec 047)
   metrics <spec-dir>                          emit key=value metrics to stdout
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
@@ -432,6 +433,49 @@ cmd_move_spec_dir() {
   }
 }
 
+# cmd_vacated_max <specs-dir> <group> — the vacated-id floor source consumed by
+#   jimfile.sh next-id (spec 047). Scans <specs-dir>/ledger.md for
+#   partition-finished op=split events and prints the highest OLD number any
+#   split ever vacated FROM <group> (zero-padded 3-digit), so next-id can floor
+#   past it and never re-mint a moved spec's id (AC 11). This verb OWNS the
+#   op=split event grammar (the reconcile-series precedent — grammar stays with
+#   the ledger). Fail-closed per security Finding 2: the event is gated on
+#   ;op=split;, EVERY moved= pair is iterated, and each element is charset-gated
+#   (og/onum:ng/nnum, onum exactly 3 digits) — an element that fails the gate is
+#   inert, never fatal, so a tampered ledger element can at worst be ignored and
+#   the floor only ever raises. Untrusted ledger, parsed only (no source/eval).
+#   rc 0 (prints the max or nothing) · rc 1 no ledger file · rc 2 usage / bad slug.
+cmd_vacated_max() {
+  local dir="${1:-}" group="${2:-}"
+  if [[ -z "$dir" || -z "$group" ]]; then
+    echo "jimledger vacated-max: need <specs-dir> <group>" >&2; return 2
+  fi
+  if [[ ! "$group" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "jimledger vacated-max: invalid group slug: $group" >&2; return 2
+  fi
+  local ledger="${dir%/}/ledger.md"
+  if [[ ! -f "$ledger" ]]; then return 1; fi
+  awk -F'\t' -v GROUP="$group" '
+    function consider(elem,   a, b) {
+      # og/onum:ng/nnum — onum/nnum exactly 3 digits (interval-free for portability)
+      if (elem !~ /^[a-z0-9][a-z0-9-]*\/[0-9][0-9][0-9]:[a-z0-9][a-z0-9-]*\/[0-9][0-9][0-9]$/) return
+      split(elem, a, ":"); split(a[1], b, "/")
+      if (b[1] != GROUP) return
+      if (b[2]+0 > max) { max = b[2]+0; have = 1 }
+    }
+    $3=="partition" && $4=="finished" {
+      if (index(";" $5 ";", ";op=split;") == 0) next
+      n = split($5, pairs, ";")
+      for (i = 1; i <= n; i++) {
+        if (index(pairs[i], "moved=") != 1) continue
+        m = split(substr(pairs[i], 7), elems, ",")
+        for (j = 1; j <= m; j++) consider(elems[j])
+      }
+    }
+    END { if (have) printf "%03d\n", max }
+  ' "$ledger"
+}
+
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
 cmd_event() {
   local dir="${1:-}" phase="${2:-}" event="${3:-}"
@@ -801,6 +845,7 @@ main() {
     event)   shift; cmd_event "$@" ;;
     rename-tracked) shift; cmd_rename_tracked "$@" ;;
     move-spec-dir) shift; cmd_move_spec_dir "$@" ;;
+    vacated-max) shift; cmd_vacated_max "$@" ;;
     commit-rename) shift; cmd_commit_rename "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;

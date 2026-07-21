@@ -1477,6 +1477,65 @@ case_jimledger_move_spec_dir_usage_rc2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── spec 047: vacated-max (vacated-id floor source) ─────────────────────────
+
+# security Finding 2: the floor is the highest OLD number a split vacated FROM the
+# group — here cart/006..009 left, so vacated-max cart is 009 (3-digit).
+case_jimledger_vacated_max_floors_from_event() {
+  local sd; sd="$(empty_dir vm_one/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;identity=rewrite;frozen=0;outcome=split;moved=cart/006:checkout/001,cart/007:checkout/002,cart/008:checkout/003,cart/009:checkout/004\n' > "$sd/ledger.md"
+  run_jimledger vacated-max "$sd" cart
+  assert_exit "rc" 0 "$RC"
+  assert_eq "max vacated" "009" "$OUT"
+}
+
+# DD 5: the remap is chunked across repeatable moved= pairs (≤256B each) — every
+# pair is iterated, so a number in a later chunk still raises the floor.
+case_jimledger_vacated_max_iterates_multiple_moved_pairs() {
+  local sd; sd="$(empty_dir vm_multi/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001,cart/007:checkout/002;moved=cart/011:checkout/003\n' > "$sd/ledger.md"
+  run_jimledger vacated-max "$sd" cart
+  assert_exit "rc" 0 "$RC"
+  assert_eq "max across chunks" "011" "$OUT"
+}
+
+# security Finding 2: a malformed element is inert — ignored — while valid
+# siblings still count (fail-closed: the floor only ever raises).
+case_jimledger_vacated_max_ignores_malformed_element() {
+  local sd; sd="$(empty_dir vm_bad/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001,GARBAGE,cart/0099:x,cart/009:checkout/002\n' > "$sd/ledger.md"
+  run_jimledger vacated-max "$sd" cart
+  assert_exit "rc" 0 "$RC"
+  assert_eq "valid siblings still counted" "009" "$OUT"
+}
+
+# security Finding 2: an op=rename-only ledger carries no split remap — the
+# whitelisted op=split gate yields nothing (a rename event is invisible here).
+case_jimledger_vacated_max_rename_only_empty() {
+  local sd; sd="$(empty_dir vm_ren/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=rename;old=cart;new=checkout\n' > "$sd/ledger.md"
+  run_jimledger vacated-max "$sd" cart
+  assert_exit "rc" 0 "$RC"
+  assert_eq "empty" "" "$OUT"
+}
+
+# rc 1 when there is no ledger file (next-id degrades to dir-only behavior).
+case_jimledger_vacated_max_no_ledger_rc1() {
+  local sd; sd="$(empty_dir vm_noledger/spec)"
+  run_jimledger vacated-max "$sd" cart
+  assert_exit "rc" 1 "$RC"
+}
+
+# rc 2 on a missing arg or an invalid group slug (usage, distinct from no-ledger).
+case_jimledger_vacated_max_bad_group_rc2() {
+  local sd; sd="$(empty_dir vm_badgrp/spec)"
+  printf 'x\n' > "$sd/ledger.md"
+  run_jimledger vacated-max "$sd" "Cart_Group"
+  assert_exit "invalid slug rc" 2 "$RC"
+  run_jimledger vacated-max "$sd"
+  assert_exit "missing arg rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
