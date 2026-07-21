@@ -280,7 +280,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "49" "$line_count"
+  assert_eq    "list line count"                  "50" "$line_count"
   assert_match "blueprint_regen_threshold line"    '^blueprint_regen_threshold=0$'          "$OUT"
   assert_match "blueprint line"                    '^blueprint=BLUEPRINT\.md$'              "$OUT"
   assert_match "group_axis line"                   '^group_axis=vertical$'                  "$OUT"
@@ -328,6 +328,7 @@ case_list_outputs_all_keys() {
   assert_match "health_threshold_uncovered line"   '^health_threshold_uncovered=0$'         "$OUT"
   assert_match "health_threshold_faces_max line"   '^health_threshold_faces_max=0$'         "$OUT"
   assert_match "health_threshold_breaking_runs line" '^health_threshold_breaking_runs=0$'   "$OUT"
+  assert_match "spec_migration line"               '^spec_migration=rewrite$'               "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -335,7 +336,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs\nspec_migration')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -373,7 +374,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "49" "$line_count"
+  assert_eq "list still emits all keys" "50" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -1037,6 +1038,22 @@ health_threshold_breaking_runs = "3"')
   run -c "$cfg" get health_threshold_uncovered;     assert_eq "uncovered configured"     "1"  "$OUT"
   run -c "$cfg" get health_threshold_faces_max;     assert_eq "faces_max configured"     "12" "$OUT"
   run -c "$cfg" get health_threshold_breaking_runs; assert_eq "breaking_runs configured" "3"  "$OUT"
+}
+
+# ─── spec 046: spec_migration identity-on-move preference ────────────────────
+
+# AC: spec_migration defaults to "rewrite" and resolves from config (spec 046
+# Task 1, AC #1). Bare-name identity-on-move preference knob dispatched by the
+# new spec_migration arm in resolve(); selects rewrite|forward|immutable.
+case_jimconf_spec_migration_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_spec_migration_default)
+  run -c "$dir/absent.toml" get spec_migration
+  assert_exit "default rc"         0         "$RC"
+  assert_eq   "default rewrite"    "rewrite" "$OUT"
+  cfg=$(fixture jc-spec-migration.toml 'spec_migration = "forward"')
+  run -c "$cfg" get spec_migration
+  assert_eq   "configured forward" "forward" "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
