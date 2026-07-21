@@ -60,6 +60,7 @@ usage: jimpartition.sh <subcommand> [args]
   aggregate <edges-file> <territories-file>     group edges → GEDGE/STRADDLE/UNASSIGNED
   coverage  <territories-file>                  uncovered dirs → UNCOVERED/TOTAL
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
+  split-preflight <map> <specs-dir> <old> <new>...  ARM/CHECK/DIRT/TERRITORY-IDENTITY (spec 047)
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
@@ -998,6 +999,136 @@ cmd_rename_preflight() {
   return 0
 }
 
+# cmd_split_preflight <map> <specs-dir> <old> <new>... — structural preflight for a
+#   group split (spec 047), the rename-preflight cousin over 2+ targets. Emits the
+#   split ARM (extraction iff <old> is among the targets — the remainder continues
+#   under its own identity/dir/numbering; else symmetric — the source is retired),
+#   per-target CHECK facts, TERRITORY-IDENTITY lines for territories embedding
+#   <old>, and DIRT classification of a dirty tree. Structural checks (map-exists,
+#   old-mapped, blueprint-exists, targets-arity [≥2, no dups], per-target
+#   slug-valid + collision) are fatal (rc 1); tree-clean/dirt is warn-confirm
+#   (non-fatal), rename parity. The collision check is SKIPPED for a target equal
+#   to <old>: the extraction remainder legitimately keeps its pre-existing group
+#   and dir (AC 1). rc 0 clean · 1 structural fail · 2 usage / invalid old slug.
+cmd_split_preflight() {
+  local map="${1:-}" specs_dir="${2:-}" old="${3:-}"
+  if [[ -z "$map" || -z "$specs_dir" || -z "$old" ]]; then
+    echo "jimpartition split-preflight: need <map> <specs-dir> <old> <new>..." >&2; return 2
+  fi
+  shift 3
+  if [[ $# -eq 0 ]]; then
+    echo "jimpartition split-preflight: need <new>... (>=2 targets)" >&2; return 2
+  fi
+  if ! valid_slug "$old"; then
+    echo "jimpartition split-preflight: invalid old slug: $old" >&2; return 2
+  fi
+  if ! valid_relpath "$specs_dir"; then
+    echo "jimpartition split-preflight: invalid specs-dir: $specs_dir" >&2; return 2
+  fi
+  local -a targets=("$@")
+
+  # ARM — extraction iff <old> is one of the targets, else symmetric.
+  local arm="symmetric" t
+  for t in "${targets[@]}"; do
+    [[ "$t" == "$old" ]] && { arm="extraction"; break; }
+  done
+  printf 'ARM\t%s\n' "$arm"
+
+  local fail=0 groups=""
+
+  if [[ -f "$map" ]]; then
+    emit_check map-exists pass "$map"
+    groups="$(map_group_slugs "$map")"
+  else
+    emit_check map-exists fail "map not found: $map"; fail=1
+  fi
+
+  if printf '%s\n' "$groups" | grep -qxF -- "$old"; then
+    emit_check old-mapped pass "$old"
+  else
+    emit_check old-mapped fail "not a mapped group: $old"; fail=1
+  fi
+
+  if [[ -d "$specs_dir/$old/000-blueprint" ]]; then
+    emit_check blueprint-exists pass "$specs_dir/$old/000-blueprint"
+  else
+    emit_check blueprint-exists fail "absent: $specs_dir/$old/000-blueprint"; fail=1
+  fi
+
+  # Targets arity: ≥2, no duplicates.
+  if [[ ${#targets[@]} -lt 2 ]]; then
+    emit_check targets-arity fail "need >=2 targets, got ${#targets[@]}"; fail=1
+  else
+    local dup="" i j
+    for ((i = 0; i < ${#targets[@]}; i++)); do
+      for ((j = i + 1; j < ${#targets[@]}; j++)); do
+        [[ "${targets[i]}" == "${targets[j]}" ]] && dup="${targets[i]}"
+      done
+    done
+    if [[ -n "$dup" ]]; then
+      emit_check targets-arity fail "duplicate target: $dup"; fail=1
+    else
+      emit_check targets-arity pass "${#targets[@]} targets"
+    fi
+  fi
+
+  # Per-target slug validity + collision (collision SKIPPED for t == old).
+  for t in "${targets[@]}"; do
+    if valid_slug "$t"; then
+      emit_check "target-slug-valid:$t" pass "$t"
+    else
+      emit_check "target-slug-valid:$t" fail "not a valid group slug: $t"; fail=1
+      continue
+    fi
+    [[ "$t" == "$old" ]] && continue          # extraction remainder — not a collision
+    if printf '%s\n' "$groups" | grep -qxF -- "$t"; then
+      emit_check "target-collision:$t" fail "collides with mapped group: $t"; fail=1
+    elif [[ -d "$specs_dir/$t" ]]; then
+      emit_check "target-collision:$t" fail "collides with spec-group dir: $specs_dir/$t"; fail=1
+    else
+      emit_check "target-collision:$t" pass "$t"
+    fi
+  done
+
+  # Territory identity — territories of <old> embedding <old> as a slug token,
+  # collected so DIRT can classify against them (rename-preflight parity).
+  local terr
+  local -a idterr=()
+  while IFS= read -r terr; do
+    [[ -z "$terr" ]] && continue
+    if slug_token_match "$old" "$terr"; then
+      printf 'TERRITORY-IDENTITY\t%s\n' "$(san_field "$terr")"
+      idterr+=("$terr")
+    fi
+  done < <([[ -f "$map" ]] && old_group_territories "$map" "$old")
+
+  # Tree cleanliness + dirt classification (non-fatal).
+  local status git_rc
+  status="$(git status --porcelain 2>/dev/null)"; git_rc=$?
+  if [[ $git_rc -ne 0 ]]; then
+    emit_check tree-clean fail "not a git work tree"
+  elif [[ -z "$status" ]]; then
+    emit_check tree-clean pass "clean"
+  else
+    emit_check tree-clean fail "uncommitted changes present"
+    local line path klass affected_pref="$specs_dir/$old/"
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      path="${line:3}"
+      path="${path##* -> }"
+      klass="unrelated"
+      [[ "$path" == "$affected_pref"* ]] && klass="affected"
+      for t in "${idterr[@]}"; do
+        [[ "$path" == "$t" || "$path" == "$t/"* ]] && klass="affected"
+      done
+      printf 'DIRT\t%s\t%s\n' "$klass" "$(san_field "$path")"
+    done <<<"$status"
+  fi
+
+  [[ $fail -eq 1 ]] && return 1
+  return 0
+}
+
 # cmd_occurrences <slug> <path>... — enumerate whole-slug-token occurrences of
 #   <slug> across the given files, one HIT per (file, line, kind). Kind is a
 #   STRUCTURAL hint derived from the match's position only — dotted-key (slug is
@@ -1397,6 +1528,7 @@ main() {
     aggregate) shift; cmd_aggregate "$@" ;;
     coverage)  shift; cmd_coverage "$@" ;;
     rename-preflight) shift; cmd_rename_preflight "$@" ;;
+    split-preflight) shift; cmd_split_preflight "$@" ;;
     occurrences) shift; cmd_occurrences "$@" ;;
     rewrite-identity) shift; cmd_rewrite_identity "$@" ;;
     edges-diff) shift; cmd_edges_diff "$@" ;;

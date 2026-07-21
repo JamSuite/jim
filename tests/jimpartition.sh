@@ -232,6 +232,78 @@ EOF
   printf '%s' "$root"
 }
 
+# split_repo <name> — a multi-group jim project fixture for the split verbs
+#   (spec 047). Two mapped groups (cart / orders) with 000-blueprints, a
+#   BLUEPRINT.md map (Groups + Territory + Contract Graph), plus the split-
+#   specific surface: a cart foundation (modules/cart) and a checkout-side
+#   subtree (modules/cart/checkout) whose flow.js imports back into the
+#   foundation's catalog module — the cross-child edge a split reveals when the
+#   boundary is drawn between the two subtrees. One committed baseline (clean
+#   tree). Print the absolute repo dir.
+#
+#   Token discipline (rename_repo parity): `cart` occurs as a whole slug token
+#   only in identity positions; the surfaces `cart-session-api` /
+#   `catalog-query-api` embed it inside a larger token, so the slug-token
+#   boundary must not flag them.
+split_repo() {
+  local name="${1:?split_repo needs a name}"
+  local root="$TMP_BASE/$name"
+  mkdir -p "$root"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+
+  mkdir -p "$root/modules/cart/checkout" "$root/modules/orders"
+  printf 'export const cartSessionApi = {};\n'  > "$root/modules/cart/session.js"
+  printf 'export const catalogQueryApi = {};\n' > "$root/modules/cart/catalog.js"
+  printf 'import { catalogQueryApi } from "../catalog";\nexport const checkoutFlow = {};\n' \
+                                                > "$root/modules/cart/checkout/flow.js"
+  printf 'export const orderApi = {};\n'        > "$root/modules/orders/order.js"
+
+  mkdir -p "$root/docs/specs/cart/000-blueprint"
+  cat > "$root/docs/specs/cart/000-blueprint/spec.md" <<'EOF'
+# cart — group blueprint
+
+## Provides
+
+- `cart-session-api` — the session surface.
+- `catalog-query-api` — catalog reads.
+EOF
+
+  mkdir -p "$root/docs/specs/orders/000-blueprint"
+  printf '# orders\n\n## Requires\n\n- `cart.cart-session-api` — session reads.\n' \
+    > "$root/docs/specs/orders/000-blueprint/spec.md"
+
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+# Project Blueprint
+
+## Groups
+
+### cart
+
+- **Role:** domain
+- **Territory:** `modules/cart`
+
+### orders
+
+- **Role:** domain
+- **Territory:** `modules/orders`
+
+## Contract Graph
+
+*Last reconciled: 2026-07-16T00:00:00Z (via /jim:blueprint)*
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| orders | cart-session-api | cart |
+EOF
+
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "chore: seed split fixture"
+  printf '%s' "$root"
+}
+
 # ─── Section: coverage cases (Task 2) ────────────────────────────────────────
 
 # AC #4: tracked files under no proposed territory are reported, dirname-
@@ -1319,6 +1391,90 @@ case_jimpartition_rewrite_identity_usage() {
   assert_exit "invalid old slug rc" 2 "$RC"
   run_jimpartition_in "$repo" rewrite-identity cart checkout
   assert_exit "no files rc" 2 "$RC"
+}
+
+# ─── Section: split-preflight cases (spec 047 Task 5) ────────────────────────
+
+# AC 1/2: a clean extraction preflight — old ∈ targets, so the ARM is extraction,
+# the remainder target (== old) is EXEMPT from the collision check even though its
+# group and dir pre-exist, and the checkout target passes. rc 0.
+case_jimpartition_split_preflight_extraction_pass() {
+  local dir; dir="$(split_repo sp_extract)"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart cart checkout
+  assert_exit "rc" 0 "$RC"
+  assert_match "extraction arm"        'ARM.*extraction'              "$OUT"
+  assert_match "old mapped"            'old-mapped.*pass'             "$OUT"
+  assert_match "checkout no collision" 'target-collision:checkout.*pass' "$OUT"
+  assert_eq    "remainder collision exempted" "0" "$(printf '%s\n' "$OUT" | grep -c 'target-collision:cart')"
+  assert_match "territory identity"    'TERRITORY-IDENTITY.*modules/cart' "$OUT"
+}
+
+# AC 1: old ∉ targets → symmetric arm (the source is retired); both fresh targets
+# clear the collision check. rc 0.
+case_jimpartition_split_preflight_symmetric_pass() {
+  local dir; dir="$(split_repo sp_sym)"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart shop store
+  assert_exit "rc" 0 "$RC"
+  assert_match "symmetric arm"    'ARM.*symmetric'            "$OUT"
+  assert_match "shop no collision"  'target-collision:shop.*pass'  "$OUT"
+  assert_match "store no collision" 'target-collision:store.*pass' "$OUT"
+}
+
+# AC 1: a duplicate target fails the arity check (rc 1, structural).
+case_jimpartition_split_preflight_duplicate_target() {
+  local dir; dir="$(split_repo sp_dup)"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart checkout checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "arity fail" 'targets-arity.*fail' "$OUT"
+}
+
+# AC 1: fewer than two targets fails the arity check (rc 1) — distinct from the
+# no-targets usage error (rc 2).
+case_jimpartition_split_preflight_too_few_targets() {
+  local dir; dir="$(split_repo sp_few)"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "arity fail" 'targets-arity.*fail' "$OUT"
+}
+
+# AC 1: a target colliding with an existing mapped group / spec dir fails (rc 1);
+# the exemption is ONLY for a target equal to old.
+case_jimpartition_split_preflight_collision() {
+  local dir; dir="$(split_repo sp_coll)"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart shop orders
+  assert_exit "rc" 1 "$RC"
+  assert_match "orders collides" 'target-collision:orders.*fail' "$OUT"
+}
+
+# AC 2: a missing source 000-blueprint is a structural fail (rc 1).
+case_jimpartition_split_preflight_missing_blueprint() {
+  local dir; dir="$(split_repo sp_nobp)"
+  rm -rf "$dir/docs/specs/cart/000-blueprint"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "blueprint fail" 'blueprint-exists.*fail' "$OUT"
+}
+
+# AC 2: a dirty tree warn-confirms (non-fatal, rc 0) and classifies each dirty
+# path as affected (inside the source spec dir) vs unrelated (rename parity).
+case_jimpartition_split_preflight_dirty_tree_dirt() {
+  local dir; dir="$(split_repo sp_dirt)"
+  printf '# edited\n'   >> "$dir/docs/specs/cart/000-blueprint/spec.md"  # affected
+  printf 'export const x = 1;\n' >> "$dir/modules/orders/order.js"       # unrelated
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart cart checkout
+  assert_exit "dirt is non-fatal" 0 "$RC"
+  assert_match "tree-clean warns" 'tree-clean.*fail'              "$OUT"
+  assert_match "affected dirt"    'DIRT.*affected.*000-blueprint' "$OUT"
+  assert_match "unrelated dirt"   'DIRT.*unrelated.*order'        "$OUT"
+}
+
+# rc 2 on usage: no targets, or an invalid old slug (distinct from structural).
+case_jimpartition_split_preflight_usage_rc2() {
+  local dir; dir="$(split_repo sp_usage)"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart
+  assert_exit "no targets rc" 2 "$RC"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs 'Bad/Old' cart checkout
+  assert_exit "invalid old slug rc" 2 "$RC"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
