@@ -8,6 +8,8 @@ Ordered near-term queue to get jim ready for jimui. Work these top-to-bottom; ev
 
 ## BACK-001 · Reduce "claude-speak" — make jim's prose literal, efficient, specific, concise
 
+**Branch:** `feat/claude-speak` — active work branch for this item.
+
 **Brainstorm complete:** `docs/brainstorms/20260720-claude-speak.md` (+ `20260720-claude-speak.csv`, `20260720-claude-speak-project-audit.csv`). **Ready to spec or edit surgically.**
 
 **Finding.** jim's prose is precise in *contract-shaped* content (acceptance criteria, schemas, bash/frontmatter) but drifts vague and verbose in *judgment-shaped* content (pm interview, brainstorm, vision, problem statements, user stories). No single dominant defect — broad and shallow across ~30 files, in three clusters: (1) **vague terminal instructions** with no downstream check ("non-obvious choice", "reasonable defaults", "where relevant"); (2) **cross-file constraint restatement** that jim's 3+-places dedup rule misses ("No code writing", "The human decides", "Does NOT fix code"); (3) **undefined terms** used before a gloss (STRIDE, LINDDUN, SDLC, Peer Feedback, Connextra). Metaphor is the smallest category — **no ban needed** (no competitor bans it). A real-project audit of 73 korswerk spec/brainstorm artifacts confirmed the split: ACs strong; narrative bloated, plus a few untestable-AC leaks ("match-the-design" ACs; ACs that defer their value to Open Questions).
