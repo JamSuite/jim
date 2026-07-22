@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # skills/partition/scripts/jimpartition.sh — deterministic extraction/coverage
-#   substrate for /jim:partition (spec 038).
+#   substrate for /jim:partition.
 #
 # PURPOSE
 #   The Bash-owned half of the partition migration skill: import extraction, raw
@@ -25,8 +25,8 @@
 #   length-capped). Emitted / declared paths pass the valid-relpath boundary
 #   before use; this script NEVER resolves or executes an operator extractor
 #   command — the operator's config activates those commands (through
-#   jimconf.sh) and the model runs them via the Bash tool (the spec 035
-#   registry trust boundary). The extractor-registry family name appears
+#   jimconf.sh) and the model runs them via the Bash tool (the registry
+#   trust boundary). The extractor-registry family name appears
 #   nowhere in this script by design.
 #
 # EXIT CODES
@@ -37,12 +37,12 @@
 set -uo pipefail
 export LC_ALL=C
 
-# jimfile.sh provides the single valid-relpath boundary (spec 033 security
-# Finding 9). Resolved BASH_SOURCE-relative so it travels with the plugin tree
+# jimfile.sh provides the single valid-relpath boundary. Resolved
+# BASH_SOURCE-relative so it travels with the plugin tree
 # (skills/partition/scripts/ → skills/file/scripts/).
 JIMFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../file/scripts" 2>/dev/null && pwd)/jimfile.sh"
 
-# Sibling scripts the health verb (spec 044) composes, BASH_SOURCE-relative so
+# Sibling scripts the health verb composes, BASH_SOURCE-relative so
 # they travel with the plugin tree: the reconcile-series trend source (review)
 # and the threshold-knob resolver (conf). Reading numeric knobs via jimconf is
 # not the never-execute-config boundary — nothing config-derived is executed,
@@ -60,11 +60,11 @@ usage: jimpartition.sh <subcommand> [args]
   aggregate <edges-file> <territories-file>     group edges → GEDGE/STRADDLE/UNASSIGNED
   coverage  <territories-file>                  uncovered dirs → UNCOVERED/TOTAL
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
-  split-preflight <map> <specs-dir> <old> <new>...  ARM/CHECK/DIRT/TERRITORY-IDENTITY (spec 047)
-  renumber-map <old> <targets-csv> <assign-file>   split spec renumber remap → MAP (spec 047)
+  split-preflight <map> <specs-dir> <old> <new>...  ARM/CHECK/DIRT/TERRITORY-IDENTITY
+  renumber-map <old> <targets-csv> <assign-file>   split spec renumber remap → MAP
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
-  rewrite-refs <remap-file> <file>...           remap-keyed ref rewrite → REWROTE file line kind (spec 047)
+  rewrite-refs <remap-file> <file>...           remap-keyed ref rewrite → REWROTE file line kind
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
   health-eval <specs-dir>                        threshold eval over reconcile series → THRESHOLDS/INVALID/CROSSED
   identity-check <map> [<specs-dir>]             territory name-mismatch sensor → MISMATCH foreign|retired
@@ -117,7 +117,7 @@ emit_territories() {
 # ─── Section: coverage ───────────────────────────────────────────────────────
 
 # cmd_coverage <territories-file> — tracked files owned by no proposed group's
-#   territory, aggregated by containing directory (the 039 coverage rule), plus
+#   territory, aggregated by containing directory, plus
 #   a TOTAL count. The territories-file is caller-written (the skill writes it
 #   from the approved partition), so every line is validated on read and a
 #   malformed line is a caller error → rc 2, distinct from ingest's HYGIENE
@@ -179,7 +179,7 @@ cmd_coverage() {
 #   emit the clean, deduped edge set plus counted hygiene facts. Raw output is
 #   UNTRUSTED (the native scan or an operator command), so unlike coverage's
 #   caller-written territories-file a bad line is never fatal: it is counted and
-#   dropped (the ingest choke point, security Finding 3).
+#   dropped (the ingest choke point).
 #
 #   Raw line: <from-relpath> \t <to-relpath> [\t <channel>]   (the operator
 #   extractor output contract; a per-edge 3rd field overrides the CLI <channel>).
@@ -335,7 +335,7 @@ cmd_scan() {
   done <<<"$gitfiles"
 
   local edges="" channels="" out rc
-  # A modeled language whose manifest fails the charset gate (Finding 7) degrades
+  # A modeled language whose manifest fails the charset gate degrades
   # to UNMODELED for that language — the scanner returns non-zero and emits no
   # edges, so a poisoned manifest never injects a match.
   if [[ ${#GO_FILES[@]} -gt 0 ]]; then
@@ -410,7 +410,7 @@ go_imports() {
 }
 
 # scan_go <go-file...> — resolve internal imports to package dirs. Reads ./go.mod
-#   for the module prefix, charset-gated before use (Finding 7): a Go module path
+#   for the module prefix, charset-gated before use: a Go module path
 #   is alnum + . _ - / ~ only; anything else (or a missing go.mod) degrades the
 #   whole language (return 1). The gated module is stripped as a LITERAL prefix
 #   (quoted parameter expansion), never interpolated into a pattern.
@@ -664,7 +664,7 @@ rust_resolve_use() {
 
 # scan_rust <rs-file...> — emit EDGE lines plus a trailing `RUSTMETA <modeled>
 #   <degraded>` line. Crate identity comes from tracked Cargo.toml [package]
-#   names, charset-gated (Finding 7); a file under a bad-named crate degrades to
+#   names, charset-gated; a file under a bad-named crate degrades to
 #   UNMODELED rather than resolving. The normalized (hyphen→underscore) name is
 #   how source `use crate_a::` matches the member `crate-a`.
 scan_rust() {
@@ -750,7 +750,7 @@ elixir_refs() {
 }
 
 # scan_elixir <ex-file...> — build a defmodule->file map over all tracked
-#   Elixir source (module names charset-gated, Finding 7), then resolve each
+#   Elixir source (module names charset-gated), then resolve each
 #   file's references to that map. Bare qualified calls are unmodeled; a
 #   self-reference emits no edge. Always models (no whole-language manifest).
 scan_elixir() {
@@ -779,9 +779,9 @@ scan_elixir() {
 # cmd_aggregate <edges-file> <territories-file> — project file-level EDGEs onto
 #   proposed territories. Emits group-level edges (GEDGE, intra-group dropped),
 #   STRADDLE facts (a territory-assigned unit consumed by >=2 distinct foreign
-#   groups — a single foreign consumer is a normal GEDGE, DD 14), and
+#   groups — a single foreign consumer is a normal GEDGE), and
 #   UNASSIGNED dirs (endpoints under no territory, dirname-aggregated). Group
-#   assignment is a slash-anchored longest-prefix match (039 semantics). The
+#   assignment is a slash-anchored longest-prefix match. The
 #   edges-file's non-EDGE lines (CHANNEL / UNMODELED substrate metadata) are
 #   ignored; a missing file or a malformed territories line is rc 2.
 cmd_aggregate() {
@@ -831,7 +831,7 @@ cmd_aggregate() {
   return 0
 }
 
-# ─── Section: rename (spec 043) ──────────────────────────────────────────────
+# ─── Section: rename ─────────────────────────────────────────────────────────
 #
 # Three read-only verbs for /jim:partition rename. Like the rest of this script
 # they write nothing and run no operator command — the deterministic floor the
@@ -1002,7 +1002,7 @@ cmd_rename_preflight() {
 }
 
 # cmd_split_preflight <map> <specs-dir> <old> <new>... — structural preflight for a
-#   group split (spec 047), the rename-preflight cousin over 2+ targets. Emits the
+#   group split, the rename-preflight cousin over 2+ targets. Emits the
 #   split ARM (extraction iff <old> is among the targets — the remainder continues
 #   under its own identity/dir/numbering; else symmetric — the source is retired),
 #   per-target CHECK facts, TERRITORY-IDENTITY lines for territories embedding
@@ -1011,7 +1011,7 @@ cmd_rename_preflight() {
 #   slug-valid + collision) are fatal (rc 1); tree-clean/dirt is warn-confirm
 #   (non-fatal), rename parity. The collision check is SKIPPED for a target equal
 #   to <old>: the extraction remainder legitimately keeps its pre-existing group
-#   and dir (AC 1). rc 0 clean · 1 structural fail · 2 usage / invalid old slug.
+#   and dir. rc 0 clean · 1 structural fail · 2 usage / invalid old slug.
 cmd_split_preflight() {
   local map="${1:-}" specs_dir="${2:-}" old="${3:-}"
   if [[ -z "$map" || -z "$specs_dir" || -z "$old" ]]; then
@@ -1132,8 +1132,8 @@ cmd_split_preflight() {
 }
 
 # cmd_renumber_map <old> <targets-csv> <assign-file> — compute the full spec
-#   renumber remap for a split (spec 047), the deterministic id arithmetic the
-#   gate presents verbatim (no LLM arithmetic — the 045 doctrine). Each assign
+#   renumber remap for a split, the deterministic id arithmetic the
+#   gate presents verbatim (no LLM arithmetic). Each assign
 #   line is `<NNN[-wip]>\t<child>` (child ∈ targets). Emits one
 #   `MAP\t<old>/<src>\t<child>/<new>` per assignment: a continuing child
 #   (child == old) keeps its numbers; a fresh child renumbers its arrivals to a
@@ -1223,7 +1223,7 @@ cmd_renumber_map() {
 #   the group half of a dotted `slug.surface`), config-key / config-value (slug
 #   sits left / right of the `=` on a TOML-ish assignment line), path (slug is a
 #   `/`-bounded segment), else prose. The matched line CONTENT is never emitted
-#   (AC 19 is a structural guarantee, not a discipline): only file, line number,
+#   (a structural guarantee, not a discipline): only file, line number,
 #   and kind leave this verb. rc 2 on an invalid slug or no paths.
 cmd_occurrences() {
   local slug="${1:-}"
@@ -1308,7 +1308,7 @@ cmd_edges_diff() {
   return $rc
 }
 
-# ─── Section: rewrite-identity (spec 046) ────────────────────────────────────
+# ─── Section: rewrite-identity ───────────────────────────────────────────────
 #
 # The ONE in-place file-mutating verb in this otherwise stdout-only substrate
 # script. It carries the deterministic mechanical floor of a `rewrite`-mode group
@@ -1317,13 +1317,13 @@ cmd_edges_diff() {
 # gatherer's (freeze-on-doubt). As the first mutating verb it clears the
 # write-primitive containment guard (each target under the worktree top, a
 # symlink escape or non-tracked path refused) BEFORE any edit, so the
-# deterministic path is safer than a raw skill Edit (security Finding 5).
+# deterministic path is safer than a raw skill Edit.
 
 # rewrite_scan_malformed <file> — read-only pre-scan: emit `<file>:<line>`
 #   (location-only, NO content) for each frontmatter `group:` line whose value is
 #   not a single slug token. A corrupt identity frontmatter is fail-closed —
-#   the verb refuses to guess rather than risk corrupting substance (AC 3;
-#   security Finding 6 keeps the signal location-only).
+#   the verb refuses to guess rather than risk corrupting substance (the
+#   signal stays location-only).
 rewrite_scan_malformed() {
   awk -v file="$1" '
     NR == 1 && $0 == "---" { infm = 1; next }
@@ -1343,7 +1343,7 @@ rewrite_scan_malformed() {
 #   surface half untouched), and typed group/NNN refs (`<old>/<digit>`). Free
 #   prose is left for the gatherer. Emits one location-only
 #   `REWROTE\t<file>\t<line>\t<kind>` per edit; success and error output alike
-#   never carry matched or surrounding content (security Finding 6). rc: 0
+#   never carry matched or surrounding content. rc: 0
 #   applied (zero edits is success) · 2 usage / invalid slug / a target that
 #   fails the containment guard / a malformed identity frontmatter.
 cmd_rewrite_identity() {
@@ -1364,7 +1364,7 @@ cmd_rewrite_identity() {
   fi
 
   # Guard pass — run to completion over ALL targets before any edit (the
-  # write-primitive containment precedent, jimledger commit-map :204-227): each
+  # write-primitive containment guard): each
   # path shape-valid, resolved inside the worktree top (rejecting a symlink
   # escape), and tracked; and no target carries a malformed identity frontmatter.
   # Any failure aborts with a location-only reason and no file touched.
@@ -1421,7 +1421,7 @@ cmd_rewrite_identity() {
           }
           print line; next
         }
-        if (infm) { print line; next }   # #77: only `group:` is an identity field in frontmatter
+        if (infm) { print line; next }   # only `group:` is an identity field in frontmatter
         # Body token scan: rewrite <old> only as a whole slug token in a
         # dotted-key (<old>.<surface>, excluding a bare file-extension suffix)
         # or typed group/NNN ref (<old>/[0-9]) position; leave prose and
@@ -1435,7 +1435,7 @@ cmd_rewrite_identity() {
           isbound = (before !~ /[a-z0-9-]/ && after !~ /[a-z0-9-]/)
           # The dotted suffix is the identifier run after the dot; a bare
           # file-extension suffix (cart.json) is a filename, not a group.surface
-          # dotted-key, so it is excluded (#77).
+          # dotted-key, so it is excluded.
           dotsuffix = ""
           if (after == ".") {
             k = pos + oldn + 1
@@ -1464,14 +1464,14 @@ cmd_rewrite_identity() {
 }
 
 # cmd_rewrite_refs <remap-file> <file>... — rewrite whole-token `group/NNN`
-#   references to their remap targets, in place, across the given files (spec 047).
+#   references to their remap targets, in place, across the given files.
 #   The sibling of rewrite-identity for the wider reference surface: where
 #   rewrite-identity carries one global <old>→<new> group rename, this carries a
-#   per-occurrence remap TABLE — and that table IS the whitelist (security
-#   Finding 4): only a `<og>/<onum>` present in the remap is ever touched, so a
-#   reference to an unmoved spec is unrewritable by construction. Each remap line
+#   per-occurrence remap TABLE — and that table IS the whitelist: only a
+#   `<og>/<onum>` present in the remap is ever touched, so a reference to an
+#   unmoved spec is unrewritable by construction. Each remap line
 #   is `<og>/<onum>\t<ng>/<nnum>`, slug-and-3-digit gated in bash; a malformed
-#   line → rc 2 before any edit. The match is whole-token (security Finding 8):
+#   line → rc 2 before any edit. The match is whole-token:
 #   the char before <og> is not [a-z0-9-] and the char after <onum> is not
 #   [a-z0-9] — a dash or any other delimiter after the number is permitted, so a
 #   typed ref (`cart/006`) and a dir-path prefix (`docs/specs/cart/006-foo`) both
@@ -1580,7 +1580,7 @@ cmd_rewrite_refs() {
   return 0
 }
 
-# ─── Section: health (spec 044) ──────────────────────────────────────────────
+# ─── Section: health ─────────────────────────────────────────────────────────
 #
 # Two read-only verbs for /jim:partition health. Like the rest of this script
 # they write nothing and run no operator command — the deterministic floor the
@@ -1593,14 +1593,14 @@ cmd_rewrite_refs() {
 #   input) with `jimconf.sh get` (the five health_threshold_* knobs), both
 #   BASH_SOURCE-relative, and emits:
 #     THRESHOLDS\t<active>\t<disabled>   counts over the five keys
-#     INVALID\t<key>                     a set-but-malformed key (spec 032)
+#     INVALID\t<key>                     a set-but-malformed key
 #     CROSSED\t<signal>\t<observed>\t<threshold>
 #   Predicates: cycles|fanin|uncovered|faces_max → the LATEST event's value >= N
 #   (`na` never crosses); breaking_runs → trailing consecutive events with
 #   breaking>0 >= N (a single noisy reconcile never arms). Threshold values are
 #   integer-compared, never executed. Firing derives only from the whitelisted
-#   trusted counter channel — never from claims in scanned content (spec 044
-#   AC #12). rc: 0 facts emitted · 1 no series · 2 bad args.
+#   trusted counter channel — never from claims in scanned content. rc: 0
+#   facts emitted · 1 no series · 2 bad args.
 cmd_health_eval() {
   local specs_dir="${1:-}"
   if [[ -z "$specs_dir" ]]; then
@@ -1611,7 +1611,7 @@ cmd_health_eval() {
 
   # Resolve the five bare-name integer thresholds. A positive integer arms the
   # key; "0" is the disabled default; any other value is set-but-malformed →
-  # disabled and noted INVALID (spec 032 semantics).
+  # disabled and noted INVALID.
   local sig val active=0 disabled=0
   local -a invalid=()
   local -A armed=()
@@ -1679,9 +1679,9 @@ cmd_health_eval() {
 #     retired — P whole-token-matches an `old=` slug from a
 #               `partition finished op=rename` event (only when <specs-dir> is
 #               given; whitelisted, slug-gated parse) — the stalled docs-only
-#               rename of issue #71.
+#               rename.
 #   A path embedding no conflicting token is not a mismatch (the false-positive
-#   guard, spec 044 AC #8). Reuses map_group_slugs / old_group_territories /
+#   guard). Reuses map_group_slugs / old_group_territories /
 #   slug_token_match. rc: 0 (clean or mismatches) · 2 absent/invalid map.
 cmd_identity_check() {
   local map="${1:-}" specs_dir="${2:-}"

@@ -27,15 +27,14 @@
 # Security: commit/diff/ledger content is untrusted — never sourced or eval'd.
 # SHAs read from the ledger are validated via jimfile.sh `valid-id` before any
 # git range use (forecloses option injection). The script commits in exactly
-# six path-scoped places — `commit-review` (review.md + ledger.md, 028 AC
-# #10), `commit-blueprint` (a group's spec.md + ledger.md, 030 AC #8),
-# `commit-map` (the project map + the specs-root ledger.md, spec 033),
-# `commit-verify` (a group's ledger.md alone, spec 035 AC #11),
-# `commit-rename` (a rename's explicit stage set, spec 043), and `commit-split`
-# (a split's explicit docs stage set, spec 047) — each with literal paths, a
+# six path-scoped places — `commit-review` (review.md + ledger.md),
+# `commit-blueprint` (a group's spec.md + ledger.md), `commit-map` (the
+# project map + the specs-root ledger.md), `commit-verify` (a group's ledger.md
+# alone), `commit-rename` (a rename's explicit stage set), and `commit-split`
+# (a split's explicit docs stage set) — each with literal paths, a
 # `--` guard, and no `git add -A`; `/jim:build` commits ledger.md at
-# start/finish itself. `rename-tracked` (spec 043, sibling) and `move-spec-dir`
-# (spec 047, cross-parent) additionally do a guarded `git mv` — staging but not
+# start/finish itself. `rename-tracked` (sibling) and `move-spec-dir`
+# (cross-parent) additionally do a guarded `git mv` — staging but not
 # committing.
 
 set -uo pipefail
@@ -51,9 +50,9 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   start   <spec-dir>                          record build start (base_sha)
   finish  <spec-dir>                          record build finish (head_sha)
   event   <spec-dir> <phase> <event> [k=v …]  append a generic event
-  rename-tracked <old-path> <new-path>        sibling-constrained git mv (spec 043)
-  move-spec-dir <specs-dir> <og> <src-base> <ng> <dst-base>  cross-parent spec-dir git mv (spec 047)
-  vacated-max <specs-dir> <group>             highest split-vacated id for <group> (spec 047)
+  rename-tracked <old-path> <new-path>        sibling-constrained git mv
+  move-spec-dir <specs-dir> <og> <src-base> <ng> <dst-base>  cross-parent spec-dir git mv
+  vacated-max <specs-dir> <group>             highest split-vacated id for <group>
   metrics <spec-dir>                          emit key=value metrics to stdout
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
@@ -63,8 +62,8 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   commit-blueprint <blueprint-dir> [create|update]  commit spec.md + ledger.md
   commit-map <map-path> <specs-dir> [create|update]  commit project map + specs-root ledger
   commit-verify <blueprint-dir> [verify|health]  commit ledger.md only (verify/health self-commit)
-  commit-rename <specs-dir> <old> <new> <docs|code> <path...>  commit a rename stage set (spec 043)
-  commit-split <specs-dir> <old> <targets-csv> <path...>  commit a split stage set (spec 047)
+  commit-rename <specs-dir> <old> <new> <docs|code> <path...>  commit a rename stage set
+  commit-split <specs-dir> <old> <targets-csv> <path...>  commit a split stage set
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
   last-reconcile <specs-dir>                  prior reconcile event: iso + documented counters
   reconcile-series <specs-dir>                full reconcile event series → EVENT/EXCLUDED
@@ -110,7 +109,7 @@ resolve_head() {
 #   (letters, digits, / . _ -), no '..', no leading/trailing '/'. Accepts
 #   branch/tag/SHA refs including '/'-bearing ones (origin/main) — which
 #   is_valid_id would wrongly reject — while foreclosing option/metacharacter
-#   injection (sec 030 Finding 5). Rev expressions (HEAD~3, a^, a:b) are
+#   injection. Rev expressions (HEAD~3, a^, a:b) are
 #   intentionally rejected; pass a plain ref or SHA.
 valid_git_ref() {
   local ref="$1"
@@ -155,8 +154,8 @@ cmd_finish() {
 # cmd_commit_review <spec-dir> [verdict] — the single audited git-write site:
 #   commit review.md + ledger.md together in one path-scoped commit so a
 #   completed review's verdict and metrics are durably recorded without a manual
-#   step (028 AC #8/#10). Literal paths with a `--` guard, never `git add -A`; the
-#   message carries only the trusted-origin verdict enum (DD #4). Any git failure
+#   step. Literal paths with a `--` guard, never `git add -A`; the
+#   message carries only the trusted-origin verdict enum. Any git failure
 #   returns non-zero so the caller degrades with review.md left intact.
 cmd_commit_review() {
   local dir="${1:-}" verdict="${2:-}"
@@ -172,8 +171,8 @@ cmd_commit_review() {
 
 # cmd_commit_blueprint <blueprint-dir> — path-scoped commit of the refreshed
 #   blueprint: spec.md + ledger.md inside <blueprint-dir>, mirroring
-#   commit-review's discipline (literal paths, `--` guard, never `git add -A`;
-#   sec 030 Finding 2). The blueprint lives in <group>/000-blueprint/, a
+#   commit-review's discipline (literal paths, `--` guard, never `git add -A`).
+#   The blueprint lives in <group>/000-blueprint/, a
 #   different dir than the reviewed spec, so it gets its own path-scoped commit
 #   rather than riding commit-review. Any git failure returns non-zero so the
 #   caller degrades.
@@ -182,8 +181,8 @@ cmd_commit_blueprint() {
   if [[ -z "$dir" ]]; then echo "jimledger commit-blueprint: need <blueprint-dir>" >&2; return 2; fi
   if [[ ! -d "$dir" ]]; then echo "jimledger: blueprint-dir not found: $dir" >&2; return 2; fi
   # Whitelist the mode to create|update; anything else (or absent) maps to
-  # update so the commit subject stays well-formed and non-injectable (sec 032
-  # Finding 2). A first-time create (the U2 fallthrough) passes 'create'.
+  # update so the commit subject stays well-formed and non-injectable. A
+  # first-time create (the U2 fallthrough) passes 'create'.
   [[ "$mode" == "create" ]] || mode="update"
   git -C "$dir" add -- spec.md ledger.md || return 2
   git -C "$dir" commit -q -m "docs(blueprint): $mode 000-blueprint" -- spec.md ledger.md || return 2
@@ -191,9 +190,9 @@ cmd_commit_blueprint() {
 
 # cmd_commit_map <map-path> <specs-dir> [create|update] — path-scoped commit of
 #   the project-tier context map: <map-path> + <specs-dir>/ledger.md in the repo
-#   at CWD (spec 033 AC #10, plan DD 4). BOTH path arguments are config-derived
-#   (blueprint_path / specs_path) and clear two containment gates before git runs
-#   (sec 033 Findings 2, 8): the jimfile `valid-relpath` boundary (relative, no
+#   at CWD. BOTH path arguments are config-derived
+#   (blueprint_path / specs_path) and clear two containment gates before git
+#   runs: the jimfile `valid-relpath` boundary (relative, no
 #   '..' segment), then a literal check that each git-add target resolves inside
 #   `git rev-parse --show-toplevel` — backstopping valid-relpath and git's own
 #   symlink refusal against a shape-valid path that symlinks out of the worktree.
@@ -221,7 +220,7 @@ cmd_commit_map() {
   fi
   [[ "$mode" == "create" ]] || mode="update"
   local ledger="${specs_dir%/}/ledger.md"
-  # DD 4 containment: each git-add target must resolve inside the worktree top,
+  # Containment: each git-add target must resolve inside the worktree top,
   # rejecting a shape-valid path that symlinks out of the tree before git runs.
   local target resolved
   for target in "$map" "$ledger"; do
@@ -236,7 +235,7 @@ cmd_commit_map() {
 
 # cmd_commit_verify <blueprint-dir> [verify|health] — path-scoped commit of a
 #   read-only run's self-recorded ledger event: ledger.md alone inside
-#   <blueprint-dir>. A verify run (spec 035) and a partition-health run (spec 044)
+#   <blueprint-dir>. A verify run and a partition-health run
 #   both write NO artifact and are on-demand with no approval gesture to ride, so
 #   each self-commits its own ledger record, modeled on commit-blueprint's
 #   fix-only path (ledger.md alone falls out of pathspec staging for free). The
@@ -260,7 +259,7 @@ cmd_commit_verify() {
 
 # cmd_rename_tracked <old-path> <new-path> — history-continuous `git mv` of a
 #   tracked path, constrained to a SIBLING rename so it can never relocate an
-#   arbitrary repo file (spec 043 sec Finding 6). Guards, all before git runs:
+#   arbitrary repo file. Guards, all before git runs:
 #   both paths clear the jimfile valid-relpath boundary; dirname(old) ==
 #   dirname(new) with basename(new) a valid group slug (the sibling constraint);
 #   both resolve inside `git rev-parse --show-toplevel` (containment, backstopping
@@ -312,8 +311,8 @@ cmd_rename_tracked() {
 
 # cmd_commit_rename <specs-dir> <old> <new> <docs|code> <path...> — the fifth
 #   path-scoped commit site: land one atomic commit of a rename's stage set,
-#   composed from explicit literal paths only (no globs — sec Finding 7), so an
-#   uncommitted change outside the set can never ride it (AC 12). The `docs` stage
+#   composed from explicit literal paths only (no globs), so an
+#   uncommitted change outside the set can never ride it. The `docs` stage
 #   auto-includes the moved spec-dir PAIR (<specs-dir>/<old> deleted +
 #   <specs-dir>/<new> added, both already staged by rename-tracked) so the rename
 #   commits atomically; the explicit args are the touched blueprint files. The
@@ -371,7 +370,7 @@ cmd_commit_rename() {
 }
 
 # cmd_commit_split <specs-dir> <old> <targets-csv> <path>... — the split's docs
-#   commit (spec 047, DD 9): one atomic commit of the fission's COMPLETE stage set,
+#   commit: one atomic commit of the fission's COMPLETE stage set,
 #   composed from explicit literal paths only. Unlike commit-rename's docs arm, a
 #   split has no single old→new pair to auto-derive — N spec dirs move across N
 #   children — so the orchestrator passes the whole set: every moved spec-dir's
@@ -442,9 +441,9 @@ cmd_commit_split() {
 
 # cmd_move_spec_dir <specs-dir> <old-group> <src-basename> <new-group> <dst-basename>
 #   — cross-parent, history-continuous `git mv` of one spec directory: the move +
-#   renumber primitive split needs (spec 047). Where rename-tracked is a
+#   renumber primitive split needs. Where rename-tracked is a
 #   SIBLING-only rename, this deliberately crosses parents, so its bound set is
-#   NARROWER instead of wider (security Finding 1): both endpoints must resolve
+#   NARROWER instead of wider: both endpoints must resolve
 #   under <specs-dir> — never an arbitrary repo file — and each basename must be a
 #   spec-dir shape (NNN-slug or NNN-wip). Guards, all before git runs: 5 args;
 #   specs-dir clears the jimfile valid-relpath boundary; both groups are valid
@@ -507,12 +506,12 @@ cmd_move_spec_dir() {
 }
 
 # cmd_vacated_max <specs-dir> <group> — the vacated-id floor source consumed by
-#   jimfile.sh next-id (spec 047). Scans <specs-dir>/ledger.md for
+#   jimfile.sh next-id. Scans <specs-dir>/ledger.md for
 #   partition-finished op=split events and prints the highest OLD number any
 #   split ever vacated FROM <group> (zero-padded 3-digit), so next-id can floor
-#   past it and never re-mint a moved spec's id (AC 11). This verb OWNS the
-#   op=split event grammar (the reconcile-series precedent — grammar stays with
-#   the ledger). Fail-closed per security Finding 2: the event is gated on
+#   past it and never re-mint a moved spec's id. This verb OWNS the
+#   op=split event grammar (grammar stays with the ledger). Fail-closed: the
+#   event is gated on
 #   ;op=split;, EVERY moved= pair is iterated, and each element is charset-gated
 #   (og/onum:ng/nnum, onum exactly 3 digits) — an element that fails the gate is
 #   inert, never fatal, so a tampered ledger element can at worst be ignored and
@@ -629,7 +628,7 @@ cmd_diff() {
 #   <base>..<head> range in the repo at CWD (head defaults to HEAD). The ad-hoc
 #   blueprint update's diff source: both endpoints are ref-safety-gated and
 #   resolved to SHAs (resolve_ref) before any git interpolation, so a crafted
-#   ref cannot inject a git option or pathspec (sec 030 Finding 5). Untrusted
+#   ref cannot inject a git option or pathspec. Untrusted
 #   output. Unlike the range verbs, this operates on CWD's repo, not a spec-dir.
 cmd_diff_range() {
   local base_ref="${1:-}" head_ref="${2:-HEAD}"
@@ -645,12 +644,12 @@ cmd_diff_range() {
 #   line via `git diff --name-only`. The --name-only sibling of cmd_diff_range:
 #   both endpoints are ref-safety-gated and resolved to SHAs (resolve_ref) before
 #   any git interpolation, so a crafted ref cannot inject a git option or
-#   pathspec (sec 030 Finding 5). Returns rc 2 on an invalid/unresolvable ref or a
+#   pathspec. Returns rc 2 on an invalid/unresolvable ref or a
 #   missing base — the files-family degrade code the review sensor and the ad-hoc
 #   --since caller key on (not diff-range's rc 1) — and rc 0 + empty on an empty
 #   range. Untrusted output: paths with unusual bytes arrive git-C-quoted
 #   (double-quoted, octal-escaped), while a plain-space path is emitted verbatim,
-#   so consumers must re-gate each line (security.md Finding 10). Operates on
+#   so consumers must re-gate each line. Operates on
 #   CWD's repo, not a spec-dir — the ad-hoc --since adapter runs at root.
 cmd_files_range() {
   local base_ref="${1:-}" head_ref="${2:-HEAD}"
@@ -664,7 +663,7 @@ cmd_files_range() {
 # Stages whose started/finished boundaries the ledger may carry. The metrics
 # loop iterates THIS fixed list — key names are literals, never derived from
 # ledger text — so a tampered ledger cannot inject spurious metric keys
-# (sec Finding 7: the key set is fixed; values are counts/SHAs or the
+# (the key set is fixed; values are counts/SHAs or the
 # shape-validated verdict, never free-form ledger text).
 LEDGER_STAGES="spec research plan sec build review blueprint verify"
 
@@ -701,8 +700,8 @@ phase_event_metrics() {
 #   fixed, code-literal keys review_alignment / review_findings. The value is
 #   shape-validated on the way out (alignment against the known vocabulary,
 #   findings against a non-negative integer) so a tampered ledger surfaces at
-#   most a bounded, well-formed value — never arbitrary text (sec 028 Finding 1).
-#   review.md, not this channel, is the authoritative verdict (028 AC #9).
+#   most a bounded, well-formed value — never arbitrary text.
+#   review.md, not this channel, is the authoritative verdict.
 review_verdict_metrics() {
   local ledger="$1" ra rf
   ra="$(ledger_kv "$ledger" review finished alignment last)"
@@ -714,7 +713,7 @@ review_verdict_metrics() {
 }
 
 # cmd_metrics <spec-dir> — emit key=value metrics: fixed keys, shape-validated
-#   values, never free-form ledger text (DD #9).
+#   values, never free-form ledger text.
 cmd_metrics() {
   local dir="${1:-}"
   if [[ -z "$dir" ]]; then echo "jimledger metrics: need <spec-dir>" >&2; return 2; fi
@@ -724,7 +723,7 @@ cmd_metrics() {
   # Git-derived metrics — emitted ONLY when a build range resolves. The
   # ledger-only metrics below (per-stage process + the review verdict) emit even
   # with no build baseline, so review stays self-measurable over an
-  # un-instrumented build (028 DD #6). A no-baseline / malformed-sha range simply
+  # un-instrumented build. A no-baseline / malformed-sha range simply
   # skips this block — the stage metrics still land.
   local rr base head
   if rr="$(resolve_range "$dir" 2>/dev/null)"; then
@@ -757,7 +756,7 @@ cmd_metrics() {
   # Per-stage process metrics (spec/research/plan/sec/build/review/blueprint) plus the
   # latest review verdict — ledger-only, so they survive an un-instrumented
   # build. Iterates a fixed allowlist (LEDGER_STAGES); key names are literals,
-  # never derived from ledger text (sec Finding 7).
+  # never derived from ledger text.
   phase_event_metrics "$ledger"
   review_verdict_metrics "$ledger"
   return 0
@@ -765,10 +764,10 @@ cmd_metrics() {
 
 # cmd_updates_since <blueprint-dir> <watermark-iso> — print the count of
 #   `blueprint finished` events strictly after <watermark-iso> and at/before now,
-#   for the regen-cadence signal (spec 032). The watermark is validated to the
+#   for the regen-cadence signal. The watermark is validated to the
 #   fixed iso format (rc 2 on malformed/empty) so the count can safely gate an
 #   unattended regen; the `<= now` upper bound stops a planted future-dated ledger
-#   event from inflating the count (sec 032 Finding 1). Untrusted ledger — parsed
+#   event from inflating the count. Untrusted ledger — parsed
 #   only via awk -v (no source/eval), mirroring phase_event_metrics.
 cmd_updates_since() {
   local dir="${1:-}" wm="${2:-}"
@@ -784,15 +783,15 @@ cmd_updates_since() {
     END { print n+0 }' "$ledger"
 }
 
-# Shared reconcile-counter contract (specs 034/039/044 — 15 keys). `last-reconcile`
+# Shared reconcile-counter contract (15 keys). `last-reconcile`
 # and `reconcile-series` validate the `op=reconcile` finished event against ONE
 # whitelist, so the injection-proof key set — the only channel from the
 # hand-editable ledger into the health report — lives in a single place. Three
-# value classes: INT (non-negative integer — the 7 finding counters plus 044's
-# faces/faces_max), NA (integer or the literal `na` = not-computable, the 039
-# carve-out), SLUG (sorted comma-joined group slugs, ≤256 bytes, each element
-# slug-valid — 044's faces_max_group / fanin_group attribution keys, present
-# only when the metric > 0, display data never consumed by threshold
+# value classes: INT (non-negative integer — the 7 finding counters plus
+# faces/faces_max), NA (integer or the literal `na` = not-computable, the
+# coverage carve-out), SLUG (sorted comma-joined group slugs, ≤256 bytes, each
+# element slug-valid — the faces_max_group / fanin_group attribution keys,
+# present only when the metric > 0, display data never consumed by threshold
 # predicates). ORDER is the canonical print order both verbs emit.
 RECONCILE_INT_KEYS="edges leaks breaking dead unresolved undeclared stale faces faces_max"
 RECONCILE_NA_KEYS="groups cycles fanin uncovered"
@@ -865,8 +864,8 @@ END {
 AWK
 
 # cmd_reconcile_series <specs-dir> — emit the full op=reconcile finished event
-#   series (oldest→newest) as EVENT/EXCLUDED records, the trend sensor's input
-#   (spec 044). Reuses the shared whitelist so a tampered ledger line can inject
+#   series (oldest→newest) as EVENT/EXCLUDED records, the trend sensor's input.
+#   Reuses the shared whitelist so a tampered ledger line can inject
 #   no counter key. rc: 0 ≥1 valid EVENT · 1 no ledger / zero valid events ·
 #   2 bad args.
 cmd_reconcile_series() {
@@ -881,14 +880,14 @@ cmd_reconcile_series() {
 }
 
 # cmd_last_reconcile <specs-dir> — print the immediately preceding reconcile
-#   event's iso and its documented counters, for spec 039's health delta. The
+#   event's iso and its documented counters, for the health delta. The
 #   prior is the LAST `blueprint finished` line whose kv carries `op=reconcile`.
 #   Only the documented counter keys are printed — the seven finding counters
 #   (edges/leaks/breaking/dead/unresolved/undeclared/stale) plus the four health
 #   counters (groups/cycles/fanin/uncovered); every other kv token (op, tier, or
 #   a hand-injected key) is dropped, never printed, so the ledger — a committed,
-#   hand-editable file — has no injection channel into the report (security
-#   Finding 4). Each documented key present must be a non-negative integer; `na`
+#   hand-editable file — has no injection channel into the report. Each
+#   documented key present must be a non-negative integer; `na`
 #   is additionally allowed on the four health keys (a not-computable coverage /
 #   short-circuit measurement). A documented key carrying any other value is a
 #   malformed prior → rc 2, so the caller degrades to baseline and names it.

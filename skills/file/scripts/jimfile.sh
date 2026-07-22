@@ -43,7 +43,7 @@
 #   bash jimfile.sh valid-relpath <path>              exit 0 iff safe repo-relative
 #   bash jimfile.sh -c <path> <subcmd>                use <path> as jimconf.toml
 #
-# KIND-VS-KEY: `blueprint` (spec 033)
+# KIND-VS-KEY: `blueprint`
 #   `blueprint` is both a config KEY (the project-tier map, default
 #   BLUEPRINT.md at the project root) and a per-group KIND (the reserved
 #   000-blueprint slot). Verb + arity disambiguate:
@@ -65,7 +65,7 @@ set -uo pipefail
 # LC_ALL=C ensures locale-independent behavior for `tr` case folding, regex
 # character class matching, and date formatting. Without this, locales like
 # Turkish produce non-deterministic slugs (dotless ı / dotted İ are not ASCII
-# i/I). Spec 017 security.md Finding 11.
+# i/I).
 export LC_ALL=C
 
 # ─── Section: Globals ────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ export LC_ALL=C
 # travels with the plugin tree (skills/file/scripts/ → skills/conf/scripts/).
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
 
-# Path to the sibling jimledger.sh (spec 047 vacated-id floor). BASH_SOURCE-relative
+# Path to the sibling jimledger.sh (the vacated-id floor source). BASH_SOURCE-relative
 # like JIMCONF (skills/file/scripts/ → skills/review/scripts/). Consulted
 # best-effort by next-id — an older checkout without the review skill resolves to
 # a non-existent path and degrades to directory-only id derivation.
@@ -149,16 +149,16 @@ today_yyyymmdd() {
 #   Print the current second-resolution UTC timestamp as ISO 8601 with a Z
 #   suffix (e.g. 2026-06-13T14:45:30Z). Single source of truth for issue
 #   created/updated stamping. The format is a hardcoded literal — it takes no
-#   argument and is never config-driven (spec 022 security.md Finding 2).
+#   argument and is never config-driven.
 now_utc_iso8601() {
   date -u +%Y-%m-%dT%H:%M:%SZ
 }
 
 # is_valid_slug <slug>
-#   AC-C7 validation: slug must be lowercase alnum + dash only, alnum-start,
+#   Slug must be lowercase alnum + dash only, alnum-start,
 #   non-empty. Rejects path separators (/, \), '..', leading dot, control
 #   characters, and any other non-conforming input. Errors go to stderr;
-#   stdout stays empty. Spec 017 security.md Finding 1 + Finding 2.
+#   stdout stays empty.
 is_valid_slug() {
   local slug="$1"
   if [[ -z "$slug" ]]; then
@@ -173,8 +173,8 @@ is_valid_slug() {
 }
 
 # is_valid_id <id>
-#   Bounded allowlist for a resolved prefix or a full issue id (spec 021 AC #7,
-#   AC #11). Broader than is_valid_slug — uppercase and '.' are allowed — but
+#   Bounded allowlist for a resolved prefix or a full issue id. Broader than
+#   is_valid_slug — uppercase and '.' are allowed — but
 #   still a positive allowlist, never a denylist, so it cannot escape the
 #   issues directory or be parsed as a flag by downstream tooling.
 #
@@ -214,8 +214,8 @@ cmd_valid_id() {
 
 # cmd_valid_relpath <path> — exit 0 iff <path> is a safe repo-relative path:
 # non-empty, not absolute, no '..' path segment. The deterministic shape gate
-# for territory declarations recorded in the project map (spec 033 AC #8,
-# security Finding 9). Shape-only: existence is deliberately not checked — a
+# for territory declarations recorded in the project map. Shape-only:
+# existence is deliberately not checked — a
 # declared territory may predate its code. Segment-precise: 'a..b/x' passes
 # ('..' inside a name), 'a/../b' is rejected ('..' as a segment).
 cmd_valid_relpath() {
@@ -329,7 +329,7 @@ cmd_next_id() {
       fi
     done
   fi
-  # Vacated-id floor (spec 047, AC 11): consult the specs-root ledger's op=split
+  # Vacated-id floor: consult the specs-root ledger's op=split
   # remap so the group never re-mints an id a split moved out — the tail-move and
   # retired-group-re-mint cases. Best-effort and monotonic: an absent script, a
   # non-zero rc, or empty output leaves the floor unset, and the floor only ever
@@ -424,9 +424,9 @@ cmd_mv_spec() {
 # issue_next_num <issues_dir>
 #   Scan <issues_dir>/*.md for top-level `num:` frontmatter and print max+1
 #   (or 1 when none carry a num). Shared by cmd_next_num and the `{seq}`
-#   prefix token (spec 021). Reads num: only; never mutates. The display
+#   prefix token. Reads num: only; never mutates. The display
 #   ordinal is decentralized — duplicates across branches are accepted as
-#   non-fatal (spec 019 DD #5).
+#   non-fatal.
 issue_next_num() {
   local dir="${1:-}" max=0 f n
   dir="${dir%/}"
@@ -466,7 +466,7 @@ cmd_next_num() {
 #   Any other text passes through verbatim. Returns rc 1 when a {date:...}
 #   render fails or an unknown / malformed token is encountered. The format
 #   string is passed as a single quoted argument to `date` — never eval'd or
-#   word-split (spec 021 security.md Finding 3); LC_ALL=C from the preamble
+#   word-split; LC_ALL=C from the preamble
 #   keeps output deterministic. Charset validation is the caller's job.
 render_template() {
   local tmpl="$1" ordinal="$2"
@@ -511,14 +511,14 @@ render_template() {
 }
 
 # resolve_issue_prefix
-#   Resolve the configured issue-id prefix (spec 021). Maps the preset name in
+#   Resolve the configured issue-id prefix. Maps the preset name in
 #   issue_id_prefix to a template, renders it (projecting the next ordinal for
-#   {seq}, AC #4), and validates the result with is_valid_id. Prints the
+#   {seq}), and validates the result with is_valid_id. Prints the
 #   resolved prefix on success. Falls back to the YYYYMMDD- date prefix when
 #   the scheme is unknown, the project tag is empty, or rendering/validation
 #   fails — emitting a one-line notice to stderr in those malformed cases
-#   (AC #8) while a blank/absent config resolves silently to date (AC #9).
-#   Resolution stays entirely in bash — never delegated to the caller (AC #10).
+#   while a blank/absent config resolves silently to date.
+#   Resolution stays entirely in bash — never delegated to the caller.
 resolve_issue_prefix() {
   local scheme project tmpl ordinal prefix default_prefix
   scheme="$(jimconf_get issue_id_prefix)"
@@ -572,7 +572,7 @@ cmd_prefix_from() {
       elif [[ "$created" == *T*Z ]]; then
         prefix="${date_part}T${created:11:2}${created:14:2}${created:17:2}"
       else
-        prefix="${date_part}T000000"        # date-only -> day-start (AC #3)
+        prefix="${date_part}T000000"        # date-only -> day-start
       fi
       ;;
     sequential)
@@ -613,7 +613,7 @@ cmd_prefix_from() {
 #   Two forms, dispatched by arity:
 #     Single-arg form (D3): `path <key>` returns the configured path for a
 #     jimconf key (delegates to jimconf.sh, regardless of disk existence).
-#     KINDS∩KEYS overlaps are `debug` and `blueprint` (spec 033): `path debug`
+#     KINDS∩KEYS overlaps are `debug` and `blueprint`: `path debug`
 #     / `path blueprint` (no further args) take the key form and return the
 #     configured `debug` directory / project-tier map path respectively.
 #     Multi-arg form: `path <kind> <args...>` resolves a derived artifact path:
@@ -661,8 +661,8 @@ cmd_path() {
     blueprint)
       # Reserved per-group slot: {specs}/<group>/000-blueprint/spec.md. The
       # group is validated through the single is_valid_slug boundary so a
-      # malformed group cannot direct a write outside the specs tree (029
-      # security Finding 3). No id/name — the slot is fixed, not allocated.
+      # malformed group cannot direct a write outside the specs tree. No
+      # id/name — the slot is fixed, not allocated.
       local group="${1:-}"
       if [[ -z "$group" ]]; then
         echo "error: 'path blueprint' requires <group>" >&2
@@ -819,7 +819,7 @@ usage:
   jimfile.sh valid-id <id>                      exit 0 if id passes is_valid_id
   jimfile.sh valid-relpath <path>               exit 0 iff safe repo-relative
                                                 (no abs, no '..' segment)
-  jimfile.sh prefix-from <created> <num>        re-derive active prefix (spec 023)
+  jimfile.sh prefix-from <created> <num>        re-derive active prefix
   jimfile.sh -c <path> <subcmd>                 forward -c to jimconf.sh
 USAGE
 }
