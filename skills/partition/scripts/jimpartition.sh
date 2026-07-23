@@ -68,6 +68,7 @@ usage: jimpartition.sh <subcommand> [args]
   rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
   rewrite-refs <remap-file> <file>...           remap-keyed ref rewrite → REWROTE file line kind
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
+  merge-edges-diff <before-tsv> <after-tsv> <target> <src>...  edge set modulo merge → MISSING/EXTRA
   health-eval <specs-dir>                        threshold eval over reconcile series → THRESHOLDS/INVALID/CROSSED
   identity-check <map> [<specs-dir>]             territory name-mismatch sensor → MISMATCH foreign|retired
 USAGE
@@ -1542,6 +1543,66 @@ cmd_edges_diff() {
   return $rc
 }
 
+# cmd_merge_edges_diff <before-tsv> <after-tsv> <target> <src>... — the merge form
+#   of edges-diff: the post-merge graph done-condition. The expected after-set is
+#   <before> with EVERY <src> rewritten to <target> in the consumer and provider
+#   columns (whole-field match), then any row whose rewritten consumer equals its
+#   rewritten provider DROPPED — a cross-source edge that became internal to the
+#   merged group dissolves. The relies-on surface column is compared untouched
+#   (the ratchet). The self-edge elision is safe by construction: a pre-merge
+#   contract graph cannot contain a self-edge (the requires face is cross-group by
+#   template), so a post-rewrite self-row can only be a dissolved cross-source
+#   edge. Emits MISSING for an expected edge absent from <after> and EXTRA for an
+#   <after> edge not expected. rc 0 identical-modulo-merge · rc 1 divergent · rc 2
+#   usage.
+cmd_merge_edges_diff() {
+  local before="${1:-}" after="${2:-}" target="${3:-}"
+  if [[ -z "$before" || -z "$after" || -z "$target" ]]; then
+    echo "jimpartition merge-edges-diff: need <before-tsv> <after-tsv> <target> <src>..." >&2; return 2
+  fi
+  shift 3
+  if [[ $# -eq 0 ]]; then
+    echo "jimpartition merge-edges-diff: need <src>... (>=1 source)" >&2; return 2
+  fi
+  if [[ ! -f "$before" ]]; then echo "jimpartition merge-edges-diff: before file not found: $before" >&2; return 2; fi
+  if [[ ! -f "$after"  ]]; then echo "jimpartition merge-edges-diff: after file not found: $after" >&2; return 2; fi
+  if ! valid_slug "$target"; then
+    echo "jimpartition merge-edges-diff: invalid target slug: $target" >&2; return 2
+  fi
+  local src srcs_csv=""
+  for src in "$@"; do
+    valid_slug "$src" || { echo "jimpartition merge-edges-diff: invalid source slug: $src" >&2; return 2; }
+    srcs_csv="${srcs_csv:+$srcs_csv,}$src"
+  done
+  local rc
+  {
+    awk 'NF{print "B\t" $0}' "$before"
+    awk 'NF{print "A\t" $0}' "$after"
+  } | awk -F'\t' -v target="$target" -v srcs="$srcs_csv" '
+    BEGIN { n = split(srcs, a, ","); for (i = 1; i <= n; i++) issrc[a[i]] = 1 }
+    function rw(c) { return (c in issrc) ? target : c }
+    $2 == "HYGIENE" { next }
+    {
+      c1 = $2; c2 = $3; c3 = $4
+      if (c1 == "" && c2 == "" && c3 == "") next
+      if ($1 == "B") {
+        r1 = rw(c1); r3 = rw(c3)
+        if (r1 == r3) next                       # dissolved internal edge — elided
+        want[r1 "\t" c2 "\t" r3]++
+      } else {
+        have[c1 "\t" c2 "\t" c3]++
+      }
+    }
+    END {
+      diverge = 0
+      for (k in want) { d = want[k] - (k in have ? have[k] : 0); for (j = 0; j < d; j++) { print "MISSING\t" k; diverge = 1 } }
+      for (k in have) { d = have[k] - (k in want ? want[k] : 0); for (j = 0; j < d; j++) { print "EXTRA\t" k; diverge = 1 } }
+      exit (diverge ? 1 : 0)
+    }'
+  rc=$?
+  return $rc
+}
+
 # ─── Section: rewrite-identity ───────────────────────────────────────────────
 #
 # The ONE in-place file-mutating verb in this otherwise stdout-only substrate
@@ -2001,6 +2062,7 @@ main() {
     rewrite-identity) shift; cmd_rewrite_identity "$@" ;;
     rewrite-refs) shift; cmd_rewrite_refs "$@" ;;
     edges-diff) shift; cmd_edges_diff "$@" ;;
+    merge-edges-diff) shift; cmd_merge_edges_diff "$@" ;;
     health-eval) shift; cmd_health_eval "$@" ;;
     identity-check) shift; cmd_identity_check "$@" ;;
     *)         usage; return 2 ;;

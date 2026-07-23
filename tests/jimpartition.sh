@@ -2116,6 +2116,64 @@ case_jimpartition_merge_map_usage_rc2() {
   assert_exit "no sources rc" 2 "$RC"
 }
 
+# ─── Section: merge-edges-diff cases (spec 048 Task 7) ───────────────────────
+
+# AC 16: the post-merge done-condition — the before graph with each source
+# rewritten to the target and the dissolved cross-source edge elided equals the
+# actual after graph. Absorption (wishlist into cart): the wishlist->cart edge
+# internalizes, the orders->cart bystander stays. rc 0.
+case_jimpartition_merge_edges_clean_collapse() {
+  local before after
+  before=$(fixture me-clean-b.tsv "$(printf 'orders\tcart-checkout-hold\tcart\nwishlist\tcart-checkout-hold\tcart')")
+  after=$(fixture me-clean-a.tsv "$(printf 'orders\tcart-checkout-hold\tcart')")
+  run_jimpartition merge-edges-diff "$before" "$after" cart wishlist
+  assert_exit "identical modulo merge" 0 "$RC"
+  assert_eq "no divergence rows" "" "$OUT"
+}
+
+# AC 7/16: a third-party edge re-points to the target on the provider column while
+# the cross-source edge dissolves; the fresh-target arm rewrites both sources
+# (cart, wishlist -> shopping), so orders->cart becomes orders->shopping.
+case_jimpartition_merge_edges_third_party_repoint() {
+  local before after
+  before=$(fixture me-tp-b.tsv "$(printf 'orders\tcart-checkout-hold\tcart\nwishlist\tcart-checkout-hold\tcart')")
+  after=$(fixture me-tp-a.tsv "$(printf 'orders\tcart-checkout-hold\tshopping')")
+  run_jimpartition merge-edges-diff "$before" "$after" shopping cart wishlist
+  assert_exit "re-point clean" 0 "$RC"
+}
+
+# AC 16: every edge internal to the merged set dissolves — an all-internal before
+# graph (cart<->wishlist both directions) matches an empty after graph (self-edge
+# elision, safe because a pre-merge graph has no self-edges).
+case_jimpartition_merge_edges_self_edge_elision() {
+  local before after
+  before=$(fixture me-self-b.tsv "$(printf 'wishlist\twishlist-gift-flag\tcart\ncart\tcart-checkout-hold\twishlist')")
+  after=$(fixture me-self-a.tsv "")
+  run_jimpartition merge-edges-diff "$before" "$after" cart wishlist
+  assert_exit "all internal dissolve to empty" 0 "$RC"
+  assert_eq "no rows" "" "$OUT"
+}
+
+# AC 16: a divergence (an expected re-pointed edge absent from the after graph) is
+# reported MISSING with rc 1.
+case_jimpartition_merge_edges_divergent_rc1() {
+  local before after
+  before=$(fixture me-div-b.tsv "$(printf 'orders\tcart-checkout-hold\tcart\nwishlist\tcart-checkout-hold\tcart')")
+  after=$(fixture me-div-a.tsv "")
+  run_jimpartition merge-edges-diff "$before" "$after" cart wishlist
+  assert_exit "divergent" 1 "$RC"
+  assert_match "missing third-party edge" 'MISSING.*orders.*cart' "$OUT"
+}
+
+# rc 2 on usage (no sources) or a missing file.
+case_jimpartition_merge_edges_usage_rc2() {
+  local before; before=$(fixture me-u-b.tsv "$(printf 'orders\tx\tcart')")
+  run_jimpartition merge-edges-diff "$before" "$before" cart
+  assert_exit "no sources rc" 2 "$RC"
+  run_jimpartition merge-edges-diff "$before" /nonexistent-after cart wishlist
+  assert_exit "missing after rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
