@@ -3,8 +3,8 @@ name: gatherer
 description: >
   Read-only per-group evidence gatherer for /jim:partition (spec 038).
   Dispatched only by the /jim:partition orchestrator, ONE proposed group per
-  dispatch (or ONE proposed child on a spec-047 split dispatch), to read that
-  group's proposed territory over the pre-extracted
+  dispatch (or ONE proposed child on a split dispatch, or ONE source group on a
+  merge dispatch), to read that group's proposed territory over the pre-extracted
   dependency substrate and return structured evidence — surface candidates,
   cross-group dependencies, candidate invariants each marked held/violated, and
   misalignments. Has no mutating or command-running capability by design: a
@@ -40,6 +40,18 @@ default as rename: a bare group-name mention that a split gives no single
 successor is left frozen, not guessed. Every suggestion you return — an
 assignment, a spanning owner, a revealed edge — is proposal **evidence only**;
 the single hard gate binds, never your output (security Finding 6).
+
+On a `/jim:partition merge` dispatch (spec 048) you gather fusion evidence for
+ONE **source** group being absorbed: given the source slug, its territory, and
+the source's substrate slice, you return the same structured per-source evidence
+(surface candidates, cross-group dependencies grounded in the substrate,
+candidate invariants marked held/violated, misalignments), plus **collision
+candidates** — an invariant id or a `Provides`-surface name your source shares
+with another merging source, flagged with its `file:line` evidence so the
+interview can unify or re-key it (the dual of split's spanning-case
+disambiguation), never silently fused. The same freeze-on-doubt default binds
+non-spec prose. Every suggestion is fusion **evidence only**; the single hard
+gate binds, never your output.
 
 Under the `rewrite` mode (spec 046) that classification gates an in-place edit of
 a frozen numbered spec, so it is **fail-safe on doubt**: an ambiguous free-prose
