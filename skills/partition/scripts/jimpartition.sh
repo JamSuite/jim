@@ -1209,7 +1209,12 @@ cmd_merge_preflight() {
   done
 
   # blueprint-exists per EFFECTIVE source (the fusion target's blueprint included).
+  # Slug-gate before the filesystem probe — never `test -d` an unvalidated
+  # component (split-preflight / rename-preflight parity).
   for e in "${effective[@]}"; do
+    if ! valid_slug "$e"; then
+      emit_check "blueprint-exists:$e" fail "invalid source slug: $e"; fail=1; continue
+    fi
     if [[ -d "$specs_dir/$e/000-blueprint" ]]; then
       emit_check "blueprint-exists:$e" pass "$specs_dir/$e/000-blueprint"
     else
@@ -1247,6 +1252,8 @@ cmd_merge_preflight() {
   # (an unmapped group / stray dir). Skipped for a mapped absorption target.
   if [[ $target_mapped -eq 1 ]]; then
     :                                          # absorption target legitimately pre-exists
+  elif ! valid_slug "$target"; then
+    :                                          # already failed target-slug-valid — never probe an unvalidated slug
   elif [[ -d "$specs_dir/$target" ]]; then
     emit_check "target-collision:$target" fail "collides with spec-group dir: $specs_dir/$target"; fail=1
   else

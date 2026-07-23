@@ -1985,6 +1985,30 @@ case_jimpartition_identity_check_merge_live_slug_in_old_bounded() {
   assert_match "live orders slug advised retired (bounded)" 'MISMATCH.*shop.*orders.*retired' "$OUT"
 }
 
+# review Finding 2: a no-op op=rename (old==new) retires nothing under the
+# uniform rule (old ∈ new) — a fail-closed edge, no false-positive retired flag.
+case_jimpartition_identity_check_noop_rename_retires_nothing() {
+  local w; w="$TMP_BASE/icnr"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icnr_map '### cart
+- Territory: `services/cart/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=rename;old=cart;new=cart\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "no-op rename retires nothing" "0" "$(printf '%s\n' "$OUT" | grep -c 'retired')"
+}
+
+# review Finding 2: a malformed comma-bearing op=rename old= retires each
+# slug-valid token not among new (fail-closed, bounded advisory — never fatal).
+case_jimpartition_identity_check_malformed_old_bounded() {
+  local w; w="$TMP_BASE/icmo"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icmo_map '### shop
+- Territory: `services/orders/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=rename;old=orders,BAD!;new=payments\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "still advisory rc 0" 0 "$RC"
+  assert_match "valid token retired, malformed inert" 'MISMATCH.*shop.*orders.*retired' "$OUT"
+}
+
 # AC 4: the revealed-edge floor — projecting the substrate onto proposed child
 # territories surfaces the cross-child requires edge (GEDGE) a naive split would
 # miss, plus a straddling provider (STRADDLE), as deterministic gate evidence.
@@ -2096,6 +2120,38 @@ case_jimpartition_merge_preflight_usage_rc2() {
   local dir; dir="$(merge_repo mp_usage)"
   run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart
   assert_exit "no sources rc" 2 "$RC"
+}
+
+# review Finding 1: a fresh target with an invalid slug is caught by
+# target-slug-valid and its filesystem collision probe is SKIPPED — a `test -d`
+# never runs on an unvalidated component (sibling gate-before-probe parity).
+case_jimpartition_merge_preflight_invalid_target_no_probe() {
+  local dir; dir="$(merge_repo mp_badtarget)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs 'Bad' cart wishlist
+  assert_exit "rc" 1 "$RC"
+  assert_match "target slug invalid" 'target-slug-valid.*fail' "$OUT"
+  assert_eq "collision probe skipped for invalid target" "0" "$(printf '%s\n' "$OUT" | grep -c 'target-collision')"
+}
+
+# review Finding 1: an invalid source slug fails blueprint-exists with an
+# invalid-slug reason — the 000-blueprint `test -d` never runs on the
+# unvalidated component.
+case_jimpartition_merge_preflight_invalid_source_no_probe() {
+  local dir; dir="$(merge_repo mp_badsource)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart 'Bad'
+  assert_exit "rc" 1 "$RC"
+  assert_match "invalid source blueprint-exists gated" 'blueprint-exists:Bad.*fail.*invalid' "$OUT"
+}
+
+# review Finding 2: the target listed explicitly among the sources dedupes to a
+# single EFFECTIVE row tagged `listed` (never the implicit promotion).
+case_jimpartition_merge_preflight_target_listed_explicitly() {
+  local dir; dir="$(merge_repo mp_tlisted)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart wishlist cart
+  assert_exit "rc" 0 "$RC"
+  assert_eq "cart appears once in EFFECTIVE" "1" "$(printf '%s\n' "$OUT" | grep -c $'^EFFECTIVE\tcart\t')"
+  assert_match "cart tagged listed (explicit)" $'EFFECTIVE\tcart\tlisted' "$OUT"
+  assert_eq "no implicit promotion for cart" "0" "$(printf '%s\n' "$OUT" | grep -c $'EFFECTIVE\tcart\timplicit')"
 }
 
 # ─── Section: merge-map cases (spec 048 Task 6) ──────────────────────────────
