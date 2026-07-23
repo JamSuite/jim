@@ -110,7 +110,9 @@ executes the data it reads.
 - `jimpartition.sh` **extraction/coverage CLI** — `scan`/`ingest`/`aggregate`/
   `coverage`, the spec-043 rename verbs `rename-preflight`/`occurrences`/
   `edges-diff`, the spec-044 health verbs `health-eval`/`identity-check`, the
-  spec-047 split verbs `split-preflight`/`renumber-map`/`rewrite-refs`, and the
+  spec-046 identity verb `rewrite-identity [--skip-typed-refs]` (the flag cedes
+  typed `group/NNN` refs to the remap sweep on renumbering moves), the spec-047
+  split verbs `split-preflight`/`renumber-map`/`rewrite-refs`, and the
   spec-048 merge verbs `merge-preflight`/`merge-map`/`merge-edges-diff`.
   Guarantee: the deterministic `/jim:partition` substrate — a native
   five-language import scan, an `ingest` valid-relpath + tracked-endpoint trust
