@@ -1,6 +1,6 @@
 ---
 spec: "docs/specs/jim/052-blueprint-provenance-guard/spec.md"
-reviewed_phases: [spec]
+reviewed_phases: [spec, plan]
 status: Active
 date: "2026-07-23"
 ---
@@ -9,19 +9,23 @@ date: "2026-07-23"
 
 ## Summary
 
-**Findings:** 0 Critical · 0 Notable · 1 Advisory
+**Findings:** 0 Critical · 0 Notable · 1 Advisory (resolved in the plan)
 
-Reviewed the spec (requirements-gap lens; no `plan.md` yet). This is a doctrine +
-deterministic-test change: a companion "provenance" rule, an extended exit-door
-self-scan, a read-only `grep` guard over two tracked files, and citation wiring.
-No PII / credentials / session data, so LINDDUN is N/A. The single Advisory folds
-the extended normalization back inside the untrusted-supplied-text boundary the
-present-tense discipline already owns.
+Reviewed the spec (requirements-gap lens) and the plan (design-flaw lens; dual
+lens). This is a doctrine + deterministic-test change: a companion "provenance"
+rule, an extended exit-door self-scan, a read-only `grep` guard over two tracked
+files, and citation wiring. No PII / credentials / session data, so LINDDUN is
+N/A. The spec-phase Advisory (Finding 1) is now addressed by the plan — folded
+into AC #4 and implemented by Task 1, with the doc-structure test pinning the two
+safety sections. The plan-phase lens surfaced no new findings: the `grep` helper
+is static (no `source`/`eval`, no ReDoS, no untrusted path derivation), and the
+map normalization is human-confirmed through `/jim:blueprint`, adding no
+automated trust boundary.
 
 ## Coverage
 
 - spec.md — reviewed 2026-07-23 (requirements-gap lens)
-- plan.md — not present; spec-only review
+- plan.md — reviewed 2026-07-23 (design-flaw lens)
 
 ## Data Classification
 
@@ -59,6 +63,11 @@ present-tense discipline already owns.
   sections exist, so the discipline is mechanically pinned rather than implied.
 - **Route:** Spec
 - **Relates to:** AC #1, AC #2, Research & Architecture Handoff Insight 1
+- **Status:** Resolved — folded into spec **AC #4** and implemented by plan
+  **Task 1** (creates `provenance.md` with the `Untrusted supplied text` and
+  secret-scrubbed `Normalize and disclose` sections), with
+  `case_provenance_rule_doc_structure` asserting both exist. The Constitution
+  Check confirms the scan stays inside the existing `<untrusted-*>` wrapping.
 
 ## STRIDE Coverage
 
@@ -71,12 +80,22 @@ present-tense discipline already owns.
 | Denial of Service | No | No issues found — the guard's patterns (`spec-0NN`, `NNN–NNN`, `vX.Y.Z`) are linear with no catastrophic backtracking, over two small tracked files |
 | Elevation of Privilege | N/A | No privilege model; the scan adds no capability. The data→instruction boundary is covered under Tampering (Finding 1) |
 
+## Artifact Misalignment
+
+No security-relevant spec↔plan inconsistency. The one notable design choice — the
+plan routes AC #8's verify-invariant update to the post-build `/jim:blueprint
+--from-review` fold rather than the build — is not a security boundary, and the
+wiring it senses is *also* guarded mechanically in-build by the AC #6 citation
+min-count test (`tests/provenance.sh`). A lagging invariant therefore cannot
+silently drop the untrusted-text / secret-scrub wiring — the mechanical guard
+catches it. Considered and cleared.
+
 ## Routing Recommendations
 
 ### Spec amendments
-- Finding 1: add an AC (or strengthen AC #1/#2) requiring the companion doctrine
-  doc to carry present-tense's untrusted-supplied-text discipline and secret-scrub
-  its disclosure, so the doc-structure test pins both mechanically.
+- Finding 1 (applied): AC #4 was added, requiring the companion doctrine doc to
+  carry present-tense's untrusted-supplied-text discipline and secret-scrub its
+  disclosure, with the doc-structure test pinning both. No further routing needed.
 
 ### Candidate issues
 - None — no finding routes to `Issue`.
