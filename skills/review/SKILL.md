@@ -10,7 +10,7 @@ description: >
   (/jim:spec, /jim:plan), or fixing code (/jim:build, /jim:debug).
 agent: reviewer
 argument-hint: "[--depth lean|thorough] [spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(mkdir *) Skill(jim:sec) Skill(jim:blueprint) Skill(jim:verify) Agent(investigator) Agent(judge) Read Write Glob Grep
+allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Skill(jim:sec) Skill(jim:blueprint) Skill(jim:verify) Agent(investigator) Agent(judge) Read Write Glob Grep
 ---
 
 # /jim:review
@@ -172,14 +172,14 @@ Materialize a candidate list from the drift items and findings worth tracking as
 
 `auto_review` does **not** imply auto-filing: this batch follows `auto_issue_file` independently. When `auto_issue_file` is `"false"`, surface the batch interactively even if the review was auto-invoked.
 
+File each surviving candidate through the single emitter, `skills/issue/scripts/new.sh` (see `skills/issue/SKILL.md` § 7a). Always write the candidate body to a temp file with the Write tool first — never inline untrusted body into a shell command (security 025 Finding 5). The emitter resolves the slug/num/timestamps, validates the id, encodes the untrusted fields, and writes atomically.
+
 IF auto_issue_file == "true" THEN apply the AUTO-FILE PATH:
 
 FOR each candidate (1-based row_index `i`):
-  - Resolve the slug: `bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id issue "<title>"`.
-  - On slug normalization failure: add `(i, reason)` to `skipped_list` and continue.
-  - Resolve the path: `bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path issue <slug>`.
-  - Ensure the issues directory exists: `mkdir -p "$(dirname <path>)"`.
-  - Write the file at the resolved path using the spec 017 issue template (frontmatter + body).
+  - Write the candidate body to a temp file with the Write tool.
+  - File it: `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --title "<title>" --priority <p> --labels "<csv>" --origin "<origin>" --body-file "<tmp>"`.
+  - On a non-zero exit (e.g. an un-normalizable title): add `(i, reason)` to `skipped_list` and continue.
 AFTER the loop, regenerate INDEX.md ONCE: `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`.
 Emit: `"Filed N of M candidates (K skipped: #i — <reason>). See INDEX.md."` Reference skipped candidates by row index, never by title.
 
@@ -199,9 +199,9 @@ I noted N candidate issues during this run:
 
 Wait for the developer's response.
 
-- ON `file all`: write each checked row, regenerate INDEX.md ONCE, emit `"Filed N candidates. See INDEX.md."`
+- ON `file all`: FOR each checked row, file it via `new.sh` (body to a temp file first; no per-row regen). AFTER the loop, regenerate INDEX.md ONCE, emit `"Filed N candidates. See INDEX.md."`
 - ON `skip all`: discard all rows.
-- ON per-row `f` / `e` / `s`: file (write + regen) / edit (present the full draft with the spec 017 AC-C2 scrub reminder, then write on approval) / skip.
+- ON per-row `f` / `e` / `s`: file (via `new.sh` + regen) / edit (present the full draft with the spec 017 AC-C2 scrub reminder, then file via `new.sh` on approval) / skip.
 
 ### 10. Blueprint update (require_blueprint / auto_blueprint)
 
