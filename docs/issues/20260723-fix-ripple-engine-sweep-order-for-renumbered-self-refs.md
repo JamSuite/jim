@@ -2,7 +2,7 @@
 id: 20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs
 num: 87
 title: "fix ripple-engine sweep order for renumbered self-refs"
-status: open
+status: closed
 priority: high
 labels: [partition, ripple-engine]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T03:21:43Z
-updated: 2026-07-23T18:18:44Z
+updated: 2026-07-23T20:05:26Z
 origin: docs/specs/jim/048-partition-merge/review.md
 ---
 
@@ -56,3 +56,31 @@ self-ref in a moved body over both the split and merge arms.
 
 `docs/specs/jim/048-partition-merge/review.md` — Deviations & feedback (the
 AC-omission investigation).
+
+## Resolution
+
+Fixed under spec `jim/051` (`docs/specs/jim/051-partition-ref-sweep/`). Scoped as
+a bug spec, built TDD, reviewed `aligned` (0 findings), and folded into the
+`jim` blueprint.
+
+Of the two proposed remedies, **scoping won, not reordering** — because scoping
+the spec surfaced a **second, order-independent manifestation** this issue's
+"reorder the sweeps" proposal could not fix:
+
+- **M1 (this issue's case):** an intra-group renumbered self-ref
+  (`src/002` → `target/008`) — reordering *would* fix it.
+- **M2 (newly surfaced):** on the split extraction arm, a moved body's ref to a
+  spec that stays in the **remainder** (`old/005`) is group-renamed by the
+  identity pass to `child/005` in **either** order — the remap's remainder
+  identity row (`old/005 → old/005`) is a no-op, so reordering cannot help.
+
+The fix is an opt-in **`--skip-typed-refs`** flag on `rewrite-identity`: on a
+renumbering split or merge the identity pass leaves typed `group/NNN` refs to
+`rewrite-refs`' remap sweep exclusively (the two verbs then commute over typed
+refs); rename passes no flag and is byte-identical. Regression tests cover both
+arms and both manifestations, and a prose-pin test guards the four canonical
+invocation lines against a future flow dropping the flag.
+
+Verified: M1 → `target/008`, M2 → `old/005`; full suite 697/697 green.
+Ships on `feat/blueprint`; `fix(partition)` commit carries `Spec: jim/051` +
+`Issue: 87/20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs`.
