@@ -50,6 +50,35 @@ case_provenance_rule_doc_structure() {
   assert_match "has '## Where it runs' section"           '^## Where it runs'           "$body"
 }
 
+# prov_token_count <abs-file>
+#   Print how many times the reference token appears in the file (0 if absent).
+#   Fixed-string match so the path's dots are literal.
+prov_token_count() {
+  grep -oF "$PROV_TOKEN" "$1" 2>/dev/null | wc -l | tr -d ' '
+}
+
+# AC: the discipline is single-sourced and referenced (not restated) at each
+# composition site that ingests supplied text, and a dropped or missing citation
+# is caught mechanically. Each file carries one pointer per exit door it wires
+# alongside the present-tense sibling, so a single dropped pointer drops the
+# count below its minimum and fails this case.
+case_provenance_sites_reference_rule() {
+  # "<repo-relative file>\t<minimum expected count>"
+  local rows=(
+    "skills/blueprint/SKILL.md	5"
+    "skills/blueprint/references/map-methodology.md	2"
+    "skills/blueprint/references/migrate-arms.md	3"
+  )
+  local row rel min cnt ok
+  for row in "${rows[@]}"; do
+    rel="${row%%$'\t'*}"
+    min="${row##*$'\t'}"
+    cnt="$(prov_token_count "$REPO_ROOT/$rel")"
+    ok="no"; [[ "$cnt" -ge "$min" ]] && ok="yes"
+    assert_eq "$rel references rule (need >= $min, got $cnt)" "yes" "$ok"
+  done
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Runs this file's cases only on direct invocation; when the aggregate runner
