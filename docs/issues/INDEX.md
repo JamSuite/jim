@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 41
+- Open: 42
 - Closed: 51
 
 ## Issues
@@ -99,6 +99,7 @@
 - `20260723-harden-textual-invariant-test-global-identifier-naming` — Harden textual-invariant test global-identifier naming · status: open · num: 89 · priority: low · created: 2026-07-23T10:23:59Z · labels: [test, meta-test, tech-debt] · origin: docs/specs/jim/050-blueprint-present-tense/plan.md
 - `20260723-single-source-the-000-blueprint-directory-name-in-jimpartition-s` — Single-source the 000-blueprint directory name in jimpartition.sh · status: closed · num: 88 · priority: low · created: 2026-07-23T06:09:14Z · labels: [verify, partition, refactor] · origin: docs/specs/jim/049-contracts-check-hardening/review.md
 - `20260723-skills-prose-invocation-lint` — Generalize the prose-pin pattern into a skills-prose invocation lint · status: open · num: 90 · priority: low · created: 2026-07-23T18:43:32Z · labels: [meta-test, partition] · origin: docs/specs/jim/051-partition-ref-sweep/plan.md
+- `20260723-widen-the-mechanical-provenance-guard-to-extended-artifact-ref-f` — Widen the mechanical provenance guard to extended artifact-ref forms · status: open · num: 93 · priority: low · created: 2026-07-23T21:23:49Z · labels: [blueprint, provenance] · origin: docs/specs/jim/052-blueprint-provenance-guard/spec.md
 
 ## Graph
 
