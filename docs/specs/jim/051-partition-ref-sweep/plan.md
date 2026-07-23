@@ -103,7 +103,7 @@ flowchart TD
 3. [x] **Green:** implement the flag in `cmd_rewrite_identity` per the Interface Contract — parse `--skip-typed-refs` ahead of the positionals, thread `-v skiptyped=` into the awk, require `!skiptyped` on the typed branch (`typed && !skiptyped`); update the usage line and the function header comment to state the new behavior.
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh jimpartition`
 
-4. [ ] **Regression (composed arms):** add the two composed-sweep cases — split extraction (moved body with a renumbered ref *and* a remainder ref; remap with both rows; flag-carrying identity + refs in documented order; assert `child/001` and `old/005` survive correctly) and merge (moved body `src/002` → assert `target/008`). Depends on task 3.
+4. [x] **Regression (composed arms):** add the two composed-sweep cases — split extraction (moved body with a renumbered ref *and* a remainder ref; remap with both rows; flag-carrying identity + refs in documented order; assert `child/001` and `old/005` survive correctly) and merge (moved body `src/002` → assert `target/008`). Depends on task 3.
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh jimpartition`
 
 5. [ ] **Doc alignment:** add `--skip-typed-refs` to the canonical invocation lines in `skills/partition/SKILL.md` (split `:369`, merge `:425`) and `partition-methodology.md` (split `:493-495`, merge `:678-680`); add the division-of-labor sentence to both sweep-assembly sections; add the gatherer.md mechanical-floor caveat.

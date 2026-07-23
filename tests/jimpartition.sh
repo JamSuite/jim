@@ -1917,6 +1917,56 @@ case_jimpartition_rewrite_refs_usage_rc2() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── Section: composed-sweep regressions — renumbering moves (spec 051) ───────
+#
+# The materialize sweep as the split/merge flows document it: flag-carrying
+# rewrite-identity, then the remap sweep, over one moved body. Guards both
+# manifestations of the ref-sweep defect at the composition level (a script-only
+# unit test cannot catch a wrong two-verb composition).
+
+# 051 AC 1/2/5 (split extraction arm): a moved body cites a spec that ALSO moves
+# and renumbers (cart/002 → checkout/001) AND a spec that stays in the remainder
+# (cart/005). After the composed sweep the renumbered ref lands on its new id and
+# the remainder ref is untouched — no stale-number mispoint (M1), no group
+# mispoint on the remainder ref (M2).
+case_jimpartition_rewrite_split_extraction_composed() {
+  local dir body id_out T; T=$'\t'
+  dir="$(git_init rw_split_composed)"
+  repo_add "$dir" moved.md $'---\ngroup: "cart"\n---\n\nDepends on cart/002 for the flow.\nAlso see cart/005 in the remainder.'
+  # renumber-map output: the moved+renumbered row plus the remainder identity row.
+  printf 'cart/002\tcheckout/001\ncart/005\tcart/005\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-identity --skip-typed-refs cart checkout moved.md
+  assert_exit "identity rc" 0 "$RC"; id_out="$OUT"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv moved.md
+  assert_exit "refs rc" 0 "$RC"
+  body="$(cat "$dir/moved.md")"
+  assert_match "group re-pointed"        '^group: "checkout"$'         "$body"
+  assert_match "renumbered ref landed"   'Depends on checkout/001 for' "$body"
+  assert_match "remainder ref untouched" 'Also see cart/005 in'        "$body"
+  assert_eq "no stale-number mispoint (M1)" "0" "$(printf '%s\n' "$body" | grep -c 'checkout/002')"
+  assert_eq "no remainder mispoint (M2)"    "0" "$(printf '%s\n' "$body" | grep -c 'checkout/005')"
+  assert_match "identity group record"      "^REWROTE${T}moved.md${T}[0-9]+${T}group$" "$id_out"
+  assert_eq "identity emitted no typed-ref" "0" "$(printf '%s\n' "$id_out" | grep -c 'typed-ref')"
+}
+
+# 051 AC 1/5 (merge arm): a moved source body cites a same-source ref (src/002)
+# that renumber-appends to target/008. After the composed sweep the ref lands on
+# the appended id — no stale-number mispoint (M1).
+case_jimpartition_rewrite_merge_composed() {
+  local dir body
+  dir="$(git_init rw_merge_composed)"
+  repo_add "$dir" moved.md $'---\ngroup: "src"\n---\n\nRefers to src/002 upstream.'
+  printf 'src/002\ttarget/008\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-identity --skip-typed-refs src target moved.md
+  assert_exit "identity rc" 0 "$RC"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv moved.md
+  assert_exit "refs rc" 0 "$RC"
+  body="$(cat "$dir/moved.md")"
+  assert_match "group re-pointed"        '^group: "target"$'              "$body"
+  assert_match "renumber-append landed"  'Refers to target/008 upstream'  "$body"
+  assert_eq "no stale-number mispoint (M1)" "0" "$(printf '%s\n' "$body" | grep -c 'target/002')"
+}
+
 # ─── Section: identity-check op=split arm + aggregate reveal (spec 047 Task 9) ─
 
 # AC 17: a symmetric split retires the source slug (old ∉ new) — a surviving
