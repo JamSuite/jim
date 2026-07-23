@@ -2,7 +2,7 @@
 id: 20260711-blueprint-present-tense-discipline-enforcement
 num: 70
 title: "Enforce present-tense discipline at /jim:blueprint draft composition"
-status: open
+status: closed
 priority: medium
 labels: [blueprint, doctrine, drafting]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-11T07:57:56Z
-updated: 2026-07-11T07:57:56Z
+updated: 2026-07-23T10:59:10Z
 origin: conversation
 ---
 
@@ -59,3 +59,19 @@ artifact. Intent-vs-wording is a different discipline from data-vs-instruction.
 3. **Pre-gate self-scan**: before presenting, scan the draft for the marker
    vocabulary above and resolve hits — the gate should confirm discipline,
    not supply it.
+
+## Resolution
+
+Shipped in spec `jim/050` (Enforce present-tense discipline at blueprint draft
+composition). All three proposed actions landed:
+
+1. Validation Checklist item added to `skills/blueprint/SKILL.md`.
+2. The normalization rule is single-sourced in
+   `skills/blueprint/references/present-tense.md` and cited by path from each
+   composition site (SKILL.md exit doors, `map-methodology.md`, `migrate-arms.md`).
+3. The exit-door pre-gate self-scan (normalize + disclose, secret-scrubbed,
+   supplied text handled as untrusted data), guarded by the textual-invariant
+   `tests/presenttense.sh` and recorded as the `present-tense` invariant in the
+   jim `000-blueprint`.
+
+Post-build review: aligned, no living-intent violations.

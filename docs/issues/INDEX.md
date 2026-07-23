@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 35
-- Closed: 49
+- Open: 34
+- Closed: 50
 
 ## Issues
 
@@ -77,7 +77,7 @@
 - `20260708-emitter-and-template-both-emit-the-issue-description-header` — Emitter and template both emit the issue Description header · status: open · num: 69 · priority: low · created: 2026-07-08T20:37:32Z · labels: [issues-system, emitter, template] · origin: conversation
 - `20260708-partition-spec-migration-mode` — Extend /jim:partition with a spec-migration mode (move specs into new groups) · status: closed · num: 68 · priority: medium · created: 2026-07-08T07:53:09Z · labels: [partition, migration, freeze-history] · origin: conversation
 - `20260711-add-a-territory-name-mismatch-partition-health-sensor` — Add a territory-name-mismatch partition-health sensor · status: closed · num: 71 · priority: low · created: 2026-07-11T09:10:28Z · labels: [partition, health, blueprint] · origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
-- `20260711-blueprint-present-tense-discipline-enforcement` — Enforce present-tense discipline at /jim:blueprint draft composition · status: open · num: 70 · priority: medium · created: 2026-07-11T07:57:56Z · labels: [blueprint, doctrine, drafting] · origin: conversation
+- `20260711-blueprint-present-tense-discipline-enforcement` — Enforce present-tense discipline at /jim:blueprint draft composition · status: closed · num: 70 · priority: medium · created: 2026-07-11T07:57:56Z · labels: [blueprint, doctrine, drafting] · origin: conversation
 - `20260712-add-partition-stage-metrics-to-the-review-ledger-allowlist` — Add partition stage metrics to the review ledger allowlist · status: open · num: 73 · priority: low · created: 2026-07-12T08:06:17Z · labels: [ledger, review, partition] · origin: docs/specs/jim/044-partition-health/plan.md
 - `20260712-compute-reconcile-face-size-counters-deterministically` — Compute reconcile face-size counters deterministically · status: closed · num: 74 · priority: low · created: 2026-07-12T09:55:16Z · labels: [partition, blueprint, reconcile, hardening] · origin: docs/specs/jim/044-partition-health/plan.md
 - `20260712-emit-the-unarmed-knob-notice-on-the-nothing-to-reconcile-reconci` — Emit the unarmed-knob notice on the nothing-to-reconcile reconcile · status: closed · num: 75 · priority: low · created: 2026-07-12T10:12:32Z · labels: [blueprint, partition, health] · origin: docs/specs/jim/044-partition-health/review.md
