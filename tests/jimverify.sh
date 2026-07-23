@@ -810,6 +810,45 @@ case_jimverify_edges_crafted_cell_hygiene() {
   assert_eq "clean row still emitted" "catalog" "$(tsv_field orders 3)"
 }
 
+# AC: a self-edge (consumer == provider) is surfaced as a HYGIENE row and never
+# as a plain edge — the exclusion is visible in output, not a silent drop, while
+# a genuine cross-group row on the same map is still emitted.
+case_jimverify_edges_self_pair_hygiene() {
+  local cfg
+  cfg=$(fixture map-selfpair.md '# Blueprint — acme
+
+## Contract Graph
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| acct | shared identity | acct |
+| billing | pricing | catalog |
+')
+  run_jimverify edges "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "self-pair surfaced as exactly one HYGIENE row" "1" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="HYGIENE"' | grep -c .)"
+  assert_eq "self-pair never a plain edge" "0" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="acct" && $3=="acct"' | grep -c .)"
+  assert_eq "a clean cross-group row is still emitted" "catalog" "$(tsv_field billing 3)"
+}
+
+# AC: a self-edge row bearing an embedded tab is HYGIENE-emitted through the same
+# san() path — a single sanitized row with no column shift (the tab is stripped,
+# so the HYGIENE record stays exactly two TAB-fields).
+case_jimverify_edges_self_pair_sanitized() {
+  local cfg
+  cfg=$(fixture map-selfpair-san.md "$(printf '# Blueprint — acme\n\n## Contract Graph\n\n| Consumer | Relies on | Provider |\n| :--- | :--- | :--- |\n| acct | uses\ta tab | acct |\n')")
+  run_jimverify edges "$cfg"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "embedded-tab self-pair surfaces as one HYGIENE row" "1" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="HYGIENE"' | grep -c .)"
+  assert_eq "sanitized HYGIENE row has no column shift (2 tab-fields)" "2" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="HYGIENE"{print NF; exit}')"
+  assert_eq "self-pair never a plain edge" "0" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="acct" && $3=="acct"' | grep -c .)"
+}
+
 # ─── Section: contracts-check — the composite floor (spec 037 Task 3) ────────
 
 # contracts_repo <name> — build a two-group project (accounts provider, billing
