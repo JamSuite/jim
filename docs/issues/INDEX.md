@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 11
+- Open: 12
 - Closed: 5
 
 ## Issues
@@ -23,6 +23,7 @@
 - `20260717-evaluate-optional-ears-when-then-testable-ac-grammar-and-a-spec-` — Evaluate optional EARS/WHEN-THEN testable-AC grammar and a spec-check testability lint · status: open · num: 16 · priority: medium · created: 2026-07-17T22:22:04Z · labels: [spec, spec-check, testability, grammar] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 - `20260717-post-approval-correction-evolution-flow-edit-approved-plans-and-` — Post-approval correction/evolution flow: edit approved plans and propagate fixes to code and migrations · status: open · num: 15 · priority: high · created: 2026-07-17T22:21:05Z · labels: [skill, plan, correction, lifecycle, workflow] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 - `20260717-reconcile-brainstorm-skill-passive-capture-stance-with-active-ev` — Reconcile brainstorm skill's passive-capture stance with users' expectation of active evaluation · status: open · num: 12 · priority: medium · created: 2026-07-17T18:07:21Z · labels: [brainstorm, skill, ux] · origin: conversation
+- `20260723-jimfile-ref-verb-and-lint` — Extend jimfile.sh with a reference ref-verb, anchor resolution, and a bare-reference lint · status: open · num: 17 · priority: low · created: 2026-07-23T20:18:03Z · labels: [enhancement, jimfile, references] · origin: docs/brainstorms/20260720-claude-speak.md
 
 ## Graph
 
