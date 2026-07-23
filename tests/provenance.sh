@@ -57,6 +57,18 @@ prov_token_count() {
   grep -oF "$PROV_TOKEN" "$1" 2>/dev/null | wc -l | tr -d ' '
 }
 
+# prov_scan_file <abs-file>
+#   Print the count of provenance hits (0 == clean) — a stable-looking reference
+#   to a mutable identifier. Union of the flagged forms, after masking the
+#   reserved 000-blueprint path (legitimate current state — 000 never moves).
+#   Date/timestamp numerics (4-2-2) do not match the 3–3 spec-range form, so a
+#   frontmatter `updated:`/`Last reconciled:` stamp is not flagged.
+prov_scan_file() {
+  sed 's#docs/specs/[a-z0-9-]*/000-blueprint#__RESERVED__#g' "$1" 2>/dev/null \
+    | grep -oiE 'spec[ -][0-9]{3}|[0-9]{3}[–—-][0-9]{3}|v[0-9]+\.[0-9]+\.[0-9]+|docs/specs/[a-z0-9-]+/[0-9]{3}-' \
+    | wc -l | tr -d ' '
+}
+
 # AC: the discipline is single-sourced and referenced (not restated) at each
 # composition site that ingests supplied text, and a dropped or missing citation
 # is caught mechanically. Each file carries one pointer per exit door it wires
@@ -77,6 +89,24 @@ case_provenance_sites_reference_rule() {
     ok="no"; [[ "$cnt" -ge "$min" ]] && ok="yes"
     assert_eq "$rel references rule (need >= $min, got $cnt)" "yes" "$ok"
   done
+}
+
+# AC: the guard's detection patterns fire on the provenance forms that shipped in
+# the original violation (spec id, spec range, version pin) and spare legitimate
+# current-state content (the reserved 000-blueprint path, a functional grouping,
+# a date). prov_scan_file is the single home of the patterns, shared with the
+# self-hosting case below.
+case_provenance_detect_forms() {
+  local dirty clean dcount ccount dirty_ok
+  dirty="$(fixture prov_dirty.md 'The spec-047 split verbs; issue tracking (017–025); pinned v2.0.0.')"
+  clean="$(fixture prov_clean.md 'Blueprint at docs/specs/jim/000-blueprint/; the issue-tracking cluster, reconciled 2026-07-13.')"
+
+  dcount="$(prov_scan_file "$dirty")"
+  ccount="$(prov_scan_file "$clean")"
+
+  dirty_ok="no"; [[ "${dcount:-0}" -ge 3 ]] && dirty_ok="yes"
+  assert_eq "positive fixture flags the shipped forms (>=3, got $dcount)" "yes" "$dirty_ok"
+  assert_eq "negative fixture is provenance-free" "0" "$ccount"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
