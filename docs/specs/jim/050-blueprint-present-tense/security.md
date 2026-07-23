@@ -1,6 +1,6 @@
 ---
 spec: "spec.md"
-reviewed_phases: [spec]
+reviewed_phases: [spec, plan]
 status: Active
 date: "2026-07-23"
 ---
@@ -11,17 +11,17 @@ date: "2026-07-23"
 
 ## Summary
 
-**Findings:** 0 Critical · 0 Notable · 0 Advisory  ·  2 Notable resolved this run
+**Findings:** 0 Critical · 0 Notable · 0 Advisory  ·  3 findings resolved
 
-Spec-only review (no plan.md yet). Freeform expert review plus a full STRIDE
-sweep; LINDDUN omitted (no PII / Credentials / Session data handled). Re-run
-2026-07-23 after both findings were routed to Spec: each is now resolved by a new
-acceptance criterion (see the finding's Resolution line). No new findings this
-run — status Active.
+Dual-lens review (spec + plan). Freeform expert review plus a full STRIDE sweep;
+LINDDUN omitted (no PII / Credentials / Session data handled). All three findings
+(2 Notable spec-phase, 1 Advisory plan-phase) were routed and resolved — see each
+finding's Resolution line. Status Active.
 
 ## Coverage
 
 - spec.md — reviewed 2026-07-23 (requirements-gap lens); re-run 2026-07-23 — both findings resolved
+- plan.md — reviewed 2026-07-23 (design-flaw lens); dual-lens artifact-misalignment check applied
 
 <!-- No plan.md — plan-phase design-flaw lens not yet applied. -->
 
@@ -55,6 +55,15 @@ run — status Active.
 - **Relates to:** AC "treats that text as input rather than copy … does not survive into the presented or returned draft"; Out of Scope "Adversarial-content handling … unchanged".
 - **Resolution (2026-07-23):** Resolved. Spec AC added — the normalization step treats supplied text as untrusted data under the data-vs-instruction boundary; embedded directives are normalized as text and never followed, so the intent-vs-wording layer adds no injection path.
 
+### 3. Scan-scope wording: plan omits retire and reconcile from the exit-door enumeration
+
+- **Severity:** Advisory
+- **Description:** The spec's self-scan AC says the scan runs "on every draft, both tiers and all paths." The plan enumerates the exit doors that ingest caller/interview-supplied text — group generate/update, map create/update, the mint-new handoff, and the migrate arms — and omits retire mode (a fixed skill-authored banner) and the reconcile pass (a derived `## Contract Graph` rewrite). Those two flows compose no supplied text, so the scan is vacuous there and the omission is not a security gap — but the spec's blanket "all paths" wording leaves it unexplained, so a coder could wire the scan in needlessly or leave the "all paths" claim unmet.
+- **Suggestion:** In the plan (the "Where it runs" contract / Out of Scope), state that retire and reconcile are outside the scan's scope because they compose no supplied or interview text (fixed banner / derived graph), reconciling the spec's "all paths" wording. No new AC needed.
+- **Route:** Plan
+- **Relates to:** AC "A pre-gate self-scan runs on every draft, both tiers and all paths"; plan Interface Contracts "Where it runs".
+- **Resolution (2026-07-23):** Resolved. Plan updated — retire and reconcile scoped out of the exit-door scan (no supplied text), reconciling the spec's "all paths" wording.
+
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
@@ -66,6 +75,10 @@ run — status Active.
 | Denial of Service | N/A | No runtime resource surface; a per-draft self-scan is prompt-level with negligible cost. |
 | Elevation of Privilege | Yes (resolved) | Finding 2 — same root as Tampering; closed by the untrusted-data AC. |
 
+## Artifact Misalignment
+
+- **Finding 3 — scan-scope wording:** Spec states the self-scan runs on "every draft … all paths"; the plan enumerates only the supplied-text-ingesting exit doors, omitting retire and reconcile without stating why. Route: Plan.
+
 ## Routing Recommendations
 
 ### Spec amendments (applied 2026-07-23)
@@ -73,7 +86,7 @@ run — status Active.
 - Finding 2 — applied: new AC requires the normalization step handle supplied text as untrusted data within the existing `<untrusted-*>` discipline (embedded directives normalized as text, never followed).
 
 ### Plan amendments
-- None — no plan.md yet; both findings are requirements-level and route to Spec.
+- Finding 3: note in the plan that retire and reconcile are outside the scan's scope (they compose no supplied text), reconciling the spec's "all paths" wording.
 
 ### Candidate issues
 - No routing required — no findings routed to Issue.
