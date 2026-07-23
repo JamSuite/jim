@@ -1,6 +1,6 @@
 ---
 id: 20260723-single-source-the-000-blueprint-directory-name-in-jimpartition-s
-num: 83
+num: 88
 title: "Single-source the 000-blueprint directory name in jimpartition.sh"
 status: closed
 priority: low

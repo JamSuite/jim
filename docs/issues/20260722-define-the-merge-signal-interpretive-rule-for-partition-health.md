@@ -1,6 +1,6 @@
 ---
 id: 20260722-define-the-merge-signal-interpretive-rule-for-partition-health
-num: 81
+num: 86
 title: "Define the merge-signal interpretive rule for partition health"
 status: open
 priority: medium

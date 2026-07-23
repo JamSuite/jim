@@ -1,6 +1,6 @@
 ---
 id: 20260722-align-partition-split-flow-to-interview-plus-gate-shape
-num: 80
+num: 85
 title: "Align partition split flow to interview-plus-gate shape"
 status: open
 priority: medium

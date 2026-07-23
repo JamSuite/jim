@@ -1,6 +1,6 @@
 ---
 id: 20260721-narrow-rewrite-identity-dotted-key-and-typed-ref-over-match
-num: 77
+num: 82
 title: "Narrow rewrite-identity dotted-key and typed-ref over-match"
 status: closed
 priority: low

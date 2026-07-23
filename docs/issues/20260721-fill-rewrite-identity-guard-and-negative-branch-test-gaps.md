@@ -1,6 +1,6 @@
 ---
 id: 20260721-fill-rewrite-identity-guard-and-negative-branch-test-gaps
-num: 78
+num: 83
 title: "Fill rewrite-identity guard and negative-branch test gaps"
 status: closed
 priority: medium

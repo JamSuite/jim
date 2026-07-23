@@ -1,6 +1,6 @@
 ---
 id: 20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs
-num: 82
+num: 87
 title: "fix ripple-engine sweep order for renumbered self-refs"
 status: open
 priority: medium

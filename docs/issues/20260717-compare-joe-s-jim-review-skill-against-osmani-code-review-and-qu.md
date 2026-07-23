@@ -1,6 +1,6 @@
 ---
 id: 20260717-compare-joe-s-jim-review-skill-against-osmani-code-review-and-qu
-num: 86
+num: 78
 title: "Compare Joe's jim:review skill against Osmani code-review-and-quality blueprint"
 status: open
 priority: high
