@@ -871,7 +871,7 @@ EOF
 # exfiltration guard).
 case_jimverify_contracts_coverage_crossref_locationonly() {
   local root; root="$(contracts_repo cc1)"
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_match "coverage 2 mapped 2 with blueprints" '^COVERAGE	2	2$' "$OUT"
   assert_match "cross-ref billing→accounts with file:line" \
@@ -888,7 +888,7 @@ case_jimverify_contracts_crossref_cap_named() {
   local root; root="$(contracts_repo cccap)"
   # 60 consumer lines reaching into accounts/ territory — over the 50-line cap.
   printf 'x = require("accounts/m%s");\n' {1..60} > "$root/billing/bulk.js"
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_eq "at most 50 cross-ref facts shown for the capped pair" "50" \
     "$(printf '%s\n' "$OUT" | grep -c '^CROSS-REF	billing	')"
@@ -900,7 +900,7 @@ case_jimverify_contracts_crossref_cap_named() {
 # provider territory — the provider still honors the guarantee (spec 037 AC #2).
 case_jimverify_contracts_provider_holds() {
   local root; root="$(contracts_repo cc2)"
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
   assert_eq "provider side holds" "holds" \
     "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
 }
@@ -911,7 +911,7 @@ case_jimverify_contracts_provider_holds() {
 case_jimverify_contracts_provider_violated() {
   local root; root="$(contracts_repo cc3)"
   printf 'function resolveCustomer() { return id; }\n' > "$root/accounts/session.js"
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
   assert_eq "provider side violated when surface gone" "violated" \
     "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
 }
@@ -921,7 +921,7 @@ case_jimverify_contracts_provider_violated() {
 # (spec 037 AC #2).
 case_jimverify_contracts_consumer_holds() {
   local root; root="$(contracts_repo cc4)"
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
   assert_eq "consumer side holds" "holds" \
     "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="consumer" {print $3; exit}')"
 }
@@ -955,7 +955,7 @@ case_jimverify_contracts_unscoped_group() {
 | :--- | :--- | :--- |
 | billing | customer identity lookup | accounts |
 EOF
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
   assert_match "platform → UNSCOPED-GROUP" '^UNSCOPED-GROUP	platform$' "$OUT"
 }
 
@@ -973,7 +973,7 @@ case_jimverify_contracts_unsafe_scope_failed() {
 identity-lookup criticality=high provider-ref=getIdentity scope=/etc
 ```
 EOF
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
   assert_eq "unsafe scope → provider failed" "failed" \
     "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
 }
@@ -984,7 +984,7 @@ EOF
 case_jimverify_contracts_filelist_hygiene() {
   local root fl; root="$(contracts_repo cc7)"
   fl="$(mk_flist cc7.list /etc/passwd '"uni-caf\303\251.js"' billing/invoice.js)"
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs "$fl"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md "$fl"
   assert_exit "rc" 0 "$RC"
   assert_match "absolute path → HYGIENE" '^HYGIENE	/etc/passwd$' "$OUT"
   assert_match "C-quoted path → HYGIENE" '^HYGIENE	"uni-caf' "$OUT"
@@ -998,11 +998,11 @@ case_jimverify_contracts_filelist_hygiene() {
 case_jimverify_contracts_scoped_crossref() {
   local root fl; root="$(contracts_repo cc8)"
   fl="$(mk_flist cc8a.list accounts/session.js)"
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs "$fl"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md "$fl"
   assert_eq "no cross-ref when only provider file is listed" "0" \
     "$(printf '%s\n' "$OUT" | grep -c '^CROSS-REF')"
   fl="$(mk_flist cc8b.list billing/invoice.js)"
-  run_jimverify_in "$root" contracts-check BLUEPRINT.md docs/specs "$fl"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md "$fl"
   assert_match "cross-ref when consumer file is listed" '^CROSS-REF	billing	' "$OUT"
 }
 
@@ -1010,6 +1010,7 @@ case_jimverify_contracts_scoped_crossref() {
 case_jimverify_contracts_missing_args_exits_2() {
   run_jimverify contracts-check
   assert_exit "rc" 2 "$RC"
+  assert_match "need message" 'need <map-path>' "$ERR"
 }
 
 # ─── Section: health — graph metrics (spec 039 Task 1) ───────────────────────
@@ -1568,7 +1569,7 @@ fa_repo() {
 # three face measurements in one deterministic call (spec 045 AC #1).
 case_jimverify_faces_aggregate_total_max_holder() {
   local root; root="$(fa_repo faTMH "" accounts:3 billing:1)"
-  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_eq "total sums provides across groups" "4" "$(tsv_field FACES_TOTAL 2)"
   assert_eq "max is the per-group maximum"       "3" "$(tsv_field FACES_MAX 2)"
@@ -1579,7 +1580,7 @@ case_jimverify_faces_aggregate_total_max_holder() {
 # — ties → all holders (spec 045 AC #1/#4).
 case_jimverify_faces_aggregate_max_ties_sorted() {
   local root; root="$(fa_repo faTie "" zebra:2 alpha:2 mid:1)"
-  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_eq "max" "2" "$(tsv_field FACES_MAX 2)"
   assert_eq "both max holders, sorted comma-joined" "alpha,zebra" "$(tsv_field FACES_MAX_GROUP 2)"
@@ -1589,7 +1590,7 @@ case_jimverify_faces_aggregate_max_ties_sorted() {
 # 0 and NO FACES_MAX_GROUP attribution key (the emit-only-when->0 rule, AC #6).
 case_jimverify_faces_aggregate_all_zero_no_attribution() {
   local root; root="$(fa_repo faZero "" alpha:0 bravo:0)"
-  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_eq "total 0" "0" "$(tsv_field FACES_TOTAL 2)"
   assert_eq "max 0"   "0" "$(tsv_field FACES_MAX 2)"
@@ -1603,7 +1604,7 @@ case_jimverify_faces_aggregate_holder_cap_256() {
   local pairs=() i
   for ((i = 1; i <= 40; i++)); do pairs+=("$(printf 'grp-%04d:1' "$i")"); done
   local root; root="$(fa_repo faCap "" "${pairs[@]}")"
-  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   local v; v="$(tsv_field FACES_MAX_GROUP 2)"
   assert_nonempty "holder value present" "$v"
@@ -1630,7 +1631,7 @@ case_jimverify_faces_aggregate_crafted_heading_no_file_access() {
 
 ### ../evil
 EOF
-  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_eq "only the valid group counted (decoy never read)" "2" "$(tsv_field FACES_TOTAL 2)"
   assert_eq "max unaffected by the decoy's 5 provides"        "2" "$(tsv_field FACES_MAX 2)"
@@ -1651,7 +1652,7 @@ case_jimverify_faces_aggregate_fanin_single() {
   local root; root="$(fa_repo faFan '| alpha | x | acct |
 | bravo | y | acct |
 | gamma | z | cat |' acct:1 cat:1 alpha:1 bravo:1 gamma:1)"
-  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_eq "fan-in max holder" "acct" "$(tsv_field FANIN_GROUP 2)"
 }
@@ -1663,7 +1664,7 @@ case_jimverify_faces_aggregate_fanin_ties_sorted() {
 | bravo | y | acct |
 | gamma | z | cat |
 | delta | w | cat |' acct:1 cat:1 alpha:1 bravo:1 gamma:1 delta:1)"
-  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_eq "both fan-in max holders, sorted comma-joined" "acct,cat" "$(tsv_field FANIN_GROUP 2)"
 }
@@ -1673,7 +1674,7 @@ case_jimverify_faces_aggregate_fanin_ties_sorted() {
 # boundary; interface contract rc 0).
 case_jimverify_faces_aggregate_fanin_zero_omitted() {
   local root; root="$(fa_repo faNoFan "" solo:2)"
-  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md docs/specs
+  run_jimverify_in "$root" faces-aggregate BLUEPRINT.md
   assert_exit "rc" 0 "$RC"
   assert_eq "faces still emitted" "2" "$(tsv_field FACES_TOTAL 2)"
   assert_eq "no FANIN_GROUP without graph fan-in" "" "$(printf '%s\n' "$OUT" | grep '^FANIN_GROUP	' || true)"

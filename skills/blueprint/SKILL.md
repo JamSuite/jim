@@ -411,7 +411,7 @@ and per-mode commit choreography live in
    `edges`/`groups`, the delta per documented counter (rc 1 → baseline;
    rc 2 → baseline plus a named "prior malformed" line), uncovered
    directories capped at five with "+N more", the `na` reason surfaced.
-   Then run `jimverify.sh faces-aggregate <map-path> <specs-root>` once and copy
+   Then run `jimverify.sh faces-aggregate <map-path>` once and copy
    its values onto the event verbatim: `FACES_TOTAL`→`faces=`,
    `FACES_MAX`→`faces_max=`, `FACES_MAX_GROUP`→`faces_max_group=` (when present),
    and `FANIN_GROUP`→`fanin_group=` (when present). The verb owns the sum, max,

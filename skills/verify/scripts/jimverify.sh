@@ -70,7 +70,7 @@
 #                                            is not a valid slug — excluded
 #   rc 2 when the map has no `## Contract Graph` section (caller names the
 #   degradation). A present-but-empty graph emits nothing and exits 0.
-#   contracts-check <map-path> <specs-root> [files-list]  (spec 037) the
+#   contracts-check <map-path> [files-list]  (spec 037) the
 #                                          deterministic cross-group floor.
 #
 # contracts-check OUTPUT (record types, TAB-separated):
@@ -140,9 +140,9 @@ usage: jimverify.sh <subcommand> [args]
   scope-census <blueprint-dir> <map-path> <group>  per-invariant scope population (retirement)
   faces     <blueprint-spec.md>              provides/requires + contract-checks → TSV
   edges     <map-path>                        persisted Contract Graph → consumer/relies-on/provider
-  contracts-check <map-path> <specs-root> [files-list]  cross-group floor: CROSS-REF facts + edge outcomes
+  contracts-check <map-path> [files-list]  cross-group floor: CROSS-REF facts + edge outcomes
   health    <map-path>                        graph-quality metrics: groups/edges/cycles/fan-in/coverage
-  faces-aggregate <map-path> <specs-root>    reconcile face counters: FACES_TOTAL/FACES_MAX/FACES_MAX_GROUP/FANIN_GROUP
+  faces-aggregate <map-path>    reconcile face counters: FACES_TOTAL/FACES_MAX/FACES_MAX_GROUP/FANIN_GROUP
 USAGE
 }
 
@@ -869,7 +869,7 @@ contract_ref_check() {
   fi
 }
 
-# cmd_contracts_check <map-path> <specs-root> [files-list] — the deterministic
+# cmd_contracts_check <map-path> [files-list] — the deterministic
 #   cross-group floor over every blueprint-bearing group pair. Emits COVERAGE
 #   and per-group UNSCOPED-GROUP facts, CROSS-REF reference facts (consumer
 #   territory referencing provider territory, location-only), and face-declared
@@ -878,14 +878,14 @@ contract_ref_check() {
 #   semantics, re-gated through safe_scope_file). No matched content is ever
 #   emitted; every path-bearing value passes safe_path_param before use.
 cmd_contracts_check() {
-  local map="${1:-}" specs_root="${2:-}"
-  if [[ -z "$map" || -z "$specs_root" ]]; then
-    echo "jimverify contracts-check: need <map-path> <specs-root>" >&2; return 2
+  local map="${1:-}"
+  if [[ -z "$map" ]]; then
+    echo "jimverify contracts-check: need <map-path>" >&2; return 2
   fi
   if [[ ! -f "$map" ]]; then echo "jimverify contracts-check: map not found: $map" >&2; return 2; fi
 
   # Optional files-list: re-gate each line, HYGIENE the unsafe (Finding 10).
-  local flist="${3:-}"
+  local flist="${2:-}"
   local has_filelist=0
   local -a scope_files=()
   if [[ -n "$flist" ]]; then
@@ -1134,7 +1134,7 @@ join_slugs_cap() {
   '
 }
 
-# cmd_faces_aggregate <map-path> <specs-root> — emit the reconcile face-size and
+# cmd_faces_aggregate <map-path> — emit the reconcile face-size and
 #   fan-in concentration counters ready to copy verbatim onto the `blueprint
 #   finished` event, so Step 2a does no arithmetic (spec 045):
 #     FACES_TOTAL      Σ provides-face rows over blueprint-bearing groups (≥ 0)
@@ -1150,9 +1150,9 @@ join_slugs_cap() {
 #   counting semantics match the Step-2a LLM path it replaces. rc 2 on a missing
 #   arg or unreadable map.
 cmd_faces_aggregate() {
-  local map="${1:-}" specs_root="${2:-}"
-  if [[ -z "$map" || -z "$specs_root" ]]; then
-    echo "jimverify faces-aggregate: need <map-path> <specs-root>" >&2; return 2
+  local map="${1:-}"
+  if [[ -z "$map" ]]; then
+    echo "jimverify faces-aggregate: need <map-path>" >&2; return 2
   fi
   if [[ ! -f "$map" ]]; then echo "jimverify faces-aggregate: map not found: $map" >&2; return 2; fi
 

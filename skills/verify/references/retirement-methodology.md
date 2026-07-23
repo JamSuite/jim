@@ -176,8 +176,8 @@ value from scanned content is displayed or persisted — minimize to
    <blueprint-spec>` (the full invariant set), `jimverify.sh scope-census
    <blueprint-dir> <map> <group>` (scope population facts), `jimverify.sh faces
    <blueprint-spec>` (requires entries + criticality). Whole-project grain also
-   runs `jimverify.sh edges <map>` and `jimverify.sh contracts-check <map>
-   <specs-root>` once for usage + dead surface.
+   runs `jimverify.sh edges <map>` and `jimverify.sh contracts-check <map>`
+   once for usage + dead surface.
 3. **R3 — select candidates.** Apply the ladder: rule out live entries
    mechanically; everything else is a candidate. Apply the mass-anomaly guard
    per group before emitting individual zero-scope candidates.
