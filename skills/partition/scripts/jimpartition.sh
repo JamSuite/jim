@@ -959,10 +959,11 @@ cmd_rename_preflight() {
     emit_check new-collision fail "new slug invalid"; fail=1
   fi
 
-  if [[ -d "$specs_dir/$old/000-blueprint" ]]; then
-    emit_check blueprint-exists pass "$specs_dir/$old/000-blueprint"
+  local bp_name; bp_name="$(bash "$JIMFILE" blueprint-dirname)"
+  if [[ -d "$specs_dir/$old/$bp_name" ]]; then
+    emit_check blueprint-exists pass "$specs_dir/$old/$bp_name"
   else
-    emit_check blueprint-exists fail "absent: $specs_dir/$old/000-blueprint"; fail=1
+    emit_check blueprint-exists fail "absent: $specs_dir/$old/$bp_name"; fail=1
   fi
 
   # Territory identity — territories of <old> whose paths embed <old> as a slug
@@ -1054,10 +1055,11 @@ cmd_split_preflight() {
     emit_check old-mapped fail "not a mapped group: $old"; fail=1
   fi
 
-  if [[ -d "$specs_dir/$old/000-blueprint" ]]; then
-    emit_check blueprint-exists pass "$specs_dir/$old/000-blueprint"
+  local bp_name; bp_name="$(bash "$JIMFILE" blueprint-dirname)"
+  if [[ -d "$specs_dir/$old/$bp_name" ]]; then
+    emit_check blueprint-exists pass "$specs_dir/$old/$bp_name"
   else
-    emit_check blueprint-exists fail "absent: $specs_dir/$old/000-blueprint"; fail=1
+    emit_check blueprint-exists fail "absent: $specs_dir/$old/$bp_name"; fail=1
   fi
 
   # Targets arity: ≥2, no duplicates.
@@ -1211,14 +1213,15 @@ cmd_merge_preflight() {
   # blueprint-exists per EFFECTIVE source (the fusion target's blueprint included).
   # Slug-gate before the filesystem probe — never `test -d` an unvalidated
   # component (split-preflight / rename-preflight parity).
+  local bp_name; bp_name="$(bash "$JIMFILE" blueprint-dirname)"
   for e in "${effective[@]}"; do
     if ! valid_slug "$e"; then
       emit_check "blueprint-exists:$e" fail "invalid source slug: $e"; fail=1; continue
     fi
-    if [[ -d "$specs_dir/$e/000-blueprint" ]]; then
-      emit_check "blueprint-exists:$e" pass "$specs_dir/$e/000-blueprint"
+    if [[ -d "$specs_dir/$e/$bp_name" ]]; then
+      emit_check "blueprint-exists:$e" pass "$specs_dir/$e/$bp_name"
     else
-      emit_check "blueprint-exists:$e" fail "absent: $specs_dir/$e/000-blueprint"; fail=1
+      emit_check "blueprint-exists:$e" fail "absent: $specs_dir/$e/$bp_name"; fail=1
     fi
   done
 
