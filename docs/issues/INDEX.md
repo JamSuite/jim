@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 40
+- Open: 41
 - Closed: 51
 
 ## Issues
@@ -94,6 +94,7 @@
 - `20260722-align-partition-split-flow-to-interview-plus-gate-shape` — Align partition split flow to interview-plus-gate shape · status: open · num: 85 · priority: medium · created: 2026-07-22T21:20:25Z · labels: [partition, ux] · origin: docs/brainstorms/20260722-partition-merge.md
 - `20260722-define-the-merge-signal-interpretive-rule-for-partition-health` — Define the merge-signal interpretive rule for partition health · status: open · num: 86 · priority: medium · created: 2026-07-22T22:24:13Z · labels: [partition, health] · origin: docs/brainstorms/20260722-partition-merge.md
 - `20260723-add-deps-command-absence-build-gate-test` — Add deps_command absence build-gate test · status: open · num: 91 · priority: low · created: 2026-07-23T19:29:53Z · labels: [partition, meta-test] · origin: docs/specs/jim/051-partition-ref-sweep/plan.md
+- `20260723-extend-present-tense-rule-to-spec-id-and-version-refs` — Extend present-tense rule to spec-id and version refs · status: open · num: 92 · priority: medium · created: 2026-07-23T20:23:16Z · labels: [blueprint, present-tense] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs` — fix ripple-engine sweep order for renumbered self-refs · status: closed · num: 87 · priority: high · created: 2026-07-23T03:21:43Z · labels: [partition, ripple-engine] · origin: docs/specs/jim/048-partition-merge/review.md
 - `20260723-harden-textual-invariant-test-global-identifier-naming` — Harden textual-invariant test global-identifier naming · status: open · num: 89 · priority: low · created: 2026-07-23T10:23:59Z · labels: [test, meta-test, tech-debt] · origin: docs/specs/jim/050-blueprint-present-tense/plan.md
 - `20260723-single-source-the-000-blueprint-directory-name-in-jimpartition-s` — Single-source the 000-blueprint directory name in jimpartition.sh · status: closed · num: 88 · priority: low · created: 2026-07-23T06:09:14Z · labels: [verify, partition, refactor] · origin: docs/specs/jim/049-contracts-check-hardening/review.md
