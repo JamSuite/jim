@@ -1,12 +1,222 @@
 # BACKLOG
 
+*Items are `BACK-###`, numbered by priority (`001` = highest). Numbers float on reorder; always reference an item as `BACK-### (title)`.*
+
+# Tier 0: Active Priority Queue (jim-ready for jimui)
+
+Ordered near-term queue to get jim ready for jimui. Work these top-to-bottom; everything below the divider is the standing backlog. `UNBLOCKS-JIMUI` / `SKILL-UPGRADE` tags mark what each unblocks.
+
+## BACK-001 · Reduce "claude-speak" — make jim's prose literal, efficient, specific, concise
+
+**Brainstorm complete:** `docs/brainstorms/20260720-claude-speak.md` (+ `20260720-claude-speak.csv`, `20260720-claude-speak-project-audit.csv`). **Ready to spec or edit surgically.**
+
+**Finding.** jim's prose is precise in *contract-shaped* content (acceptance criteria, schemas, bash/frontmatter) but drifts vague and verbose in *judgment-shaped* content (pm interview, brainstorm, vision, problem statements, user stories). No single dominant defect — broad and shallow across ~30 files, in three clusters: (1) **vague terminal instructions** with no downstream check ("non-obvious choice", "reasonable defaults", "where relevant"); (2) **cross-file constraint restatement** that jim's 3+-places dedup rule misses ("No code writing", "The human decides", "Does NOT fix code"); (3) **undefined terms** used before a gloss (STRIDE, LINDDUN, SDLC, Peer Feedback, Connextra). Metaphor is the smallest category — **no ban needed** (no competitor bans it). A real-project audit of 73 korswerk spec/brainstorm artifacts confirmed the split: ACs strong; narrative bloated, plus a few untestable-AC leaks ("match-the-design" ACs; ACs that defer their value to Open Questions).
+
+**Proposed fix (brainstorm Task 4).** A 6-point writing rule — specific-over-vague · say-it-once · imperative · define-on-first-use · cut rationale that prevents no mistake · literal-by-default — stated **canonically once** in `ARCHITECTURE.md` → Plugin Conventions → Writing Style; **self-propagated** by extending the `meta-skill`/`meta-agent` writing-style checklist (tighten dedup to catch cross-file restatement; bound the current "reasoning beats rigid directives" rule); **reaching artifacts** via a compact form + one validation-checklist item injected into each artifact-producing skill (spec, plan, research, arch, sec, build, debug, issue, vision, roadmap, brainstorm — see brainstorm §4.2 table); plus **two new `spec-check` probes** (external-design-deferral, Open-Question-value) and a narrative cap for spec/brainstorm (§4.5). Then one worst-first cleanup pass off the CSV worklist (§4.4). Prose-only, low risk (no `scripts/` or frontmatter diffs).
+
+**Next step:** a `/jim:spec` for the writing-rule + meta-skill/meta-agent changes + spec-check probes, **or** surgical edits to `ARCHITECTURE.md` and the two meta-skills, **or** a combination. Open decisions (brainstorm Task 5): bound the "explain why" rule? extend dedup to cross-file? rollout order? rule location (ARCHITECTURE.md recommended).
+
+## BACK-002 · jim:review — merge the already-built skill
+
+jim:review is **already built** — on the branch `origin/feat/review`, **73 commits ahead of main**, and
+complete: `skills/review/{SKILL.md, assets/review-template.md, scripts/jimledger.sh}` plus
+`agents/reviewer.md`. It has a running log of reviews, a `review.md` file with code and process
+metrics, and a review life-cycle stage. Its stated purpose (*"review what a build actually shipped
+against its spec, plan, and architecture… detecting drift"*) also already covers the check that the
+code matches what the spec said. Just merge it: review the branch, run its tests, merge. It feeds BACK-007 (stage/status rule):
+a spec that has a `review.md` file is at the "review" stage. **Tracked by jim issue #13**, which is
+about *comparing* the skill against the Osmani rubric and assumes the code is available — merging is the
+unstated first step. About 15 minutes; nothing else depends on it, so do it at any time.
+
+## BACK-003 · Integrate Joe's blueprint branch (`feat/blueprint`)
+
+Joe's `origin/feat/blueprint` branch (**368 commits ahead of `main`**) adds **`/jim:blueprint`** — a
+*project-tier context map* that declares the partition of a project into **spec groups**, each a
+deliberate context boundary. It maintains a root `BLUEPRINT.md` (the context map + per-group
+provides/requires faces) plus a per-group blueprint spec (`docs/specs/jim/000-blueprint/`), and
+**derives** a cross-group contract graph. It ships an **update mode** with guarded invariant folds (a
+violated invariant is never silently rewritten; `critical`/`high` downgrades always prompt, even under
+`auto_blueprint`), a **gate-presentation rule** for approval gates (spec 040), and companion skills
+**`partition`**, **`review`**, and **`verify`** (an invariant/contract/retirement verification engine).
+Specs `000`, `029–034` (blueprint), `035–037` (verify), `026–028` (review), `040` (gate presentation).
+
+**Next step:** review the branch, run its tests, and **integrate Joe's blueprint branch** into `main`.
+Scope note: this is large and **overlaps `feat/review`** (both carry `review/` + `verify/`) — sequence
+the two merges so they don't conflict.
+
+## BACK-004 · /jim:arch upgrade — organize many small architecture docs  
+
+This turns `/jim:arch` into a system that keeps many small architecture documents organized: one short
+`ARCHITECTURE.md`, plus topic documents each tagged with a `kind:` field, plus an index, plus
+Architecture Decision Records (ADRs). An ADR is a short document that records one design decision and
+the reason for it. This replaces the old single large document. **It is ready to spec** — the
+architecture brainstorm (`docs/brainstorms/20260717-jim-arch-knowledge-corpus.md`)
+already contains its own `/jim:spec` kickoff prompt, so this goes straight to
+`/jim:spec → /jim:plan → /jim:build`. This is your headline jim upgrade and the one that most changes
+how jim documents itself. jimui's own `docs/arch/` already uses the topic-document shape, so the
+upgraded `/jim:arch` fits right in and maintains those documents as jimui grows. **One direct input to
+BACK-007 (stage/status rule):** use this skill's **ADR format** as the home for the stage-derivation
+rule, so status derivation ships as a proper ADR, not a loose note.
+
+## BACK-005 · jim:issue upgrades — make an issue a tracked unit of work
+
+Make jim:issue a recognized unit of work in the jim workflow
+
+per the issues-and-specs brainstorm docs/brainstorms/20260719-issues-vs-specs-relationship.md
+
+**Two grades of work (the reframe).** Not everything is a spec. **Most issues are chores.** A chore is
+small work done directly in a fresh plan-mode session, with no spec, never using `/jim:build`. So jim
+has two grades of work: the **chore** (the *issue* is the unit of work) and the **spec** (the *spec* is
+the unit of work, with a full life cycle). Today jim captures a chore and then stops tracking it once
+work starts. There is no in-process state and no record of where the work happened. The goal here is
+to track the unit of work that the issue already is. (Issues still get **no acceptance criteria and no
+`/jim:build`** — the spec's role does not change.)
+
+1. **Schema and template** (the frontmatter in `skills/issue/`): add `assignee` (a GitHub username if
+   one is available), `branch` (a git branch name), `session` (a Claude Code session id or URL), and a
+   forward-link `spec:` field (or a `promoted-to` relation in the existing `relations:` graph). Add a
+   new status value **`in_progress`** alongside the existing `open` and `closed`.
+2. **Writer and renderer** must accept the new value: `new.sh` currently **rejects** any status other
+   than `open` or `closed`; `render.sh` holds `STATUS_TOKENS=(open closed)` and prints the status in a
+   column 8 characters wide. `in_progress` is 11 characters and would break the column alignment, so
+   widen the column or pick a shorter value (`active` or `wip`).
+3. **Transition helper plus commands.** Add a script `status.sh <id> <new-status> [--branch X]
+   [--session Y] [--assignee Z]` that writes atomically, updates the `updated` timestamp, and checks
+   the transition (`open → in_progress → closed`). Expose it through thin
+   `/jim:issue start | close | reopen` commands. `start` can read the current branch with
+   `git branch --show-current`. *Direct note: this adds commands that change state, which breaks jim's
+   current rule that capture is the only judgment command and reads are deterministic. That is a real
+   design decision, not a free addition.*
+4. **The open-to-in-process flow (your exact intent).** `/jim:issue start` sets `status: in_progress`,
+   writes the **session id, branch, and assignee**, **commits that metadata to `main`**, and *then* the
+   work proceeds in that session and branch. (Once work is committed, the session id can be read from
+   the existing `Claude-Session:` commit trailer, so it may not need writing a second time.)
+5. **The `next` and `blocked` read commands** in `render.sh` (the safe, on-philosophy addition from the
+   tracker comparison — in the same family as the existing `insights` command). These show which issues
+   are ready to work on and which are blocked, read from the relations graph. They feed jimui's
+   whatsnext (job 4).
+6. **Forward link on promotion.** When a spec is created from an issue, write the `spec:` link back into
+   the issue. This closes jim's gap where an issue records where it came from but not where it went to
+   (so issue #14 → spec 026 becomes visible from the issue). *(The promotion itself happens in
+   `jim:epic` — not as a command on the issue.)*
+
+Other possible candidates:
+
+- relocate closed issues to closed/ folder ?
+- new issues following the commit to `main` discipline so `main` branch always has current issue state and we help minimize id# collisions
+- (numbered index collisions) ?  <-- be careful referencing issues solely by numbers because they can change (not sure what improvements can be made here but the edge case is merging large branches together probably will have index collisions - how to further reduce id collisions in the index) <-- note reindexing can cause id ##'s to change that means we shouldn't reference issues by id# we should reference them by filename
+
+## BACK-006 · jim:epic skill and file format  UNBLOCKS-JIMUI
+
+jim has **no epic** today. Per the 2026-07-19 brainstorm, an epic is more than a label over issues. It
+is the layer that decides which specs to write and in what order. It fills the real gap between
+`ROADMAP` (whole-project Now/Next/Later buckets) and a single spec. An epic is a **titled goal plus an
+ordered list of the specs we intend to write**, with dependencies noted so that dependent items come
+first. It lives at `docs/epics/`.
+
+Importantly, **the epic is where issues become specs.** Promotion happens here, *not* as a command on
+the issue. The epic reads the pile of captured issues, decides which become work, orders them, records
+dependencies, and links issue #14 → spec 026 (the forward link from BACK-005 (jim:issue upgrades)). This is also where the "issue
+life cycle / cross-phase state" work that jim postponed back in spec 018 finally lands — without
+changing the issue itself.
+
+Full loop: `/jim:brainstorm jim:epic` (the file: a goal and description, the spec order and
+dependencies, which issues become specs, the math that totals progress across items, and the
+frontmatter) → `/jim:spec` → `/jim:plan` → build. **One decision to settle when this is specced:** are
+the epic's *members* issues (reusing that type) or a new, separate type? Rule to hold: an epic orders
+existing captured issues; it does not turn issues into a backlog. This blocks jimui's epics domain
+(job 7). It is independent of BACK-002/004/005/007, so it can run in parallel.
+
+## BACK-007 · One rule for deriving stage and status  UNBLOCKS-JIMUI
+
+jim specs have **no `stage` field** (only `status: draft|approved`). The board, whatsnext, and the
+percent-complete number all need a life-cycle stage. That stage is derived from *which sibling files
+exist* (`spec`, `plan`, `research`, `review.md`), plus the status, plus signals from issues.
+- **The rule:** write the derivation as an **ADR** (in the BACK-004 (/jim:arch) ADR format) — one page, the single source.
+- **The script (build it properly under jim-first):** a deterministic script (shell, like `render.sh`)
+  that outputs each spec's derived stage and its "next step" as data. This way **jim and jimui read one
+  source**, not two implementations that can drift apart. This script is what makes "status can never
+  drift" true. Depends on BACK-002 (jim:review) (for the `review.md` stage) and BACK-004 (/jim:arch) (for the ADR format).
+
+## BACK-008 · Core Software Development Life Cycle (SDLC) skill upgrades  SKILL-UPGRADE
+
+From `docs/research/20260717-competitive-landscape-sdd-skills.md` these all need review — just a summary of some ideas from the research. We are not committed to any ideas yet; we need to review the research, the suggestions, study the prior-art implementations, and decide what changes to make to adhere to jim's vision and workflow. Don't just take whatever from whoever because they're popular.
+
+These are what "build jimui with the latest jim" actually means. They improve the exact skills every
+jimui slice runs. Four upgrades, each its own spec (they can run in parallel, in separate git
+worktrees):
+- **`/jim:spec` — testable acceptance-criteria grammar** using the Easy Approach to Requirements Syntax
+  (EARS), for example "WHEN <trigger> THE SYSTEM SHALL <response>". *jim issue #16.* Every jimui spec
+  then gets acceptance criteria a machine can check.
+- **`/jim:plan` — cross-artifact consistency check** (in the style of Spec-Kit's `/analyze`: a checker
+  that confirms the spec, plan, and tasks agree, plus a check on task size). This catches mismatches
+  before any code is written, on a 10-group app where such mismatches add up.
+- **`/jim:build` — verify-before-done step** (the superpowers sequence: IDENTIFY → RUN → READ → VERIFY;
+  and ban vague words like "should", "probably", "seems"). This requires evidence before any task is
+  marked done.
+- **`/jim:spec` — read an issue in** (the brainstorm's "Move 1"): add something like `issue/scripts/render.sh show` to
+  the spec skill's `allowed-tools` so `/jim:spec` can pull a *named* issue into scope, and teach it to
+  **offer** relevant open issues without pulling them in on its own (the human decides which to
+  include), recording the forward link when one is pulled in. **Do not add a `--from-issue` flag** —
+  typing the issue in the conversation, or pasting the issue's file path, already covers this.
+- **Plan-correction flow (after approval)** — edit approved plans and propagate the fixes into the
+  code. *jim issue #15.* You *will* revise plans partway through a build on an app this size. *(Related:
+  the brainstorm flags "chores that surgically correct an earlier spec and its code" as a separate
+  problem — jim and Claude tend to treat specs as write-once — worth filing as its own jim issue
+  alongside #15.)*
+
+jim issues **#14** (automate the competitive-research refresh) and **#12** (a brainstorm on a passive
+versus active stance) are genuine jim improvements, but **neither blocks anything** — not the jim-ready
+checklist, not any jimui job. This is the one place the "everything before jimui" rule relaxes: pick
+them up whenever, including after jimui starts. This does not delay your priorities — #14 and #12 were
+never on your first-things list.
+
+---
+
 # Tier 1: High Importance
 
 Items here close obvious gaps in the existing SDLC loop, fix known bugs that create friction every session, or unblock decisions the user has been wanting for a while. Address before Tier 2.
 
+## BACK-009 · VISION.md — vision statement + competitive landscape
 
 
-## HANDOFF BETWEEN SPEC AND PLAN
+
+**Origin:** Z_STUFF_TO_DO line 28, the "what is the intention?" section (lines 70–91), plus user request 2026-05-13 to position jim against `addyosmani/agent-skills` and `garrytan/gstack`.
+
+**Problem statement.** VISION.md is missing two things:
+
+1. **A clear, concise vision statement.** The "what is the intention?" notes in `Z_STUFF_TO_DO` already capture the raw material: built jim to support master's studies and LinkedIn branding; not aiming for mass-market popularity; want it to work for me and a small team; openness to small-team adoption for credibility.
+
+2. **A competitive landscape / prior-art section.** Two reference projects worth positioning against:
+   - **[addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)** — Addy Osmani's curated collection of agent skills. Same primitive (Claude Code skills) but a different shape (curated library of individual skills) vs. jim's shape (an opinionated SDLC workflow built from skills + agents). Already cited as prior art for HOWTO body templates in BACK-004 (/jim:arch).
+   - **[garrytan/gstack](https://github.com/garrytan/gstack)** — Garry Tan's opinionated stack. Positions in the same "small team productivity / personal branding" space the vision statement is targeting.
+   Articulating what jim *is* and *isn't* relative to these two clarifies positioning for any small team evaluating jim.
+
+**Next step prompt:**
+```text
+/jim:vision
+
+Update VISION.md with two additions:
+
+1. A concise vision statement. Source material in Z_STUFF_TO_DO lines 70–91:
+   - Built jim to help build an app for master's studies AND for LinkedIn / professional branding.
+   - That others started using it has opened new opportunities, but jim is NOT trying to be a mass-market tool.
+   - Goal: works for me and my team; ideally adopted by other small teams to build credibility.
+   - Explicit non-goals: multi-model support, deep configurability, extensibility, token compression — interesting but not the point of v2.
+   - Open question for v3: how far do we push v2 before considering a v3?
+   Draft 2–3 sentences for the vision statement, a short non-goals section, and a "who jim is for" section.
+
+2. A "Prior Art & Competitive Landscape" section. Read these two repos and articulate how jim differs:
+   - https://github.com/addyosmani/agent-skills — curated library of individual Claude Code skills. jim differs by being an opinionated SDLC workflow (spec → plan → research → build → review) rather than a skill catalog.
+   - https://github.com/garrytan/gstack — opinionated dev stack for small teams / solo builders. Useful to articulate jim's positioning in the same "small team productivity" space.
+   For each: 2–3 sentences describing the project, then 1–2 sentences on what jim does differently and why a user might pick one over the other. Honest positioning, not marketing.
+
+ALSO `jim:vision` should write the vision out to VISION.md as it's creating it; not wait until the end of the interview to write the file 
+
+Confirm with me before writing. If WebFetch fails on either repo URL, stop and ask me to paste the README content.
+```
+
+## BACK-010 · HANDOFF between spec and plan
 
 - jim:plan made some choices without consulting me. 
 
@@ -30,102 +240,7 @@ in my experience jim:research and jim:plan have already been good at finding wha
 
 I'm more concerned with the architect making shoot-from-the-hip decisions on important items but I'm not sure how to convey to it what items are important ?? (can that/should that be part of the spec process? I'd rather not manually have to instruct what's important or not but what would be the criteria for importance I have no idea)
 
-## Task 0001: jim:issue
-
-**Origin:** Z_STUFF_TO_DO line 116 (build-time bugs have nowhere to go), plus the fact that `Z_STUFF_TO_DO` and `BACKLOG.md` are themselves acting as unstructured issue trackers today.
-
-**Problem statement.** Bugs and follow-ups noticed during the SDLC loop have no home. Today they end up in ad-hoc files (`Z_STUFF_TO_DO`), in `BACKLOG.md`, or lost. A `/jim:issue` skill would provide templates for BUG, FEATURE, and REFACTOR (mirroring `/jim:spec` types) and, optionally, write through to Linear via the Linear MCP when available. Issues are *mini-specs* — placeholders for future work, not full specs.
-
-Unblocks [[task-0012-jim-build-outside-scope-bug-tracking]], which depends on the issue surface existing.
-
-**Next step prompt:**
-```text
-/jim:brainstorm jim:issue skill/command
-
-Context to ground the brainstorm:
-- Today there is no home for bugs and follow-ups noticed during the SDLC loop. They end up in `Z_STUFF_TO_DO` (an unstructured TODO file at repo root) or `BACKLOG.md` — both are acting as ad-hoc issue trackers right now. This skill is meant to give that work a real home.
-- This skill unblocks [[task-0012-jim-build-outside-scope-bug-tracking]]: the @jim:coder needs a way to file follow-up bugs it spots during /jim:build. Design the issue surface with that caller in mind — what does the coder need to be able to call?
-- Issues are mini-specs / placeholders. A critical lifecycle question to brainstorm: **how does an issue get promoted to a real `/jim:spec`?** When the user is ready to work on a parked BUG/FEATURE/REFACTOR issue, what's the path? Does `/jim:spec` take an `--from-issue <id>` flag? Does `/jim:issue` have a `promote` subcommand? Without this bridge, `/jim:issue` becomes a parallel todo system rather than a real on-ramp to the SDLC loop.
-
-Now the original idea capture:
-
-For this `jim:issue` skill/command let's capture some ideas.
-We want issue templates for BUG, FEATURE, REFACTOR (same as the types we use for `/jim:spec` specifications).
-
-Issue template for **bug** should be: short problem statement (1-2 sentence), STEPS TO REPRODUCE, and WHAT I SEE (RESULT), EXPECTED. Plus any extra detail like environment settings (python version, operating system, web browser, for example).
-
-Issue template for **feature** should be: short description, some acceptance criteria, what else? open questions?
-
-Issue template for **refactor** should be: problem statement, example, proposed solution, file(s) affected. <-- Issues are like mini specs. We are just putting issues aside to outline future work we need to do.
-
-NOW ... we want to have some fun! If we have linear mcp installed, we want jim to create issues using our templates.
-
-How do we know if we have linear mcp installed? No clue... maybe we should have a jimconf setting `issue_storage="linear"` or `issue_storage="docs/jim/issues"` (default). If we're storing issues locally, need a way to organize them with numbers, maybe priority tiers, maybe functional groups. May need to investigate any prior-art GitHub-repository-based issue tracking systems (they must exist! how do they organize issues inside a repository?).
-
-If we are using linear mcp then we want `jim:issue` to interface with linear for issues. `jim:issue` should be able to create issue, triage issue (what would that do?), delete issue, move issue (change priority)? What can linear mcp do with issues? What would `jim:issue` need to be able to do to align with linear mcp? Don't want to recreate linear mcp with `jim:issue` — just want a thin wrapper so that the issues in linear align with jim's agentic SDLC process and conventions.
-```
-
-## Task 0002: jim:howtos
-
-**Status:** Brainstorm complete, **ready for `/jim:spec`**. Lowest effort-to-ship of any Tier 1 task. The brainstorm (`docs/brainstorms/20260512-jim-howtos.md`) is comprehensive: problem statement, 9-project prior-art survey, candidate HOWTOs extracted from jim's own ARCHITECTURE.md, three-template proposal, proactive-suggestion heuristics, non-goals locked, and a "Preliminary Answers" section that resolves every Open Question with a working recommendation. The brainstorm's own "Next Steps" explicitly recommends SPEC and provides this prompt:
-
-**Next step prompt:**
-```text
-/jim:spec jim:howtos
-
-New feature: a `/jim:howtos` command for managing topic-specific technical guides ("HOWTOs") that decompose `ARCHITECTURE.md` into a modular wiki. Default location `docs/howtos/`, configurable via `jimconf.toml` (`howtos_path`). Ships with a standard HOWTO template.
-Origin: `docs/brainstorms/20260512-jim-howtos.md` (see for prior art, candidate HOWTOs, heuristics, and the proposed ARCHITECTURE.md ↔ HOWTO boundary rule).
-Prior-art: docs/prior-art/howtos/tauri-env-build.md
-
-Scope decisions to interview around:
-- Subcommands for `/jim:howtos` (likely `create`, `list`, `update`; possibly `deprecate`).
-- HOWTO file naming (slug vs. date-prefixed) and status lifecycle.
-- **Inclusion modes** (per Kiro prior art): always-loaded / glob-conditional via `paths:` / manual `@` reference / description-matched auto. Which modes ship in v1?
-- Body template — the draft in this brainstorm vs. addyosmani's *Overview → When to Use → Process → Rationalizations → Red Flags → Verification* shape. compare with @docs/prior-art/howtos/tauri-env-build.md
-- Which skills get proactive HOWTO suggestion logic in v1 (the brainstorm proposes /jim:plan and /jim:research as highest-signal).
-- `/jim:arch` integration: does the architect link HOWTOs, prune stale ones, both?
-- should jim:arch offer to make a HOWTO and get confirmation from the user? should jim:plan skill include some detail about when to create a HOWTO ?
-- what about jim:research or jim:brainstorm? should those know when and when not to suggest creating a HOWTO?
-- when should those skills suggest creating a HOWTO? When should they not suggest creating a HOWTO?
-
-Non-goals (already decided — see brainstorm): no `@jim:librarian` agent; no `llms.txt` integration; no automated staleness detection; no central INDEX.md.
-- Whether this spec also ships ~3–5 example HOWTOs extracted from jim's own ARCHITECTURE.md (see "Immediate Candidates" table in the brainstorm) — proves the pattern works on jim itself.
-
-Suggestion: link the brainstorm via the spec's `origin:` field so the spec stays traceable to this thinking.
-```
-
-## Task 0003: jim:review
-
-**Origin:** Z_STUFF_TO_DO lines 14, 98–101, 112. Mentioned three separate times, which suggests the gap is felt repeatedly. Closes the `/jim:spec → /jim:plan → /jim:build → ???` loop.
-
-**Problem statement.** After `/jim:build` finishes, nothing systematically verifies that what was implemented matches the spec and the plan. Acceptance-criteria checkboxes in `spec.md` are left empty — there is no agent whose job is to tick them. Drift between plan and implementation goes unnoticed unless the user catches it by eye.
-
-**Proposed scope to interview around:**
-- What does `/jim:review` actually compare? (spec ↔ code, plan ↔ code, both?)
-- Does it produce a `review.md` artifact alongside `spec.md` / `plan.md` / `research.md`?
-- Does it mark acceptance criteria checkboxes as complete in `spec.md` directly, or propose marks for the user to confirm?
-- How does it report drift (deviated from plan but still meets spec; meets plan but spec changed; meets neither)?
-- Does it run automatically after `/jim:build` completes, or only on explicit invocation?
-- Does it have authority to *file* follow-up issues (depends on Task 0001 `jim:issue`) for drift it can't reconcile?
-
-**Next step prompt:**
-```text
-/jim:brainstorm jim:review
-
-After `/jim:build` finishes, nothing closes the loop against `spec.md` and `plan.md`. Acceptance-criteria checkboxes in spec.md stay empty. Drift between plan and implementation goes unnoticed.
-
-Brainstorm a `/jim:review` skill (and likely a `@jim:reviewer` agent) that:
-- compares the implemented code against the spec's acceptance criteria and the plan's task list
-- marks AC checkboxes as complete (or proposes marks for user confirmation)
-- reports drift: implementation deviated from plan, or plan diverged from spec, or both
-- produces `review.md` alongside spec.md / plan.md / research.md
-
-Open questions to explore: when does it run (auto after build, or on demand)? Does it have authority to file follow-up issues via [[task-0001-jim-issue]]? How does it differ from `/jim:debug` (which diagnoses failures) and from human code review?
-
-Prior art to check: jim's existing skill patterns under `skills/`, the @jim:coder TDD loop in skills/build/, and how spec.md's "Acceptance Criteria" section is structured today.
-```
-
-## Task 0004: jim:research absolute paths bug
+## BACK-011 · jim:research absolute paths bug
 
 **Origin:** Z_STUFF_TO_DO line 108. Known bug, small surface, high friction.
 
@@ -147,7 +262,7 @@ Why it matters: breaks portability across machines, worktrees, and contributors;
 Likely fix location: the researcher agent prompt under `agents/researcher.md` and/or skills/research/SKILL.md — instruct relative paths and verify with the existing test patterns under skills/meta-test/.
 ```
 
-## Task 0005: jim:debug — include applied resolution and gate the "chosen recommendation"
+## BACK-012 · jim:debug — include applied resolution and gate the "chosen recommendation"
 
 **Origin:** Z_STUFF_TO_DO lines 24–26. Two related complaints about the same skill.
 
@@ -170,106 +285,37 @@ Two changes:
 1. Rename "Chosen recommendation:" to "Proposed recommendation:" (or similar) — the wording should reflect that no decision has been made yet.
 2. After the user confirms which option to take and the fix is applied (likely via a /jim:build handoff), append a `## Resolution` section to the debug report capturing: chosen option, code changes (file:line refs), test outcome, follow-ups.
 
+when acting on a /jim:debug report, update the report with chosen-implementation details, not just the original diagnosis 
+
 Open question for the interview: should /jim:debug actively offer a /jim:build handoff after confirmation, or stay strictly diagnostic and let the user dispatch the build separately? The user has expressed appetite for the handoff path.
 
 Prior art: skills/debug/SKILL.md and the debug reports under docs/debug/ (e.g. docs/debug/20260510-claude-code-bash-injection-permissions.md).
 ```
 
 
-## Task 0006: VISION.md — vision statement + competitive landscape
 
-**Origin:** Z_STUFF_TO_DO line 28, the "what is the intention?" section (lines 70–91), plus user request 2026-05-13 to position jim against `addyosmani/agent-skills` and `garrytan/gstack`.
-
-**Problem statement.** VISION.md is missing two things:
-
-1. **A clear, concise vision statement.** The "what is the intention?" notes in `Z_STUFF_TO_DO` already capture the raw material: built jim to support master's studies and LinkedIn branding; not aiming for mass-market popularity; want it to work for me and a small team; openness to small-team adoption for credibility.
-
-2. **A competitive landscape / prior-art section.** Two reference projects worth positioning against:
-   - **[addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)** — Addy Osmani's curated collection of agent skills. Same primitive (Claude Code skills) but a different shape (curated library of individual skills) vs. jim's shape (an opinionated SDLC workflow built from skills + agents). Already cited as prior art for HOWTO body templates in Task 0002.
-   - **[garrytan/gstack](https://github.com/garrytan/gstack)** — Garry Tan's opinionated stack. Positions in the same "small team productivity / personal branding" space the vision statement is targeting.
-   Articulating what jim *is* and *isn't* relative to these two clarifies positioning for any small team evaluating jim.
-
-**Next step prompt:**
-```text
-/jim:vision
-
-Update VISION.md with two additions:
-
-1. A concise vision statement. Source material in Z_STUFF_TO_DO lines 70–91:
-   - Built jim to help build an app for master's studies AND for LinkedIn / professional branding.
-   - That others started using it has opened new opportunities, but jim is NOT trying to be a mass-market tool.
-   - Goal: works for me and my team; ideally adopted by other small teams to build credibility.
-   - Explicit non-goals: multi-model support, deep configurability, extensibility, token compression — interesting but not the point of v2.
-   - Open question for v3: how far do we push v2 before considering a v3?
-   Draft 2–3 sentences for the vision statement, a short non-goals section, and a "who jim is for" section.
-
-2. A "Prior Art & Competitive Landscape" section. Read these two repos and articulate how jim differs:
-   - https://github.com/addyosmani/agent-skills — curated library of individual Claude Code skills. jim differs by being an opinionated SDLC workflow (spec → plan → research → build → review) rather than a skill catalog.
-   - https://github.com/garrytan/gstack — opinionated dev stack for small teams / solo builders. Useful to articulate jim's positioning in the same "small team productivity" space.
-   For each: 2–3 sentences describing the project, then 1–2 sentences on what jim does differently and why a user might pick one over the other. Honest positioning, not marketing.
-
-Confirm with me before writing. If WebFetch fails on either repo URL, stop and ask me to paste the README content.
-```
 
 ---
 
 # Tier 2: Medium Importance
 
-Real improvements to the SDLC loop, but not blocking daily work. Pick up after Tier 1 lands. **Task 0017 (jim:security) is the top priority in this tier** — promoted from Tier 3 because security review of LLM-generated code is a known engineering concern, not speculation.
+Real improvements to the SDLC loop, but not blocking daily work. Pick up after Tier 1 lands. **BACK-013 (jim:security) is the top priority in this tier** — promoted from Tier 3 because security review of LLM-generated code is a known engineering concern, not speculation.
 
-## Task 0017: jim:security agent
+## BACK-013 · jim:security — code/runtime-scanning leftovers (design-time shipped)
 
-**Origin:** Z_STUFF_TO_DO line 96. Promoted to top of Tier 2 on 2026-05-13 — see rationale below.
+**Status:** The design-time half shipped as `jim:sec` (spec `016-sec`; skill `skills/sec/`; agent `@jim:security`): freeform expert review + STRIDE completeness sweep + conditional LINDDUN, a `security.md` artifact, issue-filing authority, and `/jim:plan` + `/jim:build` phase gates. That *exceeds* this task's original design-time ask.
 
-**Problem statement.** Code that an LLM writes — whether jim's own bash scripts under `skills/*/scripts/` or app code generated by `@jim:coder` for downstream projects — has demonstrated weak spots in security-sensitive patterns: command injection, SQL injection, secret leakage, insecure defaults, missing authz checks. jim already takes this seriously at the script layer (see CLAUDE.md's "Never `source` or `eval` user-supplied data" and the recent debug report at `docs/debug/20260510-claude-code-bash-injection-permissions.md`), but there's no systematic review skill.
-
-**Why this is Tier 2 (not Tier 3):**
-- Every app built with jim ships LLM-written code — security review is genuinely load-bearing, not nice-to-have.
-- Concrete prior incident already on record (the bash-injection debug report).
-- Existing patterns (OWASP top 10, secret regex scanning, dep CVE checks) make this buildable today; it's not R&D.
-
-**Why not Tier 1:** No active daily friction reported, and `/jim:review` (Task 0003) should ship first to define the "review skill" pattern that `/jim:security` likely extends.
-
-**Proposed scope to interview around:**
-- Standalone `/jim:security` skill vs. a *mode* of [[task-0003-jim-review]] (`/jim:review --security`).
-- Relationship to Claude Code's built-in `/security-review` skill — wrap, replace, or complement? (jim's value-add: structured report artifact, integration with the rest of the SDLC loop, project-specific config via jimconf.)
-- Scope: full repo, current branch diff vs. main, or staged changes only?
-- Check surface: OWASP top 10 patterns, secret leakage (regex + entropy), dependency CVEs (where a manifest is available), insecure defaults, missing authz.
-- Output: `security-review.md` artifact alongside the spec/plan/research/review chain? Or inline annotations only?
-- Does it have authority to file issues via [[task-0001-jim-issue]] for findings that aren't blocking?
-
-**Next step prompt:**
-```text
-/jim:brainstorm jim:security
-
-Brainstorm a /jim:security skill (and likely @jim:security-reviewer agent) for security review of LLM-generated code. This is Tier 2 priority — see BACKLOG.md for rationale.
-
-Should ship AFTER [[task-0003-jim-review]] so the "review skill" pattern is established first. Open question: is /jim:security a standalone skill or a mode of /jim:review?
-
-Check surface to brainstorm:
-- OWASP top 10 patterns (injection, XSS, broken auth, deserialization, etc.)
-- Secret leakage in code or commits (regex + entropy detection)
-- Dependency CVEs (where manifest is available — package.json, pyproject.toml, Cargo.toml)
-- Insecure defaults (debug=True in prod paths, permissive CORS, etc.)
-- Missing authz/authn checks on sensitive endpoints
-
-Open questions:
-- Relationship to Claude Code's built-in /security-review skill — wrap, replace, or complement? jim's value-add is structured report artifact + integration with the SDLC loop + project-specific config.
-- Scope: full repo, current branch diff vs main, or staged changes only?
-- Output: a security-review.md artifact alongside spec.md / plan.md / research.md / review.md? Inline annotations? Both?
-- Authority to file follow-up issues via [[task-0001-jim-issue]] for non-blocking findings?
-- How does it know what's "sensitive" — heuristics, jimconf config, or per-spec metadata?
-
-Prior context worth reading before brainstorming:
-- CLAUDE.md "Bash scripts" section — jim already enforces security rules at the script layer.
-- docs/debug/20260510-claude-code-bash-injection-permissions.md — concrete prior incident.
-- skills/security-review/ if Claude Code's built-in surface lives there (check).
-```
-## Task 0019: extensibility — extension points and per-project agents (kim)
+**Not built — folds into BACK-002 (jim:review)** (reviewing LLM-*written code* is a post-build concern, exactly as `docs/specs/jim/016-sec/spec.md` forecasts jim:review consulting `@jim:security` as a lens):
+- Branch-diff / staged-changes scoping (review a git diff, not a spec).
+- OWASP Top 10 pattern matching (jim:sec deliberately chose STRIDE instead).
+- Secret-leakage detection (regex + entropy).
+- Dependency-CVE checks against manifests (`package.json` / `pyproject.toml` / `Cargo.toml`).
+- Insecure-default *code* detection (`debug=True`, permissive CORS).
+## BACK-014 · extensibility — extension points and per-project agents (kim)
 
 **Origin:** Z_STUFF_TO_DO lines 86, 122–128.
 
-**Problem statement.** The user is interested in extending jim's agents with project-specific context — e.g. a downstream "kim" agent that lives in a project's `.claude/` folder and is custom-tailored to that project but uses jim under the hood. Also: extension points in jim's skills where config can swap in project-specific behavior (e.g. `build_verification_skill=.claude/skills/my_build_verification/SKILL.md`). Overlaps significantly with Task 0002 `jim:howtos`.
+**Problem statement.** The user is interested in extending jim's agents with project-specific context — e.g. a downstream "kim" agent that lives in a project's `.claude/` folder and is custom-tailored to that project but uses jim under the hood. Also: extension points in jim's skills where config can swap in project-specific behavior (e.g. `build_verification_skill=.claude/skills/my_build_verification/SKILL.md`). Overlaps significantly with BACK-004 (/jim:arch).
 
 **Next step prompt:**
 ```text
@@ -280,7 +326,7 @@ User has expressed appetite for jim being extensible at specific seams (Z_STUFF_
 - Per-project "kim" agent that lives in the host project's .claude/ and uses jim under the hood
 - Extra context injection into the @jim:coder for project conventions
 
-Relationship to [[task-0002-jim-howtos]] is heavy — HOWTOs are themselves a flavor of extension. May make sense to design these together.
+Relationship to BACK-004 (/jim:arch) is heavy — HOWTOs are themselves a flavor of extension. May make sense to design these together.
 
 Open questions:
 - What are the canonical extension points? (Pre-build verification, post-build review, custom spec sections?)
@@ -290,7 +336,7 @@ Open questions:
 Read jim's current jimconf.toml resolver under skills/conf/ and skills/file/ before brainstorming.
 ```
 
-## Task 0008: jim:build can call @jim:architect if plan is missing
+## BACK-015 · jim:build can call @jim:architect if plan is missing
 
 **Origin:** Z_STUFF_TO_DO line 15.
 
@@ -311,7 +357,7 @@ Brainstorm:
 Look at skills/build/SKILL.md for the current gating logic and skills/file/scripts/ for the resolver.
 ```
 
-## Task 0009: jim:research — direct external vs local research
+## BACK-016 · jim:research — direct external vs local research
 
 **Origin:** Z_STUFF_TO_DO line 18.
 
@@ -328,10 +374,10 @@ Scope:
 - Tool budget: when external mode is on, allow WebFetch / WebSearch liberally and de-emphasize Grep/Glob.
 - Output shape: external research.md should look different — heavier on citations, lighter on file:line refs.
 
-See skills/research/SKILL.md and agents/researcher.md for current behavior. Also relates to [[task-0010-jim-research-article-dates]].
+See skills/research/SKILL.md and agents/researcher.md for current behavior. Also relates to BACK-017 (jim:research citation dates).
 ```
 
-## Task 0010: jim:research — annotate citations with dates
+## BACK-017 · jim:research — annotate citations with dates
 
 **Origin:** Z_STUFF_TO_DO line 20.
 
@@ -351,7 +397,7 @@ Why: a 2023 article about a fast-moving library is much less reliable than a 202
 Likely change: update the @jim:researcher agent prompt to require date/status metadata next to every external citation. See agents/researcher.md.
 ```
 
-## Task 0011: jim:plan — manual vs automated verification steps
+## BACK-018 · jim:plan — manual vs automated verification steps
 
 **Origin:** Z_STUFF_TO_DO line 49.
 
@@ -375,31 +421,7 @@ Open questions: how does the user confirm — typed reply, checkbox edit, or som
 Prior art: skills/plan/, skills/build/, plan.md structure under docs/specs/jim/.
 ```
 
-## Task 0012: jim:build — file follow-up issues for outside-scope bugs
-
-**Origin:** Z_STUFF_TO_DO line 116. Depends on Task 0001 `jim:issue`.
-
-**Problem statement.** During `/jim:build`, the coder sometimes notices real bugs in code outside the current task's scope. Today these get either ignored or fixed silently (scope creep). Better: the coder files a tracked issue (via `jim:issue`, [[task-0001-jim-issue]]) and continues on-scope.
-
-**Next step prompt:**
-```text
-/jim:brainstorm jim:build outside-scope-bug-tracking
-
-Depends on Task 0001 (/jim:issue) — design that first.
-
-During /jim:build, the @jim:coder occasionally spots real bugs in code outside the current task's scope. Today: ignored, or fixed silently as scope creep. Neither is great.
-
-Brainstorm a third option: coder files a tracked issue via [[task-0001-jim-issue]] (BUG template) without leaving the build loop, then continues on-scope.
-
-Questions:
-- Does the coder ask the user before filing, or file silently and surface a summary at end of build?
-- How does the coder describe the bug — short snippet + file:line + reproduction guess, then leave full diagnosis to /jim:debug later?
-- Threshold: every code smell becomes an issue? Or only "this is definitely wrong and affects correctness"?
-
-Look at skills/build/SKILL.md and agents/coder.md for where the hook would go.
-```
-
-## Task 0013: jim:release skill
+## BACK-019 · jim:release skill
 
 **Origin:** Z_STUFF_TO_DO lines 4–5.
 
@@ -424,7 +446,7 @@ Open questions:
 Prior art: existing CHANGELOG patterns in popular tools (keep-a-changelog spec), and how skills/vision and skills/roadmap structure their docs.
 ```
 
-## Task 0014: mkdocs site for jim
+## BACK-020 · mkdocs site for jim
 
 **Origin:** Z_STUFF_TO_DO line 3.
 
@@ -440,7 +462,7 @@ Decisions to make:
 - Hosting: readthedocs.io (low effort, branded by RTD) vs jamsuite.com (more control, more work) vs GitHub Pages (free, less polished).
 - Information architecture: how do README / ARCHITECTURE.md / VISION.md / skills/*/SKILL.md map to docs pages?
 - Build pipeline: GitHub Actions on push to main? Tag-triggered?
-- Relationship to [[task-0002-jim-howtos]] — HOWTOs likely belong in the docs site too.
+- Relationship to BACK-004 (/jim:arch) — HOWTOs likely belong in the docs site too.
 
 Note: jamsuite-logger also needs docs eventually. Whatever pattern we pick should be repeatable.
 ```
@@ -452,7 +474,17 @@ Note: jamsuite-logger also needs docs eventually. Whatever pattern we pick shoul
 Interesting ideas that need more discovery, or that the user has explicitly tagged as "not the point of v2." Keep on the radar; don't prioritize.
 
 
-## Task 0006: jim:refactor — refactor existing specs
+## BACK-021 · Support alternate issue backends
+
+**Origin:** Deferred tail of the shipped jim:issue skill. jim:issue shipped local-markdown storage only; alternate/external backends were left Out-of-Scope in spec `017-issue-tracking` behind a future "bridge abstraction" pattern.
+
+**Problem statement.** jim:issue writes to local `docs/issues/*.md`. A future need for a different backend — Linear (via MCP write-through, the original jim:issue idea), or a git-native tracker — should use a bridge/adapter that keeps jim's capture / candidate-batch / insights layer intact rather than replacing it.
+
+**Grounding:** `docs/research/20260718-issue-tracker-comparison.md` compares jim:issue against `steviee/git-issues` and `remenoscodes/git-native-issue`. Bottom line: do **not** adopt an external tool as a runtime backend today — it either breaks jim's bash/no-deps model (git-issues is Go) or reverses spec 017's human-readable-files decision (git-native-issue stores in `refs/`). `git-native-issue`'s `refs/issues` + `Provider-ID` bridge design is the reference architecture **if** offline-distributed multi-dev sync ever becomes in-scope.
+
+**Why Tier 3.** The research recommends this as a watch-list item, not a build — jim is single-developer today (VISION §Non-Goals). Revisit only if distribution/collaboration needs change.
+
+## BACK-022 · jim:refactor — refactor existing specs
 
 **Origin:** Z_STUFF_TO_DO lines 134. Distinct from `/jim:spec type:refactor` (which creates a *new* refactor spec).
 
@@ -462,7 +494,7 @@ Interesting ideas that need more discovery, or that the user has explicitly tagg
 - Is this a new skill `/jim:refactor <existing-spec>`, or an extension to `/jim:spec` that takes a spec ID?
 - Does it produce a changelog/diff at the top of the existing spec showing what was revised and why?
 - How does it handle downstream artifacts — re-run `/jim:plan`? Invalidate `research.md`? Flag `/jim:build` outputs as needing review?
-- What's the relationship to [[task-0003-jim-review]] (which detects drift between spec and implementation)?
+- What's the relationship to BACK-002 (jim:review) (which detects drift between spec and implementation)?
 
 **Next step prompt:**
 ```text
@@ -475,12 +507,12 @@ Brainstorm a refactor-existing-spec capability:
 - How does the user invoke it from a brainstorm that says "the spec needs to change"?
 - Does it write a revision history / changelog into the existing spec.md?
 - Does it cascade: re-trigger /jim:plan, invalidate research.md, flag previously-built code as stale?
-- Relationship to [[task-0003-jim-review]] (which detects implementation drift) — same machinery or separate?
+- Relationship to BACK-002 (jim:review) (which detects implementation drift) — same machinery or separate?
 
 Look at existing skills under skills/spec/ and the spec.md structure under docs/specs/jim/ for prior art on how revisions are currently tracked (or not).
 ```
 
-## Task 0015: jim:plan namespace conflict with Claude Code's /plan
+## BACK-023 · jim:plan namespace conflict with Claude Code's /plan
 
 **Origin:** Z_STUFF_TO_DO line 22.
 
@@ -501,7 +533,7 @@ Options to consider:
 Probably "document the workaround" is the right answer unless Claude Code adds plugin priority controls. Confirm and close.
 ```
 
-## Task 0016: jim:selfupdate
+## BACK-024 · jim:selfupdate
 
 **Origin:** Z_STUFF_TO_DO lines 138–140. Speculative but interesting.
 
@@ -516,13 +548,13 @@ Speculative: jim's own specs (docs/specs/jim/001-meta onward) drift as Claude Co
 Questions to explore:
 - What triggers staleness — version of Claude Code? Date threshold? Manual nomination?
 - Output: a refresh PR per spec? A consolidated "what changed and why" report? Both?
-- How does this interact with [[task-0006-jim-refactor]] (refactor existing spec) — is selfupdate just refactor-in-a-loop?
+- How does this interact with BACK-022 (jim:refactor) (refactor existing spec) — is selfupdate just refactor-in-a-loop?
 - Risk: cascading rewrites that break the architecture. Need strong gating.
 
 This is v3 territory — see VISION.md / Z_STUFF_TO_DO lines 89–91. Don't build until v2 is solid.
 ```
 
-## Task 0018: multi-model support (Codex, Gemini, etc.)
+## BACK-025 · multi-model support (Codex, Gemini, etc.)
 
 **Origin:** Z_STUFF_TO_DO line 84.
 
@@ -544,7 +576,7 @@ Do NOT pick up before v2 ships.
 
 
 
-## Task 0020: token compression / context optimization
+## BACK-026 · token compression / context optimization
 
 **Origin:** Z_STUFF_TO_DO line 87.
 

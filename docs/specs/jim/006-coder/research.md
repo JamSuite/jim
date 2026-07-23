@@ -26,7 +26,7 @@ date: "2026-03-16"
 ### Tier 1: Study Closely
 
 #### Augmented Coding: Beyond the Vibes (Kent Beck)
-**Source**: [tidyfirst.substack.com](https://tidyfirst.substack.com/p/augmented-coding-beyond-the-vibes)
+**Source**: [newsletter.kentbeck.com](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) *(Kent Beck moved off Substack; `tidyfirst.substack.com` now 301-redirects here — content unchanged, free to read, 2026-07-17)*
 **Relevant to**: `/jim:build`, `@jim:coder` agent definition
 
 | Concept | What It Is | Why It Matters for Jim |
@@ -55,12 +55,12 @@ date: "2026-03-16"
 - **Hook-based activation**: Skills without hooks activate inconsistently. Jim may need to consider hooks for `/jim:build` activation reliability in future iterations.
 
 #### Get Shit Done (GSD)
-**Repo**: [github.com/gsd-build/get-shit-done](https://github.com/gsd-build/get-shit-done)
+**Repo**: [github.com/open-gsd/gsd-core](https://github.com/open-gsd/gsd-core) *(formerly `gsd-build/get-shit-done`, archived 2026-06-26; default branch now `next`)*
 **Relevant to**: `/jim:build`, `/jim:debug`
 
 | File | What It Is | Why It Matters for Jim |
 |------|------------|------------------------|
-| [`commands/gsd/execute-phase.md`](https://github.com/gsd-build/get-shit-done/blob/main/commands/gsd/execute-phase.md) (local: `docs/prior-art/github.com/gsd/execute-phase.md`) | Wave-based parallel execution orchestrator | Shows lean orchestrator pattern: discover plans → analyze dependencies → group into waves → spawn subagents → collect results. Context budget: ~15% orchestrator, 100% fresh per subagent. |
+| [`commands/gsd/execute-phase.md`](https://github.com/open-gsd/gsd-core/blob/next/commands/gsd/execute-phase.md) (local: `docs/prior-art/github.com/gsd/execute-phase.md`) | Wave-based parallel execution orchestrator | Shows lean orchestrator pattern: discover plans → analyze dependencies → group into waves → spawn subagents → collect results. Source states a "thin orchestrator, fresh full subagent" doctrine *qualitatively* — the earlier "~15% / 100%" figures were not in the source and are removed (re-verified 2026-07-17). |
 | `agents/gsd-executor.md` | Primary implementation agent | Dedicated executor agent separate from planner/verifier — same separation Jim uses. |
 | `agents/gsd-debugger.md` | Error diagnosis agent | Direct parallel to `/jim:debug` — separate diagnosis from fixing. |
 | `agents/gsd-verifier.md` | Post-implementation verification | Maps to Jim's Verify step and `./pre-commit.sh` gate. |
@@ -78,7 +78,7 @@ date: "2026-03-16"
 
 | File | What It Is | Why It Matters for Jim |
 |------|------------|------------------------|
-| [`extensions/claude-code/commands/speckit.implement.md`](https://github.com/github/spec-kit/blob/main/extensions/claude-code/commands/speckit.implement.md) (local: `docs/prior-art/github.com/spec-kit/implement.md`) | Task execution command with checklist gates, phase-by-phase execution, and progress tracking | Demonstrates: pre-execution checklist validation, TDD ordering (tests before code), halt on non-parallel task failure, marking tasks `[X]` on completion. |
+| [`templates/commands/implement.md`](https://github.com/github/spec-kit/blob/main/templates/commands/implement.md) *(moved from `extensions/claude-code/commands/speckit.implement.md`, which 404s as of 2026-07-17)* (local: `docs/prior-art/github.com/spec-kit/implement.md`) | Task execution command with checklist gates, phase-by-phase execution, and progress tracking | Demonstrates: pre-execution checklist validation, TDD ordering (tests before code), halt on non-parallel task failure, marking tasks `[X]` on completion. |
 
 **Key takeaways for Jim:**
 - **Checklist gate before execution**: spec-kit checks prerequisite checklists and STOPs if incomplete — Jim should similarly reject `status: draft` plans.

@@ -78,8 +78,8 @@ date: "2026-03-14"
 
 | File | What It Is | Why It Matters for Jim |
 |------|------------|------------------------|
-| [`PLANNING.md`](https://github.com/SuperClaude-Org/SuperClaude_Framework/blob/main/PLANNING.md) | Architecture doc with Confidence-First Implementation (>=90% proceed, 70-89% investigate, <70% stop) and Wave→Checkpoint→Wave parallel execution | The confidence gate pattern is directly applicable. Jim's architect should assess confidence before proceeding with design decisions — if < 70%, stop and present alternatives. |
-| [`skills/confidence-check/`](https://github.com/SuperClaude-Org/SuperClaude_Framework/tree/main/skills/confidence-check) | Runtime skill for pre-execution confidence assessment | Validates the pattern but SuperClaude's implementation (Python pytest plugin) is infrastructure Jim doesn't need. The concept — spend 100-200 tokens on confidence check to save 5,000-50,000 on wrong direction — is the key insight. |
+| [`PLANNING.md`](https://github.com/SuperClaude-Org/SuperClaude_Framework/blob/master/PLANNING.md) *(branch `main`→`master`, 2026-07-17)* | Architecture doc with Confidence-First Implementation (>=90% proceed, 70-89% investigate, <70% stop) and Wave→Checkpoint→Wave parallel execution | The confidence gate pattern is directly applicable. Jim's architect should assess confidence before proceeding with design decisions — if < 70%, stop and present alternatives. |
+| [`skills/confidence-check/`](https://github.com/SuperClaude-Org/SuperClaude_Framework/tree/master/skills/confidence-check) *(branch `main`→`master`, 2026-07-17; dir holds `SKILL.md` + `confidence.ts`)* | Runtime skill for pre-execution confidence assessment | Validates the pattern but SuperClaude's implementation (Python pytest plugin) is infrastructure Jim doesn't need. The concept — spend 100-200 tokens on confidence check to save 5,000-50,000 on wrong direction — is the key insight. |
 
 **Key takeaways for Jim:**
 - **Confidence gates**: The ROI argument is compelling — small investment in confidence assessment prevents expensive rework. Jim's architect should flag low-confidence design decisions explicitly.
@@ -96,18 +96,18 @@ date: "2026-03-14"
 
 **Key takeaways for Jim:**
 - **Structured delivery notification**: "Architecture plan completed. Designed approach supporting X with Y tradeoffs." — Jim's architect should present plans with a concise summary.
-- **Red flags checklist** (from [everything-claude-code/agents/architect.md](https://github.com/affaan-m/everything-claude-code/blob/main/agents/architect.md)): Unclear structure, solution monotheism, premature optimization, tight coupling, undocumented magical behavior — anti-patterns the architect should flag during planning.
+- **Red flags checklist** (from [ecc/agents/architect.md](https://github.com/affaan-m/ecc/blob/main/agents/architect.md) — repo renamed `everything-claude-code`→`ecc` (same repo id, ~230k★); file still present though its top now leads with a "Prompt Defense Baseline" preamble, 2026-07-17): Unclear structure, solution monotheism, premature optimization, tight coupling, undocumented magical behavior — anti-patterns the architect should flag during planning.
 
 ### Tier 3: Reference Only
 
 **6. GSD & cc-sdd**
-- **Repos**: [gsd-build/get-shit-done](https://github.com/gsd-build/get-shit-done), [gotalab/cc-sdd](https://github.com/gotalab/cc-sdd)
+- **Repos**: [open-gsd/gsd-core](https://github.com/open-gsd/gsd-core) *(formerly `gsd-build/get-shit-done`; branch `next`)*, [gotalab/cc-sdd](https://github.com/gotalab/cc-sdd)
 - **Relevant to**: `/jim:plan`, `/jim:arch`
 
 | File | What It Is | Why It Matters for Jim |
 |------|------------|------------------------|
-| [`commands/gsd/plan-phase.md`](https://github.com/gsd-build/get-shit-done/blob/main/commands/gsd/plan-phase.md) | Planning command with conditional research spawning and `--gaps` flag for targeted re-planning | Validates `/jim:plan`'s auto-spawn-researcher pattern. Gap closure mode (skip research, target specific gaps) is relevant to the architect's differential update workflow. |
-| [`commands/gsd/map-codebase.md`](https://github.com/gsd-build/get-shit-done/blob/main/commands/gsd/map-codebase.md) | Four parallel agents (Tech, Architecture, Quality, Concerns) produce structured codebase docs | Directly relevant to `/jim:arch` — the architect could spawn focused sub-agents to analyze different codebase dimensions simultaneously when generating ARCHITECTURE.md. |
+| [`commands/gsd/plan-phase.md`](https://github.com/open-gsd/gsd-core/blob/next/commands/gsd/plan-phase.md) | Planning command with conditional research spawning and cheap-iteration flags (`--view` / `--skip-research`) for targeted re-planning | Validates `/jim:plan`'s auto-spawn-researcher pattern. Gap closure mode (skip research, target specific gaps) is relevant to the architect's differential update workflow. |
+| [`commands/gsd/map-codebase.md`](https://github.com/open-gsd/gsd-core/tree/next/commands/gsd) *(path may have shifted in the `open-gsd/gsd-core` move — verify against the current tree)* | Four parallel agents (Tech, Architecture, Quality, Concerns) produce structured codebase docs | Directly relevant to `/jim:arch` — the architect could spawn focused sub-agents to analyze different codebase dimensions simultaneously when generating ARCHITECTURE.md. |
 | [`.kiro/specs/photo-albums-en/design.md`](https://github.com/gotalab/cc-sdd/blob/main/.kiro/specs/photo-albums-en/design.md) | Design doc with interfaces, pre/postconditions, and cross-cutting concerns | Concrete example of plan.md-quality output. The pre/postcondition pattern on interface contracts is directly adoptable by the architect's Interface Contracts section. |
 | [`.kiro/specs/photo-albums-en/tasks.md`](https://github.com/gotalab/cc-sdd/blob/main/.kiro/specs/photo-albums-en/tasks.md) | Task breakdown with Requirements Coverage Summary tracing tasks to requirements | The traceability matrix (requirement → task mapping) ensures completeness — if a spec requirement has no task, the plan is incomplete. Directly useful for the architect's self-check. |
 

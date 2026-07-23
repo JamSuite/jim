@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 34
+- Open: 39
 - Closed: 50
 
 ## Issues
@@ -83,6 +83,11 @@
 - `20260712-emit-the-unarmed-knob-notice-on-the-nothing-to-reconcile-reconci` — Emit the unarmed-knob notice on the nothing-to-reconcile reconcile · status: closed · num: 75 · priority: low · created: 2026-07-12T10:12:32Z · labels: [blueprint, partition, health] · origin: docs/specs/jim/044-partition-health/review.md
 - `20260712-record-and-sense-chronic-domain-domain-straddle-flags` — Record and sense chronic domain-domain straddle flags · status: open · num: 72 · priority: low · created: 2026-07-12T07:21:07Z · labels: [partition, health, spec-advisor] · origin: docs/specs/jim/044-partition-health/spec.md
 - `20260713-align-nothing-to-reconcile-face-counters-with-ledger-int-typing` — Align nothing-to-reconcile face counters with ledger int-typing · status: open · num: 76 · priority: medium · created: 2026-07-13T07:15:20Z · labels: [reconcile, ledger] · origin: docs/specs/jim/045-reconcile-face-counters/review.md
+- `20260717-automate-the-competitive-landscape-prior-art-research-refresh-as` — Automate the competitive-landscape / prior-art research refresh as a jim skill · status: open · num: 14 · priority: high · created: 2026-07-17T22:09:46Z · labels: [skill, research, prior-art, workflow, meta] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
+- `20260717-compare-joe-s-jim-review-skill-against-osmani-code-review-and-qu` — Compare Joe's jim:review skill against Osmani code-review-and-quality blueprint · status: open · num: 13 · priority: high · created: 2026-07-17T20:53:35Z · labels: [review, skill, prior-art] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
+- `20260717-evaluate-optional-ears-when-then-testable-ac-grammar-and-a-spec-` — Evaluate optional EARS/WHEN-THEN testable-AC grammar and a spec-check testability lint · status: open · num: 16 · priority: medium · created: 2026-07-17T22:22:04Z · labels: [spec, spec-check, testability, grammar] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
+- `20260717-post-approval-correction-evolution-flow-edit-approved-plans-and-` — Post-approval correction/evolution flow: edit approved plans and propagate fixes to code and migrations · status: open · num: 15 · priority: high · created: 2026-07-17T22:21:05Z · labels: [skill, plan, correction, lifecycle, workflow] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
+- `20260717-reconcile-brainstorm-skill-passive-capture-stance-with-active-ev` — Reconcile brainstorm skill's passive-capture stance with users' expectation of active evaluation · status: open · num: 12 · priority: medium · created: 2026-07-17T18:07:21Z · labels: [brainstorm, skill, ux] · origin: conversation
 - `20260721-fill-rewrite-identity-guard-and-negative-branch-test-gaps` — Fill rewrite-identity guard and negative-branch test gaps · status: closed · num: 78 · priority: medium · created: 2026-07-21T05:45:36Z · labels: [046, test-coverage] · origin: docs/specs/jim/046-spec-migration/review.md
 - `20260721-floor-next-id-for-group-names-retired-by-rename` — Floor next-id for group names retired by rename · status: open · num: 79 · priority: medium · created: 2026-07-21T18:50:19Z · labels: [partition, rename, ledger] · origin: docs/specs/jim/047-partition-split/spec.md
 - `20260721-narrow-rewrite-identity-dotted-key-and-typed-ref-over-match` — Narrow rewrite-identity dotted-key and typed-ref over-match · status: closed · num: 77 · priority: low · created: 2026-07-21T05:45:35Z · labels: [046, rewrite-identity, hardening] · origin: docs/specs/jim/046-spec-migration/review.md
