@@ -1241,6 +1241,21 @@ c" "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="FANIN_GROUP"{print $2}')"
   assert_eq "no cycle from the duplicate row" "0" "$(tsv_field CYCLES 2)"
 }
 
+# AC: a self-loop is excluded from health upstream (cmd_edges HYGIENE-drops it),
+# so it never counts toward the edge total and never forms a one-node cycle
+# cluster, while a genuine edge on the same graph is still measured.
+case_jimverify_health_self_loop_excluded() {
+  local m
+  m=$(hmap m-selfloop.md "acct billing catalog" '| acct | depends | acct |
+| billing | pricing | catalog |')
+  run_jimverify health "$m"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "self-loop dropped, only the real edge counts" "1" "$(tsv_field EDGES 2)"
+  assert_eq "self-loop forms no cycle cluster" "0" "$(tsv_field CYCLES 2)"
+  assert_eq "no CYCLE line names the self-loop group" "" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="CYCLE" && $3=="acct"')"
+}
+
 # ─── Section: health — territory coverage (spec 039 Task 2) ──────────────────
 
 # health_git <name> — build a git repo whose only tracked files are
