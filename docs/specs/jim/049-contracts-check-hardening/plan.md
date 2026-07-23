@@ -2,7 +2,7 @@
 title: "Harden contracts-check: blueprint-slot resolver, self-edge guard, edge-outcome tests"
 spec: "spec.md"
 type: refactor
-status: approved
+status: complete
 ---
 
 # Harden contracts-check — Plan
@@ -124,13 +124,13 @@ flowchart TD
 (`bash skills/meta-test/scripts/run.sh jimverify`, from the repo root, exits 0),
 so existing behavior is confirmed green.*
 
-1. [ ] **Route the three blueprint-path composals through the resolver.** In
+1. [x] **Route the three blueprint-path composals through the resolver.** In
    `jimverify.sh`, replace the hand-composed `$specs_root/$g|$P/000-blueprint/spec.md`
    at `:912`, `:958`, `:1167` with `bash "$JIMFILE" path blueprint "<group>"`.
    Leave the `<specs-root>` param in place for now (it becomes unused). (DD 2; AC #1/#2)
    **Verify:** `cd /mnt/src/jim && ! grep -q 'specs_root/\$' skills/verify/scripts/jimverify.sh && bash skills/meta-test/scripts/run.sh jimverify; echo rc=$?` (no hand-composed string; suite exits 0).
 
-2. [ ] **Drop the stranded `<specs-root>` arg and update all callers.** Remove the
+2. [x] **Drop the stranded `<specs-root>` arg and update all callers.** Remove the
    `specs_root` param and its `-z` validation from `cmd_contracts_check` and
    `cmd_faces_aggregate`; shift `files-list` to `${2:-}` in `cmd_contracts_check`.
    Update the invocation text in `skills/verify/SKILL.md`,
@@ -139,7 +139,7 @@ so existing behavior is confirmed green.*
    change the `missing-args` assertion to require only `<map>`. (DD 2; new AC, AC #3)
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh jimverify && ! grep -rEq 'contracts-check <map> <specs-root>|faces-aggregate <map> <specs-root>' skills/verify; echo rc=$?` (suite green; old signatures gone from docs).
 
-3. [ ] **[RED] Add the self-pair edges tests.** Add `case_jimverify_edges_self_pair_hygiene`
+3. [x] **[RED] Add the self-pair edges tests.** Add `case_jimverify_edges_self_pair_hygiene`
    (a map row `| a | x | a |` emits `^HYGIENE\t` and **no** `^a\tx\ta` edge) and
    `case_jimverify_edges_self_pair_sanitized` (a self-pair row bearing an embedded
    tab/control char emits a single sanitized HYGIENE row — no column shift),
@@ -147,29 +147,29 @@ so existing behavior is confirmed green.*
    (Security Finding 1; AC #5)
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh self_pair; test $? -ne 0` (new cases fail against current code — red).
 
-4. [ ] **[GREEN] Apply the self-pair guard.** Add `&& c1 != c3` to the edge-emit
+4. [x] **[GREEN] Apply the self-pair guard.** Add `&& c1 != c3` to the edge-emit
    condition at `cmd_edges:786`. (DD 1; AC #4/#5/#6)
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh self_pair && bash skills/meta-test/scripts/run.sh jimverify; echo rc=$?` (task-3 cases pass; full suite exits 0).
 
-5. [ ] **Pin health self-loop exclusion.** Add `case_jimverify_health_self_loop_excluded`
+5. [x] **Pin health self-loop exclusion.** Add `case_jimverify_health_self_loop_excluded`
    — an `hmap` with a self-loop `| a | x | a |` asserts `CYCLES` = 0, no
    `^CYCLE\t…\ta` line, and the self-loop is not counted in `EDGES`. (AC #6)
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh self_loop && bash skills/meta-test/scripts/run.sh jimverify; echo rc=$?`
 
-6. [ ] **Pin self-edge → no contract outcome.** Add
+6. [x] **Pin self-edge → no contract outcome.** Add
    `case_jimverify_contracts_self_edge_no_outcome` — a `contracts_repo` variant
    whose graph carries a self-edge (`| accounts | … | accounts |`) asserts no
    `accounts>accounts#…` provider/consumer outcome row and no self CROSS-REF. (AC #4)
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh self_edge && bash skills/meta-test/scripts/run.sh jimverify; echo rc=$?`
 
-7. [ ] **Pin consumer-ref abstain.** Add `case_jimverify_contracts_consumer_abstain`
+7. [x] **Pin consumer-ref abstain.** Add `case_jimverify_contracts_consumer_abstain`
    — a `contracts_repo` variant whose consumer (`billing/invoice.js`) omits the
    declared `getIdentity` usage asserts the `$2=="consumer"` edge row is **absent**
    (neither `violated` nor `failed`), keyed like `case_jimverify_contracts_consumer_holds`
    (`:922`). (AC #7)
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh consumer_abstain && bash skills/meta-test/scripts/run.sh jimverify; echo rc=$?`
 
-8. [ ] **Pin edge-outcome location-only evidence.** Add
+8. [x] **Pin edge-outcome location-only evidence.** Add
    `case_jimverify_contracts_edge_outcome_locationonly` — assert a `holds`
    provider/consumer outcome row's evidence is `file:line` only and the matched
    source token is never emitted (`grep -c 'function\|getIdentity' == 0` over the
