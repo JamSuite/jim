@@ -1104,6 +1104,22 @@ case_jimverify_contracts_consumer_abstain() {
     "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
 }
 
+# AC: edge-outcome evidence is location-only — a holds row carries a bare
+# file:line, never the matched source token (the same exfiltration guard the
+# CROSS-REF path has under test, extended to emit_edge evidence).
+case_jimverify_contracts_edge_outcome_locationonly() {
+  local root; root="$(contracts_repo cceloc)"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "provider edge-outcome holds" "holds" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
+  assert_eq "edge-outcome evidence carries no matched source token" "0" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup"' | grep -cE 'function|getIdentity')"
+  assert_match "edge-outcome evidence is file:line only" \
+    'accounts/session\.js:[0-9]' \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $4; exit}')"
+}
+
 # ─── Section: health — graph metrics (spec 039 Task 1) ───────────────────────
 
 # hmap <name> <groups> <rows> — build a project map with a `## Groups` section
