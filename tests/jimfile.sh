@@ -319,6 +319,14 @@ case_jimfile_path_blueprint_rejects_invalid_group() {
   assert_eq "slug rejection reason" "yes" "$([[ "$ERR" == *rejected* ]] && echo yes || echo no)"
 }
 
+# AC: blueprint-dirname emits the reserved directory name so sibling scripts can
+#     compose the path on their own base, single-sourcing the 000-blueprint literal
+case_jimfile_blueprint_dirname_emits_reserved_name() {
+  run_jimfile blueprint-dirname
+  assert_exit "rc" 0 "$RC"
+  assert_eq "reserved dir name" "000-blueprint" "$OUT"
+}
+
 # AC: mv-spec rejects a non-slug new-name before any move (is_valid_slug)
 case_jimfile_mv_spec_rejects_bad_name() {
   local specs cfg

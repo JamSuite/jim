@@ -83,6 +83,12 @@ JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../review/scripts" 2>/dev/nul
 # Valid artifact kinds. Drives `path <kind>` validation and `kinds` output.
 readonly KINDS=(spec plan research debug brainstorm issue blueprint)
 
+# The reserved per-group blueprint directory name. Sorts ahead of `001`, parses
+# to id `0`, and is skipped by next-id. The single definition of this literal in
+# code — consumed by the blueprint slot resolver and emitted by `blueprint-dirname`
+# for sibling scripts that compose the directory path on their own base.
+readonly BLUEPRINT_DIRNAME="000-blueprint"
+
 # Optional -c <path> override for jimconf.toml. Empty when not supplied.
 CONFIG_FILE=""
 
@@ -672,7 +678,7 @@ cmd_path() {
       is_valid_slug "$group" || return 1
       local specs_root
       specs_root="$(jimconf_get specs)"
-      printf '%s/%s/000-blueprint/spec.md\n' "$specs_root" "$group"
+      printf '%s/%s/%s/spec.md\n' "$specs_root" "$group" "$BLUEPRINT_DIRNAME"
       ;;
     issue)
       local slug="${1:-}"
@@ -793,6 +799,13 @@ cmd_kinds() {
   done
 }
 
+# cmd_blueprint_dirname
+#   Echo the reserved per-group blueprint directory name. Lets sibling scripts
+#   single-source the literal instead of hand-composing it. No I/O.
+cmd_blueprint_dirname() {
+  printf '%s\n' "$BLUEPRINT_DIRNAME"
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 usage() {
@@ -817,6 +830,7 @@ usage:
   jimfile.sh glob debug                         one path per line
   jimfile.sh glob brainstorms                   one path per line
   jimfile.sh kinds                              valid kinds, no I/O
+  jimfile.sh blueprint-dirname                  reserved group blueprint dir name
   jimfile.sh valid-id <id>                      exit 0 if id passes is_valid_id
   jimfile.sh valid-relpath <path>               exit 0 iff safe repo-relative
                                                 (no abs, no '..' segment)
@@ -852,6 +866,7 @@ main() {
     path)    cmd_path    "$@" ;;
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
+    blueprint-dirname) cmd_blueprint_dirname ;;
     valid-id) cmd_valid_id "$@" ;;
     valid-relpath) cmd_valid_relpath "$@" ;;
     prefix-from) cmd_prefix_from "$@" ;;
