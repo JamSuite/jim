@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 36
+- Open: 37
 - Closed: 46
 
 ## Issues
@@ -89,6 +89,7 @@
 - `20260722-align-partition-split-flow-to-interview-plus-gate-shape` — Align partition split flow to interview-plus-gate shape · status: open · num: 80 · priority: medium · created: 2026-07-22T21:20:25Z · labels: [partition, ux] · origin: docs/brainstorms/20260722-partition-merge.md
 - `20260722-define-the-merge-signal-interpretive-rule-for-partition-health` — Define the merge-signal interpretive rule for partition health · status: open · num: 81 · priority: medium · created: 2026-07-22T22:24:13Z · labels: [partition, health] · origin: docs/brainstorms/20260722-partition-merge.md
 - `20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs` — fix ripple-engine sweep order for renumbered self-refs · status: open · num: 82 · priority: medium · created: 2026-07-23T03:21:43Z · labels: [partition, ripple-engine] · origin: docs/specs/jim/048-partition-merge/review.md
+- `20260723-single-source-the-000-blueprint-directory-name-in-jimpartition-s` — Single-source the 000-blueprint directory name in jimpartition.sh · status: open · num: 83 · priority: low · created: 2026-07-23T06:09:14Z · labels: [verify, partition, refactor] · origin: docs/specs/jim/049-contracts-check-hardening/review.md
 
 ## Graph
 
