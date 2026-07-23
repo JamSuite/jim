@@ -3,7 +3,7 @@ id: 20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs
 num: 87
 title: "fix ripple-engine sweep order for renumbered self-refs"
 status: open
-priority: medium
+priority: high
 labels: [partition, ripple-engine]
 relations:
   blocks: []
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T03:21:43Z
-updated: 2026-07-23T03:21:43Z
+updated: 2026-07-23T18:18:44Z
 origin: docs/specs/jim/048-partition-merge/review.md
 ---
 

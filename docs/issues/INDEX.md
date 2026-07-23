@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 39
+- Open: 40
 - Closed: 50
 
 ## Issues
@@ -93,7 +93,8 @@
 - `20260721-narrow-rewrite-identity-dotted-key-and-typed-ref-over-match` — Narrow rewrite-identity dotted-key and typed-ref over-match · status: closed · num: 82 · priority: low · created: 2026-07-21T05:45:35Z · labels: [046, rewrite-identity, hardening] · origin: docs/specs/jim/046-spec-migration/review.md
 - `20260722-align-partition-split-flow-to-interview-plus-gate-shape` — Align partition split flow to interview-plus-gate shape · status: open · num: 85 · priority: medium · created: 2026-07-22T21:20:25Z · labels: [partition, ux] · origin: docs/brainstorms/20260722-partition-merge.md
 - `20260722-define-the-merge-signal-interpretive-rule-for-partition-health` — Define the merge-signal interpretive rule for partition health · status: open · num: 86 · priority: medium · created: 2026-07-22T22:24:13Z · labels: [partition, health] · origin: docs/brainstorms/20260722-partition-merge.md
-- `20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs` — fix ripple-engine sweep order for renumbered self-refs · status: open · num: 87 · priority: medium · created: 2026-07-23T03:21:43Z · labels: [partition, ripple-engine] · origin: docs/specs/jim/048-partition-merge/review.md
+- `20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs` — fix ripple-engine sweep order for renumbered self-refs · status: open · num: 87 · priority: high · created: 2026-07-23T03:21:43Z · labels: [partition, ripple-engine] · origin: docs/specs/jim/048-partition-merge/review.md
+- `20260723-generalize-the-prose-pin-pattern-into-a-skills-prose-invocation-` — Generalize the prose-pin pattern into a skills-prose invocation lint · status: open · num: 90 · priority: low · created: 2026-07-23T18:43:32Z · labels: [meta-test, partition] · origin: docs/specs/jim/051-partition-ref-sweep/plan.md
 - `20260723-harden-textual-invariant-test-global-identifier-naming` — Harden textual-invariant test global-identifier naming · status: open · num: 89 · priority: low · created: 2026-07-23T10:23:59Z · labels: [test, meta-test, tech-debt] · origin: docs/specs/jim/050-blueprint-present-tense/plan.md
 - `20260723-single-source-the-000-blueprint-directory-name-in-jimpartition-s` — Single-source the 000-blueprint directory name in jimpartition.sh · status: closed · num: 88 · priority: low · created: 2026-07-23T06:09:14Z · labels: [verify, partition, refactor] · origin: docs/specs/jim/049-contracts-check-hardening/review.md
 
