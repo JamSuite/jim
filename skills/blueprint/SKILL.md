@@ -13,7 +13,7 @@ description: >
   for a single work spec (/jim:spec), project-wide architecture (/jim:arch),
   or implementation (/jim:build).
 agent: architect
-argument-hint: "[--from-review <spec-dir> | --since <ref> | --retire] [group] | --rename <old> <new> --changes <file> | --split <old> --targets <csv> --changes <file> | --reconcile"
+argument-hint: "[--from-review <spec-dir> | --since <ref> | --retire] [group] | --rename <old> <new> --changes <file> | --split <old> --targets <csv> --changes <file> | --merge <target> --sources <csv> --changes <file> | --reconcile"
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/partition/scripts/jimpartition.sh health-eval *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/partition/scripts/jimpartition.sh identity-check *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Skill(jim:verify) Skill(jim:partition) Agent(judge) Read Write Edit Glob Grep
 ---
 
@@ -40,6 +40,7 @@ Mirroring `/jim:review`'s `--depth` convention, strip a recognized flag from
 | `--retire <group>` | **Retire mode:** mark a superseded group's `000-blueprint` retired, pointing at the map (§ Retire mode). |
 | `--rename <old> <new> --changes <file>` | **Rename mode:** materialize the doc-tier half of a `/jim:partition` group rename — re-validated change-set edits, deferred commits, no re-gate (§ Migrate modes). |
 | `--split <old> --targets <csv> --changes <file>` | **Split mode:** materialize the doc-tier half of a `/jim:partition` group split — map fission, kernel-first fresh-child blueprints, symmetric-source retirement, deferred commits, no re-gate (§ Migrate modes). |
+| `--merge <target> --sources <csv> --changes <file>` | **Merge mode:** materialize the doc-tier half of a `/jim:partition` group merge — map fusion N→1, the fused target blueprint (in-place / fresh), source retirement, deferred commits, no re-gate (§ Migrate modes). |
 
 ## Process
 
@@ -465,7 +466,7 @@ authority survives a migration (AC #19). A wholesale status change, so it
    `commit-blueprint <blueprint-dir> update` (spec.md + ledger.md, path-scoped).
    No reconcile pass runs — retirement changes no face. Do not proceed further.
 
-## Migrate modes (`--rename` / `--split`)
+## Migrate modes (`--rename` / `--split` / `--merge`)
 
 Each materializes the doc-tier half of a `/jim:partition` migration: re-validate
 the `--changes` rows, apply the edits, rewrite `## Contract Graph`, and — alone
@@ -474,7 +475,10 @@ returning the touched-file list. `--rename <old> <new>` edits identity in place;
 `--split <old> --targets <csv>` fissions the map per child, mints kernel-first
 fresh-child blueprints, retires a symmetric source without the `--retire` prompt
 (the split gate authorized it), and gates each row on **target ∈ `--targets`**
-(security Finding 3). Full arm protocols: `references/migrate-arms.md`.
+(security Finding 3). `--merge <target> --sources <csv>` fuses the map and
+blueprints N→1 (in-place for an absorption target, fresh otherwise), retires every
+non-continuing source without the `--retire` prompt, and gates each row on the
+`--sources`-plus-target whitelist. Full arm protocols: `references/migrate-arms.md`.
 
 ## Validation Checklist
 
