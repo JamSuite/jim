@@ -2,7 +2,7 @@
 title: "Partition ref sweep mis-rewrites typed refs on renumbering moves"
 spec: "docs/specs/jim/051-partition-ref-sweep/spec.md"
 type: bug
-status: approved
+status: complete
 ---
 
 # Partition ref sweep mis-rewrites typed refs on renumbering moves — Plan
