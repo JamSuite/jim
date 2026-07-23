@@ -112,7 +112,7 @@ flowchart TD
 6. [x] **Prose-pin test:** add the case asserting the four canonical invocation lines carry the flag (grep-based, location-only assertions). Depends on task 5.
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh jimpartition`
 
-7. [ ] **Full-suite + no-modification check:** whole test suite green; existing test cases untouched (additions only).
+7. [x] **Full-suite + no-modification check:** whole test suite green; existing test cases untouched (additions only).
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh && git diff -U0 -- /mnt/src/jim/tests/jimpartition.sh | grep '^-[^-]' | wc -l | grep -qx 0`
 
 ## Requirements Coverage Summary
