@@ -144,7 +144,7 @@ content is displayed or persisted — minimize to "secret-looking value at
    --reconcile`); `jimverify.sh faces <blueprint-spec>` per endpoint group for
    criticality and check-data.
 3. **C3 — run the floor.** `jimverify.sh contracts-check <map>`
-   (add the change-set files-list as a 3rd arg only in scoped/triggered runs).
+   (add the change-set files-list only in scoped/triggered runs).
    Correlate `CROSS-REF`, `CROSS-REF-CAPPED`, edge pattern outcomes,
    `UNSCOPED-GROUP`, `COVERAGE`, and `HYGIENE` records.
 4. **C4 — classify.** Facts vs declared edges (above). In the whole-graph grain,
