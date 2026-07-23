@@ -783,7 +783,7 @@ cmd_edges() {
       c1 = trim($2); c2 = trim($3); c3 = trim($4)
       if (c1 ~ /^:?-+:?$/) next               # separator row
       if (tolower(c1) == "consumer") next      # header row
-      if (is_slug(c1) && is_slug(c3)) printf "%s\t%s\t%s\n", san(c1), san(c2), san(c3)
+      if (is_slug(c1) && is_slug(c3) && c1 != c3) printf "%s\t%s\t%s\n", san(c1), san(c2), san(c3)
       else                            printf "HYGIENE\t%s\n", san(trim($0))
     }
   ' "$map"
