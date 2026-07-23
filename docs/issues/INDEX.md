@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 37
-- Closed: 46
+- Open: 36
+- Closed: 47
 
 ## Issues
 
@@ -64,7 +64,7 @@
 - `20260705-meta-matrix-probe-agent-body-exceeds-progressive-disclosure-toke` — meta-matrix-probe agent body exceeds progressive-disclosure token budget · status: open · num: 54 · priority: medium · created: 2026-07-05T00:37:36Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-migrate-review-s-issue-batch-to-the-new-sh-emitter` — Migrate review's issue batch to the new.sh emitter · status: open · num: 55 · priority: medium · created: 2026-07-05T07:25:21Z · labels: [issue-tracking, review] · origin: docs/specs/jim/036-verify-loop/plan.md
 - `20260705-record-boundary-change-contract-grounding-in-a-durable-ledger-co` — Record boundary-change contract grounding in a durable ledger counter · status: closed · num: 57 · priority: medium · created: 2026-07-05T22:44:10Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/review.md
-- `20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin` — Harden contracts-check: blueprint-path resolver + self-edge guard + edge tests · status: open · num: 62 · priority: high · created: 2026-07-05T22:47:39Z · labels: [000-blueprint, drift, verify, test] · origin: docs/specs/jim/000-blueprint/spec.md
+- `20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin` — Harden contracts-check: blueprint-path resolver + self-edge guard + edge tests · status: closed · num: 62 · priority: high · created: 2026-07-05T22:47:39Z · labels: [000-blueprint, drift, verify, test] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-surface-capped-cross-ref-facts-in-contracts-check` — Surface capped CROSS-REF facts in contracts-check · status: closed · num: 56 · priority: low · created: 2026-07-05T22:17:53Z · labels: [verify, contract-graph] · origin: docs/specs/jim/037-verify-contracts/plan.md
 - `20260705-test-the-consumer-ref-abstain-on-absent-path-in-contracts-check` — Test the consumer-ref abstain-on-absent path in contracts-check · status: closed · num: 58 · priority: medium · created: 2026-07-05T22:44:11Z · labels: [verify, contract-graph, test] · origin: docs/specs/jim/037-verify-contracts/review.md
 - `20260705-untrusted-data-and-secret-redaction-gap-on-researcher-web-fetch-` — untrusted-data and secret-redaction gap on researcher web-fetch path · status: open · num: 53 · priority: critical · created: 2026-07-05T00:28:53Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
