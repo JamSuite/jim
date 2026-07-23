@@ -264,52 +264,52 @@ sequenceDiagram
 
 ## Task Breakdown
 
-1. [ ] `jimledger.sh vacated-max`: accept `;op=merge;` alongside `;op=split;`
+1. [x] `jimledger.sh vacated-max`: accept `;op=merge;` alongside `;op=split;`
    (one filter clause; comment widens to both ops). Tests: floors from an
    op=merge event, malformed element inert, floor monotonic under crafted
    events, multi-chunk `moved=`.
    **Verify:** `bash tests/jimledger.sh vacated`
 
-2. [ ] `jimfile.sh next-id`: floor-comment names both ops; test that a
+2. [x] `jimfile.sh next-id`: floor-comment names both ops; test that a
    retired-source re-mint floors past an `op=merge` event's `moved=` max.
    Depends on task 1.
    **Verify:** `bash tests/jimfile.sh next_id`
 
-3. [ ] `jimledger.sh commit-merge` per Interface Contracts (mirror of
+3. [x] `jimledger.sh commit-merge` per Interface Contracts (mirror of
    commit-split, plus the `--rekey` body channel). Tests: scoped staging, slug
    validation, subject shape, charset-gated rekey body composition, malformed
    rekey-token reject.
    **Verify:** `bash tests/jimledger.sh commit_merge`
 
-4. [ ] `tests/jimpartition.sh`: add `merge_repo()` three-group fixture (DD 10).
+4. [x] `tests/jimpartition.sh`: add `merge_repo()` three-group fixture (DD 10).
    **Verify:** `bash -n tests/jimpartition.sh && grep -q '^merge_repo()' tests/jimpartition.sh`
 
-5. [ ] `jimpartition.sh merge-preflight` per Interface Contracts + dispatch/
+5. [x] `jimpartition.sh merge-preflight` per Interface Contracts + dispatch/
    usage rows. Tests: absorption vs fresh-target ARM, EFFECTIVE provenance,
    degenerate 1→1 reject naming rename, dup sources, target-collision,
    COLLAPSE row, territory-identity + dirt iteration over every source.
    Depends on task 4.
    **Verify:** `bash tests/jimpartition.sh merge_preflight`
 
-6. [ ] `jimpartition.sh merge-map` per Interface Contracts. Tests: the first
+6. [x] `jimpartition.sh merge-map` per Interface Contracts. Tests: the first
    absorbed spec receives exactly the passed `<start>` (pinning the
    verbatim-from-`next-id` convention), fresh-target from `001`, CLI argument
    order across sources, ascending ids within a source, wip riding, the
    floored re-mint guard (start=010 over a dir-max of 5), >999 refusal.
    **Verify:** `bash tests/jimpartition.sh merge_map`
 
-7. [ ] `jimpartition.sh merge-edges-diff` per Interface Contracts. Tests:
+7. [x] `jimpartition.sh merge-edges-diff` per Interface Contracts. Tests:
    clean collapse (dissolve + re-point) passes, third-party re-point rewrite,
    self-edge elision, divergence rc 1.
    **Verify:** `bash tests/jimpartition.sh merge_edges`
 
-8. [ ] `jimpartition.sh identity-check`: accept `;op=merge;` under the uniform
+8. [x] `jimpartition.sh identity-check`: accept `;op=merge;` under the uniform
    retirement rule; fix the stale header comment (rename-only → all three
    ops). Tests: absorbed source flagged retired, surviving absorption target
    exempt, live-slug-in-old tamper case bounded.
    **Verify:** `bash tests/jimpartition.sh identity_check`
 
-9. [ ] `partition-methodology.md`: new § Merge protocol (grammar/effective
+9. [x] `partition-methodology.md`: new § Merge protocol (grammar/effective
    sources/arms; preflight; gatherer dispatch; interview agenda + delimiter
    token + never-interviewed list; gate presentation incl. disposition header,
    full-collapse advisory, ratchet-break commit-body record; materialization
@@ -320,7 +320,7 @@ sequenceDiagram
    rename slug" wording to name all three ops.
    **Verify:** `grep -c '^## § Merge protocol' skills/partition/references/partition-methodology.md | grep -qx 1 && ! grep -q 'id collision dissolves' skills/partition/references/partition-methodology.md`
 
-10. [ ] `migrate-arms.md`: new `--merge` arm — 7 steps mirroring `--split`
+10. [x] `migrate-arms.md`: new `--merge` arm — 7 steps mirroring `--split`
     (re-validate against the `--sources` whitelist; map fusion N→1; fused
     target blueprint in-place/fresh; retire non-continuing sources without the
     standalone prompt; Contract Graph collapse + re-point; defer commits;
@@ -329,12 +329,12 @@ sequenceDiagram
     ceiling).
     **Verify:** `grep -qc '^## .*--merge' skills/blueprint/references/migrate-arms.md && grep -q '\-\-merge' skills/blueprint/SKILL.md && [ "$(wc -l < skills/blueprint/SKILL.md)" -le 520 ]`
 
-11. [ ] `agents/gatherer.md`: merge dispatch role — one source group per
+11. [x] `agents/gatherer.md`: merge dispatch role — one source group per
     dispatch, per-source evidence with collision candidates flagged (the dual
     of spanning cases), evidence-only framing. Keep within the agent budget.
     **Verify:** `grep -qi 'merge' agents/gatherer.md && [ "$(wc -l < agents/gatherer.md)" -le 140 ]`
 
-12. [ ] `skills/partition/SKILL.md`: new `## Merge runs` at natural fidelity
+12. [x] `skills/partition/SKILL.md`: new `## Merge runs` at natural fidelity
     (grammar; preflight → gatherer → interview → gate → materialize → verify
     flow; event recording with the provenance clause; gate-presentation
     reference; candidate batch) + argument-hint extension. Light dedup of
@@ -345,7 +345,7 @@ sequenceDiagram
     the new gate site. Depends on tasks 9, 10.
     **Verify:** `grep -q '^## Merge runs' skills/partition/SKILL.md && [ "$(wc -l < skills/partition/SKILL.md)" -le 560 ] && bash tests/gatepresentation.sh`
 
-13. [ ] Full suite green.
+13. [x] Full suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
