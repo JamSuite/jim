@@ -100,7 +100,7 @@ flowchart TD
 2. [x] **Red:** add flag-unit test cases to `tests/jimpartition.sh` (beside the `rewrite-identity` block): `--skip-typed-refs` leaves typed refs untouched and emits no `typed-ref` record while `group:`/dotted-key rewrites still land; unflagged behavior unchanged on the same fixture. Cases fail against the unmodified script.
    **Verify:** `cd /mnt/src/jim && ! bash skills/meta-test/scripts/run.sh jimpartition`
 
-3. [ ] **Green:** implement the flag in `cmd_rewrite_identity` per the Interface Contract — parse `--skip-typed-refs` ahead of the positionals, thread `-v skiptyped=` into the awk, require `!skiptyped` on the typed branch (`typed && !skiptyped`); update the usage line and the function header comment to state the new behavior.
+3. [x] **Green:** implement the flag in `cmd_rewrite_identity` per the Interface Contract — parse `--skip-typed-refs` ahead of the positionals, thread `-v skiptyped=` into the awk, require `!skiptyped` on the typed branch (`typed && !skiptyped`); update the usage line and the function header comment to state the new behavior.
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh jimpartition`
 
 4. [ ] **Regression (composed arms):** add the two composed-sweep cases — split extraction (moved body with a renumbered ref *and* a remainder ref; remap with both rows; flag-carrying identity + refs in documented order; assert `child/001` and `old/005` survive correctly) and merge (moved body `src/002` → assert `target/008`). Depends on task 3.

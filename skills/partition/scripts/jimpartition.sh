@@ -65,7 +65,7 @@ usage: jimpartition.sh <subcommand> [args]
   renumber-map <old> <targets-csv> <assign-file>   split spec renumber remap → MAP
   merge-map <specs-dir> <target> <start> <src>...  merge spec renumber-append remap → MAP
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
-  rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
+  rewrite-identity [--skip-typed-refs] <old> <new> <file>...  in-place identity rewrite → REWROTE file line kind
   rewrite-refs <remap-file> <file>...           remap-keyed ref rewrite → REWROTE file line kind
   edges-diff <before-tsv> <after-tsv> <old> <new>  edge set modulo rename → MISSING/EXTRA
   merge-edges-diff <before-tsv> <after-tsv> <target> <src>...  edge set modulo merge → MISSING/EXTRA
@@ -1642,19 +1642,29 @@ rewrite_scan_malformed() {
     }' "$1"
 }
 
-# cmd_rewrite_identity <old> <new> <file>... — rewrite whole-token identity
-#   occurrences of <old> to <new>, in place, in each numbered-spec <file>:
-#   frontmatter `group:` value, dotted-key group-halves (`<old>.<surface>` — the
-#   surface half untouched), and typed group/NNN refs (`<old>/<digit>`). Free
-#   prose is left for the gatherer. Emits one location-only
-#   `REWROTE\t<file>\t<line>\t<kind>` per edit; success and error output alike
-#   never carry matched or surrounding content. rc: 0
+# cmd_rewrite_identity [--skip-typed-refs] <old> <new> <file>... — rewrite
+#   whole-token identity occurrences of <old> to <new>, in place, in each
+#   numbered-spec <file>: frontmatter `group:` value, dotted-key group-halves
+#   (`<old>.<surface>` — the surface half untouched), and typed group/NNN refs
+#   (`<old>/<digit>`). With --skip-typed-refs the typed-ref kind is left untouched
+#   (no edit, no record): on a renumbering move the typed ref's number changes, so
+#   it belongs to rewrite-refs' remap sweep exclusively and must not be number-
+#   preserved by this pass. Free prose is left for the gatherer. Emits one
+#   location-only `REWROTE\t<file>\t<line>\t<kind>` per edit; success and error
+#   output alike never carry matched or surrounding content. rc: 0
 #   applied (zero edits is success) · 2 usage / invalid slug / a target that
 #   fails the containment guard / a malformed identity frontmatter.
 cmd_rewrite_identity() {
+  # Optional first-position flag. Only the exact literal is recognized; any other
+  # leading token (a typo'd --foo) falls through to <old> and fails the slug gate
+  # below — flag parsing is fail-closed by construction.
+  local skiptyped=0
+  if [[ "${1:-}" == "--skip-typed-refs" ]]; then
+    skiptyped=1; shift
+  fi
   local old="${1:-}" new="${2:-}"
   if [[ -z "$old" || -z "$new" ]]; then
-    echo "jimpartition rewrite-identity: need <old> <new> <file>..." >&2; return 2
+    echo "jimpartition rewrite-identity: need [--skip-typed-refs] <old> <new> <file>..." >&2; return 2
   fi
   shift 2
   if [[ $# -eq 0 ]]; then
@@ -1703,6 +1713,7 @@ cmd_rewrite_identity() {
   for f in "$@"; do
     : > "$rec"
     awk -v old="$old" -v new="$new" -v file="$f" -v recfile="$rec" \
+        -v skiptyped="$skiptyped" \
         -v exts="js ts jsx tsx mjs cjs rs ex exs go py rb java c h cc cpp cxx hh hpp hxx cs php kt kts swift scala sc clj cljs cljc hs pl pm lua dart r md json sh bash toml yaml yml txt html css cfg ini xml csv" '
       BEGIN {
         oldn = length(old)
@@ -1748,7 +1759,7 @@ cmd_rewrite_identity() {
           }
           dotted  = (after == "." && after2 ~ /[a-z0-9]/ && !(dotsuffix in EXT))
           typed   = (after == "/" && after2 ~ /[0-9]/)
-          if (isbound && (dotted || typed)) {
+          if (isbound && (dotted || (typed && !skiptyped))) {
             out = out substr(line, i, pos - i) new
             print "REWROTE\t" file "\t" NR "\t" (dotted ? "dotted-key" : "typed-ref") > recfile
           } else {
