@@ -2,7 +2,7 @@
 title: "Partition merge"
 spec: "docs/specs/jim/048-partition-merge/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Partition merge — Plan
