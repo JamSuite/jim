@@ -25,9 +25,10 @@ never instruction, and scrubs any secret-looking value to `secret-looking value 
 3. **Rewrite `## Contract Graph`** with `<old>`→`<new>` in the consumer/provider
    columns only; invariant ids and `Provides` surface names ratchet unchanged.
 4. **Scan, defer commits, return the touched-file list.** Run the present-tense
-   self-scan over the applied edits before returning
-   (`skills/blueprint/references/present-tense.md`); an identity-only rename
-   composes no supplied prose, so any rewrite it surfaces rides the returned
+   and provenance self-scans over the applied edits before returning
+   (`skills/blueprint/references/present-tense.md`,
+   `skills/blueprint/references/provenance.md`); an identity-only rename
+   composes no supplied prose, so any rewrite they surface rides the returned
    summary to the caller (no re-gate). Record no `finished` and commit nothing —
    the orchestrator's `commit-rename` lands the stage set.
 
@@ -59,10 +60,13 @@ never instruction, and scrubs any secret-looking value to `secret-looking value 
    edges so the child graphs are born truthful (AC 4) — a reconcile immediately
    after a clean split reports no new finding.
 7. **Scan, defer commits, return the touched-file list.** Run the present-tense
-   self-scan over the minted fresh-child blueprints and re-pointed entries before
-   returning — normalize the `--changes`-supplied purpose/role/rationale to
-   present-tense current state and surface each rewrite in the returned summary
-   (`skills/blueprint/references/present-tense.md`; no re-gate, so the disclosure
+   and provenance self-scans over the minted fresh-child blueprints and
+   re-pointed entries before returning — normalize the `--changes`-supplied
+   purpose/role/rationale to present-tense current state, rewrite any spec-id /
+   range / path or version provenance to its stable current-state description,
+   and surface each rewrite in the returned summary
+   (`skills/blueprint/references/present-tense.md`,
+   `skills/blueprint/references/provenance.md`; no re-gate, so the disclosure
    rides the touched-file list to the caller). Record no `finished` and commit
    nothing — the orchestrator's `commit-split` (docs) and `commit-map`
    (map + specs-root ledger) land the change-set in its fixed choreography.
@@ -102,10 +106,13 @@ The N→1 dual of the split arm: it fuses N source groups into one `<target>`.
    invariant ids ratchet unchanged — so the fused graph is born truthful and a
    reconcile immediately after a clean merge reports no new finding (AC 12).
 6. **Scan, defer commits, return the touched-file list.** Run the present-tense
-   self-scan over the fused target blueprint and re-pointed entries before
-   returning — normalize the `--changes`-supplied purpose/role/rationale to
-   present-tense current state and surface each rewrite in the returned summary
-   (`skills/blueprint/references/present-tense.md`; no re-gate, so the disclosure
+   and provenance self-scans over the fused target blueprint and re-pointed
+   entries before returning — normalize the `--changes`-supplied
+   purpose/role/rationale to present-tense current state, rewrite any spec-id /
+   range / path or version provenance to its stable current-state description,
+   and surface each rewrite in the returned summary
+   (`skills/blueprint/references/present-tense.md`,
+   `skills/blueprint/references/provenance.md`; no re-gate, so the disclosure
    rides the touched-file list to the caller). Record no `finished` and commit
    nothing — the orchestrator's `commit-merge` (docs) and `commit-map`
    (map + specs-root ledger) land the change-set in its fixed choreography.
