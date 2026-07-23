@@ -2035,6 +2035,87 @@ case_jimpartition_merge_preflight_usage_rc2() {
   assert_exit "no sources rc" 2 "$RC"
 }
 
+# ─── Section: merge-map cases (spec 048 Task 6) ──────────────────────────────
+
+# mm_specs <name> <group>/<basename>... — a specs-dir with numbered spec dirs
+#   (no git needed — merge-map only reads directories). Prints the root; specs
+#   live under <root>/specs, so cases pass `specs` as the relative specs-dir.
+mm_specs() {
+  local name="$1"; shift
+  local root; root="$(empty_dir "$name")"
+  local pair
+  for pair in "$@"; do mkdir -p "$root/specs/$pair"; done
+  printf '%s' "$root"
+}
+
+# AC 9 / DD 2 / security Finding 6: the first absorbed spec receives EXACTLY the
+# passed <start> — merge-map copies next-id's output and never computes the seed
+# from the target's directory contents; the source's specs ascend.
+case_jimpartition_merge_map_first_is_start() {
+  local dir; dir="$(merge_repo mm_start)"
+  run_jimpartition_in "$dir" merge-map docs/specs cart 003 wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_match "first absorbed -> start"    $'MAP\twishlist/001\tcart/003' "$OUT"
+  assert_match "second absorbed ascending"  $'MAP\twishlist/002\tcart/004' "$OUT"
+}
+
+# AC 9: a fresh target renumbers from 001; sources are consumed in CLI argument
+# order, each source ascending, appended into one dense sequence.
+case_jimpartition_merge_map_fresh_cli_order() {
+  local dir; dir="$(merge_repo mm_fresh)"
+  run_jimpartition_in "$dir" merge-map docs/specs shopping 001 cart wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_match "cart 001 -> shopping/001"     $'MAP\tcart/001\tshopping/001'     "$OUT"
+  assert_match "cart 002 -> shopping/002"     $'MAP\tcart/002\tshopping/002'     "$OUT"
+  assert_match "wishlist 001 -> shopping/003" $'MAP\twishlist/001\tshopping/003' "$OUT"
+  assert_match "wishlist 002 -> shopping/004" $'MAP\twishlist/002\tshopping/004' "$OUT"
+}
+
+# AC 9: an in-flight wip dir rides the renumber in sequence, -wip suffix kept; the
+# absorption target's own specs are untouched (target != a source).
+case_jimpartition_merge_map_wip_rides() {
+  local root; root="$(mm_specs mm_wip cart/001-a cart/002-b wishlist/001-p wishlist/005-wip)"
+  run_jimpartition_in "$root" merge-map specs cart 003 wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_match "normal source renumbered" $'MAP\twishlist/001\tcart/003'     "$OUT"
+  assert_match "wip rides, suffix kept"   $'MAP\twishlist/005-wip\tcart/004-wip' "$OUT"
+  assert_eq    "target specs not remapped" "0" "$(printf '%s\n' "$OUT" | grep -c $'MAP\tcart/')"
+}
+
+# AC 9 / security Finding 6: the append seed is honored verbatim — a caller-passed
+# start of 010 (the floored next-id past a dir-max of 5) assigns the first
+# absorbed spec target/010, never re-deriving from the target's dir contents.
+case_jimpartition_merge_map_floored_start() {
+  local root; root="$(mm_specs mm_floor cart/001-a cart/002-b cart/005-e wishlist/001-p)"
+  run_jimpartition_in "$root" merge-map specs cart 010 wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_match "floored start honored" $'MAP\twishlist/001\tcart/010' "$OUT"
+}
+
+# AC 9: a renumber that would exceed 999 is refused rc 1 with no MAP output.
+case_jimpartition_merge_map_exhaustion_rc1() {
+  local root; root="$(mm_specs mm_999 cart/001-a wishlist/001-p wishlist/002-q)"
+  run_jimpartition_in "$root" merge-map specs cart 999 wishlist
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no partial MAP output" "" "$OUT"
+}
+
+# rc 2 on a non-numeric or wrong-width start (usage / bad start).
+case_jimpartition_merge_map_bad_start_rc2() {
+  local root; root="$(mm_specs mm_badstart cart/001-a wishlist/001-p)"
+  run_jimpartition_in "$root" merge-map specs cart abc wishlist
+  assert_exit "non-numeric start rc" 2 "$RC"
+  run_jimpartition_in "$root" merge-map specs cart 5 wishlist
+  assert_exit "wrong-width start rc" 2 "$RC"
+}
+
+# rc 2 on usage (no sources after the trio).
+case_jimpartition_merge_map_usage_rc2() {
+  local root; root="$(mm_specs mm_mmusage cart/001-a)"
+  run_jimpartition_in "$root" merge-map specs cart 003
+  assert_exit "no sources rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

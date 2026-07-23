@@ -63,6 +63,7 @@ usage: jimpartition.sh <subcommand> [args]
   split-preflight <map> <specs-dir> <old> <new>...  ARM/CHECK/DIRT/TERRITORY-IDENTITY
   merge-preflight <map> <specs-dir> <target> <src>...  ARM/EFFECTIVE/CHECK/COLLAPSE/DIRT
   renumber-map <old> <targets-csv> <assign-file>   split spec renumber remap → MAP
+  merge-map <specs-dir> <target> <start> <src>...  merge spec renumber-append remap → MAP
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
   rewrite-refs <remap-file> <file>...           remap-keyed ref rewrite → REWROTE file line kind
@@ -1390,6 +1391,66 @@ cmd_renumber_map() {
   return 0
 }
 
+# cmd_merge_map <specs-dir> <target> <start> <src>... — compute the merge spec
+#   renumber-append remap, the deterministic id arithmetic the gate presents
+#   verbatim (no LLM arithmetic). Reads each source group's numbered spec dirs
+#   under <specs-dir> and appends them onto <target> starting at <start> — the
+#   first id to assign, passed VERBATIM from `jimfile.sh next-id <target>` stdout
+#   (001 for a fresh target), so the model copies a script value and never
+#   computes the vacated-floor seed. Sources are consumed in CLI argument order,
+#   each source's specs ascending by original id (the LC_ALL=C dir glob is
+#   pre-sorted); a source equal to <target> (the absorption target) emits no
+#   rows; the 000-blueprint is never a moved spec; an in-flight `-wip` dir rides
+#   in sequence with its suffix preserved. rc 0 · 1 (an assignment would exceed
+#   999; no partial output) · 2 usage / bad start.
+cmd_merge_map() {
+  local specs_dir="${1:-}" target="${2:-}" start="${3:-}"
+  if [[ -z "$specs_dir" || -z "$target" || -z "$start" ]]; then
+    echo "jimpartition merge-map: need <specs-dir> <target> <start> <src>..." >&2; return 2
+  fi
+  shift 3
+  if [[ $# -eq 0 ]]; then
+    echo "jimpartition merge-map: need <src>... (>=1 source)" >&2; return 2
+  fi
+  if ! valid_relpath "$specs_dir"; then
+    echo "jimpartition merge-map: invalid specs-dir: $specs_dir" >&2; return 2
+  fi
+  if ! valid_slug "$target"; then
+    echo "jimpartition merge-map: invalid target slug: $target" >&2; return 2
+  fi
+  if [[ ! "$start" =~ ^[0-9]{3}$ ]] || (( 10#$start < 1 )); then
+    echo "jimpartition merge-map: start must be a 3-digit id 001-999: $start" >&2; return 2
+  fi
+  local -a srcs=("$@")
+  local src
+  for src in "${srcs[@]}"; do
+    valid_slug "$src" || { echo "jimpartition merge-map: invalid source slug: $src" >&2; return 2; }
+  done
+
+  # Buffer rows so a >999 overflow returns rc 1 with no partial output.
+  local seq=$((10#$start))
+  local -a rows=()
+  local d bn onum srctok suffix r
+  for src in "${srcs[@]}"; do
+    [[ "$src" == "$target" ]] && continue        # absorption target keeps its numbers
+    for d in "$specs_dir/$src"/*/; do
+      [[ -d "$d" ]] || continue
+      bn="$(basename "$d")"
+      [[ "$bn" =~ ^[0-9]{3}(-.*)?$ ]] || continue
+      onum="${bn:0:3}"
+      [[ "$onum" == "000" ]] && continue         # the blueprint is not a moved spec
+      if [[ "$bn" == *-wip ]]; then srctok="$onum-wip"; suffix="-wip"; else srctok="$onum"; suffix=""; fi
+      if (( seq > 999 )); then
+        echo "jimpartition merge-map: id space exhausted for $target (would exceed 999)" >&2; return 1
+      fi
+      rows+=("$(printf 'MAP\t%s/%s\t%s/%03d%s' "$src" "$srctok" "$target" "$seq" "$suffix")")
+      seq=$(( seq + 1 ))
+    done
+  done
+  for r in "${rows[@]}"; do printf '%s\n' "$r"; done
+  return 0
+}
+
 # cmd_occurrences <slug> <path>... — enumerate whole-slug-token occurrences of
 #   <slug> across the given files, one HIT per (file, line, kind). Kind is a
 #   STRUCTURAL hint derived from the match's position only — dotted-key (slug is
@@ -1935,6 +1996,7 @@ main() {
     split-preflight) shift; cmd_split_preflight "$@" ;;
     merge-preflight) shift; cmd_merge_preflight "$@" ;;
     renumber-map) shift; cmd_renumber_map "$@" ;;
+    merge-map) shift; cmd_merge_map "$@" ;;
     occurrences) shift; cmd_occurrences "$@" ;;
     rewrite-identity) shift; cmd_rewrite_identity "$@" ;;
     rewrite-refs) shift; cmd_rewrite_refs "$@" ;;
