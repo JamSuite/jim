@@ -109,7 +109,7 @@ flowchart TD
 5. [x] **Doc alignment:** add `--skip-typed-refs` to the canonical invocation lines in `skills/partition/SKILL.md` (split `:369`, merge `:425`) and `partition-methodology.md` (split `:493-495`, merge `:678-680`); add the division-of-labor sentence to both sweep-assembly sections; add the gatherer.md mechanical-floor caveat.
    **Verify:** `test "$(grep -c 'skip-typed-refs' /mnt/src/jim/skills/partition/SKILL.md)" -eq 2 && test "$(grep -c 'skip-typed-refs' /mnt/src/jim/skills/partition/references/partition-methodology.md)" -ge 2 && grep -q 'skip-typed-refs' /mnt/src/jim/agents/gatherer.md`
 
-6. [ ] **Prose-pin test:** add the case asserting the four canonical invocation lines carry the flag (grep-based, location-only assertions). Depends on task 5.
+6. [x] **Prose-pin test:** add the case asserting the four canonical invocation lines carry the flag (grep-based, location-only assertions). Depends on task 5.
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh jimpartition`
 
 7. [ ] **Full-suite + no-modification check:** whole test suite green; existing test cases untouched (additions only).

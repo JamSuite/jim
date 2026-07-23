@@ -1967,6 +1967,21 @@ case_jimpartition_rewrite_merge_composed() {
   assert_eq "no stale-number mispoint (M1)" "0" "$(printf '%s\n' "$body" | grep -c 'target/002')"
 }
 
+# 051 AC 4: the four canonical materialize invocation lines — split and merge, in
+# both SKILL.md and the methodology reference — pin the --skip-typed-refs flag, so a
+# future flow edit that drops it fails this suite rather than silently corrupting a
+# renumbering move's refs. The rename invocation deliberately carries no flag and is
+# not pinned. This case asserts doc CONTENT, not script behavior — a deliberate
+# stretch of the per-script charter, the mechanical guard for the prose-drift
+# channel the defect shipped through.
+case_jimpartition_prose_pin_skip_typed_refs_flag() {
+  local skill meth
+  skill="$REPO_ROOT/skills/partition/SKILL.md"
+  meth="$REPO_ROOT/skills/partition/references/partition-methodology.md"
+  assert_eq "SKILL.md canonical lines carry flag"    "2" "$(grep -c 'rewrite-identity --skip-typed-refs' "$skill")"
+  assert_eq "methodology canonical lines carry flag" "2" "$(grep -c 'rewrite-identity --skip-typed-refs' "$meth")"
+}
+
 # ─── Section: identity-check op=split arm + aggregate reveal (spec 047 Task 9) ─
 
 # AC 17: a symmetric split retires the source slug (old ∉ new) — a surviving
