@@ -1089,6 +1089,21 @@ EOF
     "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
 }
 
+# AC: a consumer that declares a contract but does not exercise the declared
+# surface abstains — it emits no consumer-side edge record (neither violated nor
+# failed) — while the provider side is unaffected.
+case_jimverify_contracts_consumer_abstain() {
+  local root; root="$(contracts_repo ccabstain)"
+  # The consumer no longer exercises the declared getIdentity surface.
+  printf 'const s = require("accounts/session");\nfunction pay() { return 42; }\n' > "$root/billing/invoice.js"
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "consumer abstains — no consumer-side edge record" "0" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="consumer"' | grep -c .)"
+  assert_eq "provider side still holds (unaffected by the consumer abstain)" "holds" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
+}
+
 # ─── Section: health — graph metrics (spec 039 Task 1) ───────────────────────
 
 # hmap <name> <groups> <rows> — build a project map with a `## Groups` section
