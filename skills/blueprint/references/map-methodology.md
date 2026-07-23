@@ -62,15 +62,22 @@ directions, and the map is written only after explicit approval:
    conflicts with the doctrine — a genuine argument, not a silent default —
    but the developer retains final authority.
 4. **Converge and gate.** Present the full map draft. Apply the scrub
-   reminder (below). Write only on explicit approval — never silently. Present the
-draft per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`).
+   reminder (below). Run the present-tense self-scan over the synthesized
+   entries — normalize the interview-supplied purpose/role/rationale to
+   present-tense current state and disclose each rewrite
+   (`skills/blueprint/references/present-tense.md`). Write only on explicit
+   approval — never silently. Present the draft per the gate-presentation rule
+   (`skills/blueprint/references/gate-presentation.md`).
 
 ## Update flow — differential, graded
 
 Re-invoking the project tier with an existing map is a **differential
 update**: propose changes as a diff against the current map, applied on
-approval. Grading reuses the Step-4a shared rule (SKILL.md § 4a) at the map
-tier:
+approval. Before the diff is presented, run the present-tense self-scan over
+the composed entries — normalize any supplied purpose/role/rationale to
+present-tense current state and disclose each rewrite
+(`skills/blueprint/references/present-tense.md`). Grading reuses the Step-4a
+shared rule (SKILL.md § 4a) at the map tier:
 
 - **Additive** — a new group entry, a new relation, added territory. May
   write unattended when `auto_blueprint = "true"`.
