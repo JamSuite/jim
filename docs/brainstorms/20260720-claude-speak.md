@@ -87,7 +87,7 @@ The artifacts **confirm and sharpen the internal thesis.** Same split as jim's o
 
 ## Task 2 — External research (verified)
 
-I re-fetched three primary sources to check the strongest claims. All three verified verbatim.
+The full survey is `docs/research/20260720-claude-speak-research-first-pass.md` — 31 repositories examined for explicit instructions on Claude's use of language, of which 11 carry one. This section is the verification layer over that survey: I re-fetched the three strongest primary sources to check its key claims verbatim. All three verified.
 
 **1. deanpeters/Product-Manager-Skills `CLAUDE.md`** — testable rules: "Use short sentences and active voice"; "Define any PM jargon that might confuse an agent"; "Zero fluff: Did you cut every word that doesn't earn its keep?" It explicitly *permits* metaphor: "Include one vivid metaphor or label when it clarifies (e.g., 'feature factory')."
 
@@ -100,6 +100,21 @@ I re-fetched three primary sources to check the strongest claims. All three veri
 **No competitor bans metaphor** — deanpeters permits one clarifying metaphor; Matt Pocock's skill uses metaphors to teach. **So a strict metaphor ban is not warranted.** The developer's own diagnosis was correct: the confusion came from *unclear* writing, and an instruction demanding concise, literal, specific language fixes that without a literal ban. Recommendation: **drop the ban.** Prefer the plain word; allow standard industry terms (`north star`, `source of truth`).
 
 **The whole ecosystem converts "be clear" into testable rules.** None of them say "write clearly" and stop. Every strong example is a transformation, an exact bound, or a defined term. That is exactly jim's own best pattern — and exactly what jim's *judgment* skills lack.
+
+### Origin of the writing rule (Task 4 §4.0)
+
+The rule fuses two threads. The **four qualities** — literal, efficient, specific, concise — are the developer's framing (this doc's title and the premise's candidate rule). The **testable form of each point** is distilled from the survey above (`docs/research/20260720-claude-speak-research-first-pass.md`), whose "reusable pattern" and metaphor inference synthesize the 11 repos with explicit language rules. Point-by-point:
+
+| §4.0 rule | Traces to |
+|---|---|
+| 1. Specific over vague | gotalab/cc-sdd "Precise: specific technical terms over vague descriptions"; addyosmani "specific/actionable, not vague"; getsentry / affaan-m "numbers / proof, not adjectives" |
+| 2. Say it once | mattpocock "delete the whole sentence when meaning is duplicated" + handoff "reference by path, don't duplicate"; anthropics skill-development "no duplicated information" |
+| 3. Imperative and direct | getsentry brand-guidelines "Be direct — tell users what to do"; anthropics skill-development "imperative, verb-first"; gotalab declarative wording |
+| 4. Define terms on first use | anthropics skill-creator "clarify terms with a short definition"; deanpeters "define any PM jargon" |
+| 5. Literal by default | the survey's §Metaphor inference ("literal and concrete by default; figurative only when it replaces a longer explanation"); deanpeters permits "one vivid metaphor when it clarifies" |
+| 6. Word economy (incl. cut-rationale) | getsentry brand-guidelines "fewest words needed" + agents-md "keep rationale out unless it prevents a likely mistake"; deanpeters "cut every word that doesn't earn its keep"; gotalab "essential information only" |
+
+The rule was then cross-checked against jim's internal audit (Task 1) and re-verified against the three primary sources above.
 
 ---
 
@@ -131,20 +146,45 @@ I read `meta-skill/SKILL.md` and `meta-agent/SKILL.md`, the two skills that auth
 
 ### 4.0 The rule (specific and testable)
 
-Replace the metaphor-centric draft with a rule built on the four qualities:
+Replace the metaphor-centric draft with a rule built on the four qualities (literal, efficient, specific, concise — the developer's framing). Each point's external origin is traced in Task 2 § Origin of the writing rule.
 
-> **Jim writing style.**
-> 1. **Specific over vague.** Every instruction names an exact value, file, threshold, or condition. Do not use unmeasurable words — "appropriate", "as needed", "reasonable", "non-trivial", "where relevant", "meaningful", "sufficient", "lightweight". If you cannot test whether the instruction was followed, rewrite it until you can. *Exception:* a deliberately broad heuristic may keep its broad wording when (a) a strict, testable check runs immediately downstream, and (b) no specific, testable rewrite preserves the intended breadth. Mark such cases as intentional. (Example: the candidate-batch accumulation net — see Task 1.)
+> **Your writing style.** Make your prose literal, efficient, specific, and concise. The rules below make that testable:
+> 1. **Specific over vague.** Name an exact value, file, threshold, or condition. Ban unmeasurable words — "appropriate", "as needed", "reasonable", "non-trivial", "where relevant", "meaningful", "sufficient", "lightweight". If you cannot test whether an instruction was followed, rewrite it. *(Exception and reference conventions below.)*
 > 2. **Say it once.** State each rule in exactly one place. Do not restate a constraint you already gave — in this file or another. Link to the canonical statement instead.
 > 3. **Imperative and direct.** Use commands, not narration or hedging. No "consider", "you might want to", "try to", "best-effort".
 > 4. **Define terms on first use.** Any acronym or named method (STRIDE, SDLC, Peer Feedback, Constitution Check) gets a one-clause definition the first time it appears, then reuse the bare term.
-> 5. **Cut rationale that prevents no mistake.** Keep a "why" only when omitting it would cause a wrong action. (This bounds the current "reasoning beats rigid directives" rule.)
-> 6. **Literal by default.** Prefer the plain word. A vivid label is allowed only when it is standard industry vocabulary (north star, source of truth) or genuinely shortens the explanation. No blanket ban.
+> 5. **Literal by default.** Prefer the plain word. A vivid label is allowed only when it is standard industry vocabulary (north star, source of truth) or genuinely shortens the explanation. No blanket ban.
+> 6. **Word economy.** Cut every word whose removal leaves the instruction unchanged — including decorative rationale: keep a "why" only when omitting it would cause a wrong action (this bounds the current "reasoning beats rigid directives" rule). One idea per bullet. This is the test for *efficient* and *concise* — including for these rules.
+>
+> *Broad-heuristic exception (bounds Rule 1).* A broad instruction may keep broad wording when a strict, testable check runs on its output **in the very next step** and no specific rewrite preserves the intended breadth — then mark it intentional. Example: the "include anything a developer might revisit" net is safe because the fileable bar prunes it in the next step (Task 1).
 
-### 4.1 Two layers, per skill
+### 4.0a Reference conventions (corollary of Rule 1)
 
-- **Layer 1 — the skill's own prose** (make the instruction file specific and concise).
-- **Layer 2 — the language the skill injects into its artifacts** (so the spec/plan/doc it *produces* is specific and concise). Higher value: it improves every future artifact.
+A cross-reference is an instruction the reader must resolve — make it **openable and self-describing**: include the segment that names the artifact *type* (the kind-dir, or the `spec.md` / `plan.md` filename) plus the slug or path that locates it, and give every section its heading text. Paths are relative to their kind root — specs under `docs/specs/jim/`, brainstorms / research / debug / issues under `docs/`. A path is one greppable token, so consistent specific references make renames *easier*, not harder.
+
+| Artifact | Reference as | Example |
+|---|---|---|
+| Spec / sibling plan·research·security | `NNN-slug/<file>.md` | `017-issue-tracking/spec.md`, `017-issue-tracking/plan.md` |
+| Brainstorm | `brainstorms/YYYYMMDD-slug.md` | `brainstorms/20260720-claude-speak.md` |
+| Standalone research / debug | `research/….md`, `debug/YYYYMMDD-slug.md` | `debug/20260512-skill-bash-substitution-wrappers.md` |
+| Issue | `issues/YYYYMMDD-slug.md` — never the display `#num` | `issues/20260717-compare-joe-s-jim-review-skill.md` |
+| Section / heading / task | the heading text, always; cross-doc prefix the filename | `Task 2 — External research`; `brainstorms/20260720-claude-speak.md §4.0 The rule` |
+| Script | exact path | `skills/file/scripts/jimfile.sh` |
+
+**Tooling (filed separately).** References are emitted inline while writing, so the table above — not a script — is the mechanism. A follow-up extends `jimfile.sh` (which already turns components→path) with a `ref` verb (`ref <path>` → `<relpath> (<title>)`, deterministic title extraction), heading / task anchor resolution (`--anchor` emits the heading text), and a lint that flags bare `#num` / numberless `§n` / bare "spec NNN". Out of scope here — it touches `scripts/`, and this initiative is prose-only.
+
+### 4.1 Two layers — one rule, two audiences, two delivery mechanisms
+
+The writing rule (§4.0) is one standard serving two distinct audiences:
+
+| | Layer 1 — for authors of jim's files | Layer 2 — for jim skills at runtime |
+|---|---|---|
+| **Audience** | whoever edits `skills/*/SKILL.md` and `agents/*.md` (the developer + Claude in an authoring session) | the running agent inside `/jim:spec`, `/jim:plan`, etc., writing `spec.md`/`plan.md`/… |
+| **Goal** | jim's instruction files aren't vague/verbose | the artifacts jim *produces* aren't vague/verbose — higher value: improves every future artifact |
+| **Delivered via** | the `meta-skill`/`meta-agent` writing-style checklist (loaded when authoring) | a compact form embedded in each artifact-producing SKILL.md |
+| **Why there** | those two skills gate all authoring | subagent context fact (§4.2): SKILL.md is the only guaranteed-present text |
+
+The rule text is one standard with one canonical location: `skills/meta-skill/SKILL.md` § Writing style. `meta-agent` and every Layer-2 compact embed point to it. The subagent-context fact applies only to Layer 2; for Layer 1, authoring happens with full tooling, so context inheritance is irrelevant.
 
 ### 4.2 Where the rule lives, and how it reaches the artifacts
 
@@ -152,11 +192,11 @@ Replace the metaphor-centric draft with a rule built on the four qualities:
 
 Four parts:
 
-1. **Canonical rule — state it once.** Add the full 6-point rule to `ARCHITECTURE.md` → Plugin Conventions → **Writing Style** (that section exists). Single human-facing source; everything else points here.
+1. **Canonical rule — state it once.** The full rule — a one-line guiding statement plus its testable rules and the reference conventions (§4.0a) — lives in `skills/meta-skill/SKILL.md` § Writing style — the single copy. `skills/meta-agent/SKILL.md` § Writing style keeps its own checklist items but points to meta-skill for the full rule instead of restating it. *(Resolved 2026-07-23 — decision 4 in Task 5. Not ARCHITECTURE.md: an earlier draft proposed a Plugin Conventions → Writing Style section there, which does not exist and won't be created.)* Precedent: the fileable-bar pattern — canonical text in `skills/issue/SKILL.md` § 7a, pointer + brief restatement in the seven surfacing skills (spec 025).
 
-2. **Layer 1 — jim's own skill/agent files.** Extend the `meta-skill` / `meta-agent` "Writing style" checklist with specify-don't-vague, define-on-first-use, say-it-once (tighten the dedup rule to catch *any* restatement, including cross-file), and the bounded "explain why". These two skills gate all authoring, so jim's own files comply by construction. This governs how jim is *written*; it does not touch the artifacts.
+2. **Layer 1 — jim's own skill/agent files.** The `meta-skill` / `meta-agent` "Writing style" section carries the canonical text (per part 1) and an extended checklist: specify-don't-vague, define-on-first-use, say-it-once (tighten the dedup rule to catch *any* restatement, including cross-file), resolve-references-on-sight, and word economy (bounds the "explain why"). These two skills gate all authoring, so jim's own files comply by construction. This governs how jim is *written*; it does not touch the artifacts.
 
-3. **Layer 2 — the artifacts the skills emit.** In each artifact-producing skill, embed a **compact form** (2–3 lines, pointing to the canonical rule) in the step that writes the artifact, plus one Validation-Checklist item. This is the part that makes `spec.md` / `plan.md` / etc. follow the rule. Skills that need it:
+3. **Layer 2 — the artifacts the skills emit.** In each artifact-producing skill, embed a **compact form** (2–3 lines, pointing to `skills/meta-skill/SKILL.md` § Writing style) in the step that writes the artifact, plus one Validation-Checklist item. Lead the compact form with the guiding statement — the single line that survives truncation — then point to `skills/meta-skill/SKILL.md` § Writing style for the rules. This is the part that makes `spec.md` / `plan.md` / etc. follow the rule. Skills that need it:
 
    | Skill | Artifact | Rule form to inject |
    |---|---|---|
@@ -172,16 +212,22 @@ Four parts:
    | roadmap | ROADMAP.md | same narrative subset as vision |
    | brainstorm | brainstorm `.md` | lightest — capture is freeform |
 
-   Utility skills (conf, file) and the `meta-matrix*` fixtures emit no prose artifacts — skip. Optional belt-and-suspenders: also add the compact form to CLAUDE.md (covers main-session runs) and to the six artifact-writing agent bodies (pm, architect, researcher, coder, security, meta). Not required if every artifact skill carries it, but cheap insurance — and it matches how jim already handles its scripting conventions (compact in CLAUDE.md, canonical in ARCHITECTURE.md).
+   Utility skills (conf, file) and the `meta-matrix*` fixtures emit no prose artifacts — skip. Optional redundant coverage: also add the compact form to CLAUDE.md (covers main-session runs) and to the six artifact-writing agent bodies (pm, architect, researcher, coder, security, meta). Not required if every artifact skill carries it, but low-cost.
 
 4. **Then one worst-first cleanup pass** using the CSV as the worklist.
 
-**By document type:** execution documents (spec, plan, research, security, debug, ARCHITECTURE, issues) get all six points. Strategic narrative documents (VISION, ROADMAP) are prose, so rule 3 ("imperative") is relaxed there; specificity, define-terms, say-once, and literal still apply.
+**By document type:** execution documents (spec, plan, research, security, debug, ARCHITECTURE, issues) get every rule. Strategic narrative documents (VISION, ROADMAP) are prose, so rule 3 ("imperative") is relaxed there; specificity, define-terms, say-once, and literal still apply.
 
 ### 4.3 Highest-ROI cleanups (do these first — one edit clears many lines)
 
 1. **Cross-file constraint restatement** — state each shared constraint (`No code writing`, `never overwrite blindly`, `The human decides`, `Does NOT fix code`) once in a shared location; delete the copies.
-2. **Undefined terms** — add a one-clause gloss on first use for STRIDE, LINDDUN, SDLC, Peer Feedback, Constitution Check, Connextra, version anchors, Implementation Insight, fileable bar.
+2. **Undefined terms** — add a one-clause gloss on first use for each. Glosses for the industry-standard terms (reuse this text in the cleanup):
+   - **STRIDE** — Microsoft's six-category threat taxonomy (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege).
+   - **LINDDUN** — a privacy-threat taxonomy (Linking, Identifying, Non-repudiation, Detecting, Data disclosure, Unawareness, Non-compliance).
+   - **SDLC** — Software Development Life Cycle.
+   - **Connextra** — the "As a `<role>`, I want `<goal>`, so that `<benefit>`" user-story template.
+
+   jim-internal named methods (Peer Feedback, Constitution Check, version anchors, Implementation Insight, fileable bar) get their glosses from the source skills during the cleanup pass.
 3. **The roadmap threshold contradiction** — pick one number (5-7 or ~7) and use it in both places.
 
 ### 4.4 Per-skill worklist
@@ -204,7 +250,7 @@ Ordered by debt (from the CSV). "Own prose" = Layer 1. "Artifact language to add
 | **pm.md** | Define "Implementation Insight", "Level-Up Method"; specify "technology-agnostic"; cut 3× "The human decides" | — |
 | **researcher.md** | Expand SDLC on first use; cut the verbatim-restated grounding sentence; replace "early warning system" | — |
 | **meta.md** | Specify "inadequate" (cite the research DoD); cut the duplicate "No Bash" | — |
-| **meta-skill/**, **meta-agent/** | Bound "explain why"; tighten dedup rule; **add the specify + define + say-once rules to the writing-style checklist** — highest ROI | — |
+| **meta-skill/**, **meta-agent/** | Bound "explain why"; tighten dedup rule; **host the canonical writing rule (incl. reference conventions) in meta-skill § Writing style (meta-agent points to it) and add the specify + define + say-once rules to the writing-style checklist** — highest ROI | — |
 | **meta-test/** | Specify "primary feedback loop" / "repeatedly"; cut "completes the meta-* family" | — |
 | **conf/**, **file/** | Trim background asides; the exact-contract prose here is already the model | — |
 
@@ -236,12 +282,12 @@ So: **the plan addresses the project-audit shortcomings, with these four additio
   - **Undefined terms** — named methods and acronyms used before a one-clause gloss (STRIDE, SDLC, Peer Feedback, Constitution Check, Connextra). This is closest to the confusion the developer originally reported.
   - Metaphor is the smallest category.
 - jim's clarity is **half instructed, half accidental.** Imperative form is instructed (and works). Specificity is a byproduct of contract-heavy domains and is absent wherever the domain doesn't force it. One existing rule ("reasoning beats rigid directives") actively drives the verbosity we found.
-- **The real artifacts confirm this (Task 1a).** Across 73 spec/brainstorm artifacts from Adrian's korswerk projects, the acceptance criteria are already strong — exact values, enumerated sets, given/when/then. The debt is the same contract-vs-judgment split: it lives in problem statements, user stories, UI-fidelity ACs, and brainstorm prose. Two artifact-specific defects (ACs that "match the design" or defer their value to Open Questions) need new spec-check probes (§4.5).
+- **The real artifacts confirm this (Task 1a).** Across 73 spec/brainstorm artifacts from Adrian's korswerk projects, the acceptance criteria are already strong; the debt sits in the narrative (problem statements, user stories, UI-fidelity ACs, brainstorm prose) — the same split as Task 1. Two artifact-specific defects (ACs that "match the design" or defer their value to Open Questions) need new spec-check probes (§4.5).
 - **No metaphor ban is needed.** No competitor has one, and an instruction to be specific/literal/concise fixes the confusion the developer actually hit.
 
 ### The plan in one line
 
-Add a six-point writing rule to ARCHITECTURE.md; extend the meta-skill/meta-agent writing-style checklist (specify, define, say-once, bounded-why) so it self-propagates; then one worst-first cleanup pass, starting with the cross-file restatements and undefined terms.
+State the writing rule canonically in the meta-skill/meta-agent writing-style section (specify, define, say-once, word-economy) so it self-propagates; embed compact pointers to it in each artifact-producing skill; then one worst-first cleanup pass, starting with the cross-file restatements and undefined terms.
 
 ### Expected net outcomes
 
@@ -273,11 +319,11 @@ This section now follows the doc's own Rule 1: where a count exists, state it; w
 1. **The "explain why" rule.** Bound it (keep rationale only when it prevents a wrong action) — agreed? This reverses part of the current meta-skill guidance, so it is a deliberate call.
 2. **Dedup scope.** Extend "no duplicate logic" from "3+ places" to "any restatement, including cross-file" — or keep it lighter?
 3. **Rollout.** Enforce-via-checklist-then-cleanup (recommended), or one cleanup PR first?
-4. **Where the rule lives.** ARCHITECTURE.md Plugin Conventions (recommended) vs. CLAUDE.md.
+4. **Where the rule lives.** ~~ARCHITECTURE.md Plugin Conventions (recommended) vs. CLAUDE.md.~~ **Resolved 2026-07-23:** neither — the canonical text lives in `skills/meta-skill/SKILL.md` § Writing style, with meta-agent and the Layer-2 compact embeds pointing to it (fileable-bar pattern, spec 025). See §4.1/§4.2.
 
 ---
 
-*Footnote on metaphor (the original example): the first audit pass catalogued figurative phrases — "upstream", "load-bearing", "archaeology", "masquerading". They are real but minor, and `north star` / `source of truth` / `thin wrapper` are standard vocabulary and should stay. The fix for the few that obscure meaning is covered by rule 6 (literal by default). Metaphor is not the thrust of this initiative.*
+*Footnote on metaphor (the original example): the first audit pass catalogued figurative phrases — "upstream", "load-bearing", "archaeology", "masquerading". They are real but minor, and `north star` / `source of truth` / `thin wrapper` are standard vocabulary and should stay. The fix for the few that obscure meaning is covered by rule 5 (literal by default). Metaphor is not the thrust of this initiative.*
 
 ---
 
