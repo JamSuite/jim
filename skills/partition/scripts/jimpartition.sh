@@ -61,6 +61,7 @@ usage: jimpartition.sh <subcommand> [args]
   coverage  <territories-file>                  uncovered dirs → UNCOVERED/TOTAL
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
   split-preflight <map> <specs-dir> <old> <new>...  ARM/CHECK/DIRT/TERRITORY-IDENTITY
+  merge-preflight <map> <specs-dir> <target> <src>...  ARM/EFFECTIVE/CHECK/COLLAPSE/DIRT
   renumber-map <old> <targets-csv> <assign-file>   split spec renumber remap → MAP
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   rewrite-identity <old> <new> <file>...        in-place identity rewrite → REWROTE file line kind
@@ -1131,6 +1132,178 @@ cmd_split_preflight() {
   return 0
 }
 
+# cmd_merge_preflight <map> <specs-dir> <target> <src>... — structural preflight
+#   for a group merge, the N->1 counterpart of split-preflight. Emits the merge
+#   ARM (absorption iff <target> is a mapped group — the target continues and the
+#   listed sources are absorbed; else fresh-target — every source retires into a
+#   new group), one EFFECTIVE row per effective source (effective set = listed
+#   sources ∪ {target if mapped}, order-preserving dedup; provenance `listed` for
+#   a listed source, `implicit` for the sugar-promoted target), per-source CHECK
+#   facts, a COLLAPSE full advisory when the effective set covers every mapped
+#   group, TERRITORY-IDENTITY lines per effective source, and DIRT classification
+#   of a dirty tree across every source. Structural checks (map-exists,
+#   source-mapped, blueprint-exists, sources-arity [effective ≥2; a smaller set
+#   points to rename], sources-dup, target-slug-valid, target-collision [fresh
+#   target only]) are fatal (rc 1); tree-clean / dirt is warn-confirm (non-fatal),
+#   split parity. rc 0 clean · 1 structural fail · 2 usage / bad specs-dir.
+cmd_merge_preflight() {
+  local map="${1:-}" specs_dir="${2:-}" target="${3:-}"
+  if [[ -z "$map" || -z "$specs_dir" || -z "$target" ]]; then
+    echo "jimpartition merge-preflight: need <map> <specs-dir> <target> <src>..." >&2; return 2
+  fi
+  shift 3
+  if [[ $# -eq 0 ]]; then
+    echo "jimpartition merge-preflight: need <src>... (>=1 source)" >&2; return 2
+  fi
+  if ! valid_relpath "$specs_dir"; then
+    echo "jimpartition merge-preflight: invalid specs-dir: $specs_dir" >&2; return 2
+  fi
+  local -a listed=("$@")
+  local -a effective=() idterr=()
+  local fail=0 groups="" target_mapped=0 target_implicit=0
+  local s e seen g covered dup i j terr line path klass status git_rc
+
+  if [[ -f "$map" ]]; then groups="$(map_group_slugs "$map")"; fi
+
+  # ARM — absorption iff <target> is a mapped group, else fresh-target.
+  if printf '%s\n' "$groups" | grep -qxF -- "$target"; then target_mapped=1; fi
+  if [[ $target_mapped -eq 1 ]]; then printf 'ARM\tabsorption\n'; else printf 'ARM\tfresh-target\n'; fi
+
+  # Effective set = listed ∪ {target if mapped}, order-preserving dedup. Provenance
+  # is `listed` for a listed source, `implicit` for a mapped target not already
+  # among the listed sources (the sugar-promoted target).
+  for s in "${listed[@]}"; do
+    seen=0
+    for e in "${effective[@]}"; do [[ "$e" == "$s" ]] && { seen=1; break; }; done
+    [[ $seen -eq 0 ]] && effective+=("$s")
+  done
+  if [[ $target_mapped -eq 1 ]]; then
+    seen=0
+    for e in "${effective[@]}"; do [[ "$e" == "$target" ]] && { seen=1; break; }; done
+    if [[ $seen -eq 0 ]]; then effective+=("$target"); target_implicit=1; fi
+  fi
+  for e in "${effective[@]}"; do
+    if [[ $target_implicit -eq 1 && "$e" == "$target" ]]; then
+      printf 'EFFECTIVE\t%s\timplicit\n' "$(san_field "$e")"
+    else
+      printf 'EFFECTIVE\t%s\tlisted\n' "$(san_field "$e")"
+    fi
+  done
+
+  # CHECKS.
+  if [[ -f "$map" ]]; then
+    emit_check map-exists pass "$map"
+  else
+    emit_check map-exists fail "map not found: $map"; fail=1
+  fi
+
+  # source-mapped per LISTED source (the implicit target is already known mapped).
+  for s in "${listed[@]}"; do
+    if printf '%s\n' "$groups" | grep -qxF -- "$s"; then
+      emit_check "source-mapped:$s" pass "$s"
+    else
+      emit_check "source-mapped:$s" fail "not a mapped group: $s"; fail=1
+    fi
+  done
+
+  # blueprint-exists per EFFECTIVE source (the fusion target's blueprint included).
+  for e in "${effective[@]}"; do
+    if [[ -d "$specs_dir/$e/000-blueprint" ]]; then
+      emit_check "blueprint-exists:$e" pass "$specs_dir/$e/000-blueprint"
+    else
+      emit_check "blueprint-exists:$e" fail "absent: $specs_dir/$e/000-blueprint"; fail=1
+    fi
+  done
+
+  # sources-arity: the effective set must be ≥2, else this is a 1->1 rename.
+  if [[ ${#effective[@]} -lt 2 ]]; then
+    emit_check sources-arity fail "effective set <2 — use /jim:partition rename for a 1->1"; fail=1
+  else
+    emit_check sources-arity pass "${#effective[@]} effective sources"
+  fi
+
+  # sources-dup: no duplicate among the listed sources.
+  for ((i = 0; i < ${#listed[@]}; i++)); do
+    for ((j = i + 1; j < ${#listed[@]}; j++)); do
+      [[ "${listed[i]}" == "${listed[j]}" ]] && dup="${listed[i]}"
+    done
+  done
+  if [[ -n "${dup:-}" ]]; then
+    emit_check sources-dup fail "duplicate listed source: $dup"; fail=1
+  else
+    emit_check sources-dup pass "${#listed[@]} listed"
+  fi
+
+  # target-slug-valid.
+  if valid_slug "$target"; then
+    emit_check target-slug-valid pass "$target"
+  else
+    emit_check target-slug-valid fail "not a valid group slug: $target"; fail=1
+  fi
+
+  # target-collision: a FRESH target must not already be a spec-group directory
+  # (an unmapped group / stray dir). Skipped for a mapped absorption target.
+  if [[ $target_mapped -eq 1 ]]; then
+    :                                          # absorption target legitimately pre-exists
+  elif [[ -d "$specs_dir/$target" ]]; then
+    emit_check "target-collision:$target" fail "collides with spec-group dir: $specs_dir/$target"; fail=1
+  else
+    emit_check "target-collision:$target" pass "$target"
+  fi
+
+  # COLLAPSE full — the effective set covers every mapped group.
+  if [[ -n "$groups" ]]; then
+    covered=1
+    while IFS= read -r g; do
+      [[ -z "$g" ]] && continue
+      seen=0
+      for e in "${effective[@]}"; do [[ "$e" == "$g" ]] && { seen=1; break; }; done
+      [[ $seen -eq 0 ]] && { covered=0; break; }
+    done <<<"$groups"
+    [[ $covered -eq 1 ]] && printf 'COLLAPSE\tfull\n'
+  fi
+
+  # Territory identity per effective source: territories embedding the source slug
+  # as a token, collected so DIRT can classify against them (split parity, but
+  # keyed by source since a merge unions several territories).
+  for e in "${effective[@]}"; do
+    while IFS= read -r terr; do
+      [[ -z "$terr" ]] && continue
+      if slug_token_match "$e" "$terr"; then
+        printf 'TERRITORY-IDENTITY\t%s\t%s\n' "$(san_field "$e")" "$(san_field "$terr")"
+        idterr+=("$terr")
+      fi
+    done < <([[ -f "$map" ]] && old_group_territories "$map" "$e")
+  done
+
+  # Tree cleanliness + dirt classification (non-fatal). Affected = under any
+  # effective source's spec dir or any identity territory; else unrelated.
+  status="$(git status --porcelain 2>/dev/null)"; git_rc=$?
+  if [[ $git_rc -ne 0 ]]; then
+    emit_check tree-clean fail "not a git work tree"
+  elif [[ -z "$status" ]]; then
+    emit_check tree-clean pass "clean"
+  else
+    emit_check tree-clean fail "uncommitted changes present"
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      path="${line:3}"
+      path="${path##* -> }"
+      klass="unrelated"
+      for e in "${effective[@]}"; do
+        [[ "$path" == "$specs_dir/$e/"* ]] && klass="affected"
+      done
+      for terr in "${idterr[@]}"; do
+        [[ "$path" == "$terr" || "$path" == "$terr/"* ]] && klass="affected"
+      done
+      printf 'DIRT\t%s\t%s\n' "$klass" "$(san_field "$path")"
+    done <<<"$status"
+  fi
+
+  [[ $fail -eq 1 ]] && return 1
+  return 0
+}
+
 # cmd_renumber_map <old> <targets-csv> <assign-file> — compute the full spec
 #   renumber remap for a split, the deterministic id arithmetic the
 #   gate presents verbatim (no LLM arithmetic). Each assign
@@ -1760,6 +1933,7 @@ main() {
     coverage)  shift; cmd_coverage "$@" ;;
     rename-preflight) shift; cmd_rename_preflight "$@" ;;
     split-preflight) shift; cmd_split_preflight "$@" ;;
+    merge-preflight) shift; cmd_merge_preflight "$@" ;;
     renumber-map) shift; cmd_renumber_map "$@" ;;
     occurrences) shift; cmd_occurrences "$@" ;;
     rewrite-identity) shift; cmd_rewrite_identity "$@" ;;

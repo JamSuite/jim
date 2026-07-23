@@ -1936,6 +1936,105 @@ case_jimpartition_aggregate_split_reveal() {
   assert_match "straddling provider surfaced"       'STRADDLE.*catalog'      "$OUT"
 }
 
+# ─── Section: merge-preflight cases (spec 048 Task 5) ────────────────────────
+
+# AC 1: merge wishlist into cart — target cart is a mapped group, so the ARM is
+# absorption; the effective set is {wishlist (listed), cart (implicit — the
+# sugar-promoted target)} and each source's mapping / blueprint passes. rc 0.
+case_jimpartition_merge_preflight_absorption() {
+  local dir; dir="$(merge_repo mp_absorb)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_match "absorption arm"     'ARM.*absorption'                 "$OUT"
+  assert_match "wishlist listed"    $'EFFECTIVE\twishlist\tlisted'    "$OUT"
+  assert_match "cart implicit"      $'EFFECTIVE\tcart\timplicit'      "$OUT"
+  assert_match "wishlist mapped"    'source-mapped:wishlist.*pass'    "$OUT"
+  assert_match "wishlist blueprint" 'blueprint-exists:wishlist.*pass' "$OUT"
+  assert_match "territory identity"  $'TERRITORY-IDENTITY\twishlist\tmodules/wishlist' "$OUT"
+}
+
+# AC 1: merge cart wishlist into shopping — target shopping is fresh (not
+# mapped), so the ARM is fresh-target and both listed sources retire; the
+# effective set is exactly the two listed sources (no implicit row). rc 0.
+case_jimpartition_merge_preflight_fresh_target() {
+  local dir; dir="$(merge_repo mp_fresh)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs shopping cart wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_match "fresh-target arm" 'ARM.*fresh-target'            "$OUT"
+  assert_match "cart listed"      $'EFFECTIVE\tcart\tlisted'     "$OUT"
+  assert_match "wishlist listed"  $'EFFECTIVE\twishlist\tlisted' "$OUT"
+  assert_eq    "no implicit row (target unmapped)" "0" "$(printf '%s\n' "$OUT" | grep -c 'implicit')"
+  assert_match "target slug valid" 'target-slug-valid.*pass'     "$OUT"
+  assert_match "no collision (shopping fresh)" 'target-collision:shopping.*pass' "$OUT"
+}
+
+# AC 2: merge wishlist into shopping (shopping fresh) yields an effective set of
+# one — refused with sources-arity fail naming /jim:partition rename; a merge
+# never masquerades as a rename. rc 1.
+case_jimpartition_merge_preflight_degenerate_rename() {
+  local dir; dir="$(merge_repo mp_degen)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs shopping wishlist
+  assert_exit "rc" 1 "$RC"
+  assert_match "arity fail names rename" 'sources-arity.*fail.*rename' "$OUT"
+}
+
+# AC 1: a duplicate listed source fails sources-dup (rc 1, structural).
+case_jimpartition_merge_preflight_dup_sources() {
+  local dir; dir="$(merge_repo mp_dup)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart wishlist wishlist
+  assert_exit "rc" 1 "$RC"
+  assert_match "dup fail" 'sources-dup.*fail' "$OUT"
+}
+
+# AC 3: a fresh target whose name is already a spec-group directory collides
+# (rc 1); the check is skipped for a mapped absorption target.
+case_jimpartition_merge_preflight_target_collision() {
+  local dir; dir="$(merge_repo mp_coll)"
+  mkdir -p "$dir/docs/specs/newgrp"          # a stray dir, not a mapped group
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs newgrp cart wishlist
+  assert_exit "rc" 1 "$RC"
+  assert_match "collision fail" 'target-collision:newgrp.*fail' "$OUT"
+}
+
+# AC 4: merging every mapped group into one emits the COLLAPSE full advisory
+# fact (the partition collapses to a single group).
+case_jimpartition_merge_preflight_collapse_full() {
+  local dir; dir="$(merge_repo mp_collapse)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart orders wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_match "collapse full" $'COLLAPSE\tfull' "$OUT"
+}
+
+# AC 3: territory-identity and dirt are collected across EVERY effective source —
+# a dirty file inside any source's territory is affected, unrelated dirt is
+# classified as such (dirt is non-fatal; rc 0 with no structural fail).
+case_jimpartition_merge_preflight_territory_and_dirt() {
+  local dir; dir="$(merge_repo mp_dirt)"
+  printf 'export const y = 1;\n' >> "$dir/modules/wishlist/gift.js"  # affected (source territory)
+  printf 'export const z = 1;\n' >> "$dir/modules/orders/order.js"   # unrelated (bystander)
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_match "wishlist territory" $'TERRITORY-IDENTITY\twishlist\tmodules/wishlist' "$OUT"
+  assert_match "cart territory"     $'TERRITORY-IDENTITY\tcart\tmodules/cart'         "$OUT"
+  assert_match "affected dirt in source" 'DIRT.*affected.*modules/wishlist' "$OUT"
+  assert_match "unrelated dirt"          'DIRT.*unrelated.*modules/orders'   "$OUT"
+}
+
+# AC 3: a listed source that is not a mapped group fails source-mapped (rc 1).
+case_jimpartition_merge_preflight_unmapped_source() {
+  local dir; dir="$(merge_repo mp_unmapped)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart nosuch
+  assert_exit "rc" 1 "$RC"
+  assert_match "unmapped source fail" 'source-mapped:nosuch.*fail' "$OUT"
+}
+
+# rc 2 on usage: no sources after the target.
+case_jimpartition_merge_preflight_usage_rc2() {
+  local dir; dir="$(merge_repo mp_usage)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart
+  assert_exit "no sources rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
