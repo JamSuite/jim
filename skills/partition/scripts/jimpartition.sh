@@ -1971,10 +1971,9 @@ cmd_health_eval() {
 #   For each mapped group G and each of its declared territory paths P, emit a
 #   MISMATCH when P embeds an identity token conflicting with G's own name:
 #     foreign — P whole-token-matches another CURRENT group's slug
-#     retired — P whole-token-matches an `old=` slug from a
-#               `partition finished op=rename` event (only when <specs-dir> is
-#               given; whitelisted, slug-gated parse) — the stalled docs-only
-#               rename.
+#     retired — P whole-token-matches a slug retired by a `partition finished`
+#               op=rename / op=split / op=merge event (only when <specs-dir> is
+#               given; whitelisted, slug-gated parse) — a stalled docs-only move.
 #   A path embedding no conflicting token is not a mismatch (the false-positive
 #   guard). Reuses map_group_slugs / old_group_territories /
 #   slug_token_match. rc: 0 (clean or mismatches) · 2 absent/invalid map.
@@ -1990,33 +1989,35 @@ cmd_identity_check() {
   local groups
   groups="$(map_group_slugs "$map")"
 
-  # Retired slugs: old= from `partition finished` op=rename AND op=split events,
-  # whitelisted and slug-gated so a hand-edited ledger cannot inject a non-slug
-  # token. A rename always retires old=; a split retires old= only when it is NOT
-  # among the comma-split new= list (a symmetric split — an extraction keeps the
-  # remainder live). Every new= token is slug-gated, so a malformed sibling is
-  # ignored. Only consulted when a specs-dir with a ledger is supplied.
+  # Retired slugs: old= tokens from `partition finished` op=rename / op=split /
+  # op=merge events, under ONE uniform rule — an old token is retired iff it is
+  # not among the new tokens. Whitelisted (the three ops) and slug-gated per
+  # token so a hand-edited ledger cannot inject a non-slug token. The single rule
+  # subsumes every arm: rename (old single, new single), split (old single, new
+  # the child list — an extraction remainder listed in new stays live), and merge
+  # (old the effective sources, new the single target — a surviving absorption
+  # target listed in new stays live). Only consulted when a specs-dir with a
+  # ledger is supplied.
   local retired=""
   if [[ -n "$specs_dir" && -f "$specs_dir/ledger.md" ]]; then
     retired="$(awk -F'\t' '
       $3 == "partition" && $4 == "finished" {
-        is_rename = (index(";" $5 ";", ";op=rename;") > 0)
-        is_split  = (index(";" $5 ";", ";op=split;")  > 0)
-        if (!is_rename && !is_split) next
+        if (index(";" $5 ";", ";op=rename;") == 0 &&
+            index(";" $5 ";", ";op=split;")  == 0 &&
+            index(";" $5 ";", ";op=merge;")  == 0) next
         oldv = ""; newv = ""
         n = split($5, pairs, ";")
         for (j = 1; j <= n; j++) {
           if (index(pairs[j], "old=") == 1)      oldv = substr(pairs[j], 5)
           else if (index(pairs[j], "new=") == 1) newv = substr(pairs[j], 5)
         }
-        if (oldv !~ /^[a-z0-9][a-z0-9-]*$/) next
-        if (is_rename) { print oldv; next }
+        split("", newset)                              # per-event new-token set
         m = split(newv, na, ",")
-        keep = 0
-        for (k = 1; k <= m; k++) {
-          if (na[k] ~ /^[a-z0-9][a-z0-9-]*$/ && na[k] == oldv) keep = 1
+        for (k = 1; k <= m; k++) if (na[k] ~ /^[a-z0-9][a-z0-9-]*$/) newset[na[k]] = 1
+        p = split(oldv, oa, ",")
+        for (k = 1; k <= p; k++) {
+          if (oa[k] ~ /^[a-z0-9][a-z0-9-]*$/ && !(oa[k] in newset)) print oa[k]
         }
-        if (!keep) print oldv
       }' "$specs_dir/ledger.md" | sort -u)"
   fi
 

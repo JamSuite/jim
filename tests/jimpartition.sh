@@ -1922,6 +1922,69 @@ case_jimpartition_identity_check_split_malformed_new_ignored() {
   assert_match "malformed sibling ignored, cart retired" 'MISMATCH.*store.*cart.*retired' "$OUT"
 }
 
+# AC 15: an op=merge absorbed source (old ∉ new) retires its slug under the
+# uniform rule — a surviving group whose territory still embeds `wishlist` is
+# flagged retired.
+case_jimpartition_identity_check_merge_source_retired() {
+  local w; w="$TMP_BASE/icmsr"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icmsr_map '### cart
+- Territory: `modules/cart`
+
+### orders
+- Territory: `services/wishlist/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "absorbed wishlist retired" 'MISMATCH.*orders.*wishlist.*retired' "$OUT"
+}
+
+# AC 15: the surviving absorption target (old ∩ new) is NOT retired — wishlist is
+# flagged (merge was processed) while cart, which survived, never is.
+case_jimpartition_identity_check_merge_target_exempt() {
+  local w; w="$TMP_BASE/icmte"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icmte_map '### shop
+- Territory: `services/cart/data`
+
+### orders
+- Territory: `services/wishlist/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "wishlist retired (merge processed)" 'MISMATCH.*orders.*wishlist.*retired' "$OUT"
+  assert_eq "cart survived — not retired" "0" "$(printf '%s\n' "$OUT" | grep -c 'cart.*retired')"
+}
+
+# AC 15: the fresh-target arm retires every source (old ∩ new = ∅) — a surviving
+# territory embedding `wishlist` is flagged retired.
+case_jimpartition_identity_check_merge_fresh_all_retired() {
+  local w; w="$TMP_BASE/icmfa"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icmfa_map '### shopping
+- Territory: `modules/shopping`
+
+### orders
+- Territory: `services/wishlist/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=cart,wishlist;new=shopping\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "rc" 0 "$RC"
+  assert_match "wishlist retired" 'MISMATCH.*orders.*wishlist.*retired' "$OUT"
+}
+
+# security Finding 3: a hand-edited op=merge naming a LIVE group in old= makes
+# identity-check advise that live slug retired — bounded sensor noise, never a
+# veto (rc stays 0), the machine-consumption residual risk 047 flagged.
+case_jimpartition_identity_check_merge_live_slug_in_old_bounded() {
+  local w; w="$TMP_BASE/icmls"; mkdir -p "$w/spec"
+  local map; map="$(identity_map icmls_map '### orders
+- Territory: `modules/orders`
+
+### shop
+- Territory: `services/orders/data`')"
+  printf '1\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=orders,wishlist,cart;new=cart\n' > "$w/spec/ledger.md"
+  run_jimpartition identity-check "$map" "$w/spec"
+  assert_exit "still advisory, never a veto" 0 "$RC"
+  assert_match "live orders slug advised retired (bounded)" 'MISMATCH.*shop.*orders.*retired' "$OUT"
+}
+
 # AC 4: the revealed-edge floor — projecting the substrate onto proposed child
 # territories surfaces the cross-child requires edge (GEDGE) a naive split would
 # miss, plus a straddling provider (STRADDLE), as deterministic gate evidence.
