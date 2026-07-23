@@ -507,16 +507,16 @@ cmd_move_spec_dir() {
 
 # cmd_vacated_max <specs-dir> <group> — the vacated-id floor source consumed by
 #   jimfile.sh next-id. Scans <specs-dir>/ledger.md for
-#   partition-finished op=split events and prints the highest OLD number any
-#   split ever vacated FROM <group> (zero-padded 3-digit), so next-id can floor
-#   past it and never re-mint a moved spec's id. This verb OWNS the
-#   op=split event grammar (grammar stays with the ledger). Fail-closed: the
-#   event is gated on
-#   ;op=split;, EVERY moved= pair is iterated, and each element is charset-gated
-#   (og/onum:ng/nnum, onum exactly 3 digits) — an element that fails the gate is
-#   inert, never fatal, so a tampered ledger element can at worst be ignored and
-#   the floor only ever raises. Untrusted ledger, parsed only (no source/eval).
-#   rc 0 (prints the max or nothing) · rc 1 no ledger file · rc 2 usage / bad slug.
+#   partition-finished op=split and op=merge events and prints the highest OLD
+#   number any split or merge ever vacated FROM <group> (zero-padded 3-digit),
+#   so next-id can floor past it and never re-mint a moved spec's id. Both ops
+#   share one vacated-id grammar (grammar stays with the ledger). Fail-closed:
+#   the event is gated on ;op=split; or ;op=merge;, EVERY moved= pair is
+#   iterated, and each element is charset-gated (og/onum:ng/nnum, onum exactly 3
+#   digits) — an element that fails the gate is inert, never fatal, so a tampered
+#   ledger element can at worst be ignored and the floor only ever raises.
+#   Untrusted ledger, parsed only (no source/eval). rc 0 (prints the max or
+#   nothing) · rc 1 no ledger file · rc 2 usage / bad slug.
 cmd_vacated_max() {
   local dir="${1:-}" group="${2:-}"
   if [[ -z "$dir" || -z "$group" ]]; then
@@ -536,7 +536,7 @@ cmd_vacated_max() {
       if (b[2]+0 > max) { max = b[2]+0; have = 1 }
     }
     $3=="partition" && $4=="finished" {
-      if (index(";" $5 ";", ";op=split;") == 0) next
+      if (index(";" $5 ";", ";op=split;") == 0 && index(";" $5 ";", ";op=merge;") == 0) next
       n = split($5, pairs, ";")
       for (i = 1; i <= n; i++) {
         if (index(pairs[i], "moved=") != 1) continue
