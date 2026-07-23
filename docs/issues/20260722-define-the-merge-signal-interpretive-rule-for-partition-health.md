@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-22T22:24:13Z
-updated: 2026-07-22T22:24:13Z
+updated: 2026-07-23T03:35:54Z
 origin: docs/brainstorms/20260722-partition-merge.md
 ---
 
@@ -34,3 +34,11 @@ Constraint: stay on the interpretation side of the 039
 measurement/interpretation boundary — this work defines how 044's health read
 interprets existing (and #72's future) signals; it adds no new measurements to
 the reconcile pass.
+
+## Update (2026-07-23) — precondition met
+
+The merge verb shipped in **spec 048** (`/jim:partition merge`), so this
+follow-on's "once the merge verb ships" trigger is now satisfied and the work is
+unblocked. The merge mechanism deliberately excluded the detector side (spec 048
+Out of Scope), leaving `health`'s `Merge signal:` slot on inline judgment — the
+gap this issue closes.

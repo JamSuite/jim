@@ -11,9 +11,23 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T09:23:23Z
-updated: 2026-07-21T21:22:29Z
+updated: 2026-07-23T03:35:54Z
 origin: docs/specs/jim/034-contract-graph/plan.md
 ---
+
+## Update (2026-07-23) — spec 048 (merge) put BOTH SKILLs over 500
+
+The `/jim:partition merge` build (spec 048) is the first instance to land an
+**authorized overage** rather than a targeted extraction. `## Merge runs` took
+`skills/partition/SKILL.md` to **559/500** and the `--merge` routing row took
+`skills/blueprint/SKILL.md` to **504/500** — the developer authorized going over
+"within reason" pending the expected 500-cap raise (spec 048 plan DD 6; sanity
+ceilings 560/520). `agents/gatherer.md`'s merge dispatch role took it to **134
+lines**. The `skill-budget` invariant is **still `registry:skill-line-budget`
+unconfigured**, so the 048 living-intent sensor reported it `unconfigured`, not
+`violated` — nothing mechanically flagged it, exactly as in the 047 review. If
+the 500 cap is not raised, the durable restructure this issue asks for is now
+owed on the partition SKILL too, not just blueprint.
 
 ## Update (2026-07-21) — spec 047 hit it again; gatherer.md now over budget
 
