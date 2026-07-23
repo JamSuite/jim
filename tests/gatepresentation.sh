@@ -42,7 +42,7 @@ case_gatepresentation_sites_reference_rule() {
     "skills/blueprint/references/fork-grounding.md	1"
     "skills/blueprint/references/reconcile-methodology.md	1"
     "skills/blueprint/references/map-methodology.md	2"
-    "skills/partition/SKILL.md	4"
+    "skills/partition/SKILL.md	5"
     "skills/meta-skill/SKILL.md	1"
     "skills/meta-agent/SKILL.md	1"
   )
