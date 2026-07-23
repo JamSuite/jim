@@ -329,11 +329,12 @@ cmd_next_id() {
       fi
     done
   fi
-  # Vacated-id floor: consult the specs-root ledger's op=split
-  # remap so the group never re-mints an id a split moved out — the tail-move and
-  # retired-group-re-mint cases. Best-effort and monotonic: an absent script, a
-  # non-zero rc, or empty output leaves the floor unset, and the floor only ever
-  # raises max, never lowers it (older checkouts degrade to directory-only).
+  # Vacated-id floor: consult the specs-root ledger's op=split and op=merge
+  # remaps so the group never re-mints an id a split or merge moved out — the
+  # tail-move, split retired-group, and merge retired-source re-mint cases.
+  # Best-effort and monotonic: an absent script, a non-zero rc, or empty output
+  # leaves the floor unset, and the floor only ever raises max, never lowers it
+  # (older checkouts degrade to directory-only).
   if [[ -f "$JIMLEDGER" ]]; then
     local floor floor_clean
     floor="$(bash "$JIMLEDGER" vacated-max "$specs_root" "$group" 2>/dev/null)" || floor=""

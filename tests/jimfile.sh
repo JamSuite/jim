@@ -241,6 +241,20 @@ case_jimfile_next_id_retired_group_remint_floors() {
   assert_eq "floors past old archive" "004" "$OUT"
 }
 
+# AC 15: a source group retired by a merge and later re-minted floors PAST its
+# old archive — a fresh empty wishlist/ gets 004, never 001, so an id absorbed
+# into the merge target never comes to mean two specs (the merge dual of the
+# split re-mint floor, riding task 1's vacated-max widening end-to-end).
+case_jimfile_next_id_merge_retired_source_remint_floors() {
+  local specs cfg
+  specs=$(empty_dir nextid_merge_remint)
+  mkdir -p "$specs/wishlist"   # re-minted, empty
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart;moved=wishlist/001:cart/007,wishlist/002:cart/008,wishlist/003:cart/009\n' > "$specs/ledger.md"
+  cfg=$(fixture nextid-merge-remint.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id wishlist
+  assert_eq "floors past merged-away archive" "004" "$OUT"
+}
+
 # AC 11: id-space exhaustion — a next id above 999 is refused rc 1 with a stderr
 # message, never emitting a 4-digit id.
 case_jimfile_next_id_999_exhaustion_rc1() {
