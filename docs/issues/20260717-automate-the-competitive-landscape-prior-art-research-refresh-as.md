@@ -1,6 +1,6 @@
 ---
 id: 20260717-automate-the-competitive-landscape-prior-art-research-refresh-as
-num: 14
+num: 87
 title: "Automate the competitive-landscape / prior-art research refresh as a jim skill"
 status: open
 priority: high

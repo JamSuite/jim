@@ -1,6 +1,6 @@
 ---
 id: 20260717-reconcile-brainstorm-skill-passive-capture-stance-with-active-ev
-num: 12
+num: 85
 title: "Reconcile brainstorm skill's passive-capture stance with users' expectation of active evaluation"
 status: open
 priority: medium
