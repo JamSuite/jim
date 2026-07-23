@@ -2,7 +2,7 @@
 title: "Enforce present-tense discipline at blueprint draft composition"
 spec: "spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Enforce present-tense discipline at blueprint draft composition — Plan
@@ -119,25 +119,25 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] Create `skills/blueprint/references/present-tense.md` with the four load-bearing sections (rule + three categories, normalize-and-disclose, untrusted supplied text, where-it-runs) per the Interface Contracts.
+1. [x] Create `skills/blueprint/references/present-tense.md` with the four load-bearing sections (rule + three categories, normalize-and-disclose, untrusted supplied text, where-it-runs) per the Interface Contracts.
    **Verify:** `for s in '## The rule' '## Normalize and disclose' '## Untrusted supplied text' '## Where it runs'; do grep -qF "$s" skills/blueprint/references/present-tense.md || { echo "missing: $s"; exit 1; }; done`
 
-2. [ ] Update `skills/blueprint/SKILL.md`: cite the reference and run the scan at each exit-door step (Step 5 gate, U4 update write, M2/M3 map tier, mint-new handoff).
+2. [x] Update `skills/blueprint/SKILL.md`: cite the reference and run the scan at each exit-door step (Step 5 gate, U4 update write, M2/M3 map tier, mint-new handoff).
    **Verify:** `test "$(grep -oF 'skills/blueprint/references/present-tense.md' skills/blueprint/SKILL.md | wc -l)" -ge 4`
 
-3. [ ] Add the Validation Checklist item to `skills/blueprint/SKILL.md`: every map/blueprint sentence is present-tense current state (no historical / transitional / aspirational framing); the present-tense scan ran before presentation or return, its rewrites itemized and secret-scrubbed.
+3. [x] Add the Validation Checklist item to `skills/blueprint/SKILL.md`: every map/blueprint sentence is present-tense current state (no historical / transitional / aspirational framing); the present-tense scan ran before presentation or return, its rewrites itemized and secret-scrubbed.
    **Verify:** `grep -qiE 'present-tense current state|historical / transitional / aspirational' skills/blueprint/SKILL.md`
 
-4. [ ] Update `skills/blueprint/references/map-methodology.md`: cite the reference at the creation-interview gate and the update-flow presentation.
+4. [x] Update `skills/blueprint/references/map-methodology.md`: cite the reference at the creation-interview gate and the update-flow presentation.
    **Verify:** `test "$(grep -oF 'skills/blueprint/references/present-tense.md' skills/blueprint/references/map-methodology.md | wc -l)" -ge 2`
 
-5. [ ] Update `skills/blueprint/references/migrate-arms.md`: cite the reference and scan before returning the touched-file list, in each of the rename / split / merge arms.
+5. [x] Update `skills/blueprint/references/migrate-arms.md`: cite the reference and scan before returning the touched-file list, in each of the rename / split / merge arms.
    **Verify:** `test "$(grep -oF 'skills/blueprint/references/present-tense.md' skills/blueprint/references/migrate-arms.md | wc -l)" -ge 3`
 
-6. [ ] Create `tests/presenttense.sh` mirroring `tests/gatepresentation.sh`: a token-count case asserting each site file references the reference ≥ the count wired in Tasks 2–5, and a structure case asserting the reference exists with its four sections.
+6. [x] Create `tests/presenttense.sh` mirroring `tests/gatepresentation.sh`: a token-count case asserting each site file references the reference ≥ the count wired in Tasks 2–5, and a structure case asserting the reference exists with its four sections.
    **Verify:** `bash tests/presenttense.sh`
 
-7. [ ] Run the full bash suite to confirm no regression.
+7. [x] Run the full bash suite to confirm no regression.
    **Verify:** `bash skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
