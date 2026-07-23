@@ -1606,6 +1606,48 @@ case_jimpartition_rewrite_identity_no_git_repo() {
   assert_exit "rc" 2 "$RC"
 }
 
+# ─── Section: rewrite-identity --skip-typed-refs (spec 051) ───────────────────
+
+# skiptyped_repo <name> — a git_init repo with one tracked numbered-spec fixture
+#   carrying all three identity positions: a frontmatter group: value, a body
+#   dotted-key group-half, and a typed group/NNN ref. The --skip-typed-refs cases
+#   assert the flag drops ONLY the typed ref while group:/dotted-key still rewrite;
+#   the unflagged case pins today's behavior on the same fixture.
+skiptyped_repo() {
+  local dir; dir="$(git_init "$1")"
+  repo_add "$dir" spec.md $'---\ngroup: "cart"\n---\n\nRequires cart.session-api now.\nSupersedes cart/002 here.'
+  printf '%s' "$dir"
+}
+
+# 051 AC 1: with --skip-typed-refs the typed group/NNN ref is left untouched and
+# emits no typed-ref record, while the group: and dotted-key rewrites still land.
+case_jimpartition_rewrite_identity_skip_typed_refs() {
+  local dir body T; T=$'\t'
+  dir="$(skiptyped_repo rwid_skiptyped)"
+  run_jimpartition_in "$dir" rewrite-identity --skip-typed-refs cart checkout spec.md
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$dir/spec.md")"
+  assert_match "group rewritten"      '^group: "checkout"$'      "$body"
+  assert_match "dotted-key rewritten" 'checkout\.session-api'    "$body"
+  assert_match "typed ref untouched"  'Supersedes cart/002 here' "$body"
+  assert_eq    "typed ref not rewritten" "0" "$(printf '%s\n' "$body" | grep -c 'checkout/002')"
+  assert_match "group record"  "^REWROTE${T}[^${T}]+${T}[0-9]+${T}group$"      "$OUT"
+  assert_match "dotted record" "^REWROTE${T}[^${T}]+${T}[0-9]+${T}dotted-key$" "$OUT"
+  assert_eq    "no typed-ref record"  "0" "$(printf '%s\n' "$OUT" | grep -c 'typed-ref')"
+}
+
+# 051 AC 3: without the flag the same fixture rewrites the typed ref number-
+# preserving (today's rename-path behavior) — the flag only NARROWS the pass.
+case_jimpartition_rewrite_identity_typed_refs_default_on() {
+  local dir body T; T=$'\t'
+  dir="$(skiptyped_repo rwid_skiptyped_off)"
+  run_jimpartition_in "$dir" rewrite-identity cart checkout spec.md
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$dir/spec.md")"
+  assert_match "typed ref rewritten"  'Supersedes checkout/002 here' "$body"
+  assert_match "typed record present" "^REWROTE${T}[^${T}]+${T}[0-9]+${T}typed-ref$" "$OUT"
+}
+
 # ─── Section: split-preflight cases (spec 047 Task 5) ────────────────────────
 
 # AC 1/2: a clean extraction preflight — old ∈ targets, so the ARM is extraction,

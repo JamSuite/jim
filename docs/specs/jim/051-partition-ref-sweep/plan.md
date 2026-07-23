@@ -94,10 +94,10 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **Reproduce** both manifestations against the unfixed engine in a throwaway fixture (temp dir, `git init`, one tracked file with `src/002` + remap `src/002→target/008`; one with `old/002`/`old/005` + remap incl. the identity row): run the documented order and confirm the wrong refs.
+1. [x] **Reproduce** both manifestations against the unfixed engine in a throwaway fixture (temp dir, `git init`, one tracked file with `src/002` + remap `src/002→target/008`; one with `old/002`/`old/005` + remap incl. the identity row): run the documented order and confirm the wrong refs.
    **Verify:** `cd "$(mktemp -d)" && git init -q . && git -C . config user.email t@t && git -C . config user.name t && printf 'ref src/002\n' > m1.md && printf 'src/002\ttarget/008\n' > r1.tsv && git add m1.md && bash /mnt/src/jim/skills/partition/scripts/jimpartition.sh rewrite-identity src target m1.md >/dev/null && bash /mnt/src/jim/skills/partition/scripts/jimpartition.sh rewrite-refs r1.tsv m1.md >/dev/null; grep -q 'target/002' m1.md && echo M1-REPRODUCED`
 
-2. [ ] **Red:** add flag-unit test cases to `tests/jimpartition.sh` (beside the `rewrite-identity` block): `--skip-typed-refs` leaves typed refs untouched and emits no `typed-ref` record while `group:`/dotted-key rewrites still land; unflagged behavior unchanged on the same fixture. Cases fail against the unmodified script.
+2. [x] **Red:** add flag-unit test cases to `tests/jimpartition.sh` (beside the `rewrite-identity` block): `--skip-typed-refs` leaves typed refs untouched and emits no `typed-ref` record while `group:`/dotted-key rewrites still land; unflagged behavior unchanged on the same fixture. Cases fail against the unmodified script.
    **Verify:** `cd /mnt/src/jim && ! bash skills/meta-test/scripts/run.sh jimpartition`
 
 3. [ ] **Green:** implement the flag in `cmd_rewrite_identity` per the Interface Contract — parse `--skip-typed-refs` ahead of the positionals, thread `-v skiptyped=` into the awk, require `!skiptyped` on the typed branch (`typed && !skiptyped`); update the usage line and the function header comment to state the new behavior.
