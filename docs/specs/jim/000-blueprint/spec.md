@@ -16,8 +16,8 @@ group's specs, ARCHITECTURE.md, and code.*
 ## Responsibility
 
 The `jim` group **is** the jim plugin: a Claude Code plugin that adds an
-agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md; specs
-001–044) is to make AI-assisted development follow the developer's engineering
+agentic, human-in-the-loop SDLC to Claude Code. Its purpose (VISION.md) is to
+make AI-assisted development follow the developer's engineering
 discipline instead of bypassing it — grounding non-trivial work in a
 phase-gated `spec → research → plan → (security) → build → review` lifecycle,
 backed by specialized agent personas, living strategic documents, and a
@@ -107,13 +107,13 @@ executes the data it reads.
   blueprint-derived command string; path parameters pass the `safe_path_param`
   gate; the reconcile face-size counters (`faces-aggregate`) are script-emitted
   and copied verbatim, never assembled by LLM arithmetic over face content.
-- `jimpartition.sh` **extraction/coverage CLI** — `scan`/`ingest`/`aggregate`/
-  `coverage`, the spec-043 rename verbs `rename-preflight`/`occurrences`/
-  `edges-diff`, the spec-044 health verbs `health-eval`/`identity-check`, the
-  spec-046 identity verb `rewrite-identity [--skip-typed-refs]` (the flag cedes
-  typed `group/NNN` refs to the remap sweep on renumbering moves), the spec-047
-  split verbs `split-preflight`/`renumber-map`/`rewrite-refs`, and the
-  spec-048 merge verbs `merge-preflight`/`merge-map`/`merge-edges-diff`.
+- `jimpartition.sh` **extraction/coverage CLI** — the import-scan verbs
+  `scan`/`ingest`/`aggregate`/`coverage`, the rename verbs `rename-preflight`/
+  `occurrences`/`edges-diff`, the health verbs `health-eval`/`identity-check`,
+  the identity-rewrite verb `rewrite-identity [--skip-typed-refs]` (the flag
+  cedes typed `group/NNN` refs to the remap sweep on renumbering moves), the
+  split verbs `split-preflight`/`renumber-map`/`rewrite-refs`, and the merge
+  verbs `merge-preflight`/`merge-map`/`merge-edges-diff`.
   Guarantee: the deterministic `/jim:partition` substrate — a native
   five-language import scan, an `ingest` valid-relpath + tracked-endpoint trust
   boundary over untrusted extractor output, group-edge + straddle aggregation,
@@ -179,20 +179,20 @@ Grounded in ARCHITECTURE.md and the repo tree.
   floor: faces / edges / contracts-check, graph-health metrics, and the reconcile
   face-size counter aggregation: faces-aggregate);
   `jimpartition.sh` (the `/jim:partition` deterministic core —
-  scan / ingest / aggregate / coverage, the spec-043 rename verbs
-  rename-preflight / occurrences / edges-diff, the spec-044 health verbs
-  health-eval / identity-check, the spec-047 split verbs split-preflight /
-  renumber-map / rewrite-refs, and the spec-048 merge verbs merge-preflight /
-  merge-map / merge-edges-diff); the `issue/` scripts
+  the import-scan verbs scan / ingest / aggregate / coverage, the rename verbs
+  rename-preflight / occurrences / edges-diff, the health verbs health-eval /
+  identity-check, the identity-rewrite verb rewrite-identity, the split verbs
+  split-preflight / renumber-map / rewrite-refs, and the merge verbs
+  merge-preflight / merge-map / merge-edges-diff); the `issue/` scripts
   (`index`/`render`/`new`/`backfill`/`migrate`); the `meta-test/` toolchain
   (`testlib`/`run`/`metatest`).
-- **Artifacts / data stores** — the spec archive (`docs/specs/jim/001–044`), the
+- **Artifacts / data stores** — the spec archive (`docs/specs/jim/`), the
   issue collection (`docs/issues/` + `INDEX.md`), strategic docs at the root
   (including `BLUEPRINT.md`, the project context map), and
   `docs/brainstorms/` + `docs/debug/`.
 - **Tests** (`tests/*.sh`, developer-only, not loaded by Claude Code) driven by
   the shared framework in `skills/meta-test/scripts/`.
-- **Manifest** — `.claude-plugin/plugin.json` (`name: "jim"`, v2.0.0).
+- **Manifest** — `.claude-plugin/plugin.json` (`name: "jim"`).
 
 Key abstractions: the phase-gated SDLC pipeline; single-resolver / many-consumers
 scripting (`!`-injection of `jimfile.sh`); the three-sigil substitution model
