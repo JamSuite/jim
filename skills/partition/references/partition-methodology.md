@@ -458,7 +458,12 @@ re-minted — `next-id` floors past them via the `op=split` ledger event
 **Reference sweep assembly.** Under `rewrite`, the reference set is
 `git ls-files -- <specs-root> <issues-dir> <brainstorms-dir> <debug-dir>` (dirs
 resolved via `jimfile.sh`, never hand-typed) filtered to `*.md`; the remap from
-`renumber-map` is the whitelist fed to `jimpartition.sh rewrite-refs`. Typed
+`renumber-map` is the whitelist fed to `jimpartition.sh rewrite-refs`. Because a
+renumbering move changes a typed ref's *number*, typed `group/NNN` refs belong to
+this remap sweep **exclusively**: the identity pass runs with `--skip-typed-refs`,
+re-pointing only the moved bodies' `group:` and dotted-key halves, so it never
+number-preserves a ref the remap must renumber — the two verbs then commute over
+typed refs. Typed
 `group/NNN` refs and spec-dir paths — including issue `origin:` frontmatter and
 sibling-artifact self-refs (research / plan / security / review `spec:` values) —
 re-point per the remap across the whole archive, the issue / brainstorm / debug
@@ -490,7 +495,7 @@ decline writes nothing (`outcome=declined`).
    byte-frozen; under `immutable` nothing moves (the source dir stays — on a
    symmetric split it becomes the retired group's frozen archive) and the gate
    states this plainly (AC 9).
-2. *Rewrite identity* (`rewrite` only) — `jimpartition.sh rewrite-identity <old>
+2. *Rewrite identity* (`rewrite` only) — `jimpartition.sh rewrite-identity --skip-typed-refs <old>
    <child> <spec-file>...` per target child (batch-by-target) for the moved bodies'
    group half, then `rewrite-refs <remap> <file>...` over the assembled sweep set
    for the archive-wide + non-spec re-points. Touched issue files get an `updated:`
@@ -643,7 +648,11 @@ vacated target id is never re-minted (the floor rides `next-id`'s
 **Reference sweep assembly.** Identical to split under `rewrite`: the reference
 set is `git ls-files` over the spec archive + the issue / brainstorm / debug
 classes filtered to `*.md`, and the `merge-map` remap is the whitelist fed to
-`jimpartition.sh rewrite-refs`. Typed `group/NNN` refs and spec-dir paths
+`jimpartition.sh rewrite-refs`. Because a renumber-append changes a source ref's
+*number*, typed `group/NNN` refs belong to this remap sweep **exclusively**: the
+identity pass runs with `--skip-typed-refs` (re-pointing only the moved bodies'
+`group:` and dotted-key halves), so the two verbs commute over typed refs. Typed
+`group/NNN` refs and spec-dir paths
 re-point per the remap so no live artifact points at an id that moved; a ref to
 an unmoved spec is unrewritable by construction (AC 11). Bare group-name prose
 takes freeze-on-doubt; strategic docs stay advisory. Under `forward` /
@@ -675,7 +684,7 @@ advisory. Approval is all-or-nothing; a declined gate materializes nothing
    renumbers body-frozen; under `immutable` nothing moves — the retired source
    dirs stay in place holding frozen specs and the gate states this plainly
    (AC 10).
-2. *Rewrite identity* (`rewrite` only) — `jimpartition.sh rewrite-identity <src>
+2. *Rewrite identity* (`rewrite` only) — `jimpartition.sh rewrite-identity --skip-typed-refs <src>
    <target> <spec-file>...` per source (batch-by-source) for the moved bodies'
    group half, then `rewrite-refs <remap> <file>...` over the assembled sweep set
    for the archive-wide + non-spec re-points. Touched issue files get an

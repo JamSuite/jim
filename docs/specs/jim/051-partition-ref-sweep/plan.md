@@ -106,7 +106,7 @@ flowchart TD
 4. [x] **Regression (composed arms):** add the two composed-sweep cases — split extraction (moved body with a renumbered ref *and* a remainder ref; remap with both rows; flag-carrying identity + refs in documented order; assert `child/001` and `old/005` survive correctly) and merge (moved body `src/002` → assert `target/008`). Depends on task 3.
    **Verify:** `cd /mnt/src/jim && bash skills/meta-test/scripts/run.sh jimpartition`
 
-5. [ ] **Doc alignment:** add `--skip-typed-refs` to the canonical invocation lines in `skills/partition/SKILL.md` (split `:369`, merge `:425`) and `partition-methodology.md` (split `:493-495`, merge `:678-680`); add the division-of-labor sentence to both sweep-assembly sections; add the gatherer.md mechanical-floor caveat.
+5. [x] **Doc alignment:** add `--skip-typed-refs` to the canonical invocation lines in `skills/partition/SKILL.md` (split `:369`, merge `:425`) and `partition-methodology.md` (split `:493-495`, merge `:678-680`); add the division-of-labor sentence to both sweep-assembly sections; add the gatherer.md mechanical-floor caveat.
    **Verify:** `test "$(grep -c 'skip-typed-refs' /mnt/src/jim/skills/partition/SKILL.md)" -eq 2 && test "$(grep -c 'skip-typed-refs' /mnt/src/jim/skills/partition/references/partition-methodology.md)" -ge 2 && grep -q 'skip-typed-refs' /mnt/src/jim/agents/gatherer.md`
 
 6. [ ] **Prose-pin test:** add the case asserting the four canonical invocation lines carry the flag (grep-based, location-only assertions). Depends on task 5.

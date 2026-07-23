@@ -366,7 +366,7 @@ the specs-root ledger.
    **`RETIRES <old>`** row — the retirement authorization the skipped `--retire`
    prompt would ask (security Finding 10). A decline writes nothing.
 5. **Materialize** (on approval) — `move-spec-dir` per moved dir; under `rewrite`,
-   `rewrite-identity` per child + `rewrite-refs` over the swept `*.md` set
+   `rewrite-identity --skip-typed-refs` per child + `rewrite-refs` over the swept `*.md` set
    (`git ls-files` of the jim artifact dirs, + an issue `updated:` refresh + one INDEX
    regen); `Skill(jim:blueprint) --split … --changes <file>` for the doc fission; then
    the **two-commit** choreography — `commit-split` then `commit-map`. No code commit,
@@ -422,7 +422,7 @@ ledger.
    single-group advisory when `COLLAPSE full` fired. All-or-nothing; a decline
    writes nothing (AC 7, 8).
 6. **Materialize** (on approval) — `move-spec-dir` per absorbed spec; under
-   `rewrite`, `rewrite-identity` per source + `rewrite-refs` over the swept `*.md`
+   `rewrite`, `rewrite-identity --skip-typed-refs` per source + `rewrite-refs` over the swept `*.md`
    set (+ issue `updated:` refresh + one INDEX regen); `Skill(jim:blueprint)
    --merge <target> --sources <csv> --changes <file>` for the doc fusion; then the
    **two-commit** choreography — `commit-merge` (with `--rekey <old:new,...>` for

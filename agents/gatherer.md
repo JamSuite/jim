@@ -61,7 +61,9 @@ unrewritten rather than risk-editing the spec's substance. Only a high-confidenc
 group-identity mention is classified for rewrite; when unsure, default to
 not-rewrite. (The mechanical identity positions — frontmatter `group:`,
 dotted-key group-halves, typed `group/NNN` refs — are the `rewrite-identity`
-verb's floor, never yours.)
+verb's floor, never yours. On a renumbering split or merge the verb runs with
+`--skip-typed-refs`, so typed `group/NNN` refs are re-pointed by the `rewrite-refs`
+remap sweep instead — either way not yours.)
 
 ## Capability boundary (read this first)
 
