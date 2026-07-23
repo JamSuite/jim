@@ -1052,6 +1052,43 @@ case_jimverify_contracts_missing_args_exits_2() {
   assert_match "need message" 'need <map-path>' "$ERR"
 }
 
+# AC: a self-edge (consumer == provider) in the graph produces no provider-side
+# or consumer-side edge-outcome record and no self CROSS-REF — while the genuine
+# cross-group edge on the same map still resolves normally.
+case_jimverify_contracts_self_edge_no_outcome() {
+  local root; root="$(contracts_repo ccself)"
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+# Blueprint — shop
+
+## Groups
+
+### accounts
+
+- **Territory:** `accounts/`
+- **Blueprint:** docs/specs/accounts/000-blueprint/
+
+### billing
+
+- **Territory:** `billing/`
+- **Blueprint:** docs/specs/billing/000-blueprint/
+
+## Contract Graph
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| billing | customer identity lookup | accounts |
+| accounts | self reference | accounts |
+EOF
+  run_jimverify_in "$root" contracts-check BLUEPRINT.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "self-edge produces no contract outcome record" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^accounts>accounts#')"
+  assert_eq "self-edge produces no self CROSS-REF" "0" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="CROSS-REF" && $2=="accounts" && $4=="accounts"' | grep -c .)"
+  assert_eq "the genuine billing->accounts edge still resolves" "holds" \
+    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="billing>accounts#identity-lookup" && $2=="provider" {print $3; exit}')"
+}
+
 # ─── Section: health — graph metrics (spec 039 Task 1) ───────────────────────
 
 # hmap <name> <groups> <rows> — build a project map with a `## Groups` section
