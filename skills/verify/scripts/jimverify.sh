@@ -909,7 +909,7 @@ cmd_contracts_check() {
 
   local mapped=${#groups[@]} withbp=0 bp
   for g in "${groups[@]}"; do
-    bp="$specs_root/$g/000-blueprint/spec.md"
+    bp="$(bash "$JIMFILE" path blueprint "$g")"
     [[ -f "$bp" ]] && withbp=$((withbp + 1))
     if [[ -z "$(terr_of "$map" "$g")" ]]; then printf 'UNSCOPED-GROUP\t%s\n' "$g"; fi
   done
@@ -955,7 +955,7 @@ cmd_contracts_check() {
     [[ "$C" == "HYGIENE" ]] && continue
     [[ "$C" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
     [[ "$P" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
-    pbp="$specs_root/$P/000-blueprint/spec.md"
+    pbp="$(bash "$JIMFILE" path blueprint "$P")"
     [[ -f "$pbp" ]] || continue
     cmd_faces "$pbp" 2>/dev/null | while IFS=$'\t' read -r kind slug tgt crit params text; do
       [[ "$kind" == "provides" ]] || continue
@@ -1164,7 +1164,7 @@ cmd_faces_aggregate() {
   while IFS= read -r g; do
     [[ -z "$g" ]] && continue
     [[ "$g" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
-    bp="$specs_root/$g/000-blueprint/spec.md"
+    bp="$(bash "$JIMFILE" path blueprint "$g")"
     [[ -f "$bp" ]] || continue
     n="$(cmd_faces "$bp" 2>/dev/null | awk -F'\t' '$1=="provides"{c++} END{print c+0}')"
     total=$((total + n))
