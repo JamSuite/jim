@@ -109,6 +109,20 @@ case_provenance_detect_forms() {
   assert_eq "negative fixture is provenance-free" "0" "$ccount"
 }
 
+# AC: jim's own current-state artifacts — the group blueprint spec and the
+# project map — carry no provenance form. The blueprint spec is authored clean;
+# the map is normalized through /jim:blueprint. A reintroduced spec id / range /
+# path / version regresses this case (mirrors the prose-pin precedent).
+case_provenance_self_hosting_clean() {
+  local bp map bpc mapc
+  bp="$REPO_ROOT/docs/specs/jim/000-blueprint/spec.md"
+  map="$REPO_ROOT/BLUEPRINT.md"
+  bpc="$(prov_scan_file "$bp")"
+  mapc="$(prov_scan_file "$map")"
+  assert_eq "group blueprint spec is provenance-free (got $bpc)" "0" "$bpc"
+  assert_eq "project map is provenance-free (got $mapc)" "0" "$mapc"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Runs this file's cases only on direct invocation; when the aggregate runner
