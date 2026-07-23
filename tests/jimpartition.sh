@@ -305,6 +305,106 @@ EOF
   printf '%s' "$root"
 }
 
+# merge_repo <name> — a THREE-group git work tree for the merge verbs: cart,
+#   orders, and wishlist, each a mapped domain group with a `modules/<slug>`
+#   territory, a 000-blueprint carrying a Provides / Requires face, and numbered
+#   specs (so merge-map renumber-appends real spec dirs). The map's Contract
+#   Graph carries a cross-source edge (wishlist -> cart, which dissolves when
+#   both merge) and a third-party edge (orders -> cart, the bystander that forces
+#   a re-point). Three groups give a multi-source merge plus a bystander for the
+#   re-point and full-collapse-negative cases. One committed baseline (clean
+#   tree). Print the absolute repo dir.
+#
+#   Token discipline (split_repo parity): each group slug occurs as a whole
+#   token only in identity positions; the surface names embed the slug inside a
+#   larger token (`cart-checkout-hold`, `wishlist-gift-flag`) so the slug-token
+#   boundary must not flag them.
+merge_repo() {
+  local name="${1:?merge_repo needs a name}"
+  local root="$TMP_BASE/$name"
+  mkdir -p "$root"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+
+  mkdir -p "$root/modules/cart" "$root/modules/orders" "$root/modules/wishlist"
+  printf 'export const cartCheckoutHold = {};\n' > "$root/modules/cart/checkout.js"
+  printf 'export const orderApi = {};\n'         > "$root/modules/orders/order.js"
+  printf 'export const wishlistGiftFlag = {};\n' > "$root/modules/wishlist/gift.js"
+
+  # cart — absorption target in the absorption arm; a source in the fresh-target arm.
+  mkdir -p "$root/docs/specs/cart/000-blueprint" \
+           "$root/docs/specs/cart/001-cart-a" "$root/docs/specs/cart/002-cart-b"
+  cat > "$root/docs/specs/cart/000-blueprint/spec.md" <<'EOF'
+# cart — group blueprint
+
+## Provides
+
+- `cart-checkout-hold` — the checkout hold surface.
+EOF
+  printf '# cart a\n' > "$root/docs/specs/cart/001-cart-a/spec.md"
+  printf '# cart b\n' > "$root/docs/specs/cart/002-cart-b/spec.md"
+
+  # orders — the bystander (third-party consumer of cart).
+  mkdir -p "$root/docs/specs/orders/000-blueprint" "$root/docs/specs/orders/001-orders-a"
+  printf '# orders\n\n## Requires\n\n- `cart.cart-checkout-hold` — hold reads.\n' \
+    > "$root/docs/specs/orders/000-blueprint/spec.md"
+  printf '# orders a\n' > "$root/docs/specs/orders/001-orders-a/spec.md"
+
+  # wishlist — the absorbed source; requires cart (a cross-source edge that
+  # dissolves when wishlist and cart merge).
+  mkdir -p "$root/docs/specs/wishlist/000-blueprint" \
+           "$root/docs/specs/wishlist/001-wishlist-a" "$root/docs/specs/wishlist/002-wishlist-b"
+  cat > "$root/docs/specs/wishlist/000-blueprint/spec.md" <<'EOF'
+# wishlist — group blueprint
+
+## Provides
+
+- `wishlist-gift-flag` — the gift-flag surface.
+
+## Requires
+
+- `cart.cart-checkout-hold` — hold reads.
+EOF
+  printf '# wishlist a\n' > "$root/docs/specs/wishlist/001-wishlist-a/spec.md"
+  printf '# wishlist b\n' > "$root/docs/specs/wishlist/002-wishlist-b/spec.md"
+
+  cat > "$root/BLUEPRINT.md" <<'EOF'
+# Project Blueprint
+
+## Groups
+
+### cart
+
+- **Role:** domain
+- **Territory:** `modules/cart`
+
+### orders
+
+- **Role:** domain
+- **Territory:** `modules/orders`
+
+### wishlist
+
+- **Role:** domain
+- **Territory:** `modules/wishlist`
+
+## Contract Graph
+
+*Last reconciled: 2026-07-20T00:00:00Z (via /jim:blueprint)*
+
+| Consumer | Relies on | Provider |
+| :--- | :--- | :--- |
+| orders | cart-checkout-hold | cart |
+| wishlist | cart-checkout-hold | cart |
+EOF
+
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "chore: seed merge fixture"
+  printf '%s' "$root"
+}
+
 # ─── Section: coverage cases (Task 2) ────────────────────────────────────────
 
 # AC #4: tracked files under no proposed territory are reported, dirname-
