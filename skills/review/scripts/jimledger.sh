@@ -27,15 +27,15 @@
 # Security: commit/diff/ledger content is untrusted — never sourced or eval'd.
 # SHAs read from the ledger are validated via jimfile.sh `valid-id` before any
 # git range use (forecloses option injection). The script commits in exactly
-# six path-scoped places — `commit-review` (review.md + ledger.md),
+# seven path-scoped places — `commit-review` (review.md + ledger.md),
 # `commit-blueprint` (a group's spec.md + ledger.md), `commit-map` (the
 # project map + the specs-root ledger.md), `commit-verify` (a group's ledger.md
-# alone), `commit-rename` (a rename's explicit stage set), and `commit-split`
-# (a split's explicit docs stage set) — each with literal paths, a
-# `--` guard, and no `git add -A`; `/jim:build` commits ledger.md at
-# start/finish itself. `rename-tracked` (sibling) and `move-spec-dir`
-# (cross-parent) additionally do a guarded `git mv` — staging but not
-# committing.
+# alone), `commit-rename` (a rename's explicit stage set), `commit-split`
+# (a split's explicit docs stage set), and `commit-merge` (a merge's explicit
+# docs stage set) — each with literal paths, a `--` guard, and no `git add -A`;
+# `/jim:build` commits ledger.md at start/finish itself. `rename-tracked`
+# (sibling) and `move-spec-dir` (cross-parent) additionally do a guarded
+# `git mv` — staging but not committing.
 
 set -uo pipefail
 export LC_ALL=C
@@ -64,6 +64,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   commit-verify <blueprint-dir> [verify|health]  commit ledger.md only (verify/health self-commit)
   commit-rename <specs-dir> <old> <new> <docs|code> <path...>  commit a rename stage set
   commit-split <specs-dir> <old> <targets-csv> <path...>  commit a split stage set
+  commit-merge <specs-dir> <target> <sources-csv> [--rekey <o:n,...>] <path...>  commit a merge stage set
   updates-since <blueprint-dir> <iso>         count blueprint finished events after <iso>
   last-reconcile <specs-dir>                  prior reconcile event: iso + documented counters
   reconcile-series <specs-dir>                full reconcile event series → EVENT/EXCLUDED
@@ -437,6 +438,111 @@ cmd_commit_split() {
   git commit -q -m "docs(specs): split group $old into $tlist" -- "${paths[@]}" || {
     echo "jimledger commit-split: commit failed" >&2; return 1
   }
+}
+
+# cmd_commit_merge <specs-dir> <target> <sources-csv> [--rekey <old:new,...>] <path>...
+#   — the merge's docs commit: one atomic commit of the collapse's COMPLETE docs
+#   stage set, composed from explicit literal paths only, the N->1 sibling of
+#   commit-split. Where commit-split fissions one group into N children,
+#   commit-merge collapses N sources into one <target>, so the orchestrator passes
+#   the whole set: every absorbed spec-dir's old AND new path, the fused / retired
+#   blueprints, the reference-edit files, and the issue INDEX.md (the map +
+#   specs-root ledger commit separately via commit-map). Guards mirror
+#   commit-split: <target> and each source are valid group slugs; every path
+#   clears valid-relpath and resolves inside the worktree top. The optional
+#   --rekey channel carries invariant-id lineage pairs (each half charset-gated to
+#   a slug around exactly one colon) rendered into the commit BODY in-script — the
+#   durable ratchet-break record; absent leaves a subject-only commit. `git add`
+#   runs only on paths that still exist (a moved old dir is already staged as a
+#   deletion by move-spec-dir) while the commit pathspec covers the whole set so
+#   the staged deletions land. Subject and body are composed in-script from the
+#   slug-validated <target> / sources and the charset-gated rekey pairs only,
+#   never from path text. Operates on the repo at CWD. rc 0 committed · rc 1
+#   nothing staged / guard refusal · rc 2 usage / malformed rekey.
+cmd_commit_merge() {
+  local specs_dir="${1:-}" target="${2:-}" sources_csv="${3:-}"
+  if [[ -z "$specs_dir" || -z "$target" || -z "$sources_csv" ]]; then
+    echo "jimledger commit-merge: need <specs-dir> <target> <sources-csv> [--rekey <old:new,...>] <path...>" >&2; return 2
+  fi
+  shift 3
+  # Optional --rekey <csv> sits between the positional trio and the path list.
+  local rekey_csv=""
+  if [[ "${1:-}" == "--rekey" ]]; then
+    if [[ $# -lt 2 ]]; then
+      echo "jimledger commit-merge: --rekey needs <old:new,...>" >&2; return 2
+    fi
+    rekey_csv="$2"; shift 2
+  fi
+  if [[ $# -eq 0 ]]; then
+    echo "jimledger commit-merge: need explicit <path...>" >&2; return 2
+  fi
+  if [[ ! "$target" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "jimledger commit-merge: target must be a valid group slug" >&2; return 2
+  fi
+  # Parse + validate the source set; compose the comma-joined display list from
+  # the slug-validated tokens only (never from any path or ledger text).
+  local -a sources=()
+  local slist="" s
+  IFS=',' read -r -a sources <<< "$sources_csv"
+  if [[ ${#sources[@]} -lt 1 ]]; then
+    echo "jimledger commit-merge: need >=1 source" >&2; return 2
+  fi
+  for s in "${sources[@]}"; do
+    if [[ ! "$s" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+      echo "jimledger commit-merge: invalid source slug: $s" >&2; return 2
+    fi
+    slist="${slist:+$slist,}$s"
+  done
+  # Compose the optional re-key body from charset-gated pairs BEFORE any git work,
+  # so a malformed token fails rc 2 with nothing committed. Each pair is
+  # <old>:<new>, both halves invariant-id slugs around exactly one colon.
+  local body=""
+  if [[ -n "$rekey_csv" ]]; then
+    local -a rekeys=()
+    IFS=',' read -r -a rekeys <<< "$rekey_csv"
+    local pair oid nid
+    body="Invariant-id re-keys (ratchet break):"
+    for pair in "${rekeys[@]}"; do
+      if [[ ! "$pair" =~ ^[a-z0-9][a-z0-9-]*:[a-z0-9][a-z0-9-]*$ ]]; then
+        echo "jimledger commit-merge: invalid rekey token: $pair" >&2; return 2
+      fi
+      oid="${pair%%:*}"; nid="${pair#*:}"
+      body="${body}"$'\n'"  ${oid} -> ${nid}"
+    done
+  fi
+  if ! bash "$JIMFILE" valid-relpath "$specs_dir" >/dev/null 2>&1; then
+    echo "jimledger commit-merge: unsafe specs-dir rejected: $specs_dir" >&2; return 1
+  fi
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "jimledger commit-merge: not in a git repo" >&2; return 1
+  fi
+  local -a paths=("$@")
+  local p resolved
+  for p in "${paths[@]}"; do
+    if ! bash "$JIMFILE" valid-relpath "$p" >/dev/null 2>&1; then
+      echo "jimledger commit-merge: unsafe path rejected: $p" >&2; return 1
+    fi
+    if ! resolved="$(realpath -m -- "$p" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "jimledger commit-merge: path escapes worktree: $p" >&2; return 1
+    fi
+  done
+  for p in "${paths[@]}"; do
+    [[ -e "$p" ]] || continue
+    git add -- "$p" || { echo "jimledger commit-merge: git add failed: $p" >&2; return 1; }
+  done
+  if git diff --cached --quiet -- "${paths[@]}"; then
+    echo "jimledger commit-merge: nothing staged for the given paths" >&2; return 1
+  fi
+  if [[ -n "$body" ]]; then
+    git commit -q -m "docs(specs): merge $slist into $target" -m "$body" -- "${paths[@]}" || {
+      echo "jimledger commit-merge: commit failed" >&2; return 1
+    }
+  else
+    git commit -q -m "docs(specs): merge $slist into $target" -- "${paths[@]}" || {
+      echo "jimledger commit-merge: commit failed" >&2; return 1
+    }
+  fi
 }
 
 # cmd_move_spec_dir <specs-dir> <old-group> <src-basename> <new-group> <dst-basename>
@@ -920,6 +1026,7 @@ main() {
     vacated-max) shift; cmd_vacated_max "$@" ;;
     commit-rename) shift; cmd_commit_rename "$@" ;;
     commit-split) shift; cmd_commit_split "$@" ;;
+    commit-merge) shift; cmd_commit_merge "$@" ;;
     commit-review) shift; cmd_commit_review "$@" ;;
     commit-blueprint) shift; cmd_commit_blueprint "$@" ;;
     commit-map) shift; cmd_commit_map "$@" ;;

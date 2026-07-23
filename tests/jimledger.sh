@@ -1650,6 +1650,96 @@ case_jimledger_commit_split_usage_rc2() {
   assert_exit "arity<2 rc" 2 "$RC"
 }
 
+# ─── spec 048: commit-merge (the merge's docs commit) ────────────────────────
+
+# AC 17 / DD 7: commit-merge stages EXACTLY the explicit set — the moved source
+# spec-dir pair (old deletion already staged by move-spec-dir; new add) and the
+# fused target blueprint — while unrelated dirt never rides it. The subject is
+# composed in-script from the slug-validated target + sources.
+case_jimledger_commit_merge_scoped() {
+  local root; root="$(move_git_fixture cm_ok)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo shopping 001-foo
+  assert_exit "move rc" 0 "$RC"
+  mkdir -p "$root/docs/specs/shopping/000-blueprint"
+  printf '# shopping\n' > "$root/docs/specs/shopping/000-blueprint/spec.md"   # fused blueprint
+  printf 'unrelated\n'  > "$root/loose.txt"                                    # unrelated dirt
+  run_jimledger_in "$root" commit-merge docs/specs shopping cart \
+    docs/specs/cart/006-foo docs/specs/shopping/001-foo \
+    docs/specs/shopping/000-blueprint/spec.md
+  assert_exit "rc" 0 "$RC"
+  local committed; committed="$(git -C "$root" show --name-only --format= HEAD)"
+  assert_match "moved dir committed"    'docs/specs/shopping/001-foo/spec\.md'       "$committed"
+  assert_match "blueprint committed"    'docs/specs/shopping/000-blueprint/spec\.md' "$committed"
+  assert_eq "old path gone from HEAD tree" "0" "$(git -C "$root" ls-tree -r --name-only HEAD | grep -c '^docs/specs/cart/006')"
+  assert_eq "loose NOT committed" "0" "$(echo "$committed" | grep -c 'loose')"
+  assert_eq "subject" "docs(specs): merge cart into shopping" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC 8 / DD 7: the fresh-target arm names every source in the subject — sources
+# joined comma-separated, composed only from the slug-validated csv.
+case_jimledger_commit_merge_multisource_subject() {
+  local root; root="$(move_git_fixture cm_multi)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo shopping 001-foo
+  assert_exit "move rc" 0 "$RC"
+  run_jimledger_in "$root" commit-merge docs/specs shopping cart,wishlist \
+    docs/specs/cart/006-foo docs/specs/shopping/001-foo
+  assert_exit "rc" 0 "$RC"
+  assert_eq "subject names both sources" "docs(specs): merge cart,wishlist into shopping" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# AC 6 / security Finding 7: the optional --rekey channel renders invariant-id
+# lineage pairs into the commit BODY in-script (the durable ratchet-break
+# record), each half charset-gated; the subject is unchanged.
+case_jimledger_commit_merge_rekey_body() {
+  local root; root="$(move_git_fixture cm_rekey)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo shopping 001-foo
+  assert_exit "move rc" 0 "$RC"
+  run_jimledger_in "$root" commit-merge docs/specs shopping cart \
+    --rekey config:shopping-config,gift-flag:gift-marker \
+    docs/specs/cart/006-foo docs/specs/shopping/001-foo
+  assert_exit "rc" 0 "$RC"
+  local body; body="$(git -C "$root" log -1 --format=%b)"
+  assert_match "first rekey pair in body"  'config -> shopping-config' "$body"
+  assert_match "second rekey pair in body" 'gift-flag -> gift-marker'   "$body"
+  assert_eq "subject unchanged by rekey" "docs(specs): merge cart into shopping" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# security Finding 7: a malformed --rekey token (uppercase half, no colon, or a
+# double colon) is refused rc 2 before any commit — no free text reaches the
+# audited commit body.
+case_jimledger_commit_merge_rekey_malformed_rc2() {
+  local root; root="$(move_git_fixture cm_rekbad)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo shopping 001-foo
+  assert_exit "move rc" 0 "$RC"
+  run_jimledger_in "$root" commit-merge docs/specs shopping cart --rekey 'Config:x' \
+    docs/specs/cart/006-foo docs/specs/shopping/001-foo
+  assert_exit "uppercase half rc" 2 "$RC"
+  run_jimledger_in "$root" commit-merge docs/specs shopping cart --rekey 'nocolon' \
+    docs/specs/cart/006-foo docs/specs/shopping/001-foo
+  assert_exit "no colon rc" 2 "$RC"
+  run_jimledger_in "$root" commit-merge docs/specs shopping cart --rekey 'a:b:c' \
+    docs/specs/cart/006-foo docs/specs/shopping/001-foo
+  assert_exit "double colon rc" 2 "$RC"
+  assert_eq "no commit landed" "seed" "$(git -C "$root" log -1 --format=%s)"
+}
+
+# DD 7: an invalid target or source slug is refused rc 2 — the subject is only
+# ever composed from slug-validated tokens.
+case_jimledger_commit_merge_bad_slug_rc2() {
+  local root; root="$(move_git_fixture cm_slug)"
+  run_jimledger_in "$root" commit-merge docs/specs "Shopping" cart docs/specs/cart/006-foo
+  assert_exit "bad target rc" 2 "$RC"
+  run_jimledger_in "$root" commit-merge docs/specs shopping "Cart_X" docs/specs/cart/006-foo
+  assert_exit "bad source rc" 2 "$RC"
+}
+
+# rc 2 on usage: no explicit paths after the positional trio.
+case_jimledger_commit_merge_usage_rc2() {
+  local root; root="$(move_git_fixture cm_usage)"
+  run_jimledger_in "$root" commit-merge docs/specs shopping cart
+  assert_exit "no paths rc" 2 "$RC"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
