@@ -2,7 +2,7 @@
 id: 20260705-migrate-review-s-issue-batch-to-the-new-sh-emitter
 num: 55
 title: "Migrate review's issue batch to the new.sh emitter"
-status: open
+status: closed
 priority: medium
 labels: [issue-tracking, review]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T07:25:21Z
-updated: 2026-07-05T07:25:21Z
+updated: 2026-07-23T07:33:30Z
 origin: docs/specs/jim/036-verify-loop/plan.md
 ---
 
@@ -55,3 +55,15 @@ once per batch; drop the direct-Write template materialization; extend
   direct-Write path re-implements neither.
 - Spec 036 increases traffic through the legacy path (sensor-driven
   violation candidates).
+
+## Resolution
+
+Step 9's filing mechanics now route through the `new.sh` emitter on both
+the auto-file and interactive paths: each candidate body is written to a
+temp file and filed via `new.sh --title … --priority … --labels …
+--origin … --body-file …`, with a single INDEX.md regen per batch. The
+direct-Write template materialization is gone, so id validation and
+untrusted-field encoding are no longer bypassed. The skill's
+`allowed-tools` gained the `new.sh` clause and dropped the now-dead
+`mkdir` grant (its only consumer was the removed direct-Write path;
+`new.sh` does its own directory creation).
