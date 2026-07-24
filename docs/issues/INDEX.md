@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 41
+- Open: 42
 - Closed: 52
 
 ## Issues
@@ -97,6 +97,7 @@
 - `20260723-extend-present-tense-rule-to-spec-id-and-version-refs` — Extend present-tense rule to spec-id and version refs · status: closed · num: 92 · priority: medium · created: 2026-07-23T20:23:16Z · labels: [blueprint, present-tense] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs` — fix ripple-engine sweep order for renumbered self-refs · status: closed · num: 87 · priority: high · created: 2026-07-23T03:21:43Z · labels: [partition, ripple-engine] · origin: docs/specs/jim/048-partition-merge/review.md
 - `20260723-harden-textual-invariant-test-global-identifier-naming` — Harden textual-invariant test global-identifier naming · status: open · num: 89 · priority: low · created: 2026-07-23T10:23:59Z · labels: [test, meta-test, tech-debt] · origin: docs/specs/jim/050-blueprint-present-tense/plan.md
+- `20260723-jimfile-ref-verb-and-lint` — Extend jimfile.sh with a reference ref-verb, anchor resolution, and a bare-reference lint · status: open · num: 94 · priority: low · created: 2026-07-23T20:18:03Z · labels: [enhancement, jimfile, references] · origin: docs/brainstorms/20260720-claude-speak.md
 - `20260723-single-source-the-000-blueprint-directory-name-in-jimpartition-s` — Single-source the 000-blueprint directory name in jimpartition.sh · status: closed · num: 88 · priority: low · created: 2026-07-23T06:09:14Z · labels: [verify, partition, refactor] · origin: docs/specs/jim/049-contracts-check-hardening/review.md
 - `20260723-skills-prose-invocation-lint` — Generalize the prose-pin pattern into a skills-prose invocation lint · status: open · num: 90 · priority: low · created: 2026-07-23T18:43:32Z · labels: [meta-test, partition] · origin: docs/specs/jim/051-partition-ref-sweep/plan.md
 - `20260723-widen-the-mechanical-provenance-guard-to-extended-artifact-ref-f` — Widen the mechanical provenance guard to extended artifact-ref forms · status: open · num: 93 · priority: low · created: 2026-07-23T21:23:49Z · labels: [blueprint, provenance] · origin: docs/specs/jim/052-blueprint-provenance-guard/spec.md
