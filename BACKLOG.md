@@ -92,7 +92,8 @@ to track the unit of work that the issue already is. (Issues still get **no acce
 4. **The open-to-in-process flow (your exact intent).** `/jim:issue start` sets `status: in_progress`,
    writes the **session id, branch, and assignee**, **commits that metadata to `main`**, and *then* the
    work proceeds in that session and branch. (Once work is committed, the session id can be read from
-   the existing `Claude-Session:` commit trailer, so it may not need writing a second time.)
+   the existing `Claude-Session:` commit trailer, so it may not need writing a second time.) *(The
+   commit-to-`main` mechanics — worktree flow, all-mutations scope — are item 7.)*
 5. **The `next` and `blocked` read commands** in `render.sh` (the safe, on-philosophy addition from the
    tracker comparison — in the same family as the existing `insights` command). These show which issues
    are ready to work on and which are blocked, read from the relations graph. They feed jimui's
@@ -101,11 +102,18 @@ to track the unit of work that the issue already is. (Issues still get **no acce
    the issue. This closes jim's gap where an issue records where it came from but not where it went to
    (so issue #14 → spec 026 becomes visible from the issue). *(The promotion itself happens in
    `jim:epic` — not as a command on the issue.)*
+7. **`main` as source of truth for the collection** — filed as issue
+   `docs/issues/20260724-jim-issue-on-main-via-git-worktree.md`. Every issue-collection write — new
+   files, body edits, renames, status changes, INDEX.md regeneration — happens on `main` via a linked
+   git worktree (`worktree add` → `cd` into it, required because the scripts resolve artifact paths
+   from `$PWD` → `new.sh`/`index.sh` → commit → `worktree remove`). The current branch never
+   switches; visibility is free (`git merge main` fast-forwards the collection into view). This is
+   the mechanics layer under item 4's "commits that metadata to `main`", generalized to every
+   mutation, and it minimizes INDEX id# collisions across branches.
 
 Other possible candidates:
 
 - relocate closed issues to closed/ folder ?
-- new issues following the commit to `main` discipline so `main` branch always has current issue state and we help minimize id# collisions
 - (numbered index collisions) ?  <-- be careful referencing issues solely by numbers because they can change (not sure what improvements can be made here but the edge case is merging large branches together probably will have index collisions - how to further reduce id collisions in the index) <-- note reindexing can cause id ##'s to change that means we shouldn't reference issues by id# we should reference them by filename
 
 ## BACK-006 · jim:epic skill and file format  UNBLOCKS-JIMUI
