@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-24T10:58:09Z
-updated: 2026-07-24T11:12:52Z
+updated: 2026-07-24T11:30:52Z
 origin: docs/issues/20260724-add-plugin-json-agents-key-guard-to-meta-validation-checklists.md
 ---
 
@@ -22,9 +22,9 @@ origin: docs/issues/20260724-add-plugin-json-agents-key-guard-to-meta-validation
 **Proposed mechanics** (proven manually 2026-07-24 while filing `20260724-add-plugin-json-agents-key-guard-to-meta-validation-checklists.md`):
 
 1. `git worktree add <tmp> main`
-2. `cd` into the worktree — **required, not optional**: jim scripts resolve artifact paths from `$PWD` (project-root-as-CWD invariant, documented in `skills/conf/scripts/jimconf.sh`), so invoking the worktree's script copy from the primary checkout silently writes into the invoking repo.
-3. Run `new.sh` / `index.sh` there.
-4. Commit on `main`, `git worktree remove <tmp>`.
+2. Run `new.sh` / `index.sh` with the worktree as `$PWD` — **required, not optional**: jim scripts resolve artifact paths from `$PWD` (project-root-as-CWD invariant, documented in `skills/conf/scripts/jimconf.sh`), so invoking the worktree's script copy from the primary checkout silently writes into the invoking repo. **Use a subshell — `(cd <tmp> && bash skills/issue/scripts/new.sh …)` — never a bare `cd`**: a shell left standing inside the worktree makes every later git command die with `fatal: Unable to read current working directory` once step 4 deletes it (hit 3× during the manual runs).
+3. Commit on `main` via `git -C <tmp> add/commit` (keeps the outer shell out of the worktree).
+4. `git worktree remove <tmp>` — run from the primary checkout.
 
 The primary checkout never switches branches — dirty files and concurrent sessions in the same cwd are undisturbed.
 
