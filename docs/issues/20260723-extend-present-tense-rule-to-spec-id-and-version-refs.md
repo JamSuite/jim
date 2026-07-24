@@ -2,7 +2,7 @@
 id: 20260723-extend-present-tense-rule-to-spec-id-and-version-refs
 num: 92
 title: "Extend present-tense rule to spec-id and version refs"
-status: open
+status: closed
 priority: medium
 labels: [blueprint, present-tense]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T20:23:16Z
-updated: 2026-07-23T20:23:16Z
+updated: 2026-07-24T00:34:08Z
 origin: docs/specs/jim/000-blueprint/spec.md
 ---
 
@@ -63,3 +63,43 @@ Surfaced while correcting the `jim` blueprint during spec 051's
 `/jim:blueprint --from-review` fold: the fold inherited pre-existing spec-ID
 provenance and added a new one, and neither the self-scan nor the `present-tense`
 judge caught it.
+
+## Resolution
+
+Resolved under spec `jim/052`
+(`docs/specs/jim/052-blueprint-provenance-guard/`). Scoped as a feature spec,
+built TDD, reviewed `aligned` (0 findings), and folded into the `jim` blueprint.
+
+**Doctrine home — a separate companion doc, not a fourth present-tense
+category.** Provenance is a distinct axis from tense: "the spec-047 verbs" reads
+as present tense yet rots when `/jim:partition` renumbers, so it slips past all
+three present-tense marker categories. The rule lives in a new
+`skills/blueprint/references/provenance.md` (sibling to `present-tense.md`),
+cited by path and scanned at the same exit door — keeping "tense" conceptually
+pure.
+
+**Flagged forms (this issue's core set).** Bare spec ids, spec ranges, mutable
+numbered spec paths (excluding the reserved `000-blueprint`), and pinned
+versions, each with its normalization (describe by function; name the manifest
+as the version source). The broader `CLAUDE.md` artifact-ref set (AC / Finding /
+DD / issue numbers, cross-file line ranges) is deferred to issue #93 — the
+doctrine's "illustrative and extensible" framing already generalizes the
+judgment scan to them; only the *mechanical* widening is deferred.
+
+**Mechanical assist (as suggested).** A deterministic `tests/provenance.sh`
+guard scans jim's own group blueprint spec and project map and fails on any
+flagged form — the self-hosting regression guard, mirroring the prose-pin
+precedent. Adversarially verified against edge cases (ids ≥ 100, all three dash
+types, date/timestamp false-positives, the reserved-path mask). The
+over-constraint guard spares a verb's own name, functional groupings, and
+dates/counts.
+
+**Wiring + enforcement.** The exit-door self-scan now runs both the
+present-tense and provenance scans at all ten composition sites; jim's own map
+was normalized *through* `/jim:blueprint` (the new scan flagged its own
+boundary-rationale ranges — the feature dogfooding itself); and the
+`present-tense` verify invariant was extended to sense a dropped provenance
+citation the same way it senses a dropped present-tense one.
+
+Verified: full suite 701/701 green; review `aligned`; living-intent sensor 0
+violations. Ships on `feat/blueprint`.
