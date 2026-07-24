@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 12
+- Open: 13
 - Closed: 5
 
 ## Issues
@@ -24,6 +24,7 @@
 - `20260717-post-approval-correction-evolution-flow-edit-approved-plans-and-` — Post-approval correction/evolution flow: edit approved plans and propagate fixes to code and migrations · status: open · num: 15 · priority: high · created: 2026-07-17T22:21:05Z · labels: [skill, plan, correction, lifecycle, workflow] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 - `20260717-reconcile-brainstorm-skill-passive-capture-stance-with-active-ev` — Reconcile brainstorm skill's passive-capture stance with users' expectation of active evaluation · status: open · num: 12 · priority: medium · created: 2026-07-17T18:07:21Z · labels: [brainstorm, skill, ux] · origin: conversation
 - `20260723-jimfile-ref-verb-and-lint` — Extend jimfile.sh with a reference ref-verb, anchor resolution, and a bare-reference lint · status: open · num: 17 · priority: low · created: 2026-07-23T20:18:03Z · labels: [enhancement, jimfile, references] · origin: docs/brainstorms/20260720-claude-speak.md
+- `20260724-add-plugin-json-agents-key-guard-to-meta-validation-checklists` — Add plugin.json agents-key guard to meta validation checklists · status: open · num: 18 · priority: medium · created: 2026-07-24T10:33:25Z · labels: [meta, validation] · origin: docs/research/20260724-jim-meta-external-research.md
 
 ## Graph
 
@@ -32,4 +33,4 @@
 
 ## Integrity Warnings
 
-_None._
+- `20260724-add-plugin-json-agents-key-guard-to-meta-validation-checklists` origin path does not resolve: docs/research/20260724-jim-meta-external-research.md (created 2026-07-24T10:33:25Z)
