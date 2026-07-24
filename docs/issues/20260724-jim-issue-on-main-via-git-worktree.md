@@ -1,5 +1,5 @@
 ---
-id: 20260724-jim-issue-files-and-indexes-issues-on-main-via-git-worktree
+id: 20260724-jim-issue-on-main-via-git-worktree
 num: 19
 title: "jim:issue files and indexes issues on main via git worktree"
 status: open
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-24T10:58:09Z
-updated: 2026-07-24T10:58:09Z
+updated: 2026-07-24T11:12:52Z
 origin: docs/issues/20260724-add-plugin-json-agents-key-guard-to-meta-validation-checklists.md
 ---
 
@@ -27,6 +27,10 @@ origin: docs/issues/20260724-add-plugin-json-agents-key-guard-to-meta-validation
 4. Commit on `main`, `git worktree remove <tmp>`.
 
 The primary checkout never switches branches — dirty files and concurrent sessions in the same cwd are undisturbed.
+
+**Branch-local visibility** (proven 2026-07-24): filing on `main` costs the current branch nothing. As long as the branch hasn't diverged, `git merge main` fast-forwards and pulls the collection into view — no merge commit, only `docs/issues/` touched. The skill can offer this as a follow-up step after each filing ("merge main to see the issue locally?").
+
+**Scope: every mutation, not just filing.** Renames, body edits, and status changes go through the same worktree-on-main flow — demonstrated by this issue's own rename (`20260724-jim-issue-files-and-indexes-issues-on-main-via-git-worktree` → `20260724-jim-issue-on-main-via-git-worktree`), which itself had to happen on `main` and re-index there.
 
 **Design questions for the spec:**
 
