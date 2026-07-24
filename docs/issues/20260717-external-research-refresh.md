@@ -1,7 +1,7 @@
 ---
-id: 20260717-automate-the-competitive-landscape-prior-art-research-refresh-as
+id: 20260717-external-research-refresh
 num: 14
-title: "Automate the competitive-landscape / prior-art research refresh as a jim skill"
+title: "Automate the external-research refresh as a jim skill"
 status: open
 priority: high
 labels: [skill, research, prior-art, workflow, meta]
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-17T22:09:46Z
-updated: 2026-07-24T11:20:21Z
+updated: 2026-07-24T11:27:11Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 ---
 
