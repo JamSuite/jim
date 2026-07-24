@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-17T22:09:46Z
-updated: 2026-07-17T22:09:46Z
+updated: 2026-07-24T11:20:21Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 ---
 
@@ -87,6 +87,24 @@ Given the most recent landscape/prior-art research doc, re-run the entire refres
 - Presents a copy-pasteable external-research prompt and ingests developer-supplied new tools **before** the fan-out.
 - Fixes stale citations in origin research docs per the pure-move/annotate rules.
 - Files candidate issues for surfaced gaps and offers the VISION table refresh.
+
+## Second worked example (2026-07-24): capability-scoped mode — jim:meta prior art
+
+A second manual run (output: `docs/research/20260724-jim-meta-external-research.md`) exercised the same process in a different mode. The skill must support both; these are parameters, not separate skills.
+
+**Mode deltas vs the whole-landscape run:**
+
+- **Scope = one capability, not the landscape.** Input is a seed prompt naming: the target component (jim:meta), its trigger-phrase set ("create an agent", "add an agent", "agent frontmatter", …), the directories to sweep (claudemarketplaces.com, skills.sh, claudepluginhub.com), and the required output columns (name · exact SKILL.md URL · description · pros · cons · sentiment, tiered). The skill should accept exactly this parameterization instead of deriving scope from the prior corpus (Phase 0).
+- **Seed = an unverified first-pass external report.** The developer pasted a full external-LLM research dump marked "verify all findings yourself, do not take as confirmed." The workflow becomes verify-every-claim: fetch each claimed SKILL.md first-hand, and emit a **Verification Deltas table** (first-pass claim → verified reality) as a required output section. Result this run: 12 of 13 sources verified, 1 dropped as unverifiable, several repo/path/line-count corrections, 1 new Tier-1 find the first pass missed. This is Phase 2's "ingest developer-supplied findings" generalized into a first-class input mode.
+- **Output = tiered comparables table + reviewed-and-excluded list**, standalone dated doc in `docs/research/` — with fold-in to the target spec's `research.md` explicitly deferred as a differential update (tracked by its own candidate issue at run end). Two-step: collect now, fold in later.
+
+**Process learnings to bake in (both apply to the whole-landscape mode too):**
+
+- **404 vs 403/429 handling differs.** A 404 on a claimed file path is a *finding* (stale path — relocate or drop the claim); a 403/429 is a *guardrail stop* (ask the developer to fetch manually). Sub-agents and the skill body must not conflate them.
+- **Raw-URL branch drift.** `raw.githubusercontent.com/.../main/...` 404s on `master`-default repos (hit twice this run: xobotyi/cc-foundry, jdforsythe/forge). Verify the default branch before concluding a path is dead.
+- **Developer paste-back loop for blocked directories.** claudepluginhub.com returned 403 in *both* sessions. The skill should hand the developer targeted search queries ("subagent creator", "agent development", "skill creator", "meta skill" — top 5–10 hits, name + repo + one-liner) and ingest the pasted results, triaging each hit repo-level before any deep fetch.
+
+**Naming note:** this scoped mode strengthens the case for a name that covers both ("external research" / "research-refresh") over a landscape-specific one.
 
 ## References
 
