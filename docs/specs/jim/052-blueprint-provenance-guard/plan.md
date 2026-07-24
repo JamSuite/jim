@@ -2,7 +2,7 @@
 title: "Guard blueprints and maps against provenance references"
 spec: "docs/specs/jim/052-blueprint-provenance-guard/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Guard blueprints and maps against provenance references — Plan
@@ -146,7 +146,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **Doctrine doc + doc-structure guard.** Create `tests/provenance.sh` (clone
+1. [x] **Doctrine doc + doc-structure guard.** Create `tests/provenance.sh` (clone
    `tests/presenttense.sh` shape, `PROV_` globals) with `case_provenance_rule_doc_structure`
    asserting `provenance.md` exists and carries its four `##` sections (Red — doc
    absent). Then create `skills/blueprint/references/provenance.md`: the rule (a
@@ -158,7 +158,7 @@ flowchart TD
    `Normalize and disclose`.
    **Verify:** `bash /mnt/src/jim/tests/provenance.sh rule_doc_structure`
 
-2. [ ] **Wire citations + extend the scan prose.** Add `case_provenance_sites_reference_rule`
+2. [x] **Wire citations + extend the scan prose.** Add `case_provenance_sites_reference_rule`
    with the min-count rows (Red — 0 citations). Then add a `provenance.md`
    citation at each of the 10 present-tense sites and extend the two SKILL.md
    scan-invocation blocks, the map-methodology sites, and the migrate-arm returns
@@ -166,14 +166,14 @@ flowchart TD
    checklist item.
    **Verify:** `bash /mnt/src/jim/tests/provenance.sh sites_reference_rule`
 
-3. [ ] **Detection helper + fixtures.** Add `case_provenance_detect_forms` calling
+3. [x] **Detection helper + fixtures.** Add `case_provenance_detect_forms` calling
    `prov_scan_file` on two temp fixtures (Red — helper undefined). Then define
    `prov_scan_file` per the Interface Contract: a positive fixture (`spec-047`,
    `017–025`, `v2.0.0`) counts ≥ 3; a negative fixture (a `000-blueprint` path, a
    functional grouping, a `2026-07-13` date) counts 0.
    **Verify:** `bash /mnt/src/jim/tests/provenance.sh detect_forms`
 
-4. [ ] **Self-hosting guard + map normalization via `/jim:blueprint`.** Add
+4. [x] **Self-hosting guard + map normalization via `/jim:blueprint`.** Add
    `case_provenance_self_hosting_clean` asserting `prov_scan_file` == 0 on both
    `docs/specs/jim/000-blueprint/spec.md` (already clean) and `BLUEPRINT.md` (Red —
    the map carries `017–025` / `026–028` / `029–034` / `035–037`). Green: run
