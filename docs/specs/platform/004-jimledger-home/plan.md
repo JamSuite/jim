@@ -2,7 +2,7 @@
 title: "Relocate jimledger.sh to a dedicated platform home"
 spec: "docs/specs/platform/004-jimledger-home/spec.md"
 type: refactor
-status: approved
+status: complete
 ---
 
 # Relocate jimledger.sh to a dedicated platform home — Plan

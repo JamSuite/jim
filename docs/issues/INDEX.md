@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 50
-- Closed: 56
+- Open: 49
+- Closed: 57
 
 ## Issues
 
@@ -110,7 +110,7 @@
 - `20260725-re-point-glob-specs-jim-gates-in-meta-skill-meta-agent-meta-test` — re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test · status: closed · num: 104 · priority: high · created: 2026-07-25T08:04:47Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-record-the-sdlc-side-half-of-the-fold-back-loop-contract` — record the sdlc-side half of the fold-back-loop contract · status: closed · num: 101 · priority: low · created: 2026-07-25T08:04:44Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-refresh-architecture-readme-workflow-for-the-partition` — refresh ARCHITECTURE, README, WORKFLOW for the partition · status: closed · num: 105 · priority: medium · created: 2026-07-25T08:04:48Z · labels: [partition] · origin: BLUEPRINT.md
-- `20260725-relocate-jimledger-sh-out-of-skills-review-into-platform-owned-h` — relocate jimledger.sh out of skills/review into platform-owned home · status: open · num: 102 · priority: medium · created: 2026-07-25T08:04:45Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-relocate-jimledger-sh-out-of-skills-review-into-platform-owned-h` — relocate jimledger.sh out of skills/review into platform-owned home · status: closed · num: 102 · priority: medium · created: 2026-07-25T08:04:45Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-review-the-17-frozen-jim-group-prose-mentions` — review the 17 frozen jim-group prose mentions · status: closed · num: 103 · priority: low · created: 2026-07-25T08:04:46Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold` — script-preamble rule vs source-inherited preambles: fix or fold · status: open · num: 99 · priority: medium · created: 2026-07-25T08:04:41Z · labels: [partition] · origin: BLUEPRINT.md
 
