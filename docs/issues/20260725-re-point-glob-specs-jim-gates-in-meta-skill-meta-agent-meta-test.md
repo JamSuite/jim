@@ -2,7 +2,7 @@
 id: 20260725-re-point-glob-specs-jim-gates-in-meta-skill-meta-agent-meta-test
 num: 102
 title: "re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test"
-status: open
+status: closed
 priority: high
 labels: [partition]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-25T08:04:47Z
-updated: 2026-07-25T08:04:47Z
+updated: 2026-07-25T08:29:06Z
 origin: BLUEPRINT.md
 ---
 

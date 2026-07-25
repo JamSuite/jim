@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 52
-- Closed: 52
+- Open: 51
+- Closed: 53
 
 ## Issues
 
@@ -105,7 +105,7 @@
 - `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and` — formalize the is-valid-id lockstep contract between platform and issue · status: open · num: 96 · priority: medium · created: 2026-07-25T08:04:40Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-give-retired-group-directories-a-sanctioned-end-of-life` — give retired group directories a sanctioned end-of-life · status: open · num: 104 · priority: medium · created: 2026-07-25T08:22:51Z · labels: [partition] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260725-judge-or-fix-rename-tracked-pathspec-use-against-relpath-validat` — judge or fix rename-tracked pathspec use against relpath-validation · status: open · num: 98 · priority: medium · created: 2026-07-25T08:04:42Z · labels: [partition] · origin: BLUEPRINT.md
-- `20260725-re-point-glob-specs-jim-gates-in-meta-skill-meta-agent-meta-test` — re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test · status: open · num: 102 · priority: high · created: 2026-07-25T08:04:47Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-re-point-glob-specs-jim-gates-in-meta-skill-meta-agent-meta-test` — re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test · status: closed · num: 102 · priority: high · created: 2026-07-25T08:04:47Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-record-the-sdlc-side-half-of-the-fold-back-loop-contract` — record the sdlc-side half of the fold-back-loop contract · status: open · num: 99 · priority: low · created: 2026-07-25T08:04:44Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-refresh-architecture-readme-workflow-for-the-partition` — refresh ARCHITECTURE, README, WORKFLOW for the partition · status: open · num: 103 · priority: medium · created: 2026-07-25T08:04:48Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-relocate-jimledger-sh-out-of-skills-review-into-platform-owned-h` — relocate jimledger.sh out of skills/review into platform-owned home · status: open · num: 100 · priority: medium · created: 2026-07-25T08:04:45Z · labels: [partition] · origin: BLUEPRINT.md

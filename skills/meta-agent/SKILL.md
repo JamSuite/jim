@@ -20,9 +20,9 @@ Create or update a jim plugin agent (`agents/{name}.md`) from an approved spec a
 
 ### 1. Pass three gates before building
 
-Use `$ARGUMENTS` as a hint for the agent name. List candidate specs via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs jim`, then grep each spec.md frontmatter for `status: approved` to find a match. If no clear match, ask the user which spec to build from.
+Use `$ARGUMENTS` as a hint for the agent name. List candidate specs via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs`, then grep each spec.md frontmatter for `status: approved` to find a match. If no clear match, ask the user which spec to build from.
 
-**Gate 1 — Spec:** Locate an approved spec under the `jim` group via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs jim`. If no approved spec exists, spawn `@jim:pm` via the Agent tool to create one. If the pm agent is not available, tell the user to run `/jim:spec` instead.
+**Gate 1 — Spec:** Locate an approved spec across the spec groups via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh glob specs`. If no approved spec exists, spawn `@jim:pm` via the Agent tool to create one. If the pm agent is not available, tell the user to run `/jim:spec` instead.
 
 **Gate 2 — Research Quality:** Read `research.md` from the spec directory. Evaluate it against this 7-point spot-check:
 
