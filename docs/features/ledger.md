@@ -60,12 +60,12 @@ Append-only is the design, not an implementation detail — it captures the hard
 
 ## `jimledger.sh` at a glance
 
-The ledger's single owner is `skills/review/scripts/jimledger.sh` — bash + POSIX, no third-party dependencies, and the only jim script that reads git operationally.
+The ledger's single owner is `skills/ledger/scripts/jimledger.sh` — bash + POSIX, no third-party dependencies, and the only jim script that reads git operationally.
 
 | Group | Subcommands |
 | :--- | :--- |
 | Record | `start`, `finish` (build boundary), `event` (generic stage event) |
-| Read | `metrics`, `updates-since`, `last-reconcile`, `reconcile-series`, `vacated-max` |
+| Read | `events`, `metrics`, `updates-since`, `last-reconcile`, `reconcile-series`, `vacated-max` |
 | Build range | `files`, `diff` (ledger-resolved), `files-range`, `diff-range` (validated ad-hoc range) |
 | Commit | `commit-review`, `commit-blueprint`, `commit-map`, `commit-verify`, `commit-rename`, `commit-split`, `commit-merge` |
 | Moves | `rename-tracked`, `move-spec-dir` (guarded `git mv` — staging, never committing) |
