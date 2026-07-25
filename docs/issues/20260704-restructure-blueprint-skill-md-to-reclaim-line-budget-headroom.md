@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T09:23:23Z
-updated: 2026-07-23T03:35:54Z
-origin: docs/specs/jim/034-contract-graph/plan.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/006-contract-graph/plan.md
 ---
 
 ## Update (2026-07-23) — spec 048 (merge) put BOTH SKILLs over 500

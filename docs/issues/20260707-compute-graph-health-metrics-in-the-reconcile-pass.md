@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-07T03:07:44Z
-updated: 2026-07-08T07:37:46Z
+updated: 2026-07-25T07:49:14Z
 origin: conversation
 ---
 
@@ -19,7 +19,7 @@ origin: conversation
 
 ## Resolution
 
-Shipped as **spec 039** (`docs/specs/jim/039-graph-health/`, 2026-07-07), which
+Shipped as **spec 039** (`docs/specs/blueprint/011-graph-health/`, 2026-07-07), which
 names this issue as its origin. The reconcile pass now computes all four
 measurements (edge density, cycle count, fan-in concentration, territory
 coverage) deterministically and records them as additive counters on the

@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T03:21:43Z
-updated: 2026-07-23T20:05:26Z
-origin: docs/specs/jim/048-partition-merge/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/020-partition-merge/review.md
 ---
 
 ## Description
@@ -54,12 +54,12 @@ self-ref in a moved body over both the split and merge arms.
 
 ## Origin
 
-`docs/specs/jim/048-partition-merge/review.md` — Deviations & feedback (the
+`docs/specs/blueprint/020-partition-merge/review.md` — Deviations & feedback (the
 AC-omission investigation).
 
 ## Resolution
 
-Fixed under spec `jim/051` (`docs/specs/jim/051-partition-ref-sweep/`). Scoped as
+Fixed under spec `blueprint/023` (`docs/specs/blueprint/023-partition-ref-sweep/`). Scoped as
 a bug spec, built TDD, reviewed `aligned` (0 findings), and folded into the
 `jim` blueprint.
 
@@ -82,5 +82,5 @@ arms and both manifestations, and a prose-pin test guards the four canonical
 invocation lines against a future flow dropping the flag.
 
 Verified: M1 → `target/008`, M2 → `old/005`; full suite 697/697 green.
-Ships on `feat/blueprint`; `fix(partition)` commit carries `Spec: jim/051` +
+Ships on `feat/blueprint`; `fix(partition)` commit carries `Spec: blueprint/023` +
 `Issue: 87/20260723-fix-ripple-engine-sweep-order-for-renumbered-self-refs`.

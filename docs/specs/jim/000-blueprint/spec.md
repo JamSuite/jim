@@ -2,11 +2,14 @@
 title: "jim — blueprint"
 group: "jim"
 kind: blueprint
+status: retired
 updated: "2026-07-13"
 last_full_generate: "2026-07-05T23:32:20Z"
 ---
 
 # jim — blueprint
+
+> Retired — superseded by the project context map, 2026-07-25.
 
 *The current, present-tense specification of the `jim` group: its
 responsibilities, exposed and required surface, structure, and load-bearing

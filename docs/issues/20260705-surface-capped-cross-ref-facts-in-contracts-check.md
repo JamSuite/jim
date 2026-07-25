@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:17:53Z
-updated: 2026-07-09T09:27:28Z
-origin: docs/specs/jim/037-verify-contracts/plan.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/009-verify-contracts/plan.md
 ---
 
 ## Description

@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-12T07:21:07Z
-updated: 2026-07-12T07:21:07Z
-origin: docs/specs/jim/044-partition-health/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/016-partition-health/spec.md
 ---
 
 ## Description

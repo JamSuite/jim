@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-03T20:48:04Z
-updated: 2026-07-07T03:28:37Z
-origin: docs/specs/jim/033-context-map/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/005-context-map/spec.md
 ---
 
 ## Description

@@ -11,13 +11,13 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-11T09:10:28Z
-updated: 2026-07-12T10:37:04Z
+updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
 ---
 
 > **Resolved by spec 044 (partition-health sensors) — 2026-07-12.** Folded into
 > 044 as the `jimpartition.sh identity-check` name-mismatch sensor (foreign +
-> retired classes); shipped in `docs/specs/jim/044-partition-health/`.
+> retired classes); shipped in `docs/specs/blueprint/016-partition-health/`.
 
 ## Description
 

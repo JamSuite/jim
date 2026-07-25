@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:44:10Z
-updated: 2026-07-09T09:46:35Z
-origin: docs/specs/jim/037-verify-contracts/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/009-verify-contracts/review.md
 ---
 
 ## Description
@@ -37,7 +37,7 @@ but not attributable in any durable ledger record.
 `edges_checked=`/`edge_violations=`) to the `blueprint finished` event when the
 boundary-change trigger ran, mirroring the review-sensor path.
 
-Surfaced by the spec 037 post-build review (`docs/specs/jim/037-verify-contracts/review.md`, Finding 1).
+Surfaced by the spec 037 post-build review (`docs/specs/blueprint/009-verify-contracts/review.md`, Finding 1).
 
 ## Resolution (2026-07-09)
 

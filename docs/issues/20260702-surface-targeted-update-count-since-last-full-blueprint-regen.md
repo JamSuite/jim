@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-02T07:00:12Z
-updated: 2026-07-03T09:42:42Z
+updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
@@ -42,7 +42,7 @@ See also [[20260630-wire-the-000-blueprint-fold-back-loop-into-review]].
 
 ## Resolution
 
-Shipped as spec `jim/032` (Blueprint regen cadence), `status: complete`. The
+Shipped as spec `blueprint/004` (Blueprint regen cadence), `status: complete`. The
 signal landed as scoped — `/jim:blueprint` update mode reports "N targeted
 updates since last full generate" — via a single-writer `last_full_generate`
 frontmatter watermark (stamped only by generate mode) and a deterministic

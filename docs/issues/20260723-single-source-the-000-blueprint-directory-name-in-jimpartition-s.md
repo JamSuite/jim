@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T06:09:14Z
-updated: 2026-07-23T07:11:34Z
-origin: docs/specs/jim/049-contracts-check-hardening/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/021-contracts-check-hardening/review.md
 ---
 
 ## Description

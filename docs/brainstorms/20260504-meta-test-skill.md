@@ -359,8 +359,8 @@ User confirmed all five questions. Captured here as the spec-routing brief.
   the new shape. So there is no testlib spec to sequence against.
 - `/jim:meta-test` slots in as **spec 007**. The currently-merged
   `007-jimconf` and `008-jimfile` get **renumbered**:
-  - `docs/specs/jim/007-jimconf/` → `docs/specs/jim/008-jimconf/`
-  - `docs/specs/jim/008-jimfile/` → `docs/specs/jim/009-jimfile/`
+  - `docs/specs/platform/001-jimconf/` → `docs/specs/platform/002-jimconf/`
+  - `docs/specs/platform/002-jimfile/` → `docs/specs/platform/003-jimfile/`
 - **Renumbering is out-of-scope for spec 007.** User will renumber the
   existing `007-jimconf` and `008-jimfile` directories (and any inbound
   references) **manually**, outside the meta-test spec/plan/build flow.

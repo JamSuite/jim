@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-01T21:48:41Z
-updated: 2026-07-03T06:28:03Z
-origin: docs/specs/jim/030-blueprint-update/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/002-blueprint-update/review.md
 ---
 
 ## Description

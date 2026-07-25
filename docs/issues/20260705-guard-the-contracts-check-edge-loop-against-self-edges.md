@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:44:13Z
-updated: 2026-07-05T22:55:35Z
-origin: docs/specs/jim/037-verify-contracts/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/009-verify-contracts/review.md
 ---
 
 ## Description
@@ -30,7 +30,7 @@ or hand-edited graph.
 **Proposed action:** add `[[ "$C" == "$P" ]] && continue` to the edge loop,
 mirroring the existing CROSS-REF self-pair skip.
 
-Surfaced by the spec 037 post-build review (`docs/specs/jim/037-verify-contracts/review.md`, Finding 5).
+Surfaced by the spec 037 post-build review (`docs/specs/blueprint/009-verify-contracts/review.md`, Finding 5).
 
 ---
 

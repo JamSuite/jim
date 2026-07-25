@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T23:41:11Z
-updated: 2026-07-09T07:42:01Z
-origin: docs/specs/jim/035-verify-engine/plan.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/007-verify-engine/plan.md
 ---
 
 ## Description

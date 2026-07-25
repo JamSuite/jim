@@ -11,15 +11,15 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-01T21:48:41Z
-updated: 2026-07-03T06:03:32Z
-origin: docs/specs/jim/030-blueprint-update/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/002-blueprint-update/review.md
 ---
 
 ## Description
 
 ## Context
 
-Surfaced by the spec 030 post-build review (`docs/specs/jim/030-blueprint-update/review.md`, Finding 1) — caught by an independent review investigator.
+Surfaced by the spec 030 post-build review (`docs/specs/blueprint/002-blueprint-update/review.md`, Finding 1) — caught by an independent review investigator.
 
 ## The bug
 

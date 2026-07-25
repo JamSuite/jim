@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-07T20:55:43Z
-updated: 2026-07-07T20:55:43Z
-origin: docs/specs/jim/040-blueprint-gate-presentation/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/012-blueprint-gate-presentation/spec.md
 ---
 
 ## Description

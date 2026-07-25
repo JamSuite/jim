@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T10:23:59Z
-updated: 2026-07-23T10:23:59Z
-origin: docs/specs/jim/050-blueprint-present-tense/plan.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/022-blueprint-present-tense/plan.md
 ---
 
 ## Description

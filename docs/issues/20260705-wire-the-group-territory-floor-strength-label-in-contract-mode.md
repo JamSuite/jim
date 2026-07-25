@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:44:12Z
-updated: 2026-07-09T09:08:04Z
-origin: docs/specs/jim/037-verify-contracts/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/009-verify-contracts/review.md
 ---
 
 ## Description
@@ -33,7 +33,7 @@ make.
 Low priority — the `none` case (the one with real verification-strength impact)
 is already surfaced; this is about honest reporting of the mid/strong tiers.
 
-Surfaced by the spec 037 post-build review (`docs/specs/jim/037-verify-contracts/review.md`, Finding 4).
+Surfaced by the spec 037 post-build review (`docs/specs/blueprint/009-verify-contracts/review.md`, Finding 4).
 
 ## Resolution (2026-07-09)
 

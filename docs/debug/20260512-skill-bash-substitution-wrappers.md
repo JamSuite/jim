@@ -1,8 +1,8 @@
 ---
 title: "Bash substitution silently fails inside pseudocode wrappers in skill bodies"
 date: "20260512"
-spec: "docs/specs/jim/001-meta/spec.md"
-plan: "docs/specs/jim/001-meta/plan.md"
+spec: "docs/specs/sdlc/001-meta/spec.md"
+plan: "docs/specs/sdlc/001-meta/plan.md"
 ---
 
 # Debug Report: Bash substitution silently fails inside pseudocode wrappers in skill bodies
@@ -189,7 +189,7 @@ Matrix rerun dated 2026-05-12. The `Confirmed` column below reflects the actual 
 | **AA** | SET + lean IF with indented numbered body, no `DO:`/`DONE`, `ENDIF` terminator | ✅ (target) | ✅ confirmed (2026-05-12) |
 | **BB** | SET + `IF … THEN` / `ELSE IF X == "value" THEN` / `ENDIF` chained form | ✅ (target) | ✅ confirmed (2026-05-12) |
 
-**The two consequential surprises** are N ✅ and O ✅: prior to the 2026-05-12 rerun, both were expected to suppress (the original report drafted ❌ as the expectation row). They do not. Only matrix P (inline backticks) literal-quotes a slot. This means fences and indented code blocks are *visual-rendering* surfaces, not substitution surfaces — a documentation author wanting to display a literal `!`-injection slot must use inline-code, never a fence. The premise underpinning spec 011 plan Decision 4 ("fences must go because they doubly suppress") was disproven by this rerun and is reframed in `docs/specs/jim/011-directive-vocabulary/plan.md` → Decision 4 reframe.
+**The two consequential surprises** are N ✅ and O ✅: prior to the 2026-05-12 rerun, both were expected to suppress (the original report drafted ❌ as the expectation row). They do not. Only matrix P (inline backticks) literal-quotes a slot. This means fences and indented code blocks are *visual-rendering* surfaces, not substitution surfaces — a documentation author wanting to display a literal `!`-injection slot must use inline-code, never a fence. The premise underpinning spec 011 plan Decision 4 ("fences must go because they doubly suppress") was disproven by this rerun and is reframed in `docs/specs/sdlc/008-directive-vocabulary/plan.md` → Decision 4 reframe.
 
 ---
 
@@ -414,9 +414,9 @@ Once the matrix confirms the vocabulary works, `meta-skill` / `meta-agent` valid
 
 | Artifact | Path | Relationship |
 | :--- | :--- | :--- |
-| Spec | `docs/specs/jim/001-meta/spec.md` | Defines the substitution + idiom conventions that produce this bug. A new spec must amend §Substitution Conventions and §Logic-Flow Conventions, OR be filed as a follow-up bug spec with `origin:` pointing at this report. |
-| Plan | `docs/specs/jim/001-meta/plan.md` | Same scope as the spec — the BASIC idiom and the substitution rules were both implemented under this plan. |
-| Plan | `docs/specs/jim/009-jimfile/plan.md` | All eight `IF-WRAP` slots reference `jimfile.sh get …`. Plan does not need editing, but its consumers (the eight production skills) need rework. |
+| Spec | `docs/specs/sdlc/001-meta/spec.md` | Defines the substitution + idiom conventions that produce this bug. A new spec must amend §Substitution Conventions and §Logic-Flow Conventions, OR be filed as a follow-up bug spec with `origin:` pointing at this report. |
+| Plan | `docs/specs/sdlc/001-meta/plan.md` | Same scope as the spec — the BASIC idiom and the substitution rules were both implemented under this plan. |
+| Plan | `docs/specs/platform/003-jimfile/plan.md` | All eight `IF-WRAP` slots reference `jimfile.sh get …`. Plan does not need editing, but its consumers (the eight production skills) need rework. |
 
 ---
 

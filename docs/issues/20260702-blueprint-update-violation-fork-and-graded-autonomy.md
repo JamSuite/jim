@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-02T07:16:19Z
-updated: 2026-07-03T05:50:57Z
+updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
@@ -53,7 +53,7 @@ See also [[20260630-wire-the-000-blueprint-fold-back-loop-into-review]].
 
 ## Resolution
 
-Shipped as spec `jim/031` (Blueprint update guard), whose `origin` is this
+Shipped as spec `blueprint/003` (Blueprint update guard), whose `origin` is this
 issue. Both halves landed: the violation-vs-fold fork (spec ACs #1–3) and
 criticality-graded `auto_blueprint` autonomy (spec AC #4). The build reviewed
 `aligned` with all 8 ACs met over commits `09304e0..e694517`. Residual

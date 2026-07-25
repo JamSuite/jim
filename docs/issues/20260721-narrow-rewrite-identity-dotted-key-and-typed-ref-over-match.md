@@ -11,13 +11,13 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-21T05:45:35Z
-updated: 2026-07-21T19:39:01Z
-origin: docs/specs/jim/046-spec-migration/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/018-spec-migration/review.md
 ---
 
 ## Description
 
-## Finding (from review of spec jim/046)
+## Finding (from review of spec blueprint/018)
 
 The `rewrite-identity` verb's mechanical rules can over-match a few non-identity
 tokens in a numbered spec body:
@@ -42,4 +42,4 @@ frontmatter's only identity field is `group:` (handled explicitly), so scoping
 the token-scan out of frontmatter is low-risk; the body-prose `cart.json` case is
 harder to disambiguate mechanically and is intentionally left to the gate.
 
-Origin: docs/specs/jim/046-spec-migration/review.md (Finding 1)
+Origin: docs/specs/blueprint/018-spec-migration/review.md (Finding 1)

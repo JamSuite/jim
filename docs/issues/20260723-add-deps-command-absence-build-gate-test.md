@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T19:29:53Z
-updated: 2026-07-23T19:29:53Z
-origin: docs/specs/jim/051-partition-ref-sweep/plan.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/023-partition-ref-sweep/plan.md
 ---
 
 ## Description

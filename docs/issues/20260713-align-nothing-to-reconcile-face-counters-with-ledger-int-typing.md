@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-13T07:15:20Z
-updated: 2026-07-13T07:15:20Z
-origin: docs/specs/jim/045-reconcile-face-counters/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/017-reconcile-face-counters/review.md
 ---
 
 ## Description

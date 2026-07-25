@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-03T20:08:37Z
-updated: 2026-07-08T07:42:32Z
+updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
 ---
 
@@ -19,7 +19,7 @@ origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
 
 ## Resolution
 
-Shipped as **spec 038** (`docs/specs/jim/038-partition-migration/`, 2026-07-07),
+Shipped as **spec 038** (`docs/specs/blueprint/010-partition-migration/`, 2026-07-07),
 which names this issue as its origin. Delivered as **`/jim:partition`** (the verb
 settled from the tentative `/jim:migrate`): both auto-detected entry modes
 (greenfield + repartition), a code-derived dependency graph with coupling-channel

@@ -11,13 +11,13 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T08:08:24Z
-updated: 2026-07-12T10:37:04Z
-origin: docs/specs/jim/034-contract-graph/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/006-contract-graph/spec.md
 ---
 
 > **Resolved by spec 044 (partition-health sensors) — 2026-07-12.** The
 > split/merge trend sensors and the silent reconcile-tail threshold hook
-> shipped in `docs/specs/jim/044-partition-health/`; this issue's scope is
+> shipped in `docs/specs/blueprint/016-partition-health/`; this issue's scope is
 > fully covered.
 
 ## Description

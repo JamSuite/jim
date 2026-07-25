@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:44:11Z
-updated: 2026-07-05T22:55:35Z
-origin: docs/specs/jim/037-verify-contracts/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/009-verify-contracts/review.md
 ---
 
 ## Description
@@ -32,7 +32,7 @@ absence to `violated` (or `failed`) would pass the entire current suite —
 declared usage, and assert the consumer side emits **no** edge record for that
 edge (not `violated`, not `failed`).
 
-Surfaced by the spec 037 post-build review (`docs/specs/jim/037-verify-contracts/review.md`, Finding 2).
+Surfaced by the spec 037 post-build review (`docs/specs/blueprint/009-verify-contracts/review.md`, Finding 2).
 
 ---
 

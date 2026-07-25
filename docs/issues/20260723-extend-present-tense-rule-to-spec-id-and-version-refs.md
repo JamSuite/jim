@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T20:23:16Z
-updated: 2026-07-24T00:34:08Z
+updated: 2026-07-25T07:49:14Z
 origin: docs/specs/jim/000-blueprint/spec.md
 ---
 
@@ -66,8 +66,8 @@ judge caught it.
 
 ## Resolution
 
-Resolved under spec `jim/052`
-(`docs/specs/jim/052-blueprint-provenance-guard/`). Scoped as a feature spec,
+Resolved under spec `blueprint/024`
+(`docs/specs/blueprint/024-blueprint-provenance-guard/`). Scoped as a feature spec,
 built TDD, reviewed `aligned` (0 findings), and folded into the `jim` blueprint.
 
 **Doctrine home — a separate companion doc, not a fourth present-tense

@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-26T06:43:40Z
-updated: 2026-06-26T22:52:58Z
-origin: docs/specs/jim/027-review-depth/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/sdlc/015-review-depth/spec.md
 ---
 
 ## Description

@@ -177,7 +177,7 @@ Issue Collection — docs/issues/
   Open: 47    Closed: 12
 
   By priority      By label                By origin
-    critical   2     auth         9          docs/specs/jim/016-sec/   5
+    critical   2     auth         9          docs/specs/sdlc/013-sec/   5
     high      11     middleware   6          docs/brainstorms/…        2
     medium    20     security     6          (unattributed)           18
     low       14     session      4
@@ -462,7 +462,7 @@ commit," NOT "proven conflict-free." This is fundamental, not a tooling gap.
 ┌─ #105 · 20260603-auth-middleware-swallow-401 ───────────────┐
 │ status   open            priority  high                      │
 │ labels   auth, middleware                                    │
-│ origin   docs/specs/jim/016-sec/                             │
+│ origin   docs/specs/sdlc/013-sec/                             │
 │ created  2026-06-03      updated   2026-06-03                │
 │ relations                                                    │
 │   related-to → csrf-token-rotation                           │

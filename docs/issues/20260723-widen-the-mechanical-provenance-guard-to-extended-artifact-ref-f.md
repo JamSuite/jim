@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-23T21:23:49Z
-updated: 2026-07-23T21:23:49Z
-origin: docs/specs/jim/052-blueprint-provenance-guard/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/024-blueprint-provenance-guard/spec.md
 ---
 
 ## Description
@@ -51,5 +51,5 @@ only if a real offender surfaces — a reactive widening, not preemptive.
 ## Origin
 
 Surfaced during `/jim:spec` + `/jim:research` for spec 052
-(`docs/specs/jim/052-blueprint-provenance-guard`), as the explicit Out-of-Scope
+(`docs/specs/blueprint/024-blueprint-provenance-guard`), as the explicit Out-of-Scope
 deferral of the full `CLAUDE.md` artifact-ref set.

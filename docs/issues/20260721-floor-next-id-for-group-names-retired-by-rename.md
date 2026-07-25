@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-21T18:50:19Z
-updated: 2026-07-21T18:50:19Z
-origin: docs/specs/jim/047-partition-split/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/019-partition-split/spec.md
 ---
 
 ## Description
@@ -37,5 +37,5 @@ key, display-data-shaped but consumable by `vacated-max`), and teach
 `vacated-max` an `op=rename` arm keyed on `old=` + `maxid=`. Until then the
 ambiguity is bridged only by event timestamps.
 
-Relates to spec 047 (`docs/specs/jim/047-partition-split/`) AC 11 and the
+Relates to spec 047 (`docs/specs/blueprint/019-partition-split/`) AC 11 and the
 043 `op=rename` event shape.

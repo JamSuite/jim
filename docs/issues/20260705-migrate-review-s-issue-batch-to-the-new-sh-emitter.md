@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T07:25:21Z
-updated: 2026-07-23T07:33:30Z
-origin: docs/specs/jim/036-verify-loop/plan.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/008-verify-loop/plan.md
 ---
 
 ## Description

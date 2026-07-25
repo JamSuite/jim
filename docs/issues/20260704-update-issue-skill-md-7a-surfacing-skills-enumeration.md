@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-04T11:07:13Z
-updated: 2026-07-04T11:07:13Z
-origin: docs/specs/jim/034-contract-graph/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/006-contract-graph/review.md
 ---
 
 ## Description

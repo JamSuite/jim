@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T22:47:39Z
-updated: 2026-07-23T06:15:05Z
+updated: 2026-07-25T07:49:14Z
 origin: docs/specs/jim/000-blueprint/spec.md
 ---
 
@@ -41,7 +41,7 @@ in one place, so a future change to the slot name or layout is picked up
 automatically.
 
 Surfaced by the spec 037 post-build review's living-intent sensor
-(`docs/specs/jim/037-verify-contracts/review.md` → Living intent) and forked at
+(`docs/specs/blueprint/009-verify-contracts/review.md` → Living intent) and forked at
 the blueprint update.
 
 resolved: fix the code
@@ -82,7 +82,7 @@ the shared `cmd_edges` root and `cmd_health` (`skills/verify/scripts/jimverify.s
 
 ## Resolution
 
-Resolved 2026-07-23 by spec `jim/049` (`049-contracts-check-hardening`). All five
+Resolved 2026-07-23 by spec `blueprint/021` (`049-contracts-check-hardening`). All five
 folded items shipped: the blueprint-path resolver routes all three sites (widened
 to include `cmd_faces_aggregate`) through `jimfile.sh path blueprint`, dropping the
 now-redundant `<specs-root>` arg; the self-edge guard lives at the shared

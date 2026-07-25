@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-07T11:03:54Z
-updated: 2026-07-09T11:11:44Z
-origin: docs/specs/jim/038-partition-migration/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/010-partition-migration/review.md
 ---
 
 ## Description

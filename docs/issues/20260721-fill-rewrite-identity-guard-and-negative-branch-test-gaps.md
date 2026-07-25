@@ -11,13 +11,13 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-21T05:45:36Z
-updated: 2026-07-21T19:39:01Z
-origin: docs/specs/jim/046-spec-migration/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/018-spec-migration/review.md
 ---
 
 ## Description
 
-## Finding (from review of spec jim/046)
+## Finding (from review of spec blueprint/018)
 
 The `rewrite-identity` verb's tests leave gaps for a security-sensitive mutating
 verb:
@@ -36,4 +36,4 @@ Add to `tests/jimpartition.sh`: a multi-file guard-abort case (good + guard-
 failing → good file unedited), a `cart/subdir` no-rewrite case, and the
 `valid_relpath` / invalid-`new` / no-git negative cases.
 
-Origin: docs/specs/jim/046-spec-migration/review.md (Finding 2)
+Origin: docs/specs/blueprint/018-spec-migration/review.md (Finding 2)

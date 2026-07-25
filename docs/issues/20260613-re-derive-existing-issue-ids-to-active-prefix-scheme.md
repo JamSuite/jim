@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-13T00:00:00Z
-updated: 2026-06-18T07:42:03Z
-origin: docs/specs/jim/021-issue-id-prefix/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/issue/005-issue-id-prefix/spec.md
 ---
 
 ## Description

@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-30T20:35:19Z
-updated: 2026-07-08T11:34:08Z
-origin: docs/specs/jim/029-blueprint-spec/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/001-blueprint-spec/spec.md
 ---
 
 ## Description
@@ -68,7 +68,7 @@ blueprint**:
 ## Slicing
 
 - **Spec A — engine core** — ✅ **shipped as spec 035** (2026-07-05,
-  `docs/specs/jim/035-verify-engine/`): `/jim:verify`, on-demand, one group;
+  `docs/specs/blueprint/007-verify-engine/`): `/jim:verify`, on-demand, one group;
   enum + `check:` format change; native floor (`skills/verify/scripts/jimverify.sh`);
   registry; judge rung; appetite knob; report/issues/ledger. Exercised on
   jim's own single-group repo. Swarm and blast-radius-scoped spend deferred to
@@ -76,7 +76,7 @@ blueprint**:
 - **Spec B — pipeline integration:** *split at scoping (2026-07-05) on
   feature/code-relationship grounds, as this bullet anticipated.*
   - **B1 — fold-back loop** — ✅ **shipped as spec 036** (2026-07-05,
-    `docs/specs/jim/036-verify-loop/`): the `/jim:review` living-intent sensor
+    `docs/specs/blueprint/008-verify-loop/`): the `/jim:review` living-intent sensor
     (whole-group floor + change-selected judges, a separate `## Living intent`
     dimension that never sets the alignment verdict) and the 030/031 violation
     fork grounded in engine outcomes on **both** adapters (`--from-review` /
@@ -84,7 +84,7 @@ blueprint**:
     Exercised end-to-end on jim's own blueprint; jim's `000-blueprint` then
     regenerated to structured `check:` data (off the all-judge fallback).
   - **B2 — contract-graph integration** — ✅ **shipped as spec 037**
-    (2026-07-05, `docs/specs/jim/037-verify-contracts/`): the engine's
+    (2026-07-05, `docs/specs/blueprint/009-verify-contracts/`): the engine's
     cross-group contract mode — 034's detectors (leak / breaking /
     dead-surface) code-grounded on both sides of each edge, a deterministic
     cross-reference floor (`contracts-check`), edge-generalized judges under
@@ -93,7 +93,7 @@ blueprint**:
     provides-entry criticality with the one-way ratchet. Detector-hardening
     and blast-radius stayed one spec, as scoping resolved.
 - **Spec C — retirement direction** — ✅ **shipped as spec 041** (2026-07-08,
-  `docs/specs/jim/041-verify-retirement/`): the on-demand `/jim:verify
+  `docs/specs/blueprint/013-verify-retirement/`): the on-demand `/jim:verify
   --retirement [<group>]` sweep runs the load-bearing sources in reverse,
   flagging stale invariants, stale requires entries, and dead surface — signal
   only, offered as issues, never written. A new `jimverify.sh scope-census`
@@ -146,7 +146,7 @@ blueprint**:
 
 ## New inputs from spec 034 (contract graph)
 
-034 shipped (2026-07-05, `docs/specs/jim/034-contract-graph/`; origin
+034 shipped (2026-07-05, `docs/specs/blueprint/006-contract-graph/`; origin
 [[20260630-add-the-cross-group-contract-graph-and-blast-radius]], since closed)
 and delivers the reconciled cross-group contract graph. Its two hand-offs
 were consumed by **Spec B2** (spec 037):

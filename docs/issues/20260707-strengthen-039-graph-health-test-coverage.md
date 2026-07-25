@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-07T06:33:25Z
-updated: 2026-07-09T10:58:00Z
-origin: docs/specs/jim/039-graph-health/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/011-graph-health/review.md
 ---
 
 ## Description
@@ -47,8 +47,8 @@ graph?" doctrine #62 settles across `cmd_edges` / `cmd_contracts_check` /
 `cmd_health` — a layer decision (guard at the shared `cmd_edges` root vs
 per-loop), not a current behavior to pin blind here.
 
-Origin: post-build review of spec jim/039
-(`docs/specs/jim/039-graph-health/review.md`).
+Origin: post-build review of spec blueprint/011
+(`docs/specs/blueprint/011-graph-health/review.md`).
 
 ## Resolution (2026-07-09)
 

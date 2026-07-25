@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-11T07:57:56Z
-updated: 2026-07-23T10:59:10Z
+updated: 2026-07-25T07:49:14Z
 origin: conversation
 ---
 
@@ -62,7 +62,7 @@ artifact. Intent-vs-wording is a different discipline from data-vs-instruction.
 
 ## Resolution
 
-Shipped in spec `jim/050` (Enforce present-tense discipline at blueprint draft
+Shipped in spec `blueprint/022` (Enforce present-tense discipline at blueprint draft
 composition). All three proposed actions landed:
 
 1. Validation Checklist item added to `skills/blueprint/SKILL.md`.

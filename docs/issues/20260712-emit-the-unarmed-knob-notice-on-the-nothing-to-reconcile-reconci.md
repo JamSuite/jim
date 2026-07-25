@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-12T10:12:32Z
-updated: 2026-07-12T19:50:46Z
-origin: docs/specs/jim/044-partition-health/review.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/blueprint/016-partition-health/review.md
 ---
 
 ## Description
@@ -20,7 +20,7 @@ origin: docs/specs/jim/044-partition-health/review.md
 ## Context
 
 Surfaced by the post-build review of spec 044 (partition-health sensors) as
-Finding 1 (`docs/specs/jim/044-partition-health/review.md`), alignment
+Finding 1 (`docs/specs/blueprint/016-partition-health/review.md`), alignment
 `minor-drift`.
 
 ## The gap
@@ -77,5 +77,5 @@ faithful version would add knob resolution and a bespoke message to the cheap
 fast-exit branch to cover a transient, structurally-inert window — not worth the
 cost.
 
-AC #5 and AC #6 in `docs/specs/jim/044-partition-health/spec.md` now scope the
+AC #5 and AC #6 in `docs/specs/blueprint/016-partition-health/spec.md` now scope the
 unarmed notice to the full-run path.
