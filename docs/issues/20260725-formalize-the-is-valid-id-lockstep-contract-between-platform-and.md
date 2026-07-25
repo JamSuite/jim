@@ -1,6 +1,6 @@
 ---
 id: 20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and
-num: 96
+num: 98
 title: "formalize the is-valid-id lockstep contract between platform and issue"
 status: open
 priority: medium

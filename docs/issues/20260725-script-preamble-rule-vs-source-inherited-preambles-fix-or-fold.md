@@ -1,6 +1,6 @@
 ---
 id: 20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold
-num: 97
+num: 99
 title: "script-preamble rule vs source-inherited preambles: fix or fold"
 status: open
 priority: medium

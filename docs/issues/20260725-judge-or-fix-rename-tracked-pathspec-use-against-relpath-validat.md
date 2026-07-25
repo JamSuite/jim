@@ -1,6 +1,6 @@
 ---
 id: 20260725-judge-or-fix-rename-tracked-pathspec-use-against-relpath-validat
-num: 98
+num: 100
 title: "judge or fix rename-tracked pathspec use against relpath-validation"
 status: open
 priority: medium

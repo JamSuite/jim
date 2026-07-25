@@ -1,6 +1,6 @@
 ---
 id: 20260725-record-the-sdlc-side-half-of-the-fold-back-loop-contract
-num: 99
+num: 101
 title: "record the sdlc-side half of the fold-back-loop contract"
 status: open
 priority: low

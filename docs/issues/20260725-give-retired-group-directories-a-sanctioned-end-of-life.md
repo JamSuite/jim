@@ -1,6 +1,6 @@
 ---
 id: 20260725-give-retired-group-directories-a-sanctioned-end-of-life
-num: 104
+num: 106
 title: "give retired group directories a sanctioned end-of-life"
 status: open
 priority: medium

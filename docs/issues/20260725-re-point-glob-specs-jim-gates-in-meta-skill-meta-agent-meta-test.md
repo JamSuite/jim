@@ -1,6 +1,6 @@
 ---
 id: 20260725-re-point-glob-specs-jim-gates-in-meta-skill-meta-agent-meta-test
-num: 102
+num: 104
 title: "re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test"
 status: closed
 priority: high

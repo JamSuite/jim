@@ -1,6 +1,6 @@
 ---
 id: 20260725-cross-group-enforcement-of-plugin-wide-convention-invariants
-num: 95
+num: 97
 title: "cross-group enforcement of plugin-wide convention invariants"
 status: open
 priority: medium
