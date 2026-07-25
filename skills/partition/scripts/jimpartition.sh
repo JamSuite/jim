@@ -43,11 +43,11 @@ export LC_ALL=C
 JIMFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../file/scripts" 2>/dev/null && pwd)/jimfile.sh"
 
 # Sibling scripts the health verb composes, BASH_SOURCE-relative so
-# they travel with the plugin tree: the reconcile-series trend source (review)
+# they travel with the plugin tree: the reconcile-series trend source (ledger)
 # and the threshold-knob resolver (conf). Reading numeric knobs via jimconf is
 # not the never-execute-config boundary — nothing config-derived is executed,
 # only integer-compared.
-JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../review/scripts" 2>/dev/null && pwd)/jimledger.sh"
+JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../ledger/scripts" 2>/dev/null && pwd)/jimledger.sh"
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" 2>/dev/null && pwd)/jimconf.sh"
 
 # ─── Section: Shared helpers ─────────────────────────────────────────────────

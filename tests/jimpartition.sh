@@ -16,7 +16,7 @@ source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 
 SCRIPT_jimpartition="$REPO_ROOT/skills/partition/scripts/jimpartition.sh"
 # Sibling scripts the rename continuity/ratchet cases (Task 7) compose with.
-SCRIPT_JIMLEDGER="$REPO_ROOT/skills/review/scripts/jimledger.sh"
+SCRIPT_JIMLEDGER="$REPO_ROOT/skills/ledger/scripts/jimledger.sh"
 SCRIPT_jimverify="$REPO_ROOT/skills/verify/scripts/jimverify.sh"
 JIMFILE="$REPO_ROOT/skills/file/scripts/jimfile.sh"
 

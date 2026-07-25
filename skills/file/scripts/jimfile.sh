@@ -75,10 +75,10 @@ export LC_ALL=C
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
 
 # Path to the sibling jimledger.sh (the vacated-id floor source). BASH_SOURCE-relative
-# like JIMCONF (skills/file/scripts/ → skills/review/scripts/). Consulted
-# best-effort by next-id — an older checkout without the review skill resolves to
+# like JIMCONF (skills/file/scripts/ → skills/ledger/scripts/). Consulted
+# best-effort by next-id — an older checkout without the ledger skill resolves to
 # a non-existent path and degrades to directory-only id derivation.
-JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../review/scripts" 2>/dev/null && pwd)/jimledger.sh"
+JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../ledger/scripts" 2>/dev/null && pwd)/jimledger.sh"
 
 # Valid artifact kinds. Drives `path <kind>` validation and `kinds` output.
 readonly KINDS=(spec plan research debug brainstorm issue blueprint)
