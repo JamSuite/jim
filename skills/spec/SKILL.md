@@ -7,7 +7,7 @@ description: >
   use for technical planning (/jim:plan) or implementation (/jim:build).
 agent: pm
 argument-hint: "[idea-or-name]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:spec-check) Skill(jim:blueprint) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:spec-check) Skill(jim:blueprint) Read Write Edit
 ---
 
 # /jim:spec
@@ -97,7 +97,7 @@ Create the placeholder dir (the parent of that path) and record the stage start:
 
 ```
 mkdir -p <specs>/<group>/<id>-wip
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs>/<group>/<id>-wip spec started
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs>/<group>/<id>-wip spec started
 ```
 
 `wip` is a placeholder slug, renamed to the real slug in Step 8. This creates an uncommitted `ledger.md` (in an otherwise-empty spec dir) right away; if you abandon the interview, just delete the `<id>-wip` dir. If `jimledger.sh` is absent (an older checkout), skip this entirely — Step 8 then assigns the id and creates the final dir directly, as before.
@@ -310,7 +310,7 @@ Ask: "Want to change anything, or should I mark this as approved?"
 - If the user approves → set `status: approved` in the frontmatter (use Edit, not Write), then record the spec stage's completion — its true finish, after all the interview and self-check back-and-forth:
 
   ```
-  bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> spec finished
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> spec finished
   ```
 
   Skip silently if `jimledger.sh` is absent or no `started` was recorded for this spec.
@@ -327,9 +327,9 @@ If `$ARGUMENTS` points to an existing spec, or if step 3 identified a name colli
 4. If updating in place: record the stage start in this spec's directory (it already exists), apply changes via Edit (preserve sections the user didn't ask to change), then on the user's confirmation record the stage finish in the same directory — skip both if `jimledger.sh` is absent:
 
    ```
-   bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> spec started
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> spec started
    # … apply the Edits, get confirmation …
-   bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> spec finished
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> spec finished
    ```
 5. If creating new: follow the normal generation path (step 8) with a new ID.
 

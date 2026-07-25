@@ -382,7 +382,7 @@ composing the targeted diff, read the blueprint's `last_full_generate`
 watermark and count the updates accumulated since it:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh updates-since <blueprint-dir> <last_full_generate>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh updates-since <blueprint-dir> <last_full_generate>
 ```
 
 - **rc 2** — no full-generate baseline is recorded (a pre-feature blueprint

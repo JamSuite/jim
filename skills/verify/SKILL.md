@@ -11,7 +11,7 @@ description: >
   fixing code (/jim:build) — the engine reports and offers issues, never fixes.
 agent: reviewer
 argument-hint: "[--appetite critical|high|medium|low] <group> | --from-review <spec-dir> <group> | --since <ref> <group> | --contracts [<group>] | --retirement [<group>]"
-allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Agent(judge) Read Write Glob Grep
+allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Agent(judge) Read Write Glob Grep
 ---
 
 # /jim:verify
@@ -122,9 +122,9 @@ The full methodology — edge semantics, the facts-vs-verdicts classification, p
 **Contract-run durability.** On-demand and trigger-scoped contract runs record their outcome on the **specs-root** ledger (the 034 reconcile precedent — a project-tier event, not a single group's) and self-commit it. `<specs-root>` is `jimfile.sh get specs`:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root> verify started tier=project op=contracts
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root> verify finished tier=project op=contracts edges=<n> holds=<n> violated=<n> failed=<n> skipped=<n> leaks=<n> breaking=<n> dead=<n>
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-verify <specs-root>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs-root> verify started tier=project op=contracts
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs-root> verify finished tier=project op=contracts edges=<n> holds=<n> violated=<n> failed=<n> skipped=<n> leaks=<n> breaking=<n> dead=<n>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh commit-verify <specs-root>
 ```
 
 `commit-verify` stages `ledger.md` alone and works unchanged for the specs root. A caller-scoped `--entries` trigger returns its VERIFY-OUTCOME block to the caller and records nothing itself — the caller owns durability (the spec 036 suppression rule).
@@ -183,7 +183,7 @@ SET map = the resolved map path (or `NOT_FOUND`)
 Verify events ride the group's own `000-blueprint/ledger.md`. Record the start (fenced bash; you commit it yourself in Step 9, not here):
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <blueprint-dir> verify started
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <blueprint-dir> verify started
 ```
 
 Skip silently if `jimledger.sh` is absent (an older checkout).
@@ -279,8 +279,8 @@ A declined offer leaves no hidden state — the violation still counts in the le
 **9d. Record the run** (AC #11). No verdict artifact is persisted — the report is the run's surface. Record the outcome counts on the ledger and self-commit them (verify is on-demand with no approval gesture to ride):
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <blueprint-dir> verify finished checked=<n> holds=<n> violated=<n> failed=<n> unconfigured=<n> skipped=<n>
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-verify <blueprint-dir>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <blueprint-dir> verify finished checked=<n> holds=<n> violated=<n> failed=<n> unconfigured=<n> skipped=<n>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh commit-verify <blueprint-dir>
 ```
 
 **In `--from-review` mode, extend the finished event with channel counters** — append `inchange=<n> preexisting=<n>` to the same event (where `preexisting` counts `pre-existing` + `unlocalized` violations), so a violation nobody filed stays attributable (AC #12). `--since` records the base counters unchanged. **When the contract-edge phase ran** (either scoped adapter), also append `edges_checked=<n> edge_violations=<n>` to the same group-ledger event. `commit-verify` is unchanged in all cases.

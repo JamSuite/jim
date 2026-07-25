@@ -8,7 +8,7 @@ description: >
   (/jim:research), or code implementation (/jim:build).
 agent: architect
 argument-hint: "[spec-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh edges *) Bash(mkdir *) Skill(jim:sec) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh edges *) Bash(mkdir *) Skill(jim:sec) Read Write Edit
 ---
 
 # /jim:plan
@@ -52,7 +52,7 @@ When neither gate flag is set, this step is skipped silently and the conversatio
 **Ledger — record the stage start** (best-effort instrumentation for `/jim:review`). The gates above have passed, so the plan stage is committed. `<spec-dir>` (the directory holding the spec) is a runtime value, so call the helper from a fenced bash block (not `!`-injection):
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> plan started
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> plan started
 ```
 
 This appends to `<spec-dir>/ledger.md`; you do not commit it — the developer commits it with `plan.md`. If `jimledger.sh` is absent (an older checkout), skip silently.
@@ -243,7 +243,7 @@ Status stays `draft` until the user explicitly approves. Ask: "Any changes, or s
 When the user approves, set `status: approved` in the frontmatter (use Edit), then record the plan stage's completion — its true finish, after the design, self-check, and any security-driven revisions:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> plan finished
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> plan finished
 ```
 
 Skip silently if `jimledger.sh` is absent or no `started` was recorded. Never set `approved` without explicit human confirmation.

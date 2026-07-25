@@ -13,7 +13,7 @@ description: >
   compliance audits.
 agent: security
 argument-hint: "[spec-dir | file-path | directory]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(mkdir *) Read Write Edit
 ---
 
 # /jim:sec
@@ -74,7 +74,7 @@ In spec-scoped mode, check whether `security.md` already exists in the target di
 **Ledger — record the stage start** (best-effort instrumentation for `/jim:review`, spec-scoped mode only). `<spec-dir>` is a runtime value, so call the helper from a fenced bash block (not `!`-injection):
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> sec started
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> sec started
 ```
 
 This appends to `<spec-dir>/ledger.md`; you do not commit it — the developer commits it with `security.md`. If `jimledger.sh` is absent (an older checkout), skip silently. In ad-hoc mode there is no spec directory, so skip the ledger entirely.
@@ -303,7 +303,7 @@ Show the findings to the developer with the Critical-finding count highlighted p
 **Ledger — record the stage finish** (spec-scoped mode only — skip if you did not record a start, or if `jimledger.sh` is absent). After `security.md` is finalized (routing and the candidate batch applied):
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> sec finished
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> sec finished
 ```
 
 ### 16. Halt-error format (when loop limit reached with unresolved findings)

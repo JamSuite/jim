@@ -8,7 +8,7 @@ description: >
   or spec creation (/jim:spec).
 agent: researcher
 argument-hint: "[spec-path | brainstorm-path | directory | topic]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(mkdir *) Read Write Edit
 ---
 
 # /jim:research
@@ -42,7 +42,7 @@ Use `$ARGUMENTS` to determine the research target and mode:
   **Ledger — record the stage start** (best-effort instrumentation for `/jim:review`, spec-linked research only). `<spec-dir>` is a runtime value, so call the helper from a fenced bash block (not `!`-injection):
 
   ```
-  bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> research started
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> research started
   ```
 
   This appends to `<spec-dir>/ledger.md`; you do not commit it — the developer commits it with `research.md`. If `jimledger.sh` is absent (an older checkout), skip silently. For non-spec research (the cases below), there is no spec directory, so skip the ledger entirely.
@@ -209,5 +209,5 @@ Ask for approval. Write the file (Write for new, Edit for updates). Do not proce
 **Ledger — record the stage finish** (spec-linked research only — skip if you did not record a start, or if `jimledger.sh` is absent). After the file is written and the developer is satisfied:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <spec-dir> research finished
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> research finished
 ```

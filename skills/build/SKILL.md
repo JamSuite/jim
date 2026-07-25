@@ -7,7 +7,7 @@ description: >
   (/jim:research), or planning (/jim:plan).
 agent: coder
 argument-hint: "[spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:arch) Skill(jim:sec) Skill(jim:review) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:arch) Skill(jim:sec) Skill(jim:review) Read Write Edit
 ---
 
 # /jim:build
@@ -57,7 +57,7 @@ If the plan is ambiguous (a task's intent is unclear or its Verify command is ma
 Then open the jim ledger so the later review phase can scope exactly this build's changes — even on a branch carrying several specs. Before the first task executes, record the baseline:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh start <spec-dir>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh start <spec-dir>
 ```
 
 Commit the new `ledger.md` with a `chore(review): open jim ledger` message so the baseline survives an interrupted build. This is the first of two ledger commits; the second lands at the completion gate. (If `jimledger.sh` is absent — an older checkout — skip silently; the ledger is best-effort instrumentation.)
@@ -204,7 +204,7 @@ After all tasks are marked `[x]`:
 4. Close the jim ledger and commit it:
 
    ```
-   bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh finish <spec-dir>
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh finish <spec-dir>
    ```
 
    Commit the updated `ledger.md` with `chore(review): close jim ledger` — the second of two ledger commits. (If `jimledger.sh` is absent, skip silently.)

@@ -15,7 +15,7 @@ description: >
   spec → plan → build workflow).
 agent: architect
 argument-hint: "[greenfield | repartition | path | directory | rename <old> <new> | split <old> into <new>... | merge <src>... into <target> | health]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/partition/scripts/jimpartition.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Skill(jim:blueprint) Agent(gatherer) Read Write Edit Glob Grep
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/partition/scripts/jimpartition.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Skill(jim:blueprint) Agent(gatherer) Read Write Edit Glob Grep
 ---
 
 # /jim:partition
@@ -55,7 +55,7 @@ Runtime values, so fenced bash (not `!`-injection):
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root> partition started tier=project mode=<greenfield|repartition>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs-root> partition started tier=project mode=<greenfield|repartition>
 ```
 
 State the detected mode plainly. In repartition mode, read the existing
@@ -177,7 +177,7 @@ Run `Skill(jim:blueprint) --reconcile`, then read the counters back through the
 trusted channel — never report prose:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh last-reconcile <specs-root>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh last-reconcile <specs-root>
 ```
 
 While `undeclared` / `unresolved` / `stale` > 0: classify each finding —
@@ -205,7 +205,7 @@ leaves no hidden state.
 name, or content value (DD 7, security Finding 6):
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root> partition finished tier=project mode=<...> outcome=<materialized|blocked|readiness-only|upgraded> groups=<int> edges=<int> gaps=<int> misalignments=<int> filed=<int>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs-root> partition finished tier=project mode=<...> outcome=<materialized|blocked|readiness-only|upgraded> groups=<int> edges=<int> gaps=<int> misalignments=<int> filed=<int>
 ```
 
 The durable record is the materialized artifacts, the filed issues, and these
@@ -462,7 +462,7 @@ Resolve the specs root (the ledger home) and the map, and record the start:
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get specs
 bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path blueprint
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root> partition started tier=project op=health
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs-root> partition started tier=project op=health
 ```
 
 ### 2. Gather the signal facts — all deterministic, from the trusted channel
@@ -507,8 +507,8 @@ artifact (AC #10, AC #13). Then record the finished event and self-commit the
 ledger alone:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh event <specs-root> partition finished tier=project op=health signals=<int> fired=<int>
-bash ${CLAUDE_PLUGIN_ROOT}/skills/review/scripts/jimledger.sh commit-verify <specs-root> health
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs-root> partition finished tier=project op=health signals=<int> fired=<int>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh commit-verify <specs-root> health
 ```
 
 The stage event carries content-free counters only (signals evaluated / fired)
