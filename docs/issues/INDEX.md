@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 51
+- Open: 52
 - Closed: 52
 
 ## Issues
@@ -103,6 +103,7 @@
 - `20260723-widen-the-mechanical-provenance-guard-to-extended-artifact-ref-f` — Widen the mechanical provenance guard to extended artifact-ref forms · status: open · num: 93 · priority: low · created: 2026-07-23T21:23:49Z · labels: [blueprint, provenance] · origin: docs/specs/blueprint/024-blueprint-provenance-guard/spec.md
 - `20260725-cross-group-enforcement-of-plugin-wide-convention-invariants` — cross-group enforcement of plugin-wide convention invariants · status: open · num: 95 · priority: medium · created: 2026-07-25T08:04:39Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and` — formalize the is-valid-id lockstep contract between platform and issue · status: open · num: 96 · priority: medium · created: 2026-07-25T08:04:40Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-give-retired-group-directories-a-sanctioned-end-of-life` — give retired group directories a sanctioned end-of-life · status: open · num: 104 · priority: medium · created: 2026-07-25T08:22:51Z · labels: [partition] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260725-judge-or-fix-rename-tracked-pathspec-use-against-relpath-validat` — judge or fix rename-tracked pathspec use against relpath-validation · status: open · num: 98 · priority: medium · created: 2026-07-25T08:04:42Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-re-point-glob-specs-jim-gates-in-meta-skill-meta-agent-meta-test` — re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test · status: open · num: 102 · priority: high · created: 2026-07-25T08:04:47Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-record-the-sdlc-side-half-of-the-fold-back-loop-contract` — record the sdlc-side half of the fold-back-loop contract · status: open · num: 99 · priority: low · created: 2026-07-25T08:04:44Z · labels: [partition] · origin: BLUEPRINT.md
