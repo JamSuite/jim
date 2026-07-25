@@ -10,7 +10,7 @@ description: >
   (/jim:spec, /jim:plan), or fixing code (/jim:build, /jim:debug).
 agent: reviewer
 argument-hint: "[--depth lean|thorough] [spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Skill(jim:sec) Skill(jim:blueprint) Skill(jim:verify) Agent(investigator) Agent(judge) Read Write Glob Grep
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Skill(jim:sec) Skill(jim:blueprint) Skill(jim:verify) Agent(investigator) Agent(judge) Read Write Glob Grep
 ---
 
 # /jim:review
@@ -40,7 +40,7 @@ Read from the spec directory: `spec.md` (note the acceptance criteria, `type`, a
 Once `spec.md` is confirmed present, record the review stage's start on the ledger (fenced bash, not `!`-injection). `<spec-dir>` is a runtime value:
 
 ```
-bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh event <spec-dir> review started
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> review started
 ```
 
 This appends to (and creates if absent) `<spec-dir>/ledger.md`; it rides in the working tree and is committed with `review.md` in Step 8. Skip silently if `jimledger.sh` is absent (an older checkout).
@@ -50,9 +50,9 @@ This appends to (and creates if absent) `<spec-dir>/ledger.md`; it rides in the 
 The spec directory is a runtime value, so call the ledger helper from fenced bash blocks (not `!`-injection):
 
 ```
-bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh metrics <spec-dir>
-bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh files <spec-dir>
-bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh diff <spec-dir>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh metrics <spec-dir>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh files <spec-dir>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh diff <spec-dir>
 ```
 
 - `metrics` is a **trusted** channel — a fixed key set of `key=value` lines, never free-form ingested text (commit counts and types, diffstat, validated `base_sha`/`head_sha`, and per-stage process metrics `<stage>_runs` / `<stage>_interruptions` / `<stage>_duration_seconds` for the instrumented stages — `spec`, `research`, `plan`, `sec`, `build`, `review`; absent keys mean that stage was not instrumented). It also surfaces the latest review verdict, `review_alignment` / `review_findings`, validated on extraction. The reviewer may rely on these directly. This Step-2 read precedes the verdict, so *this run's own* `review_*` metrics are not complete yet — Step 8 re-reads after `review finished` is recorded. (`metrics` now emits the ledger-only stage metrics even when the build had no baseline, so review stays self-measurable.)
@@ -104,7 +104,7 @@ Default each AC to unproven until the evidence shows full satisfaction. Assign o
 Once the verdict is assigned (and you know how many findings you will record in Step 8), record the review stage's completion on the ledger — **before** composing `review.md`, so the file can report its own metrics:
 
 ```
-bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh event <spec-dir> review finished alignment=<verdict> findings=<n>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> review finished alignment=<verdict> findings=<n>
 ```
 
 `<verdict>` is the assigned verdict; `<n>` is your findings count. `review.md`, not the ledger, is the **authoritative** verdict — the ledger line is an advisory record so the verdict trajectory survives re-runs (`major-drift → aligned` stays visible). Skip silently if `jimledger.sh` is absent.
@@ -144,7 +144,7 @@ Determine `artifacts_present` from which artifacts exist in the spec directory: 
 With `review finished` now recorded (Step 4d), re-read the metrics so `review.md` carries its own process metrics (`review_runs` / `review_interruptions` / `review_duration_seconds`) alongside the other stages:
 
 ```
-bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh metrics <spec-dir>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh metrics <spec-dir>
 ```
 
 Read `assets/review-template.md`. Set `spec:` to the spec's `<group>/<NNN>` identifier — the `group` and `id` frontmatter fields from `spec.md` joined by `/` (e.g. `group: jim` + `id: 026` → `jim/026`), never a bare filename or path. Set `type:` from `spec.md`'s `type` field (`feature` / `bug` / `refactor`), and `date:` to the current UTC calendar date — the `YYYY-MM-DD` prefix of `jimfile.sh now`. Populate the mineable frontmatter (metrics + verdict + artifacts present) and the narrative body (summary; alignment vs spec / plan / architecture, carrying the **recorded investigation evidence** — locations examined, callers/consumers and tests checked, per high-stakes region and AC; metrics; security regressions; findings; deviations & feedback). Record the **depth used**, and when the fan-out was capped, the **bounded coverage** (which regions were not deep-investigated). **When the 4e sensor ran**, populate the `## Living intent` section and the `invariant_violations` frontmatter counter from its VERIFY-OUTCOME records — per-invariant non-holding outcomes with their channel labels, the sensed / holds / violation summary, and the coverage/degradation notes (appetite in force, an `UNSCOPED` floor, capped or change-selected judges, legacy-blueprint fallback, a contained engine failure); when the sensor was **skipped** (no blueprint), omit the section and leave `invariant_violations` empty. **When the contract-edge phase ran** (the block carries edge records), also render the `### Contracts` subsection from those records — per-edge non-holding outcomes in spec-034 finding-class language (code-level leak / breaking) with their side and channel labels, the edges-checked / holds / violation summary — and set the `contract_violations` frontmatter counter; when it did not run, omit that subsection and leave `contract_violations` empty. Living intent is a dimension distinct from the alignment verdict and never changes it (AC #3). Write to `{spec-dir}/review.md`. On a re-run, overwrite `review.md` (latest snapshot wins); the ledger is append-only — your `review finished` line adds to the verdict trajectory rather than replacing it.
@@ -152,7 +152,7 @@ Read `assets/review-template.md`. Set `spec:` to the spec's `<group>/<NNN>` iden
 After `review.md` is written, durably record this review by committing `review.md` and `ledger.md` together — the single audited, path-scoped commit (never a broad git command):
 
 ```
-bash ${CLAUDE_SKILL_DIR}/scripts/jimledger.sh commit-review <spec-dir> <verdict>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh commit-review <spec-dir> <verdict>
 ```
 
 If the commit fails (not a git repo, detached HEAD, a rejecting pre-commit hook, nothing to commit), report the failure prominently and leave `review.md` intact — the developer commits it manually; never abort the review or force the commit. Skip silently if `jimledger.sh` is absent.
