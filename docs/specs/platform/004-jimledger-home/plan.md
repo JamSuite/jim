@@ -118,34 +118,34 @@ flowchart LR
 
 ## Task Breakdown
 
-1. [ ] Create `skills/ledger/scripts/` and `git mv skills/review/scripts/jimledger.sh skills/ledger/scripts/jimledger.sh`; update the self-header comment at line 3 to the new path.
+1. [x] Create `skills/ledger/scripts/` and `git mv skills/review/scripts/jimledger.sh skills/ledger/scripts/jimledger.sh`; update the self-header comment at line 3 to the new path.
    **Verify:** `test -f skills/ledger/scripts/jimledger.sh && ! test -e skills/review/scripts/jimledger.sh && git status --short | grep -q '^R' && head -3 skills/ledger/scripts/jimledger.sh | grep -q 'skills/ledger/scripts/jimledger.sh'`
 
-2. [ ] Update the two `BASH_SOURCE` resolvers — `skills/file/scripts/jimfile.sh:81` and `skills/partition/scripts/jimpartition.sh:50` — hop `../../review/scripts` → `../../ledger/scripts` (and their comment blocks).
+2. [x] Update the two `BASH_SOURCE` resolvers — `skills/file/scripts/jimfile.sh:81` and `skills/partition/scripts/jimpartition.sh:50` — hop `../../review/scripts` → `../../ledger/scripts` (and their comment blocks).
    **Verify:** `! grep -rn "review/scripts\"" skills/file/scripts/jimfile.sh skills/partition/scripts/jimpartition.sh && bash tests/jimfile.sh && bash tests/jimpartition.sh`
 
-3. [ ] Update `tests/jimledger.sh` — `:23` `SCRIPT_JIMLEDGER` path and `:3` header — to the new location.
+3. [x] Update `tests/jimledger.sh` — `:23` `SCRIPT_JIMLEDGER` path and `:3` header — to the new location.
    **Verify:** `bash tests/jimledger.sh` (exits 0 — the CLI test now resolves the moved script).
 
-4. [ ] Add the read-only `events <spec-dir>` verb (a `cmd_events` function + dispatch case) per the Interface Contract — parse `ledger.md` with `grep`/`sed`/`cut` (never `source`/`eval`) and reuse the sibling `<spec-dir>` validation (reject a missing dir / traversal path with exit 2). Add `tests/jimledger.sh` cases for a missing/empty dir (exit 2) and a well-formed dir.
+4. [x] Add the read-only `events <spec-dir>` verb (a `cmd_events` function + dispatch case) per the Interface Contract — parse `ledger.md` with `grep`/`sed`/`cut` (never `source`/`eval`) and reuse the sibling `<spec-dir>` validation (reject a missing dir / traversal path with exit 2). Add `tests/jimledger.sh` cases for a missing/empty dir (exit 2) and a well-formed dir.
    **Verify:** `bash tests/jimledger.sh` (exits 0, including the new cases) and `bash skills/ledger/scripts/jimledger.sh events docs/specs/platform/004-jimledger-home | grep -q spec`.
 
-5. [ ] Flip `skills/review/SKILL.md` — line 13 allowed-tools and the 7 body call sites (43,53,54,55,107,147,155) — from `${CLAUDE_SKILL_DIR}/scripts/jimledger.sh` to `${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh`.
+5. [x] Flip `skills/review/SKILL.md` — line 13 allowed-tools and the 7 body call sites (43,53,54,55,107,147,155) — from `${CLAUDE_SKILL_DIR}/scripts/jimledger.sh` to `${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh`.
    **Verify:** `! grep -q 'CLAUDE_SKILL_DIR}/scripts/jimledger' skills/review/SKILL.md && [ "$(grep -c 'skills/ledger/scripts/jimledger.sh' skills/review/SKILL.md)" -ge 8 ]`
 
-6. [ ] Update every other live consumer path — `skills/{spec,sec,partition,blueprint,research,plan,verify,build}/SKILL.md` (allowed-tools + body sites), `agents/reviewer.md:34`, and `skills/blueprint/references/reconcile-methodology.md:385` — `…/review/scripts/jimledger.sh` → `…/ledger/scripts/jimledger.sh`.
+6. [x] Update every other live consumer path — `skills/{spec,sec,partition,blueprint,research,plan,verify,build}/SKILL.md` (allowed-tools + body sites), `agents/reviewer.md:34`, and `skills/blueprint/references/reconcile-methodology.md:385` — `…/review/scripts/jimledger.sh` → `…/ledger/scripts/jimledger.sh`.
    **Verify:** `! grep -rn 'skills/review/scripts/jimledger.sh' skills/ agents/` (live surface is clean).
 
-7. [ ] Create `skills/ledger/SKILL.md` per the Interface Contract — `name: ledger`, verb-scoped read-only allowed-tools, curated read subcommands, present-as-data note; no mutating/diff verbs, no blanket `*`.
-   **Verify:** `grep -q '^name: ledger' skills/ledger/SKILL.md && ! grep -qE 'jimledger.sh \*|commit-|rename-tracked|jimledger.sh (event|diff|files)' skills/ledger/SKILL.md && [ "$(wc -l < skills/ledger/SKILL.md)" -le 500 ]`
+7. [x] Create `skills/ledger/SKILL.md` per the Interface Contract — `name: ledger`, verb-scoped read-only allowed-tools, curated read subcommands, present-as-data note; no mutating/diff verbs, no blanket `*`.
+   **Verify:** `grep -q '^name: ledger' skills/ledger/SKILL.md && ! grep -qE 'jimledger.sh \*|commit-|rename-tracked|jimledger.sh (event|diff|files)\b' skills/ledger/SKILL.md && [ "$(wc -l < skills/ledger/SKILL.md)" -le 500 ]`
 
-8. [ ] Update the user-facing doc `docs/features/ledger.md:63` (and any other live `docs/features` path mention) to the new home.
+8. [x] Update the user-facing doc `docs/features/ledger.md:63` (and any other live `docs/features` path mention) to the new home.
    **Verify:** `! grep -rn 'skills/review/scripts/jimledger.sh' docs/features/`
 
-9. [ ] Reconcile the partition docs via `/jim:blueprint`: remove the `jimledger.sh` carve-out from `BLUEPRINT.md`'s platform Territory (add `skills/ledger`) and from the platform `000-blueprint`, through the blueprint write surface.
+9. [x] Reconcile the partition docs via `/jim:blueprint`: remove the `jimledger.sh` carve-out from `BLUEPRINT.md`'s platform Territory (add `skills/ledger`) and from the platform `000-blueprint`, through the blueprint write surface.
    **Verify:** `! grep -rn 'skills/review/scripts/jimledger.sh' BLUEPRINT.md docs/specs/platform/000-blueprint/spec.md && grep -q 'skills/ledger' BLUEPRINT.md`
 
-10. [ ] Full-suite green — confirm no behavior change and no broken references across every bash test.
+10. [x] Full-suite green — confirm no behavior change and no broken references across every bash test.
     **Verify:** `for t in tests/*.sh; do bash "$t" || exit 1; done`
 
 ## Requirements Coverage Summary
