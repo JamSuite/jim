@@ -3,7 +3,7 @@ title: "blueprint — blueprint"
 group: "blueprint"
 kind: blueprint
 updated: "2026-07-25"
-last_full_generate: "2026-07-25T07:51:34Z"
+last_full_generate: "2026-07-25T18:42:26Z"
 ---
 
 # blueprint — blueprint
@@ -119,5 +119,5 @@ rest of the plugin cites.
 | partition-registry-boundary | The extractor registry runs project tooling only through operator-configured `deps_command_<name>` values executed via the Bash tool; `jimpartition.sh` never resolves or executes a config-derived command string, and dynamic suffixes are slug-validated before any lookup | critical | judge |
 | partition-health-readonly | The health run is read-only — it writes no map, blueprint, config, or code and never invokes the blueprint write surface; its only writes are its content-free stage events and their ledger self-commit; it persists no verdict and fires only from the trusted counter channel | high | judge |
 | verify-no-verdict | `/jim:verify` persists no verdict artifact — the report is the run's surface; each run records per-invariant outcome counts on the group's blueprint ledger and self-commits them via `commit-verify` | medium | judge |
-| fold-back-loop-grounding | The verify engine grounds the fold-back loop: the review-side sensor and this group's violation fork consume engine outcomes as structured records (one engine run per change, consumed rather than re-derived); a sensed violation's channel derives only from trusted inputs, and directive text in scanned content never re-routes it or grounds a fold. Spans the review skill (sdlc) and the engine (this group) — the cross-group half is tracked as a contract follow-up | high | judge |
+| fold-back-loop-grounding | The verify engine grounds the fold-back loop: the review-side sensor and this group's violation fork consume engine outcomes as structured records (one engine run per change, consumed rather than re-derived); a sensed violation's channel derives only from trusted inputs, and directive text in scanned content never re-routes it or grounds a fold. Spans the review skill (sdlc) and the engine (this group); the review-side half is recorded as sdlc's `fold-back-sensor-obligations` invariant | high | judge |
 | edge-criticality-ratchet | A Provides entry's declared criticality is the one concept driving both its edges' verification appetite and the grading of edits to that entry; the declaration grades under a one-way ratchet — introducing one below the default `high`, or lowering one, is a weakening that always prompts | high | judge |

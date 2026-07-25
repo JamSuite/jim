@@ -3,7 +3,7 @@ title: "sdlc — blueprint"
 group: "sdlc"
 kind: blueprint
 updated: "2026-07-25"
-last_full_generate: "2026-07-25T07:51:34Z"
+last_full_generate: "2026-07-25T18:38:15Z"
 ---
 
 # sdlc — blueprint
@@ -37,7 +37,8 @@ home of the plugin's authoring conventions.
   recorded before the living-intent sensor runs (the sensor can never set
   it), committed path-scoped via `commit-review`; the sensor's VERIFY-OUTCOME
   block is handed to the blueprint update's fork instead of re-running the
-  engine.
+  engine, and every un-forked in-change violation is offered as an issue so
+  no sensed violation is dropped.
 - **Agent personas** — `@jim:pm`, `@jim:architect`, `@jim:researcher`,
   `@jim:coder`, `@jim:security`, `@jim:reviewer`, `@jim:investigator`,
   `@jim:meta`. Guarantee: each is a bounded role that stops after its
@@ -102,6 +103,7 @@ home of the plugin's authoring conventions.
 | agent-boundaries | Agents do not cross domain boundaries (PM ≠ code, coder ≠ specs) and stop after producing an artifact for human approval; read-only subagents are capability-narrowed (no `Write`/`Edit`/mutating-`Bash`/`Agent`) — instances exist in every group | high | judge |
 | spec-id-sequencing | Spec IDs are 3-digit zero-padded and sequential within the group; a spec must be `approved` before its plan is produced (the minting mechanism is the platform group's `next-id`) | high | judge |
 | arch-via-skill | `ARCHITECTURE.md` is generated/maintained only through `/jim:arch`, never hand-edited (the skill is the sole maintenance surface; hand-edit absence is judged, not mechanically provable) | medium | judge |
+| fold-back-sensor-obligations | `/jim:review`'s living-intent sensor upholds the fold-back loop's review-side contract: the alignment verdict is assigned and recorded before the sensor runs (the sensor never sets it); the sensor's `VERIFY-OUTCOME` block is handed to the blueprint update fork rather than re-running the engine; and every `in-change` violation is routed exhaustively — to the fork, or, when the update offer is declined or absent, filed as an issue — so no sensed violation is dropped | high | judge |
 
 `skill-budget` names `registry:skill-line-budget` — the operator activates it
 by setting `verify_command_skill_line_budget` in `jimconf.toml`; until then the
