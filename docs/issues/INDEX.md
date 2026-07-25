@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 42
+- Open: 51
 - Closed: 52
 
 ## Issues
@@ -101,6 +101,15 @@
 - `20260723-single-source-the-000-blueprint-directory-name-in-jimpartition-s` — Single-source the 000-blueprint directory name in jimpartition.sh · status: closed · num: 88 · priority: low · created: 2026-07-23T06:09:14Z · labels: [verify, partition, refactor] · origin: docs/specs/blueprint/021-contracts-check-hardening/review.md
 - `20260723-skills-prose-invocation-lint` — Generalize the prose-pin pattern into a skills-prose invocation lint · status: open · num: 90 · priority: low · created: 2026-07-23T18:43:32Z · labels: [meta-test, partition] · origin: docs/specs/blueprint/023-partition-ref-sweep/plan.md
 - `20260723-widen-the-mechanical-provenance-guard-to-extended-artifact-ref-f` — Widen the mechanical provenance guard to extended artifact-ref forms · status: open · num: 93 · priority: low · created: 2026-07-23T21:23:49Z · labels: [blueprint, provenance] · origin: docs/specs/blueprint/024-blueprint-provenance-guard/spec.md
+- `20260725-cross-group-enforcement-of-plugin-wide-convention-invariants` — cross-group enforcement of plugin-wide convention invariants · status: open · num: 95 · priority: medium · created: 2026-07-25T08:04:39Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and` — formalize the is-valid-id lockstep contract between platform and issue · status: open · num: 96 · priority: medium · created: 2026-07-25T08:04:40Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-judge-or-fix-rename-tracked-pathspec-use-against-relpath-validat` — judge or fix rename-tracked pathspec use against relpath-validation · status: open · num: 98 · priority: medium · created: 2026-07-25T08:04:42Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-re-point-glob-specs-jim-gates-in-meta-skill-meta-agent-meta-test` — re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test · status: open · num: 102 · priority: high · created: 2026-07-25T08:04:47Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-record-the-sdlc-side-half-of-the-fold-back-loop-contract` — record the sdlc-side half of the fold-back-loop contract · status: open · num: 99 · priority: low · created: 2026-07-25T08:04:44Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-refresh-architecture-readme-workflow-for-the-partition` — refresh ARCHITECTURE, README, WORKFLOW for the partition · status: open · num: 103 · priority: medium · created: 2026-07-25T08:04:48Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-relocate-jimledger-sh-out-of-skills-review-into-platform-owned-h` — relocate jimledger.sh out of skills/review into platform-owned home · status: open · num: 100 · priority: medium · created: 2026-07-25T08:04:45Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-review-the-17-frozen-jim-group-prose-mentions` — review the 17 frozen jim-group prose mentions · status: open · num: 101 · priority: low · created: 2026-07-25T08:04:46Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold` — script-preamble rule vs source-inherited preambles: fix or fold · status: open · num: 97 · priority: medium · created: 2026-07-25T08:04:41Z · labels: [partition] · origin: BLUEPRINT.md
 
 ## Graph
 
