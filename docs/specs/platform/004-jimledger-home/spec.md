@@ -109,8 +109,10 @@ $ /jim:ledger show docs/specs/platform/004-jimledger-home
 
 ## Out of Scope
 
-- Any change to a `jimledger.sh` verb's behavior, output, arguments, or
-  internals — this is a relocation, not a rewrite.
+- Any change to an *existing* `jimledger.sh` verb's behavior, output, or
+  arguments — this is a relocation, not a rewrite. (A single additive,
+  read-only `events` verb backing AC5's stage-events view is in scope; every
+  pre-existing verb stays byte-identical, per AC4.)
 - Exposing the mutating verbs (`event`, `commit-review` / `commit-blueprint` /
   `commit-map` / `commit-verify` / `commit-rename`, `rename-tracked`) through
   `/jim:ledger`; those stay script-only, invoked by the skills that own those
