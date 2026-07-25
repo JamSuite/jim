@@ -57,9 +57,7 @@ home of the plugin's authoring conventions.
 - `platform.jimconf-cli` / `platform.jimfile-cli` — config, path, id, and
   timestamp resolution from every skill in the group.
 - `platform.jimledger-cli` — stage events from every pipeline skill;
-  `metrics`/`diff`/`files` and `commit-review` from the review flow. The
-  script file is resident in this group's `review` directory under a
-  platform-declared file-level carve-out.
+  `metrics`/`diff`/`files` and `commit-review` from the review flow.
 - `issue.emitter` + `issue.candidate-batch-contract` — the end-of-run § 7a
   candidate batches from the surfacing skills (spec, research, plan, build,
   debug, sec, review, brainstorm).
@@ -85,8 +83,6 @@ home of the plugin's authoring conventions.
   investigator,meta,meta-matrix-probe}.md`; the reviewer preloads the review
   and verify skills; meta delegates to pm/architect/researcher via its Agent
   grant.
-- The `review` skill directory also hosts `scripts/jimledger.sh`, which the
-  platform group owns via a file-level territory carve-out.
 
 ## Invariants
 
