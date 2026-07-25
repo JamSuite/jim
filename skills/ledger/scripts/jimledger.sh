@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# skills/review/scripts/jimledger.sh — jim ledger for the /jim:review phase.
+# skills/ledger/scripts/jimledger.sh — jim ledger for the /jim:review phase.
 #
 # Records the build's boundary and process events to <spec-dir>/ledger.md (an
 # append-only, line-oriented log) and derives metrics from git + the ledger for
