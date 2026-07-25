@@ -37,16 +37,7 @@ re-declared here.*
   batches), `blueprint` (assignment advisor, blast-radius facts, living-intent
   sensor, canonical gate rule); provider to `blueprint` (personas its skills
   bind) and `platform` (personas its scaffold gates dispatch).
-- **Territory:** skills/spec, skills/spec-check, skills/research, skills/plan,
-  skills/build, skills/debug, skills/sec, skills/review, skills/vision,
-  skills/roadmap, skills/arch, skills/brainstorm, skills/meta-skill,
-  skills/meta-agent, skills/meta-matrix, skills/meta-matrix-bash-invocation,
-  skills/meta-matrix-conditional-evaluation, skills/meta-matrix-fork-probe,
-  skills/meta-matrix-preload-probe, skills/meta-matrix-skill-invocation,
-  skills/meta-matrix-variable-setting, agents/pm.md, agents/architect.md,
-  agents/researcher.md, agents/coder.md, agents/security.md,
-  agents/reviewer.md, agents/investigator.md, agents/meta.md,
-  agents/meta-matrix-probe.md
+- **Territory:** skills/spec, skills/spec-check, skills/research, skills/plan, skills/build, skills/debug, skills/sec, skills/review, skills/vision, skills/roadmap, skills/arch, skills/brainstorm, skills/meta-skill, skills/meta-agent, skills/meta-matrix, skills/meta-matrix-bash-invocation, skills/meta-matrix-conditional-evaluation, skills/meta-matrix-fork-probe, skills/meta-matrix-preload-probe, skills/meta-matrix-skill-invocation, skills/meta-matrix-variable-setting, agents/pm.md, agents/architect.md, agents/researcher.md, agents/coder.md, agents/security.md, agents/reviewer.md, agents/investigator.md, agents/meta.md, agents/meta-matrix-probe.md
 - **Blueprint:** docs/specs/sdlc/000-blueprint/
 
 ### blueprint
@@ -61,10 +52,7 @@ re-declared here.*
 - **Relations:** requires `platform` (CLI substrate, test framework), `issue`
   (offered-issue emission), `sdlc` (personas its skills bind); provider to
   `sdlc` (advisor, blast-radius facts, living-intent sensor, canonical rules).
-- **Territory:** skills/blueprint, skills/verify, skills/partition,
-  agents/judge.md, agents/gatherer.md, tests/jimverify.sh,
-  tests/jimpartition.sh, tests/gatepresentation.sh, tests/presenttense.sh,
-  tests/provenance.sh, scripts/jim-deps-refs.sh
+- **Territory:** skills/blueprint, skills/verify, skills/partition, agents/judge.md, agents/gatherer.md, tests/jimverify.sh, tests/jimpartition.sh, tests/gatepresentation.sh, tests/presenttense.sh, tests/provenance.sh, scripts/jim-deps-refs.sh
 - **Blueprint:** docs/specs/blueprint/000-blueprint/
 
 ### issue
@@ -96,9 +84,7 @@ re-declared here.*
 - **Relations:** requires `issue` (validator-lockstep, dev-time), `sdlc`
   (personas the meta-test scaffold dispatches); provider to `sdlc`,
   `blueprint`, `issue` (the CLIs and test framework).
-- **Territory:** skills/conf, skills/file, skills/meta-test,
-  skills/review/scripts/jimledger.sh, tests/jimconf.sh, tests/jimfile.sh,
-  tests/jimledger.sh, tests/metatest.sh
+- **Territory:** skills/conf, skills/file, skills/meta-test, skills/review/scripts/jimledger.sh, tests/jimconf.sh, tests/jimfile.sh, tests/jimledger.sh, tests/metatest.sh
 - **Blueprint:** docs/specs/platform/000-blueprint/
 
 ## Contract Graph

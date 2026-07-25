@@ -47,3 +47,5 @@
 1784852802	2026-07-24T00:26:42Z	blueprint	started	tier=project;op=reconcile
 1784852815	2026-07-24T00:26:55Z	blueprint	finished	tier=project;op=reconcile;edges=0;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=na;cycles=na;fanin=na;uncovered=na
 1784961952	2026-07-25T06:45:52Z	partition	started	tier=project;op=split;old=jim;new=sdlc,blueprint,issue,platform
+1784966222	2026-07-25T07:57:02Z	blueprint	started	tier=project;op=reconcile
+1784966303	2026-07-25T07:58:23Z	blueprint	finished	tier=project;op=reconcile;edges=21;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=418;faces=18;faces_max=8;faces_max_group=blueprint;fanin_group=issue,platform
