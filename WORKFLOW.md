@@ -217,7 +217,7 @@ jim/
 │
 ├── tests/                       # Developer-only bash tests — not loaded by Claude Code
 ├── docs/
-│   ├── specs/jim/               # Jim's own spec archive (jim develops jim)
+│   ├── specs/                   # Jim's own spec groups — partition declared in BLUEPRINT.md
 │   ├── issues/                  # Discovery capture + INDEX.md
 │   ├── brainstorms/             # Freeform ideation
 │   └── debug/                   # Debug reports
@@ -477,7 +477,7 @@ Jim can develop itself through its own SDLC. Skills and agents for the plugin ar
 
 For jim's deterministic bash scripts (`skills/*/scripts/*.sh`), `/jim:meta-test scaffold <name>` produces `tests/<name>.sh` from a template that already encodes every framework convention (case-naming, source pattern, mktemp sandbox, standalone-runnable tail). Add new cases via `/jim:meta-test add <name> <case_name>` and run via `/jim:meta-test run [name]`. Plan-gating mirrors `/jim:meta-skill` and `/jim:meta-agent` — scaffold requires an approved spec+plan for the script-under-test; add and run are ungated.
 
-Jim's own specs live in `docs/specs/jim/` as a group. Jim's strategic docs (`VISION.md`, `ARCHITECTURE.md`, `ROADMAP.md`) live at the plugin root.
+Jim's own specs live under `docs/specs/`, partitioned into spec groups declared in `BLUEPRINT.md`. Jim's strategic docs (`VISION.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `BLUEPRINT.md`) live at the plugin root.
 
 ---
 

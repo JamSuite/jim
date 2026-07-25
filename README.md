@@ -170,16 +170,16 @@ Inspect what jim resolves with `/jim:conf`:
 `/jim:conf` resolves *where* a configured doc lives. `/jim:file` is its sibling for *operations against those locations* — the deterministic surface jim's skills use to compute filenames and look up artifacts. Backed by `skills/file/scripts/jimfile.sh`, which shells out to `jimconf.sh` so every `/jim:conf` override is honored automatically.
 
 ```
-/jim:file exists docs/specs/jim/008-jimfile/spec.md   # "yes" or "no"
-/jim:file slug "Auth Token Expiry"                    # auth-token-expiry
-/jim:file date                                        # YYYYMMDD
-/jim:file now                                         # YYYY-MM-DDThh:mm:ssZ (UTC)
-/jim:file next-id jim                                 # next zero-padded spec ID
-/jim:file next-num issue                              # next issue display ordinal
-/jim:file path spec jim 008 jimfile                   # canonical spec path
-/jim:file path debug "auth bug"                       # date-prefixed debug path
-/jim:file glob specs jim                              # every spec in the jim group
-/jim:file kinds                                       # valid artifact kinds
+/jim:file exists docs/specs/platform/003-jimfile/spec.md  # "yes" or "no"
+/jim:file slug "Auth Token Expiry"                        # auth-token-expiry
+/jim:file date                                            # YYYYMMDD
+/jim:file now                                             # YYYY-MM-DDThh:mm:ssZ (UTC)
+/jim:file next-id sdlc                                    # next zero-padded spec ID
+/jim:file next-num issue                                  # next issue display ordinal
+/jim:file path spec platform 003 jimfile                  # canonical spec path
+/jim:file path debug "auth bug"                           # date-prefixed debug path
+/jim:file glob specs platform                             # every spec in the platform group
+/jim:file kinds                                           # valid artifact kinds
 ```
 
 Path-and-name resolution only — the script never reads, writes, or deletes files. Slug normalization, the `.`/`..` reject, and the 64-char cap are enforced by the script (security boundary).
@@ -260,7 +260,7 @@ Partition migration (`/jim:partition`, spec 038) fans out read-only `gatherer` s
 
 See [`WORKFLOW.md`](./WORKFLOW.md) for the full SDLC process.
 
-Jim builds itself using its own workflow. Jim's specs live in [`docs/specs/jim/`](docs/specs/jim/).
+Jim builds itself using its own workflow. Jim's specs live under [`docs/specs/`](docs/specs/), partitioned into spec groups declared in [`BLUEPRINT.md`](BLUEPRINT.md).
 
 ### Running tests
 

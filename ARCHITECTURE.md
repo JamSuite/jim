@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-07-23*
+*Last updated: 2026-07-25*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill to preserve consistency.
 
@@ -107,18 +107,21 @@ jim/
 │   ├── jimpartition.sh      # Per-script tests for skills/partition/scripts/jimpartition.sh (executable)
 │   └── metatest.sh          # Per-script tests for skills/meta-test/scripts/metatest.sh (executable)
 ├── docs/
-│   ├── specs/               # Spec groups with numbered spec directories
-│   │   └── jim/             # Specs for jim's own development (001–044)
+│   ├── specs/               # Spec groups with numbered spec dirs — partition declared in BLUEPRINT.md
 │   ├── issues/              # Discovery-artifact capture (per spec 017)
 │   │   ├── INDEX.md         # Auto-generated index — regenerated on every /jim:issue write
 │   │   └── YYYYMMDD-slug.md # One markdown file per issue
 │   ├── prior-art/           # Reference material from other projects (gitignored downloads)
 │   └── notes/               # Personal development notes
+├── scripts/                 # Standalone helper scripts
+│   └── jim-deps-refs.sh     # /jim:partition dependency-edge extractor (markdown + bash channels)
+├── BLUEPRINT.md             # Project context map — declared spec-group partition + derived Contract Graph
 ├── VISION.md                # Product vision — problem, solution, audience, north star
 ├── ROADMAP.md               # Execution sequence
 ├── WORKFLOW.md              # The SDLC process definition — commands, artifacts, philosophy
 ├── CLAUDE.md                # Claude Code project instructions
-├── jimconf.toml.example     # Example project-level path overrides; users copy to jimconf.toml
+├── jimconf.toml.example     # Example project-level config; users copy to jimconf.toml
+├── jimconf.toml             # Active project config (deps_command_refs for /jim:partition)
 └── README.md                # Project readme
 ```
 
@@ -294,7 +297,7 @@ Spec 048 adds the partition's **merge verb** `/jim:partition merge <src>... into
 ### Spec Archive
 
 - **Purpose:** Living development artifacts — specs, research, and plans organized by group and sequential ID
-- **Location:** `docs/specs/{group}/{00X}-{name}/` — currently `docs/specs/jim/001-meta/` through `048-partition-merge/`
+- **Location:** `docs/specs/{group}/{NNN}-{name}/` — the spec groups, their roles, and their code territories are declared in [`BLUEPRINT.md`](BLUEPRINT.md) (the project context map); this document references the partition rather than re-declaring it
 - **Interfaces:** Each spec directory contains up to six files: `spec.md`, `research.md`, `plan.md`, `security.md`, `review.md`, and the `ledger.md`
 - **Dependencies:** Produced by PM (spec), researcher (research), and architect (plan) agents
 - **Key Constraints:** IDs are 3-digit zero-padded, sequential within each group. Groups are noun-based directories. Specs must be `approved` before plans can be created.
@@ -356,7 +359,7 @@ Conventions that govern how jim's agents, skills, and tools interact with Claude
 - **Description is the trigger surface.** Skill descriptions are always in Claude's context. The full SKILL.md body loads only when the skill is invoked. Write descriptions that answer *what* and *when* — vague descriptions cause undertriggering.
 - **`$ARGUMENTS` substitution.** When a user types `/jim:spec my-feature`, the string `my-feature` replaces `$ARGUMENTS` in the SKILL.md body. Skills use the `argument-hint` frontmatter field to document expected arguments.
 - **The `agent:` field in skill frontmatter is a Claude Code routing mechanism that activates only when paired with `context: fork`.** Jim omits `context: fork`, so at runtime the field is a no-op and serves only as documentation — the skill body runs inline in the main thread, and routing into a subagent happens because the skill's instructions (and the named agent's `description` examples) direct Claude to spawn `@jim:<agent>` via the Agent tool.
-- **Skill-to-skill invocation uses the `Skill(name)` permission token in `allowed-tools` and the Skill tool in the body** — e.g., `/jim:build` declares `Skill(jim:arch)` and invokes `/jim:arch` from step 5.2. The called skill's body runs inline in the same main thread (no fork), so the caller's `allowed-tools` covers nested tool calls inside the invoked skill. Use the namespaced form (`Skill(jim:<name>)`) for least-privilege; bare `Skill` is a wildcard and is avoided. The parent's `$ARGUMENTS` does **not** auto-forward to the called skill — the child's `$ARGUMENTS` is empty unless explicitly passed via the Skill tool's args parameter (empirically established by spec 014's S3 probe; see `docs/specs/jim/014-meta-matrix/plan.md` → Verification Log). **First-invocation trust prompt (empirical, 2026-05-14).** On the *first* invocation of a never-before-seen plugin skill in a workspace, Claude Code shows a "Use skill 'X'?" consent prompt regardless of `allowed-tools`. The "Yes, don't ask again for X in `<workspace>`" option persists workspace-scoped acceptance; subsequent invocations auto-approve. Confirmed empirically by spec 014's S4 probe. Whether the trigger is `context: fork` specifically or any new plugin skill is undetermined — see `docs/research/20260514-context-fork-permission-gate.md`.
+- **Skill-to-skill invocation uses the `Skill(name)` permission token in `allowed-tools` and the Skill tool in the body** — e.g., `/jim:build` declares `Skill(jim:arch)` and invokes `/jim:arch` from step 5.2. The called skill's body runs inline in the same main thread (no fork), so the caller's `allowed-tools` covers nested tool calls inside the invoked skill. Use the namespaced form (`Skill(jim:<name>)`) for least-privilege; bare `Skill` is a wildcard and is avoided. The parent's `$ARGUMENTS` does **not** auto-forward to the called skill — the child's `$ARGUMENTS` is empty unless explicitly passed via the Skill tool's args parameter (empirically established by the meta-matrix spec's S3 probe; see `docs/specs/sdlc/011-meta-matrix/plan.md` → Verification Log). **First-invocation trust prompt (empirical, 2026-05-14).** On the *first* invocation of a never-before-seen plugin skill in a workspace, Claude Code shows a "Use skill 'X'?" consent prompt regardless of `allowed-tools`. The "Yes, don't ask again for X in `<workspace>`" option persists workspace-scoped acceptance; subsequent invocations auto-approve. Confirmed empirically by spec 014's S4 probe. Whether the trigger is `context: fork` specifically or any new plugin skill is undetermined — see `docs/research/20260514-context-fork-permission-gate.md`.
 
 ### Agent Invocation
 
@@ -389,7 +392,7 @@ Jim is markdown-first, but a minimal bash scripting layer at `skills/conf/script
 
 ### Bash-vs-Prompt Decision Rule
 
-When deciding whether logic should live in a bash script or in a skill/agent prompt, apply the following heuristic. Bash is jim's canonical scripting language — confirmed as the genuine LCD across coding-agent platforms (see `docs/specs/jim/001-meta/research.md` → "Scripting Layer in jim plugin components"). Bash needs no runtime declaration; anything else (Python, JS) would require declaring `compatibility:` and would fail in environments lacking the runtime — including Anthropic's own default Claude Code devcontainer.
+When deciding whether logic should live in a bash script or in a skill/agent prompt, apply the following heuristic. Bash is jim's canonical scripting language — confirmed as the genuine LCD across coding-agent platforms (see `docs/specs/sdlc/001-meta/research.md` → "Scripting Layer in jim plugin components"). Bash needs no runtime declaration; anything else (Python, JS) would require declaring `compatibility:` and would fail in environments lacking the runtime — including Anthropic's own default Claude Code devcontainer.
 
 | Use a bash script when… | Use a prompt when… |
 |---|---|
@@ -559,7 +562,7 @@ Spec 052 adds a companion to the present-tense rule along a distinct axis. A **p
 
 ### Anti-Patterns
 
-These are documented failure modes from prior art research (`docs/specs/jim/001-meta/research.md`):
+These are documented failure modes from prior art research (`docs/specs/sdlc/001-meta/research.md`):
 
 - **Personality Soup:** "I am an AI assistant here to help" — use direct second-person voice instead ("You are the technical architect for jim").
 - **Permission Creep:** Write/Bash in a read-only agent's tool list, or bare `Bash(bash *)` in a SKILL.md `allowed-tools` clause when the skill only injects a specific script — follow least privilege. See Permission Conventions for the narrowed shape. Conversely, do not declare `Read(${CLAUDE_SKILL_DIR}/...)` clauses in skill frontmatter for skills that delegate work to a subagent — those grants do not propagate across the skill→subagent boundary (verified scope, see Permission Conventions) and the clause is misleading documentation suggesting authorization where there is none.
