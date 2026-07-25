@@ -41,7 +41,7 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   re-minted; the `000-blueprint` slot is reserved and resolved only via
   `path blueprint <group>`.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
-  `files`/`diff`/`diff-range`/`files-range`, the seven path-scoped commit verbs
+  `events`/`files`/`diff`/`diff-range`/`files-range`, the seven path-scoped commit verbs
   (`commit-review`/`commit-blueprint`/`commit-map`/`commit-verify`/
   `commit-rename`/`commit-split`/`commit-merge`), the git-mv primitives
   `rename-tracked` (sibling-constrained) and `move-spec-dir` (cross-parent,
@@ -56,7 +56,7 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   scaffold template. Guarantee: every jim test file sources one framework;
   scaffold writes only `tests/<name>.sh`; the runner loads nothing outside
   `tests/`.
-- `/jim:conf`, `/jim:file`, `/jim:meta-test` **command surface** — thin
+- `/jim:conf`, `/jim:file`, `/jim:ledger`, `/jim:meta-test` **command surface** — thin
   developer-facing wrappers over the CLIs above.
 
 ## Requires
@@ -78,10 +78,8 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
 - `skills/file/` — `SKILL.md` + `scripts/jimfile.sh`; chains to `jimconf.sh`
   and (best-effort, for the vacated-id floor) to `jimledger.sh` via
   `BASH_SOURCE`-relative paths.
-- `skills/review/scripts/jimledger.sh` — platform-owned code resident in the
-  sdlc group's `review` skill directory (a declared file-level territory
-  carve-out; the physical location is a known name-mismatch with a tracked
-  relocation follow-up). Chains to `jimfile.sh` for id/relpath validation.
+- `skills/ledger/` — `SKILL.md` (the `/jim:ledger` read-only inspector) +
+  `scripts/jimledger.sh`. Chains to `jimfile.sh` for id/relpath validation.
 - `skills/meta-test/` — `SKILL.md`, `scripts/{testlib,run,metatest}.sh`,
   `assets/test-file.sh.tmpl`.
 - `tests/jimconf.sh`, `tests/jimfile.sh`, `tests/jimledger.sh`,
