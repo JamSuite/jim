@@ -11,6 +11,7 @@
 #   finish  <spec-dir>                         append a build-finished event (head_sha)
 #   event   <spec-dir> <phase> <event> [k=v…]  append a generic event
 #   metrics <spec-dir>                         emit git + per-stage ledger key=value lines
+#   events  <spec-dir>                         print recorded events (read-only view)
 #   files   <spec-dir>                         list changed file paths over base..head
 #   diff    <spec-dir>                         emit the diff (function-context) over base..head
 #   diff-range <base> [head]                   emit the diff over a validated CWD-repo range
@@ -54,6 +55,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   move-spec-dir <specs-dir> <og> <src-base> <ng> <dst-base>  cross-parent spec-dir git mv
   vacated-max <specs-dir> <group>             highest split-vacated id for <group>
   metrics <spec-dir>                          emit key=value metrics to stdout
+  events  <spec-dir>                          print recorded events (read-only view)
   files   <spec-dir>                          list changed files over the build range
   diff    <spec-dir>                          emit the diff (function-context) over the build range
   diff-range <base> [head]                    emit the diff over a validated CWD-repo range
@@ -669,6 +671,28 @@ cmd_event() {
   append_line "$dir" "$phase" "$event" "$kv"
 }
 
+# cmd_events <spec-dir> — READ-ONLY. Print every event recorded in
+#   <spec-dir>/ledger.md, one per line, reordered to "<phase>\t<event>\t<iso>\t<kv>"
+#   in recorded order (the trailing <kv> omitted when empty). The read view
+#   backing /jim:ledger's stage-events surface: reads ledger.md only, writes
+#   nothing, and invokes no git. The ledger is a hand-editable, untrusted file —
+#   parsed only via awk (no source/eval), each field re-emitted as data. Guards
+#   mirror the sibling read verbs: rc 2 on a missing <spec-dir> (the append_line
+#   spec-dir guard) or a dir carrying no ledger.md (the metrics no-ledger guard).
+#   rc 0 on success.
+cmd_events() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then echo "jimledger events: need <spec-dir>" >&2; return 2; fi
+  if [[ ! -d "$dir" ]]; then echo "jimledger: spec-dir not found: $dir" >&2; return 2; fi
+  local ledger="$dir/ledger.md"
+  if [[ ! -f "$ledger" ]]; then echo "jimledger: no ledger at $ledger" >&2; return 2; fi
+  awk -F'\t' '{
+    line = $3 "\t" $4 "\t" $2
+    if ($5 != "") line = line "\t" $5
+    print line
+  }' "$ledger"
+}
+
 # ledger_kv <ledger> <phase> <event> <key> <which:first|last>
 #   Extract a kv value from the first/last line whose phase AND event fields
 #   match and whose kv field carries <key>=. Empty if none. Scoping by phase
@@ -1015,6 +1039,7 @@ main() {
   case "$sub" in
     start)   shift; cmd_start "$@" ;;
     metrics) shift; cmd_metrics "$@" ;;
+    events)  shift; cmd_events "$@" ;;
     files)   shift; cmd_files "$@" ;;
     diff)    shift; cmd_diff "$@" ;;
     diff-range) shift; cmd_diff_range "$@" ;;

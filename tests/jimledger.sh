@@ -1740,6 +1740,48 @@ case_jimledger_commit_merge_usage_rc2() {
   assert_exit "no paths rc" 2 "$RC"
 }
 
+# ─── platform/004: events read verb ──────────────────────────────────────────
+
+# AC5 / DD 2: events prints a well-formed dir's recorded events reordered to
+# <phase>\t<event>\t<iso>\t<kv>. Asserting phase+event precede the iso proves the
+# reorder (the raw ledger line records iso before phase/event).
+case_jimledger_events_lists_recorded() {
+  local sd; sd="$(empty_dir ev_ok/spec)"
+  run_jimledger event "$sd" spec started
+  run_jimledger event "$sd" research started note=x
+  run_jimledger events "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "phase/event reordered ahead of iso" 'spec.*started.*2026-' "$OUT"
+  assert_match "kv preserved when present"           'research.*started.*note=x' "$OUT"
+}
+
+# AC5: the trailing kv field is omitted when empty — a no-kv event yields exactly
+# three TAB-separated fields, never a trailing empty field.
+case_jimledger_events_omits_empty_kv() {
+  local sd; sd="$(empty_dir ev_nokv/spec)"
+  run_jimledger event "$sd" plan finished
+  run_jimledger events "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "three fields, no trailing tab" "3" "$(awk -F'\t' 'NR==1{print NF}' <<< "$OUT")"
+}
+
+# security Finding 3: events reuses the sibling spec-dir guard — a missing dir
+# exits 2 (writing nothing), never a traversal read.
+case_jimledger_events_missing_dir_exits_2() {
+  run_jimledger events "$TMP_BASE/ev_absent"
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# security Finding 3: an existing dir carrying no ledger.md exits 2 (the
+# no-ledger guard, mirroring metrics).
+case_jimledger_events_no_ledger_exits_2() {
+  local sd; sd="$(empty_dir ev_empty/spec)"
+  run_jimledger events "$sd"
+  assert_exit     "rc" 2 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_JIMLEDGER" ]]; then
