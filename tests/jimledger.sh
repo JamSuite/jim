@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# tests/jimledger.sh — Tests for skills/review/scripts/jimledger.sh
+# tests/jimledger.sh — Tests for skills/ledger/scripts/jimledger.sh
 #
 # Conventions: see skills/meta-test/scripts/testlib.sh header (canonical).
 #
@@ -20,7 +20,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 
-SCRIPT_JIMLEDGER="$REPO_ROOT/skills/review/scripts/jimledger.sh"
+SCRIPT_JIMLEDGER="$REPO_ROOT/skills/ledger/scripts/jimledger.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
