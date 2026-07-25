@@ -54,6 +54,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show` / `insights`) — `insights` is an LLM analysis (convergence, sequencing, parallel-work) run by a read-only subagent |
 | `/jim:conf` | Inspect resolved jim configuration paths |
 | `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, now, next-id, next-num, path, glob) |
+| `/jim:ledger` | Inspect a spec/blueprint dir's ledger — recorded stage events, latest review metrics, reconcile trend (read-only) |
 | `/jim:meta-skill` | Build a jim plugin skill from spec |
 | `/jim:meta-agent` | Build a jim plugin agent from spec |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite |

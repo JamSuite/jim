@@ -190,7 +190,7 @@ jim/
 │   ├── plan/                    # → /jim:plan        assets + references
 │   ├── build/                   # → /jim:build       references (TDD guide)
 │   ├── sec/                     # → /jim:sec         assets + references
-│   ├── review/                  # → /jim:review      assets + scripts (jimledger.sh — the SDLC stage ledger)
+│   ├── review/                  # → /jim:review      assets
 │   ├── verify/                  # → /jim:verify      references + scripts (jimverify.sh — the deterministic check floor)
 │   ├── debug/                   # → /jim:debug       assets
 │   │
@@ -208,6 +208,7 @@ jim/
 │   │  # ── Introspection ──
 │   ├── conf/                    # → /jim:conf        scripts (jimconf.sh — the shared config resolver)
 │   ├── file/                    # → /jim:file        scripts (jimfile.sh — the shared path/id resolver)
+│   ├── ledger/                  # → /jim:ledger      scripts (jimledger.sh — the SDLC stage ledger CLI) + read-only inspector
 │   │
 │   │  # ── Meta (Jim building Jim) ──
 │   ├── meta-skill/              # → /jim:meta-skill
