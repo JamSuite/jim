@@ -78,19 +78,17 @@ re-declared here.*
 - **Role:** platform
 - **Boundary rationale:** Total fan-in on stable CLIs justifies the shared
   surface — a change here has project-wide blast radius, which is exactly
-  where contract checks pay. `jimledger.sh` is a file-level territory
-  carve-out resident in the sdlc group's review directory (a known
-  name-mismatch with a tracked relocation follow-up).
+  where contract checks pay.
 - **Relations:** requires `issue` (validator-lockstep, dev-time), `sdlc`
   (personas the meta-test scaffold dispatches); provider to `sdlc`,
   `blueprint`, `issue` (the CLIs and test framework).
-- **Territory:** skills/conf, skills/file, skills/meta-test, skills/review/scripts/jimledger.sh, tests/jimconf.sh, tests/jimfile.sh, tests/jimledger.sh, tests/metatest.sh
+- **Territory:** skills/conf, skills/file, skills/ledger, skills/meta-test, tests/jimconf.sh, tests/jimfile.sh, tests/jimledger.sh, tests/metatest.sh
 - **Blueprint:** docs/specs/platform/000-blueprint/
 
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-07-25T18:42:26Z
+on every blueprint write; do not edit. Last reconciled: 2026-07-25T20:32:04Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |
