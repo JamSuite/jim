@@ -3,7 +3,7 @@ title: "platform — blueprint"
 group: "platform"
 kind: blueprint
 updated: "2026-07-26"
-last_full_generate: "2026-07-26T05:17:11Z"
+last_full_generate: "2026-07-26T08:31:16Z"
 ---
 
 # platform — blueprint
@@ -84,6 +84,9 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   `assets/test-file.sh.tmpl`.
 - `tests/jimconf.sh`, `tests/jimfile.sh`, `tests/jimledger.sh`,
   `tests/metatest.sh` — the group's per-script test files.
+- `tests/scripthygiene.sh` — the corpus-wide script-preamble hygiene sweep
+  (every first-party script sets the preamble directly; fail-closed on empty
+  enumeration).
 
 ## Invariants
 
@@ -91,6 +94,7 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
 | :--- | :--- | :--- | :--- |
 | no-third-party-deps | No third-party runtime dependencies — scripts use bash + POSIX only (no `jq`/`yq`/`bats`); the rule binds every group's scripts, platform holds the check | critical | pattern |
 | no-source-eval | Scripts never `source`/`eval` user-supplied data — config, ledger, and issue content is parsed, never executed (project-wide script rule) | critical | judge |
+| script-preamble | Every script sets `set -uo pipefail` directly (not solely via a sourced framework); locale-sensitive scripts also `export LC_ALL=C` (project-wide script rule) | high | judge |
 | bash-source-relative | Inter-script composition uses `BASH_SOURCE`-relative paths, not `${CLAUDE_PLUGIN_ROOT}` (which substitutes only in skill content) (project-wide script rule) | high | judge |
 | ref-validation | Every untrusted id / SHA / ref is validated before git interpolation: the single `is_valid_id` boundary (byte-identical copies in the issue group), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` | critical | judge |
 | relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments, the `rename-tracked` / `move-spec-dir` git-mv primitives) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use; and the `rename-tracked` / `move-spec-dir` git-mv primitives additionally hand their path arguments to git only under literal-pathspec semantics (`git --literal-pathspecs …` — the tracked-file `ls-files` check and `git mv`), so a valid-relpath'd path's pathspec magic (`:(exclude)` / `:/` / `:(glob)`) is never interpreted there (project-wide script rule) | critical | judge |
@@ -101,8 +105,3 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
 ```verify-checks
 no-third-party-deps polarity=must-not regex=\b(jq|yq|bats)\b scope=skills/
 ```
-
-One rule previously recorded against this territory is deliberately not
-recorded here, tracked as an open issue instead: the script-preamble rule
-(three files inherit `set -uo pipefail` via `source` rather than setting it).
-It returns to this table when its issue resolves fix-the-code or fold-the-intent.
