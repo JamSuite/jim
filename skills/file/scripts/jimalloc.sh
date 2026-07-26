@@ -326,6 +326,45 @@ alloc_in_repo() {
   }
 }
 
+# alloc_config <cli-key> — resolve a config key via jimconf.sh, forwarding any
+# -c override. The id_coordination_* family is read from the current branch, so
+# a team's coordination scheme is versioned with the repo.
+alloc_config() {
+  if [[ -n "$CONFIG_FILE" ]]; then
+    bash "$JIMCONF" -c "$CONFIG_FILE" get "$1"
+  else
+    bash "$JIMCONF" get "$1"
+  fi
+}
+
+# alloc_preflight — validate the config-governed mechanism and unreachable mode
+# before any allocation. Only the git mechanism and the fail unreachable-mode
+# are implemented in this build; a reserved value ('service' / 'provisional')
+# fails loudly rather than silently misbehaving.
+alloc_preflight() {
+  local mech unreachable
+  mech="$(alloc_config id_coordination_mechanism)"; [[ -n "$mech" ]] || mech="git"
+  if [[ "$mech" != "git" ]]; then
+    echo "error: id_coordination_mechanism '$mech' is not implemented (only 'git' is supported)" >&2
+    return 1
+  fi
+  unreachable="$(alloc_config id_coordination_unreachable)"; [[ -n "$unreachable" ]] || unreachable="fail"
+  if [[ "$unreachable" != "fail" ]]; then
+    echo "error: id_coordination_unreachable '$unreachable' is not implemented (only 'fail' is supported)" >&2
+    return 1
+  fi
+  return 0
+}
+
+# alloc_backoff <attempt> — sleep a short, rising, jittered interval between CAS
+# retries so racing allocations de-synchronize instead of colliding in lockstep
+# (F6). Bounded well under a second; jitter comes from $RANDOM.
+alloc_backoff() {
+  local n="$1" ms
+  ms=$(( n * 40 + RANDOM % 50 ))
+  sleep "0.$(printf '%03d' "$ms")" 2>/dev/null || true
+}
+
 # alloc_valid_branch <branch> — exit 0 iff <branch> is a safe branch name for
 # refs/heads/<branch>: no leading '-' (option injection) and accepted by git's
 # own ref-name policy (rejects '..', control chars, ~^:?*[, .lock, etc.). The
@@ -343,11 +382,7 @@ alloc_valid_branch() {
 # configured value is not a valid branch name.
 alloc_coord_branch() {
   local b
-  if [[ -n "$CONFIG_FILE" ]]; then
-    b="$(bash "$JIMCONF" -c "$CONFIG_FILE" get id_coordination_branch)"
-  else
-    b="$(bash "$JIMCONF" get id_coordination_branch)"
-  fi
+  b="$(alloc_config id_coordination_branch)"
   [[ -n "$b" ]] || b="jim/registry"
   if ! alloc_valid_branch "$b"; then
     echo "error: id_coordination_branch '$b' is not a valid git branch name" >&2
@@ -511,6 +546,7 @@ alloc_origin_cas() {
 alloc_cas_append() {
   local logfile="$1"; shift
   local builder="$1"; shift
+  alloc_preflight || return 1
   local branch ref remote
   branch="$(alloc_coord_branch)" || return 1
   ref="refs/heads/$branch"
@@ -575,6 +611,8 @@ alloc_cas_append() {
         return 0
       fi
     fi
+    # CAS lost — back off (jittered) before refetching and retrying.
+    (( attempt < attempts )) && alloc_backoff "$attempt"
   done
   echo "error: allocation failed after $attempts attempts (contention on $branch)" >&2
   return 1

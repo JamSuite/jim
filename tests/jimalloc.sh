@@ -484,6 +484,61 @@ case_jimalloc_allocate_growth_not_erosion() {
   assert_eq   "third id"  "g/003"       "$OUT"
 }
 
+# ─── Section: config wiring + failure semantics ──────────────────────────────
+
+# AC: the mechanism is config-governed; a reserved-but-unimplemented value
+# ('service') fails loudly rather than silently misbehaving (spec: config
+# governs mechanism; only git/local implemented here).
+case_jimalloc_mechanism_service_not_implemented() {
+  local repo
+  repo="$(alloc_new_repo alloc_mech)"
+  printf 'id_coordination_mechanism = "service"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate spec g "x"
+  assert_exit     "rc"      1  "$RC"
+  assert_eq       "no id"   "" "$OUT"
+  assert_nonempty "message" "$ERR"
+}
+
+# AC: the unreachable-origin behavior is config-governed; the reserved
+# 'provisional' mode is not shipped here and fails loudly (spec ships 'fail').
+case_jimalloc_unreachable_provisional_not_implemented() {
+  local repo
+  repo="$(alloc_new_repo alloc_unreach_mode)"
+  printf 'id_coordination_unreachable = "provisional"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate spec g "x"
+  assert_exit     "rc"      1  "$RC"
+  assert_nonempty "message" "$ERR"
+}
+
+# AC: a configured but unreachable remote hard-fails with a clear message and
+# never silently falls back to an unpublished local allocation (AC 10 / F7).
+case_jimalloc_unreachable_remote_hard_fails() {
+  local repo localref
+  repo="$(alloc_new_repo alloc_bad_remote)"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
+  run_jimalloc_in "$repo" allocate spec g "x"
+  assert_exit     "rc"      1  "$RC"
+  assert_eq       "no id"   "" "$OUT"
+  assert_nonempty "message" "$ERR"
+  localref="$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+  assert_eq "no local fallback branch" "" "$localref"
+}
+
+# AC: the coordination point is config-governed and read from the branch — a
+# custom branch name routes the registry to that ref (spec: config governs the
+# coordination point, per-branch).
+case_jimalloc_custom_branch_from_config() {
+  local repo
+  repo="$(alloc_new_repo alloc_custom_branch)"
+  printf 'id_coordination_branch = "jim/ids"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate spec g "x"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "id" "g/001" "$OUT"
+  local log
+  log="$(git -C "$repo" cat-file -p refs/heads/jim/ids:specs.log 2>/dev/null)"
+  assert_match "recorded on custom branch" '^spec allocate g/001 x ' "$log"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
