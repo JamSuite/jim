@@ -166,37 +166,37 @@ sequenceDiagram
 
 ## Task Breakdown
 
-1. [ ] Add `id_coordination_mechanism` / `id_coordination_branch` / `id_coordination_unreachable` to `jimconf.sh` — an `id_coordination_*` prefix arm in `resolve()` and the three `default_for` cases (`git` / `jim/registry` / `fail`). Add `tests/jimconf.sh` cases for default + override of each.
+1. [x] Add `id_coordination_mechanism` / `id_coordination_branch` / `id_coordination_unreachable` to `jimconf.sh` — an `id_coordination_*` prefix arm in `resolve()` and the three `default_for` cases (`git` / `jim/registry` / `fail`). Add `tests/jimconf.sh` cases for default + override of each.
    **Verify:** `bash tests/jimconf.sh`
 
-2. [ ] Scaffold `skills/file/scripts/jimalloc.sh`: preamble (`set -uo pipefail; export LC_ALL=C; export GIT_TERMINAL_PROMPT=0`), `BASH_SOURCE`-relative `JIMFILE`/`JIMCONF`, subcommand dispatch (`allocate`/`peek`/`resolve`), and usage (rc 2 on unknown/missing verb). Create `tests/jimalloc.sh` (via `/jim:meta-test scaffold jimalloc`) with a usage smoke case.
+2. [x] Scaffold `skills/file/scripts/jimalloc.sh`: preamble (`set -uo pipefail; export LC_ALL=C; export GIT_TERMINAL_PROMPT=0`), `BASH_SOURCE`-relative `JIMFILE`/`JIMCONF`, subcommand dispatch (`allocate`/`peek`/`resolve`), and usage (rc 2 on unknown/missing verb). Create `tests/jimalloc.sh` (via `/jim:meta-test scaffold jimalloc`) with a usage smoke case.
    **Verify:** `bash tests/jimalloc.sh`
 
-3. [ ] Implement the pure record layer over a log string/file: the grammar parser (per-field charset validation via `jimfile.sh valid-id`/`is_valid_slug`; a malformed record is degraded and skipped, never executed — AC 15, F1a), the emit-encoder (DD 7 — build a record line from fields, stripping/rejecting newlines and the field delimiter in free-text values so a crafted field cannot forge a second record — F8), and `resolve` forward-replay (multi-hop rename, group rename, reused-name safety via replay-from-allocate, cycle-safety). Fixture logs only, no git. Include adversarial cases (id `--upload-pack=x`, `..`-bearing slug, ref metacharacters, a newline-bearing `<who>`) asserting rejection/sanitization.
+3. [x] Implement the pure record layer over a log string/file: the grammar parser (per-field charset validation via `jimfile.sh valid-id`/`is_valid_slug`; a malformed record is degraded and skipped, never executed — AC 15, F1a), the emit-encoder (DD 7 — build a record line from fields, stripping/rejecting newlines and the field delimiter in free-text values so a crafted field cannot forge a second record — F8), and `resolve` forward-replay (multi-hop rename, group rename, reused-name safety via replay-from-allocate, cycle-safety). Fixture logs only, no git. Include adversarial cases (id `--upload-pack=x`, `..`-bearing slug, ref metacharacters, a newline-bearing `<who>`) asserting rejection/sanitization.
    **Verify:** `bash tests/jimalloc.sh`
 
-4. [ ] Implement `next-id`/`next-num` over the replay and the G9 durable-id guard: compute next spec `NNN` per group, next issue `num`, and the durable issue id (slug via `jimfile.sh`), suffixing (`-2`,`-3`) when the durable id already appears in the log. Depends on task 3.
+4. [x] Implement `next-id`/`next-num` over the replay and the G9 durable-id guard: compute next spec `NNN` per group, next issue `num`, and the durable issue id (slug via `jimfile.sh`), suffixing (`-2`,`-3`) when the durable id already appears in the log. Depends on task 3.
    **Verify:** `bash tests/jimalloc.sh`
 
-5. [ ] Local-tier CAS: plumbing commit builder (`cat-file`→`hash-object`→`ls-tree`+`mktree`→`commit-tree`) and `git update-ref refs/heads/<branch> <new> <expected>` old-value CAS; bounded retry on mismatch, then hard-fail. Build the appended record via the task-3 encoder, taking a sanitized `<who>` from `git config user.name` (F8). Fixture: a temp no-remote repo — allocate twice yields distinct ids, the log grows append-only, an abandoned allocation leaves a permanent gap, and a newline-bearing `git config user.name` cannot forge a second record. Depends on task 4.
+5. [x] Local-tier CAS: plumbing commit builder (`cat-file`→`hash-object`→`ls-tree`+`mktree`→`commit-tree`) and `git update-ref refs/heads/<branch> <new> <expected>` old-value CAS; bounded retry on mismatch, then hard-fail. Build the appended record via the task-3 encoder, taking a sanitized `<who>` from `git config user.name` (F8). Fixture: a temp no-remote repo — allocate twice yields distinct ids, the log grows append-only, an abandoned allocation leaves a permanent gap, and a newline-bearing `git config user.name` cannot forge a second record. Depends on task 4.
    **Verify:** `bash tests/jimalloc.sh`
 
-6. [ ] Origin-tier CAS: `git fetch` the coordination branch, build the commit with the fetched tip as parent, `git push <remote> <sha>:refs/heads/<branch>` (no force) with non-fast-forward rejection as the CAS; first-allocation branch-create case; bounded retry-on-reject then hard-fail. Fixture: two clones of a bare remote simulating the race (A pushes, B rejected → refetch → retry → distinct id). Depends on task 5.
+6. [x] Origin-tier CAS: `git fetch` the coordination branch, build the commit with the fetched tip as parent, `git push <remote> <sha>:refs/heads/<branch>` (no force) with non-fast-forward rejection as the CAS; first-allocation branch-create case; bounded retry-on-reject then hard-fail. Fixture: two clones of a bare remote simulating the race (A pushes, B rejected → refetch → retry → distinct id). Depends on task 5.
    **Verify:** `bash tests/jimalloc.sh`
 
-7. [ ] G3 growth guard: cache the last-seen registry per kind **locally, outside the coordination branch** (DD 8 — the clone's git dir or a local state file, never fetched from or committed to the registry — F9); on each fetch/read assert the seen content is a byte-prefix of the current content, hard-failing on erosion (force-push/revert) rather than reissuing. Fixture: rewrite the coordination branch history — even with the attacker controlling branch content, the local baseline still detects the erosion and next allocate hard-fails. Depends on task 6.
+7. [x] G3 growth guard: cache the last-seen registry per kind **locally, outside the coordination branch** (DD 8 — the clone's git dir or a local state file, never fetched from or committed to the registry — F9); on each fetch/read assert the seen content is a byte-prefix of the current content, hard-failing on erosion (force-push/revert) rather than reissuing. Fixture: rewrite the coordination branch history — even with the attacker controlling branch content, the local baseline still detects the erosion and next allocate hard-fails. Depends on task 6.
    **Verify:** `bash tests/jimalloc.sh`
 
-8. [ ] Config wiring + tier selection + failure semantics: resolve `id_coordination_*`; select origin vs local tier by remote reachability (AC 9); `unreachable = fail` → bounded retry then loud hard-fail, no silent local fallback in origin tier (AC 10); retry backoff+jitter (F6); validate the config-supplied `id_coordination_branch` as a git ref name before use (F1b); confirm non-interactive git (F7). Fixture: a bad remote URL → rc 1 with a clear message. Depends on task 6.
+8. [x] Config wiring + tier selection + failure semantics: resolve `id_coordination_*`; select origin vs local tier by remote reachability (AC 9); `unreachable = fail` → bounded retry then loud hard-fail, no silent local fallback in origin tier (AC 10); retry backoff+jitter (F6); validate the config-supplied `id_coordination_branch` as a git ref name before use (F1b); confirm non-interactive git (F7). Fixture: a bad remote URL → rc 1 with a clear message. Depends on task 6.
    **Verify:** `bash tests/jimalloc.sh`
 
-9. [ ] Write-containment guard (F5): resolve the registry write path and any temp artifact inside `git rev-parse --show-toplevel`; refuse a symlinked or out-of-tree target before any object write or ref update. Fixture: a symlink-escaping coordination path → refused, rc 1, no side effect. Depends on task 5.
+9. [x] Write-containment guard (F5): resolve the registry write path and any temp artifact inside `git rev-parse --show-toplevel`; refuse a symlinked or out-of-tree target before any object write or ref update. Fixture: a symlink-escaping coordination path → refused, rc 1, no side effect. Depends on task 5.
    **Verify:** `bash tests/jimalloc.sh`
 
-10. [ ] `peek`: reuse tasks 3–4 to compute the next id from the best-available registry state without committing; advisory and non-fatal on unreachable (never binds, never mutates). Fixture: `peek` prints the next id and leaves the registry byte-identical. Depends on task 4.
+10. [x] `peek`: reuse tasks 3–4 to compute the next id from the best-available registry state without committing; advisory and non-fatal on unreachable (never binds, never mutates). Fixture: `peek` prints the next id and leaves the registry byte-identical. Depends on task 4.
     **Verify:** `bash tests/jimalloc.sh`
 
-11. [ ] Full-suite green: run the aggregate test runner to confirm no regression across platform scripts.
+11. [x] Full-suite green: run the aggregate test runner to confirm no regression across platform scripts.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
