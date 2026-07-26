@@ -447,6 +447,43 @@ case_jimalloc_resolve_reads_branch_after_allocate() {
   assert_eq   "resolve current" "core/001" "$OUT"
 }
 
+# ─── Section: G3 erosion guard ───────────────────────────────────────────────
+
+# AC: if the coordination branch history is truncated or rewritten (force-push
+# / revert), the next allocation detects the erosion relative to the locally
+# seen baseline and hard-fails rather than reissuing an already-consumed id —
+# even though the attacker controls the branch content, the local baseline
+# (outside the branch) still catches it (spec AC 11 / DD 8 / F9).
+case_jimalloc_allocate_detects_erosion() {
+  local repo blob tree commit
+  repo="$(alloc_new_repo alloc_erosion)"
+  run_jimalloc_in "$repo" allocate spec g "one"
+  assert_exit "first rc"  0 "$RC"
+  run_jimalloc_in "$repo" allocate spec g "two"
+  assert_exit "second rc" 0 "$RC"
+  # Rewrite the coordination branch to a truncated history the baseline never saw.
+  blob="$(printf 'spec allocate g/001 tampered 20200101 x\n' | git -C "$repo" hash-object -w --stdin)"
+  tree="$(printf '100644 blob %s\tspecs.log\n' "$blob" | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" -m rewrite)"
+  git -C "$repo" update-ref refs/heads/jim/registry "$commit"
+  run_jimalloc_in "$repo" allocate spec g "three"
+  assert_exit     "erosion hard-fail" 1  "$RC"
+  assert_eq       "no id issued"      "" "$OUT"
+  assert_nonempty "erosion message"   "$ERR"
+}
+
+# AC: clean append-only growth never false-triggers the erosion guard — the
+# baseline is a byte-prefix of every later state (regression guard for the check).
+case_jimalloc_allocate_growth_not_erosion() {
+  local repo
+  repo="$(alloc_new_repo alloc_growth)"
+  run_jimalloc_in "$repo" allocate spec g "one"
+  run_jimalloc_in "$repo" allocate spec g "two"
+  run_jimalloc_in "$repo" allocate spec g "three"
+  assert_exit "third rc"  0             "$RC"
+  assert_eq   "third id"  "g/003"       "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner

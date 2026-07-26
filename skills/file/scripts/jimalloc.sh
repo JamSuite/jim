@@ -391,6 +391,54 @@ alloc_origin_tip() {
   printf '%s' "$tip"
 }
 
+# ── Erosion guard (G3): a local, per-clone baseline of the last-seen registry.
+# It lives under the git dir — never on any branch, never fetched or pushed — so
+# an attacker who force-pushes a rewritten history cannot also rewrite the
+# baseline. The append-only log may only grow, so the baseline must remain a
+# byte-prefix of the current content; if it does not, the history was truncated
+# or rewritten and the next allocation must hard-fail rather than reissue an
+# already-consumed id (DD 8 / F9). A first-time clone has no baseline and cannot
+# detect erosion that predates its first fetch — denying force-push on the
+# coordination branch is the primary control; this is defense-in-depth.
+
+# alloc_baseline_dir — the local baseline directory (under the git dir).
+alloc_baseline_dir() {
+  local gd
+  gd="$(git rev-parse --git-dir 2>/dev/null)" || return 1
+  printf '%s/jimalloc' "$gd"
+}
+
+# alloc_baseline_file <logfile> — path to the last-seen baseline for <logfile>.
+alloc_baseline_file() {
+  local d
+  d="$(alloc_baseline_dir)" || return 1
+  printf '%s/seen-%s' "$d" "$1"
+}
+
+# alloc_check_erosion <logfile> <current_raw> — rc 0 if the stored baseline is a
+# byte-prefix of <current_raw> (clean growth) or no baseline exists yet; rc 1 if
+# the baseline is no longer a prefix (erosion).
+alloc_check_erosion() {
+  local logfile="$1" current="$2" base seen
+  base="$(alloc_baseline_file "$logfile")" || return 0
+  [[ -f "$base" ]] || return 0
+  seen="$(cat -- "$base"; printf X)"; seen="${seen%X}"
+  [[ -z "$seen" ]] && return 0
+  [[ "$current" == "$seen"* ]] && return 0
+  return 1
+}
+
+# alloc_update_baseline <logfile>   (content on stdin) — record the content just
+# committed as the new last-seen baseline for <logfile>. Best-effort: a failure
+# to persist the baseline never fails an allocation that already committed.
+alloc_update_baseline() {
+  local logfile="$1" d base
+  d="$(alloc_baseline_dir)" || { cat >/dev/null; return 0; }
+  mkdir -p "$d" 2>/dev/null || { cat >/dev/null; return 0; }
+  base="$(alloc_baseline_file "$logfile")" || { cat >/dev/null; return 0; }
+  cat > "$base" 2>/dev/null || true
+}
+
 # alloc_group_present <group>  (log on stdin) — exit 0 iff a valid
 # `group allocate <group>` record already exists.
 alloc_group_present() {
@@ -472,7 +520,7 @@ alloc_cas_append() {
   email="$(alloc_sanitize_who "$(git config user.email 2>/dev/null || printf '')")"
   [[ -n "$who" ]]   || who="jim-allocator"
   [[ -n "$email" ]] || email="jim-allocator@localhost"
-  local attempts=5 attempt tip current_log return_id
+  local attempts=5 attempt tip current_log current_raw return_id
   local -a cur=() built=() records=() all=()
   for ((attempt=1; attempt<=attempts; attempt++)); do
     # Current tip of the coordination branch for this tier (origin fetches it).
@@ -480,6 +528,21 @@ alloc_cas_append() {
       tip="$(alloc_origin_tip "$remote" "$branch")" || return 1
     else
       tip="$(git rev-parse --verify --quiet --end-of-options "$ref" 2>/dev/null || true)"
+    fi
+    # Erosion guard: the seen-baseline must remain a byte-prefix of the current
+    # registry, else the history was truncated or rewritten — hard-fail loudly.
+    # The trailing-X trick preserves the blob's final newline through capture so
+    # the byte-prefix check is line-boundary precise.
+    if [[ -n "$tip" ]]; then
+      current_raw="$(git cat-file -p "$tip:$logfile" 2>/dev/null; printf X)"
+      current_raw="${current_raw%X}"
+    else
+      current_raw=""
+    fi
+    if ! alloc_check_erosion "$logfile" "$current_raw"; then
+      echo "error: coordination branch '$branch' shows registry erosion for $logfile" \
+           "(history truncated or rewritten); refusing to allocate" >&2
+      return 1
     fi
     cur=()
     [[ -n "$tip" ]] && mapfile -t cur < <(git cat-file -p "$tip:$logfile" 2>/dev/null)
@@ -500,12 +563,14 @@ alloc_cas_append() {
     if [[ -n "$remote" ]]; then
       if printf '%s\n' "${all[@]}" \
            | alloc_origin_cas "$remote" "$ref" "$tip" "$logfile" "$who" "$email"; then
+        printf '%s\n' "${all[@]}" | alloc_update_baseline "$logfile"
         printf '%s\n' "$return_id"
         return 0
       fi
     else
       if printf '%s\n' "${all[@]}" \
            | alloc_local_cas "$ref" "$tip" "$logfile" "$who" "$email"; then
+        printf '%s\n' "${all[@]}" | alloc_update_baseline "$logfile"
         printf '%s\n' "$return_id"
         return 0
       fi
