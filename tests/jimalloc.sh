@@ -558,6 +558,53 @@ case_jimalloc_refuses_symlink_escaping_baseline() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
+# ─── Section: peek (advisory, read-only preview) ─────────────────────────────
+
+# AC: peek previews the id the next allocation would produce and leaves the
+# registry byte-identical — it never binds and never mutates (spec: read-only
+# preview; only allocation binds).
+case_jimalloc_peek_spec_no_mutation() {
+  local repo before after
+  repo="$(alloc_new_repo alloc_peek_spec)"
+  run_jimalloc_in "$repo" allocate spec g "one"
+  before="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  run_jimalloc_in "$repo" peek spec g
+  assert_exit "peek rc"       0       "$RC"
+  assert_eq   "peek next id"  "g/002" "$OUT"
+  after="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  assert_eq   "registry unchanged" "$before" "$after"
+}
+
+# AC: peek issue previews the next ordinal without reserving it.
+case_jimalloc_peek_issue() {
+  local repo
+  repo="$(alloc_new_repo alloc_peek_issue)"
+  run_jimalloc_in "$repo" allocate issue "First"
+  run_jimalloc_in "$repo" peek issue
+  assert_exit "rc"       0   "$RC"
+  assert_eq   "next num" "2" "$OUT"
+}
+
+# AC: peek against an empty registry previews the first id.
+case_jimalloc_peek_empty_registry() {
+  local repo
+  repo="$(alloc_new_repo alloc_peek_empty)"
+  run_jimalloc_in "$repo" peek spec newgroup
+  assert_exit "rc"       0              "$RC"
+  assert_eq   "first id" "newgroup/001" "$OUT"
+}
+
+# AC: peek is advisory — an unreachable remote is non-fatal (it degrades to the
+# last-seen local state), in contrast to allocate which hard-fails.
+case_jimalloc_peek_unreachable_non_fatal() {
+  local repo
+  repo="$(alloc_new_repo alloc_peek_unreach)"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-peek.git"
+  run_jimalloc_in "$repo" peek spec g
+  assert_exit "rc"                0       "$RC"
+  assert_eq   "degrades to local" "g/001" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner

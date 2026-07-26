@@ -709,9 +709,41 @@ cmd_allocate() {
   esac
 }
 
+# alloc_peek_refresh — best-effort fast-forward of the local coordination ref
+# from the remote so peek previews the latest state. Non-fatal by design: an
+# unreachable remote or a refused update is ignored — peek degrades to the
+# last-seen local state, never binds, and never mutates the registry.
+alloc_peek_refresh() {
+  local remote branch
+  remote="$(alloc_coord_remote)"
+  [[ -n "$remote" ]] || return 0
+  branch="$(alloc_coord_branch)" || return 0
+  git fetch --quiet "$remote" "$branch:refs/heads/$branch" 2>/dev/null || true
+  return 0
+}
+
 cmd_peek() {
-  echo "error: 'peek' not yet implemented" >&2
-  return 1
+  local kind="${1:-}"
+  case "$kind" in
+    spec)
+      local group="${2:-}"
+      if [[ -z "$group" ]]; then
+        echo "error: 'peek spec' requires <group>" >&2
+        return 2
+      fi
+      alloc_valid_token "$group" || { echo "error: invalid group '$group'" >&2; return 1; }
+      alloc_peek_refresh
+      alloc_read_log spec | alloc_next_id_spec "$group"
+      ;;
+    issue)
+      alloc_peek_refresh
+      alloc_read_log issue | alloc_next_num_issue
+      ;;
+    *)
+      echo "error: peek kind must be 'spec' or 'issue'" >&2
+      return 2
+      ;;
+  esac
 }
 
 cmd_resolve() {
