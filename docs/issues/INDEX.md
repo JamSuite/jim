@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 51
+- Open: 59
 - Closed: 59
 
 ## Issues
@@ -114,9 +114,17 @@
 - `20260725-review-the-17-frozen-jim-group-prose-mentions` — review the 17 frozen jim-group prose mentions · status: closed · num: 103 · priority: low · created: 2026-07-25T08:04:46Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold` — script-preamble rule vs source-inherited preambles: fix or fold · status: closed · num: 99 · priority: medium · created: 2026-07-25T08:04:41Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260726-add-a-per-file-must-each-polarity-to-the-verify-mechanical-floor` — Add a per-file must-each polarity to the verify mechanical floor · status: open · num: 109 · priority: medium · created: 2026-07-26T07:09:09Z · labels: [verify, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/spec.md
+- `20260726-add-an-only-door-verification-sweep-for-the-id-registry` — Add an only-door verification sweep for the id registry · status: open · num: 116 · priority: medium · created: 2026-07-26T19:02:01Z · labels: [id-coordination, verify] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-add-provisional-and-reconcile-unreachable-origin-mode` — Add provisional and reconcile unreachable-origin mode · status: open · num: 115 · priority: medium · created: 2026-07-26T19:02:00Z · labels: [id-coordination, config] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-declare-tests-scripthygiene-sh-in-platform-territory` — Declare tests/scripthygiene.sh in platform territory · status: open · num: 110 · priority: low · created: 2026-07-26T08:40:11Z · labels: [partition, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/plan.md
+- `20260726-document-coordination-branch-protection-and-team-setup` — Document coordination-branch protection and team setup · status: open · num: 118 · priority: medium · created: 2026-07-26T19:02:03Z · labels: [id-coordination, docs] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` — Emit rename/split redirect records and wire /jim:partition batches · status: open · num: 113 · priority: high · created: 2026-07-26T19:01:57Z · labels: [id-coordination, partition] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-guard-coordination-branch-relocation-with-a-moved-to-tombstone` — Guard coordination_branch relocation with a moved-to tombstone · status: open · num: 117 · priority: low · created: 2026-07-26T19:02:02Z · labels: [id-coordination, config] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-neutralize-pathspec-magic-in-jimledger-commit-pathspec-calls` — Neutralize pathspec magic in jimledger commit-* pathspec calls · status: open · num: 108 · priority: medium · created: 2026-07-26T05:56:09Z · labels: [platform, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/review.md
 - `20260726-neutralize-pathspec-magic-in-jimpartition-rewrite-identity-rewri` — Neutralize pathspec magic in jimpartition rewrite-identity/rewrite-refs · status: open · num: 107 · priority: medium · created: 2026-07-26T04:46:06Z · labels: [partition, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/research.md
+- `20260726-seed-the-id-coordination-registry-from-existing-artifacts` — Seed the id-coordination registry from existing artifacts · status: open · num: 114 · priority: high · created: 2026-07-26T19:01:58Z · labels: [id-coordination, migration] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` — Wire spec-ID allocation onto the id-coordination allocator · status: open · num: 112 · priority: high · created: 2026-07-26T19:01:56Z · labels: [id-coordination, spec] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` — Wire the issue display ordinal onto the id-coordination allocator · status: open · num: 111 · priority: high · created: 2026-07-26T19:01:55Z · labels: [id-coordination, issue] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 
 ## Graph
 
