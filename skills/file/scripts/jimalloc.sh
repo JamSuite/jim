@@ -233,6 +233,85 @@ alloc_resolve_issue() {
   printf '%s\n' "$current"
 }
 
+# alloc_next_id_spec <group>  (log on stdin)
+#   The next spec id for <group>: max ordinal + 1 (zero-padded to 3), counting
+#   every allocate id and rename destination in the group. Because ids are never
+#   reused, this is a high-water mark — an ordinal vacated by a rename is still
+#   counted via its own allocate record, so it is never reclaimed (permanent
+#   gap). Group-rename aliasing of the group namespace is deferred to the spec
+#   that begins emitting rename records; allocate-only logs need no aliasing.
+alloc_next_id_spec() {
+  local group="$1"
+  alloc_valid_token "$group" || { echo "error: invalid group '$group'" >&2; return 1; }
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 c5 c6 max=0 g num
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
+    if [[ "$c1" == spec && "$c2" == allocate ]]; then
+      alloc_valid_specid "$c3" || continue
+      g="${c3%/*}"; num="${c3##*/}"
+    elif [[ "$c1" == spec && "$c2" == rename ]]; then
+      alloc_valid_specid "$c4" || continue
+      g="${c4%/*}"; num="${c4##*/}"
+    else
+      continue
+    fi
+    [[ "$g" == "$group" ]] || continue
+    num=$((10#$num))          # base-10 — never octal on leading zeros
+    (( num > max )) && max=$num
+  done
+  printf '%s/%03d\n' "$group" $((max + 1))
+}
+
+# alloc_next_num_issue  (log on stdin)
+#   The next issue display ordinal: max + 1 over allocate ids and rename
+#   destinations, unpadded (issue ordinals render as #N). Empty registry → 1.
+alloc_next_num_issue() {
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 c5 c6 max=0 cand
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
+    if [[ "$c1" == issue && "$c2" == allocate ]]; then
+      cand="$c3"
+    elif [[ "$c1" == issue && "$c2" == rename ]]; then
+      cand="$c4"
+    else
+      continue
+    fi
+    [[ "$cand" =~ ^[0-9]+$ ]] || continue
+    cand=$((10#$cand))
+    (( cand > max )) && max=$cand
+  done
+  printf '%s\n' $((max + 1))
+}
+
+# alloc_durable_issue_id <subject>  (issues log on stdin)
+#   Compute the durable issue id (today's date + slug via jimfile.sh) and
+#   disambiguate it with a -2 / -3 … suffix when the computed form already
+#   appears as a full-id in the registry (G9 collision guard). The ordinal and
+#   the durable form are guarded by the same append-only registry.
+alloc_durable_issue_id() {
+  local subject="$1" date slug base
+  date="$(bash "$JIMFILE" date)" || return 1
+  slug="$(bash "$JIMFILE" slug "$subject")" || return 1
+  base="${date}-${slug}"
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 c5 c6
+  local candidate="$base" suffix=1 taken
+  while :; do
+    taken=0
+    for ((i=0; i<n; i++)); do
+      read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
+      [[ "$c1" == issue && "$c2" == allocate ]] || continue
+      [[ "$c4" == "$candidate" ]] && { taken=1; break; }
+    done
+    (( taken )) || break
+    suffix=$((suffix + 1))
+    candidate="${base}-${suffix}"
+  done
+  printf '%s\n' "$candidate"
+}
+
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
 
 cmd_allocate() {

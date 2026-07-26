@@ -198,6 +198,65 @@ issue rename 5 8 20260727' > "$dir/issues.log"
   assert_eq "fullid→current ordinal" "8" "$OUT"
 }
 
+# ─── Section: next-id / next-num / durable-id guard ──────────────────────────
+
+# AC: next spec id in an empty group is <group>/001; otherwise max ordinal + 1,
+# zero-padded, counting both allocate ids and rename destinations in the group
+# (ids never reused → the high-water mark, never a reclaimed gap).
+case_jimalloc_next_id_spec() {
+  local out
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "")"
+  assert_eq "empty group → 001" "dashboard/001" "$out"
+  local log
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
+                      'spec allocate dashboard/002 b 20260726 x' \
+                      'spec allocate other/007 c 20260726 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
+  assert_eq "max+1 in group" "dashboard/003" "$out"
+  # a rename destination into the group counts toward the high-water mark
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
+                      'spec rename core/009 dashboard/005 20260727')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
+  assert_eq "rename dst counts" "dashboard/006" "$out"
+}
+
+# AC: leading-zero ordinals are read as base-10, never octal (008 → 8, not error).
+case_jimalloc_next_id_spec_base10() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate dashboard/008 a 20260726 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
+  assert_eq "008 → 009" "dashboard/009" "$out"
+}
+
+# AC: next issue ordinal is max+1 over allocate ids and rename destinations,
+# unpadded; empty registry → 1.
+case_jimalloc_next_num_issue() {
+  local out log
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "")"
+  assert_eq "empty → 1" "1" "$out"
+  log=$(printf '%s\n' 'issue allocate 5 20260726-a 20260726 x' \
+                      'issue rename 5 11 20260727')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
+  assert_eq "max+1" "12" "$out"
+}
+
+# AC: the durable issue id (date + slug) is disambiguated with a -2/-3 suffix
+# when the computed form already exists in the registry (G9 collision guard).
+case_jimalloc_durable_issue_id_collision() {
+  local today base out log
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  base="${today}-my-subject"
+  out="$(source "$SCRIPT_jimalloc"; alloc_durable_issue_id "My Subject" <<< "")"
+  assert_eq "no collision → base" "$base" "$out"
+  log=$(printf '%s\n' "issue allocate 1 $base 20260726 x")
+  out="$(source "$SCRIPT_jimalloc"; alloc_durable_issue_id "My Subject" <<< "$log")"
+  assert_eq "collision → -2" "${base}-2" "$out"
+  log=$(printf '%s\n' "issue allocate 1 $base 20260726 x" \
+                      "issue allocate 2 ${base}-2 20260726 x")
+  out="$(source "$SCRIPT_jimalloc"; alloc_durable_issue_id "My Subject" <<< "$log")"
+  assert_eq "collision → -3" "${base}-3" "$out"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
