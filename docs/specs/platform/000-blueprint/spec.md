@@ -16,8 +16,9 @@ group's specs, ARCHITECTURE.md, and code.*
 ## Responsibility
 
 The `platform` group is jim's deterministic substrate: config resolution
-(`jimconf.sh`), file/path/id operations (`jimfile.sh`), the SDLC ledger channel
-(`jimledger.sh`), and the bash test framework (`meta-test`). Every other group
+(`jimconf.sh`), file/path/id operations (`jimfile.sh`), coordinated cross-clone
+ID allocation (`jimalloc.sh`), the SDLC ledger channel (`jimledger.sh`), and the
+bash test framework (`meta-test`). Every other group
 composes with these CLIs; the group's purpose is to keep the paths, ids,
 config keys, durable counters, and test conventions of the whole plugin in
 exactly one deterministic place each. Its consumers are every jim skill and
@@ -40,6 +41,19 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   past vacated ids (split/merge ledger events) so a vacated id is never
   re-minted; the `000-blueprint` slot is reserved and resolved only via
   `path blueprint <group>`.
+- `jimalloc.sh` **ID coordination allocator** — `allocate spec <group> <subject>`
+  / `allocate issue <subject>` (durable-before-return), `peek spec <group>` /
+  `peek issue` (advisory next-id preview that never binds), `resolve spec|issue
+  <id>` (forward-replay to the current name); `-c <path>` override. Guarantee: an
+  id is returned only after its record is durably committed to a shared,
+  append-only registry on a dedicated coordination branch under a compare-and-swap
+  (origin-tier `push` non-fast-forward, local-tier `update-ref` old-value), built
+  with pure git plumbing so the working tree is never touched; the guarantee tier
+  follows remote reachability and an unreachable remote hard-fails with no silent
+  local fallback; every replayed or config token is revalidated through
+  `jimfile.sh valid-id` and the branch through `git check-ref-format` before it
+  reaches git; a per-clone erosion baseline kept outside the branch detects a
+  rewritten history and refuses to reissue.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
   `events`/`files`/`diff`/`diff-range`/`files-range`, the seven path-scoped commit verbs
   (`commit-review`/`commit-blueprint`/`commit-map`/`commit-verify`/
@@ -75,15 +89,17 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
 
 - `skills/conf/` — `SKILL.md` + `scripts/jimconf.sh` (the resolver every
   consuming skill `!`-injects or calls).
-- `skills/file/` — `SKILL.md` + `scripts/jimfile.sh`; chains to `jimconf.sh`
-  and (best-effort, for the vacated-id floor) to `jimledger.sh` via
-  `BASH_SOURCE`-relative paths.
+- `skills/file/` — `SKILL.md` + `scripts/jimfile.sh` (chains to `jimconf.sh`
+  and, best-effort for the vacated-id floor, `jimledger.sh`) and
+  `scripts/jimalloc.sh` (the ID coordination allocator — jim's first network +
+  shared-ref-write git surface; chains to `jimfile.sh` and `jimconf.sh`), all
+  via `BASH_SOURCE`-relative paths.
 - `skills/ledger/` — `SKILL.md` (the `/jim:ledger` read-only inspector) +
   `scripts/jimledger.sh`. Chains to `jimfile.sh` for id/relpath validation.
 - `skills/meta-test/` — `SKILL.md`, `scripts/{testlib,run,metatest}.sh`,
   `assets/test-file.sh.tmpl`.
-- `tests/jimconf.sh`, `tests/jimfile.sh`, `tests/jimledger.sh`,
-  `tests/metatest.sh` — the group's per-script test files.
+- `tests/jimconf.sh`, `tests/jimfile.sh`, `tests/jimalloc.sh`,
+  `tests/jimledger.sh`, `tests/metatest.sh` — the group's per-script test files.
 - `tests/scripthygiene.sh` — the corpus-wide script-preamble hygiene sweep
   (every first-party script sets the preamble directly; fail-closed on empty
   enumeration).
