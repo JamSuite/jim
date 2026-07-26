@@ -365,28 +365,35 @@ alloc_group_present() {
   return 1
 }
 
-# alloc_commit_and_cas <ref> <old_sha> <logfile> <who> <email>   (content on stdin)
-#   Build a commit that sets <logfile> to the piped content atop <old_sha>
-#   (empty = create), using git plumbing only so the working tree is never
-#   touched, then land it with an old-value compare-and-swap:
-#     git update-ref <ref> <new> <old_sha>   (old_sha="" ⇒ ref must not exist).
-#   The identity is passed per-invocation (already sanitized) so a hostile
-#   user.name cannot corrupt the commit object. Returns 0 on success, non-zero
-#   if the CAS is rejected (ref moved) or a plumbing step fails.
-alloc_commit_and_cas() {
-  local ref="$1" old_sha="$2" logfile="$3" who="$4" email="$5"
-  local blob tree commit
+# alloc_build_commit <parent_sha> <logfile> <who> <email>   (content on stdin)
+#   Build — with git plumbing only, so the working tree is never touched — a
+#   commit that sets <logfile> to the piped content atop <parent_sha> (empty =
+#   root commit), preserving every sibling log entry, and print the new commit
+#   sha. The identity is passed per-invocation (already sanitized) so a hostile
+#   user.name cannot corrupt the commit object.
+alloc_build_commit() {
+  local parent="$1" logfile="$2" who="$3" email="$4"
+  local blob tree
   blob="$(git hash-object -w --stdin)" || return 1
-  if [[ -n "$old_sha" ]]; then
-    tree="$( { git ls-tree "$old_sha^{tree}" | awk -F'\t' -v f="$logfile" '$2 != f'; \
+  if [[ -n "$parent" ]]; then
+    tree="$( { git ls-tree "$parent^{tree}" | awk -F'\t' -v f="$logfile" '$2 != f'; \
                printf '100644 blob %s\t%s\n' "$blob" "$logfile"; } | git mktree )" || return 1
-    commit="$(git -c "user.name=$who" -c "user.email=$email" \
-              commit-tree "$tree" -p "$old_sha" -m "jim: append $logfile")" || return 1
+    git -c "user.name=$who" -c "user.email=$email" \
+        commit-tree "$tree" -p "$parent" -m "jim: append $logfile"
   else
     tree="$( printf '100644 blob %s\t%s\n' "$blob" "$logfile" | git mktree )" || return 1
-    commit="$(git -c "user.name=$who" -c "user.email=$email" \
-              commit-tree "$tree" -m "jim: create $logfile")" || return 1
+    git -c "user.name=$who" -c "user.email=$email" \
+        commit-tree "$tree" -m "jim: create $logfile"
   fi
+}
+
+# alloc_local_cas <ref> <old_sha> <logfile> <who> <email>   (content on stdin)
+#   Local tier: build the commit and land it with an old-value compare-and-swap
+#   (git update-ref; old_sha="" ⇒ the ref must not yet exist). Non-zero if the
+#   CAS is rejected (a concurrent session advanced the ref) or a step fails.
+alloc_local_cas() {
+  local ref="$1" old_sha="$2" logfile="$3" who="$4" email="$5" commit
+  commit="$(alloc_build_commit "$old_sha" "$logfile" "$who" "$email")" || return 1
   git update-ref "$ref" "$commit" "$old_sha" 2>/dev/null
 }
 
@@ -431,7 +438,7 @@ alloc_cas_append() {
     records=( "${built[@]:1}" )
     all=( "${cur[@]}" "${records[@]}" )
     if printf '%s\n' "${all[@]}" \
-         | alloc_commit_and_cas "$ref" "$old_sha" "$logfile" "$who" "$email"; then
+         | alloc_local_cas "$ref" "$old_sha" "$logfile" "$who" "$email"; then
       printf '%s\n' "$return_id"
       return 0
     fi
