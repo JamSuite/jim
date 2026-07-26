@@ -45,6 +45,7 @@
 #      Then `chmod +x tests/<name>.sh`. This runner picks it up automatically.
 #
 
+set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/testlib.sh"
 

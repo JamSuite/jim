@@ -14,6 +14,7 @@
 #   bash tests/run.sh                 # run this file alongside every other tests/*.sh
 #
 
+set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 
