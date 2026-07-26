@@ -2,7 +2,7 @@
 title: "ID coordination allocator (foundation)"
 spec: "docs/specs/platform/007-id-coordination-allocator/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # ID coordination allocator (foundation) — Plan
