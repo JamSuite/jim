@@ -2,7 +2,7 @@
 title: "Script-preamble conformance and invariant restoration"
 spec: "spec.md"
 type: refactor
-status: approved
+status: complete
 ---
 
 # Script-preamble conformance and invariant restoration — Plan
