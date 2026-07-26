@@ -54,6 +54,150 @@ case_jimalloc_unknown_verb_usage() {
   assert_nonempty "stderr explains" "$ERR"
 }
 
+# run_jimalloc_reg <regdir> <args...>
+#   Same as run_jimalloc but points the allocator at a fixture registry
+#   directory (specs.log / issues.log) via JIMALLOC_REGISTRY_DIR — the seam
+#   that lets the pure record layer be exercised over fixture logs before the
+#   coordination-branch git wiring lands.
+run_jimalloc_reg() {
+  local regdir="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(JIMALLOC_REGISTRY_DIR="$regdir" bash "$SCRIPT_jimalloc" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# ─── Section: Record layer — emit-encoder (DD 7 / write-side boundary) ────────
+
+# AC: a newline (or the field delimiter) in the free-text <who> value cannot
+# forge a second record — the encoder collapses it to a single safe token, so
+# a plain grep/replay sees exactly one allocate line (spec AC 13; security F8).
+case_jimalloc_encode_who_newline_forgery() {
+  local who out
+  who="$(printf 'Jane\nspec allocate evil/999 x 20260726 attacker')"
+  out="$(source "$SCRIPT_jimalloc"; alloc_encode_allocate_spec "core/001" "my-slug" "20260726" "$who")"
+  assert_match "record prefix" '^spec allocate core/001 my-slug 20260726 ' "$out"
+  if [[ "$out" == *$'\n'* ]]; then
+    CURRENT_FAILED=1; echo "    [forgery] encoder emitted multiple lines: [$out]"
+  fi
+  if printf '%s' "$out" | grep -q 'evil/999'; then
+    CURRENT_FAILED=1; echo "    [forgery] raw injected id survived: [$out]"
+  fi
+}
+
+# ─── Section: Record layer — forward-replay resolution ───────────────────────
+
+# AC: an id with only its own allocate record resolves to itself (idempotent).
+case_jimalloc_resolve_spec_identity() {
+  local dir; dir=$(empty_dir res_identity)
+  printf '%s\n' 'spec allocate core/003 my-slug 20260726 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit "rc"      0          "$RC"
+  assert_eq   "current" "core/003" "$OUT"
+}
+
+# AC: a multi-hop rename (A→B→C) resolves the original citation to the current
+# name; the current name resolves to itself.
+case_jimalloc_resolve_spec_multihop_rename() {
+  local dir; dir=$(empty_dir res_multihop)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane
+spec rename core/003 dashboard/001 20260727
+spec rename dashboard/001 ui/002 20260728' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_eq "old→current" "ui/002" "$OUT"
+  run_jimalloc_reg "$dir" resolve spec dashboard/001
+  assert_eq "mid→current" "ui/002" "$OUT"
+  run_jimalloc_reg "$dir" resolve spec ui/002
+  assert_eq "current→self" "ui/002" "$OUT"
+}
+
+# AC: a group rename resolves every id in the group forward; the renamed-into
+# name resolves to itself.
+case_jimalloc_resolve_spec_group_rename() {
+  local dir; dir=$(empty_dir res_group)
+  printf '%s\n' 'spec allocate dashboard/001 s 20260726 jane
+group rename dashboard ui 20260727' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec dashboard/001
+  assert_eq "group old→current" "ui/001" "$OUT"
+  run_jimalloc_reg "$dir" resolve spec ui/001
+  assert_eq "group current→self" "ui/001" "$OUT"
+}
+
+# AC: a name renamed away and later reused does not inherit the earlier
+# referent's rename history — replay is anchored at the queried id's own (last)
+# allocate record (reused-name safety).
+case_jimalloc_resolve_spec_reused_name() {
+  local dir; dir=$(empty_dir res_reuse)
+  printf '%s\n' 'spec allocate dashboard/001 first 20260726 jane
+spec rename dashboard/001 core/009 20260727
+spec allocate dashboard/001 second 20260728 kai' > "$dir/specs.log"
+  # The moved original resolves forward…
+  run_jimalloc_reg "$dir" resolve spec core/009
+  assert_eq "moved original" "core/009" "$OUT"
+  # …while the reused string resolves to the current (latest) referent, NOT the
+  # earlier rename target.
+  run_jimalloc_reg "$dir" resolve spec dashboard/001
+  assert_eq "reused string" "dashboard/001" "$OUT"
+}
+
+# AC: a reverted rename (A→B→A) is cycle-safe — each record applies once in
+# file order, so the id resolves back to itself and replay terminates.
+case_jimalloc_resolve_spec_cycle_revert() {
+  local dir; dir=$(empty_dir res_cycle)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane
+spec rename core/003 tmp/001 20260727
+spec rename tmp/001 core/003 20260728' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit "rc"      0          "$RC"
+  assert_eq   "reverted" "core/003" "$OUT"
+}
+
+# AC: a malformed record (option-injection id, '..'-bearing token, ref
+# metacharacters) is degraded and skipped, never executed — a legit id in the
+# same log still resolves, and the malformed token itself is not allocated.
+case_jimalloc_resolve_spec_skips_malformed() {
+  local dir; dir=$(empty_dir res_malformed)
+  printf '%s\n' 'spec allocate --upload-pack=x s 20260726 jane
+spec allocate ../../etc/passwd s 20260726 jane
+spec allocate core/003 good 20260726 jane
+spec rename core/003 he^ad~1:x 20260727' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit "legit rc"       0          "$RC"
+  assert_eq   "legit resolves" "core/003" "$OUT"   # malformed rename dst skipped
+  run_jimalloc_reg "$dir" resolve spec --upload-pack=x
+  assert_exit "injection query rejected" 1 "$RC"
+  assert_eq   "no injection stdout"      "" "$OUT"
+}
+
+# AC: an id that never appears in the registry is reported unallocated (rc 1).
+case_jimalloc_resolve_spec_unknown() {
+  local dir; dir=$(empty_dir res_unknown)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec zzz/999
+  assert_exit     "rc"      1  "$RC"
+  assert_eq       "stdout"  "" "$OUT"
+  assert_nonempty "stderr"  "$ERR"
+}
+
+# AC: issue ordinals resolve across a multi-hop rename chain.
+case_jimalloc_resolve_issue_multihop() {
+  local dir; dir=$(empty_dir res_issue_hop)
+  printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
+issue rename 5 8 20260727
+issue rename 8 12 20260728' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 5
+  assert_eq "issue old→current" "12" "$OUT"
+}
+
+# AC: an issue queried by its durable full-id resolves to the current ordinal.
+case_jimalloc_resolve_issue_by_fullid() {
+  local dir; dir=$(empty_dir res_issue_fid)
+  printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
+issue rename 5 8 20260727' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 20260726-alpha
+  assert_eq "fullid→current ordinal" "8" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
