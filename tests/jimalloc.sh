@@ -358,6 +358,95 @@ case_jimalloc_allocate_leaves_worktree_clean() {
   assert_eq "worktree clean" "" "$status"
 }
 
+# ─── Section: origin-tier helpers (bare remote + clones) ─────────────────────
+
+# alloc_new_bare <name> — init and print a bare coordination remote.
+alloc_new_bare() {
+  local d; d="$(empty_dir "$1")"
+  git init -q --bare "$d/r.git"
+  printf '%s' "$d/r.git"
+}
+
+# alloc_new_clone <bare> <name> — clone <bare> with an identity, print its path.
+alloc_new_clone() {
+  local bare="$1" name="$2" dir
+  dir="$(empty_dir "$2")"
+  git clone -q "$bare" "$dir"
+  git -C "$dir" config user.name  "$name"
+  git -C "$dir" config user.email "$name@example.com"
+  printf '%s' "$dir"
+}
+
+# alloc_bare_specs <bare> — print specs.log on the bare remote's coordination branch.
+alloc_bare_specs() { git -C "$1" cat-file -p refs/heads/jim/registry:specs.log 2>/dev/null; }
+
+# ─── Section: origin-tier allocation (push non-fast-forward CAS) ─────────────
+
+# AC: when a remote is reachable, allocations coordinate across clones — a
+# second clone sees the first's allocation and gets a distinct id, both durable
+# on the remote (spec: guarantee tier follows reachability).
+case_jimalloc_origin_cross_clone_distinct() {
+  local bare A B log
+  bare="$(alloc_new_bare occ_bare)"
+  A="$(alloc_new_clone "$bare" occ_A)"
+  B="$(alloc_new_clone "$bare" occ_B)"
+  run_jimalloc_in "$A" allocate spec dashboard "from A"
+  assert_exit "A rc" 0              "$RC"
+  assert_eq   "A id" "dashboard/001" "$OUT"
+  run_jimalloc_in "$B" allocate spec dashboard "from B"
+  assert_exit "B rc" 0              "$RC"
+  assert_eq   "B id" "dashboard/002" "$OUT"
+  log="$(alloc_bare_specs "$bare")"
+  assert_match "A on remote" '^spec allocate dashboard/001 from-a ' "$log"
+  assert_match "B on remote" '^spec allocate dashboard/002 from-b ' "$log"
+}
+
+# AC: the first allocation against a remote with no coordination branch creates
+# it on the remote (branch-create case).
+case_jimalloc_origin_first_allocation_creates_branch() {
+  local bare A exists
+  bare="$(alloc_new_bare ofa_bare)"
+  A="$(alloc_new_clone "$bare" ofa_A)"
+  run_jimalloc_in "$A" allocate spec ui "Widget"
+  assert_exit "rc" 0 "$RC"
+  exists="$(git -C "$bare" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+  assert_nonempty "branch created on remote" "$exists"
+}
+
+# AC: two allocations racing against the same remote never both succeed with the
+# same id — the loser's push is rejected (non-fast-forward), it refetches and
+# retries, so both land distinct ids (spec: racing allocations never both win).
+case_jimalloc_origin_race_distinct() {
+  local bare A B ra rb count
+  bare="$(alloc_new_bare race_bare)"
+  A="$(alloc_new_clone "$bare" race_A)"
+  B="$(alloc_new_clone "$bare" race_B)"
+  run_jimalloc_in "$A" allocate spec g "seed"      # seed so both racers fetch+append
+  ( cd "$A" && bash "$SCRIPT_jimalloc" allocate spec g "a" ) > "$TMP_BASE/ra" 2>/dev/null &
+  ( cd "$B" && bash "$SCRIPT_jimalloc" allocate spec g "b" ) > "$TMP_BASE/rb" 2>/dev/null &
+  wait
+  ra="$(cat "$TMP_BASE/ra")"; rb="$(cat "$TMP_BASE/rb")"
+  assert_nonempty "A race id" "$ra"
+  assert_nonempty "B race id" "$rb"
+  if [[ "$ra" == "$rb" ]]; then
+    CURRENT_FAILED=1; echo "    [race] both allocations returned the same id: $ra"
+  fi
+  count="$(alloc_bare_specs "$bare" | grep -c '^spec allocate ')"
+  assert_eq "three specs on remote" "3" "$count"
+}
+
+# AC: after an allocation, resolve reads the registry from the coordination
+# branch (not only the test seam) and returns the id.
+case_jimalloc_resolve_reads_branch_after_allocate() {
+  local repo
+  repo="$(alloc_new_repo resolve_after)"
+  run_jimalloc_in "$repo" allocate spec core "Alpha"
+  assert_eq "allocated" "core/001" "$OUT"
+  run_jimalloc_in "$repo" resolve spec core/001
+  assert_exit "resolve rc"      0          "$RC"
+  assert_eq   "resolve current" "core/001" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner

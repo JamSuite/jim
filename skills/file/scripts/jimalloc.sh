@@ -91,8 +91,12 @@ alloc_read_log() {
     [[ -f "$p" ]] && cat -- "$p"
     return 0
   fi
-  echo "error: coordination-branch registry read is not wired yet" >&2
-  return 1
+  # Read the local coordination-branch ref (kept in sync by allocate on both
+  # tiers). peek refreshes it from the remote first; resolve reads as-is.
+  local branch
+  branch="$(alloc_coord_branch)" || return 1
+  git cat-file -p "refs/heads/$branch:$file" 2>/dev/null || true
+  return 0
 }
 
 # alloc_valid_token <tok> — exit 0 iff <tok> passes jimfile.sh's id boundary
@@ -352,6 +356,41 @@ alloc_coord_branch() {
   printf '%s' "$b"
 }
 
+# alloc_coord_remote — print a usable coordination remote (prefer 'origin',
+# else the first configured remote), or nothing when the clone has no remote.
+# An empty result selects the local tier; a non-empty one selects the origin
+# tier (the guarantee follows reachability).
+alloc_coord_remote() {
+  local r
+  if git remote 2>/dev/null | grep -qx origin; then
+    r=origin
+  else
+    r="$(git remote 2>/dev/null | head -n1)"
+  fi
+  [[ -n "$r" ]] && printf '%s' "$r"
+}
+
+# alloc_origin_tip <remote> <branch>  — print the coordination branch's tip sha
+# on <remote> (empty when the branch does not exist yet), having fetched its
+# objects locally so the log can be read and a commit built atop it. rc 1 if the
+# remote is unreachable — the origin tier hard-fails rather than silently
+# falling back to an unpublished local allocation.
+alloc_origin_tip() {
+  local remote="$1" branch="$2" line tip
+  if ! line="$(git ls-remote --heads "$remote" "$branch" 2>/dev/null)"; then
+    echo "error: coordination remote '$remote' is unreachable" >&2
+    return 1
+  fi
+  tip="$(printf '%s' "$line" | awk 'NR==1{print $1}')"
+  if [[ -n "$tip" ]]; then
+    if ! git fetch --quiet "$remote" "$branch" 2>/dev/null; then
+      echo "error: failed to fetch '$branch' from '$remote'" >&2
+      return 1
+    fi
+  fi
+  printf '%s' "$tip"
+}
+
 # alloc_group_present <group>  (log on stdin) — exit 0 iff a valid
 # `group allocate <group>` record already exists.
 alloc_group_present() {
@@ -397,6 +436,22 @@ alloc_local_cas() {
   git update-ref "$ref" "$commit" "$old_sha" 2>/dev/null
 }
 
+# alloc_origin_cas <remote> <ref> <parent> <logfile> <who> <email>  (content on stdin)
+#   Origin tier: build the commit atop the fetched remote tip <parent>, then
+#   push it. The default non-fast-forward rejection is the compare-and-swap —
+#   the push lands only if the remote branch is still at <parent>; if a
+#   concurrent allocation advanced it, the push is rejected and the caller
+#   refetches and retries. On success the local ref is synced so reads see it.
+alloc_origin_cas() {
+  local remote="$1" ref="$2" parent="$3" logfile="$4" who="$5" email="$6" commit
+  commit="$(alloc_build_commit "$parent" "$logfile" "$who" "$email")" || return 1
+  if git push --quiet "$remote" "$commit:$ref" 2>/dev/null; then
+    git update-ref "$ref" "$commit" 2>/dev/null || true
+    return 0
+  fi
+  return 1
+}
+
 # alloc_cas_append <logfile> <builder_fn> <builder_args...>
 #   The allocation retry loop. Each attempt re-reads the coordination branch tip
 #   and its log, invokes <builder_fn> "<current_log>" <args...> <who> to compute
@@ -408,22 +463,26 @@ alloc_local_cas() {
 alloc_cas_append() {
   local logfile="$1"; shift
   local builder="$1"; shift
-  local branch ref
+  local branch ref remote
   branch="$(alloc_coord_branch)" || return 1
   ref="refs/heads/$branch"
+  remote="$(alloc_coord_remote)"   # empty ⇒ local tier; set ⇒ origin tier
   local who email
   who="$(alloc_sanitize_who "$(git config user.name 2>/dev/null || printf '')")"
   email="$(alloc_sanitize_who "$(git config user.email 2>/dev/null || printf '')")"
   [[ -n "$who" ]]   || who="jim-allocator"
   [[ -n "$email" ]] || email="jim-allocator@localhost"
-  local attempts=5 attempt old_sha current_log return_id
+  local attempts=5 attempt tip current_log return_id
   local -a cur=() built=() records=() all=()
   for ((attempt=1; attempt<=attempts; attempt++)); do
-    old_sha="$(git rev-parse --verify --quiet --end-of-options "$ref" 2>/dev/null || true)"
-    cur=()
-    if [[ -n "$old_sha" ]]; then
-      mapfile -t cur < <(git cat-file -p "$ref:$logfile" 2>/dev/null)
+    # Current tip of the coordination branch for this tier (origin fetches it).
+    if [[ -n "$remote" ]]; then
+      tip="$(alloc_origin_tip "$remote" "$branch")" || return 1
+    else
+      tip="$(git rev-parse --verify --quiet --end-of-options "$ref" 2>/dev/null || true)"
     fi
+    cur=()
+    [[ -n "$tip" ]] && mapfile -t cur < <(git cat-file -p "$tip:$logfile" 2>/dev/null)
     if (( ${#cur[@]} > 0 )); then
       current_log="$(printf '%s\n' "${cur[@]}")"
     else
@@ -437,12 +496,20 @@ alloc_cas_append() {
     return_id="${built[0]}"
     records=( "${built[@]:1}" )
     all=( "${cur[@]}" "${records[@]}" )
-    if printf '%s\n' "${all[@]}" \
-         | alloc_local_cas "$ref" "$old_sha" "$logfile" "$who" "$email"; then
-      printf '%s\n' "$return_id"
-      return 0
+    # Attempt the tier's compare-and-swap; a rejection re-reads and retries.
+    if [[ -n "$remote" ]]; then
+      if printf '%s\n' "${all[@]}" \
+           | alloc_origin_cas "$remote" "$ref" "$tip" "$logfile" "$who" "$email"; then
+        printf '%s\n' "$return_id"
+        return 0
+      fi
+    else
+      if printf '%s\n' "${all[@]}" \
+           | alloc_local_cas "$ref" "$tip" "$logfile" "$who" "$email"; then
+        printf '%s\n' "$return_id"
+        return 0
+      fi
     fi
-    # CAS rejected — the ref moved under us; re-read and recompute.
   done
   echo "error: allocation failed after $attempts attempts (contention on $branch)" >&2
   return 1
