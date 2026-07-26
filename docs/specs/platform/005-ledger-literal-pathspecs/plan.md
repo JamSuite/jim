@@ -137,12 +137,12 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **Reproduce** — confirm the defect: on a scratch repo, the current
+1. [x] **Reproduce** — confirm the defect: on a scratch repo, the current
    `cmd_rename_tracked` interprets a magic `$old`, bypassing the tracked-check
    and failing later at `git mv`.
    **Verify:** `d=$(mktemp -d); git -C "$d" init -q; git -C "$d" -c user.email=t@t -c user.name=t commit -q --allow-empty -m x; mkdir -p "$d/modules/cart"; echo a > "$d/modules/cart/a.js"; git -C "$d" add -A; git -C "$d" -c user.email=t@t -c user.name=t commit -qm f; (cd "$d" && bash /mnt/src/jim/skills/ledger/scripts/jimledger.sh rename-tracked ':(glob)modules/**' ':(glob)modules/renamed' 2>&1) | grep -q 'git mv failed'` (exit 0 = bug reproduced: magic reached `git mv`)
 
-2. [ ] **Regression (Red)** — add `case_jimledger_rename_tracked_refuses_pathspec_magic` (long-form `:(glob)…`, via `rename_git_fixture`) and `case_jimledger_move_spec_dir_refuses_pathspec_magic` (short-form `:/…` injected through the specs-dir arg, via `move_git_fixture`) to `tests/jimledger.sh`, each asserting rc 1 **and** `ERR` matching the tracked-check refusal (`not tracked`). Use `run_jimledger_in` + `assert_exit` + `assert_match`.
+2. [x] **Regression (Red)** — add `case_jimledger_rename_tracked_refuses_pathspec_magic` (long-form `:(glob)…`, via `rename_git_fixture`) and `case_jimledger_move_spec_dir_refuses_pathspec_magic` (short-form `:/…` injected through the specs-dir arg, via `move_git_fixture`) to `tests/jimledger.sh`, each asserting rc 1 **and** `ERR` matching the tracked-check refusal (`not tracked`). Use `run_jimledger_in` + `assert_exit` + `assert_match`.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimledger 2>&1 | grep -E 'FAIL - case_jimledger_(rename_tracked|move_spec_dir)_refuses_pathspec_magic'` (both new cases present and **failing** against current code)
 
 3. [ ] **Fix (Green)** — insert `--literal-pathspecs` into the four git calls per Interface Contracts, leaving guards and messages unchanged.

@@ -1224,6 +1224,17 @@ case_jimledger_rename_tracked_missing_args() {
   assert_exit "rc" 2 "$RC"
 }
 
+# AC #1 / #5: a pathspec-magic old path (long-form ':(glob)…') is treated
+# literally by the tracked-check — git never interprets the magic, so a magic
+# string with no literal tracked entry is refused as "not tracked" at the
+# tracked-check, never carried on to git mv.
+case_jimledger_rename_tracked_refuses_pathspec_magic() {
+  local root; root="$(rename_git_fixture rt_pm)"
+  run_jimledger_in "$root" rename-tracked ':(glob)modules/**' ':(glob)modules/renamed'
+  assert_exit "rc" 1 "$RC"
+  assert_match "refused at tracked-check, not git mv" 'not tracked' "$ERR"
+}
+
 # ─── spec 043: commit-rename (explicit-stage rename commits) ─────────────────
 
 # AC #12 / sec Finding 7: the docs commit stages the moved spec-dir pair (script-
@@ -1475,6 +1486,17 @@ case_jimledger_move_spec_dir_usage_rc2() {
   local root; root="$(move_git_fixture msd_ma)"
   run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout
   assert_exit "rc" 2 "$RC"
+}
+
+# AC #1 / #5: a pathspec-magic source (short-form ':/…' injected through the
+# specs-dir) is treated literally by the tracked-check — git never interprets
+# the magic, so a magic string with no literal tracked entry is refused as
+# "not tracked" at the tracked-check, never carried on to git mv.
+case_jimledger_move_spec_dir_refuses_pathspec_magic() {
+  local root; root="$(move_git_fixture msd_pm)"
+  run_jimledger_in "$root" move-spec-dir ':/docs/specs' cart 006-foo cart 007-bar
+  assert_exit "rc" 1 "$RC"
+  assert_match "refused at tracked-check, not git mv" 'not tracked' "$ERR"
 }
 
 # ─── spec 047: vacated-max (vacated-id floor source) ─────────────────────────
