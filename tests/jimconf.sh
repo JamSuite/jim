@@ -281,7 +281,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "50" "$line_count"
+  assert_eq    "list line count"                  "53" "$line_count"
   assert_match "blueprint_regen_threshold line"    '^blueprint_regen_threshold=0$'          "$OUT"
   assert_match "blueprint line"                    '^blueprint=BLUEPRINT\.md$'              "$OUT"
   assert_match "group_axis line"                   '^group_axis=vertical$'                  "$OUT"
@@ -330,6 +330,9 @@ case_list_outputs_all_keys() {
   assert_match "health_threshold_faces_max line"   '^health_threshold_faces_max=0$'         "$OUT"
   assert_match "health_threshold_breaking_runs line" '^health_threshold_breaking_runs=0$'   "$OUT"
   assert_match "spec_migration line"               '^spec_migration=rewrite$'               "$OUT"
+  assert_match "id_coordination_mechanism line"    '^id_coordination_mechanism=git$'         "$OUT"
+  assert_match "id_coordination_branch line"       '^id_coordination_branch=jim/registry$'   "$OUT"
+  assert_match "id_coordination_unreachable line"  '^id_coordination_unreachable=fail$'      "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -337,7 +340,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs\nspec_migration')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs\nspec_migration\nid_coordination_mechanism\nid_coordination_branch\nid_coordination_unreachable')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -375,7 +378,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "50" "$line_count"
+  assert_eq "list still emits all keys" "53" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -1055,6 +1058,34 @@ case_jimconf_spec_migration_default_and_resolve() {
   cfg=$(fixture jc-spec-migration.toml 'spec_migration = "forward"')
   run -c "$cfg" get spec_migration
   assert_eq   "configured forward" "forward" "$OUT"
+}
+
+# ─── platform/007: id-coordination allocator config family ───────────────────
+
+# AC: id_coordination_mechanism / _branch / _unreachable default to
+# "git" / "jim/registry" / "fail" and resolve from config (platform/007 Task 1,
+# spec AC "config governs mechanism/point/unreachable"). Bare-name knobs
+# dispatched by the new id_coordination_* arm in resolve(); the allocator reads
+# them from the current branch so a team's coordination scheme is versioned.
+case_jimconf_id_coordination_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_id_coord_default)
+  run -c "$dir/absent.toml" get id_coordination_mechanism
+  assert_exit "mechanism default rc"  0             "$RC"
+  assert_eq   "mechanism default"     "git"         "$OUT"
+  run -c "$dir/absent.toml" get id_coordination_branch
+  assert_eq   "branch default"        "jim/registry" "$OUT"
+  run -c "$dir/absent.toml" get id_coordination_unreachable
+  assert_eq   "unreachable default"   "fail"        "$OUT"
+  cfg=$(fixture jc-id-coord.toml 'id_coordination_mechanism = "service"
+id_coordination_branch = "refs/jim/reg"
+id_coordination_unreachable = "provisional"')
+  run -c "$cfg" get id_coordination_mechanism
+  assert_eq   "mechanism configured"   "service"      "$OUT"
+  run -c "$cfg" get id_coordination_branch
+  assert_eq   "branch configured"      "refs/jim/reg" "$OUT"
+  run -c "$cfg" get id_coordination_unreachable
+  assert_eq   "unreachable configured" "provisional"  "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
