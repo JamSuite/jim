@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 51
-- Closed: 57
+- Open: 50
+- Closed: 58
 
 ## Issues
 
@@ -106,7 +106,7 @@
 - `20260725-cross-group-enforcement-of-plugin-wide-convention-invariants` — cross-group enforcement of plugin-wide convention invariants · status: open · num: 97 · priority: medium · created: 2026-07-25T08:04:39Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and` — formalize the is-valid-id lockstep contract between platform and issue · status: open · num: 98 · priority: medium · created: 2026-07-25T08:04:40Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-give-retired-group-directories-a-sanctioned-end-of-life` — give retired group directories a sanctioned end-of-life · status: open · num: 106 · priority: medium · created: 2026-07-25T08:22:51Z · labels: [partition] · origin: docs/specs/jim/000-blueprint/spec.md
-- `20260725-judge-or-fix-rename-tracked-pathspec-use-against-relpath-validat` — judge or fix rename-tracked pathspec use against relpath-validation · status: open · num: 100 · priority: medium · created: 2026-07-25T08:04:42Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-judge-or-fix-rename-tracked-pathspec-use-against-relpath-validat` — judge or fix rename-tracked pathspec use against relpath-validation · status: closed · num: 100 · priority: medium · created: 2026-07-25T08:04:42Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-re-point-glob-specs-jim-gates-in-meta-skill-meta-agent-meta-test` — re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test · status: closed · num: 104 · priority: high · created: 2026-07-25T08:04:47Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-record-the-sdlc-side-half-of-the-fold-back-loop-contract` — record the sdlc-side half of the fold-back-loop contract · status: closed · num: 101 · priority: low · created: 2026-07-25T08:04:44Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-refresh-architecture-readme-workflow-for-the-partition` — refresh ARCHITECTURE, README, WORKFLOW for the partition · status: closed · num: 105 · priority: medium · created: 2026-07-25T08:04:48Z · labels: [partition] · origin: BLUEPRINT.md
