@@ -474,6 +474,30 @@ alloc_update_baseline() {
   cat > "$base" 2>/dev/null || true
 }
 
+# alloc_write_contained — verify the allocator's only local write target (the
+# erosion baseline dir, under the git dir) resolves inside the git dir, refusing
+# a symlink that escapes it. Runs before any git object write or ref update so a
+# rejected target leaves no side effect (F5). The git dir is the right anchor
+# rather than the working-tree top: the baseline is untracked local state, and
+# in a worktree the git dir legitimately sits outside the working tree. The
+# allocator writes no other filesystem artifact — record content flows through
+# pipes, never a temp file — so this is the complete write surface.
+alloc_write_contained() {
+  local gd gd_real b_real
+  gd="$(git rev-parse --git-dir 2>/dev/null)" || {
+    echo "error: not inside a git repository" >&2
+    return 1
+  }
+  gd_real="$(realpath -m -- "$gd" 2>/dev/null)" || return 1
+  b_real="$(realpath -m -- "$gd/jimalloc" 2>/dev/null)" || return 1
+  if [[ "$b_real" != "$gd_real" && "$b_real" != "$gd_real"/* ]]; then
+    echo "error: refusing to write the erosion baseline outside the git dir" \
+         "(symlink escape): $gd/jimalloc" >&2
+    return 1
+  fi
+  return 0
+}
+
 # alloc_group_present <group>  (log on stdin) — exit 0 iff a valid
 # `group allocate <group>` record already exists.
 alloc_group_present() {
@@ -547,6 +571,7 @@ alloc_cas_append() {
   local logfile="$1"; shift
   local builder="$1"; shift
   alloc_preflight || return 1
+  alloc_write_contained || return 1
   local branch ref remote
   branch="$(alloc_coord_branch)" || return 1
   ref="refs/heads/$branch"

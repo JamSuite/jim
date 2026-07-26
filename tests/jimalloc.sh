@@ -539,6 +539,25 @@ case_jimalloc_custom_branch_from_config() {
   assert_match "recorded on custom branch" '^spec allocate g/001 x ' "$log"
 }
 
+# ─── Section: write-containment guard (F5) ───────────────────────────────────
+
+# AC: the allocator refuses a local write target that a symlink escapes outside
+# the git dir, before any git object write or ref update, leaving no side effect
+# (spec AC 13 write-path revalidation / security F5).
+case_jimalloc_refuses_symlink_escaping_baseline() {
+  local repo outside
+  repo="$(alloc_new_repo alloc_symlink)"
+  outside="$(empty_dir alloc_symlink_outside)"
+  ln -s "$outside" "$repo/.git/jimalloc"
+  run_jimalloc_in "$repo" allocate spec g "x"
+  assert_exit     "rc"      1  "$RC"
+  assert_eq       "no id"   "" "$OUT"
+  assert_nonempty "message" "$ERR"
+  assert_eq "outside untouched" "" "$(ls -A "$outside" 2>/dev/null)"
+  assert_eq "no coordination branch" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
