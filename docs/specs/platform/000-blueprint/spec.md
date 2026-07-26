@@ -2,8 +2,8 @@
 title: "platform — blueprint"
 group: "platform"
 kind: blueprint
-updated: "2026-07-25"
-last_full_generate: "2026-07-25T07:51:34Z"
+updated: "2026-07-26"
+last_full_generate: "2026-07-26T05:17:11Z"
 ---
 
 # platform — blueprint
@@ -93,6 +93,7 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
 | no-source-eval | Scripts never `source`/`eval` user-supplied data — config, ledger, and issue content is parsed, never executed (project-wide script rule) | critical | judge |
 | bash-source-relative | Inter-script composition uses `BASH_SOURCE`-relative paths, not `${CLAUDE_PLUGIN_ROOT}` (which substitutes only in skill content) (project-wide script rule) | high | judge |
 | ref-validation | Every untrusted id / SHA / ref is validated before git interpolation: the single `is_valid_id` boundary (byte-identical copies in the issue group), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` | critical | judge |
+| relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments, the `rename-tracked` / `move-spec-dir` git-mv primitives) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use; and every untrusted path is handed to git only under literal-pathspec semantics (`git --literal-pathspecs …` / `GIT_LITERAL_PATHSPECS`), so pathspec magic (`:(exclude)` / `:/` / `:(glob)`) is never interpreted (project-wide script rule) | critical | judge |
 | ledger-commit-discipline | `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist; ledger content is untrusted and never `source`d; the script commits in exactly seven path-scoped verbs (literal paths, `--` guard, never `git add -A`) plus the non-committing git-mv primitives `rename-tracked` (sibling-constrained) and `move-spec-dir` (cross-parent, specs-subtree-scoped) | critical | judge |
 | blueprint-slot-reserved | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0`, ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | judge |
 | tests-under-tests | Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are); the runner and scaffold enforce the boundary | medium | judge |
@@ -101,9 +102,7 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
 no-third-party-deps polarity=must-not regex=\b(jq|yq|bats)\b scope=skills/
 ```
 
-Two rules previously recorded against this territory are deliberately not
-recorded here, each tracked as an open issue instead: the script-preamble rule
-(three files inherit `set -uo pipefail` via `source` rather than setting it)
-and the relpath-validation rule (one `rename-tracked` site hands a
-valid-relpath'd path to git as a pathspec). Each returns to this table when
-its issue resolves fix-the-code or fold-the-intent.
+One rule previously recorded against this territory is deliberately not
+recorded here, tracked as an open issue instead: the script-preamble rule
+(three files inherit `set -uo pipefail` via `source` rather than setting it).
+It returns to this table when its issue resolves fix-the-code or fold-the-intent.
