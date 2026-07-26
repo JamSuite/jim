@@ -124,16 +124,16 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **(Red)** Create `tests/scripthygiene.sh` per Interface Contracts — the `$REPO_ROOT`-anchored sweep, the `first_exec_line` matcher, the per-file `assert_eq`, and the per-root non-vacuous enumeration assertions (DD5). The file carries its own direct `set -uo pipefail` (scaffold shape). It must fail now because the three holdouts lack a direct preamble (the per-root enumeration assertions pass — the roots are non-empty).
+1. [x] **(Red)** Create `tests/scripthygiene.sh` per Interface Contracts — the `$REPO_ROOT`-anchored sweep, the `first_exec_line` matcher, the per-file `assert_eq`, and the per-root non-vacuous enumeration assertions (DD5). The file carries its own direct `set -uo pipefail` (scaffold shape). It must fail now because the three holdouts lack a direct preamble (the per-root enumeration assertions pass — the roots are non-empty).
    **Verify:** `out=$(bash tests/scripthygiene.sh 2>&1); echo "$out"; ! grep -Eq '0 failed' <<<"$out" && grep -q 'meta-test/scripts/run.sh' <<<"$out" && grep -q 'tests/jimconf.sh' <<<"$out" && grep -q 'tests/jimfile.sh' <<<"$out"`
 
-2. [ ] **(Green)** Insert `set -uo pipefail` as the first executable line — after the header comment block, before the existing `HERE=` — in `skills/meta-test/scripts/run.sh`, `tests/jimconf.sh`, and `tests/jimfile.sh`, matching the scaffold ordering (`set` → `HERE=` → `source`).
+2. [x] **(Green)** Insert `set -uo pipefail` as the first executable line — after the header comment block, before the existing `HERE=` — in `skills/meta-test/scripts/run.sh`, `tests/jimconf.sh`, and `tests/jimfile.sh`, matching the scaffold ordering (`set` → `HERE=` → `source`).
    **Verify:** `bash tests/scripthygiene.sh && bash skills/meta-test/scripts/run.sh`  (guard passes AND the full suite passes — existing tests unmodified)
 
-3. [ ] Close issue #99: set `status: closed`, refresh `updated` to `jimfile.sh now`, then regenerate the issue index. Bookkeeping edit (the issue tooling has no edit verb; direct edit is the sanctioned path).
+3. [x] Close issue #99: set `status: closed`, refresh `updated` to `jimfile.sh now`, then regenerate the issue index. Bookkeeping edit (the issue tooling has no edit verb; direct edit is the sanctioned path).
    **Verify:** `grep -q '^status: closed' docs/issues/20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold.md && bash skills/issue/scripts/index.sh`
 
-4. [ ] **(Blueprint surface — run after Tasks 1–3 are green, outside the TDD loop.)** Restore the invariant by running `/jim:blueprint platform`. At its section-diff gate confirm: the `script-preamble` row returns to the Invariants table between `no-source-eval` and `bash-source-relative` with `Check: judge` and sharpened wording (*"directly (not solely via a sourced framework)"*), the withhold paragraph is removed, and `tests/scripthygiene.sh` is reflected in the Structure section.
+4. [x] **(Blueprint surface — run after Tasks 1–3 are green, outside the TDD loop.)** Restore the invariant by running `/jim:blueprint platform`. At its section-diff gate confirm: the `script-preamble` row returns to the Invariants table between `no-source-eval` and `bash-source-relative` with `Check: judge` and sharpened wording (*"directly (not solely via a sourced framework)"*), the withhold paragraph is removed, and `tests/scripthygiene.sh` is reflected in the Structure section.
    **Verify:** `grep -q '| script-preamble |' docs/specs/platform/000-blueprint/spec.md && ! grep -q 'deliberately not' docs/specs/platform/000-blueprint/spec.md`
 
 ## Requirements Coverage Summary
