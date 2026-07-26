@@ -148,7 +148,7 @@ flowchart TD
 3. [x] **Fix (Green)** — insert `--literal-pathspecs` into the four git calls per Interface Contracts, leaving guards and messages unchanged.
    **Verify:** `grep -c 'git --literal-pathspecs' skills/ledger/scripts/jimledger.sh` prints `4` **and** `bash skills/meta-test/scripts/run.sh jimledger 2>&1 | tail -1` reports `0 failed` (all cases, including the 2 new, pass)
 
-4. [ ] **Restore invariant** — via `Skill(jim:blueprint)` with `platform`: return the reworded `relpath-validation` row (Interface Contracts) to the Invariants table and remove its clause from the fail-closed note (keeping the script-preamble clause). *Orchestrator/skill step — not part of the `@coder` TDD loop (Design Decision 5).*
+4. [x] **Restore invariant** — via `Skill(jim:blueprint)` with `platform`: return the reworded `relpath-validation` row (Interface Contracts) to the Invariants table and remove its clause from the fail-closed note (keeping the script-preamble clause). *Orchestrator/skill step — not part of the `@coder` TDD loop (Design Decision 5).*
    **Verify:** `grep -q '^| relpath-validation ' docs/specs/platform/000-blueprint/spec.md && ! grep -A6 'deliberately not recorded' docs/specs/platform/000-blueprint/spec.md | grep -q 'relpath-validation rule'` (row present in table; no longer named in the note)
 
 ## Requirements Coverage Summary
