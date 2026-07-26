@@ -312,11 +312,199 @@ alloc_durable_issue_id() {
   printf '%s\n' "$candidate"
 }
 
+# ─── Section: Coordination point + CAS (git plumbing) ────────────────────────
+
+# alloc_in_repo — exit 0 iff CWD is inside a git repository.
+alloc_in_repo() {
+  git rev-parse --git-dir >/dev/null 2>&1 || {
+    echo "error: not inside a git repository" >&2
+    return 1
+  }
+}
+
+# alloc_valid_branch <branch> — exit 0 iff <branch> is a safe branch name for
+# refs/heads/<branch>: no leading '-' (option injection) and accepted by git's
+# own ref-name policy (rejects '..', control chars, ~^:?*[, .lock, etc.). The
+# coordination branch is config-supplied, so it is validated before it ever
+# reaches a git command (F1b).
+alloc_valid_branch() {
+  local b="${1:-}"
+  [[ -n "$b" ]] || return 1
+  case "$b" in -*) return 1 ;; esac
+  git check-ref-format "refs/heads/$b" >/dev/null 2>&1
+}
+
+# alloc_coord_branch — resolve the coordination branch from config (default
+# jim/registry), validated as a git branch name. Prints the branch; rc 1 if the
+# configured value is not a valid branch name.
+alloc_coord_branch() {
+  local b
+  if [[ -n "$CONFIG_FILE" ]]; then
+    b="$(bash "$JIMCONF" -c "$CONFIG_FILE" get id_coordination_branch)"
+  else
+    b="$(bash "$JIMCONF" get id_coordination_branch)"
+  fi
+  [[ -n "$b" ]] || b="jim/registry"
+  if ! alloc_valid_branch "$b"; then
+    echo "error: id_coordination_branch '$b' is not a valid git branch name" >&2
+    return 1
+  fi
+  printf '%s' "$b"
+}
+
+# alloc_group_present <group>  (log on stdin) — exit 0 iff a valid
+# `group allocate <group>` record already exists.
+alloc_group_present() {
+  local group="$1" line c1 c2 c3
+  while IFS= read -r line; do
+    read -r c1 c2 c3 _ <<< "$line"
+    [[ "$c1" == group && "$c2" == allocate ]] || continue
+    alloc_valid_token "$c3" || continue
+    [[ "$c3" == "$group" ]] && return 0
+  done
+  return 1
+}
+
+# alloc_commit_and_cas <ref> <old_sha> <logfile> <who> <email>   (content on stdin)
+#   Build a commit that sets <logfile> to the piped content atop <old_sha>
+#   (empty = create), using git plumbing only so the working tree is never
+#   touched, then land it with an old-value compare-and-swap:
+#     git update-ref <ref> <new> <old_sha>   (old_sha="" ⇒ ref must not exist).
+#   The identity is passed per-invocation (already sanitized) so a hostile
+#   user.name cannot corrupt the commit object. Returns 0 on success, non-zero
+#   if the CAS is rejected (ref moved) or a plumbing step fails.
+alloc_commit_and_cas() {
+  local ref="$1" old_sha="$2" logfile="$3" who="$4" email="$5"
+  local blob tree commit
+  blob="$(git hash-object -w --stdin)" || return 1
+  if [[ -n "$old_sha" ]]; then
+    tree="$( { git ls-tree "$old_sha^{tree}" | awk -F'\t' -v f="$logfile" '$2 != f'; \
+               printf '100644 blob %s\t%s\n' "$blob" "$logfile"; } | git mktree )" || return 1
+    commit="$(git -c "user.name=$who" -c "user.email=$email" \
+              commit-tree "$tree" -p "$old_sha" -m "jim: append $logfile")" || return 1
+  else
+    tree="$( printf '100644 blob %s\t%s\n' "$blob" "$logfile" | git mktree )" || return 1
+    commit="$(git -c "user.name=$who" -c "user.email=$email" \
+              commit-tree "$tree" -m "jim: create $logfile")" || return 1
+  fi
+  git update-ref "$ref" "$commit" "$old_sha" 2>/dev/null
+}
+
+# alloc_cas_append <logfile> <builder_fn> <builder_args...>
+#   The allocation retry loop. Each attempt re-reads the coordination branch tip
+#   and its log, invokes <builder_fn> "<current_log>" <args...> <who> to compute
+#   the id to return (its first output line) and the record line(s) to append
+#   (the rest), then attempts the CAS. A rejected CAS (a concurrent allocation
+#   advanced the ref) re-reads and retries; exhausting the attempts hard-fails
+#   loudly rather than issuing a duplicate. <who>/<email> are read once from
+#   git config, sanitized, and used for both the record and the commit identity.
+alloc_cas_append() {
+  local logfile="$1"; shift
+  local builder="$1"; shift
+  local branch ref
+  branch="$(alloc_coord_branch)" || return 1
+  ref="refs/heads/$branch"
+  local who email
+  who="$(alloc_sanitize_who "$(git config user.name 2>/dev/null || printf '')")"
+  email="$(alloc_sanitize_who "$(git config user.email 2>/dev/null || printf '')")"
+  [[ -n "$who" ]]   || who="jim-allocator"
+  [[ -n "$email" ]] || email="jim-allocator@localhost"
+  local attempts=5 attempt old_sha current_log return_id
+  local -a cur=() built=() records=() all=()
+  for ((attempt=1; attempt<=attempts; attempt++)); do
+    old_sha="$(git rev-parse --verify --quiet --end-of-options "$ref" 2>/dev/null || true)"
+    cur=()
+    if [[ -n "$old_sha" ]]; then
+      mapfile -t cur < <(git cat-file -p "$ref:$logfile" 2>/dev/null)
+    fi
+    if (( ${#cur[@]} > 0 )); then
+      current_log="$(printf '%s\n' "${cur[@]}")"
+    else
+      current_log=""
+    fi
+    mapfile -t built < <("$builder" "$current_log" "$@" "$who")
+    if (( ${#built[@]} < 2 )); then
+      echo "error: allocator failed to compute a record" >&2
+      return 1
+    fi
+    return_id="${built[0]}"
+    records=( "${built[@]:1}" )
+    all=( "${cur[@]}" "${records[@]}" )
+    if printf '%s\n' "${all[@]}" \
+         | alloc_commit_and_cas "$ref" "$old_sha" "$logfile" "$who" "$email"; then
+      printf '%s\n' "$return_id"
+      return 0
+    fi
+    # CAS rejected — the ref moved under us; re-read and recompute.
+  done
+  echo "error: allocation failed after $attempts attempts (contention on $branch)" >&2
+  return 1
+}
+
+# alloc_build_spec <current_log> <group> <subject> <who>
+#   Emit (stdout) the id to return, then the record line(s) to append: a
+#   group-allocate record when this allocation first claims the group, followed
+#   by the spec-allocate record. The slug and date are derived through jimfile.sh.
+alloc_build_spec() {
+  local current_log="$1" group="$2" subject="$3" who="$4"
+  local id slug date
+  id="$(printf '%s' "$current_log" | alloc_next_id_spec "$group")" || return 1
+  slug="$(bash "$JIMFILE" slug "$subject")" || return 1
+  date="$(bash "$JIMFILE" date)" || return 1
+  printf '%s\n' "$id"
+  if ! printf '%s' "$current_log" | alloc_group_present "$group"; then
+    alloc_encode_allocate_group "$group" "$date" "$who"
+  fi
+  alloc_encode_allocate_spec "$id" "$slug" "$date" "$who"
+}
+
+# alloc_build_issue <current_log> <subject> <who>
+#   Emit (stdout) the return value "<full-id><TAB><num>", then the issue-allocate
+#   record. The ordinal and the durable id are computed from the same log.
+alloc_build_issue() {
+  local current_log="$1" subject="$2" who="$3"
+  local num fullid date
+  num="$(printf '%s' "$current_log" | alloc_next_num_issue)" || return 1
+  fullid="$(printf '%s' "$current_log" | alloc_durable_issue_id "$subject")" || return 1
+  date="$(bash "$JIMFILE" date)" || return 1
+  printf '%s\t%s\n' "$fullid" "$num"
+  alloc_encode_allocate_issue "$num" "$fullid" "$date" "$who"
+}
+
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
 
+alloc_allocate_spec() {
+  local group="${1:-}" subject="${2:-}"
+  if [[ -z "$group" || -z "$subject" ]]; then
+    echo "error: 'allocate spec' requires <group> <subject>" >&2
+    return 2
+  fi
+  alloc_valid_token "$group" || { echo "error: invalid group '$group'" >&2; return 1; }
+  alloc_in_repo || return 1
+  alloc_cas_append "specs.log" alloc_build_spec "$group" "$subject"
+}
+
+alloc_allocate_issue() {
+  local subject="${1:-}"
+  if [[ -z "$subject" ]]; then
+    echo "error: 'allocate issue' requires <subject>" >&2
+    return 2
+  fi
+  alloc_in_repo || return 1
+  alloc_cas_append "issues.log" alloc_build_issue "$subject"
+}
+
 cmd_allocate() {
-  echo "error: 'allocate' not yet implemented" >&2
-  return 1
+  local kind="${1:-}"
+  shift || true
+  case "$kind" in
+    spec)  alloc_allocate_spec  "$@" ;;
+    issue) alloc_allocate_issue "$@" ;;
+    *)
+      echo "error: allocate kind must be 'spec' or 'issue'" >&2
+      return 2
+      ;;
+  esac
 }
 
 cmd_peek() {

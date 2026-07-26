@@ -257,6 +257,107 @@ case_jimalloc_durable_issue_id_collision() {
   assert_eq "collision → -3" "${base}-3" "$out"
 }
 
+# ─── Section: CAS helpers (real git repos) ───────────────────────────────────
+
+# run_jimalloc_in <dir> <args...>
+#   Invoke the allocator with CWD inside <dir> so its git plumbing operates on
+#   that repo. Captures OUT/ERR/RC.
+run_jimalloc_in() {
+  local dir="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$dir" && bash "$SCRIPT_jimalloc" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# alloc_new_repo <name>
+#   Create and print a fresh git repo with a committer identity set.
+alloc_new_repo() {
+  local repo; repo="$(empty_dir "$1")"
+  git -C "$repo" init -q
+  git -C "$repo" config user.name  "Test User"
+  git -C "$repo" config user.email "test@example.com"
+  printf '%s' "$repo"
+}
+
+# alloc_specs_log <repo> — print the specs.log on the coordination branch.
+alloc_specs_log() { git -C "$1" cat-file -p refs/heads/jim/registry:specs.log 2>/dev/null; }
+# alloc_issues_log <repo> — print the issues.log on the coordination branch.
+alloc_issues_log() { git -C "$1" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null; }
+
+# ─── Section: local-tier allocation (update-ref CAS) ─────────────────────────
+
+# AC: sequential allocations in a no-remote repo yield distinct, durable ids;
+# the log grows append-only (spec: at-most-once, never reused, permanent gap).
+case_jimalloc_allocate_spec_local_distinct() {
+  local repo log
+  repo="$(alloc_new_repo alloc_spec_distinct)"
+  run_jimalloc_in "$repo" allocate spec dashboard "First feature"
+  assert_exit "first rc" 0              "$RC"
+  assert_eq   "first id" "dashboard/001" "$OUT"
+  run_jimalloc_in "$repo" allocate spec dashboard "Second feature"
+  assert_exit "second rc" 0              "$RC"
+  assert_eq   "second id" "dashboard/002" "$OUT"
+  log="$(alloc_specs_log "$repo")"
+  assert_match "first recorded"  '^spec allocate dashboard/001 first-feature '  "$log"
+  assert_match "second recorded" '^spec allocate dashboard/002 second-feature ' "$log"
+}
+
+# AC: the first spec in a new group claims the group once (group allocate
+# record); a later spec in the same group does not re-claim it (allocate-once).
+case_jimalloc_allocate_spec_group_claimed_once() {
+  local repo log count
+  repo="$(alloc_new_repo alloc_group_once)"
+  run_jimalloc_in "$repo" allocate spec platform "One"
+  run_jimalloc_in "$repo" allocate spec platform "Two"
+  log="$(alloc_specs_log "$repo")"
+  count="$(printf '%s\n' "$log" | grep -c '^group allocate platform ')"
+  assert_eq "group claimed exactly once" "1" "$count"
+}
+
+# AC: an issue allocation returns "<full-id><TAB><num>" and is durable;
+# sequential allocations yield distinct ordinals.
+case_jimalloc_allocate_issue_local() {
+  local repo today num1 num2 fid1
+  repo="$(alloc_new_repo alloc_issue_local)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid1="${OUT%%$'\t'*}"; num1="${OUT##*$'\t'}"
+  assert_eq "first num"  "1" "$num1"
+  assert_eq "first fid"  "${today}-alpha-bug" "$fid1"
+  run_jimalloc_in "$repo" allocate issue "Beta bug"
+  num2="${OUT##*$'\t'}"
+  assert_eq "second num" "2" "$num2"
+}
+
+# AC: a newline-bearing git config user.name cannot forge a second record —
+# the encoder collapses it, so exactly one spec allocate line lands (F8).
+case_jimalloc_allocate_who_no_forgery() {
+  local repo log
+  repo="$(alloc_new_repo alloc_who_forgery)"
+  git -C "$repo" config user.name "$(printf 'evil\nspec allocate x/999 y 20200101 z')"
+  run_jimalloc_in "$repo" allocate spec core "A feature"
+  assert_exit "rc" 0 "$RC"
+  log="$(alloc_specs_log "$repo")"
+  assert_eq "exactly one spec allocate" "1" "$(printf '%s\n' "$log" | grep -c '^spec allocate ')"
+  assert_match "legit id present" '^spec allocate core/001 a-feature ' "$log"
+  if printf '%s\n' "$log" | grep -q 'x/999'; then
+    CURRENT_FAILED=1; echo "    [forgery] injected x/999 landed in the log"
+  fi
+}
+
+# AC: allocation never touches the working tree — the coordination branch is
+# written by plumbing, HEAD and the index are untouched.
+case_jimalloc_allocate_leaves_worktree_clean() {
+  local repo status
+  repo="$(alloc_new_repo alloc_clean_tree)"
+  run_jimalloc_in "$repo" allocate spec ui "Widget"
+  assert_exit "rc" 0 "$RC"
+  status="$(git -C "$repo" status --porcelain)"
+  assert_eq "worktree clean" "" "$status"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
