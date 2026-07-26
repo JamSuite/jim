@@ -2,7 +2,7 @@
 title: "Neutralize pathspec magic in the ledger git-mv primitives"
 spec: "docs/specs/platform/005-ledger-literal-pathspecs/spec.md"
 type: bug
-status: approved
+status: complete
 ---
 
 # Neutralize pathspec magic in the ledger git-mv primitives — Plan
