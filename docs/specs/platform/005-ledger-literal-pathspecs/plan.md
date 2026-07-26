@@ -145,7 +145,7 @@ flowchart TD
 2. [x] **Regression (Red)** — add `case_jimledger_rename_tracked_refuses_pathspec_magic` (long-form `:(glob)…`, via `rename_git_fixture`) and `case_jimledger_move_spec_dir_refuses_pathspec_magic` (short-form `:/…` injected through the specs-dir arg, via `move_git_fixture`) to `tests/jimledger.sh`, each asserting rc 1 **and** `ERR` matching the tracked-check refusal (`not tracked`). Use `run_jimledger_in` + `assert_exit` + `assert_match`.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimledger 2>&1 | grep -E 'FAIL - case_jimledger_(rename_tracked|move_spec_dir)_refuses_pathspec_magic'` (both new cases present and **failing** against current code)
 
-3. [ ] **Fix (Green)** — insert `--literal-pathspecs` into the four git calls per Interface Contracts, leaving guards and messages unchanged.
+3. [x] **Fix (Green)** — insert `--literal-pathspecs` into the four git calls per Interface Contracts, leaving guards and messages unchanged.
    **Verify:** `grep -c 'git --literal-pathspecs' skills/ledger/scripts/jimledger.sh` prints `4` **and** `bash skills/meta-test/scripts/run.sh jimledger 2>&1 | tail -1` reports `0 failed` (all cases, including the 2 new, pass)
 
 4. [ ] **Restore invariant** — via `Skill(jim:blueprint)` with `platform`: return the reworded `relpath-validation` row (Interface Contracts) to the Invariants table and remove its clause from the fail-closed note (keeping the script-preamble clause). *Orchestrator/skill step — not part of the `@coder` TDD loop (Design Decision 5).*

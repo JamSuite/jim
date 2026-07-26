@@ -301,13 +301,16 @@ cmd_rename_tracked() {
       echo "jimledger rename-tracked: path escapes worktree: $rp" >&2; return 1
     fi
   done
-  if [[ -z "$(git ls-files -- "$old" 2>/dev/null)" ]]; then
+  # Hand every path to git only literally: valid-relpath does not neutralize
+  # pathspec magic, so --literal-pathspecs keeps a magic-bearing path from being
+  # interpreted as a pathspec at the tracked-check or the move.
+  if [[ -z "$(git --literal-pathspecs ls-files -- "$old" 2>/dev/null)" ]]; then
     echo "jimledger rename-tracked: old path is not tracked: $old" >&2; return 1
   fi
   if [[ -e "$new" ]]; then
     echo "jimledger rename-tracked: new path already exists: $new" >&2; return 1
   fi
-  git mv -- "$old" "$new" || {
+  git --literal-pathspecs mv -- "$old" "$new" || {
     echo "jimledger rename-tracked: git mv failed: $old -> $new" >&2; return 1
   }
 }
@@ -599,7 +602,10 @@ cmd_move_spec_dir() {
       echo "jimledger move-spec-dir: path escapes specs subtree: $rp" >&2; return 1
     fi
   done
-  if [[ -z "$(git ls-files -- "$src" 2>/dev/null)" ]]; then
+  # Hand every path to git only literally (as in rename-tracked):
+  # --literal-pathspecs keeps a magic-bearing path from being interpreted as a
+  # pathspec at the tracked-check or the move.
+  if [[ -z "$(git --literal-pathspecs ls-files -- "$src" 2>/dev/null)" ]]; then
     echo "jimledger move-spec-dir: source not tracked: $src" >&2; return 1
   fi
   if [[ -e "$dst" ]]; then
@@ -608,7 +614,7 @@ cmd_move_spec_dir() {
   mkdir -p -- "$(dirname -- "$dst")" || {
     echo "jimledger move-spec-dir: cannot create destination parent" >&2; return 1
   }
-  git mv -- "$src" "$dst" || {
+  git --literal-pathspecs mv -- "$src" "$dst" || {
     echo "jimledger move-spec-dir: git mv failed: $src -> $dst" >&2; return 1
   }
 }
