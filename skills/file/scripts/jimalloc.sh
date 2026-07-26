@@ -122,7 +122,7 @@ alloc_valid_specid() {
 # token: every character outside [A-Za-z0-9._@-] (space, tab, NEWLINE, CR, and
 # ref/shell metacharacters) becomes '-', runs collapse, ends trim, cap 64. A
 # newline here would otherwise forge a second record on a plain grep/replay; it
-# is advisory provenance only, so lossy normalization is acceptable (DD 7 / F8).
+# is advisory provenance only, so lossy normalization is acceptable.
 alloc_sanitize_who() {
   printf '%s' "${1:-}" \
     | tr -c 'A-Za-z0-9._@-' '-' \
@@ -292,7 +292,7 @@ alloc_next_num_issue() {
 # alloc_durable_issue_id <subject>  (issues log on stdin)
 #   Compute the durable issue id (today's date + slug via jimfile.sh) and
 #   disambiguate it with a -2 / -3 … suffix when the computed form already
-#   appears as a full-id in the registry (G9 collision guard). The ordinal and
+#   appears as a full-id in the registry. The ordinal and
 #   the durable form are guarded by the same append-only registry.
 alloc_durable_issue_id() {
   local subject="$1" date slug base
@@ -357,8 +357,8 @@ alloc_preflight() {
 }
 
 # alloc_backoff <attempt> — sleep a short, rising, jittered interval between CAS
-# retries so racing allocations de-synchronize instead of colliding in lockstep
-# (F6). Bounded well under a second; jitter comes from $RANDOM.
+# retries so racing allocations de-synchronize instead of colliding in lockstep.
+# Bounded well under a second; jitter comes from $RANDOM.
 alloc_backoff() {
   local n="$1" ms
   ms=$(( n * 40 + RANDOM % 50 ))
@@ -369,7 +369,7 @@ alloc_backoff() {
 # refs/heads/<branch>: no leading '-' (option injection) and accepted by git's
 # own ref-name policy (rejects '..', control chars, ~^:?*[, .lock, etc.). The
 # coordination branch is config-supplied, so it is validated before it ever
-# reaches a git command (F1b).
+# reaches a git command.
 alloc_valid_branch() {
   local b="${1:-}"
   [[ -n "$b" ]] || return 1
@@ -426,13 +426,13 @@ alloc_origin_tip() {
   printf '%s' "$tip"
 }
 
-# ── Erosion guard (G3): a local, per-clone baseline of the last-seen registry.
+# ── Erosion guard: a local, per-clone baseline of the last-seen registry.
 # It lives under the git dir — never on any branch, never fetched or pushed — so
 # an attacker who force-pushes a rewritten history cannot also rewrite the
 # baseline. The append-only log may only grow, so the baseline must remain a
 # byte-prefix of the current content; if it does not, the history was truncated
 # or rewritten and the next allocation must hard-fail rather than reissue an
-# already-consumed id (DD 8 / F9). A first-time clone has no baseline and cannot
+# already-consumed id. A first-time clone has no baseline and cannot
 # detect erosion that predates its first fetch — denying force-push on the
 # coordination branch is the primary control; this is defense-in-depth.
 
@@ -477,7 +477,7 @@ alloc_update_baseline() {
 # alloc_write_contained — verify the allocator's only local write target (the
 # erosion baseline dir, under the git dir) resolves inside the git dir, refusing
 # a symlink that escapes it. Runs before any git object write or ref update so a
-# rejected target leaves no side effect (F5). The git dir is the right anchor
+# rejected target leaves no side effect. The git dir is the right anchor
 # rather than the working-tree top: the baseline is untracked local state, and
 # in a worktree the git dir legitimately sits outside the working tree. The
 # allocator writes no other filesystem artifact — record content flows through
