@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 50
+- Open: 51
 - Closed: 59
 
 ## Issues
@@ -114,6 +114,7 @@
 - `20260725-review-the-17-frozen-jim-group-prose-mentions` — review the 17 frozen jim-group prose mentions · status: closed · num: 103 · priority: low · created: 2026-07-25T08:04:46Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold` — script-preamble rule vs source-inherited preambles: fix or fold · status: closed · num: 99 · priority: medium · created: 2026-07-25T08:04:41Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260726-add-a-per-file-must-each-polarity-to-the-verify-mechanical-floor` — Add a per-file must-each polarity to the verify mechanical floor · status: open · num: 109 · priority: medium · created: 2026-07-26T07:09:09Z · labels: [verify, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/spec.md
+- `20260726-declare-tests-scripthygiene-sh-in-platform-territory` — Declare tests/scripthygiene.sh in platform territory · status: open · num: 110 · priority: low · created: 2026-07-26T08:40:11Z · labels: [partition, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/plan.md
 - `20260726-neutralize-pathspec-magic-in-jimledger-commit-pathspec-calls` — Neutralize pathspec magic in jimledger commit-* pathspec calls · status: open · num: 108 · priority: medium · created: 2026-07-26T05:56:09Z · labels: [platform, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/review.md
 - `20260726-neutralize-pathspec-magic-in-jimpartition-rewrite-identity-rewri` — Neutralize pathspec magic in jimpartition rewrite-identity/rewrite-refs · status: open · num: 107 · priority: medium · created: 2026-07-26T04:46:06Z · labels: [partition, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/research.md
 
