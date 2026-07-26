@@ -2,7 +2,7 @@
 id: 20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold
 num: 99
 title: "script-preamble rule vs source-inherited preambles: fix or fold"
-status: open
+status: closed
 priority: medium
 labels: [partition]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-25T08:04:41Z
-updated: 2026-07-25T08:04:41Z
+updated: 2026-07-26T08:18:02Z
 origin: BLUEPRINT.md
 ---
 

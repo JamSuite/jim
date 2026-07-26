@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 51
-- Closed: 58
+- Open: 50
+- Closed: 59
 
 ## Issues
 
@@ -112,7 +112,7 @@
 - `20260725-refresh-architecture-readme-workflow-for-the-partition` — refresh ARCHITECTURE, README, WORKFLOW for the partition · status: closed · num: 105 · priority: medium · created: 2026-07-25T08:04:48Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-relocate-jimledger-sh-out-of-skills-review-into-platform-owned-h` — relocate jimledger.sh out of skills/review into platform-owned home · status: closed · num: 102 · priority: medium · created: 2026-07-25T08:04:45Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260725-review-the-17-frozen-jim-group-prose-mentions` — review the 17 frozen jim-group prose mentions · status: closed · num: 103 · priority: low · created: 2026-07-25T08:04:46Z · labels: [partition] · origin: BLUEPRINT.md
-- `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold` — script-preamble rule vs source-inherited preambles: fix or fold · status: open · num: 99 · priority: medium · created: 2026-07-25T08:04:41Z · labels: [partition] · origin: BLUEPRINT.md
+- `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold` — script-preamble rule vs source-inherited preambles: fix or fold · status: closed · num: 99 · priority: medium · created: 2026-07-25T08:04:41Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260726-add-a-per-file-must-each-polarity-to-the-verify-mechanical-floor` — Add a per-file must-each polarity to the verify mechanical floor · status: open · num: 109 · priority: medium · created: 2026-07-26T07:09:09Z · labels: [verify, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/spec.md
 - `20260726-neutralize-pathspec-magic-in-jimledger-commit-pathspec-calls` — Neutralize pathspec magic in jimledger commit-* pathspec calls · status: open · num: 108 · priority: medium · created: 2026-07-26T05:56:09Z · labels: [platform, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/review.md
 - `20260726-neutralize-pathspec-magic-in-jimpartition-rewrite-identity-rewri` — Neutralize pathspec magic in jimpartition rewrite-identity/rewrite-refs · status: open · num: 107 · priority: medium · created: 2026-07-26T04:46:06Z · labels: [partition, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/research.md
