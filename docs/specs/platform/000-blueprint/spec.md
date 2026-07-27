@@ -46,14 +46,23 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   `peek issue` (advisory next-id preview that never binds), `resolve spec|issue
   <id>` (forward-replay to the current name), and `seed [--apply]` (a one-time
   bootstrap that reconstructs the per-kind logs from the repo's existing spec
-  directories and issue files — preview by default, `--apply` to land); `-c
+  directories and issue files — preview by default, `--apply` to land), and
+  `reconcile issue [--apply]` (realize a consumer's pending provisional ids into
+  real coordinated ones — preview by default, `--apply` to publish); `-c
   <path>` override. Guarantee: an
   id is returned only after its record is durably committed to a shared,
   append-only registry on a dedicated coordination branch under a compare-and-swap
   (origin-tier `push` non-fast-forward, local-tier `update-ref` old-value), built
   with pure git plumbing so the working tree is never touched; the guarantee tier
-  follows remote reachability and an unreachable remote hard-fails with no silent
-  local fallback; every replayed or config token is revalidated through
+  follows remote reachability; under the default `fail` unreachable-mode an
+  unreachable remote hard-fails with no silent local fallback, while the opt-in
+  `provisional` mode instead issues a grammar-distinct, local-only provisional id
+  (no network, no compare-and-swap, never entering the shared registry, the
+  next-id high-water, or `peek`) that a later `reconcile` realizes into a real id
+  through the same erosion-guarded CAS publish — one all-or-none batch, idempotent
+  and resumable, a still-unreachable origin a clean no-op, the realized ordinal
+  drawn solely from the shared high-water and never from the marker, with no
+  second, weaker registry-writing path; every replayed or config token is revalidated through
   `jimfile.sh valid-id` and the branch through `git check-ref-format` before it
   reaches git; a per-clone erosion baseline kept outside the branch detects a
   rewritten history and refuses to reissue. The `seed` bootstrap reconstructs
