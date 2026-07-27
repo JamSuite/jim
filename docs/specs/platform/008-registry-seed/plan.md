@@ -2,7 +2,7 @@
 title: "Registry seed from existing artifacts"
 spec: "docs/specs/platform/008-registry-seed/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Registry seed from existing artifacts — Plan
