@@ -157,25 +157,25 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] Scaffold the `seed` dispatch on `jimalloc.sh`: `seed` (preview) and `seed --apply`, rc 2 on misuse; extend the header CLI summary and `usage()`. Add a `tests/jimalloc.sh` usage-smoke case.
+1. [x] Scaffold the `seed` dispatch on `jimalloc.sh`: `seed` (preview) and `seed --apply`, rc 2 on misuse; extend the header CLI summary and `usage()`. Add a `tests/jimalloc.sh` usage-smoke case.
    **Verify:** `bash tests/jimalloc.sh`
 
-2. [ ] Pure derivation layer (no git): given a fixture specs tree + issues dir, emit the `specs.log` (group-allocate once per group, spec-allocate per dir, skip `000-blueprint` — AC 3) and `issues.log` record sets, with `jim-seed` provenance, the DD 9 date rules, and deterministic ordering. Fixture-driven via a tree seam. Depends on task 1.
+2. [x] Pure derivation layer (no git): given a fixture specs tree + issues dir, emit the `specs.log` (group-allocate once per group, spec-allocate per dir, skip `000-blueprint` — AC 3) and `issues.log` record sets, with `jim-seed` provenance, the DD 9 date rules, and deterministic ordering. Fixture-driven via a tree seam. Depends on task 1.
    **Verify:** `bash tests/jimalloc.sh`
 
-3. [ ] Validation + conflict scan (AC 6, AC 9, F1, F3): every token through `alloc_valid_token`/`is_valid_slug`; every ordinal through the numeric-class check; detect duplicate ordinal, duplicate durable id, unparseable spec dir, and absent/unparseable issue `num`/`id` — on any, list offenders, rc 1, no records. Adversarial fixtures (leading-dash slug, `..`-bearing slug, `1abc` ordinal, missing `num`, duplicate `num`, duplicate durable id). Depends on task 2.
+3. [x] Validation + conflict scan (AC 6, AC 9, F1, F3): every token through `alloc_valid_token`/`is_valid_slug`; every ordinal through the numeric-class check; detect duplicate ordinal, duplicate durable id, unparseable spec dir, and absent/unparseable issue `num`/`id` — on any, list offenders, rc 1, no records. Adversarial fixtures (leading-dash slug, `..`-bearing slug, `1abc` ordinal, missing `num`, duplicate `num`, duplicate durable id). Depends on task 2.
    **Verify:** `bash tests/jimalloc.sh`
 
-4. [ ] Preview mode: bare `seed` runs derive+validate+conflict over the resolved tree, prints the records it would write and any stop condition, and mutates nothing. Fixtures: preview leaves the registry byte-identical; preview over a conflicting tree reports the offenders and exits non-zero. Depends on task 3.
+4. [x] Preview mode: bare `seed` runs derive+validate+conflict over the resolved tree, prints the records it would write and any stop condition, and mutates nothing. Fixtures: preview leaves the registry byte-identical; preview over a conflicting tree reports the offenders and exits non-zero. Depends on task 3.
    **Verify:** `bash tests/jimalloc.sh`
 
-5. [ ] Two-blob single-commit builder + `--apply` landing (AC 4, AC 8, AC 2, AC 7): extend the plumbing builder to set ≥1 blob in one commit atop the fetched tip; land the empty kinds via origin/local CAS with bounded retry and unreachable hard-fail. Fixture: a fresh no-remote repo seeds both logs in one commit; `peek spec <group>` equals the pre-seed `jimfile.sh next-id` for each live group and `resolve` of a seeded id returns it (parity); a within-group gap stays a gap; no spec dir is renamed and no issue file is rewritten (repo unchanged but for the registry). Depends on task 4.
+5. [x] Two-blob single-commit builder + `--apply` landing (AC 4, AC 8, AC 2, AC 7): extend the plumbing builder to set ≥1 blob in one commit atop the fetched tip; land the empty kinds via origin/local CAS with bounded retry and unreachable hard-fail. Fixture: a fresh no-remote repo seeds both logs in one commit; `peek spec <group>` equals the pre-seed `jimfile.sh next-id` for each live group and `resolve` of a seeded id returns it (parity); a within-group gap stays a gap; no spec dir is renamed and no issue file is rewritten (repo unchanged but for the registry). Depends on task 4.
    **Verify:** `bash tests/jimalloc.sh`
 
-6. [ ] Emptiness precondition + idempotency (AC 5, F2): per-kind emptiness re-checked against the CAS-fetched tip inside the retry loop; a non-empty kind is skipped-and-reported; both non-empty is a no-op failure; a second `seed --apply` after success is a no-op failure that changes nothing. Fixture: re-run is a no-op failure; a kind pre-populated between the fetch and the push (simulated) is refused, not appended. Depends on task 5.
+6. [x] Emptiness precondition + idempotency (AC 5, F2): per-kind emptiness re-checked against the CAS-fetched tip inside the retry loop; a non-empty kind is skipped-and-reported; both non-empty is a no-op failure; a second `seed --apply` after success is a no-op failure that changes nothing. Fixture: re-run is a no-op failure; a kind pre-populated between the fetch and the push (simulated) is refused, not appended. Depends on task 5.
    **Verify:** `bash tests/jimalloc.sh`
 
-7. [ ] Erosion-baseline arming (F4) + full-suite green: after a successful apply, write the local baseline per seeded log; fixture — post-seed, a rewritten coordination history is detected by the next allocation. Then run the aggregate runner for no regression. Depends on task 6.
+7. [x] Erosion-baseline arming (F4) + full-suite green: after a successful apply, write the local baseline per seeded log; fixture — post-seed, a rewritten coordination history is detected by the next allocation. Then run the aggregate runner for no regression. Depends on task 6.
    **Verify:** `bash skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
