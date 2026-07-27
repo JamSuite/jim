@@ -676,6 +676,97 @@ case_jimalloc_seed_derive_issues() {
   assert_eq "derived issue records" "$expected" "$out"
 }
 
+# run_seed_fn <fn> <args...> — invoke a sourced seed derivation function,
+# capturing stdout/stderr/rc into OUT/ERR/RC (the derive functions are pure).
+run_seed_fn() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(source "$SCRIPT_jimalloc"; "$@" 2>"$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: a spec dir whose ordinal is not pure digits halts derivation — rc 1, no
+# records, the offender named (security F3: numeric-class beyond the id boundary).
+case_jimalloc_seed_specs_bad_ordinal() {
+  local root
+  root="$(seed_specs_tree seed_badord core/007x-foo)"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit  "rc"            1      "$RC"
+  assert_eq    "no records"    ""     "$OUT"
+  assert_match "names offender" '007x' "$ERR"
+}
+
+# AC: a spec dir whose slug fails the id boundary (option-injection shape) halts
+# derivation — rc 1, no records (spec AC 9).
+case_jimalloc_seed_specs_injection_slug() {
+  local root
+  root="$(seed_specs_tree seed_injslug core/001--bad)"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit  "rc"         1  "$RC"
+  assert_eq    "no records" "" "$OUT"
+  assert_nonempty "message" "$ERR"
+}
+
+# AC: two spec dirs resolving to the same ordinal in a group halt derivation
+# (a collision the registry's uniqueness cannot represent — spec AC 6).
+case_jimalloc_seed_specs_dup_ordinal() {
+  local root
+  root="$(seed_specs_tree seed_duporb core/001-a core/001-b)"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit  "rc"         1  "$RC"
+  assert_eq    "no records" "" "$OUT"
+  assert_match "names dup"  '001' "$ERR"
+}
+
+# AC: an issue file with an absent display ordinal halts derivation — rc 1, no
+# records, the file named (security F1: issue-frontmatter parse symmetry).
+case_jimalloc_seed_issues_missing_num() {
+  local dir
+  dir="$(empty_dir seed_nonum)"
+  printf -- '---\nid: 20260726-x\ncreated: 2026-07-26T10:00:00Z\n---\n' > "$dir/20260726-x.md"
+  run_seed_fn alloc_seed_derive_issues "$dir"
+  assert_exit  "rc"            1  "$RC"
+  assert_eq    "no records"    "" "$OUT"
+  assert_match "names offender" '20260726-x' "$ERR"
+}
+
+# AC: an issue file with an absent durable id halts derivation — rc 1, no records
+# (security F1).
+case_jimalloc_seed_issues_missing_id() {
+  local dir
+  dir="$(empty_dir seed_noid)"
+  printf -- '---\nnum: 4\ncreated: 2026-07-26T10:00:00Z\n---\n' > "$dir/orphan.md"
+  run_seed_fn alloc_seed_derive_issues "$dir"
+  assert_exit  "rc"         1  "$RC"
+  assert_eq    "no records" "" "$OUT"
+  assert_nonempty "message" "$ERR"
+}
+
+# AC: two issue files claiming the same display ordinal halt derivation (spec
+# AC 6 — the headline duplicate-ordinal case).
+case_jimalloc_seed_issues_dup_num() {
+  local dir
+  dir="$(empty_dir seed_dupnum)"
+  seed_issue_file "$dir" "a.md" 5 20260726-a 2026-07-26T10:00:00Z
+  seed_issue_file "$dir" "b.md" 5 20260726-b 2026-07-26T11:00:00Z
+  run_seed_fn alloc_seed_derive_issues "$dir"
+  assert_exit  "rc"         1  "$RC"
+  assert_eq    "no records" "" "$OUT"
+  assert_match "names dup"  '5' "$ERR"
+}
+
+# AC: two issue files sharing a durable id halt derivation (spec AC 6).
+case_jimalloc_seed_issues_dup_id() {
+  local dir
+  dir="$(empty_dir seed_dupid)"
+  seed_issue_file "$dir" "a.md" 5 20260726-same 2026-07-26T10:00:00Z
+  seed_issue_file "$dir" "b.md" 6 20260726-same 2026-07-26T11:00:00Z
+  run_seed_fn alloc_seed_derive_issues "$dir"
+  assert_exit  "rc"         1  "$RC"
+  assert_eq    "no records" "" "$OUT"
+  assert_match "names dup"  '20260726-same' "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner

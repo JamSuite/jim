@@ -357,24 +357,50 @@ alloc_seed_derive_specs() {
   done
   (( ${#groups[@]} )) || return 0
   mapfile -t groups < <(printf '%s\n' "${groups[@]}" | LC_ALL=C sort)
-  local gname gdir entry name ord slug
+  local out="" conflicts=""
+  local gname gdir entry name ord slug key
+  local -A seen_ord=()
   for gname in "${groups[@]}"; do
     gdir="$root/$gname"
+    if ! alloc_valid_token "$gname"; then
+      conflicts+="  invalid group name: $gname"$'\n'; continue
+    fi
     local -a rows=()
     for entry in "$gdir"/*/; do
       [[ -d "$entry" ]] || continue
       name="$(basename "$entry")"
       ord="${name%%-*}"
       [[ "$ord" == "000" ]] && continue
+      if [[ "$name" != *-* ]]; then
+        conflicts+="  spec dir has no slug: $gname/$name"$'\n'; continue
+      fi
       slug="${name#*-}"
+      # ordinal: pure digits, within the 3-digit id space (security F3 — a
+      # numeric class check beyond the id boundary, which admits e.g. 007x).
+      if [[ ! "$ord" =~ ^[0-9]+$ ]] || (( 10#$ord > 999 )); then
+        conflicts+="  spec dir has an invalid ordinal: $gname/$name"$'\n'; continue
+      fi
+      if ! alloc_valid_token "$slug"; then
+        conflicts+="  spec dir has an invalid slug: $gname/$name"$'\n'; continue
+      fi
+      key="$gname/$((10#$ord))"
+      if [[ -n "${seen_ord[$key]:-}" ]]; then
+        conflicts+="  duplicate spec ordinal: $gname/$(printf '%03d' "$((10#$ord))") ($gname/$name)"$'\n'; continue
+      fi
+      seen_ord[$key]=1
       rows+=("$ord"$'\t'"$slug")
     done
     (( ${#rows[@]} )) || continue
-    printf 'group allocate %s %s jim-seed\n' "$gname" "$date"
+    out+="group allocate $gname $date jim-seed"$'\n'
     while IFS=$'\t' read -r ord slug; do
-      printf 'spec allocate %s/%03d %s %s jim-seed\n' "$gname" "$((10#$ord))" "$slug" "$date"
+      out+="$(printf 'spec allocate %s/%03d %s %s jim-seed' "$gname" "$((10#$ord))" "$slug" "$date")"$'\n'
     done < <(printf '%s\n' "${rows[@]}" | LC_ALL=C sort -t$'\t' -k1,1n)
   done
+  if [[ -n "$conflicts" ]]; then
+    printf 'error: cannot seed — spec artifacts have conflicts:\n%s' "$conflicts" >&2
+    return 1
+  fi
+  printf '%s' "$out"
 }
 
 # alloc_seed_derive_issues <issues_dir> — print the issues.log record set derived
@@ -383,7 +409,9 @@ alloc_seed_derive_specs() {
 alloc_seed_derive_issues() {
   local dir="$1"
   [[ -d "$dir" ]] || return 0
+  local out="" conflicts=""
   local -a rows=()
+  local -A seen_num=() seen_id=()
   local f base num id created cdate
   for f in "$dir"/*.md; do
     [[ -f "$f" ]] || continue
@@ -392,14 +420,39 @@ alloc_seed_derive_issues() {
     num="$(alloc_seed_field "$f" num)"
     id="$(alloc_seed_field "$f" id)"
     created="$(alloc_seed_field "$f" created)"
+    if [[ -z "$num" ]]; then
+      conflicts+="  issue file has no display ordinal (num): $base"$'\n'; continue
+    fi
+    # ordinal: pure digits, bounded well under 64-bit arithmetic (security F3).
+    if [[ ! "$num" =~ ^[0-9]+$ ]] || (( ${#num} > 15 )); then
+      conflicts+="  issue file has an invalid display ordinal: $base ($num)"$'\n'; continue
+    fi
+    if [[ -z "$id" ]]; then
+      conflicts+="  issue file has no durable id: $base"$'\n'; continue
+    fi
+    if ! alloc_valid_token "$id"; then
+      conflicts+="  issue file has an invalid durable id: $base ($id)"$'\n'; continue
+    fi
+    if [[ -n "${seen_num[$((10#$num))]:-}" ]]; then
+      conflicts+="  duplicate display ordinal: $num ($base)"$'\n'; continue
+    fi
+    if [[ -n "${seen_id[$id]:-}" ]]; then
+      conflicts+="  duplicate durable id: $id ($base)"$'\n'; continue
+    fi
+    seen_num[$((10#$num))]=1; seen_id[$id]=1
     cdate="$(alloc_seed_norm_date "$created")"
     rows+=("$num"$'\t'"$id"$'\t'"$cdate")
   done
+  if [[ -n "$conflicts" ]]; then
+    printf 'error: cannot seed — issue artifacts have conflicts:\n%s' "$conflicts" >&2
+    return 1
+  fi
   (( ${#rows[@]} )) || return 0
   local rnum rid rdate
   while IFS=$'\t' read -r rnum rid rdate; do
-    printf 'issue allocate %s %s %s jim-seed\n' "$rnum" "$rid" "$rdate"
+    out+="issue allocate $rnum $rid $rdate jim-seed"$'\n'
   done < <(printf '%s\n' "${rows[@]}" | LC_ALL=C sort -t$'\t' -k1,1n)
+  printf '%s' "$out"
 }
 
 # ─── Section: Coordination point + CAS (git plumbing) ────────────────────────
