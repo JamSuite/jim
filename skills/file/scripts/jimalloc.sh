@@ -358,8 +358,11 @@ alloc_reconcile_realize() {
       (( 10#$c4 > max )) && max=$((10#$c4))
     fi
   done
+  # Pass 1: validate the whole pending batch before emitting anything, so a halt
+  # (boundary-invalid id / within-batch duplicate) produces no partial mapping —
+  # the preview reports only a clean mapping or only a stop condition.
   local -A seen=()
-  local pend ord next=$((max + 1))
+  local pend
   for pend in "$@"; do
     if ! alloc_valid_token "$pend"; then
       echo "error: invalid pending provisional id '$pend'" >&2
@@ -370,6 +373,10 @@ alloc_reconcile_realize() {
       return 1
     fi
     seen["$pend"]=1
+  done
+  # Pass 2: emit the mapping in pending (allocation) order.
+  local ord next=$((max + 1))
+  for pend in "$@"; do
     if [[ -n "${existing[$pend]:-}" ]]; then
       printf '%s\t%s\thave\n' "$pend" "${existing[$pend]}"
     else
@@ -1359,8 +1366,12 @@ alloc_reconcile_issue() {
   if (( apply )); then
     alloc_publish alloc_reconcile_publish_builder "${pending[@]}"
   else
-    echo "error: reconcile preview is not yet implemented (use --apply)" >&2
-    return 2
+    # Preview: refresh the last-seen coordination ref (best-effort, non-mutating
+    # to the shared branch — the peek model), realize read-only, and print the
+    # same provisional→real mapping apply would (dropping the internal new/have
+    # column). A stop condition surfaces on stderr with no mapping.
+    alloc_peek_refresh
+    alloc_read_log issue | alloc_reconcile_realize "${pending[@]}" | cut -f1,2
   fi
 }
 

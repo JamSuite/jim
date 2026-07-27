@@ -1253,6 +1253,54 @@ case_jimalloc_reconcile_still_offline_noop() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
+# ─── Section: reconcile — preview-then-apply (AC 9) ──────────────────────────
+
+# AC: bare `reconcile` is a read-only preview — it reports the provisional→real
+# mapping it would make and mutates nothing (spec AC 9).
+case_jimalloc_reconcile_preview_no_mutation() {
+  local bare A input before after
+  bare="$(alloc_new_bare recon_prev_bare)"
+  A="$(alloc_new_clone "$bare" recon_prev_A)"
+  run_jimalloc_in "$A" allocate issue "seed"   # branch @ 1
+  before="$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+  input=$(printf '%s\n' 20260726-p)
+  run_reconcile_in "$A" "$input" reconcile issue
+  assert_exit  "rc" 0 "$RC"
+  assert_match "previews mapping" '^20260726-p	2$' "$OUT"
+  after="$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+  assert_eq "remote registry unchanged" "$before" "$after"
+}
+
+# AC: apply publishes exactly the mapping the preview reported (spec AC 9).
+case_jimalloc_reconcile_preview_matches_apply() {
+  local bare A input prev applied
+  bare="$(alloc_new_bare recon_pa_bare)"
+  A="$(alloc_new_clone "$bare" recon_pa_A)"
+  input=$(printf '%s\n' 20260726-x 20260726-y)
+  run_reconcile_in "$A" "$input" reconcile issue           # preview
+  assert_exit "preview rc" 0 "$RC"
+  prev="$OUT"
+  run_reconcile_in "$A" "$input" reconcile issue --apply    # apply
+  assert_exit "apply rc" 0 "$RC"
+  applied="$OUT"
+  assert_eq    "apply matches preview" "$prev" "$applied"
+  assert_match "maps x" '^20260726-x	1$' "$applied"
+  assert_match "maps y" '^20260726-y	2$' "$applied"
+}
+
+# AC: preview reports a stop condition (a within-batch duplicate identity) and
+# emits no mapping, mutating nothing (spec AC 9).
+case_jimalloc_reconcile_preview_reports_stop() {
+  local bare A input
+  bare="$(alloc_new_bare recon_stop_bare)"
+  A="$(alloc_new_clone "$bare" recon_stop_A)"
+  input=$(printf '%s\n' 20260726-dup 20260726-dup)
+  run_reconcile_in "$A" "$input" reconcile issue
+  assert_exit     "rc"      1  "$RC"
+  assert_eq       "no mapping" "" "$OUT"
+  assert_nonempty "stop condition reported" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
