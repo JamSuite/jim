@@ -44,7 +44,10 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
 - `jimalloc.sh` **ID coordination allocator** — `allocate spec <group> <subject>`
   / `allocate issue <subject>` (durable-before-return), `peek spec <group>` /
   `peek issue` (advisory next-id preview that never binds), `resolve spec|issue
-  <id>` (forward-replay to the current name); `-c <path>` override. Guarantee: an
+  <id>` (forward-replay to the current name), and `seed [--apply]` (a one-time
+  bootstrap that reconstructs the per-kind logs from the repo's existing spec
+  directories and issue files — preview by default, `--apply` to land); `-c
+  <path>` override. Guarantee: an
   id is returned only after its record is durably committed to a shared,
   append-only registry on a dedicated coordination branch under a compare-and-swap
   (origin-tier `push` non-fast-forward, local-tier `update-ref` old-value), built
@@ -53,7 +56,12 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   local fallback; every replayed or config token is revalidated through
   `jimfile.sh valid-id` and the branch through `git check-ref-format` before it
   reaches git; a per-clone erosion baseline kept outside the branch detects a
-  rewritten history and refuses to reissue.
+  rewritten history and refuses to reissue. The `seed` bootstrap reconstructs
+  spec records from directory names and issue records from frontmatter, skips the
+  reserved 000-blueprint slot, halts and names any conflict (a duplicate ordinal,
+  an unparseable spec dir, or an issue with an absent/unparseable ordinal or id),
+  lands the empty kinds in one compare-and-swap commit, and refuses a kind whose
+  log already has records.
 - `jimledger.sh` **SDLC ledger CLI** — `event`/`start`/`finish`/`metrics`/
   `events`/`files`/`diff`/`diff-range`/`files-range`, the seven path-scoped commit verbs
   (`commit-review`/`commit-blueprint`/`commit-map`/`commit-verify`/
