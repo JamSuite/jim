@@ -1003,6 +1003,17 @@ alloc_seed_report() {
   return 0
 }
 
+# alloc_seed_arm_baselines <spec-content> <issue-content> — after a successful
+# seed commit, record each written log as the local erosion baseline (byte-
+# identical to the committed blob), so the first post-seed allocation's growth
+# guard compares against the seeded state, not an empty one (security F4).
+alloc_seed_arm_baselines() {
+  local ws="$1" wi="$2"
+  [[ -n "$ws" ]] && printf '%s\n' "$ws" | alloc_update_baseline "$(alloc_log_file spec)"
+  [[ -n "$wi" ]] && printf '%s\n' "$wi" | alloc_update_baseline "$(alloc_log_file issue)"
+  return 0
+}
+
 # alloc_seed_land <spec-records> <issue-records> — land the derived records via
 # the coordination CAS (same tier selection, plumbing, and retry as an
 # allocation), as ONE commit setting the writable logs. Empty-precondition and
@@ -1054,10 +1065,12 @@ alloc_seed_land() {
     if [[ -n "$remote" ]]; then
       if git push --quiet "$remote" "$commit:$ref" 2>/dev/null; then
         git update-ref "$ref" "$commit" 2>/dev/null || true
+        alloc_seed_arm_baselines "$write_spec" "$write_issue"
         alloc_seed_report "$write_spec" "$write_issue" "$skip_spec" "$skip_issue"; return 0
       fi
     else
       if git update-ref "$ref" "$commit" "$tip" 2>/dev/null; then
+        alloc_seed_arm_baselines "$write_spec" "$write_issue"
         alloc_seed_report "$write_spec" "$write_issue" "$skip_spec" "$skip_issue"; return 0
       fi
     fi

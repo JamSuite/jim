@@ -923,6 +923,25 @@ case_jimalloc_seed_apply_partial_skip() {
   fi
 }
 
+# AC: --apply arms the local erosion baseline from the seeded state, so a
+# subsequent rewrite of the coordination history is detected by the next
+# allocation rather than silently accepted (security F4).
+case_jimalloc_seed_arms_erosion_baseline() {
+  local repo blob tree commit
+  repo="$(seed_repo seed_erosion)"
+  run_jimalloc_in "$repo" seed --apply
+  assert_exit "seed rc" 0 "$RC"
+  # Rewrite specs.log to a truncated history the seed baseline never saw.
+  blob="$(printf 'spec allocate core/001 tampered 20200101 x\n' | git -C "$repo" hash-object -w --stdin)"
+  tree="$(printf '100644 blob %s\tspecs.log\n' "$blob" | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" -m rewrite)"
+  git -C "$repo" update-ref refs/heads/jim/registry "$commit"
+  run_jimalloc_in "$repo" allocate spec core "new one"
+  assert_exit     "erosion hard-fail" 1  "$RC"
+  assert_eq       "no id issued"      "" "$OUT"
+  assert_nonempty "erosion message"   "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
