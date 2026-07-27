@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/platform/008-registry-seed/spec.md"
-reviewed_phases: [spec]
-status: "Needs Plan Review"
+reviewed_phases: [spec, plan]
+status: Active
 date: "2026-07-27"
 ---
 
@@ -22,11 +22,18 @@ conflict-handling asymmetry (issue frontmatter vs. spec dirs) and a
 bootstrap-guard TOCTOU. LINDDUN is N/A — no PII, credential, or session data is
 handled (the synthetic seed `<who>` is not personal data).
 
+**Plan-phase re-run 2026-07-27 (dual lens).** With plan.md present, the
+design-flaw lens confirms all four spec-phase findings are discharged: F1 by AC 6
++ plan DD 7/Task 3, F2 by DD 5/Task 6 (empty-check re-evaluated on the CAS-fetched
+tip), F3 by DD 6/Task 3 (ordinal numeric-class check), F4 by DD 8/Task 7 (erosion
+baseline armed at seed). No new design-flaw finding surfaced, and no spec↔plan
+misalignment: DD 4 reconciles AC 4's single-commit atomicity with AC 5's per-kind
+refuse consistently. Status advances Needs Plan Review → Active.
+
 ## Coverage
 
 - spec.md — reviewed 2026-07-27 (requirements-gap lens)
-- plan.md — not present; plan-phase design-flaw findings (F2–F4) route forward to
-  the `/jim:plan` security pass.
+- plan.md — reviewed 2026-07-27 (design-flaw + dual lens)
 
 ## Data Classification
 
@@ -85,6 +92,10 @@ handled (the synthetic seed `<who>` is not personal data).
   than appended to. Add a test that races an allocation against a seed.
 - **Route:** Plan
 - **Relates to:** AC 5, AC 8
+- **Resolution (plan-phase 2026-07-27):** Discharged — plan DD 5 + Task 6 evaluate
+  the per-kind emptiness precondition against the CAS-fetched tip inside the retry
+  loop (a kind non-empty on the fetched tip is skipped-and-reported), with a
+  fixture racing an allocation against the seed.
 
 ### 3. Ordinals need a numeric-class check, not only the id/slug boundary
 
@@ -102,6 +113,10 @@ handled (the synthetic seed `<who>` is not personal data).
   base-10 discipline (`jimalloc.sh:247-268`).
 - **Route:** Plan
 - **Relates to:** AC 9
+- **Resolution (plan-phase 2026-07-27):** Discharged — plan DD 6 + Task 3 gate
+  every artifact-derived ordinal with a pure numeric-class check (`^[0-9]+$` +
+  magnitude bound) in addition to the id boundary before it enters a record or
+  arithmetic; the coder should pin the issue-ordinal magnitude bound concretely.
 
 ### 4. Arm the erosion baseline at seed time
 
@@ -119,6 +134,9 @@ handled (the synthetic seed `<who>` is not personal data).
   coordination branch.
 - **Route:** Plan
 - **Relates to:** AC 8 (inherits 007 AC 11 erosion behavior)
+- **Resolution (plan-phase 2026-07-27):** Discharged — plan DD 8 + Task 7 write the
+  local erosion baseline per seeded log immediately after the apply commit, with a
+  fixture asserting a rewritten history is detected by the next allocation.
 
 ## STRIDE Coverage
 
@@ -131,6 +149,19 @@ handled (the synthetic seed `<who>` is not personal data).
 | Denial of Service | Yes | One-time, bounded single pass over ~65 specs / ~120 issues landing one commit; contention inherits 007's bounded-retry-then-hard-fail. No new surface. |
 | Elevation of Privilege | Yes | Git option-injection is the EoP vector (as in 007), foreclosed by AC 9's revalidation of every artifact-derived token before git use; F3 sharpens the ordinal sub-case. |
 
+## Artifact Misalignment
+
+*Dual-lens (spec.md + plan.md) — spec↔plan consistency.*
+
+- **None found.** The plan faithfully implements every spec AC. The one place
+  worth naming: AC 4 ("the entire seed lands as a single durable commit — all
+  derived records or none") and AC 5 (per-kind refuse when a log is non-empty)
+  could appear to tension, but plan DD 4 reconciles them — one commit sets the
+  blobs for exactly the empty kinds (two-blob tree when both are empty), so the
+  atomicity AC 4 asks for holds while AC 5's per-kind independence is respected.
+  F1–F4 are discharged by the plan (see per-finding Resolution notes); no new
+  design-level finding surfaced.
+
 ## Routing Recommendations
 
 ### Spec amendments
@@ -139,12 +170,15 @@ handled (the synthetic seed `<who>` is not personal data).
   symmetric with the spec-directory parse-failure clause.
 
 ### Plan amendments
-- Finding 2: evaluate the empty-registry precondition against the CAS-fetched tip
-  inside the retry loop; test with an allocation racing a seed.
-- Finding 3: gate every artifact-derived ordinal with a numeric-class check in
-  addition to the id boundary before record emission or arithmetic.
-- Finding 4: write the local erosion baseline per seeded log immediately after its
-  commit, arming the guard from the seeded state.
+*F2–F4 discharged 2026-07-27 by plan DD 5/6/8 + Tasks 6/3/7 (see per-finding
+Resolution notes).*
+
+- Finding 2: **discharged (DD 5 / Task 6)** — empty-registry precondition
+  re-evaluated against the CAS-fetched tip inside the retry loop.
+- Finding 3: **discharged (DD 6 / Task 3)** — artifact-derived ordinals gated by a
+  numeric-class check beyond the id boundary.
+- Finding 4: **discharged (DD 8 / Task 7)** — local erosion baseline armed per
+  seeded log immediately after the apply commit.
 
 ### Candidate issues
 - None — no findings routed to Issue this run.
