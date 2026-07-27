@@ -379,6 +379,8 @@ alloc_new_clone() {
 
 # alloc_bare_specs <bare> — print specs.log on the bare remote's coordination branch.
 alloc_bare_specs() { git -C "$1" cat-file -p refs/heads/jim/registry:specs.log 2>/dev/null; }
+# alloc_bare_issues <bare> — print issues.log on the bare remote's coordination branch.
+alloc_bare_issues() { git -C "$1" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null; }
 
 # ─── Section: origin-tier allocation (push non-fast-forward CAS) ─────────────
 
@@ -1150,6 +1152,105 @@ case_jimalloc_reconcile_realize_crafted_pending() {
   run_realize "" "--upload-pack=x"
   assert_exit     "rc"      1  "$RC"
   assert_nonempty "message" "$ERR"
+}
+
+# ─── Section: reconcile — publish + tiers (real git) ─────────────────────────
+
+# run_reconcile_in <dir> <pending> <args...> — run the allocator inside <dir>
+# with <pending> (a newline-joined set of ids) on stdin as the pending set;
+# capture OUT/ERR/RC.
+run_reconcile_in() {
+  local dir="$1" pending="$2"; shift 2
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$dir" && printf '%s\n' "$pending" | bash "$SCRIPT_jimalloc" "$@" 2>"$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: reconcile --apply realizes each pending provisional into a real ordinal and
+# publishes it durably on the coordination branch, over the same reachability
+# tier / CAS / durable-before-reported path a normal allocation uses (spec AC 4).
+case_jimalloc_reconcile_apply_publishes_durably() {
+  local bare A input issues
+  bare="$(alloc_new_bare recon_pub_bare)"
+  A="$(alloc_new_clone "$bare" recon_pub_A)"
+  input=$(printf '%s\n' 20260726-alpha)
+  run_reconcile_in "$A" "$input" reconcile issue --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "mapping printed" '^20260726-alpha	1$' "$OUT"
+  issues="$(alloc_bare_issues "$bare")"
+  assert_match "real record on remote" '^issue allocate 1 20260726-alpha ' "$issues"
+}
+
+# AC: realizing N pending provisionals publishes as a single durable commit —
+# all-or-none (spec AC 5).
+case_jimalloc_reconcile_apply_single_commit() {
+  local bare A input before after
+  bare="$(alloc_new_bare recon_1c_bare)"
+  A="$(alloc_new_clone "$bare" recon_1c_A)"
+  run_jimalloc_in "$A" allocate issue "seed"   # branch exists at commit 1
+  before="$(git -C "$bare" rev-list --count refs/heads/jim/registry)"
+  input=$(printf '%s\n' 20260726-a 20260726-b)
+  run_reconcile_in "$A" "$input" reconcile issue --apply
+  assert_exit "rc" 0 "$RC"
+  after="$(git -C "$bare" rev-list --count refs/heads/jim/registry)"
+  assert_eq "one commit for N reals" "$((before + 1))" "$after"
+}
+
+# AC: two clones reconciling concurrently realize every pending provisional to a
+# distinct real id — the shared-registry CAS serializes both passes (spec AC 8).
+case_jimalloc_reconcile_concurrent_distinct() {
+  local bare A B ra rb orda ordb count
+  bare="$(alloc_new_bare recon_conc_bare)"
+  A="$(alloc_new_clone "$bare" recon_conc_A)"
+  B="$(alloc_new_clone "$bare" recon_conc_B)"
+  run_jimalloc_in "$A" allocate issue "seed"   # create the branch @ 1, both fetch it
+  ( cd "$A" && printf '%s\n' 20260726-from-a | bash "$SCRIPT_jimalloc" reconcile issue --apply ) > "$TMP_BASE/rra" 2>/dev/null &
+  ( cd "$B" && printf '%s\n' 20260726-from-b | bash "$SCRIPT_jimalloc" reconcile issue --apply ) > "$TMP_BASE/rrb" 2>/dev/null &
+  wait
+  ra="$(cat "$TMP_BASE/rra")"; rb="$(cat "$TMP_BASE/rrb")"
+  orda="${ra##*$'\t'}"; ordb="${rb##*$'\t'}"
+  assert_nonempty "A ordinal" "$orda"
+  assert_nonempty "B ordinal" "$ordb"
+  if [[ "$orda" == "$ordb" ]]; then
+    CURRENT_FAILED=1; echo "    [concurrent] both reconciles realized the same ordinal: $orda"
+  fi
+  count="$(alloc_bare_issues "$bare" | grep -c '^issue allocate ')"
+  assert_eq "three reals on remote" "3" "$count"
+}
+
+# AC: reconcile is resumable — the real id is durable before any consumer
+# rewrite, so re-running after an interruption re-maps the same provisional to
+# the same ordinal and allocates no second real id (spec AC 6).
+case_jimalloc_reconcile_resume_no_double_allocate() {
+  local bare A input count
+  bare="$(alloc_new_bare recon_resume_bare)"
+  A="$(alloc_new_clone "$bare" recon_resume_A)"
+  input=$(printf '%s\n' 20260726-once)
+  run_reconcile_in "$A" "$input" reconcile issue --apply
+  assert_exit  "first rc" 0 "$RC"
+  assert_match "first mapping" '^20260726-once	1$' "$OUT"
+  run_reconcile_in "$A" "$input" reconcile issue --apply   # resume after a crash
+  assert_exit  "resume rc" 0 "$RC"
+  assert_match "resume same ordinal" '^20260726-once	1$' "$OUT"
+  count="$(alloc_bare_issues "$bare" | grep -c '20260726-once')"
+  assert_eq "exactly one real record" "1" "$count"
+}
+
+# AC: when the coordination point is unreachable at reconcile time, reconcile
+# realizes nothing, reports it is still offline, and changes nothing — a clean
+# no-op, distinct from the allocation-time hard fail (spec AC 7).
+case_jimalloc_reconcile_still_offline_noop() {
+  local repo input
+  repo="$(alloc_new_repo recon_offline)"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-recon.git"
+  input=$(printf '%s\n' 20260726-pending)
+  run_reconcile_in "$repo" "$input" reconcile issue --apply
+  assert_exit     "rc"      0  "$RC"
+  assert_eq       "no mapping" "" "$OUT"
+  assert_nonempty "still-offline message" "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

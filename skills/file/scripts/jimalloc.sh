@@ -888,23 +888,32 @@ alloc_build_issue() {
 # the network. A provisional identifier never enters the registry, the next-id
 # computation, or the read-only preview.
 
+# alloc_origin_reachable — exit 0 iff the coordination point is reachable: the
+# local tier (no remote) is always reachable; the origin tier is reachable iff a
+# quiet ls-remote succeeds. No fetch, no stderr, no ref or filesystem mutation —
+# a decision probe, never a mutation.
+alloc_origin_reachable() {
+  local remote branch
+  remote="$(alloc_coord_remote)"; [[ -n "$remote" ]] || return 0
+  branch="$(alloc_coord_branch)" || return 1
+  git ls-remote --heads "$remote" "$branch" >/dev/null 2>&1
+}
+
 # alloc_defer_to_provisional — exit 0 iff this allocation must defer to a local
 # provisional id: the git mechanism is in force, id_coordination_unreachable is
 # 'provisional', a coordination remote is configured, and that remote is
 # currently unreachable. Every other combination (local tier, reachable origin,
 # 'fail' mode, non-git mechanism) exits non-zero so the caller runs the normal
 # CAS allocation — which itself hard-fails an unreachable 'fail'-mode origin,
-# byte-identical to the fail path. The reachability probe is a quiet ls-remote:
-# no fetch, no stderr, no ref or filesystem mutation.
+# byte-identical to the fail path.
 alloc_defer_to_provisional() {
-  local mech mode remote branch
+  local mech mode remote
   mech="$(alloc_config id_coordination_mechanism)"; [[ -n "$mech" ]] || mech="git"
   [[ "$mech" == git ]] || return 1
   mode="$(alloc_config id_coordination_unreachable)"; [[ -n "$mode" ]] || mode="fail"
   [[ "$mode" == provisional ]] || return 1
   remote="$(alloc_coord_remote)"; [[ -n "$remote" ]] || return 1
-  branch="$(alloc_coord_branch)" || return 1
-  git ls-remote --heads "$remote" "$branch" >/dev/null 2>&1 && return 1
+  alloc_origin_reachable && return 1
   return 0
 }
 
@@ -1225,8 +1234,11 @@ alloc_publish() {
     PUB_SPEC=""; PUB_ISSUE=""; PUB_PAYLOAD=""
     "$builder" "$cur_specs" "$cur_issues" "$who" "$@" || return 1
     if [[ -z "$PUB_SPEC" && -z "$PUB_ISSUE" ]]; then
-      echo "error: nothing to publish" >&2
-      return 1
+      # The builder succeeded with nothing to write — a legitimate no-op (e.g.
+      # every pending realization already landed on a concurrent pass). Report
+      # the payload and stop; the seed builder never reaches here (it aborts).
+      [[ -n "$PUB_PAYLOAD" ]] && printf '%s\n' "$PUB_PAYLOAD"
+      return 0
     fi
     commit="$(alloc_seed_commit "$tip" "$who" "$email" "$PUB_SPEC" "$PUB_ISSUE")" || return 1
     if [[ -n "$remote" ]]; then
@@ -1286,6 +1298,101 @@ alloc_seed_land() {
   alloc_publish alloc_seed_publish_builder "$spec_records" "$issue_records"
 }
 
+# ─── Section: reconcile (realize pending provisionals into real ids) ─────────
+
+# alloc_reconcile_publish_builder <cur_specs> <cur_issues> <who> <pending...>
+#   The reconcile publish decision (an alloc_publish builder): realize the
+#   pending provisionals against THIS attempt's issues.log, append one real
+#   `issue allocate` record per newly-realized id, and set PUB_ISSUE to the grown
+#   log plus PUB_PAYLOAD to the provisional→real mapping. Leaves specs.log
+#   untouched. When every pending id is already realized (nothing new — e.g. a
+#   concurrent pass landed them, or a resumed run), it writes nothing and
+#   alloc_publish reports the mapping as a clean no-op. Aborts (rc 1) if realize
+#   halts (within-batch duplicate / boundary-invalid pending id).
+alloc_reconcile_publish_builder() {
+  local cur_issues="$2" who="$3"; shift 3
+  local realized date fid ord state mapping="" newrecs=""
+  realized="$(printf '%s\n' "$cur_issues" | alloc_reconcile_realize "$@")" || return 1
+  date="$(bash "$JIMFILE" date)" || return 1
+  while IFS=$'\t' read -r fid ord state; do
+    [[ -n "$fid" ]] || continue
+    mapping+="${fid}"$'\t'"${ord}"$'\n'
+    [[ "$state" == new ]] && newrecs+="$(alloc_encode_allocate_issue "$ord" "$fid" "$date" "$who")"$'\n'
+  done <<< "$realized"
+  PUB_PAYLOAD="${mapping%$'\n'}"
+  if [[ -n "$newrecs" ]]; then
+    if [[ -n "$cur_issues" ]]; then
+      PUB_ISSUE="${cur_issues}"$'\n'"${newrecs%$'\n'}"
+    else
+      PUB_ISSUE="${newrecs%$'\n'}"
+    fi
+  else
+    PUB_ISSUE=""
+  fi
+  return 0
+}
+
+# alloc_reconcile_issue <apply>  (pending set on stdin, one id per line)
+#   Realize the consumer's pending provisional issue identities. Reads the set
+#   from stdin (blank lines ignored). An empty set is a clean no-op. The
+#   coordination point must be reachable — a still-unreachable origin realizes
+#   nothing, reports it is still offline, and changes nothing (rc 0), distinct
+#   from the allocation-time hard fail. With apply=1 it publishes the new reals
+#   through the shared, erosion-guarded batch publish (one CAS commit,
+#   all-or-none, baseline-armed) and prints the provisional→real mapping. The
+#   mapping goes to stdout; status notes (nothing pending / still offline) go to
+#   stderr so stdout stays parseable. The read-only preview (apply=0) is added
+#   alongside apply so it computes the identical mapping without publishing.
+alloc_reconcile_issue() {
+  local apply="$1"
+  local -a raw=(); mapfile -t raw
+  local -a pending=(); local p
+  for p in "${raw[@]}"; do [[ -n "$p" ]] && pending+=("$p"); done
+  if (( ${#pending[@]} == 0 )); then
+    echo "reconcile: nothing pending — nothing to realize" >&2
+    return 0
+  fi
+  if ! alloc_origin_reachable; then
+    echo "reconcile: coordination point unreachable — still offline, nothing changed" >&2
+    return 0
+  fi
+  if (( apply )); then
+    alloc_publish alloc_reconcile_publish_builder "${pending[@]}"
+  else
+    echo "error: reconcile preview is not yet implemented (use --apply)" >&2
+    return 2
+  fi
+}
+
+cmd_reconcile() {
+  local kind="${1:-}"; shift || true
+  local apply=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --apply) apply=1; shift ;;
+      *)
+        echo "error: unknown option '$1' for reconcile (usage: reconcile issue [--apply])" >&2
+        return 2
+        ;;
+    esac
+  done
+  case "$kind" in
+    issue)
+      alloc_in_repo || return 1
+      alloc_preflight || return 1
+      alloc_reconcile_issue "$apply"
+      ;;
+    spec)
+      echo "error: spec reconcile is not implemented (issue reconcile only)" >&2
+      return 2
+      ;;
+    *)
+      echo "error: reconcile kind must be 'issue'" >&2
+      return 2
+      ;;
+  esac
+}
+
 cmd_resolve() {
   local kind="${1:-}" queried="${2:-}"
   if [[ -z "$kind" || -z "$queried" ]]; then
@@ -1314,6 +1421,7 @@ usage:
   jimalloc.sh resolve  spec  <group>/<NNN>       resolve a spec id to its current name
   jimalloc.sh resolve  issue <num|full-id>       resolve an issue id to its current name
   jimalloc.sh seed     [--apply]                 preview (or --apply) a one-time registry bootstrap
+  jimalloc.sh reconcile issue [--apply]          realize pending provisionals (stdin) into real ids
   jimalloc.sh -c <path> <subcmd>                 use <path> instead of ./jimconf.toml
 USAGE
 }
@@ -1334,10 +1442,11 @@ main() {
   fi
   shift
   case "$subcmd" in
-    allocate) cmd_allocate "$@" ;;
-    peek)     cmd_peek     "$@" ;;
-    resolve)  cmd_resolve  "$@" ;;
-    seed)     cmd_seed     "$@" ;;
+    allocate)  cmd_allocate  "$@" ;;
+    peek)      cmd_peek      "$@" ;;
+    resolve)   cmd_resolve   "$@" ;;
+    seed)      cmd_seed      "$@" ;;
+    reconcile) cmd_reconcile "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
       usage
