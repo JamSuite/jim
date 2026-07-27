@@ -887,6 +887,42 @@ case_jimalloc_seed_apply_origin() {
   assert_match "spec on remote" '^spec allocate core/001 alpha ' "$(alloc_bare_specs "$bare")"
 }
 
+# AC: re-running --apply after a successful seed is a no-op failure — the
+# registry is byte-identical and the command reports it is already seeded
+# (spec AC 5; the empty-precondition is checked against the fetched tip).
+case_jimalloc_seed_apply_idempotent() {
+  local repo sha1 sha2
+  repo="$(seed_repo seed_idem)"
+  run_jimalloc_in "$repo" seed --apply
+  assert_exit "first rc" 0 "$RC"
+  sha1="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  run_jimalloc_in "$repo" seed --apply
+  assert_exit  "re-run rc" 1 "$RC"
+  assert_match "says already seeded" 'already seeded' "$ERR"
+  sha2="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  assert_eq "registry unchanged" "$sha1" "$sha2"
+}
+
+# AC: a kind whose log already has records is skipped, not overwritten — the seed
+# writes only the empty kind and preserves the existing one (spec AC 5; F2 — the
+# per-kind emptiness is re-read from the fetched tip, so a log populated by a
+# concurrent allocation is refused rather than clobbered).
+case_jimalloc_seed_apply_partial_skip() {
+  local repo issues specs
+  repo="$(seed_repo seed_partial)"
+  run_jimalloc_in "$repo" allocate issue "pre existing"   # populate issues.log only
+  assert_exit "pre-alloc rc" 0 "$RC"
+  run_jimalloc_in "$repo" seed --apply
+  assert_exit  "seed rc" 0 "$RC"
+  assert_match "reports issue skip" 'issues.log already had records' "$OUT"
+  specs="$(alloc_specs_log "$repo")"; issues="$(alloc_issues_log "$repo")"
+  assert_match "specs seeded"            '^spec allocate core/001 alpha ' "$specs"
+  assert_match "pre-existing issue kept" 'pre-existing'                    "$issues"
+  if printf '%s\n' "$issues" | grep -q '20260726-a'; then
+    CURRENT_FAILED=1; echo "    [skip] issues.log was overwritten by the seed"
+  fi
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner

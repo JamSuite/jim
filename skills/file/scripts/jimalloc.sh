@@ -990,12 +990,17 @@ alloc_seed_commit() {
   fi
 }
 
-# alloc_seed_report <spec-content> <issue-content> — one-line summary of a seed.
+# alloc_seed_report <spec-content> <issue-content> [<skip-spec>] [<skip-issue>]
+#   One-line summary of a seed, noting any kind skipped because it already had
+#   records.
 alloc_seed_report() {
-  local ws="$1" wi="$2" ns=0 ni=0
+  local ws="$1" wi="$2" skip_spec="${3:-0}" skip_issue="${4:-0}" ns=0 ni=0
   [[ -n "$ws" ]] && ns="$(printf '%s\n' "$ws" | grep -c .)"
   [[ -n "$wi" ]] && ni="$(printf '%s\n' "$wi" | grep -c .)"
   printf 'seeded: %d spec record(s), %d issue record(s)\n' "$ns" "$ni"
+  (( skip_spec ))  && printf '  specs.log already had records — skipped\n'
+  (( skip_issue )) && printf '  issues.log already had records — skipped\n'
+  return 0
 }
 
 # alloc_seed_land <spec-records> <issue-records> — land the derived records via
@@ -1019,22 +1024,41 @@ alloc_seed_land() {
   [[ -n "$who" ]]   || who="jim-seed"
   [[ -n "$email" ]] || email="jim-seed@localhost"
   local attempts=5 attempt tip commit write_spec write_issue
+  local cur_specs cur_issues skip_spec skip_issue
   for ((attempt=1; attempt<=attempts; attempt++)); do
     if [[ -n "$remote" ]]; then
       tip="$(alloc_origin_tip "$remote" "$branch")" || return 1
     else
       tip="$(git rev-parse --verify --quiet --end-of-options "$ref" 2>/dev/null || true)"
     fi
-    write_spec="$spec_records"; write_issue="$issue_records"
+    # Empty-precondition, re-read from THIS attempt's tip (F2 — a kind populated
+    # by a concurrent allocation between attempts is refused, never clobbered).
+    cur_specs=""; cur_issues=""
+    if [[ -n "$tip" ]]; then
+      cur_specs="$(git cat-file -p "$tip:$(alloc_log_file spec)" 2>/dev/null || true)"
+      cur_issues="$(git cat-file -p "$tip:$(alloc_log_file issue)" 2>/dev/null || true)"
+    fi
+    write_spec=""; write_issue=""; skip_spec=0; skip_issue=0
+    if [[ -n "$spec_records" ]]; then
+      if [[ -z "$cur_specs" ]]; then write_spec="$spec_records"; else skip_spec=1; fi
+    fi
+    if [[ -n "$issue_records" ]]; then
+      if [[ -z "$cur_issues" ]]; then write_issue="$issue_records"; else skip_issue=1; fi
+    fi
+    if [[ -z "$write_spec" && -z "$write_issue" ]]; then
+      # Nothing writable: every kind with artifacts is already seeded (AC 5).
+      echo "error: registry already seeded (specs.log/issues.log already have records); refusing to re-seed" >&2
+      return 1
+    fi
     commit="$(alloc_seed_commit "$tip" "$who" "$email" "$write_spec" "$write_issue")" || return 1
     if [[ -n "$remote" ]]; then
       if git push --quiet "$remote" "$commit:$ref" 2>/dev/null; then
         git update-ref "$ref" "$commit" 2>/dev/null || true
-        alloc_seed_report "$write_spec" "$write_issue"; return 0
+        alloc_seed_report "$write_spec" "$write_issue" "$skip_spec" "$skip_issue"; return 0
       fi
     else
       if git update-ref "$ref" "$commit" "$tip" 2>/dev/null; then
-        alloc_seed_report "$write_spec" "$write_issue"; return 0
+        alloc_seed_report "$write_spec" "$write_issue" "$skip_spec" "$skip_issue"; return 0
       fi
     fi
     (( attempt < attempts )) && alloc_backoff "$attempt"
