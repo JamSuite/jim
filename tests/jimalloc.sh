@@ -605,6 +605,18 @@ case_jimalloc_peek_unreachable_non_fatal() {
   assert_eq   "degrades to local" "g/001" "$OUT"
 }
 
+# ─── Section: seed (one-time registry bootstrap) ─────────────────────────────
+
+# AC: `seed` is a dispatched subcommand that validates its own arguments — an
+# unknown option is a usage error (rc 2) whose message names the `--apply` form,
+# distinct from the top-level "unknown subcommand" error.
+case_jimalloc_seed_usage() {
+  run_jimalloc seed --bogus
+  assert_exit  "seed bad-flag rc" 2      "$RC"
+  assert_eq    "stdout empty"     ""     "$OUT"
+  assert_match "usage names --apply" 'apply' "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner

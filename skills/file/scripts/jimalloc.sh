@@ -23,6 +23,7 @@
 #   bash jimalloc.sh peek     issue                     → advisory "<num>"
 #   bash jimalloc.sh resolve  spec  <group>/<NNN>       → current "<group>/<NNN>"
 #   bash jimalloc.sh resolve  issue <num|full-id>       → current id
+#   bash jimalloc.sh seed     [--apply]                 preview/apply a one-time bootstrap
 #   bash jimalloc.sh -c <path> <subcmd>                 use <path> as jimconf.toml
 #
 # EXIT CODES
@@ -746,6 +747,28 @@ cmd_peek() {
   esac
 }
 
+# cmd_seed [--apply]
+#   One-time registry bootstrap: reconstruct the per-kind logs from the repo's
+#   existing spec directories and issue files. Bare `seed` is a read-only preview
+#   (derive + validate + report, mutate nothing); `--apply` lands the derived
+#   records via the same CAS as an allocation. Preview-then-apply mirrors jim's
+#   one-time-migration doctrine. Full behavior lands over the seed tasks; this
+#   arm validates its own arguments.
+cmd_seed() {
+  local apply=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --apply) apply=1; shift ;;
+      *)
+        echo "error: unknown option '$1' for seed (usage: seed [--apply])" >&2
+        return 2
+        ;;
+    esac
+  done
+  echo "error: seed is not yet implemented" >&2
+  return 1
+}
+
 cmd_resolve() {
   local kind="${1:-}" queried="${2:-}"
   if [[ -z "$kind" || -z "$queried" ]]; then
@@ -773,6 +796,7 @@ usage:
   jimalloc.sh peek     issue                     advisory next issue num (no commit)
   jimalloc.sh resolve  spec  <group>/<NNN>       resolve a spec id to its current name
   jimalloc.sh resolve  issue <num|full-id>       resolve an issue id to its current name
+  jimalloc.sh seed     [--apply]                 preview (or --apply) a one-time registry bootstrap
   jimalloc.sh -c <path> <subcmd>                 use <path> instead of ./jimconf.toml
 USAGE
 }
@@ -796,6 +820,7 @@ main() {
     allocate) cmd_allocate "$@" ;;
     peek)     cmd_peek     "$@" ;;
     resolve)  cmd_resolve  "$@" ;;
+    seed)     cmd_seed     "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
       usage
