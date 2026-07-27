@@ -2,7 +2,7 @@
 title: "Provisional allocation and reconcile (unreachable-origin mode)"
 spec: "docs/specs/platform/009-provisional-reconcile/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Provisional allocation and reconcile (unreachable-origin mode) — Plan
