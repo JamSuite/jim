@@ -6,7 +6,7 @@ date: "2026-07-27"
 
 # Research: Provisional allocation and reconcile (unreachable-origin mode)
 
-All logic lands in the existing allocator `skills/file/scripts/jimalloc.sh`
+All logic lives in the existing allocator `skills/file/scripts/jimalloc.sh`
 (platform/007+008); this is an extension, not a new script. Anchors below are the
 exact reuse and extension points.
 
@@ -40,11 +40,11 @@ Non-Goal). No new library or dependency.
   peek already uses; the model for provisional's offline tolerance.
 - `jimalloc.sh:537-545` `alloc_coord_remote` (origin vs local tier by reachability).
 
-**CAS land machinery reconcile reuses (realizes N provisionals in one commit):**
+**CAS publish machinery reconcile reuses (realizes N provisionals in one commit):**
 - `jimalloc.sh:965-991` `alloc_seed_commit` — the **N-record, ≥1-blob, single
   commit** builder (008). This, not the 1-blob `alloc_build_commit` (659–673), is
   the shape a batch reconcile wants.
-- `jimalloc.sh:1021-1081` `alloc_seed_land` — seed's retry loop that **inlines**
+- `jimalloc.sh:1021-1081` — the seed's current publish loop that **inlines**
   the push / `update-ref` CAS instead of calling `alloc_origin_cas` (691–699) /
   `alloc_local_cas` (679–683). See Peer Feedback — reconcile is the third writer.
 - `jimalloc.sh:709-783` `alloc_cas_append` — the canonical single-record bounded
@@ -90,7 +90,7 @@ Non-Goal). No new library or dependency.
 ## Local Patterns
 
 - **Preview-then-apply migration doctrine** — `cmd_seed` (008) and `migrate.sh`
-  are bare-run-preview, explicit `--apply` to land. Reconcile follows it (spec AC 9).
+  are bare-run-preview, explicit `--apply` to publish. Reconcile follows it (spec AC 9).
 - **Sole-durable-emit discipline** — an id/mapping is reported only inside a
   successful-CAS branch (767/774). Reconcile's realized mapping must obey the same:
   durable before the consumer rewrite (spec AC 6).
@@ -121,7 +121,7 @@ Non-Goal). No new library or dependency.
 1. **Where provisional branches:** intercept at `alloc_preflight` (accept
    `provisional`) + at `alloc_origin_tip`'s rc-1 (return a provisional id rather
    than propagating the hard-fail). Keep `fail` byte-identical when the key is `fail`.
-2. **Reconcile land step:** reuse `alloc_seed_commit` (N-record builder). Strongly
+2. **Reconcile publish step:** reuse `alloc_seed_commit` (N-record builder). Strongly
    consider factoring the shared tier-select + CAS + baseline-arm step now (see
    Peer Feedback) rather than adding a third inline copy.
 3. **Pending discovery:** the consumer contract (spec AC 11) surfaces pending
@@ -136,11 +136,11 @@ Non-Goal). No new library or dependency.
 
 *For the architect (at plan time — no plan.md exists yet, nothing invalidated):*
 
-- **Consolidate the third registry writer.** `alloc_seed_land` (1021–1081)
+- **Consolidate the third registry writer.** The seed's inline publish (`jimalloc.sh:1021–1081`)
   re-implements the push / `update-ref` CAS inline instead of calling
   `alloc_origin_cas`/`alloc_local_cas` — the 008 review flagged this (Finding 3) as
   a second write path kept in sync by convention. Reconcile is the **third** writer.
-  The plan should factor one shared land step (tier-select + CAS + erosion-baseline
+  The plan should factor one shared publish step (tier-select + CAS + erosion-baseline
   arm, accepting the N-blob builder) so allocate / seed / reconcile share a single
   implementation — turning the 008 debt into a net simplification rather than
   compounding it. This directly serves spec AC 4 ("no second, weaker write path").

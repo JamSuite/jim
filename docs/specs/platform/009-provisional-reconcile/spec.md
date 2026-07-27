@@ -74,8 +74,8 @@ allocation and settle it deterministically on the next successful contact.
       durable-before-reported path a normal allocation uses; it introduces no
       second, weaker registry-writing path. *(External Constraint — sourced to
       upstream spec `platform/007`.)*
-- [ ] A reconcile pass is atomic: realizing N pending provisionals lands as a
-      single durable commit — all realized or none — and a failure at any point
+- [ ] A reconcile pass is atomic: realizing N pending provisionals publishes as
+      a single durable commit — all realized or none — and a failure at any point
       leaves the shared registry exactly as it was before the pass, with no
       partially-realized set ever observable.
 - [ ] Reconcile is resumable and idempotent: the real id assigned to a
@@ -99,7 +99,7 @@ allocation and settle it deterministically on the next successful contact.
       cannot force a target ordinal or a deliberate collision.
 - [ ] Reconcile has a read-only preview that reports the provisional→real
       assignments it would make and any conflict it would stop on, mutating
-      nothing; only an explicit apply lands them.
+      nothing; only an explicit apply publishes them.
 - [ ] Realizing a provisional whose underlying work no longer exists consumes a
       real ordinal that becomes a permanent gap; reconcile neither reclaims it
       nor fails on it, consistent with the never-reuse guarantee.
@@ -201,12 +201,12 @@ flowchart TD
 - **Surfaced as:** reconcile realizing N provisionals as one commit, like `platform/008`'s seed.
 - **Levelled-up requirement (already in the ACs):** the ACs fix same-guarantees and batch-atomicity; the shared implementation is not pinned.
 - **Deflection reason:** Delegation — reuse strategy is the architect's call.
-- **Architect note:** reconcile is the *third* registry writer (allocate, seed, now reconcile). It reuses `platform/008`'s N-record single-commit builder, `platform/007`'s tier selection / reachability detection / erosion baseline. The `008` review already flagged (Finding 3) that seed re-implements the CAS land inline rather than sharing the allocation helpers; adding a third writer is the moment to factor the shared land step (tier-select + CAS + baseline) so all three share one implementation instead of three copies kept in sync by convention. Critically, that shared step must include the **in-loop erosion re-check** that `alloc_seed_land` currently omits (issue #122; security review Finding 1) — otherwise a coordination-history truncation between a provisional's offline filing and its reconcile could go undetected and reissue a consumed ordinal, violating AC 4's "same guarantees." Consolidation turns that latent `008` gap into a fix rather than compounding it into a third copy.
+- **Architect note:** reconcile is the *third* registry writer (allocate, seed, now reconcile). It reuses `platform/008`'s N-record single-commit builder, `platform/007`'s tier selection / reachability detection / erosion baseline. The `008` review already flagged (Finding 3) that seed re-implements the CAS publish inline rather than sharing the allocation helpers; adding a third writer is the moment to factor the shared publish step (tier-select + CAS + baseline) so all three share one implementation instead of three copies kept in sync by convention. Critically, that shared step must include the **in-loop erosion re-check** that the seed's current inline publish (`jimalloc.sh:1021-1081`) omits (issue #122; security review Finding 1) — otherwise a coordination-history truncation between a provisional's offline filing and its reconcile could go undetected and reissue a consumed ordinal, violating AC 4's "same guarantees." Consolidation turns that latent `008` gap into a fix rather than compounding it into a third copy.
 - **Routing hint:** Architect to decide.
 
 ### Insight 4: Reconcile verb shape — explicit, preview-then-apply
 
-- **Relates to AC:** *"a read-only preview … only an explicit apply lands them"* (AC 9)
+- **Relates to AC:** *"a read-only preview … only an explicit apply publishes them"* (AC 9)
 - **Surfaced as:** the open question of automatic-on-next-allocate vs an explicit reconcile verb.
 - **Levelled-up requirement (already in the ACs):** the AC fixes preview-then-apply and the durable-mapping-before-rewrite ordering; the verb/flag surface is not pinned.
 - **Deflection reason:** Delegation — surface shape is the architect's call.
