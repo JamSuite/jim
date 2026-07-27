@@ -52,6 +52,13 @@ JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimcon
 # production consumers never pass it (tests and ad-hoc inspection do).
 CONFIG_FILE=""
 
+# Reserved provisional-ordinal prefix. A provisional identifier carries this in
+# its ordinal slot, keeping it grammar-distinct from every allocated ordinal
+# (allocated ordinals are ^[0-9]+$), so the two can never be confused and a
+# provisional can never enter the registry high-water. Uppercase, so it cannot
+# collide with a jimfile.sh slug (slugs are lowercase).
+ALLOC_PROV_PREFIX="P-"
+
 # ─── Section: Record layer (pure — operates on a log, no git) ────────────────
 #
 # The registry is one append-only, space-separated, newline-delimited log per
@@ -816,6 +823,77 @@ alloc_build_issue() {
   alloc_encode_allocate_issue "$num" "$fullid" "$date" "$who"
 }
 
+# ─── Section: Provisional issuance (unreachable-origin mode) ─────────────────
+#
+# When the coordination point is unreachable and id_coordination_unreachable is
+# 'provisional', an allocation hands back a structurally distinct, local-only
+# provisional identifier instead of hard-failing — coordinated work continues
+# offline and settles later via reconcile. Issuance is strictly local: it reads
+# no shared registry, runs no compare-and-swap, and never blocks on or fails for
+# the network. A provisional identifier never enters the registry, the next-id
+# computation, or the read-only preview.
+
+# alloc_defer_to_provisional — exit 0 iff this allocation must defer to a local
+# provisional id: the git mechanism is in force, id_coordination_unreachable is
+# 'provisional', a coordination remote is configured, and that remote is
+# currently unreachable. Every other combination (local tier, reachable origin,
+# 'fail' mode, non-git mechanism) exits non-zero so the caller runs the normal
+# CAS allocation — which itself hard-fails an unreachable 'fail'-mode origin,
+# byte-identical to the fail path. The reachability probe is a quiet ls-remote:
+# no fetch, no stderr, no ref or filesystem mutation.
+alloc_defer_to_provisional() {
+  local mech mode remote branch
+  mech="$(alloc_config id_coordination_mechanism)"; [[ -n "$mech" ]] || mech="git"
+  [[ "$mech" == git ]] || return 1
+  mode="$(alloc_config id_coordination_unreachable)"; [[ -n "$mode" ]] || mode="fail"
+  [[ "$mode" == provisional ]] || return 1
+  remote="$(alloc_coord_remote)"; [[ -n "$remote" ]] || return 1
+  branch="$(alloc_coord_branch)" || return 1
+  git ls-remote --heads "$remote" "$branch" >/dev/null 2>&1 && return 1
+  return 0
+}
+
+# alloc_prov_ordinal <token> — the grammar-distinct provisional ordinal for a
+# pre-validated <token>: the reserved prefix over the token. Non-numeric by
+# construction (prefix over a boundary-valid token stays a valid token), so it
+# can never equal an allocated ordinal.
+alloc_prov_ordinal() {
+  printf '%s%s' "$ALLOC_PROV_PREFIX" "$1"
+}
+
+# alloc_provisional_issue <subject> — issue a provisional issue identifier
+# locally and print "<full-id>\t<provisional-ordinal>". The durable id is the
+# offline date-slug (jimfile.sh, no registry read — the empty log defers any
+# collision suffix to the consumer's uniqueness obligation); only the display
+# ordinal is deferred. Contacts no remote and writes no registry. The durable
+# id — the field that enters the registry at reconcile — is revalidated at
+# jimfile.sh's boundary before it is returned; the provisional ordinal is a
+# valid token by construction (prefix over the validated durable id).
+alloc_provisional_issue() {
+  local subject="$1" fullid ord
+  fullid="$(printf '' | alloc_durable_issue_id "$subject")" || return 1
+  alloc_valid_token "$fullid" || { echo "error: computed provisional issue id '$fullid' is invalid" >&2; return 1; }
+  ord="$(alloc_prov_ordinal "$fullid")"
+  printf '%s\t%s\n' "$fullid" "$ord"
+}
+
+# alloc_provisional_spec <group> <subject> — issue a whole-identity provisional
+# spec id and print "<group>/<provisional-ordinal>". The ordinal slot carries
+# the reserved prefix over the offline date-slug, so the id is grammar-distinct
+# from every real <group>/<NNN> and can never be mistaken for one. Contacts no
+# remote and writes no registry. <group> is pre-validated by the caller; the
+# derived date-slug token is revalidated before use. This defines the spec
+# provisional grammar only — spec-side reconcile (a directory rename) is deferred.
+alloc_provisional_spec() {
+  local group="$1" subject="$2" date slug tok ord
+  date="$(bash "$JIMFILE" date)" || return 1
+  slug="$(bash "$JIMFILE" slug "$subject")" || return 1
+  tok="${date}-${slug}"
+  alloc_valid_token "$tok" || { echo "error: computed provisional spec token '$tok' is invalid" >&2; return 1; }
+  ord="$(alloc_prov_ordinal "$tok")"
+  printf '%s/%s\n' "$group" "$ord"
+}
+
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
 
 alloc_allocate_spec() {
@@ -826,6 +904,10 @@ alloc_allocate_spec() {
   fi
   alloc_valid_token "$group" || { echo "error: invalid group '$group'" >&2; return 1; }
   alloc_in_repo || return 1
+  if alloc_defer_to_provisional; then
+    alloc_provisional_spec "$group" "$subject"
+    return $?
+  fi
   alloc_cas_append "specs.log" alloc_build_spec "$group" "$subject"
 }
 
@@ -836,6 +918,10 @@ alloc_allocate_issue() {
     return 2
   fi
   alloc_in_repo || return 1
+  if alloc_defer_to_provisional; then
+    alloc_provisional_issue "$subject"
+    return $?
+  fi
   alloc_cas_append "issues.log" alloc_build_issue "$subject"
 }
 

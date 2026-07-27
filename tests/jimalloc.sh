@@ -553,6 +553,101 @@ case_jimalloc_custom_branch_from_config() {
   assert_match "recorded on custom branch" '^spec allocate g/001 x ' "$log"
 }
 
+# ─── Section: provisional allocation (unreachable origin, opt-in) ────────────
+
+# alloc_provisional_repo <name> — a repo whose configured origin is unreachable
+# and whose unreachable mode is 'provisional'; prints its path.
+alloc_provisional_repo() {
+  local repo; repo="$(alloc_new_repo "$1")"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-provisional.git"
+  printf 'id_coordination_unreachable = "provisional"\n' > "$repo/jimconf.toml"
+  printf '%s' "$repo"
+}
+
+# AC: with an unreachable origin and provisional mode, an issue allocation
+# returns a usable identifier locally instead of hard-failing — the durable
+# date-slug id (real, offline-computed) plus a grammar-distinct provisional
+# ordinal marker (never ^[0-9]+$). It contacts no network (it succeeds despite
+# the unreachable origin) and writes no registry (spec AC 1/2/3).
+case_jimalloc_provisional_issue_offline() {
+  local repo today fid prov
+  repo="$(alloc_provisional_repo prov_issue)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"; prov="${OUT##*$'\t'}"
+  assert_eq    "durable date-slug" "${today}-alpha-bug" "$fid"
+  assert_nonempty "provisional ordinal" "$prov"
+  if [[ "$prov" =~ ^[0-9]+$ ]]; then
+    CURRENT_FAILED=1; echo "    [grammar] provisional ordinal is a bare ordinal: [$prov]"
+  fi
+  assert_eq "no registry written" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
+# AC: with an unreachable origin and provisional mode, a spec allocation returns
+# a whole-identity provisional id — grammar-distinct from every real spec id
+# (its ordinal slot is non-numeric), so it can never be mistaken for one; it
+# writes no registry (spec AC 2/3; spec reconcile deferred to #112/#113).
+case_jimalloc_provisional_spec_offline() {
+  local repo ord
+  repo="$(alloc_provisional_repo prov_spec)"
+  run_jimalloc_in "$repo" allocate spec dashboard "New widget"
+  assert_exit "rc" 0 "$RC"
+  assert_match "grouped id" '^dashboard/' "$OUT"
+  ord="${OUT##*/}"
+  if [[ "$ord" =~ ^[0-9]+$ ]]; then
+    CURRENT_FAILED=1; echo "    [grammar] provisional spec ordinal is numeric: [$ord]"
+  fi
+  assert_eq "no registry written" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
+# AC: a pending provisional never enters the next-id computation or the
+# read-only preview — peek reports the same next ordinal the empty registry
+# would give, uninflated by the provisional issuances (spec AC 2).
+case_jimalloc_provisional_peek_unaffected() {
+  local repo
+  repo="$(alloc_provisional_repo prov_peek)"
+  run_jimalloc_in "$repo" allocate issue "First provisional"
+  assert_exit "issue rc" 0 "$RC"
+  run_jimalloc_in "$repo" allocate issue "Second provisional"
+  assert_exit "issue rc" 0 "$RC"
+  run_jimalloc_in "$repo" peek issue
+  assert_exit "peek rc"  0   "$RC"
+  assert_eq   "peek uninflated" "1" "$OUT"
+}
+
+# AC: an explicit 'fail' mode over an unreachable origin still hard-fails and
+# never falls back to a local allocation — provisional mode changes only the
+# 'provisional' value; the 'fail' path is byte-identical (spec AC 1).
+case_jimalloc_provisional_fail_mode_hard_fails() {
+  local repo
+  repo="$(alloc_new_repo prov_fail_mode)"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-fail.git"
+  printf 'id_coordination_unreachable = "fail"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate spec g "x"
+  assert_exit     "rc"      1  "$RC"
+  assert_eq       "no id"   "" "$OUT"
+  assert_nonempty "message" "$ERR"
+  assert_eq "no coordination branch" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
+# AC: a crafted token on the provisional path is rejected at the id/slug/name
+# boundary before any deferral — an option-injection group never reaches
+# issuance, and nothing is written (spec AC 12).
+case_jimalloc_provisional_crafted_group_rejected() {
+  local repo
+  repo="$(alloc_provisional_repo prov_crafted)"
+  run_jimalloc_in "$repo" allocate spec "--upload-pack=x" "sub"
+  assert_exit     "rc"      1  "$RC"
+  assert_eq       "no id"   "" "$OUT"
+  assert_nonempty "message" "$ERR"
+  assert_eq "no registry written" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
 # ─── Section: write-containment guard (F5) ───────────────────────────────────
 
 # AC: the allocator refuses a local write target that a symlink escapes outside
