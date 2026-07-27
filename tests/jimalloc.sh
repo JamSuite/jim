@@ -767,6 +767,46 @@ case_jimalloc_seed_issues_dup_id() {
   assert_match "names dup"  '20260726-same' "$ERR"
 }
 
+# seed_repo <name> — a git repo carrying a small specs+issues tree; prints path.
+seed_repo() {
+  local repo; repo="$(alloc_new_repo "$1")"
+  mkdir -p "$repo/docs/specs/core/000-blueprint" \
+           "$repo/docs/specs/core/001-alpha" \
+           "$repo/docs/specs/core/002-beta" \
+           "$repo/docs/specs/ui/001-widget" \
+           "$repo/docs/issues"
+  seed_issue_file "$repo/docs/issues" "20260726-a.md" 1 20260726-a 2026-07-26T10:00:00Z
+  seed_issue_file "$repo/docs/issues" "20260726-b.md" 2 20260726-b 2026-07-26T11:00:00Z
+  printf '%s' "$repo"
+}
+
+# AC: bare `seed` is a read-only preview — it reports the records it would write
+# and mutates nothing (the coordination branch is never created).
+case_jimalloc_seed_preview_no_mutation() {
+  local repo
+  repo="$(seed_repo seed_prev)"
+  run_jimalloc_in "$repo" seed
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reports would-write"   'would write'                 "$OUT"
+  assert_match "shows a spec record"   'spec allocate core/001 alpha' "$OUT"
+  assert_match "shows an issue record" 'issue allocate 1 20260726-a'  "$OUT"
+  assert_eq "registry not created" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
+# AC: preview over a tree with a conflict reports it (naming the offender) and
+# creates nothing, exiting non-zero.
+case_jimalloc_seed_preview_conflict() {
+  local repo
+  repo="$(alloc_new_repo seed_prev_conflict)"
+  mkdir -p "$repo/docs/specs/core/007x-foo" "$repo/docs/issues"
+  run_jimalloc_in "$repo" seed
+  assert_exit     "rc"           1      "$RC"
+  assert_match    "names offender" '007x' "$ERR"
+  assert_eq "no registry" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner

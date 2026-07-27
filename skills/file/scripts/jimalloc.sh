@@ -885,13 +885,49 @@ cmd_peek() {
   esac
 }
 
+# alloc_seed_tree_root <config-key> <default> — resolve a tree root (specs /
+# issues) from config, anchored at the worktree top so the scan is CWD-robust.
+alloc_seed_tree_root() {
+  local key="$1" def="$2" top raw
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "error: not inside a git repository" >&2; return 1; }
+  raw="$(alloc_config "$key")"; [[ -n "$raw" ]] || raw="$def"
+  raw="${raw#./}"; raw="${raw%/}"
+  case "$raw" in /*) printf '%s' "$raw" ;; *) printf '%s/%s' "$top" "$raw" ;; esac
+}
+
+# alloc_seed_preview_kind <label> <records> <current> — report, for one log, what
+# the seed would do: nothing (no artifacts), skip (already has records), or write.
+alloc_seed_preview_kind() {
+  local label="$1" records="$2" current="$3" n
+  if [[ -z "$records" ]]; then
+    printf '  %s: no artifacts to seed\n' "$label"; return 0
+  fi
+  n="$(printf '%s\n' "$records" | grep -c .)"
+  if [[ -n "$current" ]]; then
+    printf '  %s: already has records — would skip (%d derived)\n' "$label" "$n"
+  else
+    printf '  %s: would write %d records:\n' "$label" "$n"
+    printf '%s\n' "$records" | sed 's/^/    /'
+  fi
+}
+
+# alloc_seed_preview <spec-records> <issue-records> — read-only report of what an
+# --apply would write; mutates nothing.
+alloc_seed_preview() {
+  local spec_records="$1" issue_records="$2"
+  printf 'seed preview (no changes written):\n'
+  alloc_seed_preview_kind "specs.log"  "$spec_records"  "$(alloc_read_log spec)"
+  alloc_seed_preview_kind "issues.log" "$issue_records" "$(alloc_read_log issue)"
+  return 0
+}
+
 # cmd_seed [--apply]
 #   One-time registry bootstrap: reconstruct the per-kind logs from the repo's
 #   existing spec directories and issue files. Bare `seed` is a read-only preview
 #   (derive + validate + report, mutate nothing); `--apply` lands the derived
 #   records via the same CAS as an allocation. Preview-then-apply mirrors jim's
-#   one-time-migration doctrine. Full behavior lands over the seed tasks; this
-#   arm validates its own arguments.
+#   one-time-migration doctrine.
 cmd_seed() {
   local apply=0
   while [[ $# -gt 0 ]]; do
@@ -903,7 +939,27 @@ cmd_seed() {
         ;;
     esac
   done
-  echo "error: seed is not yet implemented" >&2
+  alloc_in_repo || return 1
+  alloc_preflight || return 1
+  local specs_root issues_dir
+  specs_root="$(alloc_seed_tree_root specs docs/specs)"   || return 1
+  issues_dir="$(alloc_seed_tree_root issues docs/issues)" || return 1
+  # Derive both kinds; a conflict in either halts the whole seed (offenders on
+  # stderr, no records), per AC 6.
+  local spec_records issue_records
+  spec_records="$(alloc_seed_derive_specs "$specs_root")"   || return 1
+  issue_records="$(alloc_seed_derive_issues "$issues_dir")" || return 1
+  if (( apply )); then
+    alloc_seed_land "$spec_records" "$issue_records"
+  else
+    alloc_seed_preview "$spec_records" "$issue_records"
+  fi
+}
+
+# alloc_seed_land <spec-records> <issue-records> — land the derived records via
+# the coordination CAS. Implemented in a later seed task.
+alloc_seed_land() {
+  echo "error: seed --apply is not yet implemented" >&2
   return 1
 }
 
