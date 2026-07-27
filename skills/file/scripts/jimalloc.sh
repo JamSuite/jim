@@ -477,9 +477,10 @@ alloc_config() {
 }
 
 # alloc_preflight — validate the config-governed mechanism and unreachable mode
-# before any allocation. Only the git mechanism and the fail unreachable-mode
-# are implemented in this build; a reserved value ('service' / 'provisional')
-# fails loudly rather than silently misbehaving.
+# before any allocation. The git mechanism and the 'fail' / 'provisional'
+# unreachable-modes are accepted; a still-reserved value (the 'service'
+# mechanism, an unknown unreachable value) fails loudly rather than silently
+# misbehaving.
 alloc_preflight() {
   local mech unreachable
   mech="$(alloc_config id_coordination_mechanism)"; [[ -n "$mech" ]] || mech="git"
@@ -488,10 +489,13 @@ alloc_preflight() {
     return 1
   fi
   unreachable="$(alloc_config id_coordination_unreachable)"; [[ -n "$unreachable" ]] || unreachable="fail"
-  if [[ "$unreachable" != "fail" ]]; then
-    echo "error: id_coordination_unreachable '$unreachable' is not implemented (only 'fail' is supported)" >&2
-    return 1
-  fi
+  case "$unreachable" in
+    fail|provisional) ;;
+    *)
+      echo "error: id_coordination_unreachable '$unreachable' is not implemented (only 'fail' and 'provisional' are supported)" >&2
+      return 1
+      ;;
+  esac
   return 0
 }
 

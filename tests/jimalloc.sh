@@ -499,14 +499,28 @@ case_jimalloc_mechanism_service_not_implemented() {
   assert_nonempty "message" "$ERR"
 }
 
-# AC: the unreachable-origin behavior is config-governed; the reserved
-# 'provisional' mode is not shipped here and fails loudly (spec ships 'fail').
-case_jimalloc_unreachable_provisional_not_implemented() {
+# AC: the unreachable-origin behavior is config-governed; `provisional` is an
+# accepted mode (spec AC 1). Preflight admits it, and because the no-remote
+# local tier is unchanged (there is no unreachable origin to defer), allocation
+# proceeds normally and returns a real id.
+case_jimalloc_unreachable_provisional_accepted() {
   local repo
   repo="$(alloc_new_repo alloc_unreach_mode)"
   printf 'id_coordination_unreachable = "provisional"\n' > "$repo/jimconf.toml"
   run_jimalloc_in "$repo" allocate spec g "x"
+  assert_exit "rc" 0       "$RC"
+  assert_eq   "id" "g/001" "$OUT"
+}
+
+# AC: an unknown id_coordination_unreachable value is still rejected loudly —
+# preflight admits only 'fail' and 'provisional'.
+case_jimalloc_unreachable_unknown_rejected() {
+  local repo
+  repo="$(alloc_new_repo alloc_unreach_unknown)"
+  printf 'id_coordination_unreachable = "bogus"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate spec g "x"
   assert_exit     "rc"      1  "$RC"
+  assert_eq       "no id"   "" "$OUT"
   assert_nonempty "message" "$ERR"
 }
 
