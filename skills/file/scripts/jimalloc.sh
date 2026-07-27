@@ -956,10 +956,90 @@ cmd_seed() {
   fi
 }
 
+# alloc_seed_commit <parent> <who> <email> <spec-content> <issue-content>
+#   Build — with git plumbing only, so the working tree is never touched — ONE
+#   commit atop <parent> ("" = root) that sets specs.log to <spec-content> and/or
+#   issues.log to <issue-content> (an empty content leaves that log untouched,
+#   preserving any existing blob), keeping every other tree entry. Print the sha.
+#   Each written blob is newline-terminated so the log stays line-clean.
+alloc_seed_commit() {
+  local parent="$1" who="$2" email="$3" spec_content="$4" issue_content="$5"
+  local specs_file issues_file blob
+  specs_file="$(alloc_log_file spec)"; issues_file="$(alloc_log_file issue)"
+  local -a add=()
+  if [[ -n "$spec_content" ]]; then
+    blob="$(printf '%s\n' "$spec_content" | git hash-object -w --stdin)" || return 1
+    add+=("$(printf '100644 blob %s\t%s' "$blob" "$specs_file")")
+  fi
+  if [[ -n "$issue_content" ]]; then
+    blob="$(printf '%s\n' "$issue_content" | git hash-object -w --stdin)" || return 1
+    add+=("$(printf '100644 blob %s\t%s' "$blob" "$issues_file")")
+  fi
+  (( ${#add[@]} )) || return 1
+  local keep="" tree
+  if [[ -n "$parent" ]]; then
+    keep="$(git ls-tree "$parent^{tree}" 2>/dev/null)"
+    [[ -n "$spec_content"  ]] && keep="$(printf '%s\n' "$keep" | awk -F'\t' -v f="$specs_file"  '$0!="" && $2!=f')"
+    [[ -n "$issue_content" ]] && keep="$(printf '%s\n' "$keep" | awk -F'\t' -v f="$issues_file" '$0!="" && $2!=f')"
+  fi
+  tree="$( { [[ -n "$keep" ]] && printf '%s\n' "$keep"; printf '%s\n' "${add[@]}"; } | git mktree )" || return 1
+  if [[ -n "$parent" ]]; then
+    git -c "user.name=$who" -c "user.email=$email" commit-tree "$tree" -p "$parent" -m "jim: seed registry"
+  else
+    git -c "user.name=$who" -c "user.email=$email" commit-tree "$tree" -m "jim: seed registry"
+  fi
+}
+
+# alloc_seed_report <spec-content> <issue-content> — one-line summary of a seed.
+alloc_seed_report() {
+  local ws="$1" wi="$2" ns=0 ni=0
+  [[ -n "$ws" ]] && ns="$(printf '%s\n' "$ws" | grep -c .)"
+  [[ -n "$wi" ]] && ni="$(printf '%s\n' "$wi" | grep -c .)"
+  printf 'seeded: %d spec record(s), %d issue record(s)\n' "$ns" "$ni"
+}
+
 # alloc_seed_land <spec-records> <issue-records> — land the derived records via
-# the coordination CAS. Implemented in a later seed task.
+# the coordination CAS (same tier selection, plumbing, and retry as an
+# allocation), as ONE commit setting the writable logs. Empty-precondition and
+# baseline arming are layered on in later seed tasks.
 alloc_seed_land() {
-  echo "error: seed --apply is not yet implemented" >&2
+  local spec_records="$1" issue_records="$2"
+  if [[ -z "$spec_records" && -z "$issue_records" ]]; then
+    echo "error: nothing to seed — no spec or issue artifacts found" >&2
+    return 1
+  fi
+  alloc_write_contained || return 1
+  local branch ref remote
+  branch="$(alloc_coord_branch)" || return 1
+  ref="refs/heads/$branch"
+  remote="$(alloc_coord_remote)"
+  local who email
+  who="$(alloc_sanitize_who "$(git config user.name 2>/dev/null || printf '')")"
+  email="$(alloc_sanitize_who "$(git config user.email 2>/dev/null || printf '')")"
+  [[ -n "$who" ]]   || who="jim-seed"
+  [[ -n "$email" ]] || email="jim-seed@localhost"
+  local attempts=5 attempt tip commit write_spec write_issue
+  for ((attempt=1; attempt<=attempts; attempt++)); do
+    if [[ -n "$remote" ]]; then
+      tip="$(alloc_origin_tip "$remote" "$branch")" || return 1
+    else
+      tip="$(git rev-parse --verify --quiet --end-of-options "$ref" 2>/dev/null || true)"
+    fi
+    write_spec="$spec_records"; write_issue="$issue_records"
+    commit="$(alloc_seed_commit "$tip" "$who" "$email" "$write_spec" "$write_issue")" || return 1
+    if [[ -n "$remote" ]]; then
+      if git push --quiet "$remote" "$commit:$ref" 2>/dev/null; then
+        git update-ref "$ref" "$commit" 2>/dev/null || true
+        alloc_seed_report "$write_spec" "$write_issue"; return 0
+      fi
+    else
+      if git update-ref "$ref" "$commit" "$tip" 2>/dev/null; then
+        alloc_seed_report "$write_spec" "$write_issue"; return 0
+      fi
+    fi
+    (( attempt < attempts )) && alloc_backoff "$attempt"
+  done
+  echo "error: seed failed after $attempts attempts (contention on $branch)" >&2
   return 1
 }
 

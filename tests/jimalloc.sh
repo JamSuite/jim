@@ -807,6 +807,86 @@ case_jimalloc_seed_preview_conflict() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
+# AC: `seed --apply` on a fresh repo reconstructs both logs from the tree and
+# lands them durably on the coordination branch (spec AC 1).
+case_jimalloc_seed_apply_fresh() {
+  local repo specs issues
+  repo="$(seed_repo seed_apply)"
+  run_jimalloc_in "$repo" seed --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reports seeded" 'seeded:' "$OUT"
+  specs="$(alloc_specs_log "$repo")"; issues="$(alloc_issues_log "$repo")"
+  assert_match "core group"  '^group allocate core '           "$specs"
+  assert_match "core/001"    '^spec allocate core/001 alpha '  "$specs"
+  assert_match "core/002"    '^spec allocate core/002 beta '   "$specs"
+  assert_match "ui/001"      '^spec allocate ui/001 widget '   "$specs"
+  assert_match "issue 1"     '^issue allocate 1 20260726-a '   "$issues"
+  assert_match "issue 2"     '^issue allocate 2 20260726-b '   "$issues"
+}
+
+# AC: the whole seed lands as ONE commit setting both logs (spec AC 4).
+case_jimalloc_seed_apply_single_commit() {
+  local repo count
+  repo="$(seed_repo seed_apply_1c)"
+  run_jimalloc_in "$repo" seed --apply
+  count="$(git -C "$repo" rev-list --count refs/heads/jim/registry)"
+  assert_eq       "exactly one commit"  "1" "$count"
+  assert_nonempty "specs.log present"   "$(alloc_specs_log "$repo")"
+  assert_nonempty "issues.log present"  "$(alloc_issues_log "$repo")"
+}
+
+# AC: after seeding, the allocator's next-id equals the pre-seed tree scan for
+# each materialized group, and a seeded id resolves to itself (spec AC 2).
+case_jimalloc_seed_apply_next_id_parity() {
+  local repo
+  repo="$(seed_repo seed_parity)"
+  run_jimalloc_in "$repo" seed --apply
+  run_jimalloc_in "$repo" peek spec core
+  assert_eq "core parity"  "core/003" "$OUT"
+  run_jimalloc_in "$repo" peek spec ui
+  assert_eq "ui parity"    "ui/002"   "$OUT"
+  run_jimalloc_in "$repo" resolve spec core/001
+  assert_eq "resolve seeded" "core/001" "$OUT"
+}
+
+# AC: a within-group gap stays a gap — next-id is max+1, never a reclaimed hole.
+case_jimalloc_seed_apply_gap_preserved() {
+  local repo
+  repo="$(alloc_new_repo seed_gap)"
+  mkdir -p "$repo/docs/specs/g/001-a" "$repo/docs/specs/g/003-c" "$repo/docs/issues"
+  run_jimalloc_in "$repo" seed --apply
+  run_jimalloc_in "$repo" peek spec g
+  assert_eq "gap → max+1" "g/004" "$OUT"
+}
+
+# AC: seeding never mutates the repo's artifacts — the docs tree and the worktree
+# status are byte-for-byte unchanged (spec AC 7); only the registry is written.
+case_jimalloc_seed_apply_repo_untouched() {
+  local repo tree_before tree_after st_before st_after
+  repo="$(seed_repo seed_untouched)"
+  tree_before="$(cd "$repo" && find docs | LC_ALL=C sort; for f in $(find docs -type f | LC_ALL=C sort); do cksum "$f"; done)"
+  st_before="$(git -C "$repo" status --porcelain | LC_ALL=C sort)"
+  run_jimalloc_in "$repo" seed --apply
+  assert_exit "rc" 0 "$RC"
+  tree_after="$(cd "$repo" && find docs | LC_ALL=C sort; for f in $(find docs -type f | LC_ALL=C sort); do cksum "$f"; done)"
+  st_after="$(git -C "$repo" status --porcelain | LC_ALL=C sort)"
+  assert_eq "docs tree unchanged"       "$tree_before" "$tree_after"
+  assert_eq "worktree status unchanged" "$st_before"   "$st_after"
+}
+
+# AC: over a reachable remote the seed lands on the coordination branch of the
+# bare remote (spec AC 8 — origin tier).
+case_jimalloc_seed_apply_origin() {
+  local bare A
+  bare="$(alloc_new_bare seed_origin_bare)"
+  A="$(alloc_new_clone "$bare" seed_origin_A)"
+  mkdir -p "$A/docs/specs/core/001-alpha" "$A/docs/issues"
+  seed_issue_file "$A/docs/issues" "x.md" 1 20260726-x 2026-07-26T10:00:00Z
+  run_jimalloc_in "$A" seed --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "spec on remote" '^spec allocate core/001 alpha ' "$(alloc_bare_specs "$bare")"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
