@@ -1014,16 +1014,27 @@ alloc_seed_arm_baselines() {
   return 0
 }
 
-# alloc_seed_land <spec-records> <issue-records> — land the derived records via
-# the coordination CAS (same tier selection, plumbing, and retry as an
-# allocation), as ONE commit setting the writable logs. Empty-precondition and
-# baseline arming are layered on in later seed tasks.
-alloc_seed_land() {
-  local spec_records="$1" issue_records="$2"
-  if [[ -z "$spec_records" && -z "$issue_records" ]]; then
-    echo "error: nothing to seed — no spec or issue artifacts found" >&2
-    return 1
-  fi
+# alloc_publish <builder> [builder-args...]
+#   The shared batch-publish step behind every N-record registry writer (seed,
+#   reconcile). Runs the bounded CAS retry loop with the in-loop erosion re-check
+#   each writer must apply, then delegates the "what to write, given the current
+#   logs" decision to <builder>. Each attempt re-reads the coordination tip,
+#   verifies neither writable log has eroded (the local baseline must remain a
+#   byte-prefix of the current blob), invokes <builder> to compute the new
+#   per-log content and the success payload, builds ONE commit
+#   (alloc_seed_commit), and lands it with the tier's compare-and-swap. On
+#   success it arms the erosion baseline for each written log and prints the
+#   payload; a lost CAS re-reads and retries.
+#
+#   Builder contract — called in-scope so it sets alloc_publish's locals through
+#   bash dynamic scope (it must assign, never re-declare, these names):
+#     "$builder" <cur_specs> <cur_issues> <who> [builder-args...]
+#       sets PUB_SPEC    — new specs.log content  ("" leaves that log untouched)
+#       sets PUB_ISSUE   — new issues.log content ("" leaves that log untouched)
+#       sets PUB_PAYLOAD — text printed to stdout on a successful commit
+#       returns 0 to proceed, 1 to abort the publish (its error already on stderr)
+alloc_publish() {
+  local builder="$1"; shift
   alloc_write_contained || return 1
   local branch ref remote
   branch="$(alloc_coord_branch)" || return 1
@@ -1032,52 +1043,102 @@ alloc_seed_land() {
   local who email
   who="$(alloc_sanitize_who "$(git config user.name 2>/dev/null || printf '')")"
   email="$(alloc_sanitize_who "$(git config user.email 2>/dev/null || printf '')")"
-  [[ -n "$who" ]]   || who="jim-seed"
-  [[ -n "$email" ]] || email="jim-seed@localhost"
-  local attempts=5 attempt tip commit write_spec write_issue
-  local cur_specs cur_issues skip_spec skip_issue
+  [[ -n "$who" ]]   || who="jim-allocator"
+  [[ -n "$email" ]] || email="jim-allocator@localhost"
+  local specs_file issues_file
+  specs_file="$(alloc_log_file spec)"; issues_file="$(alloc_log_file issue)"
+  local attempts=5 attempt tip commit
+  local raw_specs raw_issues cur_specs cur_issues
+  local PUB_SPEC PUB_ISSUE PUB_PAYLOAD
   for ((attempt=1; attempt<=attempts; attempt++)); do
     if [[ -n "$remote" ]]; then
       tip="$(alloc_origin_tip "$remote" "$branch")" || return 1
     else
       tip="$(git rev-parse --verify --quiet --end-of-options "$ref" 2>/dev/null || true)"
     fi
-    # Empty-precondition, re-read from THIS attempt's tip (F2 — a kind populated
-    # by a concurrent allocation between attempts is refused, never clobbered).
-    cur_specs=""; cur_issues=""
+    # In-loop erosion re-check on BOTH writable logs: the seen baseline for each
+    # must remain a byte-prefix of the current registry, else the history was
+    # truncated or rewritten — hard-fail rather than publish onto an eroded log.
+    # The trailing-X capture preserves the blob's final newline so the prefix
+    # check is line-boundary precise; cur_* drops that newline for content use.
+    raw_specs=""; raw_issues=""
     if [[ -n "$tip" ]]; then
-      cur_specs="$(git cat-file -p "$tip:$(alloc_log_file spec)" 2>/dev/null || true)"
-      cur_issues="$(git cat-file -p "$tip:$(alloc_log_file issue)" 2>/dev/null || true)"
+      raw_specs="$(git cat-file -p "$tip:$specs_file" 2>/dev/null; printf X)";   raw_specs="${raw_specs%X}"
+      raw_issues="$(git cat-file -p "$tip:$issues_file" 2>/dev/null; printf X)"; raw_issues="${raw_issues%X}"
     fi
-    write_spec=""; write_issue=""; skip_spec=0; skip_issue=0
-    if [[ -n "$spec_records" ]]; then
-      if [[ -z "$cur_specs" ]]; then write_spec="$spec_records"; else skip_spec=1; fi
-    fi
-    if [[ -n "$issue_records" ]]; then
-      if [[ -z "$cur_issues" ]]; then write_issue="$issue_records"; else skip_issue=1; fi
-    fi
-    if [[ -z "$write_spec" && -z "$write_issue" ]]; then
-      # Nothing writable: every kind with artifacts is already seeded (AC 5).
-      echo "error: registry already seeded (specs.log/issues.log already have records); refusing to re-seed" >&2
+    if ! alloc_check_erosion "$specs_file" "$raw_specs"; then
+      echo "error: coordination branch '$branch' shows registry erosion for $specs_file" \
+           "(history truncated or rewritten); refusing to publish" >&2
       return 1
     fi
-    commit="$(alloc_seed_commit "$tip" "$who" "$email" "$write_spec" "$write_issue")" || return 1
+    if ! alloc_check_erosion "$issues_file" "$raw_issues"; then
+      echo "error: coordination branch '$branch' shows registry erosion for $issues_file" \
+           "(history truncated or rewritten); refusing to publish" >&2
+      return 1
+    fi
+    cur_specs="${raw_specs%$'\n'}"; cur_issues="${raw_issues%$'\n'}"
+    PUB_SPEC=""; PUB_ISSUE=""; PUB_PAYLOAD=""
+    "$builder" "$cur_specs" "$cur_issues" "$who" "$@" || return 1
+    if [[ -z "$PUB_SPEC" && -z "$PUB_ISSUE" ]]; then
+      echo "error: nothing to publish" >&2
+      return 1
+    fi
+    commit="$(alloc_seed_commit "$tip" "$who" "$email" "$PUB_SPEC" "$PUB_ISSUE")" || return 1
     if [[ -n "$remote" ]]; then
       if git push --quiet "$remote" "$commit:$ref" 2>/dev/null; then
         git update-ref "$ref" "$commit" 2>/dev/null || true
-        alloc_seed_arm_baselines "$write_spec" "$write_issue"
-        alloc_seed_report "$write_spec" "$write_issue" "$skip_spec" "$skip_issue"; return 0
+        alloc_seed_arm_baselines "$PUB_SPEC" "$PUB_ISSUE"
+        [[ -n "$PUB_PAYLOAD" ]] && printf '%s\n' "$PUB_PAYLOAD"
+        return 0
       fi
     else
       if git update-ref "$ref" "$commit" "$tip" 2>/dev/null; then
-        alloc_seed_arm_baselines "$write_spec" "$write_issue"
-        alloc_seed_report "$write_spec" "$write_issue" "$skip_spec" "$skip_issue"; return 0
+        alloc_seed_arm_baselines "$PUB_SPEC" "$PUB_ISSUE"
+        [[ -n "$PUB_PAYLOAD" ]] && printf '%s\n' "$PUB_PAYLOAD"
+        return 0
       fi
     fi
     (( attempt < attempts )) && alloc_backoff "$attempt"
   done
-  echo "error: seed failed after $attempts attempts (contention on $branch)" >&2
+  echo "error: publish failed after $attempts attempts (contention on $branch)" >&2
   return 1
+}
+
+# alloc_seed_publish_builder <cur_specs> <cur_issues> <who> <spec-records> <issue-records>
+#   The seed's publish decision (an alloc_publish builder): write a kind only
+#   when its log is still empty at this attempt's tip (empty-precondition — a
+#   kind populated by a concurrent allocation is refused, never clobbered);
+#   abort when nothing is writable (already seeded). Sets the PUB_* locals
+#   alloc_publish reads back through dynamic scope.
+alloc_seed_publish_builder() {
+  local cur_specs="$1" cur_issues="$2" _who="$3" spec_records="$4" issue_records="$5"
+  local skip_spec=0 skip_issue=0
+  PUB_SPEC=""; PUB_ISSUE=""
+  if [[ -n "$spec_records" ]]; then
+    if [[ -z "$cur_specs" ]]; then PUB_SPEC="$spec_records"; else skip_spec=1; fi
+  fi
+  if [[ -n "$issue_records" ]]; then
+    if [[ -z "$cur_issues" ]]; then PUB_ISSUE="$issue_records"; else skip_issue=1; fi
+  fi
+  if [[ -z "$PUB_SPEC" && -z "$PUB_ISSUE" ]]; then
+    # Nothing writable: every kind with artifacts is already seeded.
+    echo "error: registry already seeded (specs.log/issues.log already have records); refusing to re-seed" >&2
+    return 1
+  fi
+  PUB_PAYLOAD="$(alloc_seed_report "$PUB_SPEC" "$PUB_ISSUE" "$skip_spec" "$skip_issue")"
+  return 0
+}
+
+# alloc_seed_land <spec-records> <issue-records> — land the derived records via
+# the shared batch-publish (same tier selection, plumbing, erosion guard, and
+# retry as an allocation), as ONE commit setting the writable logs.
+alloc_seed_land() {
+  local spec_records="$1" issue_records="$2"
+  if [[ -z "$spec_records" && -z "$issue_records" ]]; then
+    echo "error: nothing to seed — no spec or issue artifacts found" >&2
+    return 1
+  fi
+  alloc_publish alloc_seed_publish_builder "$spec_records" "$issue_records"
 }
 
 cmd_resolve() {

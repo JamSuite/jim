@@ -942,6 +942,31 @@ case_jimalloc_seed_arms_erosion_baseline() {
   assert_nonempty "erosion message"   "$ERR"
 }
 
+# AC: the shared batch-publish carries the in-loop erosion re-check, so a
+# coordination-history rewrite occurring after a seed is detected on the next
+# publish path — not just on the single-record allocate path. Seeds issues only
+# (arming the issues.log baseline), truncates that history, then drives a second
+# publish (a spec now present): the erosion re-check hard-fails rather than
+# publishing onto the rewritten log.
+case_jimalloc_seed_publish_detects_erosion() {
+  local repo blob tree commit
+  repo="$(alloc_new_repo seed_pub_erosion)"
+  mkdir -p "$repo/docs/issues"
+  seed_issue_file "$repo/docs/issues" "20260726-a.md" 1 20260726-a 2026-07-26T10:00:00Z
+  run_jimalloc_in "$repo" seed --apply
+  assert_exit "first seed rc" 0 "$RC"
+  # Truncate the coordination history to a state the baseline never saw.
+  blob="$(printf 'issue allocate 1 20260726-tampered 20200101 x\n' | git -C "$repo" hash-object -w --stdin)"
+  tree="$(printf '100644 blob %s\tissues.log\n' "$blob" | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" -m rewrite)"
+  git -C "$repo" update-ref refs/heads/jim/registry "$commit"
+  # A spec now exists, so the next seed has a writable kind and reaches publish.
+  mkdir -p "$repo/docs/specs/core/001-alpha"
+  run_jimalloc_in "$repo" seed --apply
+  assert_exit     "erosion hard-fail" 1  "$RC"
+  assert_nonempty "erosion message"   "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
