@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 61
+- Open: 63
 - Closed: 59
 
 ## Issues
@@ -127,6 +127,8 @@
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` — Seed the id-coordination registry from existing artifacts · status: open · num: 114 · priority: high · created: 2026-07-26T19:01:58Z · labels: [id-coordination, migration] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` — Wire spec-ID allocation onto the id-coordination allocator · status: open · num: 112 · priority: high · created: 2026-07-26T19:01:56Z · labels: [id-coordination, spec] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` — Wire the issue display ordinal onto the id-coordination allocator · status: open · num: 111 · priority: high · created: 2026-07-26T19:01:55Z · labels: [id-coordination, issue] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260727-align-seed-landing-with-the-allocation-cas-path` — Align seed landing with the allocation CAS path · status: open · num: 122 · priority: low · created: 2026-07-27T05:34:22Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/008-registry-seed/review.md
+- `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude` — Normalize seed reserved-slot skip and spec-ordinal magnitude · status: open · num: 121 · priority: medium · created: 2026-07-27T05:34:21Z · labels: [id-coordination, alloc, verify] · origin: docs/specs/platform/008-registry-seed/review.md
 
 ## Graph
 
