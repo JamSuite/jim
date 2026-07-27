@@ -1076,6 +1076,82 @@ case_jimalloc_seed_publish_detects_erosion() {
   assert_nonempty "erosion message"   "$ERR"
 }
 
+# ─── Section: reconcile — realize logic (pure, no git) ───────────────────────
+
+# run_realize <log> <pending...> — source the allocator and run the pure
+# reconcile-realize over <log> on stdin; capture OUT/ERR/RC.
+run_realize() {
+  local log="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(source "$SCRIPT_jimalloc"; alloc_reconcile_realize "$@" <<< "$log" 2>"$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: reconcile realize maps each pending provisional to a real ordinal —
+# already-realized ids (present in the log) keep their ordinal with no new
+# allocation; new ids draw from the shared high-water in pending order (spec
+# AC 4/6/8).
+case_jimalloc_reconcile_realize_mapping() {
+  local log expected
+  log=$(printf '%s\n' 'issue allocate 5 20260726-old 20260726 jane')
+  run_realize "$log" 20260726-old 20260726-new-a 20260726-new-b
+  assert_exit "rc" 0 "$RC"
+  expected=$(printf '%s\n' \
+    '20260726-old	5	have' \
+    '20260726-new-a	6	new' \
+    '20260726-new-b	7	new')
+  assert_eq "mapping" "$expected" "$OUT"
+}
+
+# AC: reconcile is idempotent — a provisional already realized in the log yields
+# the same ordinal and allocates no second one (spec AC 6).
+case_jimalloc_reconcile_realize_idempotent() {
+  local log
+  log=$(printf '%s\n' 'issue allocate 5 20260726-x 20260726 jane')
+  run_realize "$log" 20260726-x
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "already realized → same ordinal, no new" "$(printf '20260726-x\t5\thave')" "$OUT"
+}
+
+# AC: the realized ordinal derives solely from the shared high-water, never from
+# any field of the attacker-influenceable provisional marker — a marker whose
+# text embeds a high number still realizes to high-water+1 (spec AC 8).
+case_jimalloc_reconcile_realize_marker_independent() {
+  run_realize "" 20260726-issue-999
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "ordinal from high-water, not marker" "$(printf '20260726-issue-999\t1\tnew')" "$OUT"
+}
+
+# AC: the high-water counts rename destinations too, so a realized ordinal never
+# reclaims one vacated by a rename (never-reuse / permanent gap; spec AC 8/10).
+case_jimalloc_reconcile_realize_high_water_rename() {
+  local log
+  log=$(printf '%s\n' 'issue allocate 5 20260726-a 20260726 jane' \
+                      'issue rename 5 11 20260727')
+  run_realize "$log" 20260726-new
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "next above rename dst" "$(printf '20260726-new\t12\tnew')" "$OUT"
+}
+
+# AC: a duplicate provisional identity within one pending batch halts reconcile
+# (defense-in-depth: the mechanism cannot verify global uniqueness, but it
+# refuses to collapse two identical pending markers onto one ordinal — security
+# Finding 4).
+case_jimalloc_reconcile_realize_within_batch_dup() {
+  run_realize "" 20260726-dup 20260726-dup
+  assert_exit     "rc"      1  "$RC"
+  assert_nonempty "message" "$ERR"
+}
+
+# AC: a crafted pending identity is rejected at the id/slug/name boundary before
+# it is used as a token (spec AC 12).
+case_jimalloc_reconcile_realize_crafted_pending() {
+  run_realize "" "--upload-pack=x"
+  assert_exit     "rc"      1  "$RC"
+  assert_nonempty "message" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner

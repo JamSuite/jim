@@ -324,6 +324,61 @@ alloc_durable_issue_id() {
   printf '%s\n' "$candidate"
 }
 
+# alloc_reconcile_realize <pending-id>...   (issues log on stdin)
+#   Compute the realized mapping for a batch of unique pending provisional issue
+#   identities (durable full-ids). For each, keyed find-or-allocate: if the log
+#   already carries an `issue allocate <num> <full-id>` record the provisional is
+#   already realized (idempotent — its existing ordinal, no new allocation);
+#   otherwise it draws a real ordinal from the shared high-water (max existing
+#   ordinal, incremented per newly-realized id in pending order). Assignment
+#   order follows pending (allocation) order, and the ordinal derives solely from
+#   the high-water — never from any field of the marker, so a crafted marker in a
+#   branch-writable artifact can neither force a target ordinal nor a collision.
+#
+#   Prints one line per pending id: "<full-id>\t<ordinal>\t<new|have>" (the first
+#   two fields are the provisional→real mapping; the third tells the publish step
+#   which realizations need a new record). Pure — reads the log, touches no git.
+#   Halts (rc 1) on a within-batch duplicate identity (defense-in-depth against a
+#   buggy or hostile consumer surfacing one identity twice) or a pending id that
+#   fails the id boundary. Cross-batch uniqueness stays the consumer's obligation.
+alloc_reconcile_realize() {
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4
+  local -A existing=()   # durable full-id -> its allocated ordinal
+  local max=0
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
+    if [[ "$c1" == issue && "$c2" == allocate ]]; then
+      [[ "$c3" =~ ^[0-9]+$ ]] || continue
+      alloc_valid_token "$c4" || continue
+      existing["$c4"]="$c3"
+      (( 10#$c3 > max )) && max=$((10#$c3))
+    elif [[ "$c1" == issue && "$c2" == rename ]]; then
+      [[ "$c3" =~ ^[0-9]+$ && "$c4" =~ ^[0-9]+$ ]] || continue
+      (( 10#$c4 > max )) && max=$((10#$c4))
+    fi
+  done
+  local -A seen=()
+  local pend ord next=$((max + 1))
+  for pend in "$@"; do
+    if ! alloc_valid_token "$pend"; then
+      echo "error: invalid pending provisional id '$pend'" >&2
+      return 1
+    fi
+    if [[ -n "${seen[$pend]:-}" ]]; then
+      echo "error: duplicate provisional identity within the pending batch: '$pend'" >&2
+      return 1
+    fi
+    seen["$pend"]=1
+    if [[ -n "${existing[$pend]:-}" ]]; then
+      printf '%s\t%s\thave\n' "$pend" "${existing[$pend]}"
+    else
+      ord=$next; next=$((next + 1))
+      printf '%s\t%s\tnew\n' "$pend" "$ord"
+    fi
+  done
+}
+
 # ─── Section: seed derivation (pure — reads the tree, no git) ─────────────────
 #
 # The one-time bootstrap reconstructs the per-kind logs from the repo's existing
