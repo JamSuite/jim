@@ -317,6 +317,91 @@ alloc_durable_issue_id() {
   printf '%s\n' "$candidate"
 }
 
+# ─── Section: seed derivation (pure — reads the tree, no git) ─────────────────
+#
+# The one-time bootstrap reconstructs the per-kind logs from the repo's existing
+# artifacts: specs from directory names (spec identity is path-derived), issues
+# from each file's frontmatter (the durable per-issue source, not INDEX.md). The
+# derived records use the same allocate grammar as an allocation; provenance is
+# the synthetic marker jim-seed and dates are informational only (issue `created`
+# for issues, today for specs).
+
+# alloc_seed_field <file> <key> — print the first `<key>: value` frontmatter
+# scalar (surrounding quotes stripped). Parsed as data; never sourced.
+alloc_seed_field() {
+  sed -n "s/^$2:[[:space:]]*//p" "$1" 2>/dev/null | head -n1 | sed 's/^"//; s/"$//'
+}
+
+# alloc_seed_norm_date <raw> — reduce an ISO-ish timestamp to YYYYMMDD; fall back
+# to today when absent or unparseable (the date field is informational only).
+alloc_seed_norm_date() {
+  local d
+  d="$(printf '%s' "${1:-}" | sed -n 's/^\([0-9]\{4\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\).*/\1\2\3/p')"
+  if [[ -n "$d" ]]; then printf '%s' "$d"; else bash "$JIMFILE" date; fi
+}
+
+# alloc_seed_derive_specs <specs_root> — print the specs.log record set derived
+# from <specs_root>/<group>/<NNN>-<slug>/ dirs: one `group allocate` per group
+# that holds a non-blueprint spec, one `spec allocate` per dir, skipping the
+# reserved 000-blueprint slot. Groups sorted; specs ascending by ordinal. Empty
+# output when the tree is absent or holds no non-blueprint specs.
+alloc_seed_derive_specs() {
+  local root="$1" date
+  [[ -d "$root" ]] || return 0
+  date="$(bash "$JIMFILE" date)" || return 1
+  local -a groups=()
+  local g
+  for g in "$root"/*/; do
+    [[ -d "$g" ]] || continue
+    groups+=("$(basename "$g")")
+  done
+  (( ${#groups[@]} )) || return 0
+  mapfile -t groups < <(printf '%s\n' "${groups[@]}" | LC_ALL=C sort)
+  local gname gdir entry name ord slug
+  for gname in "${groups[@]}"; do
+    gdir="$root/$gname"
+    local -a rows=()
+    for entry in "$gdir"/*/; do
+      [[ -d "$entry" ]] || continue
+      name="$(basename "$entry")"
+      ord="${name%%-*}"
+      [[ "$ord" == "000" ]] && continue
+      slug="${name#*-}"
+      rows+=("$ord"$'\t'"$slug")
+    done
+    (( ${#rows[@]} )) || continue
+    printf 'group allocate %s %s jim-seed\n' "$gname" "$date"
+    while IFS=$'\t' read -r ord slug; do
+      printf 'spec allocate %s/%03d %s %s jim-seed\n' "$gname" "$((10#$ord))" "$slug" "$date"
+    done < <(printf '%s\n' "${rows[@]}" | LC_ALL=C sort -t$'\t' -k1,1n)
+  done
+}
+
+# alloc_seed_derive_issues <issues_dir> — print the issues.log record set derived
+# from <issues_dir>/*.md frontmatter (num, id, created), excluding INDEX.md;
+# ascending by ordinal. Empty output when the dir is absent or holds no issues.
+alloc_seed_derive_issues() {
+  local dir="$1"
+  [[ -d "$dir" ]] || return 0
+  local -a rows=()
+  local f base num id created cdate
+  for f in "$dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ "$base" == "INDEX.md" ]] && continue
+    num="$(alloc_seed_field "$f" num)"
+    id="$(alloc_seed_field "$f" id)"
+    created="$(alloc_seed_field "$f" created)"
+    cdate="$(alloc_seed_norm_date "$created")"
+    rows+=("$num"$'\t'"$id"$'\t'"$cdate")
+  done
+  (( ${#rows[@]} )) || return 0
+  local rnum rid rdate
+  while IFS=$'\t' read -r rnum rid rdate; do
+    printf 'issue allocate %s %s %s jim-seed\n' "$rnum" "$rid" "$rdate"
+  done < <(printf '%s\n' "${rows[@]}" | LC_ALL=C sort -t$'\t' -k1,1n)
+}
+
 # ─── Section: Coordination point + CAS (git plumbing) ────────────────────────
 
 # alloc_in_repo — exit 0 iff CWD is inside a git repository.

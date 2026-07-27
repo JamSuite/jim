@@ -617,6 +617,65 @@ case_jimalloc_seed_usage() {
   assert_match "usage names --apply" 'apply' "$ERR"
 }
 
+# seed_specs_tree <name> <group/NNN-slug>...
+#   Build a fixture specs tree under a temp dir; print its root.
+seed_specs_tree() {
+  local root; root="$(empty_dir "$1")"; shift
+  local spec
+  for spec in "$@"; do mkdir -p "$root/$spec"; done
+  printf '%s' "$root"
+}
+
+# seed_issue_file <dir> <name> <num> <id> <created>
+#   Write a fixture issue file with the given frontmatter.
+seed_issue_file() {
+  printf -- '---\nid: %s\nnum: %s\ncreated: %s\ntitle: "x"\n---\nbody\n' \
+    "$4" "$3" "$5" > "$1/$2"
+}
+
+# AC: derivation over a fixture specs tree emits one `group allocate` per group
+# (once), one `spec allocate` per dir, skips the reserved 000-blueprint slot,
+# orders groups then specs deterministically, and stamps jim-seed provenance.
+case_jimalloc_seed_derive_specs() {
+  local root today out expected
+  root="$(seed_specs_tree seed_dspecs \
+    core/000-blueprint core/001-alpha core/002-beta dashboard/001-gamma)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  out="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_specs "$root")"
+  expected="$(printf '%s\n' \
+    "group allocate core $today jim-seed" \
+    "spec allocate core/001 alpha $today jim-seed" \
+    "spec allocate core/002 beta $today jim-seed" \
+    "group allocate dashboard $today jim-seed" \
+    "spec allocate dashboard/001 gamma $today jim-seed")"
+  assert_eq "derived specs records" "$expected" "$out"
+}
+
+# AC: a group holding only the reserved 000-blueprint slot contributes no records
+# at all (no group allocate, no spec allocate).
+case_jimalloc_seed_derive_specs_blueprint_only() {
+  local root out
+  root="$(seed_specs_tree seed_dbp core/000-blueprint)"
+  out="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_specs "$root")"
+  assert_eq "blueprint-only group → no records" "" "$out"
+}
+
+# AC: derivation over a fixture issues dir emits one `issue allocate` per file in
+# ascending ordinal, reads num/id from frontmatter (not INDEX.md), normalizes the
+# created timestamp to YYYYMMDD, and stamps jim-seed provenance.
+case_jimalloc_seed_derive_issues() {
+  local dir out expected
+  dir="$(empty_dir seed_dissues)"
+  seed_issue_file "$dir" "20260726-beta.md"  2 20260726-beta  2026-07-26T11:00:00Z
+  seed_issue_file "$dir" "20260726-alpha.md" 1 20260726-alpha 2026-07-26T10:00:00Z
+  printf 'INDEX\n' > "$dir/INDEX.md"
+  out="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_issues "$dir")"
+  expected="$(printf '%s\n' \
+    "issue allocate 1 20260726-alpha 20260726 jim-seed" \
+    "issue allocate 2 20260726-beta 20260726 jim-seed")"
+  assert_eq "derived issue records" "$expected" "$out"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # Dual-mode: direct invocation runs this file's cases; the aggregate runner
