@@ -2,7 +2,7 @@
 title: "Allocator honors the configured issue-id prefix"
 spec: "docs/specs/platform/010-allocator-issue-prefix/spec.md"
 type: bug
-status: approved
+status: complete
 ---
 
 # Allocator honors the configured issue-id prefix — Plan
