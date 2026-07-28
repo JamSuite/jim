@@ -104,19 +104,19 @@ flowchart TD
 
 *Bug structure: Reproduce → Fix → Regression, then a full-suite gate.*
 
-1. [ ] **Reproduce.** Add a `tests/jimalloc.sh` case: in a temp repo with
+1. [x] **Reproduce.** Add a `tests/jimalloc.sh` case: in a temp repo with
    `issue_id_prefix = "sequential"`, `allocate issue` must yield a durable id
    whose prefix is the coordinated ordinal — asserting the scheme is honored.
    Confirm it fails on current code (durable id is date-slug).
    **Verify:** `! bash tests/jimalloc.sh` *(suite goes red — defect reproduced)*
 
-2. [ ] **Fix.** Change `alloc_durable_issue_id` per DD1–DD4 (derive via
+2. [x] **Fix.** Change `alloc_durable_issue_id` per DD1–DD4 (derive via
    `prefix-from(now, num)`, date-slug fallback on non-zero, final `is_valid_id`
    gate, existing disambiguation loop); thread `num` from `alloc_build_issue`
    and empty from `alloc_provisional_issue`. Depends on task 1.
    **Verify:** `bash tests/jimalloc.sh` *(reproduction case passes; suite green)*
 
-3. [ ] **Regression coverage.** Add cases: provisional ordinal-scheme →
+3. [x] **Regression coverage.** Add cases: provisional ordinal-scheme →
    date-slug fallback for **both** the `sequential` preset **and** a `{seq:04}`
    template (never `0000`, per DD2 — security review Advisory 1); num-independent
    `project` and `timestamp` schemes honored on both real and provisional paths;
@@ -125,7 +125,7 @@ flowchart TD
    on task 2.
    **Verify:** `grep -Eq 'prefix.*(provisional|project|default|fallback)' tests/jimalloc.sh && bash tests/jimalloc.sh`
 
-4. [ ] **Full-suite gate.** The allocator and issue suites are green (the issue
+4. [x] **Full-suite gate.** The allocator and issue suites are green (the issue
    suite confirms `issue/010`'s default-config consumers are unaffected).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc && bash skills/meta-test/scripts/run.sh issues`
 
