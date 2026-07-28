@@ -2260,6 +2260,50 @@ case_new_allocate_issue_coordinated_via_temp_repo() {
   assert_match "registry recorded" "^issue allocate 1 ${expected_slug} " "$log"
 }
 
+# AC: when the allocator returns a provisional ordinal, new.sh disambiguates
+# the durable id against the local issues collection (mirroring next-id's
+# tree-scan suffixing) and mirrors the same suffix into the stored provisional
+# ordinal — a caller-pinned --slug is never touched, only the id this call
+# resolved itself (spec 010 DD4)
+case_new_provisional_disambiguates_local_collision() {
+  local repo issues_dir b today expected_second slug
+  repo=$(new_repo new_provisional_disambig)
+  issues_dir="$repo/docs/issues"
+  mkdir -p "$issues_dir"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-provisional-new.git"
+  printf 'id_coordination_unreachable = "provisional"\n' > "$repo/jimconf.toml"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  expected_second="${today}-widget-2"
+  write_issue "$issues_dir" "${today}-widget" "id: ${today}-widget"
+  b=$(fixture new_provisional_disambig_body.md 'body')
+  run_new_in "$repo" --dir "$issues_dir" \
+    --title "Widget" --priority medium --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "slug suffixed" "$expected_second" "$slug"
+  assert_match "num mirrors suffix" "^num: P-${expected_second}\$" "$(cat "$issues_dir/$expected_second.md")"
+}
+
+# AC: in real (non-provisional) mode, new.sh trusts the allocator's
+# registry-disambiguated id and refuses to overwrite a local filename
+# collision — a platform/007 G2 drift anomaly — rather than diverging from the
+# registry (spec 010 DD4)
+case_new_provisional_disambig_real_mode_collision_errors() {
+  local repo issues_dir b today fid
+  repo=$(new_repo new_real_mode_collision)
+  issues_dir="$repo/docs/issues"
+  mkdir -p "$issues_dir"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  fid="${today}-gadget"
+  write_issue "$issues_dir" "$fid" "id: $fid"
+  b=$(fixture new_real_mode_collision_body.md 'body')
+  run_new_in "$repo" --dir "$issues_dir" \
+    --title "Gadget" --priority medium --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_match "original file untouched" "^id: ${fid}\$" "$(cat "$issues_dir/$fid.md")"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
