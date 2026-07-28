@@ -309,7 +309,16 @@ format_row() {
   IFS=',' read -ra _cols <<< "$cols"
   for c in "${_cols[@]}"; do
     case "$c" in
-      num)      printf -v pad '#%-5s' "$num";     out+=$pad ;;
+      num)
+        # A provisional ordinal (P-<id>) is never rendered as a settled #N —
+        # the "(provisional)" marker is what distinguishes it (spec 010 AC 9).
+        if [[ "$num" == P-* ]]; then
+          printf -v pad '%s (provisional)' "$num"
+        else
+          printf -v pad '#%-5s' "$num"
+        fi
+        out+=$pad
+        ;;
       # date portion only; sub-day precision drives sort + shows in `show`.
       date)     printf -v pad '%-12s' "${created:0:10}"; out+=$pad ;;
       priority) printf -v pad '%-9s' "$prio";     out+=$pad ;;
@@ -498,7 +507,12 @@ render_issue_file() {
   field() { printf '%s\n' "$fm" | grep -E "^$1:" | head -n1 | sed -E "s/^$1:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"; }
   num="$(field num)"; title="$(field title)"; status="$(field status)"
   prio="$(field priority)"; labels="$(field labels)"; origin="$(field origin)"; created="$(field created)"
-  printf '#%s · %s\n' "${num:--}" "$slug"
+  # A provisional ordinal is never rendered as a settled #N (spec 010 AC 9).
+  if [[ "$num" == P-* ]]; then
+    printf '%s (provisional) · %s\n' "$num" "$slug"
+  else
+    printf '#%s · %s\n' "${num:--}" "$slug"
+  fi
   printf '%s\n' "${title}"
   printf '  status: %s   priority: %s\n' "${status:-open}" "${prio:--}"
   [[ -n "$labels" ]] && printf '  labels: %s\n' "$labels"
