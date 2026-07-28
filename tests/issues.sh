@@ -75,10 +75,10 @@ run_new_in() {
   ERR="$(cat "$err_file")"
 }
 
-# run_reconcile_in <repo> <args...>
+# run_issue_reconcile_in <repo> <args...>
 #   Invoke reconcile.sh with CWD inside <repo> — reconcile.sh shells out to
 #   jimalloc.sh reconcile issue, which requires a git repo to run at all.
-run_reconcile_in() {
+run_issue_reconcile_in() {
   local repo="$1"; shift
   local err_file="$TMP_BASE/.err"
   OUT="$(cd "$repo" && bash "$SCRIPT_RECONCILE" "$@" 2> "$err_file")"
@@ -2393,7 +2393,7 @@ status: open
 num: P-$fid
 priority: medium
 created: 2026-01-01T00:00:00Z"
-  run_reconcile_in "$repo" --apply "$dir"
+  run_issue_reconcile_in "$repo" --apply "$dir"
   assert_exit "rc" 0 "$RC"
   assert_match "num realized"      '^num: 1$'  "$(cat "$dir/$fid.md")"
   assert_match "index regenerated" '· num: 1'  "$(cat "$dir/INDEX.md")"
@@ -2415,7 +2415,7 @@ status: open
 num: P-$fid
 priority: medium
 created: 2026-01-01T00:00:00Z"
-  run_reconcile_in "$repo" --apply "$dir"
+  run_issue_reconcile_in "$repo" --apply "$dir"
   assert_exit "first rc" 0 "$RC"
   assert_eq "first realized" "1" "$(num_of "$dir" "$fid")"
   # Simulate a resumed run: the file still cites the provisional marker even
@@ -2426,7 +2426,7 @@ status: open
 num: P-$fid
 priority: medium
 created: 2026-01-01T00:00:00Z"
-  run_reconcile_in "$repo" --apply "$dir"
+  run_issue_reconcile_in "$repo" --apply "$dir"
   assert_exit "second rc" 0 "$RC"
   assert_eq "second realized same ordinal" "1" "$(num_of "$dir" "$fid")"
 }
@@ -2449,7 +2449,7 @@ created: 2026-01-01T00:00:00Z" 'See the log line below.
 
 num: totally-fake-body-line
 More prose after it.'
-  run_reconcile_in "$repo" --apply "$dir"
+  run_issue_reconcile_in "$repo" --apply "$dir"
   assert_exit "rc" 0 "$RC"
   assert_match "frontmatter num realized" '^num: 1$'                      "$(cat "$dir/$fid.md")"
   assert_match "body num line untouched"  '^num: totally-fake-body-line$' "$(cat "$dir/$fid.md")"
@@ -2471,7 +2471,7 @@ status: open
 num: P-$fid
 priority: medium
 created: 2026-01-01T00:00:00Z"
-  run_reconcile_in "$repo" --apply "$dir"
+  run_issue_reconcile_in "$repo" --apply "$dir"
   assert_exit "rc" 0 "$RC"
   assert_nonempty "warns on malformed id" "$ERR"
   assert_match "num left untouched" "^num: P-${fid}\$" "$(cat "$dir/$fid.md")"
@@ -2492,7 +2492,7 @@ num: P-$fid
 priority: medium
 created: 2026-01-01T00:00:00Z"
   before="$(cat "$dir/$fid.md")"
-  run_reconcile_in "$repo" "$dir"
+  run_issue_reconcile_in "$repo" "$dir"
   assert_exit "rc" 0 "$RC"
   assert_match "preview shows mapping" "${fid}"$'\t'"1" "$OUT"
   after="$(cat "$dir/$fid.md")"
