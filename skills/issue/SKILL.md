@@ -2,8 +2,8 @@
 name: issue
 description: Capture and review actionable discoveries as issues — pending work surfaced during a conversation. `/jim:issue add <subject>` captures an actionable discovery from the current conversation as a structured markdown file; `/jim:issue list|stats|show|insights` review and analyze the collection. Use when the user invokes /jim:issue, says "file an issue for this", or wants to list, summarize, analyze, or open a saved issue.
 agent: pm
-argument-hint: "[add <subject> | list [filter] | stats | show <id> | insights]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/render.sh *), Bash(mkdir *), Read, Write, Edit, Agent(issue-analyst)
+argument-hint: "[add <subject> | list [filter] | stats | show <id> | insights | reconcile]"
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/render.sh *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/reconcile.sh *), Bash(mkdir *), Read, Write, Edit, Agent(issue-analyst)
 ---
 
 Base directory for this skill: ${CLAUDE_SKILL_DIR}
@@ -34,6 +34,15 @@ Read the **first whitespace-delimited token** of `$ARGUMENTS` as the subcommand.
   By default this view hides closed issues — `list` (no filter) and the priority filters show open work only. `list closed` is the ad-hoc closed view, and the `issue_list_closed` config key (default `false`) opts closed issues back into the default view when set to `true`. Present stdout verbatim, then stop.
 - **`stats`** → run `render.sh stats`; present stdout verbatim, then stop.
 - **`show`** → the remaining token is the `<id>` (an ordinal number, a slug, or a slug prefix). Run `render.sh show <id>`; present stdout verbatim, then stop.
+- **`reconcile`** → realize pending provisional issues (offline-filed ordinals) into real, coordinated ones. This is a previewed, *mutating* verb — not a read view. Run the preview:
+  ```
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/reconcile.sh
+  ```
+  Present the preview verbatim. If it reports nothing pending, stop. Otherwise ask the developer to confirm before applying — realizing a provisional rewrites existing issue files. On confirm, run:
+  ```
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/reconcile.sh --apply
+  ```
+  Present the result verbatim, then stop. `reconcile.sh --apply` regenerates `INDEX.md` itself — do not run `index.sh` separately.
 - **`insights`** → the LLM-analytical view (convergence, sequencing, parallel-work). This is the one read verb that *interprets* rather than renders. Proceed to **Insights** (step 8). Read-only.
 - **anything else** → do **not** treat it as a capture subject. Print a one-line error (`Unknown subcommand '<token>'.`) followed by the help view (`render.sh help`), then stop.
 
@@ -78,8 +87,8 @@ Read the issue template at `${CLAUDE_SKILL_DIR}/assets/issue-template.md` for th
 
 The capture subject is the remainder of `$ARGUMENTS` after the `add` verb. Compose a full draft populating these fields from conversation context:
 
-- **id** — produced in step 4 (do not invent).
-- **num** — produced in step 4 (do not invent); the display ordinal.
+- **id** — an advisory preview from step 4 (do not invent); the coordination allocator resolves the durable id at save time (step 6) and the filed value may differ.
+- **num** — an advisory preview from step 4 (do not invent); the display ordinal. The coordination allocator resolves and reserves the real ordinal at save time (step 6) and the filed value may differ from the preview.
 - **title** — from the subject if non-empty, otherwise derived from the conversation's most concrete framing of the discovery.
 - **status** — always `open` for new captures.
 - **priority** — your judgment, choosing from `low | medium | high | critical`. Default to `medium` when context is thin.
@@ -89,31 +98,23 @@ The capture subject is the remainder of `$ARGUMENTS` after the `add` verb. Compo
 - **origin** — relative path to the source artifact when knowable (the spec / plan / brainstorm / research / debug file the discovery surfaced from). For free-form conversation captures with no clear source artifact, use `conversation` as the origin sentinel.
 - **body** — concise prose description. Wikilinks `[[other-issue-slug]]` alias to `related-to` edges at index time; they are treated as one-way "see also" pointers, so only frontmatter `related-to` triggers the bidirectional integrity check. Do **not** embed copy-pasted conversation chunks containing secrets — paraphrase.
 
-### 4. Compute the canonical slug, ordinal, and write path
+### 4. Preview the identity (advisory only)
 
-Resolve the id (slug) from the capture subject. Run via the Bash tool, passing the derived title/subject as the argument string (it is only known at runtime):
+Resolve an advisory slug and display ordinal for the confirm-or-edit preview below (step 5) — neither is binding. The coordination allocator resolves and reserves the real identity at save time (step 6), as late in the flow as possible, so an interview the developer cancels or edits never burns an id (spec 010 DD2).
 
-```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id issue "<subject-or-derived-title>"
-```
-
-The script returns the resolved `id` — by default `YYYYMMDD-<normalized-slug>`, or whatever the **configured prefix scheme** produces (`issue_id_prefix` / `issue_id_project`, spec 021). If `next-id issue` also writes a notice to **stderr** (a malformed `issue_id_prefix` config that fell back to the default date scheme), surface that notice to the developer before filing.
-
-Resolve the display ordinal:
+Resolve an advisory slug from the capture subject:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-num issue
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh slug "<subject-or-derived-title>"
 ```
 
-The script returns the next ordinal (max existing `num` + 1, or 1). This is the `num` — a display-only handle; it is never used in `relations:` or `[[wikilinks]]`.
-
-Resolve the file path:
+Resolve an advisory display ordinal:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path issue <id>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh peek issue
 ```
 
-If a slug collision would occur (the resolved path already exists), append a numeric discriminator to the slug (`-2`, `-3`, …) so filing always succeeds; the discriminated id appears in the confirm step below. This collision handling is scheme-agnostic — it applies to whatever prefix scheme produced the id (spec 021 AC #6).
+`peek issue` reports the coordination point's current next ordinal without reserving it — a concurrent filing elsewhere may advance past it before save, so present it to the developer as a preview, never as a promise.
 
 Resolve the capture timestamp (used for both `created` and `updated`):
 
@@ -142,19 +143,19 @@ Do not prompt per field. Trust the user's edit-or-approve judgment on the whole 
 On `file`:
 
 1. Write the drafted **body** to a temp file with the Write tool — never inline untrusted body into a shell command (security 025 Finding 5).
-2. File the issue through the single emitter, passing the id, ordinal, and timestamp resolved in step 4 so the written file matches the draft you presented:
+2. File the issue through the single emitter, passing the timestamp resolved in step 4. Do **not** pass `--slug` or `--num` — omitting them lets the emitter resolve and reserve both, atomically, through the coordination allocator, as late in the flow as possible (spec 010 DD1/DD2):
    ```
    bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh \
      --title "<title>" --priority <priority> --labels "<csv-labels>" \
-     --origin "<origin>" --slug "<id-from-step-4>" --num "<num-from-step-4>" \
-     --created "<now-from-step-4>" --updated "<now-from-step-4>" --body-file "<tmp>"
+     --origin "<origin>" --created "<now-from-step-4>" --updated "<now-from-step-4>" \
+     --body-file "<tmp>"
    ```
-   The emitter creates the issues directory, encodes the fields, validates the id, and writes atomically; it prints `<slug>\t<path>`.
+   The emitter creates the issues directory, encodes the fields, resolves and reserves the identity, validates the id, and writes atomically; it prints `<slug>\t<path>` — the final, allocator-reserved slug, which may differ from step 4's advisory preview if the title changed or the peeked ordinal was stale. The allocator, not the preview, is authoritative.
 3. Regenerate `INDEX.md` so the new issue is immediately discoverable:
    ```
    bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh
    ```
-4. Report briefly: "Filed as `#<num>` `YYYYMMDD-slug`." and stop. Do not advance the SDLC workflow.
+4. Report briefly using the emitter's returned slug — e.g. "Filed as `<slug>`." Read the written file's `num:` frontmatter field back first if you need to state the ordinal precisely (e.g. "Filed as `#<num>` `<slug>`."), since it may differ from the step-4 preview. Then stop. Do not advance the SDLC workflow.
 
 On `edit`: apply inline edits, return to step 5.
 
@@ -245,7 +246,7 @@ Before writing (capture / `add` only):
 - [ ] Issue slug matches `^[a-z0-9][a-z0-9-]*$` (alphanumeric + dash).
 - [ ] Filename uses the configured prefix scheme (default `YYYYMMDD-<slug>.md`).
 - [ ] Frontmatter contains `id`, `num`, `title`, `status`, `priority`, `labels`, `relations`, `created`, `updated`, `origin`.
-- [ ] `num` is a positive integer resolved via `jimfile.sh next-num issue` (never invented).
+- [ ] `num` is a positive integer, or a provisional `P-<id>` marker, resolved via the coordination allocator (never invented).
 - [ ] `status` is exactly `open`. New captures are always open; closed-on-arrival is forbidden (it signals there was no pending work — see the actionability gate). The schema's binary `open`/`closed` lifecycle is unchanged; closure happens later via a deliberate edit, not at filing time.
 - [ ] `relations:` contains the four typed buckets (blocks, depends-on, related-to, duplicates), even when empty.
 - [ ] The body contains no copy-pasted secrets, API keys, raw credentials, or PII.
