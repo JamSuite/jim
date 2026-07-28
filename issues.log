@@ -130,3 +130,4 @@ issue allocate 129 20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent
 issue allocate 130 20260728-registry-drift-catch-up-has-no-incremental-seed-verb 20260728 jrko
 issue allocate 131 20260728-remove-spec-id-citations-from-issue-group-script-comments 20260728 jrko
 issue allocate 132 20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew 20260728 jrko
+issue allocate 133 20260728-reconcile-sh-provisional-detection-not-fence-bounded 20260728 jrko
