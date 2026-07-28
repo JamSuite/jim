@@ -93,7 +93,17 @@ esac
 [[ -n "$created" ]] || created="$(bash "$JIMFILE" now)"
 [[ -n "$updated" ]] || updated="$created"
 
-[[ "$num" =~ ^[0-9]+$ ]] || { echo "error: --num must be an integer" >&2; exit 1; }
+# num guard: a real ordinal (all-digits) or a provisional ordinal — the
+# reserved "P-" prefix over a token that itself passes the id boundary.
+# Applies to both an unset num's fallback and a caller-supplied --num, so
+# neither path can smuggle free text into stored/rendered frontmatter.
+num_valid=0
+if [[ "$num" =~ ^[0-9]+$ ]]; then
+  num_valid=1
+elif [[ "$num" == P-* ]] && bash "$JIMFILE" valid-id "${num#P-}" >/dev/null 2>&1; then
+  num_valid=1
+fi
+(( num_valid )) || { echo "error: --num must be a positive integer or a P-<id> provisional ordinal" >&2; exit 1; }
 
 # Always validate the id through the single security boundary before composing a
 # path — even a caller-supplied --slug (AC5).
