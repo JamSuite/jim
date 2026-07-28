@@ -127,3 +127,4 @@ issue allocate 126 20260728-spec-issue-placement-config-for-issue-content-locati
 issue allocate 127 20260728-spec-batch-cas-candidate-batch-allocation-7a-rework 20260728 jim-seed
 issue allocate 128 20260728-fix-vacuous-inline-backtick-wikilink-test-in-tests-issues-sh 20260728 jrko
 issue allocate 129 20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox 20260728 jrko
+issue allocate 130 20260728-registry-drift-catch-up-has-no-incremental-seed-verb 20260728 jrko
