@@ -2,7 +2,7 @@
 title: "platform — blueprint"
 group: "platform"
 kind: blueprint
-updated: "2026-07-26"
+updated: "2026-07-28"
 last_full_generate: "2026-07-26T08:31:16Z"
 ---
 
@@ -62,7 +62,11 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   through the same erosion-guarded CAS publish — one all-or-none batch, idempotent
   and resumable, a still-unreachable origin a clean no-op, the realized ordinal
   drawn solely from the shared high-water and never from the marker, with no
-  second, weaker registry-writing path; every replayed or config token is revalidated through
+  second, weaker registry-writing path; the durable issue id follows the
+configured `issue_id_prefix` scheme, re-derived from the allocation's own
+coordinated ordinal via `jimfile.sh prefix-from` and degrading to the date-slug
+form where a scheme cannot be minted at allocation time (a provisional
+allocation, or an un-derivable template); every replayed or config token is revalidated through
   `jimfile.sh valid-id` and the branch through `git check-ref-format` before it
   reaches git; a per-clone erosion baseline kept outside the branch detects a
   rewritten history and refuses to reissue. The `seed` bootstrap reconstructs
