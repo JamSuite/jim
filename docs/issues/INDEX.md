@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 68
+- Open: 75
 - Closed: 59
 
 ## Issues
@@ -132,6 +132,13 @@
 - `20260727-align-seed-landing-with-the-allocation-cas-path` — Align seed landing with the allocation CAS path · status: open · num: 122 · priority: low · created: 2026-07-27T05:34:22Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/008-registry-seed/review.md
 - `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` — Fix jimfile.sh next-id group/kind collision for a group named issue · status: open · num: 123 · priority: medium · created: 2026-07-27T07:20:53Z · labels: [platform, id-coordination] · origin: docs/specs/platform/009-provisional-reconcile/spec.md
 - `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude` — Normalize seed reserved-slot skip and spec-ordinal magnitude · status: open · num: 121 · priority: medium · created: 2026-07-27T05:34:21Z · labels: [id-coordination, alloc, verify] · origin: docs/specs/platform/008-registry-seed/review.md
+- `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` — Coordinated issue-filing hard-fails in the mvm agent sandbox · status: open · num: 129 · priority: medium · created: 2026-07-28T21:39:15Z · labels: [id-coordination, workflow, sandbox] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260728-fix-vacuous-inline-backtick-wikilink-test-in-tests-issues-sh` — Fix vacuous inline-backtick wikilink test in tests/issues.sh · status: open · num: 128 · priority: low · created: 2026-07-28T21:39:09Z · labels: [test, hygiene] · origin: docs/specs/platform/010-allocator-issue-prefix/plan.md
+- `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew` — new.sh mixed-pin (--slug XOR --num) registry/on-disk skew · status: open · num: 132 · priority: low · created: 2026-07-28T21:39:38Z · labels: [id-coordination] · origin: docs/specs/issue/010-ordinal-coordination/review.md
+- `20260728-reconcile-sh-provisional-detection-not-fence-bounded` — reconcile.sh provisional detection not fence-bounded · status: open · num: 133 · priority: low · created: 2026-07-28T21:39:43Z · labels: [id-coordination, security] · origin: docs/specs/issue/010-ordinal-coordination/review.md
+- `20260728-reconcile-sh-swallows-the-index-regen-exit-code` — reconcile.sh swallows the index-regen exit code · status: open · num: 134 · priority: low · created: 2026-07-28T21:39:49Z · labels: [id-coordination] · origin: docs/specs/issue/010-ordinal-coordination/review.md
+- `20260728-registry-drift-catch-up-has-no-incremental-seed-verb` — Registry drift catch-up has no incremental seed verb · status: open · num: 130 · priority: low · created: 2026-07-28T21:39:26Z · labels: [id-coordination, registry] · origin: docs/specs/platform/008-registry-seed/spec.md
+- `20260728-remove-spec-id-citations-from-issue-group-script-comments` — Remove spec-ID citations from issue-group script comments · status: open · num: 131 · priority: low · created: 2026-07-28T21:39:32Z · labels: [test, convention] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-spec-batch-cas-candidate-batch-allocation-7a-rework` — Spec batch-CAS candidate-batch allocation (§7a rework) · status: open · num: 127 · priority: high · created: 2026-07-28T06:59:35Z · labels: [id-coordination, candidate-batch, cross-group] · origin: docs/specs/issue/010-ordinal-coordination/plan.md
 - `20260728-spec-issue-placement-config-for-issue-content-location` — Spec issue_placement config for issue content location · status: open · num: 126 · priority: medium · created: 2026-07-28T00:47:22Z · labels: [id-coordination, issue] · origin: docs/specs/issue/010-ordinal-coordination/spec.md
 
