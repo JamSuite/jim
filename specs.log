@@ -59,3 +59,6 @@ spec allocate sdlc/013 sec 20260726 jim-seed
 spec allocate sdlc/014 review 20260726 jim-seed
 spec allocate sdlc/015 review-depth 20260726 jim-seed
 spec allocate sdlc/016 review-verdict 20260726 jim-seed
+spec allocate issue/010 ordinal-coordination 20260728 jim-seed
+spec allocate platform/009 provisional-reconcile 20260728 jim-seed
+spec allocate platform/010 allocator-issue-prefix 20260728 jim-seed

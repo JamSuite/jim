@@ -120,3 +120,8 @@ issue allocate 119 20260726-retry-the-unreachable-detection-path-and-generalize-
 issue allocate 120 20260726-declare-tests-jimalloc-sh-in-platform-territory 20260726 jim-seed
 issue allocate 121 20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude 20260727 jim-seed
 issue allocate 122 20260727-align-seed-landing-with-the-allocation-cas-path 20260727 jim-seed
+issue allocate 123 20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is 20260727 jim-seed
+issue allocate 124 20260727-align-reconcile-high-water-with-alloc-next-num-issue 20260727 jim-seed
+issue allocate 125 20260727-add-tests-jimalloc-sh-to-platform-map-territory 20260727 jim-seed
+issue allocate 126 20260728-spec-issue-placement-config-for-issue-content-location 20260728 jim-seed
+issue allocate 127 20260728-spec-batch-cas-candidate-batch-allocation-7a-rework 20260728 jim-seed
