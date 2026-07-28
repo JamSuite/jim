@@ -191,7 +191,7 @@ flowchart TD
    collision instead of overwriting. Depends on task 2.
    **Verify:** `grep -Eq 'provisional.*disambig' tests/issues.sh && bash tests/issues.sh`
 
-4. [ ] **Distinguishable provisional rendering (DD6, AC 9).** `render.sh` `show`
+4. [x] **Distinguishable provisional rendering (DD6, AC 9).** `render.sh` `show`
    and `list` render a `P-…` ordinal distinctly (marker; `--sort num` tolerates
    it without error); confirm `index.sh` projects `num` verbatim and orders by
    slug (no numeric assumption).
