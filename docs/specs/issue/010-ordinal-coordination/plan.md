@@ -212,7 +212,7 @@ flowchart TD
    (preview then confirm→`--apply`). Depends on tasks 2, 5.
    **Verify:** `grep -q 'peek issue' skills/issue/SKILL.md && grep -q 'reconcile.sh' skills/issue/SKILL.md`
 
-7. [ ] **Allocator-side fixtures (AC 2, 5, 7, 8).** Ensure `tests/jimalloc.sh`
+7. [x] **Allocator-side fixtures (AC 2, 5, 7, 8).** Ensure `tests/jimalloc.sh`
    covers the reconcile realize/idempotent/within-batch-halt paths and the
    provisional ordinal shape this consumer relies on; add any missing fixture.
    **Verify:** `grep -Eq 'reconcile' tests/jimalloc.sh && bash tests/jimalloc.sh`
