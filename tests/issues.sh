@@ -19,6 +19,7 @@ SCRIPT_RENDER="$REPO_ROOT/skills/issue/scripts/render.sh"
 SCRIPT_BACKFILL="$REPO_ROOT/skills/issue/scripts/backfill.sh"
 SCRIPT_MIGRATE="$REPO_ROOT/skills/issue/scripts/migrate.sh"
 SCRIPT_NEW="$REPO_ROOT/skills/issue/scripts/new.sh"
+SCRIPT_RECONCILE="$REPO_ROOT/skills/issue/scripts/reconcile.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -70,6 +71,17 @@ run_new_in() {
   local repo="$1"; shift
   local err_file="$TMP_BASE/.err"
   OUT="$(cd "$repo" && bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# run_reconcile_in <repo> <args...>
+#   Invoke reconcile.sh with CWD inside <repo> — reconcile.sh shells out to
+#   jimalloc.sh reconcile issue, which requires a git repo to run at all.
+run_reconcile_in() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && bash "$SCRIPT_RECONCILE" "$@" 2> "$err_file")"
   RC=$?
   ERR="$(cat "$err_file")"
 }
@@ -2362,6 +2374,129 @@ created: 2026-01-02'
   assert_exit "rc" 0 "$RC"
   assert_match "real row present" '#1' "$OUT"
   assert_match "provisional row present" 'provisional' "$OUT"
+}
+
+# ─── Section: reconcile.sh (realize provisional issue ordinals, spec 010) ────
+
+# AC: reconcile.sh --apply realizes a pending provisional issue's num: into a
+# real ordinal via jimalloc.sh reconcile issue, and regenerates the index
+# (spec 010 DD5)
+case_issues_reconcile_apply_realizes_pending_provisional() {
+  local repo dir fid
+  repo=$(new_repo reconcile_realize)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-widget"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Widget\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  run_reconcile_in "$repo" --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "num realized"      '^num: 1$'  "$(cat "$dir/$fid.md")"
+  assert_match "index regenerated" '· num: 1'  "$(cat "$dir/INDEX.md")"
+}
+
+# AC: reconcile.sh --apply is idempotent — re-running against a file whose
+# frontmatter still cites the provisional marker (e.g. a resumed run after an
+# interruption before the rewrite landed) maps it to its already-realized
+# ordinal, never allocates a second one (spec 010 DD5, AC 7)
+case_issues_reconcile_apply_idempotent_rerun() {
+  local repo dir fid
+  repo=$(new_repo reconcile_idempotent)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-gizmo"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Gizmo\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  run_reconcile_in "$repo" --apply "$dir"
+  assert_exit "first rc" 0 "$RC"
+  assert_eq "first realized" "1" "$(num_of "$dir" "$fid")"
+  # Simulate a resumed run: the file still cites the provisional marker even
+  # though the registry already realized it.
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Gizmo\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  run_reconcile_in "$repo" --apply "$dir"
+  assert_exit "second rc" 0 "$RC"
+  assert_eq "second realized same ordinal" "1" "$(num_of "$dir" "$fid")"
+}
+
+# AC: reconcile.sh --apply rewrites ONLY the leading frontmatter block's num:
+# field — a body line that happens to read "num:" is left byte-for-byte
+# untouched (spec 010 security Finding 5)
+case_issues_reconcile_apply_anchors_frontmatter_num_only() {
+  local repo dir fid
+  repo=$(new_repo reconcile_anchor)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-anchor"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Anchor\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z" 'See the log line below.
+
+num: totally-fake-body-line
+More prose after it.'
+  run_reconcile_in "$repo" --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "frontmatter num realized" '^num: 1$'                      "$(cat "$dir/$fid.md")"
+  assert_match "body num line untouched"  '^num: totally-fake-body-line$' "$(cat "$dir/$fid.md")"
+}
+
+# AC: reconcile.sh skips a pending file whose frontmatter id fails the
+# jimfile.sh id boundary — a crafted durable id never reaches jimalloc.sh
+# reconcile issue or a composed path, and the file is left untouched
+# (spec 010 security Finding 5)
+case_issues_reconcile_rejects_crafted_frontmatter_id() {
+  local repo dir fid
+  repo=$(new_repo reconcile_crafted)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-crafted"
+  write_issue "$dir" "$fid" "id: ../evil
+title: \"Crafted\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  run_reconcile_in "$repo" --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_nonempty "warns on malformed id" "$ERR"
+  assert_match "num left untouched" "^num: P-${fid}\$" "$(cat "$dir/$fid.md")"
+}
+
+# AC: bare reconcile.sh is a read-only preview — it reports the provisional ->
+# real mapping without writing anything (spec 010 DD5)
+case_issues_reconcile_preview_reports_mapping_without_writing() {
+  local repo dir fid before after
+  repo=$(new_repo reconcile_preview)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-preview"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Preview\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  before="$(cat "$dir/$fid.md")"
+  run_reconcile_in "$repo" "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "preview shows mapping" "${fid}"$'\t'"1" "$OUT"
+  after="$(cat "$dir/$fid.md")"
+  assert_eq "preview mutates nothing" "$before" "$after"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
