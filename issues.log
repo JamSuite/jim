@@ -125,3 +125,4 @@ issue allocate 124 20260727-align-reconcile-high-water-with-alloc-next-num-issue
 issue allocate 125 20260727-add-tests-jimalloc-sh-to-platform-map-territory 20260727 jim-seed
 issue allocate 126 20260728-spec-issue-placement-config-for-issue-content-location 20260728 jim-seed
 issue allocate 127 20260728-spec-batch-cas-candidate-batch-allocation-7a-rework 20260728 jim-seed
+issue allocate 128 20260728-fix-vacuous-inline-backtick-wikilink-test-in-tests-issues-sh 20260728 jrko
