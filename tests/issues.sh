@@ -2192,6 +2192,33 @@ Parity body line.'
   assert_eq "full file parity" "$expected" "$actual"
 }
 
+# ─── Section: new.sh identity — coordinated ordinals (spec 010) ──────────────
+
+# AC: --num accepts a provisional P-<id> ordinal shape as well as a real
+# numeric ordinal — the strict two-grammar union (spec 010 DD3)
+case_new_num_grammar_accepts_provisional() {
+  local dir b
+  dir=$(empty_dir new_num_grammar_prov)
+  b=$(fixture new_num_grammar_prov_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-prov" --num "P-20260101-widget" \
+    --title "T" --priority low --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  assert_match "num stored verbatim" '^num: P-20260101-widget$' "$(cat "$dir/20260101-prov.md")"
+}
+
+# AC: --num rejects anything outside the two-grammar union — free text can
+# never reach stored frontmatter or a rendered display surface (spec 010 DD3)
+case_new_num_grammar_rejects_free_text() {
+  local dir b
+  dir=$(empty_dir new_num_grammar_bad)
+  b=$(fixture new_num_grammar_bad_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-bad" --num "not-a-num" \
+    --title "T" --priority low --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no file written" "no" "$([[ -e "$dir/20260101-bad.md" ]] && echo yes || echo no)"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
