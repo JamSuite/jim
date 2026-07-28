@@ -197,7 +197,7 @@ flowchart TD
    slug (no numeric assumption).
    **Verify:** `grep -Eq 'render.*provisional' tests/issues.sh && bash tests/issues.sh`
 
-5. [ ] **`reconcile.sh` — preview + apply (DD5, Findings 1 & 5).** New script:
+5. [x] **`reconcile.sh` — preview + apply (DD5, Findings 1 & 5).** New script:
    scan provisional-num issues, `valid-id`-gate each durable id read from
    frontmatter before feeding `jimalloc.sh reconcile issue` (preview); `--apply`
    rewrites the `num:` field **anchored to the leading `---` frontmatter block
