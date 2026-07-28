@@ -185,7 +185,7 @@ flowchart TD
    repo so the local-tier CAS runs. Depends on task 1.
    **Verify:** `grep -Eq 'allocate.*coordinated' tests/issues.sh && bash tests/issues.sh`
 
-3. [ ] **Provisional path + local disambiguation (DD4).** Handle a `P-…` return:
+3. [x] **Provisional path + local disambiguation (DD4).** Handle a `P-…` return:
    store it as `num`, disambiguate the durable id against `docs/issues/`
    (`-2`/`-3`, mirrored into `P-<fullid>`); in real mode error on a local filename
    collision instead of overwriting. Depends on task 2.
