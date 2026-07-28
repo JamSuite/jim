@@ -174,7 +174,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **`num`-guard grammar (DD3).** Replace `new.sh`'s `^[0-9]+$` check with the
+1. [x] **`num`-guard grammar (DD3).** Replace `new.sh`'s `^[0-9]+$` check with the
    strict union (real numeric OR `P-`+`valid-id`), applied to both fallback and
    `--num` override; reject free text.
    **Verify:** `grep -Eq 'num.*(provisional|grammar)' tests/issues.sh && bash tests/issues.sh`
