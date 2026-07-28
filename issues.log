@@ -131,3 +131,4 @@ issue allocate 130 20260728-registry-drift-catch-up-has-no-incremental-seed-verb
 issue allocate 131 20260728-remove-spec-id-citations-from-issue-group-script-comments 20260728 jrko
 issue allocate 132 20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew 20260728 jrko
 issue allocate 133 20260728-reconcile-sh-provisional-detection-not-fence-bounded 20260728 jrko
+issue allocate 134 20260728-reconcile-sh-swallows-the-index-regen-exit-code 20260728 jrko
