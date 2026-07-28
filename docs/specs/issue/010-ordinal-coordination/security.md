@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/issue/010-ordinal-coordination/spec.md"
-reviewed_phases: [spec]
-status: "Needs Plan Review"
+reviewed_phases: [spec, plan]
+status: Active
 date: "2026-07-28"
 ---
 
@@ -9,20 +9,22 @@ date: "2026-07-28"
 
 ## Summary
 
-**Findings:** 0 Critical · 3 Notable · 1 Advisory
+**Findings:** 0 Critical · 4 Notable · 1 Advisory
 
-Spec-only review (no plan.md yet), requirements-gap lens. Hybrid freeform +
-STRIDE sweep; LINDDUN active because the registry publishes the filer identity
-and a title-derived slug. The three Notable findings are design gates for the
-plan phase (provisional-id collapse, ordinal-value injection surface via `num`
-widening, and unbatched-push contention); the Advisory is a spec-level
-disclosure acknowledgement. No finding is a break of an existing `platform/007`
-control — they are the consumer-side obligations that come with wiring issue
-filing onto a branch-writable coordination point.
+Dual-lens review (spec requirements-gap + plan design-flaw), plus the
+spec↔plan artifact-misalignment check. The plan resolves the three spec-phase
+Notables — F2 via the strict two-grammar `num` guard (DD3), F1 via provisional
+local disambiguation (DD4), and F3 by splitting batch-CAS to its own follow-on
+(issue #127). One new plan-phase Notable (F5: the `reconcile.sh` untrusted-
+frontmatter rewrite) and one artifact misalignment (AC 7's absolute "never
+merges" versus DD4's documented cross-clone residual) were both folded before
+approval — F5 into DD5/task 5, the AC 7 wording into the spec. No finding breaks
+a `platform/007` control; no before-build items remain.
 
 ## Coverage
 
 - spec.md — reviewed 2026-07-28 (requirements-gap lens)
+- plan.md — reviewed 2026-07-28 (design-flaw lens)
 
 ## Data Classification
 
@@ -116,12 +118,32 @@ filing onto a branch-writable coordination point.
 - **Route:** Spec
 - **Relates to:** Out of Scope; `platform/007` disclosure acknowledgement
 
+### 5. `reconcile.sh` rewrites frontmatter from untrusted issue-file input
+
+- **Severity:** Notable
+- **Description:** Plan DD5 has `reconcile.sh` (1) read each provisional issue's
+  durable id from its on-branch frontmatter and feed it to `jimalloc.sh reconcile
+  issue`, and (2) rewrite the `num:` line in place. Issue files are on-branch and
+  can be hand-edited or carry crafted content, so two concrete hazards exist: a
+  body line resembling `num: 999` could be mis-rewritten if the edit is not
+  anchored to the frontmatter block, and a malformed durable id read from
+  frontmatter could reach the allocator or a path unvalidated. This is a
+  plan-phase design flaw distinct from the spec-phase findings.
+- **Suggestion:** In task 5 / DD5, (a) anchor the `num:` rewrite to the leading
+  `---` frontmatter block's first `num:` field only — never a body line — and
+  (b) `valid-id`-gate every durable id read from frontmatter before feeding the
+  allocator or composing a path (the AC 10 boundary, applied at the reconcile
+  entry point). Add fixtures: a crafted body `num:` line must be untouched; a
+  malformed frontmatter durable id must be rejected, not fed onward.
+- **Route:** Plan
+- **Relates to:** DD5, Task 5, AC 10; `single-emitter` / atomic-write invariants
+
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
 | Spoofing | N/A | `<who>` is forgeable but advisory-only; `platform/007` reduces it to a safe token on write and forbids any auth/integrity use. No new surface here. |
-| Tampering | Yes | Findings 1, 2 (provisional-id collapse; registry-ordinal injection at the display surface). Registry-log erosion is guarded upstream (007). |
+| Tampering | Yes | Findings 1, 2, 5 (provisional-id collapse; registry-ordinal injection at the display surface; `reconcile.sh` frontmatter rewrite from untrusted input). Registry-log erosion is guarded upstream (007). |
 | Repudiation | N/A | Ids carry no authority and there is no audit-trail claim (007 non-goal, carried down in Out of Scope). No repudiation obligation. |
 | Information Disclosure | Yes | Finding 4 (slug + filer identity published earlier/wider). |
 | Denial of Service | Yes | Finding 3 (unbatched per-item CAS pushes; branch contention). |
@@ -139,16 +161,37 @@ filing onto a branch-writable coordination point.
 | Unawareness & Unintervenability | No issues found | The filer performs the filing and is aware; `<who>` is their own git identity. |
 | Non-compliance | N/A | Internal developer tooling; no stated privacy policy or applicable regulation governs project-internal ids. |
 
+## Artifact Misalignment
+
+- **AC 7 overclaims relative to the plan's accepted residual.** Spec AC 7 states
+  reconcile "never merges two distinct issues onto one ordinal" as an absolute.
+  Plan DD4 (the developer-chosen "local disambig + document the limit" fork)
+  accepts a residual: two clones filing the same durable id offline both realize
+  onto one ordinal at reconcile — detected as a filename merge conflict when
+  branches meet, not silently, but a merge nonetheless in reconcile's immediate
+  behavior. Spec is the source of truth for the guarantee's scope. **Route: Spec**
+  — qualify AC 7 to scope the "never merges" guarantee to the coordinated /
+  within-clone case and name the cross-clone-provisional residual that surfaces
+  at merge (aligning the AC with DD4). Route: Spec.
+
 ## Routing Recommendations
 
 ### Spec amendments
-- Finding 4: add the issue-specific disclosure acknowledgement to Out of Scope,
-  mirroring `platform/007`.
+- Finding 4 — **done** (spec-phase): the disclosure acknowledgement was folded
+  into Out of Scope.
+- Artifact Misalignment (AC 7) — **done**: AC 7 qualified to the coordinated /
+  within-clone scope, naming the cross-clone-provisional residual (aligns with
+  plan DD4).
 
 ### Plan amendments
-- Finding 1: disambiguate provisional durable ids against the local collection at
-  filing; add a reconcile-time anti-collapse guard + fixture.
-- Finding 2: make the widened `num` guard a strict two-grammar union enforced at
-  frontmatter-write; optionally broaden AC 10's revalidation scope.
-- Finding 3: file candidate batches through the allocator's batch-CAS path; define
-  batch failure semantics.
+- Finding 1 — **addressed by DD4** (provisional local disambiguation + real-mode
+  collision error); the cross-clone residual is the AC 7 misalignment above.
+- Finding 2 — **addressed by DD3** (strict two-grammar `num` guard) and the
+  AC 10 broadening folded spec-side.
+- Finding 5 — **done**: DD5 + task 5 now anchor the `reconcile.sh num:` rewrite
+  to the frontmatter block and `valid-id`-gate frontmatter-read durable ids.
+
+### Candidate issues
+- Finding 3 — filed as issue `#127`
+  (`20260728-spec-batch-cas-candidate-batch-allocation-7a-rework`): batch-CAS +
+  §7a rework, the split-out cross-group follow-on. Batch filing is per-item here.

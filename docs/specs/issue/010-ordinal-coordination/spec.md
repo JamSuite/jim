@@ -75,7 +75,10 @@ one place a duplicate id is a matter of timing, not prevention.
       provisional issue into a real coordinated ordinal and rewrites the affected
       issue files' frontmatter. Realization is idempotent — re-running maps an
       already-realized identity to its existing ordinal, never a second one — and
-      never merges two distinct issues onto one ordinal.
+      never merges two distinct issues that were coordinated, or filed within one
+      clone, onto one ordinal. The residual cross-clone case — the same durable id
+      filed offline in two clones — is not silently merged: it surfaces as a
+      filename conflict when the branches meet (detected at merge).
 - [ ] Under `id_coordination_unreachable = fail` (the default) with an
       unreachable remote, filing performs bounded retries and then hard-fails
       with a clear message, rather than writing an uncoordinated or duplicate id.
@@ -136,8 +139,10 @@ flowchart LR
   from today's local-only filing (a visible git operation, consistent with jim's
   ledger commits), and it applies uniformly, including the end-of-run candidate
   batches the surfacing skills file. This spec adds no knob to disable
-  coordination per path or to defer a batch's publish; batch filing must still
-  coordinate efficiently rather than as N independent races (see Handoff
+  coordination per path. Batch filing here coordinates **per item** — one CAS per
+  issue, free in the local tier and a few round-trips on a remote; collapsing a
+  batch into a single CAS, and the §7a candidate-batch rework it requires across
+  the surfacing skills, is a dedicated cross-group follow-on (see Handoff
   Insight 2). A per-path or appetite-based opt-out, if ever wanted, is a separate
   concern.
 - **Opaque reservation for sensitive work.** Coordinated filing publishes the
