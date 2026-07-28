@@ -88,7 +88,7 @@ re-declared here.*
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-07-28T19:53:15Z
+on every blueprint write; do not edit. Last reconciled: 2026-07-28T21:08:45Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |
@@ -112,5 +112,6 @@ on every blueprint write; do not edit. Last reconciled: 2026-07-28T19:53:15Z
 | issue | jimfile-cli (`jimfile.sh` path/id CLI) | platform |
 | issue | jimconf-cli (`jimconf.sh` resolver) | platform |
 | issue | testlib (meta-test framework) | platform |
+| issue | jimalloc (`jimalloc.sh` ID coordination allocator) | platform |
 | platform | validator-lockstep (byte-identical `is_valid_id`) | issue |
 | platform | personas (scaffold-gate dispatch — pm, researcher, architect) | sdlc |
