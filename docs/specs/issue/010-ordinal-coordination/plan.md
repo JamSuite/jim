@@ -206,7 +206,7 @@ flowchart TD
    collapse halts nonzero. Depends on task 3.
    **Verify:** `grep -Eq 'reconcile.*(realize|idempotent|anchor|crafted)' tests/issues.sh && bash tests/issues.sh`
 
-6. [ ] **`SKILL.md` add-flow + `reconcile` routing (DD2, DD5).** `add` shows the
+6. [x] **`SKILL.md` add-flow + `reconcile` routing (DD2, DD5).** `add` shows the
    preview from `peek issue`, calls `new.sh` without `--num`, drops the manual
    collision loop; add the `reconcile` subcommand arm invoking `reconcile.sh`
    (preview then confirm→`--apply`). Depends on tasks 2, 5.
