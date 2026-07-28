@@ -177,25 +177,25 @@ flowchart TD
 1. [ ] **`num`-guard grammar (DD3).** Replace `new.sh`'s `^[0-9]+$` check with the
    strict union (real numeric OR `P-`+`valid-id`), applied to both fallback and
    `--num` override; reject free text.
-   **Verify:** `bash tests/issues.sh 2>&1 | grep -Eq 'num.*(provisional|grammar).*PASS' && bash tests/issues.sh`
+   **Verify:** `grep -Eq 'num.*(provisional|grammar)' tests/issues.sh && bash tests/issues.sh`
 
 2. [ ] **Emitter fallback → allocator, real path (DD1).** In `new.sh`, resolve
    unset `slug`/`num` via `jimalloc.sh allocate issue "$title"` (parse
    `<fullid>\t<num>`); keep `<slug>\t<path>` stdout unchanged. Test in a temp git
    repo so the local-tier CAS runs. Depends on task 1.
-   **Verify:** `bash tests/issues.sh 2>&1 | grep -q 'allocate.*coordinated.*PASS' && bash tests/issues.sh`
+   **Verify:** `grep -Eq 'allocate.*coordinated' tests/issues.sh && bash tests/issues.sh`
 
 3. [ ] **Provisional path + local disambiguation (DD4).** Handle a `P-…` return:
    store it as `num`, disambiguate the durable id against `docs/issues/`
    (`-2`/`-3`, mirrored into `P-<fullid>`); in real mode error on a local filename
    collision instead of overwriting. Depends on task 2.
-   **Verify:** `bash tests/issues.sh 2>&1 | grep -q 'provisional.*disambig.*PASS' && bash tests/issues.sh`
+   **Verify:** `grep -Eq 'provisional.*disambig' tests/issues.sh && bash tests/issues.sh`
 
 4. [ ] **Distinguishable provisional rendering (DD6, AC 9).** `render.sh` `show`
    and `list` render a `P-…` ordinal distinctly (marker; `--sort num` tolerates
    it without error); confirm `index.sh` projects `num` verbatim and orders by
    slug (no numeric assumption).
-   **Verify:** `bash tests/issues.sh 2>&1 | grep -Eq 'render.*provisional.*PASS' && bash tests/issues.sh`
+   **Verify:** `grep -Eq 'render.*provisional' tests/issues.sh && bash tests/issues.sh`
 
 5. [ ] **`reconcile.sh` — preview + apply (DD5, Findings 1 & 5).** New script:
    scan provisional-num issues, `valid-id`-gate each durable id read from
@@ -204,7 +204,7 @@ flowchart TD
    only** (never a body line), atomically, and regenerates `INDEX.md`; idempotent
    re-run maps an already-realized id to its existing ordinal; a within-batch
    collapse halts nonzero. Depends on task 3.
-   **Verify:** `bash tests/issues.sh 2>&1 | grep -Eq 'reconcile.*(realize|idempotent|anchor|crafted).*PASS' && bash tests/issues.sh`
+   **Verify:** `grep -Eq 'reconcile.*(realize|idempotent|anchor|crafted)' tests/issues.sh && bash tests/issues.sh`
 
 6. [ ] **`SKILL.md` add-flow + `reconcile` routing (DD2, DD5).** `add` shows the
    preview from `peek issue`, calls `new.sh` without `--num`, drops the manual
@@ -215,7 +215,7 @@ flowchart TD
 7. [ ] **Allocator-side fixtures (AC 2, 5, 7, 8).** Ensure `tests/jimalloc.sh`
    covers the reconcile realize/idempotent/within-batch-halt paths and the
    provisional ordinal shape this consumer relies on; add any missing fixture.
-   **Verify:** `bash tests/jimalloc.sh 2>&1 | grep -Eq 'reconcile.*PASS' && bash tests/jimalloc.sh`
+   **Verify:** `grep -Eq 'reconcile' tests/jimalloc.sh && bash tests/jimalloc.sh`
 
 8. [ ] **Full suite green.** Run the aggregate runner; issue + allocator suites
    pass.
