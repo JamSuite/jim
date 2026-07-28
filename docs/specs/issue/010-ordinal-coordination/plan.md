@@ -2,7 +2,7 @@
 title: "Coordinated issue display ordinals"
 spec: "docs/specs/issue/010-ordinal-coordination/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Coordinated issue display ordinals — Plan
