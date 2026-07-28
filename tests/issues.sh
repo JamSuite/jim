@@ -62,6 +62,28 @@ run_new() {
   ERR="$(cat "$err_file")"
 }
 
+# run_new_in <repo> <args...>
+#   Invoke new.sh with CWD inside <repo> — new.sh's identity fallback shells
+#   out to jimalloc.sh, which requires a git repo (allocate issue's local-tier
+#   CAS) to run at all.
+run_new_in() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# new_repo <name> — a fresh git repo with a committer identity set, for tests
+# that exercise new.sh's allocator-backed identity fallback.
+new_repo() {
+  local repo; repo="$(empty_dir "$1")"
+  git -C "$repo" init -q
+  git -C "$repo" config user.name  "Test User"
+  git -C "$repo" config user.email "test@example.com"
+  printf '%s' "$repo"
+}
+
 # num_of <dir> <slug>
 #   Echo the num: value from an issue file, or empty if absent.
 num_of() {
@@ -2217,6 +2239,25 @@ case_new_num_grammar_rejects_free_text() {
   assert_exit "rc" 1 "$RC"
   assert_eq "no file written" "no" "$([[ -e "$dir/20260101-bad.md" ]] && echo yes || echo no)"
   assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: new.sh's identity fallback resolves through jimalloc.sh allocate issue
+# — the single coordination point both /jim:issue add and the no-override
+# candidate-batch path go through (spec 010 DD1)
+case_new_allocate_issue_coordinated_via_temp_repo() {
+  local repo b today expected_slug slug log
+  repo=$(new_repo new_allocate_coordinated)
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  expected_slug="${today}-alpha-bug"
+  b=$(fixture new_allocate_coordinated_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Alpha bug" --priority medium --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "slug from allocator" "$expected_slug" "$slug"
+  assert_match "num from allocator" '^num: 1$' "$(cat "$repo/docs/issues/$expected_slug.md")"
+  log="$(git -C "$repo" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null)"
+  assert_match "registry recorded" "^issue allocate 1 ${expected_slug} " "$log"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
