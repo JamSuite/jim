@@ -297,16 +297,36 @@ alloc_next_num_issue() {
   printf '%s\n' $((max + 1))
 }
 
-# alloc_durable_issue_id <subject>  (issues log on stdin)
-#   Compute the durable issue id (today's date + slug via jimfile.sh) and
-#   disambiguate it with a -2 / -3 … suffix when the computed form already
-#   appears as a full-id in the registry. The ordinal and
-#   the durable form are guarded by the same append-only registry.
+# alloc_durable_issue_id <subject> [num]  (issues log on stdin)
+#   Compute the durable issue id — the configured issue_id_prefix scheme's prefix
+#   (re-derived via jimfile.sh prefix-from from an ISO `now` and the coordinated
+#   ordinal <num>) plus the slug — and disambiguate it with a -2 / -3 … suffix
+#   when the computed form already appears as a full-id in the registry. The
+#   ordinal and the durable form are guarded by the same append-only registry.
+#
+#   Degrades to the date-slug form whenever the scheme can't be minted: a
+#   provisional allocation (empty <num>) under an ordinal-bearing scheme
+#   (sequential preset or a {seq…} template) can't render its ordinal, and any
+#   prefix-from failure (empty project tag, un-derivable {date:…} template) is a
+#   uniform fallback. prefix-from's stderr is never interpolated, and the final
+#   composed base is re-checked at the id boundary — a config-supplied prefix
+#   can never reach a filename, registry token, or git argument malformed.
 alloc_durable_issue_id() {
-  local subject="$1" date slug base
+  local subject="$1" num="${2:-}" date slug base scheme now prefix
   date="$(bash "$JIMFILE" date)" || return 1
   slug="$(bash "$JIMFILE" slug "$subject")" || return 1
   base="${date}-${slug}"
+  scheme="$(alloc_config issue_id_prefix)"
+  # Attempt the scheme prefix unless this is a provisional allocation (no
+  # coordinated ordinal) under an ordinal-bearing scheme, which must degrade
+  # uniformly rather than render an arbitrary ordinal.
+  if [[ -n "$num" ]] || { [[ "$scheme" != sequential ]] && [[ "$scheme" != *'{seq'* ]]; }; then
+    now="$(bash "$JIMFILE" now)" || return 1
+    if prefix="$(bash "$JIMFILE" prefix-from "$now" "$num" 2>/dev/null)"; then
+      base="${prefix}-${slug}"
+    fi
+  fi
+  alloc_valid_token "$base" || base="${date}-${slug}"
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4 c5 c6
   local candidate="$base" suffix=1 taken
@@ -879,7 +899,7 @@ alloc_build_issue() {
   local current_log="$1" subject="$2" who="$3"
   local num fullid date
   num="$(printf '%s' "$current_log" | alloc_next_num_issue)" || return 1
-  fullid="$(printf '%s' "$current_log" | alloc_durable_issue_id "$subject")" || return 1
+  fullid="$(printf '%s' "$current_log" | alloc_durable_issue_id "$subject" "$num")" || return 1
   date="$(bash "$JIMFILE" date)" || return 1
   printf '%s\t%s\n' "$fullid" "$num"
   alloc_encode_allocate_issue "$num" "$fullid" "$date" "$who"
@@ -942,7 +962,7 @@ alloc_prov_ordinal() {
 # valid token by construction (prefix over the validated durable id).
 alloc_provisional_issue() {
   local subject="$1" fullid ord
-  fullid="$(printf '' | alloc_durable_issue_id "$subject")" || return 1
+  fullid="$(printf '' | alloc_durable_issue_id "$subject" "")" || return 1
   alloc_valid_token "$fullid" || { echo "error: computed provisional issue id '$fullid' is invalid" >&2; return 1; }
   ord="$(alloc_prov_ordinal "$fullid")"
   printf '%s\t%s\n' "$fullid" "$ord"
