@@ -179,7 +179,7 @@ flowchart TD
    `--num` override; reject free text.
    **Verify:** `grep -Eq 'num.*(provisional|grammar)' tests/issues.sh && bash tests/issues.sh`
 
-2. [ ] **Emitter fallback → allocator, real path (DD1).** In `new.sh`, resolve
+2. [x] **Emitter fallback → allocator, real path (DD1).** In `new.sh`, resolve
    unset `slug`/`num` via `jimalloc.sh allocate issue "$title"` (parse
    `<fullid>\t<num>`); keep `<slug>\t<path>` stdout unchanged. Test in a temp git
    repo so the local-tier CAS runs. Depends on task 1.
