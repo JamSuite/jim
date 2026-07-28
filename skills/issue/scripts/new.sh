@@ -26,23 +26,27 @@
 #               [--status open] [--slug <id>] [--num <int>] \
 #               [--created <ts>] [--updated <ts>] [--dir <issues_dir>]
 #
-#   Unspecified identity fields are resolved via jimfile.sh (next-id, next-num,
-#   now); --slug/--num/--created/--updated let a caller pin pre-resolved values
-#   (e.g. /jim:issue add's confirm-or-edit display). --dir overrides the
-#   configured issues directory for tests; production callers omit it.
+#   An unset slug/num is resolved as a coordinated pair via jimalloc.sh
+#   allocate issue (the durable id and display ordinal reserved together, one
+#   CAS); an unset created/updated via jimfile.sh now. --slug/--num/--created/
+#   --updated let a caller pin pre-resolved values (e.g. /jim:issue add's
+#   confirm-or-edit display, or a test that wants the pure-write path with no
+#   git repo required). --dir overrides the configured issues directory for
+#   tests; production callers omit it.
 #
 # EXIT CODES
 #   0  success
 #   1  validation or IO failure (bad priority, invalid id, unreadable body, write error)
 #   2  usage error (unknown/missing flag)
 #
-# Conventions: set -uo pipefail; LC_ALL=C; BASH_SOURCE-relative jimfile path.
+# Conventions: set -uo pipefail; LC_ALL=C; BASH_SOURCE-relative jimfile/jimalloc paths.
 
 set -uo pipefail
 export LC_ALL=C
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
+JIMALLOC="$(dirname "$JIMFILE")/jimalloc.sh"
 
 # ─── Parse flags ─────────────────────────────────────────────────────────────
 
@@ -84,12 +88,20 @@ case "$status" in
   *) echo "error: invalid status (expected open|closed)" >&2; exit 1 ;;
 esac
 
-# ─── Resolve identity (overrides win; else compose via jimfile.sh) ───────────
+# ─── Resolve identity (overrides win; else compose via jimalloc.sh) ──────────
 
-[[ -n "$slug"    ]] || slug="$(bash "$JIMFILE" next-id issue "$title")" || {
-  echo "error: could not resolve slug" >&2; exit 1; }
-[[ -n "$num"     ]] || num="$(bash "$JIMFILE" next-num issue)" || {
-  echo "error: could not resolve num" >&2; exit 1; }
+# Unset slug/num are resolved together, through the coordination allocator —
+# one call returns both the durable id and the display ordinal in the same
+# reservation, so a caller that pins neither gets a coordinated pair rather
+# than two independently-derived values.
+if [[ -z "$slug" || -z "$num" ]]; then
+  alloc_out="$(bash "$JIMALLOC" allocate issue "$title")" || {
+    echo "error: could not allocate issue identity" >&2; exit 1; }
+  alloc_fullid="${alloc_out%%$'\t'*}"
+  alloc_num="${alloc_out##*$'\t'}"
+  [[ -n "$slug" ]] || slug="$alloc_fullid"
+  [[ -n "$num"  ]] || num="$alloc_num"
+fi
 [[ -n "$created" ]] || created="$(bash "$JIMFILE" now)"
 [[ -n "$updated" ]] || updated="$created"
 
