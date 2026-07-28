@@ -2304,6 +2304,66 @@ case_new_provisional_disambig_real_mode_collision_errors() {
   assert_match "original file untouched" "^id: ${fid}\$" "$(cat "$issues_dir/$fid.md")"
 }
 
+# AC: render.sh list renders a provisional ordinal distinctly — never as a
+# settled #N — and render.sh show does the same (spec 010 DD6, AC 9)
+case_issues_render_list_marks_provisional_ordinal() {
+  local dir
+  dir=$(empty_dir render_list_provisional)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-p" 'title: "P"
+status: open
+num: P-20260102-p
+created: 2026-01-02'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "real ordinal settled" '#1' "$OUT"
+  assert_match "provisional marker present" 'P-20260102-p \(provisional\)' "$OUT"
+  local settled_prov
+  settled_prov="$(printf '%s\n' "$OUT" | grep -c '#P-20260102-p')"
+  assert_eq "provisional never rendered as settled #N" "0" "$settled_prov"
+}
+
+# AC: render.sh show renders a provisional ordinal distinctly (spec 010 DD6, AC 9)
+case_issues_render_show_provisional_marker() {
+  local dir
+  dir=$(empty_dir render_show_provisional)
+  write_issue "$dir" "20260102-p" 'title: "P"
+status: open
+num: P-20260102-p
+created: 2026-01-02'
+  run_render show "20260102-p" "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "provisional marker present" 'P-20260102-p \(provisional\)' "$OUT"
+  local settled_prov
+  settled_prov="$(printf '%s\n' "$OUT" | grep -c '#P-20260102-p')"
+  assert_eq "provisional never rendered as settled #N" "0" "$settled_prov"
+}
+
+# AC: list --sort num tolerates a mix of real and provisional ordinals without
+# erroring — both rows still render (spec 010 DD6)
+case_issues_render_list_sort_num_tolerates_provisional() {
+  local dir cwd
+  dir=$(empty_dir render_list_sort_prov)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-p" 'title: "P"
+status: open
+num: P-20260102-p
+created: 2026-01-02'
+  cwd=$(empty_dir render_list_sort_prov_cwd)
+  printf 'issue_list_sort = "num"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit "rc" 0 "$RC"
+  assert_match "real row present" '#1' "$OUT"
+  assert_match "provisional row present" 'provisional' "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
