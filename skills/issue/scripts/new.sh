@@ -94,12 +94,16 @@ esac
 # one call returns both the durable id and the display ordinal in the same
 # reservation, so a caller that pins neither gets a coordinated pair rather
 # than two independently-derived values.
+slug_via_alloc=0
 if [[ -z "$slug" || -z "$num" ]]; then
   alloc_out="$(bash "$JIMALLOC" allocate issue "$title")" || {
     echo "error: could not allocate issue identity" >&2; exit 1; }
   alloc_fullid="${alloc_out%%$'\t'*}"
   alloc_num="${alloc_out##*$'\t'}"
-  [[ -n "$slug" ]] || slug="$alloc_fullid"
+  if [[ -z "$slug" ]]; then
+    slug="$alloc_fullid"
+    slug_via_alloc=1
+  fi
   [[ -n "$num"  ]] || num="$alloc_num"
 fi
 [[ -n "$created" ]] || created="$(bash "$JIMFILE" now)"
@@ -117,16 +121,43 @@ elif [[ "$num" == P-* ]] && bash "$JIMFILE" valid-id "${num#P-}" >/dev/null 2>&1
 fi
 (( num_valid )) || { echo "error: --num must be a positive integer or a P-<id> provisional ordinal" >&2; exit 1; }
 
+# Resolve the issues directory once — used for the local-collision handling
+# below and the final write path.
+if [[ -n "$dir" ]]; then
+  issues_dir="$dir"
+else
+  issues_dir="$(bash "$JIMFILE" path issue)" || {
+    echo "error: could not resolve issues directory" >&2; exit 1; }
+fi
+issues_dir="${issues_dir%/}"
+
+# Provisional local disambiguation / real-mode drift guard: only the id this
+# call resolved itself is eligible — a caller-pinned --slug is never altered.
+# A provisional durable id is computed over an empty log (no registry to
+# disambiguate against), so the local clone suffixes it the same way
+# next-id's tree scan did, mirroring the suffix into the stored provisional
+# ordinal. A real ordinal is already registry-disambiguated, so a local
+# filename collision here is tree/registry drift — refused, never overwritten.
+if (( slug_via_alloc )); then
+  if [[ "$num" == P-* ]]; then
+    base_slug="$slug"
+    suffix=1
+    while [[ -e "$issues_dir/$slug.md" ]]; do
+      suffix=$((suffix + 1))
+      slug="${base_slug}-${suffix}"
+    done
+    num="P-${slug}"
+  elif [[ -e "$issues_dir/$slug.md" ]]; then
+    echo "error: local issue file already exists for allocator-issued id '$slug' (registry drift)" >&2
+    exit 1
+  fi
+fi
+
 # Always validate the id through the single security boundary before composing a
-# path — even a caller-supplied --slug (AC5).
+# path — even a caller-supplied --slug, and even an allocator-derived one (AC5).
 bash "$JIMFILE" valid-id "$slug" || { echo "error: invalid issue id" >&2; exit 1; }
 
-if [[ -n "$dir" ]]; then
-  dir="${dir%/}"
-  path="$dir/$slug.md"
-else
-  path="$(bash "$JIMFILE" path issue "$slug")" || { echo "error: could not resolve path" >&2; exit 1; }
-fi
+path="$issues_dir/$slug.md"
 
 # ─── Encode untrusted scalar fields ──────────────────────────────────────────
 
