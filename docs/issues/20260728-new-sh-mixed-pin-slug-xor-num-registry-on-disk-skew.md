@@ -17,8 +17,6 @@ origin: docs/specs/issue/010-ordinal-coordination/review.md
 
 ## Description
 
-## Description
-
 `new.sh` resolves issue identity via `jimalloc.sh allocate issue` when `--slug`
 and/or `--num` are unset. The fallback fires when **either** flag is unset, but
 `allocate issue` always reserves a full pair (durable id + display ordinal) in

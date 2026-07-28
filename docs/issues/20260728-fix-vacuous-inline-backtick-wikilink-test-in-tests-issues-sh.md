@@ -17,8 +17,6 @@ origin: docs/specs/platform/010-allocator-issue-prefix/plan.md
 
 ## Description
 
-## Description
-
 `tests/issues.sh` → `case_issues_index_wikilink_in_inline_backticks_ignored`
 (~line 567) passes a **double-quoted** body string to `write_issue` containing a
 backtick span:

@@ -17,8 +17,6 @@ origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 
 ## Description
 
-## Description
-
 jim's `id_coordination_unreachable` is `fail` and the coordination remote
 (`origin`) is only reachable from the host. Inside any mvm agent-profile sandbox
 session, `origin` is unreachable, so coordinated `allocate issue` — the path

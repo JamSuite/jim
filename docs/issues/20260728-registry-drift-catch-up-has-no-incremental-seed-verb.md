@@ -17,8 +17,6 @@ origin: docs/specs/platform/008-registry-seed/spec.md
 
 ## Description
 
-## Description
-
 When issues/specs are added via the pre-allocator `next-num`/`next-id` path
 after a one-time `seed`, the registry high-water falls behind the collection and
 the next coordinated `allocate` collides. There is no incremental "record these

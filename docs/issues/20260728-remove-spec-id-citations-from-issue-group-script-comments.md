@@ -17,8 +17,6 @@ origin: docs/specs/issue/010-ordinal-coordination/review.md
 
 ## Description
 
-## Description
-
 Four new comments in the issue-group scripts cite artifact IDs, violating the
 CLAUDE.md "no spec IDs (or Finding/AC/DD numbers) in comments" rule:
 

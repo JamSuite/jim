@@ -17,8 +17,6 @@ origin: docs/specs/issue/010-ordinal-coordination/review.md
 
 ## Description
 
-## Description
-
 In `reconcile.sh`, the `num:` rewrite (`rewrite_num`) is anchored to the leading
 frontmatter block, but the pending-detection scan (`scan_pending`) matches the
 first `^num:` **anywhere in the file**. The two are not bounded to the same
