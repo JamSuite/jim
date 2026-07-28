@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 66
+- Open: 67
 - Closed: 59
 
 ## Issues
@@ -132,6 +132,7 @@
 - `20260727-align-seed-landing-with-the-allocation-cas-path` — Align seed landing with the allocation CAS path · status: open · num: 122 · priority: low · created: 2026-07-27T05:34:22Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/008-registry-seed/review.md
 - `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` — Fix jimfile.sh next-id group/kind collision for a group named issue · status: open · num: 123 · priority: medium · created: 2026-07-27T07:20:53Z · labels: [platform, id-coordination] · origin: docs/specs/platform/009-provisional-reconcile/spec.md
 - `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude` — Normalize seed reserved-slot skip and spec-ordinal magnitude · status: open · num: 121 · priority: medium · created: 2026-07-27T05:34:21Z · labels: [id-coordination, alloc, verify] · origin: docs/specs/platform/008-registry-seed/review.md
+- `20260728-spec-issue-placement-config-for-issue-content-location` — Spec issue_placement config for issue content location · status: open · num: 126 · priority: medium · created: 2026-07-28T00:47:22Z · labels: [id-coordination, issue] · origin: docs/specs/issue/010-ordinal-coordination/spec.md
 
 ## Graph
 
