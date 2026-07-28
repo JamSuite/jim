@@ -276,6 +276,102 @@ case_jimalloc_durable_id_honors_sequential_prefix() {
   assert_eq "sequential prefix == coordinated ordinal" "0001-alpha-bug" "$fid"
 }
 
+# AC: a provisional allocation under the sequential preset has no coordinated
+# ordinal, so the durable-id prefix degrades to the date-slug fallback.
+case_jimalloc_durable_id_prefix_provisional_sequential_fallback() {
+  local repo today fid
+  repo="$(alloc_provisional_repo alloc_prefix_prov_seq)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  printf 'id_coordination_unreachable = "provisional"\nissue_id_prefix = "sequential"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"
+  assert_eq "provisional sequential → date-slug fallback" "${today}-alpha-bug" "$fid"
+}
+
+# AC: the {seq:04} template escape hatch also degrades to date-slug in
+# provisional mode — it must NOT render an arbitrary 0000 prefix, which the
+# shared prefix-from would otherwise emit for a num-less template.
+case_jimalloc_durable_id_prefix_provisional_seq_template_fallback() {
+  local repo today fid
+  repo="$(alloc_provisional_repo alloc_prefix_prov_tmpl)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  printf 'id_coordination_unreachable = "provisional"\nissue_id_prefix = "{seq:04}"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"
+  assert_eq "provisional {seq} template → date-slug" "${today}-alpha-bug" "$fid"
+  if [[ "$fid" == 0000-* ]]; then
+    CURRENT_FAILED=1; echo "    [template] provisional {seq} rendered a bogus 0000 prefix"
+  fi
+}
+
+# AC: the project scheme is num-independent, so it is honored on the real path —
+# the durable-id prefix is the configured project tag.
+case_jimalloc_durable_id_prefix_project_honored() {
+  local repo fid
+  repo="$(alloc_new_repo alloc_prefix_project)"
+  printf 'issue_id_prefix = "project"\nissue_id_project = "acme"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"
+  assert_eq "project prefix" "acme-alpha-bug" "$fid"
+}
+
+# AC: project needs no coordinated ordinal, so it is honored even in provisional
+# mode — unlike the ordinal-bearing schemes, it does not fall back.
+case_jimalloc_durable_id_prefix_project_provisional_honored() {
+  local repo fid
+  repo="$(alloc_provisional_repo alloc_prefix_project_prov)"
+  printf 'id_coordination_unreachable = "provisional"\nissue_id_prefix = "project"\nissue_id_project = "acme"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"
+  assert_eq "project honored in provisional mode" "acme-alpha-bug" "$fid"
+}
+
+# AC: the timestamp scheme is num-independent and honored; passing an ISO now
+# gives it real sub-day precision (YYYYMMDDThhmmss), not a day-start.
+case_jimalloc_durable_id_prefix_timestamp_honored() {
+  local repo fid
+  repo="$(alloc_new_repo alloc_prefix_ts)"
+  printf 'issue_id_prefix = "timestamp"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"
+  assert_match "timestamp prefix shape" '^[0-9]{8}T[0-9]{6}-alpha-bug$' "$fid"
+}
+
+# AC: the default date scheme is byte-for-byte unchanged — the durable id stays
+# YYYYMMDD-slug and the registry record is identical to pre-change behavior, so
+# platform/007's frozen record grammar is unaffected.
+case_jimalloc_durable_id_prefix_date_default_unchanged() {
+  local repo today fid log
+  repo="$(alloc_new_repo alloc_prefix_date_default)"
+  printf 'issue_id_prefix = "date"\n' > "$repo/jimconf.toml"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"
+  assert_eq "date default durable id" "${today}-alpha-bug" "$fid"
+  log="$(alloc_issues_log "$repo")"
+  assert_match "registry record unchanged" "^issue allocate 1 ${today}-alpha-bug ${today} " "$log"
+}
+
+# AC: a crafted issue_id_project (leading dot / path traversal) is rejected at
+# the id boundary and degrades to date-slug — it never reaches a filename,
+# registry token, or git argument as an injected option or traversal.
+case_jimalloc_durable_id_prefix_crafted_project_degrades() {
+  local repo today fid
+  repo="$(alloc_new_repo alloc_prefix_crafted_project)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  printf 'issue_id_prefix = "project"\nissue_id_project = "../../etc"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"
+  assert_eq "crafted project → date-slug fallback" "${today}-alpha-bug" "$fid"
+}
+
 # ─── Section: CAS helpers (real git repos) ───────────────────────────────────
 
 # run_jimalloc_in <dir> <args...>
