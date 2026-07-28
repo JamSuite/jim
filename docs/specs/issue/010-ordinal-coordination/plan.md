@@ -217,7 +217,7 @@ flowchart TD
    provisional ordinal shape this consumer relies on; add any missing fixture.
    **Verify:** `grep -Eq 'reconcile' tests/jimalloc.sh && bash tests/jimalloc.sh`
 
-8. [ ] **Full suite green.** Run the aggregate runner; issue + allocator suites
+8. [x] **Full suite green.** Run the aggregate runner; issue + allocator suites
    pass.
    **Verify:** `bash skills/meta-test/scripts/run.sh issues && bash skills/meta-test/scripts/run.sh jimalloc`
 
