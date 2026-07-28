@@ -257,6 +257,25 @@ case_jimalloc_durable_issue_id_collision() {
   assert_eq "collision → -3" "${base}-3" "$out"
 }
 
+# ─── Section: durable-id honors issue_id_prefix ──────────────────────────────
+#
+# The durable id's prefix follows the configured issue_id_prefix scheme (the
+# shape next-id issue produced before filing routed through the allocator), with
+# a date-slug fallback wherever a scheme can't be minted at allocation time.
+
+# AC: the sequential preset embeds the coordinated ordinal as the durable-id
+# prefix — not the date. allocate issue "Alpha bug" is ordinal 1, so the id is
+# the zero-padded ordinal, not today's date.
+case_jimalloc_durable_id_honors_sequential_prefix() {
+  local repo fid
+  repo="$(alloc_new_repo alloc_prefix_sequential)"
+  printf 'issue_id_prefix = "sequential"\n' > "$repo/jimconf.toml"
+  run_jimalloc_in "$repo" allocate issue "Alpha bug"
+  assert_exit "rc" 0 "$RC"
+  fid="${OUT%%$'\t'*}"
+  assert_eq "sequential prefix == coordinated ordinal" "0001-alpha-bug" "$fid"
+}
+
 # ─── Section: CAS helpers (real git repos) ───────────────────────────────────
 
 # run_jimalloc_in <dir> <args...>
