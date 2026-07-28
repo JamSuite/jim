@@ -2,7 +2,7 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-07-25"
+updated: "2026-07-28"
 last_full_generate: "2026-07-25T07:51:34Z"
 ---
 
@@ -31,6 +31,10 @@ face after the platform CLIs.
   copied file→file, never interpolated or sourced; every id passes the
   validator before path composition; writes are atomic (tmp+mv); stdout is
   exactly `<slug>\t<path>`; failures are fixed reason codes, never raw content.
+  Identity — the display ordinal and durable id — is coordinator-issued via
+  `platform.jimalloc` and durable-before-write; under an unreachable coordination
+  point in `provisional` mode it yields a structurally-distinct provisional
+  ordinal that `reconcile.sh` later realizes.
 - `index.sh` **index generation** — frontmatter scan → `INDEX.md`
   (summary, issues, relation graph, integrity warnings). Guarantee:
   line-oriented parse only; atomic write — a failed run leaves the previous
@@ -47,8 +51,10 @@ face after the platform CLIs.
 - **Untrusted-issue-content discipline** — the canonical
   `<untrusted-issue-content slug=…>` delimiter form for any agent handoff of
   issue content.
-- `backfill.sh` / `migrate.sh` **migrations** — opt-in, preview-gated one-shot
-  transforms (num / timestamp / prefix). Internal surface, low contract weight.
+- `backfill.sh` / `migrate.sh` / `reconcile.sh` **migrations** — opt-in,
+  preview-gated one-shot transforms (num / timestamp / prefix; and realizing
+  provisional ordinals into real coordinated ones). Internal surface, low
+  contract weight.
 - `@jim:issue-analyst` **insights persona** — read-only synthesis over the
   collection; capability-narrowed (Read plus one `render.sh` invocation).
 - `issue-template.md` — the schema shape the emitter materializes.
@@ -58,6 +64,9 @@ face after the platform CLIs.
 - `platform.jimfile-cli` — id minting (`next-id`/`next-num`), timestamps
   (`now`), path resolution (`path issue`), and id validation, from the skill
   flow and script-to-script (`new.sh`, `migrate.sh`).
+- `platform.jimalloc` — coordinated issue identity: the emitter reserves the
+  display ordinal + durable id via `allocate issue` (durable-before-write), and
+  `reconcile.sh` realizes pending provisional ordinals via `reconcile issue`.
 - `platform.jimconf-cli` — the `issue_list_*` and `issue_id_*` key contract,
   from the skill flow and script-to-script (`index.sh`, `render.sh`,
   `backfill.sh`, `migrate.sh`).
@@ -66,9 +75,9 @@ face after the platform CLIs.
 ## Structure
 
 - `skills/issue/` — `SKILL.md` (subcommand routing, § 7a contract, § Step-7
-  wrapping discipline), `assets/issue-template.md`, and five scripts:
+  wrapping discipline), `assets/issue-template.md`, and six scripts:
   `new.sh` (emitter), `index.sh` (index), `render.sh` (views), `backfill.sh` /
-  `migrate.sh` (migrations).
+  `migrate.sh` (migrations), and `reconcile.sh` (realize provisional ordinals).
 - `agents/issue-analyst.md` — the read-only insights subagent.
 - `tests/issues.sh` — the group's test file.
 - **Data store** (owned, not territory): `docs/issues/` + `INDEX.md` — one
