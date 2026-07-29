@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-29T21:03:10Z
+updated: 2026-07-29T21:14:28Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -103,12 +103,13 @@ are recorded per edge.
 See `docs/specs/platform/007-id-coordination-allocator/review.md` (Findings 1
 and 2) for the original trace of the first two.
 
-## Inherited constraint — emit an allocation for every rename source
+## Inherited constraints from platform/011
 
-All three gates above are being closed ahead of this spec by
-`platform/011` (rename-path correctness), which this work depends on. One
-decision there lands as a constraint on **this** spec's emitter and must be
-settled during its scoping.
+All three gates above are being closed ahead of this spec by `platform/011`
+(rename-path correctness), which this work depends on. Two decisions there land
+as constraints on **this** spec and must be settled during its scoping.
+
+### 1. Emit an allocation for every rename source?
 
 `platform/011` guarantees the permanent gap two ways: defensively, by counting
 rename *sources* in the high-water so a vacated ordinal is unreclaimable for any
@@ -131,3 +132,27 @@ it writes:
 
 Settle this when scoping; do not let the defensive fold's existence decide it by
 default. Recorded in `platform/011`'s Open Questions as the reciprocal.
+
+### 2. Keep the two next-id surfaces from disagreeing mid-move
+
+Surfaced by `platform/011`'s research. jim has **two** independent next-id
+computations, and this spec is what first makes them capable of disagreeing:
+
+- `jimfile.sh next-id <group>` — a scan of the spec directory tree, floored past
+  vacated ids via the specs-root ledger. What `/jim:spec` and `/jim:partition`
+  call today.
+- the allocator's registry fold, reached through `peek spec` / `allocate spec`,
+  which `platform/011` teaches to alias a renamed group.
+
+After that aliasing lands, a group rename has two observable states: the
+`group rename` record exists in the registry, and the spec directories have
+actually moved on disk. Between those two points the tree scan and the registry
+fold answer differently for the same group. This spec owns both halves of that
+window — it emits the record *and* performs the move — so it owns the ordering
+that makes the window safe (or provably empty).
+
+Note the two surfaces already differ in a related way: the tree scan floors past
+vacated ids through the ledger's split/merge events, while the registry fold has
+no floor record at all — the same gap that leaves the retired-group high-water to
+this spec (see `platform/008` Out of Scope). Worth deciding whether this spec
+converges the two surfaces or documents them as deliberately separate.
