@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 74
+- Open: 75
 - Closed: 62
 
 ## Issues
@@ -143,6 +143,7 @@
 - `20260728-spec-issue-placement-config-for-issue-content-location` — Spec issue_placement config for issue content location · status: open · num: 126 · priority: medium · created: 2026-07-28T00:47:22Z · labels: [id-coordination, issue] · origin: docs/specs/issue/010-ordinal-coordination/spec.md
 - `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity` — allocate spec under provisional mints an unrealizable identity · status: open · num: P-20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity · priority: medium · created: 2026-07-29T21:02:34Z · labels: [id-coordination, provisional] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins` — Detect duplicate durable ids instead of silent last-wins · status: open · num: P-20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins · priority: low · created: 2026-07-29T21:02:33Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
+- `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp` — Provide a recovery path for a group that exhausts its ordinal space · status: open · num: P-20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp · priority: low · created: 2026-07-29T22:21:54Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
 
 ## Graph
 
