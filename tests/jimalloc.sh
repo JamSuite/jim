@@ -140,6 +140,39 @@ spec allocate dashboard/001 second 20260728 kai' > "$dir/specs.log"
   assert_eq "reused string" "dashboard/001" "$OUT"
 }
 
+# AC: a name vacated by a rename and later re-established by renaming a
+# *different* spec onto it resolves to its current holder, not to the referent
+# that left. The anchor is the latest establishing record of either kind, so a
+# rename destination anchors replay exactly as an allocate record does.
+case_jimalloc_resolve_spec_reuse_rename_in() {
+  local dir; dir=$(empty_dir res_reuse_rename_in)
+  printf '%s\n' 'spec allocate dashboard/001 first 20260726 jane
+spec rename dashboard/001 core/009 20260727
+spec allocate other/003 second 20260728 kai
+spec rename other/003 dashboard/001 20260729' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec dashboard/001
+  assert_exit "rc"              0               "$RC"
+  assert_eq   "current holder"  "dashboard/001" "$OUT"
+  # the departed referent still resolves forward to where it went
+  run_jimalloc_reg "$dir" resolve spec core/009
+  assert_eq   "departed referent" "core/009" "$OUT"
+}
+
+# AC: the same reuse-via-rename-in shape over issue ordinals resolves to the
+# ordinal's current holder.
+case_jimalloc_resolve_issue_reuse_rename_in() {
+  local dir; dir=$(empty_dir res_issue_reuse_rename_in)
+  printf '%s\n' 'issue allocate 7 20260726-first 20260726 jane
+issue rename 7 9 20260727
+issue allocate 3 20260728-second 20260728 kai
+issue rename 3 7 20260729' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 7
+  assert_exit "rc"             0   "$RC"
+  assert_eq   "current holder" "7" "$OUT"
+  run_jimalloc_reg "$dir" resolve issue 9
+  assert_eq   "departed referent" "9" "$OUT"
+}
+
 # AC: a reverted rename (A→B→A) is cycle-safe — each record applies once in
 # file order, so the id resolves back to itself and replay terminates.
 case_jimalloc_resolve_spec_cycle_revert() {
