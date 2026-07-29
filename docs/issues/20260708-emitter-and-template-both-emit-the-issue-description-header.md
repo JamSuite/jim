@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-08T20:37:32Z
-updated: 2026-07-08T20:37:32Z
+updated: 2026-07-29T20:09:12Z
 origin: conversation
 ---
 
@@ -25,7 +25,7 @@ carry a malformed lead. #33 has a doubled `## Description` header; others (the
 
 The issue-file emitter and the template both own the `## Description` header:
 
-- `skills/issue/scripts/new.sh:151` unconditionally prepends
+- `skills/issue/scripts/new.sh:204` unconditionally prepends
   `\n## Description\n\n` before `cat`-ing the `--body-file` bytes.
 - `skills/issue/assets/issue-template.md:18` also shows `## Description` as
   part of the authored body shape.
@@ -45,10 +45,37 @@ Make the emitter the sole owner of the header:
 - Add a one-line note to `skills/issue/SKILL.md` step 6 (and the 7a
   candidate-batch emitter call) that `--body-file` is prose only — the emitter
   supplies the `## Description` heading.
-- Backfill the one existing instance: fix #33's stored body, then regenerate
+- Backfill the malformed bodies already in the collection, then regenerate
   `INDEX.md`.
+
+## Real backfill scope (verified 2026-07-29)
+
+The original "backfill the one existing instance" was written off a spot-check
+and understates this by roughly 57×. Across 134 issue files, both variants named
+above are present:
+
+- **6 doubled `## Description` headers** — #33, #107, #108, #109, #110, #121.
+  These render visibly wrong (two identical headings in a row) and are the half
+  worth fixing.
+- **51 empty `## Description` immediately followed by another `##` heading** —
+  the caller opened its body with `## Context` (or similar), so the emitter's
+  heading leads an empty section. Cosmetically inert.
+
+A backfill can defensibly cover only the 6; the 51 are a judgment call about
+whether an empty section is worth a mass edit.
+
+Note that `180ce8b` (2026-07-28) already hand-swept 7 host-handoff bodies for
+the doubled variant. It was a manual fix of the symptom in one batch — it left
+the dual-emit root cause and every other malformed body untouched, which is why
+new captures can still produce both shapes.
+
+All three root-cause fixes above remain unimplemented as of this verification:
+the emitter still prepends unconditionally, the template still carries the
+heading, and `SKILL.md` still documents `--body-file` with no prose-only note.
 
 ## Why low
 
 No behavioral impact — malformed presentation only; indexing and the wikilink
-graph are unaffected.
+graph are unaffected. Note the shape of the work, though: the three root-cause
+fixes are small and one-time, while the backfill is a scripted sweep over the
+collection rather than the single hand edit originally implied.
