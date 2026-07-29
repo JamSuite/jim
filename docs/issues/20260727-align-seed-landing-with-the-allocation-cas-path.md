@@ -11,62 +11,58 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-27T05:34:22Z
-updated: 2026-07-29T19:45:24Z
+updated: 2026-07-29T20:05:42Z
 origin: docs/specs/platform/008-registry-seed/review.md
 ---
 
 ## Description
 
-Surfaced by the `platform/008` post-build review (review.md Findings 2 and 3) —
-two low-severity parity gaps between the seed's landing path
-(`alloc_seed_land`, `skills/file/scripts/jimalloc.sh:1021-1081`) and the
-allocation CAS (`alloc_cas_append`):
+The seed's landing path diverged from the allocation CAS (`alloc_cas_append`) in
+two ways, both surfaced by the `platform/008` post-build review (Findings 2 and
+3). `platform/009` closed the first when it introduced the shared `alloc_publish`
+batch-publish step; **the second is what remains and is what this issue now
+tracks.**
 
-- **Missing in-loop erosion re-check.** `alloc_cas_append` runs
-  `alloc_check_erosion` inside its retry loop to hard-fail on a truncated or
-  rewritten coordination history; `alloc_seed_land` has no equivalent before
-  writing. Narrow in practice (seed only writes a kind whose tip-log is empty and
-  reconstructs the full state from the tree, and re-seeding a populated kind is
-  already refused), but a literal reading of AC 8's "no path with weaker
-  guarantees" flags it.
-- **Second registry-writing code path.** `alloc_seed_land` inlines the push /
-  `update-ref` CAS rather than reusing `alloc_origin_cas` / `alloc_local_cas`
-  (which take a single logfile + piped content), because the seed needs a
-  two-blob commit (`alloc_seed_commit`). The mechanics are byte-equivalent, so
-  guarantees are identical, but it is a second path kept in sync by convention.
+Line anchors below are current as of the 2026-07-29 verification, against
+`skills/file/scripts/jimalloc.sh`.
+
+## Resolved — the in-loop erosion re-check
+
+`alloc_cas_append` hard-fails on a truncated or rewritten coordination history by
+re-checking the erosion baseline inside its retry loop (`:835`); the seed's
+original landing had no equivalent. `platform/009` routed `alloc_seed_land`
+(`:1319`) through `alloc_publish`, which now re-checks erosion on **both**
+writable logs on every attempt (`:1250-1259`) — strictly stronger than the
+allocation path, which checks only the single logfile it writes. Covered by
+`case_jimalloc_seed_publish_detects_erosion` (`tests/jimalloc.sh:1177`).
+
+## Open — allocation and publish are still two land implementations
+
+`alloc_publish` inlines its own `git push` (`:1272`) and `git update-ref`
+(`:1279`) rather than calling `alloc_origin_cas` / `alloc_local_cas`, whose only
+caller remains `alloc_cas_append` (`:858`, `:865`). The divergence runs through
+all three parts of the land step:
+
+| Step | Allocation | Publish (seed + reconcile) |
+|---|---|---|
+| build commit | `alloc_build_commit` — one blob (`:752`) | `alloc_seed_commit` — up to two (`:1146`) |
+| compare-and-swap | `alloc_origin_cas` / `alloc_local_cas` (`:784`, `:772`) | inlined (`:1272`, `:1279`) |
+| arm baseline | inline `alloc_update_baseline` (`:859`, `:866`) | `alloc_seed_arm_baselines` (`:1191`) |
+
+The structural reason is unchanged from the original finding: the allocation
+helpers take a single logfile plus piped content, while publish needs a
+multi-blob commit.
+
+Guarantees are equivalent today, so this is not a correctness gap — the cost is
+two implementations kept in sync by convention, where a fix or hardening applied
+to one can silently miss the other. `platform/009` held the count at two rather
+than three (reconcile, the third registry writer, shares `alloc_publish` with
+seed instead of adding a copy) but did not merge the two.
 
 ## Fix
 
-- Consider adding the same in-loop erosion re-check to `alloc_seed_land`.
-- Consider factoring the shared land step (tier select + CAS + baseline arming)
-  so allocation and seed share one implementation.
+Factor the shared land step — tier select → CAS → arm baseline — so the
+allocation path and `alloc_publish` share one implementation, generalizing the
+commit builder over one-or-many blobs.
 
-Low priority — no current correctness gap; consistency/maintainability.
-
-## Status update (2026-07-29) — first half done, second half open
-
-`platform/009` introduced the shared `alloc_publish` batch-publish step and
-routed `alloc_seed_land` through it. Verified in code:
-
-- **Erosion re-check — resolved.** `alloc_publish` runs `alloc_check_erosion`
-  inside its retry loop against **both** writable logs before building the
-  commit, so the seed landing is now *stricter* than the allocation path, which
-  re-checks only the single logfile it writes.
-- **Second registry-writing path — still open.** `alloc_publish` continues to
-  inline its own `git push` / `git update-ref` rather than calling
-  `alloc_origin_cas` / `alloc_local_cas`, whose only caller remains
-  `alloc_cas_append`. Two commit builders persist (`alloc_build_commit`,
-  single-blob, for allocation; `alloc_seed_commit`, two-blob, for publish), as
-  do two baseline-arming routes (an inline `alloc_update_baseline` in the
-  allocation loop vs `alloc_seed_arm_baselines`). The structural reason from the
-  original finding is unchanged: the allocation helpers take one logfile plus
-  piped content, and publish needs a multi-blob commit.
-
-What `009` actually bought was stopping the count at two rather than three —
-reconcile, the third writer, shares `alloc_publish` with seed instead of adding
-a copy. Allocation and publish are still two implementations kept in sync by
-convention, which is the maintainability risk this issue names.
-
-**Remaining scope:** factor the shared land step (tier select → CAS → baseline
-arm) so the allocation path and `alloc_publish` share one implementation,
-generalizing the commit builder over one-or-many blobs.
+Low priority — consistency and maintainability, no behavior change.
