@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/platform/011-rename-path-correctness/spec.md"
 reviewed_phases: [spec]
-status: Needs Spec Review
+status: Active
 date: "2026-07-29"
 ---
 
@@ -22,10 +22,10 @@ executing the allocator. LINDDUN is omitted — no PII, credentials, or session
 data is read by any changed path.
 
 **Both Spec-routed findings were applied to `spec.md` in this same run** (see
-Routing Recommendations). `status:` stays `Needs Spec Review` because it describes
-what this review *found* — two Notable findings whose fix lived in the spec — not
-whether the fix has since landed. The two Plan-routed findings remain open by
-design; planning has not run.
+Routing Recommendations), so `status:` is `Active` — it tracks current state, not
+what the review originally found. Nothing Critical or Notable is outstanding
+against the spec. The two Advisory findings routed to Plan remain open by design;
+planning has not run.
 
 ## Coverage
 

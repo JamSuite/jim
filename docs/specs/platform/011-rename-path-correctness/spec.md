@@ -294,7 +294,59 @@ flowchart TD
   needs a bound too. A single crafted record could otherwise inflate a group past
   the ordinal range the registry's bootstrap accepts, minting ids the registry can
   never be rebuilt from — recoverability, not reuse.
-- [ ] Should the rename-emitting follow-on additionally be *required* to emit an
-  allocation record for every rename source (the invariant half of the D2
-  decision), or is the defensive fold sufficient on its own? Recorded here as a
-  constraint to carry into that spec's scoping.
+- [ ] Should the rename-emitting follow-on be *required* to emit an allocation
+  record for every rename source — and/or should this spec stop depending on it?
+  See the expansion below; the reciprocal is recorded on issue #113.
+
+## Expansion — the rename-source invariant is load-bearing for resolution, not just for the gap
+
+The question above started as a bookkeeping choice about the D2 fix. Probing it
+showed the invariant carries more weight than that, and the discovery moves the
+decision partly back inside this spec.
+
+**What the defensive fold already settled.** Counting rename sources in the
+high-water makes the permanent-gap guarantee unconditional: the emitting spec
+cannot cause an ordinal to be reissued by omitting a source's allocation. That
+half of the question is closed.
+
+**What it did not settle.** The resolver's "is this id known to the registry?"
+gate counts an id that appears as an allocation, as a rename *destination*, or as
+a member of a renamed-into group — but **not** as a rename *source*. So an id
+whose only appearance is as a source cannot be resolved, even though the replay
+computes the right answer internally and only the gate rejects it:
+
+| Log | `resolve spec dashboard/005` |
+| :--- | :--- |
+| `spec rename dashboard/005 core/001` | **error: not allocated** (rc 1) |
+| `spec allocate dashboard/005 …` then the same rename | `core/001` (rc 0) |
+
+The issue resolver behaves identically. That is exactly the property the emitting
+spec exists to deliver — a citation frozen in git history staying
+dereferenceable — so a missing source allocation does not merely make the log
+less self-describing, it makes the vacated citation *unresolvable*. The gate is
+consistent with the invariant; it simply assumes it.
+
+**Three ways to close it, and the third is new.**
+
+1. **Defensive fold alone.** Cheapest, and already built. Accepts that a rename
+   source without its own allocation is a citation that errors rather than
+   resolves.
+2. **Require the emitter to allocate every rename source.** Resolution works and
+   the log becomes self-describing, at the cost of extra records per renumber and
+   a decision about sources that predate the registry (a seeded id, or one vacated
+   before adoption). Leaves the read path trusting the writer.
+3. **Count a rename source as known in the resolver.** Resolution then works
+   regardless of how the emitter behaves — the same defensive posture this spec
+   already adopted for the high-water, applied to the other half of the read path.
+
+Option 3 is a read-path change in the two functions this spec already fixes,
+which is an argument for scoping it **here** rather than deferring it: fixing the
+fold defensively while leaving the resolver trusting the emitter is asymmetric,
+and it is this spec that establishes the symmetry principle. It is not free of
+judgment, though — treating a source as known makes resolution *forgiving* of a
+log that names a rename whose source was never allocated, where erroring is the
+*strict* reading that surfaces a malformed log. Whether that log state should
+resolve or complain is the real decision, and it is the developer's.
+
+Options 2 and 3 are not exclusive; 3 makes correctness independent of the emitter,
+and 2 still makes the log tell the whole story.
