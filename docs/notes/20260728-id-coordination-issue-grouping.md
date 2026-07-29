@@ -97,7 +97,11 @@ specs' ACs reference, so the amendment deserves a trail. Running it as a build i
 a defensible speed call.
 
 ### Spec B — Rename/redirect record emission · #113's deliverable
-`blueprint`. Depends on **A**. `/jim:partition`, `rename`, and `split` emit
+`blueprint`. Depends on **A**. Also owns the two dereferenceability decisions
+scoped out of A once investigation showed they cannot affect allocation — whether
+the emitter must allocate every rename source, and whether the resolver should
+count a source as known (a source-only id is unresolvable today). Both are
+recorded on #113 with the measured side effects. `/jim:partition`, `rename`, and `split` emit
 redirect records (Shape 1: renumber = new allocation + redirect tombstone), so
 trailers frozen in git history stay dereferenceable; a mass-move batches into one
 CAS; a pre-edit registry fetch surfaces the edit-vs-rename conflict before merge;
@@ -169,15 +173,38 @@ it touches the allocation path rather than a leaf.
 
 ## Sequence
 
-**A alone, first.** It emits nothing, touches one file plus fixtures, and its
-four defects each reproduce in seconds against a crafted log — so it is cheap to
-verify and it is the only item whose window can close.
+Ordered for **correct allocation** — the goal being a flow that cannot hand out
+an id the project already owns. That is a different order than
+what-unblocks-what, because the two biggest gaps are not code in A or B.
 
-**Then B and C in parallel.** B depends on A. C depends on the fail-only-vs-wait
-decision, not on code.
+**1. A, alone.** It emits nothing, touches one file plus fixtures, and each defect
+reproduces in seconds against a crafted log. It is also the only item whose window
+can close, since the live logs still hold no rename record.
 
-**Free-floating:** D, E, F, the hardening build, #118, and the #122 refactor —
-any time, any order. **Decide #129 with C.**
+**2. C — the keystone.** Nothing allocates spec ids through the allocator *at
+all* today: all 64 spec records are `jim-seed`-stamped, so spec-allocation
+correctness is theoretical until the consumer is wired. C's blocker is a decision,
+not code — settle the provisional-spec fork (and #129 with it).
+
+**3. E — the baseline.** A correct fold over records that misrepresent the repo
+still hands out a consumed id. This already happened: three specs post-dating the
+seed were hand-appended, and without that patch the allocator would have reissued
+`platform/009`. Detection (#116) and repair (#130) are what make the registry
+trustworthy rather than hand-maintained.
+
+**4. B, later.** Its allocation-relevant piece is the vacated-ordinal floor —
+`jimfile.sh next-id` floors past vacated ids via the ledger's split/merge events
+while the allocator's fold has no floor record at all. The rest of B (redirect
+emission, citation dereferenceability, the batched mass-move) is a
+dereferenceability story, valuable but not allocation.
+
+**Free-floating:** D, F, the hardening build, #118, and the #122 refactor — any
+time, any order.
+
+**What A does *not* buy.** Correct arithmetic over the records present. It does
+not make the records represent the repo (E), does not make anything go through the
+allocator (C), and does not establish the vacated floor (B). Shipping A is not
+"allocation is now correct."
 
 ## Per-issue disposition (all 20)
 

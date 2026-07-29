@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-29T21:15:31Z
+updated: 2026-07-29T22:01:42Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -119,29 +119,70 @@ All three gates above are being closed ahead of this spec by `platform/011`
 (rename-path correctness), which this work depends on. Two decisions there land
 as constraints on **this** spec and must be settled during its scoping.
 
-### 1. Emit an allocation for every rename source?
+### 1. How a vacated citation dereferences
 
-`platform/011` guarantees the permanent gap two ways: defensively, by counting
-rename *sources* in the high-water so a vacated ordinal is unreclaimable for any
-log shape; and by recording the invariant that every rename source should carry
-its own prior `allocate` record. The defensive fold means this spec **cannot**
-reissue a vacated ordinal even if it emits a rename whose source was never
-allocated — the guarantee no longer depends on the emitter behaving.
+**This is this spec's decision, not `platform/011`'s** — it was scoped there,
+investigated, and moved here because it turns out to be a dereferenceability
+question with no bearing on allocation. `alloc_resolve_spec` /
+`alloc_resolve_issue` have exactly one caller (`cmd_resolve`); the high-water
+folds are called by the allocation builders and `peek`. The two share no state,
+so nothing decided below can affect which id gets allocated.
 
-The open question is whether that is sufficient, or whether this spec should
-*additionally* be required to emit an allocation record for every rename source
-it writes:
+**The problem.** `platform/011` makes the permanent gap unconditional by counting
+rename *sources* in the high-water, so this spec cannot reissue a vacated ordinal
+however it emits. But the resolver's "is this id known to the registry?" gate
+counts an id appearing as an allocation, as a rename *destination*, or as a
+member of a renamed-into group — and **not** as a rename *source*. So an id whose
+only appearance is as a source is unresolvable, even though the replay computes
+the right answer internally and only the gate rejects it:
 
-- **Defensive fold alone** — simpler emitter; the registry may then contain a
-  rename source with no allocation, which is representable but means the log no
-  longer tells the whole story of where an ordinal came from.
-- **Also emit the source's allocation** — the log becomes self-describing (every
-  ordinal traces to an allocation), at the cost of extra records on every
-  renumber and a decision about what to write when the source predates the
-  registry (a seeded id, or one vacated before adoption).
+| Log | `resolve spec dashboard/005` |
+| :--- | :--- |
+| `spec rename dashboard/005 core/001` | **error: not allocated** (rc 1) |
+| `spec allocate dashboard/005 …` then the same rename | `core/001` (rc 0) |
 
-Settle this when scoping; do not let the defensive fold's existence decide it by
-default. Recorded in `platform/011`'s Open Questions as the reciprocal.
+The issue resolver behaves identically. That is precisely the property this spec
+exists to deliver — a trailer frozen in git history staying dereferenceable — so
+the gate's assumption is load-bearing here and nowhere else.
+
+**Three ways to close it.**
+
+1. **Emitter invariant.** Require this spec to emit an `allocate` record for every
+   rename source it writes. Resolution then works and the log is self-describing
+   (every ordinal traces to an allocation), at the cost of extra records per
+   renumber and a decision about sources that predate the registry — a seeded id,
+   or one vacated before adoption. Leaves the read path trusting the writer.
+2. **Resolver gate.** Count a rename source as known, making resolution work
+   regardless of how any emitter behaves.
+3. **Both**, which are not exclusive: 2 makes correctness independent of the
+   writer, 1 still makes the log tell the whole story.
+
+**Measured side effects of option 2**, from a patched copy run against crafted
+logs. It resolves source-only ids as intended (`dashboard/005` → `core/001`), a
+never-mentioned id still errors (`ghost/999` → rc 1), and all four shipped
+resolution behaviors are unchanged. But:
+
+- **Phantom resolution.** An id never allocated, named only by a crafted rename
+  source, resolves: with `spec rename dashbord/007 core/001` present,
+  `resolve spec dashbord/007` returns `core/001` (rc 0; today it errors). One
+  pushed record makes an arbitrary id resolve to a target of the pusher's
+  choosing — the same shape as the silent-namespace-redirect finding on
+  `platform/011`, where the developer ruled that redirects must be **visible**.
+- **Confident answers over incoherent logs.** `spec rename x/001 a/001` followed
+  by `spec rename x/001 b/002` (same source twice, no allocation anywhere)
+  resolves `x/001` to `a/001` — the first record silently wins.
+- **`resolve` stops being an existence oracle.** rc 1 today means "the registry
+  has no knowledge of this id"; after option 2 it narrows to "no record mentions
+  it at all." No consumer depends on that yet, which makes changing it cheap —
+  but this spec and the spec-consumer wiring are what acquire the dependency, so
+  the semantics chosen here is what they inherit. It also gives up a free
+  corruption signal for a log state that should be impossible.
+
+**Recommended framing:** apply the visibility rule the developer already set —
+resolve the citation *and* disclose that it derives from an unallocated source, so
+the phantom and incoherent cases are loud rather than silent. That keeps
+dereferenceability without making `resolve` confidently wrong, and it is a
+`resolve` output-contract decision best taken before any consumer reads the verb.
 
 ### 2. Keep the two next-id surfaces from disagreeing mid-move
 
