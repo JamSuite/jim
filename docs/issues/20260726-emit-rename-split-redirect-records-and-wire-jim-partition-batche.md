@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-29T20:24:43Z
+updated: 2026-07-29T21:03:10Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -102,3 +102,32 @@ are recorded per edge.
 
 See `docs/specs/platform/007-id-coordination-allocator/review.md` (Findings 1
 and 2) for the original trace of the first two.
+
+## Inherited constraint — emit an allocation for every rename source
+
+All three gates above are being closed ahead of this spec by
+`platform/011` (rename-path correctness), which this work depends on. One
+decision there lands as a constraint on **this** spec's emitter and must be
+settled during its scoping.
+
+`platform/011` guarantees the permanent gap two ways: defensively, by counting
+rename *sources* in the high-water so a vacated ordinal is unreclaimable for any
+log shape; and by recording the invariant that every rename source should carry
+its own prior `allocate` record. The defensive fold means this spec **cannot**
+reissue a vacated ordinal even if it emits a rename whose source was never
+allocated — the guarantee no longer depends on the emitter behaving.
+
+The open question is whether that is sufficient, or whether this spec should
+*additionally* be required to emit an allocation record for every rename source
+it writes:
+
+- **Defensive fold alone** — simpler emitter; the registry may then contain a
+  rename source with no allocation, which is representable but means the log no
+  longer tells the whole story of where an ordinal came from.
+- **Also emit the source's allocation** — the log becomes self-describing (every
+  ordinal traces to an allocation), at the cost of extra records on every
+  renumber and a decision about what to write when the source predates the
+  registry (a seeded id, or one vacated before adoption).
+
+Settle this when scoping; do not let the defensive fold's existence decide it by
+default. Recorded in `platform/011`'s Open Questions as the reciprocal.

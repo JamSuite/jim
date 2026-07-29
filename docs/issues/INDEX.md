@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 72
+- Open: 74
 - Closed: 62
 
 ## Issues
@@ -141,6 +141,8 @@
 - `20260728-remove-spec-id-citations-from-issue-group-script-comments` — Remove spec-ID citations from issue-group script comments · status: open · num: 131 · priority: low · created: 2026-07-28T21:39:32Z · labels: [test, convention] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-spec-batch-cas-candidate-batch-allocation-7a-rework` — Spec batch-CAS candidate-batch allocation (§7a rework) · status: open · num: 127 · priority: high · created: 2026-07-28T06:59:35Z · labels: [id-coordination, candidate-batch, cross-group] · origin: docs/specs/issue/010-ordinal-coordination/plan.md
 - `20260728-spec-issue-placement-config-for-issue-content-location` — Spec issue_placement config for issue content location · status: open · num: 126 · priority: medium · created: 2026-07-28T00:47:22Z · labels: [id-coordination, issue] · origin: docs/specs/issue/010-ordinal-coordination/spec.md
+- `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity` — allocate spec under provisional mints an unrealizable identity · status: open · num: P-20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity · priority: medium · created: 2026-07-29T21:02:34Z · labels: [id-coordination, provisional] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
+- `20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins` — Detect duplicate durable ids instead of silent last-wins · status: open · num: P-20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins · priority: low · created: 2026-07-29T21:02:33Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 
 ## Graph
 
