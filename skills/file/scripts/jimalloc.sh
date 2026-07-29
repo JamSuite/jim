@@ -156,11 +156,14 @@ alloc_encode_allocate_issue() {
 
 # alloc_resolve_spec <queried>  (log on stdin)
 #   Forward-replay a spec id to its current name. Replay is anchored at the
-#   queried id's own (last) allocate record so a string later reused does not
-#   inherit an earlier referent's rename history; if the queried id has no
-#   allocate record of its own (it may be the current name a rename produced),
-#   replay runs from the top. Each record applies at most once in file order,
-#   so a reverted rename cycle terminates. rc 1 if the id is invalid or never
+#   queried id's last *establishing* record — an allocate record naming it, or a
+#   rename record naming it as the destination, whichever comes later — so a
+#   string reused by either route does not inherit an earlier referent's rename
+#   history. A rename *source* is a vacating event, not an establishing one, and
+#   does not anchor. If the queried id has no establishing record of its own (it
+#   may be a member of a renamed-into group), replay runs from the top. Each
+#   record applies at most once in file order, so a reverted rename cycle
+#   terminates. rc 1 if the id is invalid or never
 #   appears in the registry (as an allocate id, a rename target, or a member of
 #   a renamed-into group).
 alloc_resolve_spec() {
@@ -177,7 +180,7 @@ alloc_resolve_spec() {
       [[ "$c3" == "$queried" ]] && { anchor=$i; known=1; }
     elif [[ "$c1" == spec && "$c2" == rename ]]; then
       alloc_valid_specid "$c3" && alloc_valid_specid "$c4" || continue
-      [[ "$c4" == "$queried" ]] && known=1
+      [[ "$c4" == "$queried" ]] && { anchor=$i; known=1; }
     elif [[ "$c1" == group && "$c2" == rename ]]; then
       alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
       [[ "$c4" == "$qgroup" ]] && known=1
@@ -202,8 +205,9 @@ alloc_resolve_spec() {
 # alloc_resolve_issue <queried>  (log on stdin)
 #   Resolve an issue citation (an ordinal or a durable full-id) to its current
 #   ordinal, following issue-rename records. A full-id is first mapped to its
-#   ordinal via its allocate record. Same anchoring / cycle-safety discipline
-#   as the spec resolver; issues have no group dimension.
+#   ordinal via its allocate record. Same anchoring / cycle-safety discipline as
+#   the spec resolver — the anchor is the ordinal's last establishing record,
+#   allocate or rename destination; issues have no group dimension.
 alloc_resolve_issue() {
   local queried="$1"
   local -a lines=(); mapfile -t lines
@@ -230,7 +234,7 @@ alloc_resolve_issue() {
       [[ "$c3" == "$target" ]] && { anchor=$i; known=1; }
     elif [[ "$c1" == issue && "$c2" == rename ]]; then
       [[ "$c3" =~ ^[0-9]+$ && "$c4" =~ ^[0-9]+$ ]] || continue
-      [[ "$c4" == "$target" ]] && known=1
+      [[ "$c4" == "$target" ]] && { anchor=$i; known=1; }
     fi
   done
   local current="$target"
