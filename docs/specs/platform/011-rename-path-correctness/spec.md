@@ -3,7 +3,7 @@ title: "Rename-path correctness gates"
 type: bug
 group: "platform"
 id: "011"
-status: draft
+status: approved
 origin:
   - "docs/issues/20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche.md"
   - "docs/issues/20260727-align-reconcile-high-water-with-alloc-next-num-issue.md"
