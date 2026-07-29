@@ -1,6 +1,6 @@
 ---
 spec: "docs/specs/platform/011-rename-path-correctness/spec.md"
-status: Needs PM Review
+status: Active
 date: "2026-07-29"
 ---
 
@@ -163,6 +163,12 @@ say the *ordinal* is correct and leave the returned prefix out of scope. Blast
 radius is contained — the allocator's `peek spec` / `allocate spec` are the only
 callers, and `jimfile.sh next-id` (which `/jim:spec` and `/jim:partition` use
 today) is a separate tree-scan implementation this spec does not touch.
+
+**Resolved 2026-07-29 — option two.** The developer settled it after the security
+review reached the same gap from the attacker's side (one crafted `group rename`
+record silently redirecting a namespace): redirects must be visible, so the
+answering verb names the redirect it applied. The criterion now states it, and
+this signal is closed — status moved to `Active`.
 
 **For the architect — one stale anchor to distrust.** `platform/009`'s review
 cites `alloc_reconcile_realize`'s high-water at `:349-355`; it now sits at

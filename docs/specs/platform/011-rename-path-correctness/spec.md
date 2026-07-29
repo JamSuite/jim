@@ -111,16 +111,22 @@ reproduced by driving the allocator against a crafted registry log.
 - [ ] A vacated ordinal is never reissued, for **every** log shape — including a
       rename source that carries no allocation record of its own. The guarantee
       does not rest on an assumption about how records were emitted.
-- [ ] Miscounting errs only toward skipping: a malformed or never-allocated
-      record may cause an id to be passed over — a permanent gap — but can never
-      make an already-consumed id available again.
+- [ ] Miscounting errs only toward skipping, and only within bounds: a malformed
+      or never-allocated record may cause an id to be passed over — a permanent
+      gap — but can never make an already-consumed id available again, and can
+      never drive the next id past the largest ordinal the registry's own
+      bootstrap will accept. An out-of-range ordinal is skipped as malformed
+      rather than counted, so no single record can push a group beyond the point
+      where the registry can still be rebuilt from the tree.
 - [ ] After a group is renamed, the next id for that group accounts for every
       ordinal the group holds under its current and former names, so the
       allocator never offers an id that resolution reports as already taken.
       This holds across a multi-hop chain of group renames.
 - [ ] Asking for the next id of a group that has been renamed away answers for
       the group's current name — the allocator never mints into a retired
-      namespace.
+      namespace — and the answer names the redirect it applied, so a caller can
+      see that the group it received is not the group it asked about. A redirect
+      is never applied silently.
 - [ ] The next ordinal a normal allocation would issue and the ordinal a
       reconcile pass would realize a pending provisional onto are the same value
       for every log shape, including logs containing malformed records.
@@ -279,6 +285,15 @@ flowchart TD
   destination).
 - [x] ~What does the next id answer for a group renamed away?~ → The current
   group's next id; never mint into a retired namespace.
+- [x] ~The answer's group prefix can then differ from the one asked about, on a
+  public verb — is that left implicit?~ → No. Redirects must be **visible**: the
+  answer names the redirect it applied. Settles both the security review's silent-
+  namespace-redirect finding and research's return-contract signal, which are the
+  same gap seen from the attacker's side and the caller's side.
+- [x] ~Is the conservative-fold direction guarantee enough on its own?~ → No, it
+  needs a bound too. A single crafted record could otherwise inflate a group past
+  the ordinal range the registry's bootstrap accepts, minting ids the registry can
+  never be rebuilt from — recoverability, not reuse.
 - [ ] Should the rename-emitting follow-on additionally be *required* to emit an
   allocation record for every rename source (the invariant half of the D2
   decision), or is the defensive fold sufficient on its own? Recorded here as a
