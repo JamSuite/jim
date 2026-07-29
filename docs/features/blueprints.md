@@ -2,11 +2,11 @@
 
 ## The short version
 
-Blueprints capture intent and constraints, which guide development. Spec groups can be mapped to code territory within your application, logically binding Jim to the application structure. It works best if your app uses a domain-vertical architecture. Each group has a blueprint that declares what it provides, and what it requires, and you build a contract graph. Jim checks code against contracts and intent as it's being developed, and agents gain a new "view" of the application.
+A project accrues its own architectural intent and constraints as it grows — but your attention, and your agent's, is local to whatever you're building right now. Rules you just decided silently rot across the code nobody is currently looking at; mechanical tooling can't check the *project-specific* rules you actually care about; and reconstructing "what is the architecture, right now" means re-ingesting `ARCHITECTURE.md`, dozens of specs, and git history every time, reasoned a little differently on each pass.
 
-Enable blueprints by first blueprinting a spec group: `/jim:blueprint <group>` then create the project map: `/jim:blueprint`. Once a group's blueprint exists, it's hooked into Jim's SDLC.
+Blueprints are **a continuous alignment layer over your existing tooling** — an *architectural* tool, complementing and optionally integrating your project's toolchain. A blueprint is a current, present-tense specification of a spec group — what it **provides**, what it **requires**, and the load-bearing **invariants** that must hold — and Jim checks the code against it as you develop, across *all* the code, not just the change in front of you. Map spec groups to code territory and the group blueprints join into a cross-group **contract graph**, so a plan's blast radius is on the table before any code is written, and you and your agent get a current, trustworthy view of cross-cutting structure that's otherwise expensive to reconstruct. It works best when your app uses a domain-vertical architecture.
 
-You can optionally configure calls to project tooling for deeper integration. See [Configuration](#configuration) for all the knobs.
+Enable blueprints by first blueprinting a spec group — `/jim:blueprint <group>` — then creating the project map: `/jim:blueprint`. Once a group's blueprint exists, it's hooked into Jim's SDLC. You can optionally register your project's own tooling for deeper integration; see [Configuration](#configuration).
 
 ## The long version
 
@@ -107,7 +107,7 @@ Each reconcile also measures the graph it just wrote — edge density, cycle clu
 
 — reported criticality-first, violations offered as issues, outcome counts self-committed to the group's blueprint ledger. The engine is read-only toward the project: it reports, never fixes.
 
-Checks run on a three-tier ladder:
+Checks run on a three-tier ladder that composes as defense-in-depth over your existing tooling — a deterministic floor, your own registered commands, and, the part pre-LLM tooling structurally can't provide, adversarial judges that reason about whether the group's *declared intent* still holds:
 
 1. **The mechanical floor** — zero-config, deterministic, always runs, never appetite-gated: `pattern` (must-match / must-not-match) and `structure` (existence, naming, containment) checks scoped to the group's territory, plus territory conformance itself — code attributed to the group that falls outside its declared territory is a violation.
 2. **The operator registry** — project tooling (linters, type checkers, test runners) wired through `verify_command_<name>` config keys. This is the data→execution boundary made concrete: a blueprint can only *name* a registry entry; only your config can supply a command. Content recorded in a blueprint, code, or any scanned artifact can never introduce, alter, or activate an executable command — an unregistered name reports `unconfigured` and executes nothing. Commands are timeout-bounded, and one crash folds into that one check's outcome.
