@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-29T21:14:28Z
+updated: 2026-07-29T21:15:31Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -31,9 +31,19 @@ Follow-on to `platform/007` (foundation); this is the `blueprint`-group consumer
 
 **Three** latent edges in `platform/007`'s **frozen** resolution / next-id
 semantics. None is reachable in the foundation build (it emits allocate records
-only), but this follow-on is the first to emit rename records — so all three
-must be closed here, **before** the first rename/group-rename record lands, or a
-citation mis-resolves and a consumed ordinal is reissued. Add fixtures for each.
+only), but this follow-on is the first to emit rename records — so all three must
+close **before** the first rename/group-rename record lands, or a citation
+mis-resolves and a consumed ordinal is reissued.
+
+**They are no longer this spec's work.** They were split out to
+`platform/011` (rename-path correctness) as `platform`-group read-path fixes,
+leaving this spec the `blueprint`-group emission it actually describes; this
+spec depends on that one. The edges stay documented here because this spec is
+what makes them reachable, and because two of the decisions taken there bind
+this spec's emitter (see *Inherited constraints* below). Research for
+`platform/011` found the high-water defect at a **third** site the two review
+notes did not name — `alloc_reconcile_realize` — so treat the per-edge fix notes
+below as the original trace, not the implementation plan.
 
 Two came from the `platform/007` post-build review; the third surfaced when
 those two were re-verified. All three were reproduced by executing the functions
