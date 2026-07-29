@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 75
-- Closed: 59
+- Open: 72
+- Closed: 62
 
 ## Issues
 
@@ -115,7 +115,7 @@
 - `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold` — script-preamble rule vs source-inherited preambles: fix or fold · status: closed · num: 99 · priority: medium · created: 2026-07-25T08:04:41Z · labels: [partition] · origin: BLUEPRINT.md
 - `20260726-add-a-per-file-must-each-polarity-to-the-verify-mechanical-floor` — Add a per-file must-each polarity to the verify mechanical floor · status: open · num: 109 · priority: medium · created: 2026-07-26T07:09:09Z · labels: [verify, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/spec.md
 - `20260726-add-an-only-door-verification-sweep-for-the-id-registry` — Add an only-door verification sweep for the id registry · status: open · num: 116 · priority: medium · created: 2026-07-26T19:02:01Z · labels: [id-coordination, verify] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
-- `20260726-add-provisional-and-reconcile-unreachable-origin-mode` — Add provisional and reconcile unreachable-origin mode · status: open · num: 115 · priority: medium · created: 2026-07-26T19:02:00Z · labels: [id-coordination, config] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-add-provisional-and-reconcile-unreachable-origin-mode` — Add provisional and reconcile unreachable-origin mode · status: closed · num: 115 · priority: medium · created: 2026-07-26T19:02:00Z · labels: [id-coordination, config] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-declare-tests-jimalloc-sh-in-platform-territory` — Declare tests/jimalloc.sh in platform territory · status: open · num: 120 · priority: low · created: 2026-07-26T22:39:36Z · labels: [partition, blueprint] · origin: docs/specs/platform/007-id-coordination-allocator/review.md
 - `20260726-declare-tests-scripthygiene-sh-in-platform-territory` — Declare tests/scripthygiene.sh in platform territory · status: open · num: 110 · priority: low · created: 2026-07-26T08:40:11Z · labels: [partition, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/plan.md
 - `20260726-document-coordination-branch-protection-and-team-setup` — Document coordination-branch protection and team setup · status: open · num: 118 · priority: medium · created: 2026-07-26T19:02:03Z · labels: [id-coordination, docs] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
@@ -124,9 +124,9 @@
 - `20260726-neutralize-pathspec-magic-in-jimledger-commit-pathspec-calls` — Neutralize pathspec magic in jimledger commit-* pathspec calls · status: open · num: 108 · priority: medium · created: 2026-07-26T05:56:09Z · labels: [platform, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/review.md
 - `20260726-neutralize-pathspec-magic-in-jimpartition-rewrite-identity-rewri` — Neutralize pathspec magic in jimpartition rewrite-identity/rewrite-refs · status: open · num: 107 · priority: medium · created: 2026-07-26T04:46:06Z · labels: [partition, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/research.md
 - `20260726-retry-the-unreachable-detection-path-and-generalize-the-exhausti` — Retry the unreachable-detection path and generalize the exhaustion message · status: open · num: 119 · priority: low · created: 2026-07-26T22:39:35Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/007-id-coordination-allocator/review.md
-- `20260726-seed-the-id-coordination-registry-from-existing-artifacts` — Seed the id-coordination registry from existing artifacts · status: open · num: 114 · priority: high · created: 2026-07-26T19:01:58Z · labels: [id-coordination, migration] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-seed-the-id-coordination-registry-from-existing-artifacts` — Seed the id-coordination registry from existing artifacts · status: closed · num: 114 · priority: high · created: 2026-07-26T19:01:58Z · labels: [id-coordination, migration] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` — Wire spec-ID allocation onto the id-coordination allocator · status: open · num: 112 · priority: high · created: 2026-07-26T19:01:56Z · labels: [id-coordination, spec] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
-- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` — Wire the issue display ordinal onto the id-coordination allocator · status: open · num: 111 · priority: high · created: 2026-07-26T19:01:55Z · labels: [id-coordination, issue] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` — Wire the issue display ordinal onto the id-coordination allocator · status: closed · num: 111 · priority: high · created: 2026-07-26T19:01:55Z · labels: [id-coordination, issue] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260727-add-tests-jimalloc-sh-to-platform-map-territory` — Add tests/jimalloc.sh to platform map territory · status: open · num: 125 · priority: low · created: 2026-07-27T11:03:18Z · labels: [blueprint, territory] · origin: docs/specs/platform/009-provisional-reconcile/review.md
 - `20260727-align-reconcile-high-water-with-alloc-next-num-issue` — Align reconcile high-water with alloc_next_num_issue · status: open · num: 124 · priority: low · created: 2026-07-27T11:03:17Z · labels: [id-coordination, robustness] · origin: docs/specs/platform/009-provisional-reconcile/review.md
 - `20260727-align-seed-landing-with-the-allocation-cas-path` — Align seed landing with the allocation CAS path · status: open · num: 122 · priority: low · created: 2026-07-27T05:34:22Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/008-registry-seed/review.md
@@ -183,6 +183,21 @@
 - `20260711-add-a-territory-name-mismatch-partition-health-sensor` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
 - `20260712-record-and-sense-chronic-domain-domain-straddle-flags` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
 - `20260725-give-retired-group-directories-a-sanctioned-end-of-life` --related-to--> `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold`
+- `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato`
+- `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator`
+- `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
+- `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260727-align-reconcile-high-water-with-alloc-next-num-issue`
+- `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox`
+- `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
+- `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude`
+- `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260727-align-seed-landing-with-the-allocation-cas-path`
+- `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
+- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-remove-spec-id-citations-from-issue-group-script-comments`
+- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-spec-issue-placement-config-for-issue-content-location`
+- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-spec-batch-cas-candidate-batch-allocation-7a-rework`
+- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew`
+- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
+- `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
 
 ## Integrity Warnings
 
