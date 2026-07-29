@@ -21,6 +21,12 @@ criteria leave implicit rather than defects in them; both were reproduced by
 executing the allocator. LINDDUN is omitted — no PII, credentials, or session
 data is read by any changed path.
 
+**Both Spec-routed findings were applied to `spec.md` in this same run** (see
+Routing Recommendations). `status:` stays `Needs Spec Review` because it describes
+what this review *found* — two Notable findings whose fix lived in the spec — not
+whether the fix has since landed. The two Plan-routed findings remain open by
+design; planning has not run.
+
 ## Coverage
 
 - spec.md — reviewed 2026-07-29 (requirements-gap lens)
