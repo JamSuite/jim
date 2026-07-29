@@ -181,25 +181,46 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
 - **Route:** Plan
 - **Relates to:** Design Decision 3; the bounded-miscounting criterion; Finding 1.
 
-### 6. stderr is a discardable channel, so "never silently" holds by convention, not construction
+### 6. The redirect is visible to a human but not named in the machine contract
 
 - **Severity:** Notable
-- **Description:** The spec requires that a redirect is named and "never applied
-  silently"; Design Decision 5 satisfies that by writing the advisory to stderr,
-  correctly reasoning that stdout is a parsed contract. Today that works — no
-  in-tree caller of `jimalloc.sh` suppresses stderr, and `new.sh:99` captures with
-  `$(…)`, which passes stderr through. But the property is not structural: any
-  consumer that redirects `2>/dev/null` — a pattern already present in this
-  codebase, and the subject of a tracked finding on `reconcile.sh` — silently
-  discards the only signal that a different group answered. The consumer that
-  makes this reachable, the spec-ID wiring, is not written yet, so the plan is
-  choosing a mechanism whose guarantee depends on code that does not exist.
-- **Suggestion:** Either make the redirect non-discardable — have `peek`/`allocate`
-  refuse to answer for an aliased group unless the caller explicitly accepts the
-  redirect, which turns silent-substitution into an opt-in — or record the
-  stderr-propagation obligation as an explicit consumer contract in the plan's
-  Interface Contracts, so the spec-ID wiring inherits it rather than rediscovering
-  it. The first is stronger and matches jim's preview-then-apply doctrine.
+- **Description:** The spec requires a redirect to be named and "never applied
+  silently"; Design Decision 5 satisfies that with a stderr advisory, reasoning
+  that stdout is a parsed contract. **The channel is sounder than it first
+  appears** — an earlier draft of this finding overstated the risk. jim's
+  documented standard invocation is `!`-injection, which substitutes stdout only
+  (`ARCHITECTURE.md:383`), but `ARCHITECTURE.md:503` *forbids* `!`-injection for
+  any call carrying a runtime-value placeholder like `<group>`: the primitive
+  tokenizes bash at load time and unquoted angle brackets hard-fail the parser.
+  Every id-resolution call site is therefore a fenced block run through the Bash
+  tool, where stderr does reach the agent — and it is structurally forced to stay
+  that way. All four in-tree call sites confirm it, and no caller suppresses
+  stderr today.
+
+  What remains is not the channel but the **contract**. Two residual paths:
+  `skills/partition/SKILL.md:413` documents its input as "passed **verbatim from
+  `jimfile.sh next-id <target>` stdout**" — an explicitly stdout-only contract
+  that would carry a redirect out of band if ever repointed at the allocator; and
+  a future script consumer capturing with `$(… 2>/dev/null)` drops the notice,
+  while `$(… 2>&1)` is worse — it folds the advisory prose *into* the captured id.
+  The consumer that makes either reachable, the spec-ID wiring, is unwritten, so
+  the guarantee currently rests on habits rather than a stated obligation.
+- **Suggestion:** The machine-visible signal **already exists and needs no new
+  channel**: `allocate spec dashboard …` returns `ui/003`, so the returned id
+  carries the group, and a redirect is detectable by comparing the group asked for
+  against the group received. The gap is that no contract says so — a consumer may
+  reasonably assume the returned prefix is the one it passed. State in the
+  Interface Contracts that the returned group is authoritative and may differ from
+  the requested one, and carry that to the spec-ID wiring as an inherited
+  constraint. That makes the disclosure structural at zero cost, with stderr
+  remaining the human-facing courtesy.
+
+  Note what the stricter alternative would cost: having `peek`/`allocate` *refuse*
+  an aliased group unless the caller acknowledges the redirect is non-discardable
+  by construction, but it contradicts the spec criterion as written — "asking for
+  the next id of a group that has been renamed away **answers** for the group's
+  current name." Choosing refusal means amending that criterion, not just the
+  plan.
 - **Route:** Plan
 - **Relates to:** Design Decision 5; the renamed-away-group criterion; Finding 2.
 
@@ -252,13 +273,15 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
 
 ## Artifact Misalignment
 
-- **Finding 6 — the visibility requirement and the chosen channel.** The spec
-  requires a redirect to be named and never applied silently; the plan satisfies
-  it via stderr, which any consumer can discard. The spec asserts a property the
-  plan's design does not preserve by construction — it holds only while every
-  caller propagates stderr, and the caller that makes this reachable is unwritten.
-  Route: Plan (the spec's requirement is right; the mechanism is what needs
-  strengthening).
+- **Finding 6 — the visibility requirement reaches humans but is unstated for
+  machines.** The spec requires a redirect to be named and never applied silently.
+  The plan's stderr advisory delivers that to a human, and the invocation shape is
+  structurally forced to keep stderr reachable. But nothing in the contract tells a
+  *program* that the group it receives may differ from the group it asked for, so a
+  consumer can honor the letter of the plan and still substitute one group for
+  another without noticing. Route: Plan — the spec's requirement is right and the
+  channel is adequate; what is missing is the contract sentence that makes the
+  returned id's own group the disclosure.
 - **Finding 5 is a design flaw, not a misalignment.** The spec asks that
   miscounting never free a consumed id and never exceed what the bootstrap
   accepts; the plan honors both. It simply chose an exhaustion behavior the spec
@@ -286,8 +309,12 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
   their own allocation record, so the fold still counts everything for the gap
   guarantee but one crafted ceiling record cannot close a group. Fixture the
   crafted-ceiling case.
-- **Finding 6:** make the redirect non-discardable (refuse-unless-acknowledged) or
-  record the stderr-propagation obligation as an explicit consumer contract.
+- **Finding 6:** state in the Interface Contracts that the returned group is
+  authoritative and may differ from the requested one — the returned id already
+  carries the redirect, so this makes the disclosure structural without a new
+  channel. Carry it to the spec-ID wiring as an inherited constraint. (The
+  refuse-unless-acknowledged alternative is stronger but contradicts the
+  renamed-away-group criterion, so it would need a spec amendment too.)
 - **Finding 7:** require a group-rename cycle fixture and a multi-hop fixture in
   task 4 — the termination rule is currently comment-only and untested.
 - **Finding 8:** specify memoized lazy chain resolution rather than eager closure.
