@@ -42,73 +42,66 @@ rather than six coordinated edits, and D1 becomes a two-line fix.
 - **Rejected:** One helper returning both — couples the shared function to one
   caller's shape, for no measurable gain at this scale.
 
-### 3a. [NEEDS CLARIFICATION] The gap guarantee and a fixed ceiling cannot both hold unconditionally
+### 3. One ordinal-legality value, shared by the fold and the bootstrap
 
-Routing security Finding 5 (Critical) revealed that its suggested fix does not
-work as stated, and that the conflict is between two spec criteria rather than
-inside the plan. **This blocks task 6/7 and needs a decision.**
+- **Chosen:** A single constant, `ALLOC_MAX_ORD_DIGITS=15`, governing both kinds
+  and both sides. The fold skips any ordinal with more digits as malformed. The
+  seed's spec guard — today a *value* cap at 999 (`jimalloc.sh:469`) — is relaxed to
+  the same digit-length check, and its issue guard (already a length check at 15,
+  `:516`) repoints at the constant. `alloc_next_id_spec` refuses only if `max+1`
+  would exceed that width, which no plausible ordinal reaches.
+- **Why:** The requirement is *recoverability* — every ordinal the allocator mints
+  must be one the bootstrap accepts, so the tree can always be rebuilt into a
+  registry. A ceiling on allocation was one way to state that, and the wrong one:
+  it made the gap guarantee and the ceiling unsatisfiable together (see 3a) and
+  turned one crafted record into a permanent denial. Aligning the *guard* upward
+  satisfies the same requirement with no reachable ceiling, and the issue path
+  already proves the length-cap form in this very file. One value read by both
+  sides is also what the criterion now asks for literally.
+- **Rejected:** Bounding the allocator at 999 to match the seed — the original
+  choice. It inverted the dependency: an arbitrary parsing sanity-check became a
+  hard limit on allocation, which is what created the Critical.
+- **Rejected:** Clamping instead of refusing at the width limit — would hand back
+  an ordinal the group already owns, turning a loud stop into a collision.
+- **Rejected:** Two independent thresholds — two values drifting apart is the same
+  class of bug as D4, and the first draft of this plan reintroduced exactly that.
+- **Accepted consequence:** an ordinal wider than three digits sorts oddly among
+  its siblings (`1000-g` falls between `099-d` and `100-e` lexically). That only
+  arises from a crafted or absurd record — an anomaly to delete, not a state to
+  design ordering around. Re-padding every directory to fix it would be a mass
+  rename, which needs rename records, which needs the follow-on this spec gates.
 
-The two criteria:
+### 3a. Why the ceiling was the wrong shape — resolution record
 
-- *"A vacated ordinal is never reissued, for **every** log shape — including a
-  rename source that carries no allocation record of its own. The guarantee does
-  not rest on an assumption about how records were emitted."* → the returned id
-  must always exceed the folded high-water, which is attacker-controlled.
-- *"…can never drive the next id past the largest ordinal the registry's own
-  bootstrap will accept."* → the returned id must never exceed a fixed ceiling.
+Routing security Finding 5 showed its own suggested fix did not work, and that
+three of the four candidate resolutions failed. Kept because the failures are the
+reason Design Decision 3 looks the way it does.
 
-A crafted record carrying an ordinal *at* the ceiling makes these unsatisfiable
-simultaneously: the first demands 1000, the second forbids it. Finding 5's
-suggestion — "derive exhaustion from corroborated ordinals only" — does not
-resolve it, because the *returned value* still has to clear the uncorroborated
-high-water the first criterion mandates.
+The conflict: the gap guarantee requires the returned id to exceed a high-water
+that is **attacker-appendable**, while a ceiling forbids exceeding a fixed value. A
+crafted record carrying an ordinal *at* the ceiling makes both unsatisfiable — one
+demands 1000, the other forbids it.
 
-Three ways out, each giving up something:
+- **Counting only corroborated ordinals** (Finding 5's suggestion) — *rejected, does
+  not work.* An attacker appends `spec allocate dashboard/999 x <date> <who>` just
+  as easily as a rename; verified to drive the high-water to 999. Corroboration
+  separates malformed logs from well-formed ones, never attacker records from
+  legitimate ones, because both are well-formed.
+- **Amending the gap criterion to exempt uncorroborated ordinals** — *rejected*,
+  mechanically identical to the above and inheriting the same hole, while also
+  revisiting a settled decision for no security gain.
+- **Widening the ceiling to four digits** — *rejected.* Moves the problem rather
+  than removing it, and fixing the resulting sort order requires re-padding every
+  existing directory: a mass rename that needs rename records, which this spec
+  gates. Circular.
+- **Aligning the bootstrap's guard upward** — *chosen* (Design Decision 3).
 
-1. **Count only corroborated ordinals** (those with an `allocate` record
-   somewhere). Removes the inflation vector entirely and needs no ceiling change.
-   Justification: `platform/007` guarantees an allocation is durably recorded
-   *before* the id is returned, so an ordinal with no allocate record was never
-   allocated — reissuing it collides with no real work, and the erosion guard
-   already covers the lost-record case by hard-failing. **Cost:** contradicts the
-   first criterion, and D2's own reproduction (`spec rename dashboard/005
-   core/001` alone) stops being a defect — which reverses the developer's earlier
-   "fold defensively *and* record the invariant" decision, pushing correctness
-   back onto the emitter (#113's inherited constraint 1).
-2. **Widen the ceiling** so 4+ digit ordinals are legal in both the allocator and
-   the seed. Keeps both criteria literally satisfiable and converts the DoS into
-   cosmetic damage (an absurd but usable `dashboard/1000000`), bounded by the
-   seed's 15-digit cap. **Cost:** `%03d` formatting, directory-name shape, and any
-   consumer assuming three digits all change; inflation is still possible, just no
-   longer fatal.
-3. **Amend the first criterion** to exempt uncorroborated ordinals explicitly —
-   the same substance as 1, but arrived at honestly by narrowing the spec rather
-   than by the plan quietly not honoring it.
-
-Recommended: **3** (which is 1 with the spec told the truth). The first
-criterion's "every log shape" defends against a state `platform/007`'s durability
-guarantee already prevents, and paying for that defense buys a one-record denial
-vector. But it does revisit a settled decision, so it is the developer's call.
-
-Until this resolves, Design Decision 3 below describes the *unamended* intent and
-should not be implemented as written.
-
-### 3. Magnitude bound reuses the seed's thresholds; exhaustion is a hard failure
-
-- **Chosen:** Two constants, `ALLOC_MAX_SPEC_ORD=999` and
-  `ALLOC_MAX_ISSUE_DIGITS=15`, matching the seed's existing guards. The fold
-  *skips* an out-of-range ordinal as malformed; `alloc_next_id_spec` *errors* when
-  `max+1` would exceed the bound.
-- **Why:** The security review showed one crafted record can otherwise inflate a
-  group arbitrarily, and that the allocator mints 4-digit spec ordinals the seed
-  refuses — an id the registry can never be rebuilt from. Skipping bad inputs
-  stops the inflation; erroring on genuine exhaustion is the only way to honor
-  "can never drive the next id past what the bootstrap accepts." Reusing the
-  seed's own numbers is what makes the two agree by construction.
-- **Rejected:** Clamping to the bound instead of erroring — would silently hand
-  back an ordinal the group already owns, turning a loud stop into a collision.
-- **Rejected:** A new, independent bound — two thresholds drifting apart is the
-  same class of bug as D4.
+What it does and does not buy: the vector is not eliminated — an ordinal at the
+width limit still refuses. What changes is *plausibility*. A record claiming 999 is
+indistinguishable from legitimate history, so it cannot be safely deleted; a record
+claiming fifteen nines is self-evidently crafted and its removal is
+uncontroversial. This is the same trade accepted for the redirect refusal —
+visibility over prevention, when the input is attacker-appendable and unbounded.
 
 ### 4. Group aliasing resolves the chain once into a map
 
@@ -216,14 +209,14 @@ completion gate, not by a task here.
 
 ```bash
 # ─── New constants ───────────────────────────────────────────────────────────
-ALLOC_MAX_SPEC_ORD=999        # the seed's spec-ordinal guard, single-sourced
-ALLOC_MAX_ISSUE_DIGITS=15     # the seed's issue-num length cap, single-sourced
+ALLOC_MAX_ORD_DIGITS=15       # one legality value for both kinds and both sides
 
-# The seed currently carries these as literals (a bare 999 in
-# alloc_seed_derive_specs, a bare 15 in the issue-num path). Both switch to these
-# constants: a threshold duplicated in two places is the same drift this spec
-# exists to remove, so the fold and the bootstrap must read one value, not two
-# that happen to match today.
+# The seed currently carries two literals of two different SHAPES: a value cap
+# (`10#$ord > 999`) for spec ordinals and a length cap (`${#num} > 15`) for issue
+# numbers. Both become this one digit-length constant — the value cap is the
+# arbitrary one, and inverting it into a hard limit on allocation is what produced
+# the Critical. The fold and the bootstrap must read one value, not two that happen
+# to agree today.
 
 # ─── New helpers (log on stdin, pure, no git) ────────────────────────────────
 
@@ -239,14 +232,14 @@ ALLOC_MAX_ISSUE_DIGITS=15     # the seed's issue-num length cap, single-sourced
 # alloc_fold_max_spec <group>                 (spec log on stdin) → integer
 #   Highest ordinal held by <group> under its current OR former names. Folds
 #   `spec allocate` ids, `spec rename` destinations, AND `spec rename` sources.
-#   Group membership is decided through alloc_group_alias_map. An ordinal above
-#   ALLOC_MAX_SPEC_ORD is skipped as malformed. Prints 0 when the group holds
-#   none. Never lowers a value; never writes stderr.
+#   Group membership is decided through alloc_group_alias_map. An ordinal wider
+#   than ALLOC_MAX_ORD_DIGITS is skipped as malformed. Prints 0 when the group
+#   holds none. Never lowers a value; never writes stderr.
 
 # alloc_fold_max_issue                        (issue log on stdin) → integer
 #   Highest issue ordinal. Folds `issue allocate` ids, `issue rename`
 #   destinations, AND `issue rename` sources. An ordinal whose digit length
-#   exceeds ALLOC_MAX_ISSUE_DIGITS is skipped as malformed. Prints 0 when the
+#   exceeds ALLOC_MAX_ORD_DIGITS is skipped as malformed. Prints 0 when the
 #   log holds none.
 
 # ─── Rewired existing functions (public behavior) ────────────────────────────
@@ -261,7 +254,10 @@ ALLOC_MAX_ISSUE_DIGITS=15     # the seed's issue-num length cap, single-sourced
 #   without needing any other channel.
 #
 #   Two documented failure modes, which a consumer must distinguish:
-#     rc 1 + "group exhausted"      — max+1 exceeds ALLOC_MAX_SPEC_ORD.
+#     rc 1 + "group exhausted"      — max+1 would exceed ALLOC_MAX_ORD_DIGITS
+#                                     digits. Unreachable for plausible ordinals;
+#                                     in practice it means a crafted record sits
+#                                     at the width limit.
 #                                     TERMINAL: acknowledging changes nothing.
 #     rc 1 + "group renamed"        — <group> has been renamed away and
 #                                     --follow-redirect was not passed. The
@@ -332,17 +328,19 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
    transitively resolved, malformed records skipped.
    **Verify:** `bash tests/jimalloc.sh group_alias_map | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed'`
 
-5. [ ] Add failing fixtures for D2 and the magnitude bound: a rename source with
-   no allocation of its own must raise the high-water; an out-of-range ordinal
-   must be skipped rather than counted; a group at the ceiling must fail rather
-   than mint an id the seed refuses.
+5. [ ] Add failing fixtures for D2 and ordinal legality: a rename source with no
+   allocation of its own must raise the high-water; an ordinal wider than the
+   legality limit must be skipped rather than counted; a 4-digit ordinal must mint
+   *and* seed successfully (the recoverability criterion — this is the case that
+   fails today, since the allocator mints it and the seed refuses it).
    **Verify:** `bash tests/jimalloc.sh fold_max | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, [1-9][0-9]* failed'`
 
-6. [ ] Add `alloc_fold_max_spec` / `alloc_fold_max_issue` and the two bound
-   constants per the Interface Contract — counting rename sources, deciding group
-   membership through the alias map, skipping out-of-range ordinals — and repoint
-   the seed's two literal thresholds at the same constants so one value governs
-   both the fold and the bootstrap. Depends on tasks 4, 5.
+6. [ ] Add `alloc_fold_max_spec` / `alloc_fold_max_issue` and the single
+   `ALLOC_MAX_ORD_DIGITS` constant per the Interface Contract — counting rename
+   sources, deciding group membership through the alias map, skipping over-wide
+   ordinals — and repoint **both** seed guards at that constant, relaxing the spec
+   guard from its value cap to the shared digit-length check so the allocator can
+   never mint what the bootstrap refuses. Depends on tasks 4, 5.
    **Verify:** `bash tests/jimalloc.sh fold_max | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed' && [ "$(grep -cE '10#\$ord > 999|\$\{#num\} > 15' skills/file/scripts/jimalloc.sh)" = 0 ]`
 
 7. [ ] Rewire `alloc_next_id_spec` onto the new helpers with both documented
@@ -386,8 +384,9 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
 | :--- | :--- |
 | Rename-destination-established id resolves to its current referent (spec + issue) | 1, 2 |
 | Resolution reflects the most recent establishing event | 1, 2 |
-| Vacated ordinal never reissued for every log shape, including an unallocated source **[NEEDS CLARIFICATION: conflicts with the ceiling criterion — see Design Decision 3a]** | 5, 6, 7 — blocked |
-| Miscounting errs only toward skipping, and only within bounds **[NEEDS CLARIFICATION: same conflict — see Design Decision 3a]** | 5, 6, 7 — blocked |
+| Vacated ordinal never reissued for every log shape, including an unallocated source | 5, 6, 7 |
+| Miscounting errs only toward skipping | 5, 6 |
+| Every ordinal the allocator mints is one the bootstrap accepts, from one shared value | 5, 6 |
 | Next id accounts for ordinals under current and former group names, multi-hop | 3, 4, 6, 7 |
 | Renamed-away group answers for its current name and names the redirect applied | 3, 7 |
 | Allocation and reconcile agree on the next ordinal for every log shape | 8, 9 |
@@ -397,10 +396,10 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
 | Registry-read values revalidated through the id/slug boundary before use | 4, 6 (alias tokens), 9 (durable-id gate) |
 | Bash + POSIX conventions, parse as data, no third-party deps | 12 (suite includes the hygiene sweep) |
 
-**Two `[NEEDS CLARIFICATION]` items**, both the same conflict: the gap guarantee's
-"every log shape" and the ceiling criterion cannot both hold unconditionally
-(Design Decision 3a). Tasks 5–7 are blocked on that decision; every other task is
-unaffected and can proceed.
+No `[NEEDS CLARIFICATION]` items — every criterion maps to a task. The conflict
+that blocked tasks 5–7 is resolved: the ceiling criterion was replaced with a
+recoverability one (Design Decisions 3 and 3a), which the gap guarantee no longer
+contradicts.
 
 ## Out of Scope
 
@@ -429,12 +428,14 @@ unaffected and can proceed.
   is the evidence that convention-kept agreement fails.
 - [x] ~~Where does the redirect advisory go?~~ → stderr; stdout is a parsed
   contract about to acquire consumers.
-- [x] ~~What magnitude bound?~~ → The seed's own thresholds, so the allocator and
-  the bootstrap agree by construction.
-- [x] ~~Clamp or error on exhaustion?~~ → Error; clamping would hand back an
+- [x] ~~What magnitude bound?~~ → Not a bound on allocation at all. One shared
+  digit-length value, with the seed's arbitrary 999 guard relaxed up to meet it,
+  so the allocator can never mint what the bootstrap refuses (Design Decision 3).
+- [x] ~~Clamp or error at the limit?~~ → Refuse; clamping would hand back an
   ordinal the group already owns.
-- [ ] **[NEEDS CLARIFICATION]** Which yields — the gap guarantee's "every log
-  shape" or the fixed ceiling? They are unsatisfiable together against a crafted
-  ordinal at the ceiling (Design Decision 3a). Leaning: narrow the gap criterion to
-  corroborated ordinals, since the case it defends is one `platform/007`'s
-  durability guarantee already prevents. Blocks tasks 5–7.
+- [x] ~~Which yields — the gap guarantee's "every log shape" or the fixed
+  ceiling?~~ → Neither. The conflict was an artifact of inverting an arbitrary
+  bootstrap guard into a hard limit on allocation; aligning the guard upward
+  dissolves it (Design Decision 3a records why the three other candidates failed,
+  including that corroboration is defeated by an attacker appending a well-formed
+  `allocate` record).

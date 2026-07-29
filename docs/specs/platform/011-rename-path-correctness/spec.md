@@ -111,13 +111,15 @@ reproduced by driving the allocator against a crafted registry log.
 - [ ] A vacated ordinal is never reissued, for **every** log shape — including a
       rename source that carries no allocation record of its own. The guarantee
       does not rest on an assumption about how records were emitted.
-- [ ] Miscounting errs only toward skipping, and only within bounds: a malformed
-      or never-allocated record may cause an id to be passed over — a permanent
-      gap — but can never make an already-consumed id available again, and can
-      never drive the next id past the largest ordinal the registry's own
-      bootstrap will accept. An out-of-range ordinal is skipped as malformed
-      rather than counted, so no single record can push a group beyond the point
-      where the registry can still be rebuilt from the tree.
+- [ ] Miscounting errs only toward skipping: a malformed or never-allocated record
+      may cause an id to be passed over — a permanent gap — but can never make an
+      already-consumed id available again. An ordinal too large to compute with
+      reliably is skipped as malformed rather than counted.
+- [ ] Every ordinal the allocator can mint is one the registry's own bootstrap
+      accepts, so a repository built by the allocator can always be rebuilt into a
+      registry from its own tree. The allocator and the bootstrap decide what a
+      legal ordinal is from one shared value, not two that happen to agree —
+      neither can drift into minting what the other refuses.
 - [ ] After a group is renamed, the next id for that group accounts for every
       ordinal the group holds under its current and former names, so the
       allocator never offers an id that resolution reports as already taken.
@@ -313,10 +315,23 @@ flowchart TD
   loud one-record denial — the same shape as the exhaustion vector — on the
   judgment that against tampering, a refusal that names the redirect is itself
   detection, where a silent redirect yields nothing.
-- [x] ~Is the conservative-fold direction guarantee enough on its own?~ → No, it
-  needs a bound too. A single crafted record could otherwise inflate a group past
-  the ordinal range the registry's bootstrap accepts, minting ids the registry can
-  never be rebuilt from — recoverability, not reuse.
+- [x] ~Is the conservative-fold direction guarantee enough on its own?~ → No, but
+  the fix is not a bound on allocation. Amended twice: first to add a ceiling, then
+  — after the plan-phase security review showed a ceiling and the gap guarantee are
+  unsatisfiable together — to require instead that the **allocator and the bootstrap
+  share one definition of a legal ordinal**. A crafted record can still inflate a
+  group; what it can no longer do is mint something the registry cannot be rebuilt
+  from, which was the actual concern. Recoverability is the requirement; the ceiling
+  was only one way to state it, and the wrong one.
+- [x] ~With a ceiling in place, one crafted record at the ceiling denies a group
+  allocation forever — which property yields?~ → Neither. The conflict was an
+  artifact of bounding the allocator to match an arbitrary bootstrap guard. Aligning
+  the guard upward instead dissolves it: no reachable ceiling under normal
+  ordinals, so no exhaustion refusal, so no denial — and the registry stays
+  rebuildable. Corroborating the fold was considered and rejected: an attacker can
+  append a well-formed `allocate` record just as easily as a rename, so
+  corroboration separates malformed logs from well-formed ones, never attacker
+  records from legitimate ones.
 - [x] ~Should the rename-emitting follow-on be required to emit an allocation
   record for every rename source, and/or should this spec's resolver stop
   depending on it?~ → Neither here. Investigation showed both are

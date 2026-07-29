@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/platform/011-rename-path-correctness/spec.md"
 reviewed_phases: [spec, plan]
-status: Needs Plan Review
+status: Active
 date: "2026-07-29"
 ---
 
@@ -11,20 +11,26 @@ date: "2026-07-29"
 
 ## Summary
 
-**Findings:** 1 Critical · 4 Notable · 3 Advisory *(cumulative; 7 resolved, 1
-Critical open and blocking)*
+**Findings:** 1 Critical · 4 Notable · 3 Advisory *(cumulative; all 8 resolved)*
 
-**The Critical is Finding 5** — the plan's mitigation for Finding 1 introduces a
-denial-of-allocation vector that Finding 1 itself did not have: bounding the fold
-at the ceiling and erroring on exhaustion means one crafted record can drive a
-group to the ceiling and permanently prevent it from allocating again. Route:
-Plan. **Still open.**
+**The Critical was Finding 5**, now closed — and worth reading for how, because two
+findings resolved by *reversing* their own suggestions:
 
-Findings 1, 2, 3, 4, and 6 are resolved. Findings 2 and 6 closed by amending the
-spec and plan from *name the redirect* to *refuse until acknowledged* — which also
-means Finding 5's fix now matters more, not less: refusal adds a second one-record
-denial vector, so corroborating the ceiling is what keeps the pair from being two
-ways to close a group with one push.
+- **Finding 1** asked for the allocator to be bounded to match the seed's 999
+  guard. Implemented, that bound created Finding 5. The accepted fix aligns the
+  guard upward instead, so the two sides share one legality value and neither can
+  mint what the other refuses.
+- **Finding 5** asked for exhaustion to be derived from corroborated ordinals.
+  Written into the plan, that was shown not to work — an attacker appends a
+  well-formed `allocate` record as easily as a rename. Removing the reachable
+  ceiling altogether is what actually closes it.
+- **Findings 2 and 6** closed by amending both artifacts from *name the redirect*
+  to *refuse until acknowledged*, making the guarantee structural.
+
+Two accepted trades are recorded rather than papered over: refusal converts a
+stealth namespace redirect into a loud one-record denial, and the width limit still
+refuses at its edge. Both rest on the same judgment — against an attacker-appendable
+input, prefer a failure that names itself over a silent substitution.
 
 Both artifacts cover a read path over a **push-writable** registry, so the whole
 review turns on what a crafted-but-well-formed record can do once three
@@ -32,10 +38,10 @@ previously-ignored fields start being consulted. Every finding was reproduced by
 executing the allocator rather than inferred from reading it. LINDDUN is omitted
 — no PII, credentials, or session data is read by any changed path.
 
-`status:` tracks current state rather than what the review originally found. It is
-`Needs Plan Review` because Finding 5 remains open **and blocking**: routing its
-fix showed the conflict lives between two spec criteria, so tasks 5–7 now carry
-`[NEEDS CLARIFICATION]` pending a developer decision (plan Design Decision 3a).
+`status:` tracks current state rather than what the review originally found, so it
+is `Active`: nothing is outstanding against either artifact. Tasks 5–7, blocked
+while the ceiling conflict stood, are unblocked and both `[NEEDS CLARIFICATION]`
+markers are cleared.
 
 ## Coverage
 
@@ -46,9 +52,10 @@ fix showed the conflict lives between two spec criteria, so tasks 5–7 now carr
 lens. Findings 3, 4, 7, and 8 are **resolved** — the plan implements each
 mitigation. Findings 2 and 6 are **resolved by amendment**, after 6 showed that
 naming a redirect served humans but left the machine contract silent; both
-artifacts moved to refuse-until-acknowledged. Finding 1 is **resolved in intent
-but blocked** — its bound is the right fix and is now contingent on Design
-Decision 3a. Finding 5 is **open and blocking**.*
+artifacts moved to refuse-until-acknowledged. Findings 1 and 5 are **resolved by
+reversal** — 1's own suggested bound produced 5, and 5's own suggested fix was
+shown not to work, so the ceiling was removed rather than corrected (plan Design
+Decision 3a holds the full record).*
 
 ## Data Classification
 
@@ -63,15 +70,19 @@ Decision 3a. Finding 5 is **open and blocking**.*
 ## Findings
 
 Numbering is stable across runs so routing history stays traceable, so these read
-in ascending order rather than severity order. Findings 1–4 are the spec-phase
-findings with their disposition; **5–8 are new, and Finding 5 is the Critical.**
+in ascending order rather than severity order. Findings 1–4 came from the spec
+lens, 5–8 from the plan lens; **Finding 5 is the Critical, and it is resolved.**
+Every finding carries its disposition — nothing below is outstanding.
 
 ### 1. Counting rename sources widens an unbounded fold, and past 999 the registry stops being re-seedable
 
-- **Status:** **Resolved in intent, blocked.** Design Decision 3 bounds the fold,
-  which is the right mitigation — but pairing that bound with a hard exhaustion
-  failure is what produced Finding 5, and resolving Finding 5 may narrow which
-  ordinals the fold counts at all. Both halves now wait on Design Decision 3a.
+- **Status:** **Resolved, by the opposite fix to the one suggested.** This
+  finding's own suggestion — bound the allocator to match the seed's 999 guard —
+  was implemented, produced Finding 5, and was then reversed. Design Decision 3
+  now aligns the *guard* upward instead: one shared digit-length value, with the
+  seed's spec cap relaxed from a value check to that width. The un-re-seedable
+  registry this finding identified is fixed at its actual cause — the two sides
+  disagreeing — rather than by capping the side that was not wrong.
 - **Severity:** Notable
 - **Description:** D2 makes the high-water fold consult a rename record's *source*
   ordinal. That field is attacker-appendable on the coordination branch, and the
@@ -163,6 +174,18 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
 
 ### 5. The ordinal bound plus a hard exhaustion failure lets one record permanently deny a group
 
+- **Status:** **Resolved — the bound was removed rather than corrected.** This
+  finding's own suggestion (derive exhaustion from corroborated ordinals) was
+  written into the plan and **found not to work**: an attacker appends a well-formed
+  `spec allocate dashboard/999 …` as easily as a rename, verified to drive the
+  high-water to 999, so corroboration separates malformed logs from well-formed
+  ones and never attacker records from legitimate ones. Two further candidates also
+  failed — see plan Design Decision 3a for the full record. The accepted fix aligns
+  the bootstrap's guard upward instead of capping allocation, leaving no reachable
+  ceiling for a plausible ordinal and therefore no denial. The vector is not
+  eliminated but is made self-identifying: a record claiming 999 is
+  indistinguishable from real history, while one claiming fifteen nines is
+  obviously crafted and safe to delete.
 - **Severity:** **Critical**
 - **Description:** Design Decision 3 pairs two changes: the fold skips ordinals
   above `ALLOC_MAX_SPEC_ORD` (999), and `alloc_next_id_spec` **errors** when
@@ -331,12 +354,13 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
   high-water while the ceiling criterion forbids exceeding a fixed bound, and a
   crafted ordinal *at* the ceiling makes both unsatisfiable. Deriving exhaustion
   from corroborated ordinals alone does not help, because the returned value still
-  has to clear the uncorroborated high-water. Recorded as plan Design Decision 3a
-  with three resolutions and their costs; the affected criteria are marked
-  `[NEEDS CLARIFICATION]` and tasks 5–7 are blocked pending the developer's
-  choice. Leaning: narrow the gap criterion to corroborated ordinals, since the
-  state it defends against is one `platform/007`'s durable-before-return guarantee
-  already prevents.
+  has to clear the uncorroborated high-water — and corroboration is defeated anyway
+  by an attacker appending a well-formed `allocate` record. **Resolved by removing
+  the ceiling instead:** the seed's arbitrary 999 guard is relaxed to the same
+  digit-length value the fold uses, so allocation has no reachable ceiling and the
+  registry stays rebuildable. Plan Design Decision 3a records all four candidates
+  and why three failed; the `[NEEDS CLARIFICATION]` markers are cleared and tasks
+  5–7 unblocked.
 - **Finding 6 — landed, via the stronger route.** The developer chose
   refuse-unless-acknowledged and amended the renamed-away-group criterion to match,
   so the guarantee is structural rather than contractual. The contract sentence
