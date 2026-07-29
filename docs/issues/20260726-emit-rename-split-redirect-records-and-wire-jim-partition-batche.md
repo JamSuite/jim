@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-26T22:42:00Z
+updated: 2026-07-29T20:24:43Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -27,34 +27,78 @@ Scope:
 
 Follow-on to `platform/007` (foundation); this is the `blueprint`-group consumer slice.
 
-## Review notes (from the platform/007 build review)
+## Preconditions in platform/007's frozen semantics
 
-Two latent edges in `platform/007`'s **frozen** resolution / next-id semantics
-surfaced during the post-build review. Neither is reachable in the foundation
-build (it emits allocate records only and has no `resolve` consumer yet), but
-this follow-on is the first to emit rename records — so both must be closed
-here, **before** the first rename/group-rename record lands, or a citation
-mis-resolves and a vacated ordinal can be reclaimed. Add fixtures for each.
+**Three** latent edges in `platform/007`'s **frozen** resolution / next-id
+semantics. None is reachable in the foundation build (it emits allocate records
+only), but this follow-on is the first to emit rename records — so all three
+must be closed here, **before** the first rename/group-rename record lands, or a
+citation mis-resolves and a consumed ordinal is reissued. Add fixtures for each.
+
+Two came from the `platform/007` post-build review; the third surfaced when
+those two were re-verified. All three were reproduced by executing the functions
+directly against crafted logs (see *Verification* below) — the observed values
+are recorded per edge.
 
 - **Resolution is not anchored for reuse-via-rename-in.** `alloc_resolve_spec` /
   `alloc_resolve_issue` set the forward-replay anchor only on an `allocate`
-  match (`skills/file/scripts/jimalloc.sh:169` / `:222`), not when the queried
-  id is a rename *destination* (`:172` / `:225`). So a name renamed away and
-  later reused by renaming a *different* spec onto the freed name resolves to
-  the *old* referent, not the current one — the "mis-resolve to the wrong
-  referent" AC 5 forbids. Reuse-via-*allocate* is already anchored correctly; do
-  the same for rename-in: also fix the anchor on the last rename whose
-  destination equals the queried id. Add fixture cases for reuse-via-rename-in
-  (spec and issue).
+  match (`skills/file/scripts/jimalloc.sh:177` / `:230`), not when the queried
+  id is a rename *destination* (`:180` / `:233`, which set `known=1` but leave
+  the anchor behind). So a name renamed away and later reused by renaming a
+  *different* spec onto the freed name resolves to the *old* referent, not the
+  current one — the "mis-resolve to the wrong referent" AC 5 forbids. Replay
+  starts too early and re-applies the departed spec's rename.
+  **Observed:** with `dashboard/001` renamed to `core/009` and `other/003` later
+  renamed onto `dashboard/001`, `resolve spec dashboard/001` returns
+  `core/009`; correct is `dashboard/001`. Issue side is identical:
+  `resolve issue 7` returns `9`; correct is `7`.
+  **Fix:** also set the anchor on the last rename whose destination equals the
+  queried id. Reuse-via-*allocate* is already anchored correctly and fixtured
+  (`tests/jimalloc.sh:129`) — mirror it for rename-in, spec and issue. There is
+  no issue-side reuse fixture at all today.
 
-- **next-id counts rename destinations but not sources.** The high-water
-  `next-id` / `next-num` fold in allocate ids and rename destinations, not
-  rename sources (`skills/file/scripts/jimalloc.sh:247-266`). The permanent-gap
-  guarantee (AC 3) therefore rests on the invariant that every rename source has
-  its own prior `allocate` record. When this spec begins emitting renames, either
-  count rename sources in the high-water fold or otherwise guarantee that
-  invariant, and add a fixture seeding a same-group rename source whose vacated
-  ordinal must never be reclaimed.
+- **next-id counts rename destinations but not sources.** The high-water folds
+  in allocate ids and rename destinations, not rename sources
+  (`alloc_next_id_spec` `:255-276`; `alloc_next_num_issue` `:281-298`). The
+  permanent-gap guarantee (AC 3) therefore rests on an unenforced invariant:
+  that every rename source has its own prior `allocate` record.
+  **Observed:** over a log of just `spec rename dashboard/005 core/001`,
+  `next-id dashboard` returns `dashboard/001` — reclaiming every ordinal up to
+  005.
+  **Fix:** either count rename sources in the fold or otherwise guarantee the
+  invariant. `tests/jimalloc.sh:220` asserts a rename *destination* counts;
+  nothing asserts a source does, in either function.
+
+- **next-id does not alias a renamed group, so resolution and allocation
+  contradict each other.** `alloc_next_id_spec` filters group membership on the
+  id's *literal* prefix (`:271`), so ids allocated under a group's old name stop
+  counting the moment the group is renamed — while `alloc_resolve_spec` *does*
+  apply the group redirect (`:193-196`). The two halves of the registry then
+  disagree about whether an id is taken.
+  **Observed:** over `spec allocate dashboard/001`, `spec allocate
+  dashboard/002`, `group rename dashboard ui`, `resolve spec dashboard/001`
+  returns `ui/001` while `next-id ui` also returns `ui/001` — the resolver says
+  the name is taken and the allocator would hand it out again.
+  **Fix:** apply the group redirect to the membership filter before folding.
+  `jimalloc.sh:253-254`'s own docstring already defers this to "the spec that
+  begins emitting rename records" — this one. No group-rename next-id fixture
+  exists. Note this issue's *Scope* covers group rename only on the resolution
+  side; the high-water side is this edge.
+
+## Verification (2026-07-29)
+
+- **The window is still open.** Both live logs on the coordination branch hold
+  **zero** rename records (64 spec + 4 group + 134 issue records, all
+  `allocate`), so no citation has mis-resolved and no ordinal has been reclaimed
+  yet. Every fix above is still a pre-emission change, not a migration.
+- **Line anchors above were refreshed.** The four resolve anchors the review
+  cited (`:169`/`:172`/`:222`/`:225`) were exact at `platform/007`'s reviewed
+  head (`8c683cf`) and have since drifted uniformly +8 as `platform/008`'s seed
+  encoders landed above them. The old `:247-266` next-id range is replaced with
+  both function ranges — at 007's head it reached `alloc_next_id_spec` but
+  stopped short of `alloc_next_num_issue`, so the issue-side fold was never
+  actually in the cited span. Treat all anchors here as of this date; the
+  `alloc_publish` consolidation shows this file moves.
 
 See `docs/specs/platform/007-id-coordination-allocator/review.md` (Findings 1
-and 2) for the full trace.
+and 2) for the original trace of the first two.
