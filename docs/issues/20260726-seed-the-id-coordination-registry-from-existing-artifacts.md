@@ -64,9 +64,10 @@ Residuals, all tracked: the reserved-slot skip is a literal `"000"` match rather
 than a numeric test, and the spec ordinal has no digit-length cap —
 [[20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude]]
 (#121); the landing path's parity with the allocation CAS —
-[[20260727-align-seed-landing-with-the-allocation-cas-path]] (#122), since
-materially addressed by `platform/009`'s shared `alloc_publish`, which routes
-`alloc_seed_land` through the same in-loop erosion re-check; and catching a
+[[20260727-align-seed-landing-with-the-allocation-cas-path]] (#122), now half
+closed, since `platform/009`'s shared `alloc_publish` gave `alloc_seed_land` the
+in-loop erosion re-check, while allocation and publish remain two
+implementations; and catching a
 *non-empty* log up to the tree, which the one-time bootstrap deliberately
 refuses — [[20260728-registry-drift-catch-up-has-no-incremental-seed-verb]]
 (#130).
