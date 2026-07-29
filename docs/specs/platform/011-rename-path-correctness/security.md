@@ -11,8 +11,8 @@ date: "2026-07-29"
 
 ## Summary
 
-**Findings:** 1 Critical · 4 Notable · 3 Advisory *(cumulative; 5 resolved, 1
-Critical and 2 Advisory open)*
+**Findings:** 1 Critical · 4 Notable · 3 Advisory *(cumulative; 7 resolved, 1
+Critical open and blocking)*
 
 **The Critical is Finding 5** — the plan's mitigation for Finding 1 introduces a
 denial-of-allocation vector that Finding 1 itself did not have: bounding the fold
@@ -26,29 +26,29 @@ means Finding 5's fix now matters more, not less: refusal adds a second one-reco
 denial vector, so corroborating the ceiling is what keeps the pair from being two
 ways to close a group with one push.
 
-Reviewed `spec.md` under the requirements-gap lens (no `plan.md` yet). The spec
-corrects a read path over a **push-writable** registry, so the whole review turns
-on what a crafted-but-well-formed record can do once three previously-ignored
-fields start being consulted. Both Notable findings are consequences the spec's
-criteria leave implicit rather than defects in them; both were reproduced by
-executing the allocator. LINDDUN is omitted — no PII, credentials, or session
-data is read by any changed path.
+Both artifacts cover a read path over a **push-writable** registry, so the whole
+review turns on what a crafted-but-well-formed record can do once three
+previously-ignored fields start being consulted. Every finding was reproduced by
+executing the allocator rather than inferred from reading it. LINDDUN is omitted
+— no PII, credentials, or session data is read by any changed path.
 
-**Both Spec-routed findings were applied to `spec.md` in this same run** (see
-Routing Recommendations), so `status:` is `Active` — it tracks current state, not
-what the review originally found. Nothing Critical or Notable is outstanding
-against the spec. The two Advisory findings routed to Plan remain open by design;
-planning has not run.
+`status:` tracks current state rather than what the review originally found. It is
+`Needs Plan Review` because Finding 5 remains open **and blocking**: routing its
+fix showed the conflict lives between two spec criteria, so tasks 5–7 now carry
+`[NEEDS CLARIFICATION]` pending a developer decision (plan Design Decision 3a).
 
 ## Coverage
 
 - spec.md — reviewed 2026-07-29 (requirements-gap lens)
 - plan.md — reviewed 2026-07-29 (design-flaw lens)
 
-*Re-run delta: Findings 1, 3, and 4 are **resolved** — the plan implements each
-mitigation. Finding 2 is **partially resolved**: the plan chose a mechanism that
-satisfies the requirement today but not by construction (see Finding 6).
-Findings 5–8 are **new** from the plan lens.*
+*Re-run delta, in the order it settled: Findings 5–8 were **new** from the plan
+lens. Findings 3, 4, 7, and 8 are **resolved** — the plan implements each
+mitigation. Findings 2 and 6 are **resolved by amendment**, after 6 showed that
+naming a redirect served humans but left the machine contract silent; both
+artifacts moved to refuse-until-acknowledged. Finding 1 is **resolved in intent
+but blocked** — its bound is the right fix and is now contingent on Design
+Decision 3a. Finding 5 is **open and blocking**.*
 
 ## Data Classification
 
@@ -68,9 +68,10 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
 
 ### 1. Counting rename sources widens an unbounded fold, and past 999 the registry stops being re-seedable
 
-- **Status:** **Resolved by the plan** — Design Decision 3 bounds the fold and
-  tasks 5–7 fixture and implement it. The bound is the right mitigation; the
-  exhaustion behavior the plan pairs with it is not (Finding 5).
+- **Status:** **Resolved in intent, blocked.** Design Decision 3 bounds the fold,
+  which is the right mitigation — but pairing that bound with a hard exhaustion
+  failure is what produced Finding 5, and resolving Finding 5 may narrow which
+  ordinals the fold counts at all. Both halves now wait on Design Decision 3a.
 - **Severity:** Notable
 - **Description:** D2 makes the high-water fold consult a rename record's *source*
   ordinal. That field is attacker-appendable on the coordination branch, and the
@@ -324,19 +325,30 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
 - **Finding 3 — landed.** Design Decision 2 and task 9 keep the gates separate.
 - **Finding 4 — landed in intent.** Design Decision 4 resolves the chain once;
   Finding 8 covers whether the construction is actually linear.
-- **Finding 5 (Critical):** derive the exhaustion check from ordinals that carry
-  their own allocation record, so the fold still counts everything for the gap
-  guarantee but one crafted ceiling record cannot close a group. Fixture the
-  crafted-ceiling case.
+- **Finding 5 (Critical) — routed, and the suggested fix does not hold.** Writing
+  it into the plan showed the conflict is between two spec criteria, not inside the
+  plan: the gap guarantee demands the returned id exceed an attacker-controlled
+  high-water while the ceiling criterion forbids exceeding a fixed bound, and a
+  crafted ordinal *at* the ceiling makes both unsatisfiable. Deriving exhaustion
+  from corroborated ordinals alone does not help, because the returned value still
+  has to clear the uncorroborated high-water. Recorded as plan Design Decision 3a
+  with three resolutions and their costs; the affected criteria are marked
+  `[NEEDS CLARIFICATION]` and tasks 5–7 are blocked pending the developer's
+  choice. Leaning: narrow the gap criterion to corroborated ordinals, since the
+  state it defends against is one `platform/007`'s durable-before-return guarantee
+  already prevents.
 - **Finding 6 — landed, via the stronger route.** The developer chose
   refuse-unless-acknowledged and amended the renamed-away-group criterion to match,
   so the guarantee is structural rather than contractual. The contract sentence
   landed too — the returned group is authoritative and may differ — since it still
   governs the acknowledged path. Design Decision 7 enumerates the resulting
   terminal-vs-retryable failure modes for the spec-ID wiring to consume.
-- **Finding 7:** require a group-rename cycle fixture and a multi-hop fixture in
-  task 4 — the termination rule is currently comment-only and untested.
-- **Finding 8:** specify memoized lazy chain resolution rather than eager closure.
+- **Finding 7 — landed.** Task 3 now requires a group-rename cycle fixture
+  alongside the multi-hop one, and Design Decision 4 states the termination rule
+  with the reason a passing test is the only evidence it was implemented.
+- **Finding 8 — landed.** Design Decision 4 now specifies memoized lazy resolution
+  and records eager closure as rejected, with the O(map)-per-record reason that
+  made "one pass" misleading.
 
 *No findings route to Issue this run.*
 

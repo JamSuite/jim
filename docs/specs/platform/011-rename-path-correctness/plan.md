@@ -42,6 +42,57 @@ rather than six coordinated edits, and D1 becomes a two-line fix.
 - **Rejected:** One helper returning both — couples the shared function to one
   caller's shape, for no measurable gain at this scale.
 
+### 3a. [NEEDS CLARIFICATION] The gap guarantee and a fixed ceiling cannot both hold unconditionally
+
+Routing security Finding 5 (Critical) revealed that its suggested fix does not
+work as stated, and that the conflict is between two spec criteria rather than
+inside the plan. **This blocks task 6/7 and needs a decision.**
+
+The two criteria:
+
+- *"A vacated ordinal is never reissued, for **every** log shape — including a
+  rename source that carries no allocation record of its own. The guarantee does
+  not rest on an assumption about how records were emitted."* → the returned id
+  must always exceed the folded high-water, which is attacker-controlled.
+- *"…can never drive the next id past the largest ordinal the registry's own
+  bootstrap will accept."* → the returned id must never exceed a fixed ceiling.
+
+A crafted record carrying an ordinal *at* the ceiling makes these unsatisfiable
+simultaneously: the first demands 1000, the second forbids it. Finding 5's
+suggestion — "derive exhaustion from corroborated ordinals only" — does not
+resolve it, because the *returned value* still has to clear the uncorroborated
+high-water the first criterion mandates.
+
+Three ways out, each giving up something:
+
+1. **Count only corroborated ordinals** (those with an `allocate` record
+   somewhere). Removes the inflation vector entirely and needs no ceiling change.
+   Justification: `platform/007` guarantees an allocation is durably recorded
+   *before* the id is returned, so an ordinal with no allocate record was never
+   allocated — reissuing it collides with no real work, and the erosion guard
+   already covers the lost-record case by hard-failing. **Cost:** contradicts the
+   first criterion, and D2's own reproduction (`spec rename dashboard/005
+   core/001` alone) stops being a defect — which reverses the developer's earlier
+   "fold defensively *and* record the invariant" decision, pushing correctness
+   back onto the emitter (#113's inherited constraint 1).
+2. **Widen the ceiling** so 4+ digit ordinals are legal in both the allocator and
+   the seed. Keeps both criteria literally satisfiable and converts the DoS into
+   cosmetic damage (an absurd but usable `dashboard/1000000`), bounded by the
+   seed's 15-digit cap. **Cost:** `%03d` formatting, directory-name shape, and any
+   consumer assuming three digits all change; inflation is still possible, just no
+   longer fatal.
+3. **Amend the first criterion** to exempt uncorroborated ordinals explicitly —
+   the same substance as 1, but arrived at honestly by narrowing the spec rather
+   than by the plan quietly not honoring it.
+
+Recommended: **3** (which is 1 with the spec told the truth). The first
+criterion's "every log shape" defends against a state `platform/007`'s durability
+guarantee already prevents, and paying for that defense buys a one-record denial
+vector. But it does revisit a settled decision, so it is the developer's call.
+
+Until this resolves, Design Decision 3 below describes the *unamended* intent and
+should not be implemented as written.
+
 ### 3. Magnitude bound reuses the seed's thresholds; exhaustion is a hard failure
 
 - **Chosen:** Two constants, `ALLOC_MAX_SPEC_ORD=999` and
@@ -61,14 +112,24 @@ rather than six coordinated edits, and D1 becomes a two-line fix.
 
 ### 4. Group aliasing resolves the chain once into a map
 
-- **Chosen:** `alloc_group_alias_map` emits transitively-resolved `old → current`
-  pairs in one pass; the fold loads it into an associative array and does hash
-  lookups per record.
-- **Why:** Resolving each record's group independently would re-walk the chain
-  per record — O(n²) over an input any pusher can grow, which the security review
-  flagged as a resource-exhaustion vector rather than a mere perf smell.
-- **Rejected:** Calling a single-group resolver per record — correct but
-  quadratic on attacker-influenced input.
+- **Chosen:** `alloc_group_alias_map` resolves each distinct group's chain **lazily,
+  once, with memoization** — first lookup walks the chain and caches the result,
+  later lookups hit the cache. The fold does hash lookups per record.
+- **Why:** Resolving each record's group independently would re-walk the chain per
+  record — O(n²) over an input any pusher can grow, which the security review
+  flagged as a resource-exhaustion vector rather than a perf smell. Memoized lazy
+  resolution bounds total work by the log length regardless of chain shape.
+- **Rejected:** Calling a single-group resolver per record — correct but quadratic
+  on attacker-influenced input.
+- **Rejected:** Building the transitive closure eagerly in one sequential pass —
+  the original choice, and it reintroduces the same quadratic: each `A→B` record
+  requires re-pointing every entry currently mapping to `A`, an O(map) step per
+  record. "One pass" reads as linear and would not have prompted the implementer
+  to check (security Finding 8).
+- **Cycle safety:** each `group rename` record applies at most once in file order,
+  so a crafted `A→B, B→A` pair terminates rather than spinning. Fixtured in task 3
+  — a non-terminating walk hangs every allocation and has no error message, so a
+  passing test is the only evidence the rule was implemented (security Finding 7).
 
 ### 5. An aliased group is refused until the caller acknowledges the redirect
 
@@ -169,10 +230,11 @@ ALLOC_MAX_ISSUE_DIGITS=15     # the seed's issue-num length cap, single-sourced
 # alloc_group_alias_map                       (spec log on stdin)
 #   Print one TAB-separated "<old>\t<current>" line per group that has been
 #   renamed, with the chain fully followed: dashboard→ui→surface yields both
-#   "dashboard<TAB>surface" and "ui<TAB>surface". Each `group rename` record
-#   applies at most once in file order, so a cycle terminates. Both tokens are
-#   validated; a malformed record is skipped. Empty output when no group rename
-#   exists.
+#   "dashboard<TAB>surface" and "ui<TAB>surface". Resolution is lazy and memoized
+#   per distinct group — never an eager closure, which would cost an O(map)
+#   re-point per record. Each `group rename` record applies at most once in file
+#   order, so a crafted cycle terminates. Both tokens are validated; a malformed
+#   record is skipped. Empty output when no group rename exists.
 
 # alloc_fold_max_spec <group>                 (spec log on stdin) → integer
 #   Highest ordinal held by <group> under its current OR former names. Folds
@@ -324,8 +386,8 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
 | :--- | :--- |
 | Rename-destination-established id resolves to its current referent (spec + issue) | 1, 2 |
 | Resolution reflects the most recent establishing event | 1, 2 |
-| Vacated ordinal never reissued for every log shape, including an unallocated source | 5, 6, 7 |
-| Miscounting errs only toward skipping, and only within bounds | 5, 6, 7 |
+| Vacated ordinal never reissued for every log shape, including an unallocated source **[NEEDS CLARIFICATION: conflicts with the ceiling criterion — see Design Decision 3a]** | 5, 6, 7 — blocked |
+| Miscounting errs only toward skipping, and only within bounds **[NEEDS CLARIFICATION: same conflict — see Design Decision 3a]** | 5, 6, 7 — blocked |
 | Next id accounts for ordinals under current and former group names, multi-hop | 3, 4, 6, 7 |
 | Renamed-away group answers for its current name and names the redirect applied | 3, 7 |
 | Allocation and reconcile agree on the next ordinal for every log shape | 8, 9 |
@@ -335,7 +397,10 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
 | Registry-read values revalidated through the id/slug boundary before use | 4, 6 (alias tokens), 9 (durable-id gate) |
 | Bash + POSIX conventions, parse as data, no third-party deps | 12 (suite includes the hygiene sweep) |
 
-No `[NEEDS CLARIFICATION]` items — every criterion maps to a task.
+**Two `[NEEDS CLARIFICATION]` items**, both the same conflict: the gap guarantee's
+"every log shape" and the ceiling criterion cannot both hold unconditionally
+(Design Decision 3a). Tasks 5–7 are blocked on that decision; every other task is
+unaffected and can proceed.
 
 ## Out of Scope
 
@@ -368,3 +433,8 @@ No `[NEEDS CLARIFICATION]` items — every criterion maps to a task.
   the bootstrap agree by construction.
 - [x] ~~Clamp or error on exhaustion?~~ → Error; clamping would hand back an
   ordinal the group already owns.
+- [ ] **[NEEDS CLARIFICATION]** Which yields — the gap guarantee's "every log
+  shape" or the fixed ceiling? They are unsatisfiable together against a crafted
+  ordinal at the ceiling (Design Decision 3a). Leaning: narrow the gap criterion to
+  corroborated ordinals, since the case it defends is one `platform/007`'s
+  durability guarantee already prevents. Blocks tasks 5–7.
