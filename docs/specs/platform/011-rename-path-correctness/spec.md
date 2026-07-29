@@ -122,11 +122,13 @@ reproduced by driving the allocator against a crafted registry log.
       ordinal the group holds under its current and former names, so the
       allocator never offers an id that resolution reports as already taken.
       This holds across a multi-hop chain of group renames.
-- [ ] Asking for the next id of a group that has been renamed away answers for
-      the group's current name — the allocator never mints into a retired
-      namespace — and the answer names the redirect it applied, so a caller can
-      see that the group it received is not the group it asked about. A redirect
-      is never applied silently.
+- [ ] Asking for the next id of a group that has been renamed away is **refused**,
+      naming the redirect, until the caller acknowledges it. The allocator never
+      mints into a retired namespace, and never substitutes one group for another
+      on the caller's behalf without the caller having said so. On the
+      acknowledged path the answer carries the current group, which may differ
+      from the group requested — so a consumer that assumes otherwise is relying
+      on something the contract does not promise.
 - [ ] The next ordinal a normal allocation would issue and the ordinal a
       reconcile pass would realize a pending provisional onto are the same value
       for every log shape, including logs containing malformed records.
@@ -298,6 +300,19 @@ flowchart TD
   answer names the redirect it applied. Settles both the security review's silent-
   namespace-redirect finding and research's return-contract signal, which are the
   same gap seen from the attacker's side and the caller's side.
+- [x] ~Is naming the redirect enough, or must the caller consent to it?~ → Consent.
+  Amended after the plan-phase security review: naming a redirect only informs
+  whoever reads the channel it was named on, so a program can honor it and still
+  substitute one group for another unnoticed. Refusing until acknowledged makes the
+  guarantee structural instead of conventional, and matches how the allocator
+  already handles a surprising answer elsewhere — `seed` refuses a populated kind,
+  `reconcile spec` refuses rather than half-realizing. This does not reverse the
+  earlier "answer for the current name" decision; it reaches the same goal (never
+  mint into a retired namespace) without the silent substitution. **Accepted
+  trade:** refusal turns a crafted `group rename` from a stealth redirect into a
+  loud one-record denial — the same shape as the exhaustion vector — on the
+  judgment that against tampering, a refusal that names the redirect is itself
+  detection, where a silent redirect yields nothing.
 - [x] ~Is the conservative-fold direction guarantee enough on its own?~ → No, it
   needs a bound too. A single crafted record could otherwise inflate a group past
   the ordinal range the registry's bootstrap accepts, minting ids the registry can

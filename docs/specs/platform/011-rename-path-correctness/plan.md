@@ -70,17 +70,33 @@ rather than six coordinated edits, and D1 becomes a two-line fix.
 - **Rejected:** Calling a single-group resolver per record — correct but
   quadratic on attacker-influenced input.
 
-### 5. The redirect notice goes to stderr
+### 5. An aliased group is refused until the caller acknowledges the redirect
 
-- **Chosen:** `alloc_next_id_spec` prints the id to stdout unchanged and writes a
-  one-line redirect advisory to **stderr** when the queried group was aliased.
-- **Why:** The developer ruled redirects must be visible. stdout is a parsed
-  machine contract — `cmd_peek` pipes it and callers read the id — so an extra
-  stdout line would break consumers. stderr is already how this script reports
-  advisories, and it is visible in every interactive path.
-- **Rejected:** A second stdout line — breaks the verb's contract for the
-  consumers about to be wired.
-- **Rejected:** Silent redirect — explicitly overruled.
+- **Chosen:** `alloc_next_id_spec` refuses (rc 1) when the queried group has been
+  renamed away, naming the redirect on stderr. An explicit acknowledgment —
+  `--follow-redirect` — proceeds, returning the id under the *current* group. The
+  Interface Contract additionally states that the returned group is authoritative
+  and may differ from the one requested.
+- **Why:** Naming a redirect only informs whoever reads the channel it was named
+  on. A program capturing stdout can honor the notice's existence and still
+  substitute one group for another unnoticed, so "never silently" held by
+  convention. A non-zero exit is not discardable: the naive consumer breaks
+  loudly. This also matches how the allocator already handles a surprising answer
+  — `seed` refuses a populated kind rather than merging, `reconcile spec` refuses
+  rather than half-realizing — so refusal is the house style, not a new principle.
+  The friction lands only on callers using a retired name, which is where a speed
+  bump belongs.
+- **Rejected:** Advisory on stderr alone — the original choice. Adequate for a
+  human (and the invocation shape does keep stderr reachable, since
+  `ARCHITECTURE.md:503` forbids `!`-injection for calls carrying a `<group>`
+  placeholder), but it leaves the machine contract silent, which is the consumer
+  that matters once the spec-ID wiring lands.
+- **Rejected:** A second stdout line — breaks the verb's parsed contract.
+- **Rejected:** Silent redirect — explicitly overruled by the spec.
+- **Accepted trade:** refusal converts a crafted `group rename` from a stealth
+  namespace redirect into a loud one-record denial, the same shape as the
+  exhaustion vector. Taken deliberately: against tampering, a refusal that names
+  the redirect *is* the detection, where a silent redirect yields nothing.
 
 ### 6. D1 anchors on the later of allocation-or-rename-destination
 
@@ -94,6 +110,20 @@ rather than six coordinated edits, and D1 becomes a two-line fix.
 - **Rejected:** Also marking a rename source known — moved out of this spec
   entirely; it is dereferenceability, not allocation, and cannot affect which id
   is allocated (spec Out of Scope; issue #113).
+
+### 7. `next-id` acquires documented failure modes
+
+- **Chosen:** Enumerate the verb's failures in the Interface Contract — exhaustion
+  (Design Decision 3) and unacknowledged redirect (Design Decision 5) — and mark
+  which are terminal versus retryable.
+- **Why:** `alloc_next_id_spec` currently always succeeds for a valid group, so
+  every consumer may treat it as infallible. This plan gives it two distinct ways
+  to refuse, and the spec-ID wiring must tell them apart: exhaustion is terminal,
+  an unacknowledged redirect is retryable *with* acknowledgment. Undocumented, a
+  consumer collapses both into "allocation broke" and a recoverable case looks
+  fatal.
+- **Rejected:** One generic error — loses the retryable/terminal distinction the
+  consumer needs in order to act.
 
 ## Constitution Check
 
@@ -159,11 +189,24 @@ ALLOC_MAX_ISSUE_DIGITS=15     # the seed's issue-num length cap, single-sourced
 
 # ─── Rewired existing functions (public behavior) ────────────────────────────
 
-# alloc_next_id_spec <group>                  (spec log on stdin)
+# alloc_next_id_spec <group> [--follow-redirect]   (spec log on stdin)
 #   stdout: "<current-group>/<NNN>" where <current-group> is <group> resolved
 #           through the alias map, and NNN = alloc_fold_max_spec + 1.
-#   stderr: one advisory line naming the redirect, iff <group> was aliased.
-#   rc 1  : when max+1 exceeds ALLOC_MAX_SPEC_ORD (group exhausted) — no id.
+#
+#   THE RETURNED GROUP IS AUTHORITATIVE AND MAY DIFFER FROM <group>. A consumer
+#   that assumes the returned prefix equals the one it passed is relying on
+#   something this contract does not promise; compare them to detect a redirect
+#   without needing any other channel.
+#
+#   Two documented failure modes, which a consumer must distinguish:
+#     rc 1 + "group exhausted"      — max+1 exceeds ALLOC_MAX_SPEC_ORD.
+#                                     TERMINAL: acknowledging changes nothing.
+#     rc 1 + "group renamed"        — <group> has been renamed away and
+#                                     --follow-redirect was not passed. The
+#                                     message names the redirect target.
+#                                     RETRYABLE: re-invoke with the flag, or ask
+#                                     using the current group name.
+#   Both write the reason to stderr; neither writes stdout.
 
 # alloc_next_num_issue                        (issue log on stdin)
 #   stdout: alloc_fold_max_issue + 1. Unchanged shape.
@@ -217,9 +260,10 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
    **Verify:** `bash tests/jimalloc.sh resolve | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed'`
 
 3. [ ] Add failing fixtures for D3: next-id after a group rename must count the
-   group's ordinals under its former name; a multi-hop chain must resolve fully;
-   asking about a renamed-away group must answer under the current name and emit
-   the redirect advisory on stderr.
+   group's ordinals under its former name; a multi-hop chain must resolve fully; a
+   group-rename **cycle** must terminate rather than hang; and asking about a
+   renamed-away group must be refused with the redirect named, then succeed under
+   the current group once `--follow-redirect` is passed.
    **Verify:** `bash tests/jimalloc.sh group_alias | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, [1-9][0-9]* failed'`
 
 4. [ ] Add `alloc_group_alias_map` per the Interface Contract — one pass,
@@ -239,10 +283,13 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
    both the fold and the bootstrap. Depends on tasks 4, 5.
    **Verify:** `bash tests/jimalloc.sh fold_max | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed' && [ "$(grep -cE '10#\$ord > 999|\$\{#num\} > 15' skills/file/scripts/jimalloc.sh)" = 0 ]`
 
-7. [ ] Rewire `alloc_next_id_spec` (alias resolution, the fold, the exhaustion
-   error, the stderr redirect notice) and `alloc_next_num_issue` (the fold) onto
-   the new helpers. Depends on task 6.
-   **Verify:** `bash tests/jimalloc.sh next_id | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed'`
+7. [ ] Rewire `alloc_next_id_spec` onto the new helpers with both documented
+   failure modes — alias resolution, the fold, the terminal exhaustion refusal,
+   and the retryable unacknowledged-redirect refusal with `--follow-redirect` —
+   and `alloc_next_num_issue` onto the fold. Thread `--follow-redirect` through
+   `cmd_peek spec` and the `allocate spec` path so the acknowledgment is reachable
+   from the CLI. Depends on task 6.
+   **Verify:** `for f in next_id follow_redirect; do bash tests/jimalloc.sh $f | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed' || exit 1; done`
 
 8. [ ] Add a failing fixture for D4: with a malformed `issue allocate` record
    present — numeric ordinal, boundary-invalid durable id — the ordinal a normal

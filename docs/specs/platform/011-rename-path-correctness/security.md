@@ -11,14 +11,20 @@ date: "2026-07-29"
 
 ## Summary
 
-**Findings:** 1 Critical · 4 Notable · 3 Advisory *(cumulative; 3 resolved by the
-plan)*
+**Findings:** 1 Critical · 4 Notable · 3 Advisory *(cumulative; 5 resolved, 1
+Critical and 2 Advisory open)*
 
 **The Critical is Finding 5** — the plan's mitigation for Finding 1 introduces a
 denial-of-allocation vector that Finding 1 itself did not have: bounding the fold
 at the ceiling and erroring on exhaustion means one crafted record can drive a
 group to the ceiling and permanently prevent it from allocating again. Route:
-Plan.
+Plan. **Still open.**
+
+Findings 1, 2, 3, 4, and 6 are resolved. Findings 2 and 6 closed by amending the
+spec and plan from *name the redirect* to *refuse until acknowledged* — which also
+means Finding 5's fix now matters more, not less: refusal adds a second one-record
+denial vector, so corroborating the ceiling is what keeps the pair from being two
+ways to close a group with one push.
 
 Reviewed `spec.md` under the requirements-gap lens (no `plan.md` yet). The spec
 corrects a read path over a **push-writable** registry, so the whole review turns
@@ -91,10 +97,11 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
 
 ### 2. Group aliasing lets one crafted record silently redirect a group's allocation namespace
 
-- **Status:** **Partially resolved** — the spec now requires the redirect to be
-  named, and Design Decision 5 routes the advisory to stderr, which is visible in
-  every path today. But stderr is discardable, so the requirement holds by
-  convention rather than by construction (Finding 6).
+- **Status:** **Resolved** — after Finding 6, the spec and plan were amended from
+  name-the-redirect to refuse-until-acknowledged. A crafted `group rename` can no
+  longer cause a silent substitution: the request fails, naming the redirect, and
+  proceeding requires an explicit `--follow-redirect`. See Finding 6 for the
+  reasoning and the availability trade accepted alongside it.
 - **Severity:** Notable
 - **Description:** D3 teaches the high-water to follow `group rename` records, and
   the settled decision is that asking about a renamed-away group answers for its
@@ -183,6 +190,20 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
 
 ### 6. The redirect is visible to a human but not named in the machine contract
 
+- **Status:** **Resolved by amendment** — the developer accepted refusal. The spec
+  criterion now requires the request to be refused until acknowledged; Design
+  Decision 5 implements it with `--follow-redirect`, Design Decision 7 documents
+  the resulting failure modes, and the Interface Contract states that the returned
+  group is authoritative and may differ from the one requested. Both halves of the
+  suggestion landed: the structural refusal *and* the contract sentence, which
+  still matters on the acknowledged path.
+- **New consequence to track:** refusal introduces a second one-record denial
+  vector alongside Finding 5 — a crafted `group rename` now blocks a group's
+  allocation until a human acknowledges it, where before it silently redirected.
+  Accepted deliberately (a refusal that names the redirect is itself detection;
+  a silent redirect yields nothing), and recorded in the spec's Open Questions as
+  an accepted trade. It does **not** relieve Finding 5: two independent one-record
+  denial paths is the state unless Finding 5's corroboration fix also lands.
 - **Severity:** Notable
 - **Description:** The spec requires a redirect to be named and "never applied
   silently"; Design Decision 5 satisfies that with a stderr advisory, reasoning
@@ -273,15 +294,13 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
 
 ## Artifact Misalignment
 
-- **Finding 6 — the visibility requirement reaches humans but is unstated for
-  machines.** The spec requires a redirect to be named and never applied silently.
-  The plan's stderr advisory delivers that to a human, and the invocation shape is
-  structurally forced to keep stderr reachable. But nothing in the contract tells a
-  *program* that the group it receives may differ from the group it asked for, so a
-  consumer can honor the letter of the plan and still substitute one group for
-  another without noticing. Route: Plan — the spec's requirement is right and the
-  channel is adequate; what is missing is the contract sentence that makes the
-  returned id's own group the disclosure.
+- **Finding 6 — closed by amending both artifacts.** The spec asserted that a
+  redirect is never applied silently while the plan's mechanism delivered that to a
+  human only, leaving a program able to honor the letter and still substitute one
+  group for another. Rather than strengthen the plan alone, the criterion itself
+  moved from *name the redirect* to *refuse until acknowledged* — so the spec now
+  asserts a property the plan can preserve by construction. Both artifacts changed;
+  no misalignment remains.
 - **Finding 5 is a design flaw, not a misalignment.** The spec asks that
   miscounting never free a consumed id and never exceed what the bootstrap
   accepts; the plan honors both. It simply chose an exhaustion behavior the spec
@@ -309,12 +328,12 @@ findings with their disposition; **5–8 are new, and Finding 5 is the Critical.
   their own allocation record, so the fold still counts everything for the gap
   guarantee but one crafted ceiling record cannot close a group. Fixture the
   crafted-ceiling case.
-- **Finding 6:** state in the Interface Contracts that the returned group is
-  authoritative and may differ from the requested one — the returned id already
-  carries the redirect, so this makes the disclosure structural without a new
-  channel. Carry it to the spec-ID wiring as an inherited constraint. (The
-  refuse-unless-acknowledged alternative is stronger but contradicts the
-  renamed-away-group criterion, so it would need a spec amendment too.)
+- **Finding 6 — landed, via the stronger route.** The developer chose
+  refuse-unless-acknowledged and amended the renamed-away-group criterion to match,
+  so the guarantee is structural rather than contractual. The contract sentence
+  landed too — the returned group is authoritative and may differ — since it still
+  governs the acknowledged path. Design Decision 7 enumerates the resulting
+  terminal-vs-retryable failure modes for the spec-ID wiring to consume.
 - **Finding 7:** require a group-rename cycle fixture and a multi-hop fixture in
   task 4 — the termination rule is currently comment-only and untested.
 - **Finding 8:** specify memoized lazy chain resolution rather than eager closure.
