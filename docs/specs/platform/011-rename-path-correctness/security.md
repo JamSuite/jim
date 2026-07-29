@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/platform/011-rename-path-correctness/spec.md"
-reviewed_phases: [spec]
-status: Active
+reviewed_phases: [spec, plan]
+status: Needs Plan Review
 date: "2026-07-29"
 ---
 
@@ -11,7 +11,14 @@ date: "2026-07-29"
 
 ## Summary
 
-**Findings:** 0 Critical · 2 Notable · 2 Advisory
+**Findings:** 1 Critical · 4 Notable · 3 Advisory *(cumulative; 3 resolved by the
+plan)*
+
+**The Critical is Finding 5** — the plan's mitigation for Finding 1 introduces a
+denial-of-allocation vector that Finding 1 itself did not have: bounding the fold
+at the ceiling and erroring on exhaustion means one crafted record can drive a
+group to the ceiling and permanently prevent it from allocating again. Route:
+Plan.
 
 Reviewed `spec.md` under the requirements-gap lens (no `plan.md` yet). The spec
 corrects a read path over a **push-writable** registry, so the whole review turns
@@ -30,9 +37,12 @@ planning has not run.
 ## Coverage
 
 - spec.md — reviewed 2026-07-29 (requirements-gap lens)
+- plan.md — reviewed 2026-07-29 (design-flaw lens)
 
-*No `plan.md` exists yet; the design-flaw lens has not run. Findings 3 and 4 are
-recorded now so planning inherits them.*
+*Re-run delta: Findings 1, 3, and 4 are **resolved** — the plan implements each
+mitigation. Finding 2 is **partially resolved**: the plan chose a mechanism that
+satisfies the requirement today but not by construction (see Finding 6).
+Findings 5–8 are **new** from the plan lens.*
 
 ## Data Classification
 
@@ -46,8 +56,15 @@ recorded now so planning inherits them.*
 
 ## Findings
 
+Numbering is stable across runs so routing history stays traceable, so these read
+in ascending order rather than severity order. Findings 1–4 are the spec-phase
+findings with their disposition; **5–8 are new, and Finding 5 is the Critical.**
+
 ### 1. Counting rename sources widens an unbounded fold, and past 999 the registry stops being re-seedable
 
+- **Status:** **Resolved by the plan** — Design Decision 3 bounds the fold and
+  tasks 5–7 fixture and implement it. The bound is the right mitigation; the
+  exhaustion behavior the plan pairs with it is not (Finding 5).
 - **Severity:** Notable
 - **Description:** D2 makes the high-water fold consult a rename record's *source*
   ordinal. That field is attacker-appendable on the coordination branch, and the
@@ -74,6 +91,10 @@ recorded now so planning inherits them.*
 
 ### 2. Group aliasing lets one crafted record silently redirect a group's allocation namespace
 
+- **Status:** **Partially resolved** — the spec now requires the redirect to be
+  named, and Design Decision 5 routes the advisory to stderr, which is visible in
+  every path today. But stderr is discardable, so the requirement holds by
+  convention rather than by construction (Finding 6).
 - **Severity:** Notable
 - **Description:** D3 teaches the high-water to follow `group rename` records, and
   the settled decision is that asking about a renamed-away group answers for its
@@ -97,6 +118,9 @@ recorded now so planning inherits them.*
 
 ### 3. D4's relaxed validity gate must stay numeric-only
 
+- **Status:** **Resolved by the plan** — Design Decision 2 and task 9 keep the
+  numeric check and the durable-id boundary as separate gates, with `existing[]`
+  keyed only on a boundary-valid id.
 - **Severity:** Advisory
 - **Description:** D4 is fixed by counting a record's ordinal even when its paired
   durable id fails the id boundary — today `alloc_reconcile_realize:373`
@@ -114,6 +138,9 @@ recorded now so planning inherits them.*
 
 ### 4. Group-chain resolution is an attacker-appendable input to a potential O(n²) walk
 
+- **Status:** **Resolved in intent by the plan** — Design Decision 4 resolves the
+  chain once into a map. Whether the map's *construction* is itself linear is the
+  open half (Finding 8).
 - **Severity:** Advisory
 - **Description:** D3 requires following a multi-hop group-rename chain. Records
   are appendable by anyone who can push, so the chain's length is
@@ -126,16 +153,116 @@ recorded now so planning inherits them.*
 - **Route:** Plan
 - **Relates to:** the D3 criterion (multi-hop chain).
 
+### 5. The ordinal bound plus a hard exhaustion failure lets one record permanently deny a group
+
+- **Severity:** **Critical**
+- **Description:** Design Decision 3 pairs two changes: the fold skips ordinals
+  above `ALLOC_MAX_SPEC_ORD` (999), and `alloc_next_id_spec` **errors** when
+  `max+1` would exceed it. A crafted record whose ordinal sits exactly *at* the
+  ceiling is not out of range, so it is counted — driving the group's high-water
+  to 999 and making every subsequent allocation fail. One pushed record
+  (`spec rename dashboard/999 x/001`, a source under D2's new counting, or a
+  destination even today) permanently denies allocation to that group. Verified
+  against current code in the destination position: a single crafted record
+  already yields `dashboard/1000`, which today is an ugly-but-usable id and under
+  the plan becomes a hard stop. Recovery is worse than the symptom — the only way
+  back is editing the registry, and rewriting that history trips the erosion guard
+  for every clone. This is strictly worse than Finding 1, whose consequence was
+  wasted ordinals and a non-re-seedable registry: the mitigation converts a
+  recoverability problem into an availability one.
+- **Suggestion:** Decide exhaustion from *corroborated* ordinals only. Keep the
+  fold counting everything, so the permanent-gap guarantee stays unconditional,
+  but derive the ceiling check from ordinals that have their own `allocate`
+  record — a source-only or destination-only ordinal at the ceiling with no
+  allocation anywhere is itself evidence of a crafted record, and should not be
+  able to close the group. That preserves both properties the spec asks for
+  without letting one record weaponize the bound. Fixture the crafted-ceiling case
+  explicitly.
+- **Route:** Plan
+- **Relates to:** Design Decision 3; the bounded-miscounting criterion; Finding 1.
+
+### 6. stderr is a discardable channel, so "never silently" holds by convention, not construction
+
+- **Severity:** Notable
+- **Description:** The spec requires that a redirect is named and "never applied
+  silently"; Design Decision 5 satisfies that by writing the advisory to stderr,
+  correctly reasoning that stdout is a parsed contract. Today that works — no
+  in-tree caller of `jimalloc.sh` suppresses stderr, and `new.sh:99` captures with
+  `$(…)`, which passes stderr through. But the property is not structural: any
+  consumer that redirects `2>/dev/null` — a pattern already present in this
+  codebase, and the subject of a tracked finding on `reconcile.sh` — silently
+  discards the only signal that a different group answered. The consumer that
+  makes this reachable, the spec-ID wiring, is not written yet, so the plan is
+  choosing a mechanism whose guarantee depends on code that does not exist.
+- **Suggestion:** Either make the redirect non-discardable — have `peek`/`allocate`
+  refuse to answer for an aliased group unless the caller explicitly accepts the
+  redirect, which turns silent-substitution into an opt-in — or record the
+  stderr-propagation obligation as an explicit consumer contract in the plan's
+  Interface Contracts, so the spec-ID wiring inherits it rather than rediscovering
+  it. The first is stronger and matches jim's preview-then-apply doctrine.
+- **Route:** Plan
+- **Relates to:** Design Decision 5; the renamed-away-group criterion; Finding 2.
+
+### 7. Alias-map cycle termination is specified but unfixtured, and a hang is worse than a wrong answer
+
+- **Severity:** Notable
+- **Description:** The plan's Interface Contract states that each `group rename`
+  record applies at most once in file order "so a cycle terminates." That is the
+  right rule, but it lives in a comment: task 4's fixtures are unspecified as to a
+  cycle, and **no group-rename cycle fixture exists today** — the only group-rename
+  test is a single hop. A crafted pair (`group rename A B`, `group rename B A`) fed
+  to a map builder that iterates to a fixpoint instead of walking in file order
+  hangs, and it hangs inside every allocation and every preview, not just a
+  resolve. The spec-rename cycle case is fixtured; the group-rename one is not.
+- **Suggestion:** Require an explicit group-rename cycle fixture and a multi-hop
+  chain fixture in task 4, asserting termination and the resolved value. A hang has
+  no error message and no timeout here, so a passing test is the only evidence the
+  rule was actually implemented.
+- **Route:** Plan
+- **Relates to:** Design Decision 4; task 4; the multi-hop criterion.
+
+### 8. Eager transitive closure can reintroduce the O(n²) the map was meant to remove
+
+- **Severity:** Advisory
+- **Description:** Design Decision 4 answers Finding 4 by resolving the chain
+  "once into a map," and the Interface Contract describes emitting fully-followed
+  pairs in "one pass." Building a transitive closure in a single sequential pass
+  requires, for each `A→B` record, re-pointing every entry currently mapping to
+  `A` — an O(map) step per record, so O(n²) overall on the same
+  attacker-appendable input Finding 4 flagged. The mitigation may therefore not
+  mitigate.
+- **Suggestion:** Specify memoized lazy resolution instead of eager closure: walk
+  each distinct group's chain once on first use and cache the result, bounding
+  total work by the log length regardless of chain shape. Worth stating in the
+  contract, since "one pass" reads as already-linear and would not prompt the
+  implementer to check.
+- **Route:** Plan
+- **Relates to:** Design Decision 4; Finding 4.
+
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
 | Spoofing | N/A | No identity assertion is consumed by any changed path; the registry's self-asserted `<who>` provenance is not read by resolution or the fold. |
-| Tampering | Yes | Findings 1, 2, 3 — the registry is push-writable, and `platform/007`'s erosion guard detects truncation or rewrite but not a well-formed append. |
+| Tampering | Yes | Findings 1, 2, 3, 5, 6 — the registry is push-writable, and `platform/007`'s erosion guard detects truncation or rewrite but not a well-formed append. |
 | Repudiation | N/A | Provenance is advisory by `platform/007`'s non-goal; this spec adds no audit or attribution claim. |
-| Information Disclosure | No | No new output surface. Resolution and `peek` already print ids; no changed path reads the identity or slug fields. |
-| Denial of Service | Yes | Findings 1 (ordinal inflation and the un-re-seedable threshold) and 4 (O(n²) chain walk). |
+| Information Disclosure | No | No new output surface. Resolution and `peek` already print ids; no changed path reads the identity or slug fields. Finding 6 is the inverse — a signal that may fail to *reach* the developer. |
+| Denial of Service | Yes | **Finding 5 (Critical)** — one record permanently closes a group. Also Findings 1 (ordinal inflation), 4 and 8 (O(n²) chain walk), 7 (non-terminating alias walk hangs every allocation). |
 | Elevation of Privilege | N/A | An id carries no authority (`platform/007` non-goal), so no permission is derivable from a record this spec reads. |
+
+## Artifact Misalignment
+
+- **Finding 6 — the visibility requirement and the chosen channel.** The spec
+  requires a redirect to be named and never applied silently; the plan satisfies
+  it via stderr, which any consumer can discard. The spec asserts a property the
+  plan's design does not preserve by construction — it holds only while every
+  caller propagates stderr, and the caller that makes this reachable is unwritten.
+  Route: Plan (the spec's requirement is right; the mechanism is what needs
+  strengthening).
+- **Finding 5 is a design flaw, not a misalignment.** The spec asks that
+  miscounting never free a consumed id and never exceed what the bootstrap
+  accepts; the plan honors both. It simply chose an exhaustion behavior the spec
+  did not contemplate, and that behavior is weaponizable. The fix is in the plan.
 
 ## Routing Recommendations
 
@@ -151,13 +278,21 @@ recorded now so planning inherits them.*
   side rather than the attacker's.
 
 ### Plan amendments
-*No `plan.md` exists yet; these carry to planning, where `/jim:plan`'s gate reads
-this artifact.*
 
-- **Finding 3:** keep the ordinal's numeric check and the durable id's boundary
-  check as separate gates; fixture the split.
-- **Finding 4:** resolve the group-rename chain once into a lookup so the fold
-  stays a single pass.
+- **Finding 3 — landed.** Design Decision 2 and task 9 keep the gates separate.
+- **Finding 4 — landed in intent.** Design Decision 4 resolves the chain once;
+  Finding 8 covers whether the construction is actually linear.
+- **Finding 5 (Critical):** derive the exhaustion check from ordinals that carry
+  their own allocation record, so the fold still counts everything for the gap
+  guarantee but one crafted ceiling record cannot close a group. Fixture the
+  crafted-ceiling case.
+- **Finding 6:** make the redirect non-discardable (refuse-unless-acknowledged) or
+  record the stderr-propagation obligation as an explicit consumer contract.
+- **Finding 7:** require a group-rename cycle fixture and a multi-hop fixture in
+  task 4 — the termination rule is currently comment-only and untested.
+- **Finding 8:** specify memoized lazy chain resolution rather than eager closure.
+
+*No findings route to Issue this run.*
 
 *No findings route to Issue — Findings 1–4 all land inside this spec's own scope,
 and the adjacent seed-side magnitude cap is already tracked as issue #121.*
