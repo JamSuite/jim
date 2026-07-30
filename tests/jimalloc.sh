@@ -350,6 +350,80 @@ group rename dashboard ui 20260727 x' > "$dir/specs.log"
   assert_eq   "current group"              "ui/003"  "$OUT"
 }
 
+# ─── Section: high-water fold (rename sources, ordinal legality) ─────────────
+
+# AC: a vacated ordinal is never reissued for every log shape — including a
+# rename source carrying no allocation record of its own, where the guarantee
+# would otherwise rest on an unenforced assumption about how records were emitted.
+case_jimalloc_fold_max_spec_counts_rename_source() {
+  local log out
+  log=$(printf '%s\n' 'spec rename dashboard/005 core/001 20260727 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_fold_max_spec dashboard <<< "$log")"
+  assert_eq "unallocated source raises the high-water" "5" "$out"
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
+  assert_eq "vacated ordinal is not reclaimed" "dashboard/006" "$out"
+}
+
+# AC: the same guarantee on the issue side.
+case_jimalloc_fold_max_issue_counts_rename_source() {
+  local log out
+  log=$(printf '%s\n' 'issue rename 9 3 20260727 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_fold_max_issue <<< "$log")"
+  assert_eq "unallocated source raises the high-water" "9" "$out"
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
+  assert_eq "vacated ordinal is not reclaimed" "10" "$out"
+}
+
+# AC: miscounting errs only toward skipping — an ordinal too large to compute
+# with reliably is passed over as malformed rather than counted, so it cannot
+# drag the high-water somewhere the registry could never be rebuilt from.
+case_jimalloc_fold_max_spec_skips_over_wide_ordinal() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate dashboard/1234567890123456 wide 20260726 x' \
+                      'spec allocate dashboard/002 b 20260726 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_fold_max_spec dashboard <<< "$log")"
+  assert_eq "over-wide ordinal skipped" "2" "$out"
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
+  assert_eq "next id unaffected" "dashboard/003" "$out"
+}
+
+# AC: the same skip on the issue side.
+case_jimalloc_fold_max_issue_skips_over_wide_ordinal() {
+  local log out
+  log=$(printf '%s\n' 'issue allocate 1234567890123456 20260726-wide 20260726 x' \
+                      'issue allocate 5 20260726-b 20260726 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_fold_max_issue <<< "$log")"
+  assert_eq "over-wide ordinal skipped" "5" "$out"
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
+  assert_eq "next ordinal unaffected" "6" "$out"
+}
+
+# AC: every ordinal the allocator can mint is one the registry's own bootstrap
+# accepts, so a repository the allocator built can always be rebuilt into a
+# registry from its own tree. Both sides decide legality from one shared value.
+case_jimalloc_fold_max_spec_mint_is_seedable() {
+  local log minted root
+  log=$(printf '%s\n' 'spec allocate core/999 a 20260726 x')
+  minted="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec core <<< "$log")"
+  assert_eq "mints above three digits" "core/1000" "$minted"
+  root="$(seed_specs_tree seed_wide_ord "${minted}-wide")"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit  "bootstrap accepts what was minted" 0 "$RC"
+  assert_match "and records it"  'spec allocate core/1000 wide ' "$OUT"
+}
+
+# AC: the shared legality value still refuses what it must — a tree ordinal wider
+# than the fold will count is rejected by the bootstrap rather than seeded into a
+# registry the allocator would then read as malformed.
+case_jimalloc_fold_max_spec_seed_refuses_over_wide() {
+  local root
+  root="$(seed_specs_tree seed_wide_reject core/1234567890123456-wide)"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit  "rc"             1                    "$RC"
+  assert_eq    "no records"     ""                   "$OUT"
+  assert_match "names offender" '1234567890123456'   "$ERR"
+}
+
 # ─── Section: group alias map ────────────────────────────────────────────────
 
 # AC: the alias map reports every renamed group's current name with the chain
