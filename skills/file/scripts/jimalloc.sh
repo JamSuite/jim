@@ -118,6 +118,38 @@ alloc_valid_token() {
   bash "$JIMFILE" valid-id "$1" >/dev/null 2>&1
 }
 
+# alloc_is_prov_form <name> — exit 0 iff <name> is the reserved provisional
+# ordinal form: the reserved prefix over a boundary-valid token, exactly what
+# alloc_prov_ordinal builds. Narrow by construction — a name that merely starts
+# with the prefix but carries a token the boundary rejects is not the reserved
+# form, so nothing malformed can pass itself off as reserved.
+alloc_is_prov_form() {
+  local name="$1" tok
+  [[ "$name" == "$ALLOC_PROV_PREFIX"* ]] || return 1
+  tok="${name#"$ALLOC_PROV_PREFIX"}"
+  [[ -n "$tok" ]] || return 1
+  alloc_valid_token "$tok"
+}
+
+# alloc_valid_provid <id> — exit 0 iff <id> is "<group>/P-<date>-<slug>": exactly
+# one '/', a boundary-valid group, and an ordinal slot in the reserved
+# provisional form whose body splits into an 8-digit issuance date and a
+# boundary-valid slug. Grammar-distinct from alloc_valid_specid by construction:
+# no id satisfies both.
+alloc_valid_provid() {
+  local id="$1" grp tok body date slug
+  [[ "$id" == */* ]] || return 1
+  grp="${id%/*}"; tok="${id##*/}"
+  [[ "$grp" == *"/"* ]] && return 1
+  alloc_valid_token "$grp" || return 1
+  alloc_is_prov_form "$tok" || return 1
+  body="${tok#"$ALLOC_PROV_PREFIX"}"
+  date="${body%%-*}"; slug="${body#*-}"
+  [[ "$date" =~ ^[0-9]{8}$ ]] || return 1
+  [[ -n "$slug" && "$slug" != "$body" ]] || return 1
+  alloc_valid_token "$slug"
+}
+
 # alloc_valid_specid <id> — exit 0 iff <id> is "<group>/<NNN>": exactly one '/',
 # a boundary-valid group, and an all-digits ordinal.
 alloc_valid_specid() {
@@ -570,6 +602,113 @@ alloc_reconcile_realize() {
       ord=$next; next=$((next + 1))
       printf '%s\t%s\tnew\n' "$pend" "$ord"
     fi
+  done
+}
+
+# alloc_reconcile_realize_spec <pending-id>...   (specs log on stdin)
+#   Compute the realized mapping for a batch of unique pending provisional spec
+#   identities, each "<group>/P-<date>-<slug>". A spec carries no durable
+#   registry identity of its own — only the ordinal it does not yet have — so
+#   realization is keyed find-or-allocate on the strongest triple the record
+#   grammar can express: (group, slug, issuance-date). A `spec allocate` record
+#   whose group (after alias resolution), slug, and date field all match maps to
+#   "have" — its ordinal, no new allocation; otherwise the identity draws a fresh
+#   ordinal from the shared high-water (alloc_fold_max_spec — group-aliased and
+#   source-counting), incremented per newly-realized identity in pending order.
+#   The publish step stamps each new record's date from the pending token rather
+#   than from the day it runs, which is what keeps the key stable: a re-run after
+#   a crash between publish and rename finds its own record and converges.
+#
+#   Two identities can collide on that triple — same group, same title-slug, same
+#   day — and no corroboration separates them, so the residual is surfaced rather
+#   than prevented: the "have" state travels in the third field for the consumer
+#   to show, and the consumer's rename halts on an occupied target directory.
+#
+#   THE RETURNED GROUP IS AUTHORITATIVE AND MAY DIFFER from the one the
+#   provisional was issued under: a group renamed in the meantime resolves to its
+#   current name, so realization never mints into a retired namespace. The same
+#   contract alloc_next_id_spec carries.
+#
+#   Prints one line per pending id: "<pending-id>\t<group>/<NNN>\t<new|have>".
+#   Pure — reads the log, touches no git. Halts (rc 1) before emitting anything
+#   on a pending id that fails the reserved-form boundary, on a within-batch
+#   duplicate, or on a group whose next ordinal would be wider than the registry
+#   could be rebuilt from. Cross-batch uniqueness stays the consumer's obligation.
+alloc_reconcile_realize_spec() {
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 c5
+  local log=""
+  (( n )) && log="$(printf '%s\n' "${lines[@]}")"
+  local -A alias=()
+  local k v
+  if (( n )); then
+    while IFS=$'\t' read -r k v; do
+      [[ -n "$k" ]] && alias["$k"]="$v"
+    done < <(printf '%s\n' "${lines[@]}" | alloc_group_alias_map)
+  fi
+  # Already-realized map, keyed (current group, slug, date). Every element is
+  # revalidated at its own boundary, so one malformed field cannot smuggle in
+  # another, and a record the fold counts is still not an identity to match
+  # against unless all three key fields are well-formed.
+  local -A existing=()
+  local g num
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
+    [[ "$c1" == spec && "$c2" == allocate ]] || continue
+    alloc_valid_specid "$c3" || continue
+    num="${c3##*/}"
+    (( ${#num} > ALLOC_MAX_ORD_DIGITS )) && continue
+    alloc_valid_token "$c4" || continue
+    [[ "$c5" =~ ^[0-9]{8}$ ]] || continue
+    g="${c3%/*}"
+    g="${alias[$g]:-$g}"
+    existing["$g/$c4/$c5"]="$g/$num"
+  done
+  # Pass 1: validate and parse the whole pending batch before emitting anything,
+  # so a halt leaves no partial mapping — a preview shows a clean mapping or only
+  # the stop condition.
+  local -A seen=()
+  local pend tok body
+  local -a p_id=() p_group=() p_slug=() p_date=()
+  for pend in "$@"; do
+    if ! alloc_valid_provid "$pend"; then
+      echo "error: invalid pending provisional spec id '$pend'" >&2
+      return 1
+    fi
+    if [[ -n "${seen[$pend]:-}" ]]; then
+      echo "error: duplicate provisional identity within the pending batch: '$pend'" >&2
+      return 1
+    fi
+    seen["$pend"]=1
+    g="${pend%/*}"; tok="${pend##*/}"
+    body="${tok#"$ALLOC_PROV_PREFIX"}"
+    p_id+=( "$pend" )
+    p_group+=( "${alias[$g]:-$g}" )
+    p_date+=( "${body%%-*}" )
+    p_slug+=( "${body#*-}" )
+  done
+  # Pass 2: emit the mapping in pending (issuance) order, one high-water read per
+  # group touched.
+  local -A next=()
+  local cur ord
+  for ((i=0; i<${#p_group[@]}; i++)); do
+    cur="${p_group[i]}"
+    k="$cur/${p_slug[i]}/${p_date[i]}"
+    if [[ -n "${existing[$k]:-}" ]]; then
+      printf '%s\t%s\thave\n' "${p_id[i]}" "${existing[$k]}"
+      continue
+    fi
+    if [[ -z "${next[$cur]:-}" ]]; then
+      num="$(printf '%s\n' "$log" | alloc_fold_max_spec "$cur")" || return 1
+      next["$cur"]=$((num + 1))
+    fi
+    ord="${next[$cur]}"
+    next["$cur"]=$((ord + 1))
+    if (( ${#ord} > ALLOC_MAX_ORD_DIGITS )); then
+      echo "error: group exhausted — '$cur' has no ordinal left that the registry could be rebuilt from" >&2
+      return 1
+    fi
+    printf '%s\t%s/%03d\tnew\n' "${p_id[i]}" "$cur" "$ord"
   done
 }
 
@@ -1142,19 +1281,6 @@ alloc_defer_to_provisional() {
 # can never equal an allocated ordinal.
 alloc_prov_ordinal() {
   printf '%s%s' "$ALLOC_PROV_PREFIX" "$1"
-}
-
-# alloc_is_prov_form <name> — exit 0 iff <name> is the reserved provisional
-# ordinal form: the reserved prefix over a boundary-valid token, exactly what
-# alloc_prov_ordinal builds. Narrow by construction — a name that merely starts
-# with the prefix but carries a token the boundary rejects is not the reserved
-# form, so nothing malformed can pass itself off as reserved.
-alloc_is_prov_form() {
-  local name="$1" tok
-  [[ "$name" == "$ALLOC_PROV_PREFIX"* ]] || return 1
-  tok="${name#"$ALLOC_PROV_PREFIX"}"
-  [[ -n "$tok" ]] || return 1
-  alloc_valid_token "$tok"
 }
 
 # alloc_provisional_issue <subject> — issue a provisional issue identifier
