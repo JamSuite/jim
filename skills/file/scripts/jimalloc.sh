@@ -528,19 +528,22 @@ alloc_durable_issue_id() {
 alloc_reconcile_realize() {
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4
+  local log=""
+  (( n )) && log="$(printf '%s\n' "${lines[@]}")"
+  # The high-water comes from the shared fold, so reconcile and a normal
+  # allocation cannot answer differently for any log shape. The already-realized
+  # map is a separate pass with a stricter gate: an ordinal counts once it is
+  # consumed, whatever its sibling field looks like, but only a boundary-valid
+  # durable id may be treated as an identity to match a pending marker against.
+  local max
+  max="$(printf '%s\n' "$log" | alloc_fold_max_issue)" || return 1
   local -A existing=()   # durable full-id -> its allocated ordinal
-  local max=0
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
-    if [[ "$c1" == issue && "$c2" == allocate ]]; then
-      [[ "$c3" =~ ^[0-9]+$ ]] || continue
-      alloc_valid_token "$c4" || continue
-      existing["$c4"]="$c3"
-      (( 10#$c3 > max )) && max=$((10#$c3))
-    elif [[ "$c1" == issue && "$c2" == rename ]]; then
-      [[ "$c3" =~ ^[0-9]+$ && "$c4" =~ ^[0-9]+$ ]] || continue
-      (( 10#$c4 > max )) && max=$((10#$c4))
-    fi
+    [[ "$c1" == issue && "$c2" == allocate ]] || continue
+    [[ "$c3" =~ ^[0-9]+$ ]] || continue
+    alloc_valid_token "$c4" || continue
+    existing["$c4"]="$c3"
   done
   # Pass 1: validate the whole pending batch before emitting anything, so a halt
   # (boundary-invalid id / within-batch duplicate) produces no partial mapping —
