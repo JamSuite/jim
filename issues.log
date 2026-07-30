@@ -140,3 +140,4 @@ issue allocate 139 20260730-decide-the-test-suite-timeout-dependency 20260729 jr
 issue allocate 140 20260730-fixture-the-allocate-spec-acknowledgment-path 20260729 jrko
 issue allocate 141 20260730-fixture-the-terminal-exhaustion-refusal-in-next-id 20260729 jrko
 issue allocate 142 20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path 20260729 jrko
+issue allocate 143 20260730-lift-realization-redirects-into-the-registry 20260730 jrko
