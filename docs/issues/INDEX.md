@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 79
+- Open: 80
 - Closed: 63
 
 ## Issues
@@ -148,6 +148,7 @@
 - `20260730-decide-the-test-suite-timeout-dependency` — Decide the test suite timeout dependency · status: open · num: 139 · priority: low · created: 2026-07-30T01:09:09Z · labels: [testing, portability] · origin: docs/specs/platform/011-rename-path-correctness/review.md
 - `20260730-fixture-the-allocate-spec-acknowledgment-path` — Fixture the allocate spec acknowledgment path · status: open · num: 140 · priority: medium · created: 2026-07-30T01:09:07Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/review.md
 - `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id` — Fixture the terminal exhaustion refusal in next-id · status: open · num: 141 · priority: medium · created: 2026-07-30T00:49:54Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
+- `20260730-lift-realization-redirects-into-the-registry` — Lift realization redirects into the registry · status: open · num: 143 · priority: medium · created: 2026-07-30T06:45:19Z · labels: [id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/spec.md
 - `20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path` — Memoize the id-validation boundary in the allocator read path · status: open · num: 142 · priority: medium · created: 2026-07-30T00:50:00Z · labels: [id-coordination, performance, availability] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
 
 ## Graph
@@ -206,6 +207,7 @@
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
+- `20260730-lift-realization-redirects-into-the-registry` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 
 ## Integrity Warnings
 
