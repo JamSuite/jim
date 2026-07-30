@@ -419,6 +419,54 @@ case_jimfile_mv_spec_id_accepts_wide_ordinal() {
   assert_eq "wide target printed" "$specs/sdlc/123456789012345-x" "$OUT"
 }
 
+# AC: binding offline needs the placeholder renamed onto a provisional identity,
+# whose basename is the whole reserved token rather than an ordinal and a slug —
+# so the same verb takes a three-argument form for that target.
+case_jimfile_mv_spec_id_renames_to_provisional_target() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_toprov)
+  mkdir -p "$specs/sdlc/017-wip"
+  printf 'x\n' > "$specs/sdlc/017-wip/ledger.md"
+  cfg=$(fixture mvspecid-toprov.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc 017-wip P-20260728-new-widget
+  assert_exit "rc" 0 "$RC"
+  assert_eq "target printed"   "$specs/sdlc/P-20260728-new-widget" "$OUT"
+  assert_eq "placeholder gone" "no"  "$([[ -d "$specs/sdlc/017-wip" ]] && echo yes || echo no)"
+  assert_eq "ledger travelled" "yes" \
+    "$([[ -f "$specs/sdlc/P-20260728-new-widget/ledger.md" ]] && echo yes || echo no)"
+}
+
+# AC: the three-argument form is for that one target and nothing else — it is
+# not a general way to rename a spec dir to an arbitrary name, so a real-ordinal
+# target must still go through the four-argument form.
+case_jimfile_mv_spec_id_three_arg_form_is_provisional_only() {
+  local specs cfg bad
+  specs=$(empty_dir mvspecid_3argonly)
+  mkdir -p "$specs/sdlc/017-wip"
+  cfg=$(fixture mvspecid-3argonly.toml "specs_path = \"$specs\"")
+  for bad in 018 018-new-widget notes P---bad "P-abc-x" "../evil"; do
+    run_jimfile -c "$cfg" mv-spec-id sdlc 017-wip "$bad"
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [3-arg target] accepted '$bad'"
+    fi
+  done
+  assert_eq "placeholder untouched" "yes" "$([[ -d "$specs/sdlc/017-wip" ]] && echo yes || echo no)"
+}
+
+# AC: the provisional target refuses to clobber too — a second spec scoped the
+# same day under the same title must not overwrite the first.
+case_jimfile_mv_spec_id_provisional_target_refuses_clobber() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_provclobber)
+  mkdir -p "$specs/sdlc/017-wip" "$specs/sdlc/P-20260728-x"
+  printf 'first\n' > "$specs/sdlc/P-20260728-x/spec.md"
+  cfg=$(fixture mvspecid-provclobber.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc 017-wip P-20260728-x
+  assert_exit     "rc"     1  "$RC"
+  assert_nonempty "stderr" "$ERR"
+  assert_eq "occupant untouched" "first" "$(cat "$specs/sdlc/P-20260728-x/spec.md")"
+}
+
 # AC: mv-spec-id refuses to clobber an existing target — a spec ordinal is path
 # identity, so a collision halts rather than overwriting or suffixing.
 case_jimfile_mv_spec_id_refuses_clobber() {
@@ -493,9 +541,11 @@ case_jimfile_mv_spec_id_missing_source_exits_1() {
   assert_nonempty "stderr" "$ERR"
 }
 
-# AC: mv-spec-id with too few args exits 2 with a message.
+# AC: mv-spec-id with too few args exits 2 with a message — a usage error, kept
+# distinct from a guard refusal. Three args is a valid arity (the provisional
+# target form), so the short invocation is two.
 case_jimfile_mv_spec_id_missing_args_exits_2() {
-  run_jimfile mv-spec-id sdlc P-20260728-x 018
+  run_jimfile mv-spec-id sdlc P-20260728-x
   assert_exit     "rc"     2  "$RC"
   assert_nonempty "stderr" "$ERR"
 }
