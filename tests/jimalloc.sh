@@ -261,6 +261,144 @@ case_jimalloc_next_id_spec_base10() {
   assert_eq "008 → 009" "dashboard/009" "$out"
 }
 
+# ─── Section: group-rename aliasing (next-id membership) ─────────────────────
+
+# AC: after a group is renamed, the next id for it counts every ordinal the
+# group holds under its former name, so the allocator never offers an id that
+# resolution already reports as taken.
+case_jimalloc_next_id_spec_group_alias_former_name() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
+                      'spec allocate dashboard/002 b 20260726 x' \
+                      'group rename dashboard ui 20260727 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec ui <<< "$log")"
+  assert_eq "former-name ordinals count" "ui/003" "$out"
+}
+
+# AC: the aliasing follows a multi-hop chain of group renames all the way to the
+# group's current name.
+case_jimalloc_next_id_spec_group_alias_multihop() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
+                      'spec allocate dashboard/004 b 20260726 x' \
+                      'group rename dashboard ui 20260727 x' \
+                      'group rename ui surface 20260728 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec surface <<< "$log")"
+  assert_eq "chain fully followed" "surface/005" "$out"
+}
+
+# AC: a crafted group-rename cycle terminates rather than spinning. A
+# non-terminating walk hangs every allocation with no error message, so the only
+# evidence the rule holds is a case that completes.
+case_jimalloc_next_id_spec_group_alias_cycle() {
+  local log out rc
+  # Ordinals under both names, so the answer is wrong unless the cycle is walked
+  # to completion — termination alone would pass a literal-prefix filter.
+  log=$(printf '%s\n' 'spec allocate alpha/002 a 20260726 x' \
+                      'spec allocate beta/007 b 20260726 x' \
+                      'group rename alpha beta 20260727 x' \
+                      'group rename beta alpha 20260728 x')
+  out="$(timeout 10 bash -c '
+    source "$1"; alloc_next_id_spec alpha <<< "$2"' _ "$SCRIPT_jimalloc" "$log")"
+  rc=$?
+  assert_exit "terminates within the bound" 0 "$rc"
+  assert_eq   "reverted cycle lands home"   "alpha/008" "$out"
+}
+
+# AC: asking for the next id of a group that has been renamed away is refused,
+# naming the redirect, so the allocator never mints into a retired namespace and
+# never substitutes one group for another without the caller having said so.
+case_jimalloc_next_id_spec_group_alias_renamed_away_refused() {
+  local log out rc err_file
+  err_file="$TMP_BASE/.err_renamed_away"
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
+                      'spec allocate dashboard/002 b 20260726 x' \
+                      'group rename dashboard ui 20260727 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log" 2>"$err_file")"
+  rc=$?
+  assert_exit  "refused"            1  "$rc"
+  assert_eq    "no stdout to parse" "" "$out"
+  assert_match "names the redirect" 'ui' "$(cat "$err_file")"
+}
+
+# AC: on the acknowledged path the answer carries the group's current name — the
+# refusal is retryable, and the returned group may differ from the one asked for.
+case_jimalloc_next_id_spec_group_alias_follow_redirect() {
+  local log out rc
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
+                      'spec allocate dashboard/002 b 20260726 x' \
+                      'group rename dashboard ui 20260727 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard --follow-redirect <<< "$log")"
+  rc=$?
+  assert_exit "acknowledged path succeeds" 0 "$rc"
+  assert_eq   "answers under the current group" "ui/003" "$out"
+}
+
+# AC: the acknowledgment is reachable from the CLI — 'peek spec' refuses a
+# renamed-away group and answers once the redirect is acknowledged.
+case_jimalloc_peek_spec_group_alias_follow_redirect() {
+  local dir; dir=$(empty_dir peek_follow_redirect)
+  printf '%s\n' 'spec allocate dashboard/001 a 20260726 x
+spec allocate dashboard/002 b 20260726 x
+group rename dashboard ui 20260727 x' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" peek spec dashboard
+  assert_exit     "peek refuses the retired name" 1  "$RC"
+  assert_eq       "no stdout to parse"            "" "$OUT"
+  assert_nonempty "explains"                      "$ERR"
+  run_jimalloc_reg "$dir" peek spec dashboard --follow-redirect
+  assert_exit "acknowledged peek succeeds" 0         "$RC"
+  assert_eq   "current group"              "ui/003"  "$OUT"
+}
+
+# ─── Section: group alias map ────────────────────────────────────────────────
+
+# AC: the alias map reports every renamed group's current name with the chain
+# fully followed, so each intermediate name also maps to the final one.
+case_jimalloc_group_alias_map_chain() {
+  local log out
+  log=$(printf '%s\n' 'group rename dashboard ui 20260727 x' \
+                      'group rename ui surface 20260728 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_group_alias_map <<< "$log" | LC_ALL=C sort)"
+  assert_eq "both hops resolve to the end of the chain" \
+    "$(printf 'dashboard\tsurface\nui\tsurface')" "$out"
+}
+
+# AC: a crafted cycle in the group-rename records terminates. Each record
+# applies at most once in file order, matching the resolver's replay, so A→B
+# followed by B→A lands both names where a forward replay would put them.
+case_jimalloc_group_alias_map_cycle() {
+  local log out rc
+  log=$(printf '%s\n' 'group rename alpha beta 20260727 x' \
+                      'group rename beta alpha 20260728 x')
+  out="$(timeout 10 bash -c '
+    source "$1"; alloc_group_alias_map <<< "$2" | LC_ALL=C sort' _ "$SCRIPT_jimalloc" "$log")"
+  rc=$?
+  assert_exit "terminates within the bound" 0 "$rc"
+  assert_eq   "cycle resolves in file order" \
+    "$(printf 'alpha\talpha\nbeta\talpha')" "$out"
+}
+
+# AC: a group-rename record carrying a crafted token is skipped at the id/slug
+# boundary, and a well-formed record in the same log still resolves.
+case_jimalloc_group_alias_map_skips_malformed() {
+  local log out
+  log=$(printf '%s\n' 'group rename ../../etc passwd 20260727 x' \
+                      'group rename good --upload-pack=x 20260727 x' \
+                      'group rename dashboard ui 20260728 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_group_alias_map <<< "$log" | LC_ALL=C sort)"
+  assert_eq "only the well-formed record maps" "$(printf 'dashboard\tui')" "$out"
+}
+
+# AC: a log with no group-rename record yields an empty map.
+case_jimalloc_group_alias_map_empty() {
+  local log out rc
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_group_alias_map <<< "$log")"
+  rc=$?
+  assert_exit "empty map is not an error" 0  "$rc"
+  assert_eq   "no renames → empty"        "" "$out"
+}
+
 # AC: next issue ordinal is max+1 over allocate ids and rename destinations,
 # unpadded; empty registry → 1.
 case_jimalloc_next_num_issue() {
