@@ -258,6 +258,134 @@ apply_pending() {
   return "$failed"
 }
 
+# build_remap <applied-lines> <mapping>
+#   Turn the identities apply_pending actually renamed into the sweep's
+#   whitelist, one row per identity:
+#     "<group>/P-<token>\t<group>/<NNN>\t<group>/<NNN>-<slug>"
+#   the second field being how the identity is written as a typed reference and
+#   the third how it is written inside a path. An identity that halted is
+#   absent, so the sweep cannot rewrite a citation of a spec that did not move.
+build_remap() {
+  local applied="$1" mapping="$2"
+  local pend real ord slug body
+  [[ -n "$applied" ]] || return 0
+  while read -r _ pend _; do
+    [[ -n "$pend" ]] || continue
+    real="$(awk -F'\t' -v k="$pend" '$1==k{print $2; exit}' <<<"$mapping")"
+    [[ -n "$real" ]] || continue
+    ord="${real##*/}"
+    body="${pend##*/}"; body="${body#"$PROV_PREFIX"}"
+    slug="${body#*-}"
+    printf '%s\t%s\t%s-%s\n' "$pend" "$real" "$real" "$slug"
+  done <<<"$applied"
+}
+
+# sweep_citations <remap-rows>
+#   Rewrite in-tree citations of each realized identity across the four roots a
+#   citation can live in — specs, issues, brainstorms, debug — over the tracked
+#   markdown in each. The remap IS the whitelist: only an identity that actually
+#   moved is ever rewritten, so a reference to an unrelated spec cannot be
+#   touched by construction.
+#
+#   The match is whole-token: the character before the identity is not
+#   [a-z0-9-] and the character after is not [a-z0-9-] either. Excluding the
+#   trailing dash matters here in a way it does not for a real ordinal — two
+#   specs scoped the same day under the same title differ only by a "-2" suffix,
+#   and the shorter identity must not match inside the longer one.
+#
+#   How an identity is written decides what replaces it: preceded by a slash it
+#   is part of a path and takes the realized directory name, slug included;
+#   anywhere else it is a typed reference and takes the bare ordinal. Fenced
+#   blocks are skipped — a citation quoted inside one is verbatim material, not
+#   a live reference.
+#
+#   Guards run over EVERY target before ANY edit: each path clears the relpath
+#   boundary and resolves inside the worktree. Output is location-only — file,
+#   line, and which form matched — never the content of the line. The issue
+#   index is regenerated once, and only when an issue file actually changed.
+sweep_citations() {
+  local remap="$1"
+  [[ -n "$remap" ]] || return 0
+  local top
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "error: citation sweep — not in a git repo" >&2
+    return 1
+  fi
+  local -a roots=() files=()
+  local key root issues_root=""
+  for key in specs issues brainstorms debug; do
+    root="$(jc get "$key" 2>/dev/null)"; root="${root%/}"; root="${root#./}"
+    [[ -n "$root" ]] || continue
+    roots+=("$root")
+    [[ "$key" == issues ]] && issues_root="$root"
+  done
+  (( ${#roots[@]} )) || return 0
+  mapfile -t files < <(git --literal-pathspecs ls-files -- "${roots[@]}" 2>/dev/null | grep -E '\.md$')
+  (( ${#files[@]} )) || return 0
+
+  local f resolved
+  for f in "${files[@]}"; do
+    if ! jf valid-relpath "$f" >/dev/null 2>&1; then
+      echo "error: citation sweep — unsafe path rejected: $f" >&2; return 1
+    fi
+    if ! resolved="$(realpath -m -- "$f" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
+      echo "error: citation sweep — path escapes worktree: $f" >&2; return 1
+    fi
+  done
+
+  local swtmp parsed tmp_out rec issue_touched=0
+  if ! swtmp="$(mktemp -d 2>/dev/null)"; then
+    echo "error: citation sweep — cannot create temp dir" >&2; return 1
+  fi
+  parsed="$swtmp/remap"; tmp_out="$swtmp/out"; rec="$swtmp/rec"
+  printf '%s\n' "$remap" > "$parsed"
+  for f in "${files[@]}"; do
+    : > "$rec"
+    awk -F'\t' -v file="$f" -v recfile="$rec" '
+      BEGIN { rf = ARGV[1] }
+      FILENAME == rf { SRC[FNR] = $1; TYPED[FNR] = $2; PATHED[FNR] = $3; nmap = FNR; next }
+      {
+        line = $0
+        if (line ~ /^[[:space:]]*(```|~~~)/) { fence = !fence; print; next }
+        if (fence) { print; next }
+        out = ""; i = 1; L = length(line)
+        while (i <= L) {
+          matched = 0
+          for (m = 1; m <= nmap; m++) {
+            s = SRC[m]; sl = length(s)
+            if (substr(line, i, sl) == s) {
+              before = (i > 1) ? substr(line, i - 1, 1) : ""
+              ap = i + sl; after = (ap <= L) ? substr(line, ap, 1) : ""
+              if (before !~ /[a-z0-9-]/ && after !~ /[a-z0-9-]/) {
+                if (before == "/") {
+                  out = out PATHED[m]
+                  print "REWROTE\t" file "\t" FNR "\tpath" > recfile
+                } else {
+                  out = out TYPED[m]
+                  print "REWROTE\t" file "\t" FNR "\ttyped-ref" > recfile
+                }
+                i += sl; matched = 1; break
+              }
+            }
+          }
+          if (!matched) { out = out substr(line, i, 1); i++ }
+        }
+        print out
+      }' "$parsed" "$f" > "$tmp_out"
+    if [[ -s "$rec" ]]; then
+      cat -- "$tmp_out" > "$f"
+      cat -- "$rec"
+      [[ -n "$issues_root" && "$f" == "$issues_root"/* ]] && issue_touched=1
+    fi
+  done
+  rm -rf -- "$swtmp"
+
+  if (( issue_touched )); then
+    bash "$HERE/../../issue/scripts/index.sh" "$issues_root" >/dev/null 2>&1
+  fi
+  return 0
+}
+
 cmd_reconcile() {
   local dir="" apply=0
   while (( $# )); do
@@ -305,8 +433,12 @@ cmd_reconcile() {
     printf 'reconcile — %s\n\n' "$dir"
     printf '%s\n' "$mapping" | sed 's/^/  /'
     printf '\n'
-    apply_pending "$dir" "$rows" "$mapping"
-    return $?
+    local applied arc remap
+    applied="$(apply_pending "$dir" "$rows" "$mapping")"; arc=$?
+    [[ -n "$applied" ]] && printf '%s\n' "$applied"
+    remap="$(build_remap "$applied" "$mapping")"
+    sweep_citations "$remap" || arc=1
+    return "$arc"
   fi
 
   printf 'reconcile preview — %s\n\n' "$dir"
