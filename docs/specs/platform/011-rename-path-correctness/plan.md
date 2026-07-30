@@ -2,7 +2,7 @@
 title: "Rename-path correctness gates"
 spec: "docs/specs/platform/011-rename-path-correctness/spec.md"
 type: bug
-status: approved
+status: complete
 ---
 
 # Rename-path correctness gates — Plan
