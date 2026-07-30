@@ -332,79 +332,79 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] `jimalloc.sh` — builder-failure stderr fix (DD 7): failing builder in
+1. [x] `jimalloc.sh` — builder-failure stderr fix (DD 7): failing builder in
    `alloc_cas_append` no longer appends the generic line; add
    `case_jimalloc_allocate_refusal_single_stderr_reason` asserting exactly
    one error line for a renamed-away group on `allocate spec`.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | grep -E 'refusal_single_stderr|Ran [1-9]'`
 
-2. [ ] `jimalloc.sh` — seed treats the reserved `P-` form as a skip (spec
+2. [x] `jimalloc.sh` — seed treats the reserved `P-` form as a skip (spec
    AC 11): `alloc_seed_derive_specs` skips `P-<token>` basenames; cases
    assert no record, no conflict, siblings still seed.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | grep -E 'seed_skips_provisional|Ran [1-9]'`
 
-3. [ ] `jimalloc.sh` — `alloc_reconcile_realize_spec` (DD 1) with the
+3. [x] `jimalloc.sh` — `alloc_reconcile_realize_spec` (DD 1) with the
    fixture set mirroring the issue side: mapping shape, keyed "have"
    idempotency (incl. crash-window re-run), issuance-date stamping,
    within-batch duplicate halt, crafted-pending rejection, high-water parity
    with `alloc_next_id_spec`, group-aliased fold reuse.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | grep -E 'realize_spec|Ran [1-9]'`
 
-4. [ ] `jimalloc.sh` — `reconcile spec [--apply]` verb + publish builder
+4. [x] `jimalloc.sh` — `reconcile spec [--apply]` verb + publish builder
    (replacing the rc-2 refusal): preview/apply parity, one-commit batch,
    group-allocate record for an unclaimed group, still-offline no-op,
    resume-no-double-allocate. Cases mirror the issue reconcile set.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | grep -E 'reconcile_spec|Ran [1-9]'`
 
-5. [ ] `jimfile.sh` — `mv-spec-id` verb (DD 4) with guard cases: accepts
+5. [x] `jimfile.sh` — `mv-spec-id` verb (DD 4) with guard cases: accepts
    `NNN-*` and `P-<token>` sources, digit-width target, clobber refusal,
    invalid-token rejection, prints target, plain-mv semantics.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile | grep -E 'mv_spec_id|Ran [1-9]'`
 
-6. [ ] `jimledger.sh` — widen `rename-tracked`'s source-basename gate to the
+6. [x] `jimledger.sh` — widen `rename-tracked`'s source-basename gate to the
    reserved `P-<token>` form; cases: committed `P-` dir renames with history,
    non-reserved arbitrary basenames still refused, target/parent guards
    unchanged.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimledger | grep -E 'rename_tracked_provisional|Ran [1-9]'`
 
-7. [ ] Scaffold `tests/specreconcile.sh` via the meta-test scaffolder for
+7. [x] Scaffold `tests/specreconcile.sh` via the meta-test scaffolder for
    `skills/spec/scripts/reconcile.sh`; add the scan/preview cases first
    (pending detection, invalid-token skip-with-warning, id-mismatch warning,
    empty-scan no-op, preview mutates nothing). Script lands with scan +
    preview only.
    **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile | grep -E 'Ran [1-9]'`
 
-8. [ ] `reconcile.sh` — apply: rename via `rename-tracked` (tracked) /
+8. [x] `reconcile.sh` — apply: rename via `rename-tracked` (tracked) /
    `mv-spec-id` (untracked), frontmatter `id:` rewrite, drift halt when the
    target dir exists. Cases: committed + uncommitted realize, halt-on-drift,
    crashed-apply re-run converges. Depends on tasks 3–6.
    **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile | grep -E 'apply|Ran [1-9]'`
 
-9. [ ] `reconcile.sh` — citation sweep (DD 5): typed + dir-path whole-token
+9. [x] `reconcile.sh` — citation sweep (DD 5): typed + dir-path whole-token
    rewrite across the four roots, containment guards before any edit,
    location-only REWROTE output, prefix-overlap negative case
    (`P-<token>x` untouched), fenced-code left alone, one INDEX regen iff an
    issue file changed.
    **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile | grep -E 'sweep|Ran [1-9]'`
 
-10. [ ] `reconcile.sh` — the `spec realized` specs-root ledger event (DD 6):
+10. [x] `reconcile.sh` — the `spec realized` specs-root ledger event (DD 6):
     moved= element grammar, ≤256-byte chunking, boundary validation before
     append; cases assert the event shape and that `vacated-max` output is
     unchanged by it.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile jimledger | grep -E 'realized_event|vacated|Ran [1-9]'`
 
-11. [ ] `skills/spec/SKILL.md` — Step 3 rewire: peek-advisory placeholder,
+11. [x] `skills/spec/SKILL.md` — Step 3 rewire: peek-advisory placeholder,
     redirect consent flow, terminal-exhaustion stop; Step 8 rewire: allocate
     at write, classify anywhere-in-stderr, `mv-spec-id` rename, provisional
     branch with suffix loop, drift halt, fail-mode stop.
     **Verify:** `grep -c 'peek spec\|allocate spec\|mv-spec-id' skills/spec/SKILL.md && ! grep -n 'jimfile.sh next-id <group>' skills/spec/SKILL.md`
 
-12. [ ] `skills/spec/SKILL.md` — `reconcile` argument-routing row driving the
+12. [x] `skills/spec/SKILL.md` — `reconcile` argument-routing row driving the
     realizer preview-first, and the three verb-scoped `allowed-tools` grants
     (DD 8) — no whole-CLI grant anywhere.
     **Verify:** `grep -c 'reconcile' skills/spec/SKILL.md && grep -n 'jimalloc.sh peek spec\|jimalloc.sh allocate spec\|spec/scripts/reconcile.sh' skills/spec/SKILL.md && ! grep -n 'jimalloc.sh \*' skills/spec/SKILL.md`
 
-13. [ ] Full-suite regression: every pre-existing fixture passes unmodified
+13. [x] Full-suite regression: every pre-existing fixture passes unmodified
     (spec AC 15); confirm the four platform/011 resolution fixtures and the
     issue reconcile set are untouched by diffing the test file names
     exercised.
