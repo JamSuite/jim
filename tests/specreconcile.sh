@@ -190,6 +190,137 @@ case_specreconcile_explicit_specs_dir() {
   assert_match "previews the identity" 'sdlc/P-20260728-alpha	sdlc/001	new' "$OUT"
 }
 
+# ─── Section: Test cases — apply ─────────────────────────────────────────────
+
+# AC: apply realizes an uncommitted pending spec — the directory takes its final
+# ordinal-slug name, the frontmatter carries the real id, and the registry holds
+# the record. The developer is not asked to commit first.
+case_specreconcile_apply_uncommitted() {
+  local repo
+  repo="$(specrec_repo sr_apply_unc)"
+  specrec_prov_dir "$repo" sdlc P-20260728-new-widget
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "provisional dir gone" "no" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-new-widget" ]] && echo yes || echo no)"
+  assert_eq "realized dir exists" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/001-new-widget" ]] && echo yes || echo no)"
+  assert_match "frontmatter carries the real id" '^id: "001"$' \
+    "$(cat "$repo/docs/specs/sdlc/001-new-widget/spec.md")"
+  assert_match "record published" '^spec allocate sdlc/001 new-widget 20260728 ' \
+    "$(specrec_registry "$repo")"
+}
+
+# AC: apply realizes a committed pending spec too, and git records the move as a
+# rename so history stays continuous across it.
+case_specreconcile_apply_committed() {
+  local repo
+  repo="$(specrec_repo sr_apply_com)"
+  specrec_prov_dir "$repo" sdlc P-20260728-new-widget
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "provisional spec"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "realized dir exists" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/001-new-widget" ]] && echo yes || echo no)"
+  assert_match "recorded as a rename, not add+delete" '^R' \
+    "$(git -C "$repo" diff --cached --name-status -M)"
+}
+
+# AC: the frontmatter rewrite is anchored to the leading frontmatter block — a
+# body line that happens to read "id:" is never touched.
+case_specreconcile_apply_rewrites_only_frontmatter() {
+  local repo spec
+  repo="$(specrec_repo sr_apply_fm)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  spec="$repo/docs/specs/sdlc/P-20260728-alpha/spec.md"
+  printf 'A body line: id: "P-20260728-alpha" stays as written.\n' >> "$spec"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  spec="$repo/docs/specs/sdlc/001-alpha/spec.md"
+  assert_match "frontmatter rewritten" '^id: "001"$' "$(cat "$spec")"
+  assert_match "body line untouched" 'A body line: id: "P-20260728-alpha" stays as written\.' \
+    "$(cat "$spec")"
+}
+
+# AC: a local identity collision halts loudly and writes nothing further — the
+# realized ordinal's directory already exists, which is registry-vs-tree drift,
+# and a spec ordinal is path identity so there is no silent suffixing.
+case_specreconcile_apply_halts_on_drift() {
+  local repo
+  repo="$(specrec_repo sr_apply_drift)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-occupied"
+  printf 'occupied\n' > "$repo/docs/specs/sdlc/001-occupied/spec.md"
+  # The realized ordinal will be sdlc/001, whose slug differs — so the halt has
+  # to notice the ordinal is taken, not merely that the exact name exists.
+  run_specreconcile_in "$repo" --apply
+  assert_exit     "rc"      1 "$RC"
+  assert_nonempty "names the drift" "$ERR"
+  assert_eq "provisional dir untouched" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+  assert_eq "occupant untouched" "occupied" \
+    "$(cat "$repo/docs/specs/sdlc/001-occupied/spec.md")"
+}
+
+# AC: a crashed apply converges on re-run — the ordinal is durable before any
+# rename, so the second pass finds its own record and renames onto the same
+# ordinal rather than allocating a second one.
+case_specreconcile_apply_resume_converges() {
+  local repo count
+  repo="$(specrec_repo sr_apply_resume)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  # Simulate the crash window: the record lands, the rename never happens.
+  printf '%s\n' 'sdlc/P-20260728-alpha' \
+    | ( cd "$repo" && bash "$REPO_ROOT/skills/file/scripts/jimalloc.sh" reconcile spec --apply ) >/dev/null 2>&1
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "realized dir exists" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/001-alpha" ]] && echo yes || echo no)"
+  count="$(specrec_registry "$repo" | grep -c '^spec allocate sdlc/')"
+  assert_eq "exactly one record, no second allocation" "1" "$count"
+}
+
+# AC: once realized, a spec is no longer pending — a further run has nothing to
+# do, so realization is idempotent at the surface the developer touches.
+case_specreconcile_apply_idempotent() {
+  local repo
+  repo="$(specrec_repo sr_apply_idem)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  run_specreconcile_in "$repo" --apply
+  assert_exit "first rc" 0 "$RC"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "second rc" 0 "$RC"
+  assert_match "nothing left to realize" 'nothing to realize' "$OUT"
+}
+
+# AC: realizing several pending specs at once renames each onto its own ordinal.
+case_specreconcile_apply_batch() {
+  local repo
+  repo="$(specrec_repo sr_apply_batch)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_prov_dir "$repo" sdlc P-20260728-beta
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "first realized"  "yes" "$([[ -d "$repo/docs/specs/sdlc/001-alpha" ]] && echo yes || echo no)"
+  assert_eq "second realized" "yes" "$([[ -d "$repo/docs/specs/sdlc/002-beta" ]] && echo yes || echo no)"
+}
+
+# AC: with the coordination point unreachable, apply realizes nothing and
+# changes nothing — the pending spec stays exactly as it was.
+case_specreconcile_apply_still_offline() {
+  local repo
+  repo="$(specrec_repo sr_apply_offline)"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-spec-realizer.git"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "dir still pending" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+  assert_eq "no registry written" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
