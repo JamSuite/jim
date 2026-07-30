@@ -1523,6 +1523,23 @@ case_jimalloc_reconcile_realize_high_water_rename() {
   assert_eq   "next above rename dst" "$(printf '20260726-new\t12\tnew')" "$OUT"
 }
 
+# AC: the ordinal a normal allocation would issue and the one reconcile realizes
+# onto are the same value for every log shape, malformed records included. A
+# record whose ordinal is numeric but whose durable id fails the id boundary
+# still consumed that ordinal, so both paths must count it — otherwise reconcile
+# realizes onto ground the allocation path already treats as taken.
+case_jimalloc_reconcile_high_water_parity() {
+  local log alloc_next realized
+  log=$(printf '%s\n' 'issue allocate 9 --upload-pack=x 20260726 x' \
+                      'issue allocate 2 20260726-good 20260726 x')
+  alloc_next="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
+  run_realize "$log" 20260726-pending
+  assert_exit "rc" 0 "$RC"
+  realized="$(printf '%s' "$OUT" | cut -f2)"
+  assert_eq "reconcile agrees with allocation" "$alloc_next" "$realized"
+  assert_eq "and clears the consumed ordinal"  "10"          "$realized"
+}
+
 # AC: a duplicate provisional identity within one pending batch halts reconcile
 # (defense-in-depth: the mechanism cannot verify global uniqueness, but it
 # refuses to collapse two identical pending markers onto one ordinal — security
