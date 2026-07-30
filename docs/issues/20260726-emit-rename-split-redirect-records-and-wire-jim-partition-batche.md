@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-29T22:01:42Z
+updated: 2026-07-30T02:14:41Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -27,6 +27,49 @@ Scope:
 
 Follow-on to `platform/007` (foundation); this is the `blueprint`-group consumer slice.
 
+## Preconditions — CLOSED (2026-07-30)
+
+**All three gates below are closed.** `platform/011` (rename-path correctness)
+shipped complete: 12/12 tasks, 13/13 acceptance criteria, 832/832 suite green,
+`cd4eeaa..576527a`. This spec is unblocked — the read path is now correct for
+rename records *before* the first one is emitted, which was the whole point of
+sequencing that work ahead of this.
+
+What closed, per gate:
+
+| Gate | Closed by |
+| :--- | :--- |
+| Resolution not anchored for reuse-via-rename-in | The anchor is now the queried id's last *establishing* record — allocate **or** rename destination, whichever is later. Fixtured spec and issue side. |
+| next-id counts rename destinations but not sources | One shared fold per kind counts allocate ids, rename destinations, **and** rename sources, so the permanent gap holds for any log shape rather than resting on an emitter invariant. |
+| next-id does not alias a renamed group | Group membership resolves through `alloc_group_alias_map`, which reports the resolver's own walk — records in file order, each applied at most once — so the two halves of the registry cannot contradict each other. Multi-hop chains and crafted cycles fixtured. |
+
+**A fourth defect closed alongside them.** `platform/011` also folded in #124
+(allocation and reconcile computing different high-waters), because research found
+the fold in **three** functions rather than the two the review notes named —
+`alloc_next_id_spec`, `alloc_next_num_issue`, and `alloc_reconcile_realize`. That
+is why the per-gate fix notes below read as the original trace rather than the
+implementation: the fix was structural, not three parallel edits.
+
+**Two new obligations this spec inherits**, neither present when the gates were
+written:
+
+1. **`next-id` now has failure modes.** `alloc_next_id_spec` refuses a group that
+   has been renamed away, naming the redirect, until the caller passes
+   `--follow-redirect`; it also refuses on ordinal exhaustion. The two are
+   distinguishable by message and must be treated differently — the redirect
+   refusal is **retryable** with acknowledgment, exhaustion is **terminal**. A
+   consumer that collapses them makes a recoverable case look fatal. On the
+   acknowledged path the returned group is authoritative and may differ from the
+   one requested.
+2. **The window this spec closes is still open, but narrower.** Both live logs
+   held **0** rename records as of this date, so nothing has mis-resolved yet.
+   Every fix in `platform/011` was pre-emission; the first record this spec emits
+   is what makes the window shut permanently.
+
+The *Inherited constraints* section below still stands — those two decisions were
+scoped to `platform/011`, investigated there, and moved here because they are
+dereferenceability and ordering concerns that cannot affect allocation.
+
 ## Preconditions in platform/007's frozen semantics
 
 **Three** latent edges in `platform/007`'s **frozen** resolution / next-id
@@ -35,7 +78,7 @@ only), but this follow-on is the first to emit rename records — so all three m
 close **before** the first rename/group-rename record lands, or a citation
 mis-resolves and a consumed ordinal is reissued.
 
-**They are no longer this spec's work.** They were split out to
+**They are no longer this spec's work, and they are now closed.** They were split out to
 `platform/011` (rename-path correctness) as `platform`-group read-path fixes,
 leaving this spec the `blueprint`-group emission it actually describes; this
 spec depends on that one. The edges stay documented here because this spec is
@@ -65,7 +108,8 @@ are recorded per edge.
   **Fix:** also set the anchor on the last rename whose destination equals the
   queried id. Reuse-via-*allocate* is already anchored correctly and fixtured
   (`tests/jimalloc.sh:129`) — mirror it for rename-in, spec and issue. There is
-  no issue-side reuse fixture at all today.
+  no issue-side reuse fixture at all today. *(Both now exist —
+  `case_jimalloc_resolve_{spec,issue}_reuse_rename_in`.)*
 
 - **next-id counts rename destinations but not sources.** The high-water folds
   in allocate ids and rename destinations, not rename sources
@@ -77,7 +121,8 @@ are recorded per edge.
   005.
   **Fix:** either count rename sources in the fold or otherwise guarantee the
   invariant. `tests/jimalloc.sh:220` asserts a rename *destination* counts;
-  nothing asserts a source does, in either function.
+  nothing asserts a source does, in either function. *(Both now assert it —
+  `case_jimalloc_fold_max_{spec,issue}_counts_rename_source`.)*
 
 - **next-id does not alias a renamed group, so resolution and allocation
   contradict each other.** `alloc_next_id_spec` filters group membership on the
@@ -92,8 +137,9 @@ are recorded per edge.
   **Fix:** apply the group redirect to the membership filter before folding.
   `jimalloc.sh:253-254`'s own docstring already defers this to "the spec that
   begins emitting rename records" — this one. No group-rename next-id fixture
-  exists. Note this issue's *Scope* covers group rename only on the resolution
-  side; the high-water side is this edge.
+  exists. *(That deferral docstring is retired, and five fixtures now cover it —
+  `case_jimalloc_next_id_spec_group_alias_*`.)* Note this issue's *Scope* covers
+  group rename only on the resolution side; the high-water side is this edge.
 
 ## Verification (2026-07-29)
 

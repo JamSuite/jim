@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-27T05:34:21Z
-updated: 2026-07-27T05:34:21Z
+updated: 2026-07-30T02:14:41Z
 origin: docs/specs/platform/008-registry-seed/review.md
 ---
 
@@ -38,8 +38,48 @@ wrapped ordinal is rejected by the read-side `alloc_valid_specid` on replay) and
 neither injects (the value is log content, never a git argument). The issue-num
 path already does this correctly with a `${#num} > 15` length cap (:427).
 
-## Fix
+## Half resolved (verified 2026-07-30)
+
+`platform/011` (rename-path correctness) closed the **magnitude** half. The
+reserved-slot half is untouched and this issue stays open for it.
+
+**Closed — the spec-ordinal magnitude cap.** The value-only `(( 10#$ord > 999 ))`
+guard is replaced by a digit-length check against a shared
+`ALLOC_MAX_ORD_DIGITS` constant that the read-path folds consult too, so the
+allocator and the bootstrap decide legality from one value. That was not
+cosmetic: `platform/011` needed the allocator to stop minting four-digit ordinals
+the bootstrap refused, and capping allocation to match the arbitrary 999 instead
+would have let one crafted record at the ceiling deny a group forever. Relaxing
+the guard upward was the resolution.
+
+The overflow consequence is gone with it — a 19-digit ordinal is now rejected as
+malformed rather than wrapping `intmax_t` past the guard:
+
+```
+core/1234567890123456789-x
+→ error: cannot seed — spec dir has an invalid ordinal
+```
+
+**Still open — the reserved-slot skip.** The literal string test is unchanged, so
+a directory whose ordinal parses to `0` without being literally `000` still
+occupies the reserved coordinate:
+
+```
+core/0-foo, core/001-ok
+→ spec allocate core/000 foo …      ← the breach
+   spec allocate core/001 ok …
+```
+
+A side effect worth noting: with *two* such directories (`0-foo` and `00-bar`)
+the seed now halts on `duplicate spec ordinal: core/000` rather than emitting
+either. So the breach surfaces only for a lone non-canonical zero directory —
+narrower than originally described, and still a breach of "emits no record for the
+reserved slot."
+
+## Remaining fix
 
 - Normalize the reserved-slot skip to `(( 10#$ord == 0 ))`.
-- Add a digit-length cap on the spec ordinal, mirroring the issue-num path.
-- Add fixtures for `0-foo` / `00-foo` and an over-long ordinal.
+- Add fixtures for `0-foo` / `00-foo`.
+
+The digit-length cap and its over-long-ordinal fixture are done
+(`case_jimalloc_fold_max_spec_seed_refuses_over_wide`).
