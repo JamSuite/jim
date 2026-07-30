@@ -627,6 +627,10 @@ alloc_seed_derive_specs() {
       name="$(basename "$entry")"
       ord="${name%%-*}"
       [[ "$ord" == "000" ]] && continue
+      # A pending provisional dir holds a reserved identity that never entered
+      # the registry, so the bootstrap passes over it like the blueprint slot:
+      # no record to derive, and nothing to call a conflict.
+      alloc_is_prov_form "$name" && continue
       if [[ "$name" != *-* ]]; then
         conflicts+="  spec dir has no slug: $gname/$name"$'\n'; continue
       fi
@@ -1138,6 +1142,19 @@ alloc_defer_to_provisional() {
 # can never equal an allocated ordinal.
 alloc_prov_ordinal() {
   printf '%s%s' "$ALLOC_PROV_PREFIX" "$1"
+}
+
+# alloc_is_prov_form <name> — exit 0 iff <name> is the reserved provisional
+# ordinal form: the reserved prefix over a boundary-valid token, exactly what
+# alloc_prov_ordinal builds. Narrow by construction — a name that merely starts
+# with the prefix but carries a token the boundary rejects is not the reserved
+# form, so nothing malformed can pass itself off as reserved.
+alloc_is_prov_form() {
+  local name="$1" tok
+  [[ "$name" == "$ALLOC_PROV_PREFIX"* ]] || return 1
+  tok="${name#"$ALLOC_PROV_PREFIX"}"
+  [[ -n "$tok" ]] || return 1
+  alloc_valid_token "$tok"
 }
 
 # alloc_provisional_issue <subject> — issue a provisional issue identifier
