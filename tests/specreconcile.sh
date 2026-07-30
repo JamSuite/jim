@@ -481,6 +481,91 @@ case_specreconcile_sweep_index_untouched_when_no_issue_changed() {
     "$(cat "$repo/docs/issues/INDEX.md")"
 }
 
+# ─── Section: Test cases — durable realize record ────────────────────────────
+
+# AC: every realization durably records its provisional→real mapping as a ledger
+# redirect on the specs-root ledger, in the same moved= grammar the partition
+# operations use, so a citation frozen while provisional stays traceable and the
+# rename-emitting follow-on can lift the mapping without re-deriving it.
+case_specreconcile_realized_event_recorded() {
+  local repo line
+  repo="$(specrec_repo sr_event)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  line="$(grep '	spec	realized	' "$repo/docs/specs/ledger.md" 2>/dev/null)"
+  assert_nonempty "realize event appended" "$line"
+  assert_match "carries the mapping in moved= grammar" \
+    'moved=sdlc/P-20260728-alpha:sdlc/001' "$line"
+}
+
+# AC: the record covers every identity realized in the batch.
+case_specreconcile_realized_event_covers_batch() {
+  local repo events
+  repo="$(specrec_repo sr_event_batch)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_prov_dir "$repo" platform P-20260728-beta
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  events="$(grep '	spec	realized	' "$repo/docs/specs/ledger.md" 2>/dev/null)"
+  assert_match "carried in moved= grammar" 'moved='                                "$events"
+  assert_match "first mapping recorded"    'sdlc/P-20260728-alpha:sdlc/001'        "$events"
+  assert_match "second mapping recorded"   'platform/P-20260728-beta:platform/001' "$events"
+}
+
+# AC: an identity that halted is not recorded as moved — the durable record
+# describes what happened, not what was attempted.
+case_specreconcile_realized_event_omits_halted() {
+  local repo events
+  repo="$(specrec_repo sr_event_halt)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-occupied"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 1 "$RC"
+  events="$(grep '	spec	realized	' "$repo/docs/specs/ledger.md" 2>/dev/null)"
+  assert_eq "no mapping recorded for the halted identity" "" "$events"
+}
+
+# AC: the mapping is chunked at element boundaries rather than silently
+# truncated, so a large batch stays wholly recorded and every chunk stays within
+# the ledger's value bound.
+case_specreconcile_realized_event_chunks_at_boundaries() {
+  local repo events i longest
+  repo="$(specrec_repo sr_event_chunk)"
+  for i in 1 2 3 4 5 6 7 8; do
+    specrec_prov_dir "$repo" sdlc "P-20260728-a-fairly-long-spec-slug-number-$i"
+  done
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  events="$(grep '	spec	realized	' "$repo/docs/specs/ledger.md" 2>/dev/null)"
+  assert_nonempty "event appended" "$events"
+  for i in 1 2 3 4 5 6 7 8; do
+    assert_match "identity $i recorded" \
+      "sdlc/P-20260728-a-fairly-long-spec-slug-number-$i:sdlc/00$i" "$events"
+  done
+  longest="$(printf '%s\n' "$events" | tr ';' '\n' | grep '^moved=' \
+    | awk '{ print length($0) }' | sort -rn | head -n1)"
+  if [[ -n "$longest" ]] && (( longest > 256 )); then
+    CURRENT_FAILED=1; echo "    [chunk] a moved= chunk is $longest bytes, over the bound"
+  fi
+}
+
+# AC: the realize record feeds no vacated-id floor — a provisional never held a
+# real ordinal, so it vacates nothing and next-id must be unaffected by it.
+case_specreconcile_realized_event_inert_to_vacated_max() {
+  local repo before after
+  repo="$(specrec_repo sr_event_vacated)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs"
+  before="$( cd "$repo" && bash "$REPO_ROOT/skills/ledger/scripts/jimledger.sh" \
+    vacated-max docs/specs sdlc 2>/dev/null )"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  after="$( cd "$repo" && bash "$REPO_ROOT/skills/ledger/scripts/jimledger.sh" \
+    vacated-max docs/specs sdlc 2>/dev/null )"
+  assert_eq "vacated floor unchanged by realization" "$before" "$after"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
