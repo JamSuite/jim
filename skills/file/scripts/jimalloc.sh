@@ -249,6 +249,57 @@ alloc_resolve_issue() {
   printf '%s\n' "$current"
 }
 
+# alloc_group_alias_map  (log on stdin)
+#   Print one TAB-separated "<old>\t<current>" line per group named as the source
+#   of a group-rename record, with the chain fully followed: dashboard→ui→surface
+#   yields both "dashboard<TAB>surface" and "ui<TAB>surface". Empty output when
+#   the log holds no group rename. Both tokens of a record are validated; a
+#   malformed record is skipped.
+#
+#   The walk each line reports is the resolver's own: records apply in file
+#   order, each at most once, so the map and forward-replay resolution always
+#   agree on where a group went. That ordering also means a group renamed away
+#   and later reused keeps the two answers distinct — with `a→b` before `c→a`,
+#   `a` maps to `b` while `c` maps to `a`, because `a→b` is already spent by the
+#   time `c` becomes `a`.
+#
+#   Resolved bottom-up so no chain is ever re-walked: scanning the records in
+#   reverse, each one's answer is either its destination or the already-computed
+#   answer of the next record that renames that destination. Every record is
+#   resolved exactly once, and a crafted cycle cannot spin because a record only
+#   ever defers to a strictly later one. Building the map forward instead would
+#   cost a re-point of every entry per record — quadratic on input any pusher can
+#   grow.
+alloc_group_alias_map() {
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4
+  local -a src=() dst=()
+  local m=0
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
+    [[ "$c1" == group && "$c2" == rename ]] || continue
+    alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
+    src[m]="$c3"; dst[m]="$c4"; m=$((m + 1))
+  done
+  (( m )) || return 0
+  local -A nextsrc=() landing=()
+  local j jn
+  for ((j=m-1; j>=0; j--)); do
+    jn="${nextsrc[${dst[j]}]:-}"
+    if [[ -n "$jn" ]]; then
+      landing[$j]="${landing[$jn]}"
+    else
+      landing[$j]="${dst[j]}"
+    fi
+    nextsrc[${src[j]}]=$j
+  done
+  # nextsrc now holds each group's *first* record, which is where its walk starts.
+  local g
+  for g in "${!nextsrc[@]}"; do
+    printf '%s\t%s\n' "$g" "${landing[${nextsrc[$g]}]}"
+  done
+}
+
 # alloc_next_id_spec <group>  (log on stdin)
 #   The next spec id for <group>: max ordinal + 1 (zero-padded to 3), counting
 #   every allocate id and rename destination in the group. Because ids are never
