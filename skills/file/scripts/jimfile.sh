@@ -456,25 +456,50 @@ is_spec_dir_basename() {
   return 1
 }
 
+# is_prov_basename <name>
+#   Exit 0 iff <name> is the reserved provisional ordinal form: the prefix, then
+#   an 8-digit issuance date, then a slug, the whole token through the id
+#   boundary. A spec bound while the coordination point was unreachable wears
+#   this as its directory name, and the token is the entire basename — there is
+#   no separate ordinal and slug to compose.
+is_prov_basename() {
+  local name="$1" body date slug
+  [[ "$name" == "$SPEC_PROV_PREFIX"* ]] || return 1
+  body="${name#"$SPEC_PROV_PREFIX"}"
+  [[ -n "$body" ]] || return 1
+  date="${body%%-*}"; slug="${body#*-}"
+  [[ "$date" =~ ^[0-9]{8}$ ]] || return 1
+  [[ -n "$slug" && "$slug" != "$body" ]] || return 1
+  is_valid_id "$body" >/dev/null 2>&1
+}
+
 # cmd_mv_spec_id <group> <old-basename> <new-id> <name>
-#   Rename {specs}/{group}/{old-basename}/ to {specs}/{group}/{new-id}-{name}/ —
-#   the cross-id rename mv-spec cannot express, since its single {id} drives both
-#   the source glob and the target name. Two callers need it: an advisory ordinal
-#   that shifted before binding, and a pending provisional identity being
-#   realized onto its real ordinal.
+#                <group> <old-basename> <provisional-token>
+#   Rename {specs}/{group}/{old-basename}/ onto a different identity — the
+#   cross-id rename mv-spec cannot express, since its single {id} drives both the
+#   source glob and the target name. Three callers need it: an advisory ordinal
+#   that shifted before binding, a placeholder binding to a provisional identity
+#   offline, and a pending provisional identity being realized onto its real
+#   ordinal.
 #
-#   Every element is validated before any move: {group} through the id boundary,
-#   {old-basename} through the spec-dir basename gate, {new-id} as digits between
+#   The four-argument form composes {new-id}-{name}: {new-id} is digits between
 #   the padded floor and the width the registry can be rebuilt from (so an
-#   unpadded id never becomes a directory name), {name} through the slug
-#   boundary. Same parent only; the source must exist and an existing target is
-#   refused rather than clobbered — a spec ordinal is path identity, so a
+#   unpadded id never becomes a directory name) and {name} clears the slug
+#   boundary. The three-argument form takes the target basename whole, and ONLY
+#   for the reserved provisional form, whose token is the entire basename; every
+#   other target must go through the four-argument form, so this is not a general
+#   rename-to-anything escape hatch.
+#
+#   {group} clears the id boundary and {old-basename} the spec-dir basename gate
+#   in both forms. Same parent only; the source must exist and an existing target
+#   is refused rather than clobbered — a spec ordinal is path identity, so a
 #   collision halts instead of overwriting or suffixing. Prints the target dir.
 #   The uncommitted-case twin of jimledger.sh's rename-tracked.
 cmd_mv_spec_id() {
   local group="${1:-}" old="${2:-}" new_id="${3:-}" new_name="${4:-}"
-  if [[ -z "$group" || -z "$old" || -z "$new_id" || -z "$new_name" ]]; then
-    echo "error: 'mv-spec-id' requires <group> <old-basename> <new-id> <name>" >&2
+  if [[ -z "$group" || -z "$old" || -z "$new_id" ]]; then
+    echo "error: 'mv-spec-id' requires <group> <old-basename> <new-id> <name>" \
+         "(or <group> <old-basename> <provisional-token>)" >&2
     return 2
   fi
   if ! is_valid_id "$group"; then
@@ -485,13 +510,25 @@ cmd_mv_spec_id() {
     echo "error: mv-spec-id source rejected — '$old'" >&2
     return 1
   fi
-  if [[ ! "$new_id" =~ ^[0-9]{3,15}$ ]]; then
-    echo "error: mv-spec-id new-id rejected — '$new_id' (allowed: ^[0-9]{3,15}\$)" >&2
-    return 1
-  fi
-  if ! is_valid_slug "$new_name"; then
-    echo "error: mv-spec-id name rejected — '$new_name'" >&2
-    return 1
+  local new_base
+  if [[ -z "$new_name" ]]; then
+    # Three-argument form: the provisional token IS the basename.
+    if ! is_prov_basename "$new_id"; then
+      echo "error: mv-spec-id target rejected — '$new_id' (the 3-argument form takes" \
+           "a provisional token only; use <new-id> <name> for a real ordinal)" >&2
+      return 1
+    fi
+    new_base="$new_id"
+  else
+    if [[ ! "$new_id" =~ ^[0-9]{3,15}$ ]]; then
+      echo "error: mv-spec-id new-id rejected — '$new_id' (allowed: ^[0-9]{3,15}\$)" >&2
+      return 1
+    fi
+    if ! is_valid_slug "$new_name"; then
+      echo "error: mv-spec-id name rejected — '$new_name'" >&2
+      return 1
+    fi
+    new_base="$new_id-$new_name"
   fi
   local specs_root group_dir
   specs_root="$(jimconf_get specs)"
@@ -500,7 +537,7 @@ cmd_mv_spec_id() {
     echo "error: mv-spec-id group dir not found — '$group_dir'" >&2
     return 1
   fi
-  local src="$group_dir/$old" target="$group_dir/$new_id-$new_name"
+  local src="$group_dir/$old" target="$group_dir/$new_base"
   if [[ ! -d "$src" ]]; then
     echo "error: mv-spec-id source dir not found — '$src'" >&2
     return 1
