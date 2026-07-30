@@ -86,21 +86,32 @@ List existing specs in every group via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/
 
 Flag potential cross-spec side effects if the new idea overlaps with existing specs in the same group.
 
-**Open the jim ledger (new specs only).** Once the target group is known and this is a *new* spec (not a differential update — Step 13), reserve the id and open the ledger immediately, so the spec stage's start is recorded from the outset rather than after the interview's back-and-forth:
+**Open the jim ledger (new specs only).** Once the target group is known and this is a *new* spec (not a differential update — Step 13), open the ledger immediately, so the spec stage's start is recorded from the outset rather than after the interview's back-and-forth.
+
+The id is **not** assigned here. Ask the allocator for an advisory preview and name the placeholder dir after it:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id <group>           # → the id; hold it for Step 8
-bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> wip  # → <specs>/<group>/<id>-wip/spec.md
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh peek spec <group>   # → <group>/<NNN>, advisory
 ```
 
-Create the placeholder dir (the parent of that path) and record the stage start:
+The preview reserves nothing. It can shift before the identity binds at Step 8, and an interview abandoned before then consumes no ordinal — which is the whole reason binding waits. Use only the ordinal part as the placeholder's prefix:
 
 ```
-mkdir -p <specs>/<group>/<id>-wip
-bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs>/<group>/<id>-wip spec started
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <peek> wip  # → <specs>/<group>/<peek>-wip/spec.md
+mkdir -p <specs>/<group>/<peek>-wip
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs>/<group>/<peek>-wip spec started
 ```
 
-`wip` is a placeholder slug, renamed to the real slug in Step 8. This creates an uncommitted `ledger.md` (in an otherwise-empty spec dir) right away; if you abandon the interview, just delete the `<id>-wip` dir. If `jimledger.sh` is absent (an older checkout), skip this entirely — Step 8 then assigns the id and creates the final dir directly, as before.
+`wip` is a placeholder slug and `<peek>` a placeholder ordinal; Step 8 renames the dir to the identity it actually binds. This creates an uncommitted `ledger.md` (in an otherwise-empty spec dir) right away; if you abandon the interview, just delete the `<peek>-wip` dir.
+
+**If `peek` refuses**, classify the refusal by matching its message **anywhere in stderr** — never by reading the last line, and never by exit code alone, since both refusals exit 1:
+
+| Refusal | Meaning | What to do |
+| :--- | :--- | :--- |
+| `group renamed` | The group was renamed away; stderr names the current one. **Retryable.** | Present the redirect and ask: scope under the named group instead? On explicit agreement, re-run with `--follow-redirect` and continue under **the group the allocator returns** — which is authoritative and may differ from the one asked for. Never substitute silently. |
+| `group exhausted` | No ordinal left the registry could be rebuilt from. **Terminal.** | Report it as terminal and stop. Acknowledging changes nothing; do not retry. |
+
+If the coordination point is unreachable, `peek` degrades to the last-seen state — that is fine, it is advisory. Carry any redirect consent forward to Step 8, which needs the same flag.
 
 ### 4. Detect spec type
 
@@ -174,13 +185,17 @@ No confidence scores. No numeric thresholds. The question is structural: "Can I 
 
 ### 8. Generate spec.md
 
-**Assign the id.** If you opened the ledger in Step 3 (the usual case for a new spec), the id is already assigned — reuse it; do **not** call `next-id` again. Only if Step 3's ledger-open was skipped (e.g. `jimledger.sh` absent) assign it now:
+**Bind the id.** The identity is assigned here, at write time — never earlier. What Step 3 showed was an advisory preview; this call is what durably reserves an ordinal at the coordination point:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh next-id <group>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh allocate spec <group> "<title>"
 ```
 
-The script returns the next zero-padded 3-digit ID (max existing + 1, or `001` if the group is empty). Gaps in the sequence are not reclaimed.
+Add `--follow-redirect` **only** if the developer consented to a group redirect in Step 3. Classify the outcome by matching the message anywhere in stderr, never by the last line:
+
+- **A real id** (`<group>/<NNN>`) — the ordinal is reserved. The returned group is authoritative: if it differs from the one you asked for, the redirect was applied, so say so and use the returned group from here on.
+- **A provisional id** (`<group>/P-<date>-<slug>`) — the coordination point was unreachable and the project's configuration selects provisional issuance. The ordinal slot carries the reserved prefix, so this identity can never be mistaken for or collide with a real ordinal. Scoping completes normally and every downstream stage runs against it unchanged; `/jim:spec reconcile` realizes it later.
+- **A refusal** — report it and **stop, writing no spec file**. The `<peek>-wip` placeholder holds only the ledger, so name it as disposable: delete it now, or keep it and retry the allocation later. Either way there is no spec file, which is the observable that matters. A `group renamed` refusal is retryable via the consent path above; `group exhausted` is terminal.
 
 Read `assets/spec-template.md`. Generate the spec:
 
@@ -193,13 +208,21 @@ Read `assets/spec-template.md`. Generate the spec:
 - For refactors, ensure acceptance criteria includes "Existing tests pass without modification."
 - **Research & Architecture Handoff** — conditional. Include the `## Research & Architecture Handoff` section *only* when Implementation Insights were surfaced during the interview via the Level-Up Method (Step 6). Each Insight follows the per-Insight sub-template in `assets/spec-template.md`. If no Insights were collected, strip the section entirely along with its comment marker (same convention as the `<!-- ... only -->` type markers).
 
-**Rename the wip dir before writing** (new specs that opened the ledger in Step 3). Now that the slug is settled, rename the `<id>-wip` placeholder to its final name. Do this *before* writing `spec.md` or capturing any path (e.g. the candidate-batch `origin`), so no `-wip` path leaks downstream:
+**Rename the placeholder before writing.** Now that both the identity and the slug are settled, rename the `<peek>-wip` dir to the identity that was actually bound. Do this *before* writing `spec.md` or capturing any path (e.g. the candidate-batch `origin`), so neither the placeholder ordinal nor the `-wip` slug leaks downstream:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh mv-spec <group> <id> <name>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh mv-spec-id <group> <peek>-wip <id> <name>
 ```
 
-(Skip if Step 3's ledger-open was skipped — there is no wip dir to rename.)
+The verb absorbs the ordinal shift, so a preview that moved between Step 3 and here costs nothing. **If it refuses because the target already exists**, the allocator issued an ordinal whose directory is already in the tree — registry-vs-tree drift. Halt loudly, name the drift, and write nothing: no suffixing (a spec ordinal is path identity, unlike a provisional issue filename) and no overwrite. Repairing the drift is the drift-repair follow-on's business, never a local workaround.
+
+**On the provisional branch**, the returned ordinal token is the whole directory basename — it is already unique, reserved, and self-describing, so do not compose a second slug into it. Pass the token as the sole target (the verb's three-argument form):
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh mv-spec-id <group> <peek>-wip P-<date>-<slug>
+```
+
+The dir becomes `<specs>/<group>/P-<date>-<slug>/` and the frontmatter carries `id: "P-<date>-<slug>"`. If that directory already exists — another spec scoped the same day under the same title — append a `-2`/`-3` suffix to the title-slug, re-run `allocate spec` with the suffixed title so the token is re-derived rather than hand-edited, and rename to the new token. This mirrors how provisional issue filenames disambiguate.
 
 Resolve the spec write path:
 
@@ -207,7 +230,7 @@ Resolve the spec write path:
 bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>
 ```
 
-Write the spec to that path. The `spec finished` event is **not** recorded here — the spec keeps changing through the self-check and your review until approval, so the stage's finish is recorded at approval (Step 12).
+Write the spec to that path, with frontmatter `id:` carrying the bound identity — the real ordinal, or the provisional token on that branch. The `spec finished` event is **not** recorded here — the spec keeps changing through the self-check and your review until approval, so the stage's finish is recorded at approval (Step 12).
 
 ### 9. Socratic self-check
 
