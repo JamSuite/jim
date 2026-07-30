@@ -1235,6 +1235,68 @@ case_jimledger_rename_tracked_refuses_pathspec_magic() {
   assert_match "refused at tracked-check, not git mv" 'not tracked' "$ERR"
 }
 
+# rename_prov_fixture <name> — a git repo holding a committed spec dir whose
+#   basename is the reserved provisional form, one commit. Print the repo root.
+rename_prov_fixture() {
+  local name="$1"; local root="$TMP_BASE/$name"
+  mkdir -p "$root/docs/specs/sdlc/P-20260728-new-widget"
+  git -C "$root" init -q
+  git -C "$root" config user.email "test@example.com"
+  git -C "$root" config user.name "Test"
+  git -C "$root" config commit.gpgsign false
+  printf -- '---\nid: "P-20260728-new-widget"\n---\n' \
+    > "$root/docs/specs/sdlc/P-20260728-new-widget/spec.md"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "seed"
+  printf '%s' "$root"
+}
+
+# AC: a committed provisional spec dir renames onto its realized ordinal through
+# the same sibling primitive, and git records it as a rename — realization does
+# not ask the developer to change when they commit, and history stays continuous
+# across the move.
+case_jimledger_rename_tracked_provisional_dir() {
+  local root; root="$(rename_prov_fixture rt_prov)"
+  run_jimledger_in "$root" rename-tracked \
+    docs/specs/sdlc/P-20260728-new-widget docs/specs/sdlc/018-new-widget
+  assert_exit "rc" 0 "$RC"
+  assert_eq "provisional dir gone" "0" \
+    "$([[ -e "$root/docs/specs/sdlc/P-20260728-new-widget" ]] && echo 1 || echo 0)"
+  assert_eq "realized dir exists"  "1" \
+    "$([[ -d "$root/docs/specs/sdlc/018-new-widget" ]] && echo 1 || echo 0)"
+  assert_match "recorded as a rename, not add+delete" '^R' \
+    "$(git -C "$root" diff --cached --name-status -M)"
+}
+
+# AC: widening what the primitive accepts as a source does not loosen anything
+# else — with a provisional source, the cross-parent, existing-target, and
+# tracked-source guards all still refuse.
+case_jimledger_rename_tracked_provisional_guards_hold() {
+  local root; root="$(rename_prov_fixture rt_provguard)"
+  mkdir -p "$root/modules" "$root/docs/specs/sdlc/018-taken"
+  run_jimledger_in "$root" rename-tracked \
+    docs/specs/sdlc/P-20260728-new-widget modules/018-new-widget
+  assert_exit "cross-parent refused" 1 "$RC"
+  run_jimledger_in "$root" rename-tracked \
+    docs/specs/sdlc/P-20260728-new-widget docs/specs/sdlc/018-taken
+  assert_exit "existing target refused" 1 "$RC"
+  run_jimledger_in "$root" rename-tracked \
+    docs/specs/sdlc/P-20260728-absent docs/specs/sdlc/019-x
+  assert_exit "untracked source refused" 1 "$RC"
+  assert_eq "source still in place" "1" \
+    "$([[ -d "$root/docs/specs/sdlc/P-20260728-new-widget" ]] && echo 1 || echo 0)"
+}
+
+# AC: the primitive stays general — it is the group-dir rename partition depends
+# on, so a source basename that is neither an ordinal nor the reserved form is
+# still renamable. A spec-shaped source gate here would strand that caller.
+case_jimledger_rename_tracked_group_dir_still_renames() {
+  local root; root="$(rename_git_fixture rt_grp_general)"
+  run_jimledger_in "$root" rename-tracked modules/cart modules/checkout
+  assert_exit "rc" 0 "$RC"
+  assert_eq "renamed" "1" "$([[ -d "$root/modules/checkout" ]] && echo 1 || echo 0)"
+}
+
 # ─── spec 043: commit-rename (explicit-stage rename commits) ─────────────────
 
 # AC #12 / sec Finding 7: the docs commit stages the moved spec-dir pair (script-
