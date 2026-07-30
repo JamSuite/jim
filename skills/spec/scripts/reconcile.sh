@@ -386,6 +386,46 @@ sweep_citations() {
   return 0
 }
 
+# record_realized <specs_dir> <remap-rows>
+#   Append one `spec realized` event to the SPECS-ROOT ledger carrying the
+#   provisional→real mapping in the same moved= grammar the partition operations
+#   use. Recording it durably is what lets a citation frozen while the spec was
+#   provisional stay traceable, and lets the rename-emitting follow-on lift the
+#   mapping into registry redirect records without re-deriving anything.
+#
+#   Every element is charset-gated immediately before it is appended. The ledger
+#   append writes whatever it is handed, so composing the value out of tokens
+#   re-checked at this boundary is what keeps a crafted directory name from
+#   reaching the record. The mapping is chunked at element boundaries rather
+#   than truncated, so a large batch stays wholly recorded.
+#
+#   The phase token sits outside the measured stage set on purpose — realization
+#   is not a stage. It is inert to the vacated-id floor too, which reads only
+#   split and merge events: a provisional never held a real ordinal, so it
+#   vacates nothing and no floor may rise because of it.
+record_realized() {
+  local root="$1" remap="$2"
+  [[ -n "$remap" ]] || return 0
+  local pend real elem cand cur=""
+  local -a tokens=()
+  while IFS=$'\t' read -r pend real _; do
+    [[ -n "$pend" && -n "$real" ]] || continue
+    [[ "$pend" =~ ^[a-z0-9][a-z0-9-]*/P-[0-9]{8}-[a-z0-9][a-z0-9-]*$ ]] || continue
+    [[ "$real" =~ ^[a-z0-9][a-z0-9-]*/[0-9]{3,15}$ ]] || continue
+    elem="$pend:$real"
+    if [[ -z "$cur" ]]; then cand="moved=$elem"; else cand="$cur,$elem"; fi
+    if (( ${#cand} > 256 )) && [[ -n "$cur" ]]; then
+      tokens+=("$cur")
+      cur="moved=$elem"
+    else
+      cur="$cand"
+    fi
+  done <<<"$remap"
+  [[ -n "$cur" ]] && tokens+=("$cur")
+  (( ${#tokens[@]} )) || return 0
+  bash "$JIMLEDGER" event "$root" spec realized "${tokens[@]}"
+}
+
 cmd_reconcile() {
   local dir="" apply=0
   while (( $# )); do
@@ -438,6 +478,7 @@ cmd_reconcile() {
     [[ -n "$applied" ]] && printf '%s\n' "$applied"
     remap="$(build_remap "$applied" "$mapping")"
     sweep_citations "$remap" || arc=1
+    record_realized "$dir" "$remap" || arc=1
     return "$arc"
   fi
 
