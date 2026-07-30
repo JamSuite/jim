@@ -7,7 +7,7 @@ description: >
   use for technical planning (/jim:plan) or implementation (/jim:build).
 agent: pm
 argument-hint: "[idea-or-name]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:spec-check) Skill(jim:blueprint) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh peek spec *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh allocate spec *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/spec/scripts/reconcile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:spec-check) Skill(jim:blueprint) Read Write Edit
 ---
 
 # /jim:spec
@@ -25,6 +25,7 @@ Use `$ARGUMENTS` as the idea or name hint.
 | Input | Behavior |
 |-------|----------|
 | Empty | Ask the user what they want to scope |
+| Literal `reconcile` | Realize pending provisional identities (step 14) — not an interview |
 | String | Treat as idea seed — begin interview with it |
 | Path to existing spec | Enter differential update mode (step 13) |
 
@@ -355,6 +356,33 @@ If `$ARGUMENTS` points to an existing spec, or if step 3 identified a name colli
    bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> spec finished
    ```
 5. If creating new: follow the normal generation path (step 8) with a new ID.
+
+### 14. Realize pending provisional identities
+
+Reached only when `$ARGUMENTS` is the literal `reconcile`. This is not an interview — no strategic context, no gray-area analysis, no template. A spec scoped while the coordination point was unreachable holds a provisional identity; this realizes it into a real coordinated ordinal.
+
+**Preview first, always.** Run the realizer read-only and show the developer exactly what it reports:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/spec/scripts/reconcile.sh
+```
+
+The preview mutates nothing. Each row is `<provisional-identity>  <real-ordinal>  <state>`. Read the state column out loud rather than summarizing it away:
+
+- `new` — the ordinal is being allocated now. The expected state.
+- `have` — the registry already holds this identity. Expected when resuming a run that was interrupted after the ordinal landed but before the rename. **Unexpected otherwise**: it means a record already matches this spec's group, title-slug, and issuance date — either another spec that genuinely coincides on all three, or a record placed by someone with push access to the coordination branch. Surface it and let the developer decide before applying.
+
+A row skipped with a warning is also the developer's business — a pending directory whose identity does not corroborate is passed over, not realized, and stays pending until someone looks at it.
+
+**Then ask before applying.** On explicit agreement:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/spec/scripts/reconcile.sh --apply
+```
+
+Report what came back verbatim. If it exits non-zero, some identity halted — most likely because the realized ordinal's directory already exists, which is registry-vs-tree drift. Name the drift and stop; do not rename around it, and do not suffix. The other identities in the batch keep their ordinals, which are already durable, so a re-run converges on them.
+
+Realization renames directories and rewrites citations. Do not stage or commit on the developer's behalf — show what changed and let them commit.
 
 ## Validation Checklist
 
