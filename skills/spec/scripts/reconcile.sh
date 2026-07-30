@@ -25,6 +25,10 @@
 #   bash reconcile.sh [<specs_dir>]
 #     PREVIEW (read-only): list pending provisional identities and the real
 #     ordinal each would take. Mutates nothing.
+#   bash reconcile.sh --apply [<specs_dir>]
+#     APPLY: realize through the allocator, then rename each directory onto its
+#     ordinal — git mv when tracked, a plain move when not — and rewrite the
+#     frontmatter id.
 #   bash reconcile.sh -c <config> [...]
 #     Forward -c to jimfile.sh / jimconf.sh / jimalloc.sh (used by tests).
 #   specs_dir default: jimconf.sh get specs
@@ -48,6 +52,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 JIMALLOC="$(dirname "$JIMFILE")/jimalloc.sh"
+JIMLEDGER="$(cd "$HERE/../../ledger/scripts" && pwd)/jimledger.sh"
 
 # The reserved prefix a provisional identity's ordinal slot carries. The grammar
 # belongs to the allocator; it is named here because a spec bound offline wears
@@ -137,21 +142,127 @@ scan_pending() {
   done
 }
 
-# realize_mapping <pending-rows> — feed the pending identities to
-# `jimalloc.sh reconcile spec` and print its mapping verbatim, all three fields.
-# The rows carry identities scan_pending already validated; this composes no
-# path from them, only the stdin the allocator expects.
+# realize_mapping <apply-flag> <pending-rows> — feed the pending identities to
+# `jimalloc.sh reconcile spec` (preview or --apply per <apply-flag>) and print
+# its mapping verbatim, all three fields. The rows carry identities scan_pending
+# already validated; this composes no path from them, only the stdin the
+# allocator expects.
 realize_mapping() {
-  local rows="$1" ids
+  local apply="$1" rows="$2" ids
   [[ -n "$rows" ]] || return 0
   ids="$(printf '%s\n' "$rows" | cut -f1)"
-  printf '%s\n' "$ids" | ja reconcile spec
+  if (( apply )); then
+    printf '%s\n' "$ids" | ja reconcile spec --apply
+  else
+    printf '%s\n' "$ids" | ja reconcile spec
+  fi
+}
+
+# is_tracked <path> — exit 0 iff git already tracks <path>. The path is handed
+# to git literally, so pathspec magic is never interpreted.
+is_tracked() {
+  [[ -n "$(git --literal-pathspecs ls-files -- "$1" 2>/dev/null)" ]]
+}
+
+# rewrite_id <file> <new-id> — print <file> with its FRONTMATTER id: field (the
+# first top-level field inside the leading --- block) replaced by <new-id>. A
+# body line that happens to read "id:" sits outside that block and is never
+# matched.
+rewrite_id() {
+  local file="$1" newid="$2"
+  awk -v n="$newid" '
+    /^---$/ { fm++; print; next }
+    fm == 1 && /^id:/ && !done { print "id: \"" n "\""; done = 1; next }
+    { print }
+  ' "$file"
+}
+
+# ordinal_holder <specs_dir> <group> <ordinal> — print the directory already
+# holding <ordinal> in <group>, if any. Matches the ordinal, not the whole name:
+# a spec ordinal is path identity, so another slug on the same ordinal is the
+# same collision.
+ordinal_holder() {
+  local root="$1" group="$2" ord="$3" entry
+  for entry in "$root/$group/$ord"-*/ "$root/$group/$ord"/; do
+    [[ -d "$entry" ]] || continue
+    printf '%s\n' "${entry%/}"
+    return 0
+  done
+  return 1
+}
+
+# apply_pending <specs_dir> <pending-rows> <mapping>
+#   Rename each realized identity's directory onto its ordinal and rewrite the
+#   spec's frontmatter id. The rename is history-continuous when the directory
+#   is already tracked (git mv, through the sibling-constrained ledger verb) and
+#   a plain move when it is not, so realization never asks the developer to
+#   change when they commit.
+#
+#   An identity halts — loudly, with nothing applied for it, and the whole run
+#   ending non-zero — when the realized ordinal is already held by a directory
+#   in the group, or when the allocator answered under a different group than
+#   the identity was issued under. Both are registry-vs-tree drift, and a spec
+#   ordinal is path identity: there is no silent suffixing and no overwrite, and
+#   repairing the drift is not this script's business. Other identities in the
+#   batch are unaffected — their ordinals are already durable.
+#
+#   Prints one "REALIZED <identity> <dir>" line per directory renamed.
+apply_pending() {
+  local root="$1" rows="$2" mapping="$3"
+  local pend dir real group base body slug ord target held spec tmp
+  local failed=0
+  while IFS=$'\t' read -r pend dir; do
+    [[ -n "$pend" ]] || continue
+    real="$(awk -F'\t' -v k="$pend" '$1==k{print $2; exit}' <<<"$mapping")"
+    [[ -n "$real" ]] || continue
+    group="${pend%/*}"; base="${pend##*/}"
+    if [[ "${real%/*}" != "$group" ]]; then
+      echo "error: $pend — the registry answers under group '${real%/*}'; a group renamed since issuance is not a rename this step can follow" >&2
+      failed=1; continue
+    fi
+    ord="${real##*/}"
+    body="${base#"$PROV_PREFIX"}"
+    slug="${body#*-}"
+    target="$root/$group/$ord-$slug"
+    if held="$(ordinal_holder "$root" "$group" "$ord")"; then
+      echo "error: $pend — realized ordinal $real is already held by '$held' (registry-vs-tree drift); nothing applied for this identity" >&2
+      failed=1; continue
+    fi
+    if is_tracked "$dir"; then
+      if ! bash "$JIMLEDGER" rename-tracked "$dir" "$target"; then
+        echo "error: $pend — tracked rename to '$target' failed" >&2
+        failed=1; continue
+      fi
+    else
+      if ! jf mv-spec-id "$group" "$base" "$ord" "$slug" >/dev/null; then
+        echo "error: $pend — rename to '$target' failed" >&2
+        failed=1; continue
+      fi
+    fi
+    spec="$target/spec.md"
+    if [[ -f "$spec" ]]; then
+      if ! tmp="$(mktemp "$target/.reconcile.tmp.XXXXXX")"; then
+        echo "error: cannot create tmp file in '$target'" >&2
+        failed=1; continue
+      fi
+      if rewrite_id "$spec" "$ord" > "$tmp" && mv "$tmp" "$spec"; then
+        :
+      else
+        rm -f "$tmp"
+        echo "error: $pend — frontmatter rewrite failed for '$spec'" >&2
+        failed=1; continue
+      fi
+    fi
+    printf 'REALIZED %s %s\n' "$pend" "$target"
+  done <<<"$rows"
+  return "$failed"
 }
 
 cmd_reconcile() {
-  local dir=""
+  local dir="" apply=0
   while (( $# )); do
     case "$1" in
+      --apply) apply=1; shift ;;
       -*) echo "error: unknown option '$1'" >&2; return 2 ;;
       *)  dir="$1"; shift ;;
     esac
@@ -169,13 +280,33 @@ cmd_reconcile() {
     return 0
   fi
 
+  # The uncommitted-case rename composes its target from the CONFIGURED specs
+  # dir, so applying into a tree other than the one just scanned would move a
+  # directory nobody asked about. Refuse rather than guess.
+  if (( apply )); then
+    local cfg_dir
+    cfg_dir="$(jc get specs 2>/dev/null)"; cfg_dir="${cfg_dir%/}"
+    if [[ "$(realpath -m -- "$cfg_dir" 2>/dev/null)" != "$(realpath -m -- "$dir" 2>/dev/null)" ]]; then
+      echo "error: --apply operates on the configured specs dir ('$cfg_dir'), not '$dir'" >&2
+      return 1
+    fi
+  fi
+
   local mapping rc
-  mapping="$(realize_mapping "$rows")"; rc=$?
+  mapping="$(realize_mapping "$apply" "$rows")"; rc=$?
   (( rc == 0 )) || return "$rc"
 
   if [[ -z "$mapping" ]]; then
     printf 'reconcile: still offline — nothing changed.\n'
     return 0
+  fi
+
+  if (( apply )); then
+    printf 'reconcile — %s\n\n' "$dir"
+    printf '%s\n' "$mapping" | sed 's/^/  /'
+    printf '\n'
+    apply_pending "$dir" "$rows" "$mapping"
+    return $?
   fi
 
   printf 'reconcile preview — %s\n\n' "$dir"
@@ -190,6 +321,10 @@ usage() {
     '  bash reconcile.sh [<specs_dir>]' \
     '      Preview (read-only): list pending provisional identities and the real' \
     '      ordinal each would take. Mutates nothing.' \
+    '' \
+    '  bash reconcile.sh --apply [<specs_dir>]' \
+    '      Apply: realize through the allocator, rename each directory onto its' \
+    '      ordinal, and rewrite the frontmatter id.' \
     '' \
     '  specs_dir default: jimconf.sh get specs'
 }
