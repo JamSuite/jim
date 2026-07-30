@@ -983,6 +983,7 @@ alloc_cas_append() {
   [[ -n "$who" ]]   || who="jim-allocator"
   [[ -n "$email" ]] || email="jim-allocator@localhost"
   local attempts=5 attempt tip current_log current_raw return_id
+  local builder_out builder_rc
   local -a cur=() built=() records=() all=()
   for ((attempt=1; attempt<=attempts; attempt++)); do
     # Current tip of the coordination branch for this tier (origin fetches it).
@@ -1013,7 +1014,16 @@ alloc_cas_append() {
     else
       current_log=""
     fi
-    mapfile -t built < <("$builder" "$current_log" "$@" "$who")
+    # The builder's own exit status is kept: a builder that refuses (rc != 0)
+    # has already written its specific reason to stderr, so nothing generic is
+    # added after it — a consumer classifying the refusal by the last line it
+    # reads sees that reason. The generic line covers only the other failure,
+    # a builder that succeeds but returns output the loop cannot use.
+    builder_out="$("$builder" "$current_log" "$@" "$who")"
+    builder_rc=$?
+    (( builder_rc == 0 )) || return 1
+    built=()
+    [[ -n "$builder_out" ]] && mapfile -t built <<< "$builder_out"
     if (( ${#built[@]} < 2 )); then
       echo "error: allocator failed to compute a record" >&2
       return 1
