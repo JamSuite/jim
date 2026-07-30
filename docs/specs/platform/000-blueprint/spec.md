@@ -2,7 +2,7 @@
 title: "platform — blueprint"
 group: "platform"
 kind: blueprint
-updated: "2026-07-28"
+updated: "2026-07-30"
 last_full_generate: "2026-07-26T08:31:16Z"
 ---
 
@@ -41,9 +41,10 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   past vacated ids (split/merge ledger events) so a vacated id is never
   re-minted; the `000-blueprint` slot is reserved and resolved only via
   `path blueprint <group>`.
-- `jimalloc.sh` **ID coordination allocator** — `allocate spec <group> <subject>`
-  / `allocate issue <subject>` (durable-before-return), `peek spec <group>` /
-  `peek issue` (advisory next-id preview that never binds), `resolve spec|issue
+- `jimalloc.sh` **ID coordination allocator** — `allocate spec <group> <subject>
+  [--follow-redirect]` / `allocate issue <subject>` (durable-before-return),
+  `peek spec <group> [--follow-redirect]` / `peek issue` (advisory next-id
+  preview that never binds), `resolve spec|issue
   <id>` (forward-replay to the current name), and `seed [--apply]` (a one-time
   bootstrap that reconstructs the per-kind logs from the repo's existing spec
   directories and issue files — preview by default, `--apply` to land), and
@@ -69,7 +70,19 @@ form where a scheme cannot be minted at allocation time (a provisional
 allocation, or an un-derivable template); every replayed or config token is revalidated through
   `jimfile.sh valid-id` and the branch through `git check-ref-format` before it
   reaches git; a per-clone erosion baseline kept outside the branch detects a
-  rewritten history and refuses to reissue. The `seed` bootstrap reconstructs
+  rewritten history and refuses to reissue. The next ordinal is one shared fold
+  per kind, read by allocation, `peek`, and `reconcile` alike, so no two paths
+  disagree about which ordinal is next; that fold counts every ordinal a group
+  has ever held — allocate ids, rename destinations, and rename sources — so a
+  vacated ordinal is permanently gapped whatever shape the log takes, and it only
+  ever raises, so a malformed record wastes an ordinal rather than reissuing one.
+  Ordinal legality is one value the allocator and the bootstrap both read, so
+  every ordinal the allocator mints is one the bootstrap accepts and a repository
+  it built can always be rebuilt into a registry from its own tree. Asking about
+  a group that has been renamed away is refused, naming the redirect, until the
+  caller acknowledges it: the allocator never mints into a retired namespace, and
+  on the acknowledged path the group it answers with is authoritative and may
+  differ from the group asked about. The `seed` bootstrap reconstructs
   spec records from directory names and issue records from frontmatter, skips the
   reserved 000-blueprint slot, halts and names any conflict (a duplicate ordinal,
   an unparseable spec dir, or an issue with an absent/unparseable ordinal or id),
@@ -136,6 +149,7 @@ allocation, or an un-derivable template); every replayed or config token is reva
 | ref-validation | Every untrusted id / SHA / ref is validated before git interpolation: the single `is_valid_id` boundary (byte-identical copies in the issue group), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` | critical | judge |
 | relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments, the `rename-tracked` / `move-spec-dir` git-mv primitives) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use; and the `rename-tracked` / `move-spec-dir` git-mv primitives additionally hand their path arguments to git only under literal-pathspec semantics (`git --literal-pathspecs …` — the tracked-file `ls-files` check and `git mv`), so a valid-relpath'd path's pathspec magic (`:(exclude)` / `:/` / `:(glob)`) is never interpreted there (project-wide script rule) | critical | judge |
 | ledger-commit-discipline | `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist; ledger content is untrusted and never `source`d; the script commits in exactly seven path-scoped verbs (literal paths, `--` guard, never `git add -A`) plus the non-committing git-mv primitives `rename-tracked` (sibling-constrained) and `move-spec-dir` (cross-parent, specs-subtree-scoped) | critical | judge |
+| ordinal-single-source | Ordinal computation and ordinal legality each live in one place: the next-ordinal high-water is one shared fold per kind that every allocation, preview, and reconcile path reads, and legality is one shared value read by both the allocator and the registry bootstrap — so no two paths can diverge on which ordinal is next, or on which ordinals are legal | high | judge |
 | blueprint-slot-reserved | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0`, ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | judge |
 | tests-under-tests | Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are); the runner and scaffold enforce the boundary | medium | judge |
 
