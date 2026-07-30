@@ -1198,6 +1198,43 @@ case_jimalloc_seed_derive_specs_blueprint_only() {
   assert_eq "blueprint-only group → no records" "" "$out"
 }
 
+# AC: a pending provisional spec dir is reserved like the 000 slot — it derives
+# no record, raises no conflict, and its real siblings seed normally.
+case_jimalloc_seed_skips_provisional_dir() {
+  local root today expected
+  root="$(seed_specs_tree seed_provskip core/001-alpha core/P-20260730-new-widget)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit "rc"                   0  "$RC"
+  assert_eq   "no conflict reported" "" "$ERR"
+  expected="$(printf '%s\n' \
+    "group allocate core $today jim-seed" \
+    "spec allocate core/001 alpha $today jim-seed")"
+  assert_eq "sibling seeds, provisional skipped" "$expected" "$OUT"
+}
+
+# AC: a group holding only pending provisional dirs contributes no records at
+# all — the reserved class is invisible to the bootstrap, like the blueprint slot.
+case_jimalloc_seed_skips_provisional_only_group() {
+  local root
+  root="$(seed_specs_tree seed_provonly core/P-20260730-new-widget)"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit "rc"                                  0  "$RC"
+  assert_eq   "provisional-only group → no records" "" "$OUT"
+}
+
+# AC: only the reserved form is skipped — a dir merely starting with the prefix
+# but carrying a token the id boundary rejects is still a loud conflict, so the
+# skip cannot be used to hide an unseedable directory from the bootstrap.
+case_jimalloc_seed_provisional_prefix_invalid_token_conflicts() {
+  local root
+  root="$(seed_specs_tree seed_provbadtok core/P---bad)"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit     "rc"         1  "$RC"
+  assert_eq       "no records" "" "$OUT"
+  assert_nonempty "message"    "$ERR"
+}
+
 # AC: derivation over a fixture issues dir emits one `issue allocate` per file in
 # ascending ordinal, reads num/id from frontmatter (not INDEX.md), normalizes the
 # created timestamp to YYYYMMDD, and stamps jim-seed provenance.
