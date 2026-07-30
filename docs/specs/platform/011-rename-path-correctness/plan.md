@@ -307,35 +307,35 @@ task 12 is the full suite.
 Every `**Verify:**` asserts that tests *ran* as well as passed — a filter
 matching no case exits 0, so a bare exit-code check would pass vacuously.
 
-1. [ ] Add failing fixtures for D1 reuse-via-rename-in, spec and issue: a name
+1. [x] Add failing fixtures for D1 reuse-via-rename-in, spec and issue: a name
    renamed away then re-established by renaming a different id onto it must
    resolve to the current holder.
    **Verify:** `bash tests/jimalloc.sh reuse_rename_in | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, [1-9][0-9]* failed'`
 
-2. [ ] Fix D1: in `alloc_resolve_spec` and `alloc_resolve_issue`, set the replay
+2. [x] Fix D1: in `alloc_resolve_spec` and `alloc_resolve_issue`, set the replay
    anchor in the rename-destination branch too, keeping the later index. Depends
    on task 1.
    **Verify:** `bash tests/jimalloc.sh resolve | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed'`
 
-3. [ ] Add failing fixtures for D3: next-id after a group rename must count the
+3. [x] Add failing fixtures for D3: next-id after a group rename must count the
    group's ordinals under its former name; a multi-hop chain must resolve fully; a
    group-rename **cycle** must terminate rather than hang; and asking about a
    renamed-away group must be refused with the redirect named, then succeed under
    the current group once `--follow-redirect` is passed.
    **Verify:** `bash tests/jimalloc.sh group_alias | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, [1-9][0-9]* failed'`
 
-4. [ ] Add `alloc_group_alias_map` per the Interface Contract — one pass,
+4. [x] Add `alloc_group_alias_map` per the Interface Contract — one pass,
    transitively resolved, malformed records skipped.
    **Verify:** `bash tests/jimalloc.sh group_alias_map | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed'`
 
-5. [ ] Add failing fixtures for D2 and ordinal legality: a rename source with no
+5. [x] Add failing fixtures for D2 and ordinal legality: a rename source with no
    allocation of its own must raise the high-water; an ordinal wider than the
    legality limit must be skipped rather than counted; a 4-digit ordinal must mint
    *and* seed successfully (the recoverability criterion — this is the case that
    fails today, since the allocator mints it and the seed refuses it).
    **Verify:** `bash tests/jimalloc.sh fold_max | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, [1-9][0-9]* failed'`
 
-6. [ ] Add `alloc_fold_max_spec` / `alloc_fold_max_issue` and the single
+6. [x] Add `alloc_fold_max_spec` / `alloc_fold_max_issue` and the single
    `ALLOC_MAX_ORD_DIGITS` constant per the Interface Contract — counting rename
    sources, deciding group membership through the alias map, skipping over-wide
    ordinals — and repoint **both** seed guards at that constant, relaxing the spec
@@ -343,7 +343,7 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
    never mint what the bootstrap refuses. Depends on tasks 4, 5.
    **Verify:** `bash tests/jimalloc.sh fold_max | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed' && [ "$(grep -cE '10#\$ord > 999|\$\{#num\} > 15' skills/file/scripts/jimalloc.sh)" = 0 ]`
 
-7. [ ] Rewire `alloc_next_id_spec` onto the new helpers with both documented
+7. [x] Rewire `alloc_next_id_spec` onto the new helpers with both documented
    failure modes — alias resolution, the fold, the terminal exhaustion refusal,
    and the retryable unacknowledged-redirect refusal with `--follow-redirect` —
    and `alloc_next_num_issue` onto the fold. Thread `--follow-redirect` through
@@ -351,31 +351,31 @@ matching no case exits 0, so a bare exit-code check would pass vacuously.
    from the CLI. Depends on task 6.
    **Verify:** `for f in next_id follow_redirect; do bash tests/jimalloc.sh $f | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed' || exit 1; done`
 
-8. [ ] Add a failing fixture for D4: with a malformed `issue allocate` record
+8. [x] Add a failing fixture for D4: with a malformed `issue allocate` record
    present — numeric ordinal, boundary-invalid durable id — the ordinal a normal
    allocation would issue and the one reconcile would realize onto must match.
    **Verify:** `bash tests/jimalloc.sh reconcile_high_water_parity | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, [1-9][0-9]* failed'`
 
-9. [ ] Fix D4: `alloc_reconcile_realize` takes its high-water from
+9. [x] Fix D4: `alloc_reconcile_realize` takes its high-water from
    `alloc_fold_max_issue`, keeping its `existing[]` map keyed only on a
    boundary-valid durable id — the numeric and boundary gates stay separate.
    Depends on tasks 6, 8.
    **Verify:** `bash tests/jimalloc.sh reconcile | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed'`
 
-10. [ ] Rewrite the `alloc_next_id_spec` docstring: it currently says the fold
+10. [x] Rewrite the `alloc_next_id_spec` docstring: it currently says the fold
    counts "every allocate id and rename destination" and that group-rename
    aliasing "is deferred" — both untrue after tasks 4 and 6. State the current
    behavior, including rename sources, aliasing, and the bound.
    **Verify:** `! grep -qi 'aliasing of the group namespace is deferred' skills/file/scripts/jimalloc.sh && ! grep -q 'every allocate id and rename destination in the group' skills/file/scripts/jimalloc.sh`
 
-11. [ ] Confirm the four shipped resolution behaviors still hold — the
+11. [x] Confirm the four shipped resolution behaviors still hold — the
     reuse-via-allocation, reverted-cycle, group-rename, and malformed-skip cases
     must all still exist by name and pass. (Byte-identity of those four case
     bodies is a review concern, not something this command can prove without a
     fixed comparison base; the diff is small enough to read.)
     **Verify:** `for c in reused_name cycle_revert group_rename skips_malformed; do grep -q "^case_jimalloc_resolve_spec_$c()" tests/jimalloc.sh || exit 1; bash tests/jimalloc.sh "resolve_spec_$c" | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed' || exit 1; done`
 
-12. [ ] Full aggregate suite green.
+12. [x] Full aggregate suite green.
     **Verify:** `bash skills/meta-test/scripts/metatest.sh run | tail -1 | grep -qE 'Ran [1-9][0-9]* tests: [0-9]+ passed, 0 failed'`
 
 ## Requirements Coverage Summary
