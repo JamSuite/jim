@@ -1868,6 +1868,194 @@ case_jimalloc_reconcile_still_offline_noop() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
+# ─── Section: reconcile spec — publish + tiers (real git) ────────────────────
+
+# AC: `reconcile spec --apply` realizes each pending provisional spec identity
+# into a real ordinal and publishes it durably over the same tier / CAS /
+# durable-before-reported path a normal allocation uses.
+case_jimalloc_reconcile_spec_apply_publishes_durably() {
+  local bare A input specs
+  bare="$(alloc_new_bare recon_spec_bare)"
+  A="$(alloc_new_clone "$bare" recon_spec_A)"
+  input=$(printf '%s\n' core/P-20260728-alpha)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "mapping printed" '^core/P-20260728-alpha	core/001	new$' "$OUT"
+  specs="$(alloc_bare_specs "$bare")"
+  assert_match "real record on remote" '^spec allocate core/001 alpha ' "$specs"
+}
+
+# AC: the published record carries the date the provisional identity was issued,
+# not the day realization ran — the field the idempotency key reads back, so a
+# resumed run finds its own record instead of allocating a second ordinal.
+case_jimalloc_reconcile_spec_apply_stamps_issuance_date() {
+  local bare A input specs today
+  bare="$(alloc_new_bare recon_specdate_bare)"
+  A="$(alloc_new_clone "$bare" recon_specdate_A)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  input=$(printf '%s\n' core/P-20260728-alpha)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit  "rc" 0 "$RC"
+  specs="$(alloc_bare_specs "$bare")"
+  assert_match "issuance date stamped" '^spec allocate core/001 alpha 20260728 ' "$specs"
+  if [[ "20260728" != "$today" ]] && printf '%s\n' "$specs" | grep -q "^spec allocate core/001 alpha $today "; then
+    CURRENT_FAILED=1; echo "    [key] record stamped with the realization day, not issuance"
+  fi
+}
+
+# AC: realizing N pending provisionals publishes as a single durable commit —
+# all-or-none.
+case_jimalloc_reconcile_spec_apply_single_commit() {
+  local bare A input before after
+  bare="$(alloc_new_bare recon_spec1c_bare)"
+  A="$(alloc_new_clone "$bare" recon_spec1c_A)"
+  run_jimalloc_in "$A" allocate spec core "seed"
+  before="$(git -C "$bare" rev-list --count refs/heads/jim/registry)"
+  input=$(printf '%s\n' core/P-20260728-a core/P-20260728-b)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit "rc" 0 "$RC"
+  after="$(git -C "$bare" rev-list --count refs/heads/jim/registry)"
+  assert_eq "one commit for N reals" "$((before + 1))" "$after"
+}
+
+# AC: realizing into a group the registry has never seen claims that group once,
+# however many of its specs realize in the batch — the same allocate-once shape
+# the allocation path has.
+case_jimalloc_reconcile_spec_apply_claims_group_once() {
+  local bare A input specs count
+  bare="$(alloc_new_bare recon_specgrp_bare)"
+  A="$(alloc_new_clone "$bare" recon_specgrp_A)"
+  input=$(printf '%s\n' fresh/P-20260728-a fresh/P-20260728-b)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit "rc" 0 "$RC"
+  specs="$(alloc_bare_specs "$bare")"
+  count="$(printf '%s\n' "$specs" | grep -c '^group allocate fresh ')"
+  assert_eq   "group claimed exactly once" "1" "$count"
+  assert_match "first spec recorded"  '^spec allocate fresh/001 a ' "$specs"
+  assert_match "second spec recorded" '^spec allocate fresh/002 b ' "$specs"
+}
+
+# AC: a group the registry already holds is not re-claimed by realization.
+case_jimalloc_reconcile_spec_apply_group_not_reclaimed() {
+  local bare A input count
+  bare="$(alloc_new_bare recon_specgrp2_bare)"
+  A="$(alloc_new_clone "$bare" recon_specgrp2_A)"
+  run_jimalloc_in "$A" allocate spec core "seed"
+  input=$(printf '%s\n' core/P-20260728-a)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit "rc" 0 "$RC"
+  count="$(alloc_bare_specs "$bare" | grep -c '^group allocate core ')"
+  assert_eq "group still claimed exactly once" "1" "$count"
+}
+
+# AC: realization is resumable — the real ordinal is durable before any consumer
+# rename, so a re-run after an interruption maps the same identity to the same
+# ordinal, reports it as already held, and allocates no second real id.
+case_jimalloc_reconcile_spec_resume_no_double_allocate() {
+  local bare A input count
+  bare="$(alloc_new_bare recon_specres_bare)"
+  A="$(alloc_new_clone "$bare" recon_specres_A)"
+  input=$(printf '%s\n' core/P-20260728-once)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit  "first rc"      0 "$RC"
+  assert_match "first mapping" '^core/P-20260728-once	core/001	new$' "$OUT"
+  run_reconcile_in "$A" "$input" reconcile spec --apply   # resume after a crash
+  assert_exit  "resume rc"      0 "$RC"
+  assert_match "resume same ordinal, already held" '^core/P-20260728-once	core/001	have$' "$OUT"
+  count="$(alloc_bare_specs "$bare" | grep -c '^spec allocate core/001 once ')"
+  assert_eq "exactly one real record" "1" "$count"
+}
+
+# AC: with the coordination point still unreachable, realization realizes
+# nothing, says so, and changes nothing — a clean no-op, distinct from the
+# allocation-time hard fail.
+case_jimalloc_reconcile_spec_still_offline_noop() {
+  local repo input
+  repo="$(alloc_new_repo recon_spec_offline)"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-spec-recon.git"
+  input=$(printf '%s\n' core/P-20260728-pending)
+  run_reconcile_in "$repo" "$input" reconcile spec --apply
+  assert_exit     "rc"                    0  "$RC"
+  assert_eq       "no mapping"            "" "$OUT"
+  assert_nonempty "still-offline message" "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
+# AC: an empty pending set is a clean no-op — nothing published, the note on
+# stderr so stdout stays parseable.
+case_jimalloc_reconcile_spec_nothing_pending() {
+  local repo
+  repo="$(alloc_new_repo recon_spec_empty)"
+  run_reconcile_in "$repo" "" reconcile spec --apply
+  assert_exit     "rc"                     0  "$RC"
+  assert_eq       "no mapping"             "" "$OUT"
+  assert_nonempty "nothing-pending message" "$ERR"
+}
+
+# AC: bare `reconcile spec` is a read-only preview — it reports the mapping it
+# would make and mutates nothing.
+case_jimalloc_reconcile_spec_preview_no_mutation() {
+  local bare A input before after
+  bare="$(alloc_new_bare recon_specprev_bare)"
+  A="$(alloc_new_clone "$bare" recon_specprev_A)"
+  run_jimalloc_in "$A" allocate spec core "seed"
+  before="$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+  input=$(printf '%s\n' core/P-20260728-p)
+  run_reconcile_in "$A" "$input" reconcile spec
+  assert_exit  "rc" 0 "$RC"
+  assert_match "previews mapping" '^core/P-20260728-p	core/002	new$' "$OUT"
+  after="$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+  assert_eq "remote registry unchanged" "$before" "$after"
+}
+
+# AC: the preview carries the state column, so an identity the registry already
+# holds is visible as such before anything is applied — the tell for the residual
+# same-identity case and for a crafted matching record.
+case_jimalloc_reconcile_spec_preview_shows_state() {
+  local bare A input
+  bare="$(alloc_new_bare recon_specstate_bare)"
+  A="$(alloc_new_clone "$bare" recon_specstate_A)"
+  input=$(printf '%s\n' core/P-20260728-alpha)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit "apply rc" 0 "$RC"
+  run_reconcile_in "$A" "$input" reconcile spec
+  assert_exit  "preview rc" 0 "$RC"
+  assert_match "preview names the held state" '	have$' "$OUT"
+}
+
+# AC: apply publishes exactly the mapping the preview reported.
+case_jimalloc_reconcile_spec_preview_matches_apply() {
+  local bare A input prev applied
+  bare="$(alloc_new_bare recon_specpa_bare)"
+  A="$(alloc_new_clone "$bare" recon_specpa_A)"
+  input=$(printf '%s\n' core/P-20260728-x core/P-20260728-y)
+  run_reconcile_in "$A" "$input" reconcile spec           # preview
+  assert_exit "preview rc" 0 "$RC"
+  prev="$OUT"
+  run_reconcile_in "$A" "$input" reconcile spec --apply   # apply
+  assert_exit "apply rc" 0 "$RC"
+  applied="$OUT"
+  assert_eq    "apply matches preview" "$prev" "$applied"
+  assert_match "maps x" '^core/P-20260728-x	core/001	new$' "$applied"
+  assert_match "maps y" '^core/P-20260728-y	core/002	new$' "$applied"
+}
+
+# AC: a crafted pending identity is refused before anything is published — the
+# boundary the pure layer enforces is reached through the verb too.
+case_jimalloc_reconcile_spec_crafted_pending_refused() {
+  local bare A input
+  bare="$(alloc_new_bare recon_speccraft_bare)"
+  A="$(alloc_new_clone "$bare" recon_speccraft_A)"
+  input=$(printf '%s\n' '--upload-pack=x')
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit     "rc"      1  "$RC"
+  assert_eq       "no mapping" "" "$OUT"
+  assert_nonempty "message" "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$bare" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+}
+
 # ─── Section: reconcile — preview-then-apply (AC 9) ──────────────────────────
 
 # AC: bare `reconcile` is a read-only preview — it reports the provisional→real
