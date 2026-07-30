@@ -394,7 +394,7 @@ alloc_fold_max_issue() {
   printf '%s\n' "$max"
 }
 
-# alloc_next_id_spec <group>  (log on stdin)
+# alloc_next_id_spec <group> [--follow-redirect]  (log on stdin)
 #   The next spec id for <group>: the group's high-water + 1, zero-padded to
 #   three digits (a wider ordinal prints at its natural width). Ids are never
 #   reused, so a vacated ordinal is a permanent gap — see alloc_fold_max_spec for
