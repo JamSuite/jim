@@ -321,6 +321,166 @@ case_specreconcile_apply_still_offline() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
+# ─── Section: Test cases — citation sweep ────────────────────────────────────
+
+# specrec_commit <repo> — track everything currently in the repo.
+specrec_commit() {
+  git -C "$1" add -A >/dev/null 2>&1
+  git -C "$1" commit -q -m "fixture"
+}
+
+# specrec_claim <repo> <group> <subject> — allocate a real ordinal, so a spec
+# dir the fixture already put in the tree has the registry record it would
+# have had. Without this the tree holds an ordinal the registry never issued,
+# which is the drift case, not the sweep case.
+specrec_claim() {
+  ( cd "$1" && bash "$REPO_ROOT/skills/file/scripts/jimalloc.sh" allocate spec "$2" "$3" ) \
+    >/dev/null 2>&1
+}
+
+# AC: realization rewrites in-tree citations of the provisional identity by
+# exact-token match in both forms it is written in — the typed id, and the
+# directory path, whose tail is that same token.
+case_specreconcile_sweep_rewrites_typed_and_path() {
+  local repo
+  repo="$(specrec_repo sr_sweep_forms)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf 'Depends on sdlc/P-20260728-alpha for identity.\n' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  printf -- '---\nid: 20260728-x\nnum: 1\norigin: docs/specs/sdlc/P-20260728-alpha/spec.md\n---\nbody\n' \
+    > "$repo/docs/issues/20260728-x.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "typed citation rewritten" 'Depends on sdlc/002 for identity\.' \
+    "$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "path citation keeps its slug" '^origin: docs/specs/sdlc/002-alpha/spec\.md$' \
+    "$(cat "$repo/docs/issues/20260728-x.md")"
+}
+
+# AC: the match is whole-token — an identity that merely shares a prefix with
+# the realized one is left as written. The suffixed sibling matters most: two
+# specs scoped the same day with the same title differ only by that suffix.
+case_specreconcile_sweep_prefix_overlap_untouched() {
+  local repo body
+  repo="$(specrec_repo sr_sweep_prefix)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf '%s\n%s\n%s\n' \
+    'sibling sdlc/P-20260728-alpha-2 stays' \
+    'suffixed sdlc/P-20260728-alphax stays' \
+    'other group core/P-20260728-alpha stays' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "suffixed sibling untouched"  'sdlc/P-20260728-alpha-2 stays'  "$body"
+  assert_match "prefix overlap untouched"    'sdlc/P-20260728-alphax stays'   "$body"
+  assert_match "other group untouched"       'core/P-20260728-alpha stays'    "$body"
+}
+
+# AC: fenced code is verbatim material — a citation inside a fence is quoted
+# text, not a live reference, and is left as written.
+case_specreconcile_sweep_fenced_code_untouched() {
+  local repo body
+  repo="$(specrec_repo sr_sweep_fence)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf '%s\n%s\n%s\n%s\n' \
+    'live sdlc/P-20260728-alpha here' \
+    '```' \
+    'quoted sdlc/P-20260728-alpha here' \
+    '```' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "live citation rewritten" 'live sdlc/002 here'                  "$body"
+  assert_match "fenced citation kept"    'quoted sdlc/P-20260728-alpha here'   "$body"
+}
+
+# AC: the sweep reports locations, never the content it read — a rewritten line
+# is named by file and line number and the kind of reference, so the report
+# cannot become a channel for whatever the file happened to contain.
+case_specreconcile_sweep_reports_locations_only() {
+  local repo
+  repo="$(specrec_repo sr_sweep_loc)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf 'secret-canary sdlc/P-20260728-alpha\n' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "names file, line and kind" \
+    'REWROTE	docs/specs/sdlc/001-other/spec.md	1	typed-ref' "$OUT"
+  assert_eq "line content never echoed" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'secret-canary')"
+}
+
+# AC: the sweep covers the four content roots a citation can live in.
+case_specreconcile_sweep_covers_four_roots() {
+  local repo
+  repo="$(specrec_repo sr_sweep_roots)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/brainstorms" "$repo/docs/debug" "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf 'see sdlc/P-20260728-alpha\n' > "$repo/docs/brainstorms/20260728-idea.md"
+  printf 'see sdlc/P-20260728-alpha\n' > "$repo/docs/debug/20260728-trace.md"
+  printf -- '---\nid: 20260728-x\nnum: 1\n---\nsee sdlc/P-20260728-alpha\n' \
+    > "$repo/docs/issues/20260728-x.md"
+  printf 'see sdlc/P-20260728-alpha\n' > "$repo/docs/specs/sdlc/001-other/spec.md"
+  printf 'README sdlc/P-20260728-alpha untouched\n' > "$repo/README.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "brainstorms swept" 'see sdlc/002' "$(cat "$repo/docs/brainstorms/20260728-idea.md")"
+  assert_match "debug swept"       'see sdlc/002' "$(cat "$repo/docs/debug/20260728-trace.md")"
+  assert_match "issues swept"      'see sdlc/002' "$(cat "$repo/docs/issues/20260728-x.md")"
+  assert_match "specs swept"       'see sdlc/002' "$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "outside the roots untouched" 'sdlc/P-20260728-alpha untouched' \
+    "$(cat "$repo/README.md")"
+}
+
+# AC: the issue index is regenerated when the sweep touched an issue file, so a
+# rewritten origin is reflected there rather than left stale.
+case_specreconcile_sweep_regenerates_index() {
+  local repo
+  repo="$(specrec_repo sr_sweep_index)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  printf -- '---\nid: 20260728-x\nnum: 1\ntitle: "X"\nstatus: open\norigin: docs/specs/sdlc/P-20260728-alpha/spec.md\n---\nbody\n' \
+    > "$repo/docs/issues/20260728-x.md"
+  printf 'stale\n' > "$repo/docs/issues/INDEX.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "index regenerated" "0" \
+    "$(grep -c '^stale$' "$repo/docs/issues/INDEX.md")"
+}
+
+# AC: with nothing to rewrite, the sweep leaves the index alone — it is
+# regenerated only when an issue file actually changed.
+case_specreconcile_sweep_index_untouched_when_no_issue_changed() {
+  local repo
+  repo="$(specrec_repo sr_sweep_noindex)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  printf -- '---\nid: 20260728-x\nnum: 1\ntitle: "X"\nstatus: open\n---\nbody\n' \
+    > "$repo/docs/issues/20260728-x.md"
+  printf 'untouched-canary\n' > "$repo/docs/issues/INDEX.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "index left as written" 'untouched-canary' \
+    "$(cat "$repo/docs/issues/INDEX.md")"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
