@@ -20,6 +20,9 @@
 #   bash jimalloc.sh allocate spec  <group> <subject>   → "<group>/<NNN>"
 #   bash jimalloc.sh allocate issue <subject>           → "<full-id>\t<num>"
 #   bash jimalloc.sh peek     spec  <group>             → advisory "<group>/<NNN>"
+#     `allocate spec` / `peek spec` refuse a group that has been renamed away and
+#     name the redirect; add --follow-redirect to accept it. The group they
+#     answer with is authoritative and may differ from the one asked about.
 #   bash jimalloc.sh peek     issue                     → advisory "<num>"
 #   bash jimalloc.sh resolve  spec  <group>/<NNN>       → current "<group>/<NNN>"
 #   bash jimalloc.sh resolve  issue <num|full-id>       → current id
@@ -392,54 +395,69 @@ alloc_fold_max_issue() {
 }
 
 # alloc_next_id_spec <group>  (log on stdin)
-#   The next spec id for <group>: max ordinal + 1 (zero-padded to 3), counting
-#   every allocate id and rename destination in the group. Because ids are never
-#   reused, this is a high-water mark — an ordinal vacated by a rename is still
-#   counted via its own allocate record, so it is never reclaimed (permanent
-#   gap). Group-rename aliasing of the group namespace is deferred to the spec
-#   that begins emitting rename records; allocate-only logs need no aliasing.
+#   The next spec id for <group>: the group's high-water + 1, zero-padded to
+#   three digits (a wider ordinal prints at its natural width). Ids are never
+#   reused, so a vacated ordinal is a permanent gap — see alloc_fold_max_spec for
+#   what the high-water counts and how a renamed group's former names are folded
+#   in.
+#
+#   THE RETURNED GROUP IS AUTHORITATIVE AND MAY DIFFER FROM <group>. Comparing
+#   the two is how a caller detects that a redirect was applied; nothing else
+#   promises they match.
+#
+#   Two failure modes a consumer must tell apart:
+#     rc 1, "group renamed"   — <group> has been renamed away and the redirect
+#                               was not acknowledged; stderr names the target.
+#                               RETRYABLE: pass --follow-redirect, or ask under
+#                               the current name. Refusing rather than
+#                               substituting is what keeps a crafted group-rename
+#                               record from silently redirecting a namespace: a
+#                               notice on stderr informs only whoever reads
+#                               stderr, while a non-zero exit is not discardable.
+#     rc 1, "group exhausted" — the next ordinal would be wider than
+#                               ALLOC_MAX_ORD_DIGITS, so the bootstrap could
+#                               never read it back. Unreachable for plausible
+#                               ordinals; in practice it means a crafted record
+#                               sits at the width limit. TERMINAL: acknowledging
+#                               changes nothing.
 alloc_next_id_spec() {
-  local group="$1"
+  local group="${1:-}" follow=0
+  shift || true
+  local a
+  for a in "$@"; do
+    case "$a" in
+      --follow-redirect) follow=1 ;;
+      *) echo "error: unknown option '$a'" >&2; return 2 ;;
+    esac
+  done
   alloc_valid_token "$group" || { echo "error: invalid group '$group'" >&2; return 1; }
   local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4 c5 c6 max=0 g num
-  for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
-    if [[ "$c1" == spec && "$c2" == allocate ]]; then
-      alloc_valid_specid "$c3" || continue
-      g="${c3%/*}"; num="${c3##*/}"
-    elif [[ "$c1" == spec && "$c2" == rename ]]; then
-      alloc_valid_specid "$c4" || continue
-      g="${c4%/*}"; num="${c4##*/}"
-    else
-      continue
-    fi
-    [[ "$g" == "$group" ]] || continue
-    num=$((10#$num))          # base-10 — never octal on leading zeros
-    (( num > max )) && max=$num
-  done
-  printf '%s/%03d\n' "$group" $((max + 1))
+  local log=""
+  (( ${#lines[@]} )) && log="$(printf '%s\n' "${lines[@]}")"
+  local current="$group" k v
+  while IFS=$'\t' read -r k v; do
+    [[ "$k" == "$group" ]] && current="$v"
+  done < <(printf '%s\n' "$log" | alloc_group_alias_map)
+  if [[ "$current" != "$group" ]] && (( ! follow )); then
+    echo "error: group renamed — '$group' is now '$current'; ask under that name, or pass --follow-redirect to accept the redirect" >&2
+    return 1
+  fi
+  local max next
+  max="$(printf '%s\n' "$log" | alloc_fold_max_spec "$current")" || return 1
+  next=$((max + 1))
+  if (( ${#next} > ALLOC_MAX_ORD_DIGITS )); then
+    echo "error: group exhausted — '$current' has no ordinal left that the registry could be rebuilt from" >&2
+    return 1
+  fi
+  printf '%s/%03d\n' "$current" "$next"
 }
 
 # alloc_next_num_issue  (log on stdin)
-#   The next issue display ordinal: max + 1 over allocate ids and rename
-#   destinations, unpadded (issue ordinals render as #N). Empty registry → 1.
+#   The next issue display ordinal: the high-water + 1, unpadded (issue ordinals
+#   render as #N). Empty registry → 1. See alloc_fold_max_issue for what counts.
 alloc_next_num_issue() {
-  local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4 c5 c6 max=0 cand
-  for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
-    if [[ "$c1" == issue && "$c2" == allocate ]]; then
-      cand="$c3"
-    elif [[ "$c1" == issue && "$c2" == rename ]]; then
-      cand="$c4"
-    else
-      continue
-    fi
-    [[ "$cand" =~ ^[0-9]+$ ]] || continue
-    cand=$((10#$cand))
-    (( cand > max )) && max=$cand
-  done
+  local max
+  max="$(alloc_fold_max_issue)" || return 1
   printf '%s\n' $((max + 1))
 }
 
@@ -1023,14 +1041,23 @@ alloc_cas_append() {
   return 1
 }
 
-# alloc_build_spec <current_log> <group> <subject> <who>
+# alloc_build_spec <current_log> <group> <subject> <follow> <who>
 #   Emit (stdout) the id to return, then the record line(s) to append: a
 #   group-allocate record when this allocation first claims the group, followed
 #   by the spec-allocate record. The slug and date are derived through jimfile.sh.
+#
+#   <follow> is 1 when the caller has acknowledged a group redirect. The redirect
+#   check runs here, against the log this attempt is about to land on, so a rename
+#   that arrives mid-retry is caught rather than missed by an earlier read. The
+#   group the id is claimed under comes from the id itself, which may name the
+#   group's current name rather than the one requested.
 alloc_build_spec() {
-  local current_log="$1" group="$2" subject="$3" who="$4"
+  local current_log="$1" group="$2" subject="$3" follow="$4" who="$5"
   local id slug date
-  id="$(printf '%s' "$current_log" | alloc_next_id_spec "$group")" || return 1
+  local -a follow_arg=()
+  (( follow )) && follow_arg=(--follow-redirect)
+  id="$(printf '%s' "$current_log" | alloc_next_id_spec "$group" "${follow_arg[@]}")" || return 1
+  group="${id%/*}"
   slug="$(bash "$JIMFILE" slug "$subject")" || return 1
   date="$(bash "$JIMFILE" date)" || return 1
   printf '%s\n' "$id"
@@ -1136,7 +1163,18 @@ alloc_provisional_spec() {
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
 
 alloc_allocate_spec() {
-  local group="${1:-}" subject="${2:-}"
+  local group="" subject="" follow=0 a
+  for a in "$@"; do
+    case "$a" in
+      --follow-redirect) follow=1 ;;
+      *)
+        if   [[ -z "$group"   ]]; then group="$a"
+        elif [[ -z "$subject" ]]; then subject="$a"
+        else echo "error: unexpected argument '$a'" >&2; return 2
+        fi
+        ;;
+    esac
+  done
   if [[ -z "$group" || -z "$subject" ]]; then
     echo "error: 'allocate spec' requires <group> <subject>" >&2
     return 2
@@ -1147,7 +1185,7 @@ alloc_allocate_spec() {
     alloc_provisional_spec "$group" "$subject"
     return $?
   fi
-  alloc_cas_append "specs.log" alloc_build_spec "$group" "$subject"
+  alloc_cas_append "specs.log" alloc_build_spec "$group" "$subject" "$follow"
 }
 
 alloc_allocate_issue() {
@@ -1201,7 +1239,8 @@ cmd_peek() {
       fi
       alloc_valid_token "$group" || { echo "error: invalid group '$group'" >&2; return 1; }
       alloc_peek_refresh
-      alloc_read_log spec | alloc_next_id_spec "$group"
+      shift 2
+      alloc_read_log spec | alloc_next_id_spec "$group" "$@"
       ;;
     issue)
       alloc_peek_refresh
@@ -1597,6 +1636,9 @@ usage:
   jimalloc.sh allocate issue <subject>           allocate an issue id
   jimalloc.sh peek     spec  <group>             advisory next spec id (no commit)
   jimalloc.sh peek     issue                     advisory next issue num (no commit)
+
+  allocate spec / peek spec accept --follow-redirect to accept a group redirect;
+  without it a group renamed away is refused, with the redirect named.
   jimalloc.sh resolve  spec  <group>/<NNN>       resolve a spec id to its current name
   jimalloc.sh resolve  issue <num|full-id>       resolve an issue id to its current name
   jimalloc.sh seed     [--apply]                 preview (or --apply) a one-time registry bootstrap
