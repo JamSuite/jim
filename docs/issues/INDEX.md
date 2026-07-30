@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 77
+- Open: 80
 - Closed: 62
 
 ## Issues
@@ -144,6 +144,9 @@
 - `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity` — allocate spec under provisional mints an unrealizable identity · status: open · num: P-20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity · priority: medium · created: 2026-07-29T21:02:34Z · labels: [id-coordination, provisional] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins` — Detect duplicate durable ids instead of silent last-wins · status: open · num: P-20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins · priority: low · created: 2026-07-29T21:02:33Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp` — Provide a recovery path for a group that exhausts its ordinal space · status: open · num: P-20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp · priority: low · created: 2026-07-29T22:21:54Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
+- `20260730-collapse-the-ordinal-width-predicate-into-a-validator` — Collapse the ordinal-width predicate into a validator · status: open · num: P-20260730-collapse-the-ordinal-width-predicate-into-a-validator · priority: low · created: 2026-07-30T01:09:08Z · labels: [id-coordination, refactor] · origin: docs/specs/platform/011-rename-path-correctness/review.md
+- `20260730-decide-the-test-suite-timeout-dependency` — Decide the test suite timeout dependency · status: open · num: P-20260730-decide-the-test-suite-timeout-dependency · priority: low · created: 2026-07-30T01:09:09Z · labels: [testing, portability] · origin: docs/specs/platform/011-rename-path-correctness/review.md
+- `20260730-fixture-the-allocate-spec-acknowledgment-path` — Fixture the allocate spec acknowledgment path · status: open · num: P-20260730-fixture-the-allocate-spec-acknowledgment-path · priority: medium · created: 2026-07-30T01:09:07Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/review.md
 - `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id` — Fixture the terminal exhaustion refusal in next-id · status: open · num: P-20260730-fixture-the-terminal-exhaustion-refusal-in-next-id · priority: medium · created: 2026-07-30T00:49:54Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
 - `20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path` — Memoize the id-validation boundary in the allocator read path · status: open · num: P-20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path · priority: medium · created: 2026-07-30T00:50:00Z · labels: [id-coordination, performance, availability] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
 
