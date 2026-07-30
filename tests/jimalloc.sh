@@ -1635,6 +1635,140 @@ case_jimalloc_reconcile_realize_crafted_pending() {
   assert_nonempty "message" "$ERR"
 }
 
+# ─── Section: reconcile — spec realize logic (pure, no git) ──────────────────
+
+# run_realize_spec <log> <pending...> — source the allocator and run the pure
+# spec reconcile-realize over <log> on stdin; capture OUT/ERR/RC.
+run_realize_spec() {
+  local log="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(source "$SCRIPT_jimalloc"; alloc_reconcile_realize_spec "$@" <<< "$log" 2>"$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: spec realize maps each pending provisional identity to a real ordinal
+# drawn from the shared high-water, incrementing in pending order.
+case_jimalloc_realize_spec_mapping() {
+  local log expected
+  log=$(printf '%s\n' 'spec allocate core/005 alpha 20260726 jane')
+  run_realize_spec "$log" core/P-20260728-beta core/P-20260728-gamma
+  assert_exit "rc" 0 "$RC"
+  expected=$(printf '%s\n' \
+    'core/P-20260728-beta	core/006	new' \
+    'core/P-20260728-gamma	core/007	new')
+  assert_eq "mapping" "$expected" "$OUT"
+}
+
+# AC: realization is idempotent — a pending identity whose realized record is
+# already in the log keeps that ordinal and allocates no second one, so a re-run
+# after a crash between publish and rename converges instead of double-issuing.
+case_jimalloc_realize_spec_keyed_have() {
+  local log
+  log=$(printf '%s\n' 'spec allocate core/003 beta 20260728 jane')
+  run_realize_spec "$log" core/P-20260728-beta
+  assert_exit "rc" 0 "$RC"
+  assert_eq "already realized → its ordinal, no new allocation" \
+    "$(printf 'core/P-20260728-beta\tcore/003\thave')" "$OUT"
+}
+
+# AC: the key carries the date the provisional identity was issued, not the day
+# realization runs — a same-slug record stamped with another date belongs to a
+# different spec and never absorbs the pending identity.
+case_jimalloc_realize_spec_date_is_part_of_the_key() {
+  local log
+  log=$(printf '%s\n' 'spec allocate core/003 beta 20260801 jane')
+  run_realize_spec "$log" core/P-20260728-beta
+  assert_exit "rc" 0 "$RC"
+  assert_eq "different issuance date → a new ordinal" \
+    "$(printf 'core/P-20260728-beta\tcore/004\tnew')" "$OUT"
+}
+
+# AC: the slug is part of the key too — a same-date record for another spec does
+# not absorb the pending identity.
+case_jimalloc_realize_spec_slug_is_part_of_the_key() {
+  local log
+  log=$(printf '%s\n' 'spec allocate core/003 alpha 20260728 jane')
+  run_realize_spec "$log" core/P-20260728-beta
+  assert_exit "rc" 0 "$RC"
+  assert_eq "different slug → a new ordinal" \
+    "$(printf 'core/P-20260728-beta\tcore/004\tnew')" "$OUT"
+}
+
+# AC: the realized ordinal derives solely from the shared high-water, never from
+# any digits the tree-derived provisional token happens to carry.
+case_jimalloc_realize_spec_marker_independent() {
+  run_realize_spec "" core/P-20260728-spec-999
+  assert_exit "rc" 0 "$RC"
+  assert_eq "ordinal from high-water, not marker" \
+    "$(printf 'core/P-20260728-spec-999\tcore/001\tnew')" "$OUT"
+}
+
+# AC: realization reuses the shared group-aliased fold, so a provisional issued
+# under a name that has since been renamed realizes under the current name and
+# above the high-water both names contribute to — never into a retired namespace.
+case_jimalloc_realize_spec_group_alias() {
+  local log
+  log=$(printf '%s\n' 'spec allocate dashboard/002 alpha 20260726 x' \
+                      'group rename dashboard ui 20260727 x')
+  run_realize_spec "$log" dashboard/P-20260728-beta
+  assert_exit "rc" 0 "$RC"
+  assert_eq "realizes under the current group, above the folded high-water" \
+    "$(printf 'dashboard/P-20260728-beta\tui/003\tnew')" "$OUT"
+}
+
+# AC: the ordinal a normal allocation would issue and the one realization lands
+# on are the same value for every log shape, malformed records included — a
+# record whose ordinal is legal but whose slug fails the boundary still consumed
+# that ordinal, so realizing must not land on ground allocation treats as taken.
+case_jimalloc_realize_spec_high_water_parity() {
+  local log alloc_next realized
+  log=$(printf '%s\n' 'spec allocate core/009 --upload-pack=x 20260726 x' \
+                      'spec allocate core/002 good 20260726 x')
+  alloc_next="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec core <<< "$log")"
+  run_realize_spec "$log" core/P-20260728-pending
+  assert_exit "rc" 0 "$RC"
+  realized="$(printf '%s' "$OUT" | cut -f2)"
+  assert_eq "realization agrees with allocation" "$alloc_next" "$realized"
+  assert_eq "and clears the consumed ordinal"    "core/010"    "$realized"
+}
+
+# AC: a duplicate pending identity within one batch halts realization rather
+# than collapsing two markers onto one ordinal.
+case_jimalloc_realize_spec_within_batch_dup() {
+  run_realize_spec "" core/P-20260728-dup core/P-20260728-dup
+  assert_exit     "rc"      1  "$RC"
+  assert_nonempty "message" "$ERR"
+}
+
+# AC: every pending identity is revalidated at the id boundary before use — an
+# option-injection shape, a real (non-provisional) id, and a group that fails
+# the boundary are all refused with no partial mapping emitted.
+case_jimalloc_realize_spec_crafted_pending() {
+  run_realize_spec "" "--upload-pack=x"
+  assert_exit     "option shape rc"      1  "$RC"
+  assert_eq       "no partial mapping"   "" "$OUT"
+  assert_nonempty "option shape message" "$ERR"
+  run_realize_spec "" core/001
+  assert_exit     "real id rc"      1  "$RC"
+  assert_nonempty "real id message" "$ERR"
+  run_realize_spec "" "--x/P-20260728-beta"
+  assert_exit     "crafted group rc"      1  "$RC"
+  assert_nonempty "crafted group message" "$ERR"
+  run_realize_spec "" "core/P---bad"
+  assert_exit     "invalid token rc"      1  "$RC"
+  assert_nonempty "invalid token message" "$ERR"
+}
+
+# AC: a pending batch halts as a whole — a later invalid entry produces no
+# mapping for the valid ones that precede it, so a preview shows either a clean
+# mapping or only the stop condition.
+case_jimalloc_realize_spec_halt_is_whole_batch() {
+  run_realize_spec "" core/P-20260728-good "--upload-pack=x"
+  assert_exit "rc"        1  "$RC"
+  assert_eq   "no output" "" "$OUT"
+}
+
 # ─── Section: reconcile — publish + tiers (real git) ─────────────────────────
 
 # run_reconcile_in <dir> <pending> <args...> — run the allocator inside <dir>
