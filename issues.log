@@ -132,3 +132,11 @@ issue allocate 131 20260728-remove-spec-id-citations-from-issue-group-script-com
 issue allocate 132 20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew 20260728 jrko
 issue allocate 133 20260728-reconcile-sh-provisional-detection-not-fence-bounded 20260728 jrko
 issue allocate 134 20260728-reconcile-sh-swallows-the-index-regen-exit-code 20260728 jrko
+issue allocate 135 20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity 20260729 jrko
+issue allocate 136 20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins 20260729 jrko
+issue allocate 137 20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp 20260729 jrko
+issue allocate 138 20260730-collapse-the-ordinal-width-predicate-into-a-validator 20260729 jrko
+issue allocate 139 20260730-decide-the-test-suite-timeout-dependency 20260729 jrko
+issue allocate 140 20260730-fixture-the-allocate-spec-acknowledgment-path 20260729 jrko
+issue allocate 141 20260730-fixture-the-terminal-exhaustion-refusal-in-next-id 20260729 jrko
+issue allocate 142 20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path 20260729 jrko
