@@ -873,6 +873,46 @@ case_jimalloc_allocate_growth_not_erosion() {
   assert_eq   "third id"  "g/003"       "$OUT"
 }
 
+# alloc_append_record <repo> <logfile> <line>
+#   Append one raw record to <logfile> on the coordination branch through
+#   plumbing, preserving the prior content (so the erosion guard sees ordinary
+#   growth) and every sibling log in the tree.
+alloc_append_record() {
+  local repo="$1" logfile="$2" line="$3"
+  local parent prior blob entries tree commit
+  parent="$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
+  prior="$(git -C "$repo" cat-file -p "refs/heads/jim/registry:$logfile" 2>/dev/null || true)"
+  if [[ -n "$prior" ]]; then
+    blob="$(printf '%s\n%s\n' "$prior" "$line" | git -C "$repo" hash-object -w --stdin)"
+  else
+    blob="$(printf '%s\n' "$line" | git -C "$repo" hash-object -w --stdin)"
+  fi
+  entries="$(git -C "$repo" ls-tree "$parent" 2>/dev/null | grep -v "	$logfile\$" || true)"
+  tree="$( { [[ -n "$entries" ]] && printf '%s\n' "$entries"
+             printf '100644 blob %s\t%s\n' "$blob" "$logfile"; } \
+           | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" ${parent:+-p "$parent"} -m append)"
+  git -C "$repo" update-ref refs/heads/jim/registry "$commit"
+}
+
+# AC: when the record builder refuses with a specific reason — here a group
+# renamed away, the retryable redirect — that reason is the only thing on
+# stderr, so a consumer classifying the refusal by the last line it reads sees
+# the redirect rather than a generic failure appended after it.
+case_jimalloc_allocate_refusal_single_stderr_reason() {
+  local repo lines
+  repo="$(alloc_new_repo alloc_refusal_stderr)"
+  run_jimalloc_in "$repo" allocate spec dashboard "First feature"
+  assert_exit "setup rc" 0 "$RC"
+  alloc_append_record "$repo" specs.log 'group rename dashboard ui 20260727 x'
+  run_jimalloc_in "$repo" allocate spec dashboard "Second feature"
+  assert_exit  "refused"            1    "$RC"
+  assert_eq    "no id issued"       ""   "$OUT"
+  assert_match "names the redirect" 'ui' "$ERR"
+  lines="$(printf '%s\n' "$ERR" | grep -c '^error:')"
+  assert_eq "exactly one error line" "1" "$lines"
+}
+
 # ─── Section: config wiring + failure semantics ──────────────────────────────
 
 # AC: the mechanism is config-governed; a reserved-but-unimplemented value
