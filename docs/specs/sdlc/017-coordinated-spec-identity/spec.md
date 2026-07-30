@@ -88,8 +88,12 @@ scoping stays broken either way.
       takes its final ordinal-slug name, in-tree citations of the provisional
       identity at structured reference sites are rewritten by exact-token
       match, and realization is idempotent and resumable — a re-run converges,
-      never double-allocates, and never collapses two distinct specs onto one
-      ordinal.
+      never double-allocates, and never silently collapses two distinct specs
+      onto one ordinal: a collision is halted locally when the target
+      directory exists, and the residual same-identity case (two specs
+      sharing group, slug, and date) is surfaced — visibly in the realization
+      preview, and as a directory conflict when the branches meet — rather
+      than merged.
 - [ ] Realization succeeds whether the provisional spec directory is committed
       (the move preserves git history continuity) or still uncommitted (a
       plain rename) — the developer is not required to change when they

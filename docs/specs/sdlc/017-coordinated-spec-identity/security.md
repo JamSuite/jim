@@ -1,6 +1,6 @@
 ---
 spec: "docs/specs/sdlc/017-coordinated-spec-identity/spec.md"
-reviewed_phases: [spec]
+reviewed_phases: [spec, plan]
 status: Needs Spec Review
 date: "2026-07-30"
 ---
@@ -9,18 +9,23 @@ date: "2026-07-30"
 
 ## Summary
 
-**Findings:** 0 Critical · 5 Notable · 1 Advisory
+**Findings:** 0 Critical · 7 Notable · 3 Advisory
 
-Spec-phase review of the spec-ID allocator consumer and its provisional
+Dual-lens review of the spec-ID allocator consumer and its provisional
 realization loop. The spec inherits `platform/007`–`011`'s sound trust model
 (push-writable registry, single validation boundary, advisory-only ids);
 findings concern input classes and observables the consumer adds, not the
-substrate. STRIDE fully swept; LINDDUN active (filer identity and slugs
-publish to the shared coordination point).
+substrate. The plan-phase pass (findings 7–10) examined the keyed-realization
+design against the push-writable registry and surfaced one spec↔plan
+misalignment. Findings 1–2 were applied to the spec pre-approval; 3, 4, and 6
+are addressed by plan DD 5 / DD 8 / DD 6; 5 is tracked on issue #143. STRIDE
+fully swept; LINDDUN active (filer identity and slugs publish to the shared
+coordination point).
 
 ## Coverage
 
 - spec.md — reviewed 2026-07-30 (requirements-gap lens)
+- plan.md — reviewed 2026-07-30 (design-flaw lens)
 
 ## Data Classification
 
@@ -135,12 +140,79 @@ publish to the shared coordination point).
 - **Route:** Plan
 - **Relates to:** AC 9 (ledger redirect record)
 
+### 7. A crafted allocate record can steer a "have" realization
+
+- **Severity:** Notable
+- **Description:** Plan DD 1 keys realization on (group, slug, issuance-date)
+  over the push-writable registry. An actor with coordination-branch push
+  access can append a well-formed `spec allocate <group>/<NNN> <slug> <date>`
+  matching a pending provisional's triple, making realize map it "have" onto
+  an ordinal of the attacker's choice — either inflating the group (the
+  already-accepted waste class) or, when the named ordinal is occupied by a
+  spec absent from this clone's tree, landing a collision that only surfaces
+  at merge. The drift-halt backstop fires only when the target directory
+  exists locally. Corroboration cannot fix this — `platform/011` already
+  established an attacker appends a well-formed allocate record as easily as
+  anything else — so visibility is the available control.
+- **Suggestion:** The spec realizer's preview must surface the have/new state
+  column rather than dropping it (the issue-side preview cuts to fields 1–2),
+  so an unexpected "have" on a spec the developer knows is new is loud before
+  apply; DD 1's residual paragraph should name this vector explicitly as the
+  push-access extension of the same-triple residual.
+- **Route:** Plan
+- **Relates to:** Plan DD 1, Interface Contract `reconcile spec`
+
+### 8. Spec AC 7's absolute "never collapses" conflicts with the plan's accepted residual
+
+- **Severity:** Notable
+- **Description:** Artifact misalignment (see section below). AC 7 states
+  realization "never collapses two distinct specs onto one ordinal" with no
+  qualifier; plan DD 1 documents an accepted residual where a same-triple
+  match (organic or crafted, finding 7) can map a pending spec onto another's
+  ordinal, with a loud local halt when detectable and a merge-time surface
+  when not. The precedent (`issue/010` AC 7) wrote the residual *into the
+  AC* ("not silently merged: it surfaces as a filename conflict … detected
+  at merge") rather than leaving an absolute claim the design does not meet.
+- **Suggestion:** Amend spec AC 7 with the detected-not-prevented carve-out
+  mirroring `issue/010`: collapse is never silent — it halts locally when the
+  target exists, and the residual same-triple case surfaces as a visible
+  "have" in preview and a directory conflict at merge.
+- **Route:** Spec
+- **Relates to:** AC 7; Plan DD 1
+
+### 9. `mv-spec-id` should not mint sub-3-digit directory names
+
+- **Severity:** Advisory
+- **Description:** The interface contract accepts a 1–15-digit `<new-id>`. A
+  1–2-digit target would create an unpadded spec dir (`18-name`) that breaks
+  the `NNN` sorting/scan conventions every consumer assumes; the allocator
+  always emits `%03d`-padded-or-wider ordinals, so narrow inputs are only
+  ever mistakes.
+- **Suggestion:** Gate `<new-id>` to `^[0-9]{3,15}$` — padded floor, allocator
+  legality ceiling.
+- **Route:** Plan
+- **Relates to:** Plan Interface Contract `mv-spec-id`
+
+### 10. The fail branch should name the disposable placeholder
+
+- **Severity:** Advisory
+- **Description:** AC 1/6 promise "no spec file is written" on the fail
+  branch, but the Step-3 placeholder (`<peek>-wip/` with its `ledger.md`)
+  already exists by then. The plan's fail branch says "report, write
+  nothing" without addressing the leftover, leaving an ambiguity about
+  whether the promise holds.
+- **Suggestion:** The Step-8 fail-branch instruction tells the developer the
+  wip placeholder is disposable (delete or retry later) — same disposal note
+  Step 3 already carries for abandonment — so the observable matches the AC.
+- **Route:** Plan
+- **Relates to:** AC 1, AC 6; Plan DD 3
+
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
 | Spoofing | Yes | No new issues — `<who>` is self-asserted advisory provenance by upstream non-goal (ids never authenticate); registry-derived tokens shown in the interview are `valid-id`-constrained (≤128 chars, no whitespace), bounding presentation-injection |
-| Tampering | Yes | Findings 1, 5 — crafted tree content (dir names) and tampered ledger mappings; registry tampering carries down to the erosion guard + fold monotonicity |
+| Tampering | Yes | Findings 1, 5, 7 — crafted tree content (dir names), tampered ledger mappings, and crafted allocate records steering keyed realization; registry tampering otherwise carries down to the erosion guard + fold monotonicity |
 | Repudiation | N/A | Upstream non-goal: records are advisory provenance, never an audit trail; no consumer may treat them as proof of action |
 | Information Disclosure | Yes | No new issues — pre-merge publication of slug + filer identity is an acknowledged, recorded surface (spec Out of Scope, mirroring `platform/007` / `issue/010`); no new channel added |
 | Denial of Service | Yes | No new issues — bounded CAS retries, terminal exhaustion refusal, and ordinal-width guards carry down; a crafted flood of `P-` dirs is bounded by tree size and the batch's halt conditions |
@@ -158,6 +230,15 @@ publish to the shared coordination point).
 | Unawareness & Unintervenability | No | Reservation is a visible git push at a developer-triggered step; realization is preview-then-apply — intervention points preserved |
 | Non-compliance | N/A | No stated privacy policy or applicable regulation for jim's own artifacts |
 
+## Artifact Misalignment
+
+- **Finding 8 — AC 7 vs DD 1's accepted residual:** the spec asserts an
+  unqualified "never collapses two distinct specs onto one ordinal"; the
+  plan's keyed realization carries a documented residual (same-triple match,
+  organic or crafted) that is detected — locally when the target exists,
+  at preview via "have" visibility, at merge otherwise — but not prevented.
+  Route: Spec (amend AC 7 per the `issue/010` precedent).
+
 ## Routing Recommendations
 
 ### Spec amendments
@@ -167,14 +248,29 @@ publish to the shared coordination point).
 - Finding 2: add the loud-halt observable for a local identity collision
   (registry-vs-tree drift) at bind and at realize. *(Applied 2026-07-30 —
   new AC 14.)*
+- Finding 8: amend AC 7's "never collapses" with the detected-not-prevented
+  carve-out (`issue/010` precedent) so the spec's claim matches the design
+  the plan can actually deliver. *(Applied 2026-07-30 — AC 7 now reads
+  "never silently collapses" with the halt/preview/merge-conflict surfaces
+  named.)*
 
 ### Plan amendments
 - Finding 3: adopt the guards-before-any-edit / containment /
   whitelist-keyed / location-only envelope for the realizer's mutation pass.
+  *(Addressed — plan DD 5 and tasks 8–9.)*
 - Finding 4: verb-scope the new `jimalloc.sh` grant (`peek spec`,
   `allocate spec`, spec-side reconcile) — never the whole CLI.
+  *(Addressed — plan DD 8 and task 12.)*
 - Finding 6: boundary-validate every realize-event kv value before append;
-  future readers charset-gate on read.
+  future readers charset-gate on read. *(Addressed — plan DD 6 and
+  task 10.)*
+- Finding 7: the spec realizer's preview surfaces the have/new state column;
+  DD 1 names the crafted-record steering vector in its residual.
+  *(Applied 2026-07-30 — DD 1 and the `reconcile.sh` contract updated.)*
+- Finding 9: gate `mv-spec-id`'s `<new-id>` to `^[0-9]{3,15}$`.
+  *(Applied 2026-07-30 — contract updated.)*
+- Finding 10: the Step-8 fail branch names the disposable wip placeholder.
+  *(Applied 2026-07-30 — contract updated.)*
 
 ### Candidate issues
 - Finding 5: fold into the existing
