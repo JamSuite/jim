@@ -1738,6 +1738,87 @@ alloc_reconcile_issue() {
   fi
 }
 
+# alloc_reconcile_spec_publish_builder <cur_specs> <cur_issues> <who> <pending...>
+#   The spec-reconcile publish decision (an alloc_publish builder): realize the
+#   pending provisional identities against THIS attempt's specs.log, append one
+#   real `spec allocate` record per newly-realized identity — preceded by a
+#   `group allocate` record for any group the registry does not already hold, so
+#   realizing into a never-seen group claims it exactly once — and set PUB_SPEC
+#   to the grown log plus PUB_PAYLOAD to the mapping. Leaves issues.log
+#   untouched. Each spec record's date is the identity's issuance date, taken
+#   from the pending token, because that field is what the idempotency key reads
+#   back; the group record's date is the day the group was claimed, which is
+#   provenance only. When nothing is new it writes nothing and alloc_publish
+#   reports the mapping as a clean no-op. Aborts (rc 1) if realize halts.
+alloc_reconcile_spec_publish_builder() {
+  local cur_specs="$1" who="$3"; shift 3
+  local realized gdate pend id state grp tok body date slug
+  local mapping="" newrecs=""
+  local -A claimed=()
+  realized="$(printf '%s\n' "$cur_specs" | alloc_reconcile_realize_spec "$@")" || return 1
+  gdate="$(bash "$JIMFILE" date)" || return 1
+  while IFS=$'\t' read -r pend id state; do
+    [[ -n "$pend" ]] || continue
+    mapping+="${pend}"$'\t'"${id}"$'\t'"${state}"$'\n'
+    [[ "$state" == new ]] || continue
+    grp="${id%/*}"
+    tok="${pend##*/}"; body="${tok#"$ALLOC_PROV_PREFIX"}"
+    date="${body%%-*}"; slug="${body#*-}"
+    if [[ -z "${claimed[$grp]:-}" ]] && ! printf '%s' "$cur_specs" | alloc_group_present "$grp"; then
+      newrecs+="$(alloc_encode_allocate_group "$grp" "$gdate" "$who")"$'\n'
+    fi
+    claimed["$grp"]=1
+    newrecs+="$(alloc_encode_allocate_spec "$id" "$slug" "$date" "$who")"$'\n'
+  done <<< "$realized"
+  PUB_PAYLOAD="${mapping%$'\n'}"
+  if [[ -n "$newrecs" ]]; then
+    if [[ -n "$cur_specs" ]]; then
+      PUB_SPEC="${cur_specs}"$'\n'"${newrecs%$'\n'}"
+    else
+      PUB_SPEC="${newrecs%$'\n'}"
+    fi
+  else
+    PUB_SPEC=""
+  fi
+  return 0
+}
+
+# alloc_reconcile_spec <apply>  (pending set on stdin, one id per line)
+#   Realize the consumer's pending provisional spec identities. Reads the set
+#   from stdin (blank lines ignored). An empty set is a clean no-op. The
+#   coordination point must be reachable — a still-unreachable origin realizes
+#   nothing, reports it is still offline, and changes nothing (rc 0), distinct
+#   from the allocation-time hard fail. With apply=1 it publishes the new reals
+#   through the shared, erosion-guarded batch publish (one CAS commit,
+#   all-or-none, baseline-armed) and prints the mapping.
+#
+#   Both paths print all three fields, preview included: two identities can key
+#   alike, so whether an identity was found rather than freshly allocated is the
+#   developer's tell before anything is applied, and dropping it would hide the
+#   one signal that separates a resumed run from a collision.
+alloc_reconcile_spec() {
+  local apply="$1"
+  local -a raw=(); mapfile -t raw
+  local -a pending=(); local p
+  for p in "${raw[@]}"; do [[ -n "$p" ]] && pending+=("$p"); done
+  if (( ${#pending[@]} == 0 )); then
+    echo "reconcile: nothing pending — nothing to realize" >&2
+    return 0
+  fi
+  if ! alloc_origin_reachable; then
+    echo "reconcile: coordination point unreachable — still offline, nothing changed" >&2
+    return 0
+  fi
+  if (( apply )); then
+    alloc_publish alloc_reconcile_spec_publish_builder "${pending[@]}"
+  else
+    # Preview: refresh the last-seen coordination ref (best-effort, non-mutating
+    # to the shared branch — the peek model) and realize read-only.
+    alloc_peek_refresh
+    alloc_read_log spec | alloc_reconcile_realize_spec "${pending[@]}"
+  fi
+}
+
 cmd_reconcile() {
   local kind="${1:-}"; shift || true
   local apply=0
@@ -1745,7 +1826,7 @@ cmd_reconcile() {
     case "$1" in
       --apply) apply=1; shift ;;
       *)
-        echo "error: unknown option '$1' for reconcile (usage: reconcile issue [--apply])" >&2
+        echo "error: unknown option '$1' for reconcile (usage: reconcile <issue|spec> [--apply])" >&2
         return 2
         ;;
     esac
@@ -1757,11 +1838,12 @@ cmd_reconcile() {
       alloc_reconcile_issue "$apply"
       ;;
     spec)
-      echo "error: spec reconcile is not implemented (issue reconcile only)" >&2
-      return 2
+      alloc_in_repo || return 1
+      alloc_preflight || return 1
+      alloc_reconcile_spec "$apply"
       ;;
     *)
-      echo "error: reconcile kind must be 'issue'" >&2
+      echo "error: reconcile kind must be 'issue' or 'spec'" >&2
       return 2
       ;;
   esac
@@ -1799,6 +1881,7 @@ usage:
   jimalloc.sh resolve  issue <num|full-id>       resolve an issue id to its current name
   jimalloc.sh seed     [--apply]                 preview (or --apply) a one-time registry bootstrap
   jimalloc.sh reconcile issue [--apply]          realize pending provisionals (stdin) into real ids
+  jimalloc.sh reconcile spec  [--apply]          realize pending provisional spec identities (stdin)
   jimalloc.sh -c <path> <subcmd>                 use <path> instead of ./jimconf.toml
 USAGE
 }
