@@ -28,6 +28,9 @@
 #   bash jimfile.sh next-id <group>                   next zero-padded spec id
 #   bash jimfile.sh mv-spec <group> <id> <new-name>   rename {id}-* spec dir to
 #                                                     {id}-{new-name} (wip rename)
+#   bash jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
+#                                                     rename a spec dir onto a
+#                                                     different id (shift/realize)
 #   bash jimfile.sh path <key>                        configured path for <key>,
 #                                                     regardless of existence
 #                                                     (D3 — single-arg form)
@@ -428,6 +431,91 @@ cmd_mv_spec() {
   printf '%s\n' "$target"
 }
 
+# The reserved prefix a provisional identity's ordinal slot carries. The grammar
+# is the allocator's; it is named here because a spec dir bound offline wears it
+# as a directory name and this boundary has to recognize one.
+SPEC_PROV_PREFIX="P-"
+
+# is_spec_dir_basename <name>
+#   Exit 0 iff <name> is a basename a spec directory can carry: a real ordinal
+#   (bare or slugged) or the reserved provisional form over a token the id
+#   boundary accepts. Nothing else — an arbitrary directory, a path separator,
+#   '..', or a prefixed name whose token is unusable is refused, so the rename
+#   verbs cannot be pointed at a directory that is not a spec.
+is_spec_dir_basename() {
+  local name="$1" tok
+  [[ -n "$name" ]]        || return 1
+  [[ "$name" == *"/"* ]]  && return 1
+  [[ "$name" == *".."* ]] && return 1
+  [[ "$name" =~ ^[0-9]{3,15}(-.+)?$ ]] && return 0
+  if [[ "$name" == "$SPEC_PROV_PREFIX"* ]]; then
+    tok="${name#"$SPEC_PROV_PREFIX"}"
+    [[ -n "$tok" ]] || return 1
+    is_valid_id "$tok" >/dev/null 2>&1 && return 0
+  fi
+  return 1
+}
+
+# cmd_mv_spec_id <group> <old-basename> <new-id> <name>
+#   Rename {specs}/{group}/{old-basename}/ to {specs}/{group}/{new-id}-{name}/ —
+#   the cross-id rename mv-spec cannot express, since its single {id} drives both
+#   the source glob and the target name. Two callers need it: an advisory ordinal
+#   that shifted before binding, and a pending provisional identity being
+#   realized onto its real ordinal.
+#
+#   Every element is validated before any move: {group} through the id boundary,
+#   {old-basename} through the spec-dir basename gate, {new-id} as digits between
+#   the padded floor and the width the registry can be rebuilt from (so an
+#   unpadded id never becomes a directory name), {name} through the slug
+#   boundary. Same parent only; the source must exist and an existing target is
+#   refused rather than clobbered — a spec ordinal is path identity, so a
+#   collision halts instead of overwriting or suffixing. Prints the target dir.
+#   The uncommitted-case twin of jimledger.sh's rename-tracked.
+cmd_mv_spec_id() {
+  local group="${1:-}" old="${2:-}" new_id="${3:-}" new_name="${4:-}"
+  if [[ -z "$group" || -z "$old" || -z "$new_id" || -z "$new_name" ]]; then
+    echo "error: 'mv-spec-id' requires <group> <old-basename> <new-id> <name>" >&2
+    return 2
+  fi
+  if ! is_valid_id "$group"; then
+    echo "error: mv-spec-id group rejected — '$group'" >&2
+    return 1
+  fi
+  if ! is_spec_dir_basename "$old"; then
+    echo "error: mv-spec-id source rejected — '$old'" >&2
+    return 1
+  fi
+  if [[ ! "$new_id" =~ ^[0-9]{3,15}$ ]]; then
+    echo "error: mv-spec-id new-id rejected — '$new_id' (allowed: ^[0-9]{3,15}\$)" >&2
+    return 1
+  fi
+  if ! is_valid_slug "$new_name"; then
+    echo "error: mv-spec-id name rejected — '$new_name'" >&2
+    return 1
+  fi
+  local specs_root group_dir
+  specs_root="$(jimconf_get specs)"
+  group_dir="$specs_root/$group"
+  if [[ ! -d "$group_dir" ]]; then
+    echo "error: mv-spec-id group dir not found — '$group_dir'" >&2
+    return 1
+  fi
+  local src="$group_dir/$old" target="$group_dir/$new_id-$new_name"
+  if [[ ! -d "$src" ]]; then
+    echo "error: mv-spec-id source dir not found — '$src'" >&2
+    return 1
+  fi
+  if [[ -e "$target" ]]; then
+    echo "error: mv-spec-id target already exists — '$target'" >&2
+    return 1
+  fi
+  if ! mv -- "$src" "$target"; then
+    echo "error: mv-spec-id failed to rename '$src' -> '$target'" >&2
+    return 1
+  fi
+  printf '%s\n' "$target"
+}
+
 # issue_next_num <issues_dir>
 #   Scan <issues_dir>/*.md for top-level `num:` frontmatter and print max+1
 #   (or 1 when none carry a num). Shared by cmd_next_num and the `{seq}`
@@ -819,6 +907,8 @@ usage:
   jimfile.sh now                                now as YYYY-MM-DDThh:mm:ssZ (UTC)
   jimfile.sh next-id <group>                    next zero-padded spec id
   jimfile.sh mv-spec <group> <id> <new-name>    rename {id}-* spec dir to {id}-{new-name}
+  jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
+                                                rename a spec dir onto a different id
   jimfile.sh next-num issue                     next display ordinal (max+1)
   jimfile.sh path <key>                         configured path for <key>
   jimfile.sh path spec      <group> <id> <name>
@@ -863,6 +953,7 @@ main() {
     next-id)  cmd_next_id  "$@" ;;
     next-num) cmd_next_num "$@" ;;
     mv-spec)  cmd_mv_spec  "$@" ;;
+    mv-spec-id) cmd_mv_spec_id "$@" ;;
     path)    cmd_path    "$@" ;;
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
