@@ -1,6 +1,6 @@
 ---
 id: 20260730-collapse-the-ordinal-width-predicate-into-a-validator
-num: P-20260730-collapse-the-ordinal-width-predicate-into-a-validator
+num: 138
 title: "Collapse the ordinal-width predicate into a validator"
 status: open
 priority: low

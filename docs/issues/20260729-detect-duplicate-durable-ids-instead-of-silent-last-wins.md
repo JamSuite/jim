@@ -1,6 +1,6 @@
 ---
 id: 20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins
-num: P-20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins
+num: 136
 title: "Detect duplicate durable ids instead of silent last-wins"
 status: open
 priority: low

@@ -1,6 +1,6 @@
 ---
 id: 20260730-fixture-the-allocate-spec-acknowledgment-path
-num: P-20260730-fixture-the-allocate-spec-acknowledgment-path
+num: 140
 title: "Fixture the allocate spec acknowledgment path"
 status: open
 priority: medium

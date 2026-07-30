@@ -1,6 +1,6 @@
 ---
 id: 20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity
-num: P-20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity
+num: 135
 title: "allocate spec under provisional mints an unrealizable identity"
 status: open
 priority: medium

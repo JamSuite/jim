@@ -1,6 +1,6 @@
 ---
 id: 20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp
-num: P-20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp
+num: 137
 title: "Provide a recovery path for a group that exhausts its ordinal space"
 status: open
 priority: low
