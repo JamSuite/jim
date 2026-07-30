@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 80
+- Open: 97
 - Closed: 63
 
 ## Issues
@@ -144,12 +144,29 @@
 - `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity` — allocate spec under provisional mints an unrealizable identity · status: open · num: 135 · priority: medium · created: 2026-07-29T21:02:34Z · labels: [id-coordination, provisional] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins` — Detect duplicate durable ids instead of silent last-wins · status: open · num: 136 · priority: low · created: 2026-07-29T21:02:33Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp` — Provide a recovery path for a group that exhausts its ordinal space · status: open · num: 137 · priority: low · created: 2026-07-29T22:21:54Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
+- `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` — Align the registry with tree-scan-era spec ordinals · status: open · num: 144 · priority: high · created: 2026-07-30T10:32:41Z · labels: [id-coordination, registry] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
+- `20260730-close-the-coordinated-spec-identity-fixture-gaps` — Close the coordinated spec identity fixture gaps · status: open · num: 145 · priority: medium · created: 2026-07-30T19:35:17Z · labels: [id-coordination, test-coverage] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-collapse-the-ordinal-width-predicate-into-a-validator` — Collapse the ordinal-width predicate into a validator · status: open · num: 138 · priority: low · created: 2026-07-30T01:09:08Z · labels: [id-coordination, refactor] · origin: docs/specs/platform/011-rename-path-correctness/review.md
 - `20260730-decide-the-test-suite-timeout-dependency` — Decide the test suite timeout dependency · status: open · num: 139 · priority: low · created: 2026-07-30T01:09:09Z · labels: [testing, portability] · origin: docs/specs/platform/011-rename-path-correctness/review.md
+- `20260730-define-how-a-provisional-spec-dir-resolves-through-the-path-help` — Define how a provisional spec dir resolves through the path helper · status: open · num: 146 · priority: critical · created: 2026-07-30T10:55:21Z · labels: [id-coordination, jimfile] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-document-provisional-spec-identity-and-the-reconcile-surface` — Document provisional spec identity and the reconcile surface · status: open · num: 147 · priority: medium · created: 2026-07-30T19:35:16Z · labels: [docs, id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-fix-jim-spec-checklist-contradicting-its-provisional-branch` — Fix jim spec checklist contradicting its provisional branch · status: open · num: 148 · priority: medium · created: 2026-07-30T10:55:23Z · labels: [spec, docs] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-fixture-the-allocate-spec-acknowledgment-path` — Fixture the allocate spec acknowledgment path · status: open · num: 140 · priority: medium · created: 2026-07-30T01:09:07Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/review.md
 - `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id` — Fixture the terminal exhaustion refusal in next-id · status: open · num: 141 · priority: medium · created: 2026-07-30T00:49:54Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
+- `20260730-fold-spec-id-sequencing-to-admit-provisional-identities` — Fold spec-id-sequencing to admit provisional identities · status: open · num: 149 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, blueprint] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` — Gate the realized spec ordinal and stop silent record loss · status: open · num: 150 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, security] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-harden-the-spec-realize-path-against-silent-failures` — Harden the spec realize path against silent failures · status: open · num: 151 · priority: low · created: 2026-07-30T19:35:15Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-lift-realization-redirects-into-the-registry` — Lift realization redirects into the registry · status: open · num: 143 · priority: medium · created: 2026-07-30T06:45:19Z · labels: [id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/spec.md
 - `20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path` — Memoize the id-validation boundary in the allocator read path · status: open · num: 142 · priority: medium · created: 2026-07-30T00:50:00Z · labels: [id-coordination, performance, availability] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
+- `20260730-realization-cannot-follow-a-group-renamed-since-issuance` — Realization cannot follow a group renamed since issuance · status: open · num: 152 · priority: medium · created: 2026-07-30T10:36:05Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
+- `20260730-run-sh-honors-only-its-first-filter-argument` — run.sh honors only its first filter argument · status: open · num: 153 · priority: low · created: 2026-07-30T10:32:47Z · labels: [meta-test, testing] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
+- `20260730-settle-what-a-partition-does-with-pending-provisional-specs` — Settle what a partition does with pending provisional specs · status: open · num: 154 · priority: medium · created: 2026-07-30T10:55:24Z · labels: [partition, id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-single-source-the-provisional-identity-grammar` — Single-source the provisional identity grammar · status: open · num: 155 · priority: medium · created: 2026-07-30T10:55:22Z · labels: [id-coordination, refactor] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-spec-creation-halts-only-on-an-exact-name-collision` — Spec creation halts only on an exact-name collision · status: open · num: 156 · priority: high · created: 2026-07-30T19:35:01Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-spec-realize-exhaustion-emits-rows-before-halting` — Spec realize exhaustion emits rows before halting · status: open · num: 157 · priority: medium · created: 2026-07-30T19:35:09Z · labels: [id-coordination, alloc] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` — Spec reconcile scan and id rewrite anchor to different regions · status: open · num: 158 · priority: medium · created: 2026-07-30T19:35:09Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-the-shared-spec-fold-resolves-group-aliases-twice` — The shared spec fold resolves group aliases twice · status: open · num: 159 · priority: high · created: 2026-07-30T19:35:07Z · labels: [id-coordination, alloc] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-two-defects-in-the-spec-citation-sweep` — Two defects in the spec citation sweep · status: open · num: 160 · priority: high · created: 2026-07-30T19:35:08Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 
 ## Graph
 
@@ -207,7 +224,18 @@
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
+- `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260726-detect-and-repair-registry-drift`
+- `20260730-document-provisional-spec-identity-and-the-reconcile-surface` --related-to--> `20260725-refresh-architecture-readme-workflow-for-the-partition`
+- `20260730-document-provisional-spec-identity-and-the-reconcile-surface` --related-to--> `20260726-document-coordination-branch-protection-and-team-setup`
+- `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` --related-to--> `20260730-close-the-coordinated-spec-identity-fixture-gaps`
+- `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` --related-to--> `20260730-spec-creation-halts-only-on-an-exact-name-collision`
+- `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
 - `20260730-lift-realization-redirects-into-the-registry` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
+- `20260730-settle-what-a-partition-does-with-pending-provisional-specs` --related-to--> `20260730-realization-cannot-follow-a-group-renamed-since-issuance`
+- `20260730-spec-creation-halts-only-on-an-exact-name-collision` --related-to--> `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss`
+- `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id`
+- `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp`
+- `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
 
 ## Integrity Warnings
 
