@@ -377,6 +377,129 @@ case_jimfile_mv_spec_missing_args_exits_2() {
   assert_nonempty "stderr" "$ERR"
 }
 
+# AC: mv-spec-id renames a pending provisional dir onto its realized ordinal —
+# the cross-id rename mv-spec cannot express — and the ledger travels with it.
+case_jimfile_mv_spec_id_renames_provisional() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_prov)
+  mkdir -p "$specs/sdlc/P-20260728-new-widget"
+  printf 'x\n' > "$specs/sdlc/P-20260728-new-widget/ledger.md"
+  cfg=$(fixture mvspecid-prov.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-new-widget 018 new-widget
+  assert_exit "rc" 0 "$RC"
+  assert_eq "target printed"   "$specs/sdlc/018-new-widget" "$OUT"
+  assert_eq "source removed"   "no"  "$([[ -d "$specs/sdlc/P-20260728-new-widget" ]] && echo yes || echo no)"
+  assert_eq "final exists"     "yes" "$([[ -d "$specs/sdlc/018-new-widget" ]] && echo yes || echo no)"
+  assert_eq "ledger travelled" "yes" "$([[ -f "$specs/sdlc/018-new-widget/ledger.md" ]] && echo yes || echo no)"
+}
+
+# AC: mv-spec-id also absorbs an ordinal shift — the advisory id that named the
+# placeholder giving way to the one actually bound at write.
+case_jimfile_mv_spec_id_absorbs_ordinal_shift() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_shift)
+  mkdir -p "$specs/sdlc/017-wip"
+  cfg=$(fixture mvspecid-shift.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc 017-wip 019 coordinated-identity
+  assert_exit "rc" 0 "$RC"
+  assert_eq "target printed" "$specs/sdlc/019-coordinated-identity" "$OUT"
+  assert_eq "old id gone"    "no" "$([[ -d "$specs/sdlc/017-wip" ]] && echo yes || echo no)"
+}
+
+# AC: a target ordinal wider than three digits is accepted up to the width the
+# registry can be rebuilt from, so the verb never becomes the reason a legal
+# allocation cannot land.
+case_jimfile_mv_spec_id_accepts_wide_ordinal() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_wide)
+  mkdir -p "$specs/sdlc/P-20260728-x"
+  cfg=$(fixture mvspecid-wide.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x 123456789012345 x
+  assert_exit "rc" 0 "$RC"
+  assert_eq "wide target printed" "$specs/sdlc/123456789012345-x" "$OUT"
+}
+
+# AC: mv-spec-id refuses to clobber an existing target — a spec ordinal is path
+# identity, so a collision halts rather than overwriting or suffixing.
+case_jimfile_mv_spec_id_refuses_clobber() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_clobber)
+  mkdir -p "$specs/sdlc/P-20260728-x" "$specs/sdlc/018-x"
+  printf 'occupied\n' > "$specs/sdlc/018-x/spec.md"
+  cfg=$(fixture mvspecid-clobber.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x 018 x
+  assert_exit     "rc"       1  "$RC"
+  assert_nonempty "stderr"   "$ERR"
+  assert_eq "source untouched"  "yes" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
+  assert_eq "target untouched"  "occupied" "$(cat "$specs/sdlc/018-x/spec.md")"
+}
+
+# AC: the target ordinal is digits at the padded floor and the legality ceiling —
+# an unpadded, over-wide, or non-numeric id never becomes a directory name.
+case_jimfile_mv_spec_id_rejects_bad_target_id() {
+  local specs cfg bad
+  specs=$(empty_dir mvspecid_badid)
+  mkdir -p "$specs/sdlc/P-20260728-x"
+  cfg=$(fixture mvspecid-badid.toml "specs_path = \"$specs\"")
+  for bad in 18 1234567890123456 01a ../7 ""; do
+    run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x "$bad" x
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [target id] accepted '$bad'"
+    fi
+  done
+  assert_eq "source untouched" "yes" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
+}
+
+# AC: the source basename is gated to the forms a spec dir can actually carry —
+# a real ordinal or the reserved provisional form — so an arbitrary directory
+# name, a path escape, or a prefixed name with a token the boundary rejects
+# cannot be moved through this verb.
+case_jimfile_mv_spec_id_rejects_bad_source() {
+  local specs cfg bad
+  specs=$(empty_dir mvspecid_badsrc)
+  mkdir -p "$specs/sdlc/notes" "$specs/sdlc/P---bad" "$specs/other/001-x"
+  cfg=$(fixture mvspecid-badsrc.toml "specs_path = \"$specs\"")
+  for bad in notes P---bad "../other/001-x" ".." "P-"; do
+    run_jimfile -c "$cfg" mv-spec-id sdlc "$bad" 018 x
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [source] accepted '$bad'"
+    fi
+  done
+  assert_eq "sibling group untouched" "yes" "$([[ -d "$specs/other/001-x" ]] && echo yes || echo no)"
+}
+
+# AC: group and name cross the same boundaries every other path-composing verb
+# uses, before any move happens.
+case_jimfile_mv_spec_id_rejects_bad_group_and_name() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_badgn)
+  mkdir -p "$specs/sdlc/P-20260728-x"
+  cfg=$(fixture mvspecid-badgn.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id "../evil" P-20260728-x 018 x
+  assert_exit "bad group rc" 1 "$RC"
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x 018 "../evil"
+  assert_exit "bad name rc" 1 "$RC"
+  assert_eq "source untouched" "yes" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
+}
+
+# AC: a missing source dir is a guard failure, not a silent success.
+case_jimfile_mv_spec_id_missing_source_exits_1() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_nosrc)
+  mkdir -p "$specs/sdlc"
+  cfg=$(fixture mvspecid-nosrc.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-absent 018 x
+  assert_exit     "rc"     1  "$RC"
+  assert_nonempty "stderr" "$ERR"
+}
+
+# AC: mv-spec-id with too few args exits 2 with a message.
+case_jimfile_mv_spec_id_missing_args_exits_2() {
+  run_jimfile mv-spec-id sdlc P-20260728-x 018
+  assert_exit     "rc"     2  "$RC"
+  assert_nonempty "stderr" "$ERR"
+}
+
 # AC: next-id zero-pads to 3 digits even at boundary
 case_jimfile_next_id_zero_pads() {
   local specs cfg
