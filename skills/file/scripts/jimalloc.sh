@@ -249,6 +249,14 @@ alloc_resolve_issue() {
   printf '%s\n' "$current"
 }
 
+# The widest ordinal this allocator will compute with, in digits. One value
+# decides legality for spec ids and issue ordinals, on the read path and in the
+# bootstrap alike: an ordinal the fold skips as malformed must also be one the
+# seed refuses, or the allocator could mint a repository that can never be
+# rebuilt into a registry from its own tree. 15 digits stays well inside 64-bit
+# arithmetic, and no plausible ordinal comes near it.
+ALLOC_MAX_ORD_DIGITS=15
+
 # alloc_group_alias_map  (log on stdin)
 #   Print one TAB-separated "<old>\t<current>" line per group named as the source
 #   of a group-rename record, with the chain fully followed: dashboard→ui→surface
@@ -298,6 +306,89 @@ alloc_group_alias_map() {
   for g in "${!nextsrc[@]}"; do
     printf '%s\t%s\n' "$g" "${landing[${nextsrc[$g]}]}"
   done
+}
+
+# alloc_fold_max_spec <group>  (log on stdin) → integer
+#   The highest ordinal <group> holds under its current or any former name: the
+#   high-water. Folds allocate ids, rename destinations, and rename *sources* —
+#   a source is an ordinal the group held and can never reissue, so counting it
+#   makes the permanent gap unconditional instead of resting on every source
+#   having its own allocate record. Group membership is decided through
+#   alloc_group_alias_map, and <group> itself is aliased too, so the answer is
+#   the same whichever of a group's names you ask about.
+#
+#   Every candidate is revalidated at the id boundary and skipped if it fails,
+#   independently of its sibling field. An ordinal wider than
+#   ALLOC_MAX_ORD_DIGITS is skipped as malformed. Prints 0 when the group holds
+#   nothing. Only ever raises: a crafted record can waste an ordinal, never make
+#   a consumed one available again.
+alloc_fold_max_spec() {
+  local group="$1"
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 max=0 g num cand
+  local -A alias=()
+  local k v
+  if (( n )); then
+    while IFS=$'\t' read -r k v; do
+      [[ -n "$k" ]] && alias["$k"]="$v"
+    done < <(printf '%s\n' "${lines[@]}" | alloc_group_alias_map)
+  fi
+  group="${alias[$group]:-$group}"
+  local -a cands=()
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
+    if [[ "$c1" == spec && "$c2" == allocate ]]; then
+      cands=("$c3")
+    elif [[ "$c1" == spec && "$c2" == rename ]]; then
+      cands=("$c3" "$c4")
+    else
+      continue
+    fi
+    for cand in "${cands[@]}"; do
+      alloc_valid_specid "$cand" || continue
+      num="${cand##*/}"
+      (( ${#num} > ALLOC_MAX_ORD_DIGITS )) && continue
+      g="${cand%/*}"
+      g="${alias[$g]:-$g}"
+      [[ "$g" == "$group" ]] || continue
+      num=$((10#$num))          # base-10 — never octal on leading zeros
+      (( num > max )) && max=$num
+    done
+  done
+  printf '%s\n' "$max"
+}
+
+# alloc_fold_max_issue  (issues log on stdin) → integer
+#   The highest issue ordinal the registry has ever handed out. Same fold as the
+#   spec side — allocate ids, rename destinations, and rename sources — minus the
+#   group dimension. An ordinal that is not pure digits, or wider than
+#   ALLOC_MAX_ORD_DIGITS, is skipped as malformed. Prints 0 for an empty log.
+#
+#   The ordinal is judged on its own: a record whose durable id fails the id
+#   boundary still counts its ordinal, because the ordinal was consumed whether
+#   or not its sibling field is readable. Callers needing a trustworthy durable
+#   id gate that separately.
+alloc_fold_max_issue() {
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 max=0 cand
+  local -a cands=()
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
+    if [[ "$c1" == issue && "$c2" == allocate ]]; then
+      cands=("$c3")
+    elif [[ "$c1" == issue && "$c2" == rename ]]; then
+      cands=("$c3" "$c4")
+    else
+      continue
+    fi
+    for cand in "${cands[@]}"; do
+      [[ "$cand" =~ ^[0-9]+$ ]] || continue
+      (( ${#cand} > ALLOC_MAX_ORD_DIGITS )) && continue
+      cand=$((10#$cand))
+      (( cand > max )) && max=$cand
+    done
+  done
+  printf '%s\n' "$max"
 }
 
 # alloc_next_id_spec <group>  (log on stdin)
@@ -519,9 +610,11 @@ alloc_seed_derive_specs() {
         conflicts+="  spec dir has no slug: $gname/$name"$'\n'; continue
       fi
       slug="${name#*-}"
-      # ordinal: pure digits, within the 3-digit id space (security F3 — a
-      # numeric class check beyond the id boundary, which admits e.g. 007x).
-      if [[ ! "$ord" =~ ^[0-9]+$ ]] || (( 10#$ord > 999 )); then
+      # ordinal: pure digits, no wider than the allocator's own legality value —
+      # a numeric class check beyond the id boundary, which admits e.g. 007x.
+      # Reading the same constant the fold reads is what keeps the bootstrap from
+      # refusing an ordinal the allocator can mint.
+      if [[ ! "$ord" =~ ^[0-9]+$ ]] || (( ${#ord} > ALLOC_MAX_ORD_DIGITS )); then
         conflicts+="  spec dir has an invalid ordinal: $gname/$name"$'\n'; continue
       fi
       if ! alloc_valid_token "$slug"; then
@@ -567,8 +660,8 @@ alloc_seed_derive_issues() {
     if [[ -z "$num" ]]; then
       conflicts+="  issue file has no display ordinal (num): $base"$'\n'; continue
     fi
-    # ordinal: pure digits, bounded well under 64-bit arithmetic (security F3).
-    if [[ ! "$num" =~ ^[0-9]+$ ]] || (( ${#num} > 15 )); then
+    # ordinal: pure digits, no wider than the allocator's own legality value.
+    if [[ ! "$num" =~ ^[0-9]+$ ]] || (( ${#num} > ALLOC_MAX_ORD_DIGITS )); then
       conflicts+="  issue file has an invalid display ordinal: $base ($num)"$'\n'; continue
     fi
     if [[ -z "$id" ]]; then

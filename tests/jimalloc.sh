@@ -261,6 +261,41 @@ case_jimalloc_next_id_spec_base10() {
   assert_eq "008 → 009" "dashboard/009" "$out"
 }
 
+# AC: the next spec id sits above every ordinal the group has ever held,
+# including one vacated by a rename whose source has no allocate record.
+case_jimalloc_next_id_spec_counts_rename_source() {
+  local log out
+  log=$(printf '%s\n' 'spec rename dashboard/005 core/001 20260727 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
+  assert_eq "vacated ordinal is not reclaimed" "dashboard/006" "$out"
+}
+
+# AC: an over-wide ordinal is skipped rather than counted, so it cannot drag the
+# next id somewhere the bootstrap would refuse.
+case_jimalloc_next_id_spec_skips_over_wide_ordinal() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate dashboard/1234567890123456 wide 20260726 x' \
+                      'spec allocate dashboard/002 b 20260726 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
+  assert_eq "next id unaffected" "dashboard/003" "$out"
+}
+
+# AC: the issue side of both guarantees.
+case_jimalloc_next_num_issue_counts_rename_source() {
+  local log out
+  log=$(printf '%s\n' 'issue rename 9 3 20260727 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
+  assert_eq "vacated ordinal is not reclaimed" "10" "$out"
+}
+
+case_jimalloc_next_num_issue_skips_over_wide_ordinal() {
+  local log out
+  log=$(printf '%s\n' 'issue allocate 1234567890123456 20260726-wide 20260726 x' \
+                      'issue allocate 5 20260726-b 20260726 x')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
+  assert_eq "next ordinal unaffected" "6" "$out"
+}
+
 # ─── Section: group-rename aliasing (next-id membership) ─────────────────────
 
 # AC: after a group is renamed, the next id for it counts every ordinal the
@@ -360,8 +395,6 @@ case_jimalloc_fold_max_spec_counts_rename_source() {
   log=$(printf '%s\n' 'spec rename dashboard/005 core/001 20260727 x')
   out="$(source "$SCRIPT_jimalloc"; alloc_fold_max_spec dashboard <<< "$log")"
   assert_eq "unallocated source raises the high-water" "5" "$out"
-  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
-  assert_eq "vacated ordinal is not reclaimed" "dashboard/006" "$out"
 }
 
 # AC: the same guarantee on the issue side.
@@ -370,8 +403,6 @@ case_jimalloc_fold_max_issue_counts_rename_source() {
   log=$(printf '%s\n' 'issue rename 9 3 20260727 x')
   out="$(source "$SCRIPT_jimalloc"; alloc_fold_max_issue <<< "$log")"
   assert_eq "unallocated source raises the high-water" "9" "$out"
-  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
-  assert_eq "vacated ordinal is not reclaimed" "10" "$out"
 }
 
 # AC: miscounting errs only toward skipping — an ordinal too large to compute
@@ -383,8 +414,6 @@ case_jimalloc_fold_max_spec_skips_over_wide_ordinal() {
                       'spec allocate dashboard/002 b 20260726 x')
   out="$(source "$SCRIPT_jimalloc"; alloc_fold_max_spec dashboard <<< "$log")"
   assert_eq "over-wide ordinal skipped" "2" "$out"
-  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
-  assert_eq "next id unaffected" "dashboard/003" "$out"
 }
 
 # AC: the same skip on the issue side.
@@ -394,8 +423,6 @@ case_jimalloc_fold_max_issue_skips_over_wide_ordinal() {
                       'issue allocate 5 20260726-b 20260726 x')
   out="$(source "$SCRIPT_jimalloc"; alloc_fold_max_issue <<< "$log")"
   assert_eq "over-wide ordinal skipped" "5" "$out"
-  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
-  assert_eq "next ordinal unaffected" "6" "$out"
 }
 
 # AC: every ordinal the allocator can mint is one the registry's own bootstrap
