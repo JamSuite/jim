@@ -780,6 +780,73 @@ case_specreconcile_sweep_prefix_overlap_untouched() {
   assert_match "other group untouched"       'core/P-20260728-alpha stays'    "$body"
 }
 
+# AC: identities that overlap by prefix, realized in the SAME run, each take
+# their own ordinal wholly. The matcher walks the remap in row order and takes
+# the first hit, so what protects the longer identity is the whole-token
+# boundary — not row order.
+#
+# Both overlap shapes are here on purpose, because they are not equally
+# demanding. Remap rows follow the scan's glob, and under LC_ALL=C
+# "…alpha-2/" sorts BEFORE "…alpha/" ('-' < '/'), so the suffixed sibling is
+# already matched first and would survive with no boundary check at all.
+# "…alphax/" sorts AFTER "…alpha/", which puts the shorter row first and leaves
+# the boundary as the only thing standing between them. A fixture built on the
+# suffixed pair alone passes against a matcher with the trailing-boundary check
+# removed — verified by mutation, which is why the third identity is here.
+case_specreconcile_sweep_prefix_overlap_all_realized() {
+  local repo body short_ord dash_ord letter_ord
+  repo="$(specrec_repo sr_sweep_prefix_both)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha-2
+  specrec_prov_dir "$repo" sdlc P-20260728-alphax
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf '%s\n%s\n%s\n' \
+    'short sdlc/P-20260728-alpha here' \
+    'dash sdlc/P-20260728-alpha-2 here' \
+    'letter sdlc/P-20260728-alphax here' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  short_ord="$(printf  '%s\n' "$body" | sed -n 's/^short sdlc\/\([0-9]*\) here$/\1/p')"
+  dash_ord="$(printf   '%s\n' "$body" | sed -n 's/^dash sdlc\/\([0-9]*\) here$/\1/p')"
+  letter_ord="$(printf '%s\n' "$body" | sed -n 's/^letter sdlc\/\([0-9]*\) here$/\1/p')"
+  assert_nonempty "short identity rewritten"        "$short_ord"
+  assert_nonempty "suffixed sibling rewritten whole" "$dash_ord"
+  assert_nonempty "letter-extended rewritten whole"  "$letter_ord"
+  assert_eq "all three took distinct ordinals" "3" \
+    "$(printf '%s\n%s\n%s\n' "$short_ord" "$dash_ord" "$letter_ord" | sort -u | grep -c .)"
+  assert_eq "no half-rewritten remnant" "0" \
+    "$(printf '%s\n' "$body" | grep -c 'P-20260728')"
+}
+
+# AC: an unclosed fence extends to end of file, so nothing after it is rewritten.
+# The plan's clause named the symptom of the toggle bug — "does not skip the
+# tail" — which inverts the correct CommonMark reading; what is actually wanted
+# is that the tail IS treated as fenced, and stays verbatim.
+case_specreconcile_sweep_unclosed_fence_extends_to_eof() {
+  local repo body
+  repo="$(specrec_repo sr_sweep_unclosed)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf '%s\n%s\n%s\n%s\n' \
+    'live sdlc/P-20260728-alpha before' \
+    '```' \
+    'quoted sdlc/P-20260728-alpha inside' \
+    'trailing sdlc/P-20260728-alpha after' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "the live line before the fence is rewritten" 'live sdlc/002 before' "$body"
+  assert_match "the fenced line stays"    'quoted sdlc/P-20260728-alpha inside'   "$body"
+  assert_match "the tail stays fenced"    'trailing sdlc/P-20260728-alpha after'  "$body"
+}
+
 # AC: fenced code is verbatim material — a citation inside a fence is quoted
 # text, not a live reference, and is left as written.
 case_specreconcile_sweep_fenced_code_untouched() {
