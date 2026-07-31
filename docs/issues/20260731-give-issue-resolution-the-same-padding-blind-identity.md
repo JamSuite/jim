@@ -2,7 +2,7 @@
 id: 20260731-give-issue-resolution-the-same-padding-blind-identity
 num: 182
 title: "Give issue resolution the same padding blind identity"
-status: open
+status: closed
 priority: medium
 labels: [file, scripts]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:39:31Z
-updated: 2026-07-31T12:39:31Z
+updated: 2026-07-31T21:16:19Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 ---
 
@@ -44,3 +44,18 @@ or give `alloc_resolve_issue` the same numeric comparison the spec resolver now
 has. Normalizing at the seed is the narrower change.
 
 Surfaced by an investigator during the post-build review of `sdlc/018`.
+
+## Resolution (2026-07-31)
+
+Closed by the C′-fix build, taking the narrower of the two options as this issue
+recommended: `alloc_seed_derive_issues` now emits the **canonical** spelling
+rather than the frontmatter's.
+
+For issues canonical means *unpadded*, which is the inverse of the spec seed's
+`%03d` but the same principle — seed what the rest of the system reads. Leaving
+the resolver's string comparison alone keeps the change to one line on the
+ingestion path, rather than altering a read path that every consumer depends on.
+
+Two fixtures: the derivation itself, and the consequence — `resolve issue 7`
+against a registry seeded from a hand-authored `num: 007`, which reported "not
+allocated" before the fix while `peek issue` counted the ordinal.
