@@ -225,10 +225,13 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh mv-spec-id <group> <pe
 
 The dir becomes `<specs>/<group>/P-<date>-<slug>/` and the frontmatter carries `id: "P-<date>-<slug>"`. If that directory already exists — another spec scoped the same day under the same title — append a `-2`/`-3` suffix to the title-slug, re-run `allocate spec` with the suffixed title so the token is re-derived rather than hand-edited, and rename to the new token. This mirrors how provisional issue filenames disambiguate.
 
-Resolve the spec write path:
+Resolve the spec write path. The arity follows the identity that bound — a
+provisional token is the whole directory basename, so it takes the two-argument
+form and never has a slug composed onto it:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> <id> <name>       # real ordinal
+bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path spec <group> P-<date>-<slug>   # provisional
 ```
 
 Write the spec to that path, with frontmatter `id:` carrying the bound identity — the real ordinal, or the provisional token on that branch. The `spec finished` event is **not** recorded here — the spec keeps changing through the self-check and your review until approval, so the stage's finish is recorded at approval (Step 12).

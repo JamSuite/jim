@@ -2,13 +2,13 @@
 title: "{title}"
 type: feature | bug | refactor
 group: "{group}"
-id: "{00X}"
+id: "{id}"                        # the bound identity: a 3-digit ordinal, or a P-{date}-{slug} token
 status: draft
 origin:                           # optional — list of source documents
   - "{relative/path/to/source}"
 ---
 
-# {00X} {title}
+# {id} {title}
 
 ## Overview
 {1-2 sentence description of what this spec delivers and why.}

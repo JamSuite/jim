@@ -115,9 +115,12 @@ Populate all sections from the template:
 10. **Out of Scope** — explicit deferrals. Distinguish genuinely *deferred* work (a human or a future spec must pick it up → trackable, may become a candidate issue) from work *handled by a later gate* (a jim phase performs it automatically — e.g. the `ARCHITECTURE.md` refresh the `/jim:build` completion gate runs via `/jim:arch` → not a deferral, not an issue). Do not park workflow-automated maintenance in Out of Scope; it is the pipeline's responsibility, not a human follow-on.
 11. **Open Questions** — unresolved items
 
-Resolve the plan write path:
+Resolve the plan write path. A spec whose `id:` is a provisional token takes the
+two-argument form — the token is the whole directory basename, so composing a
+slug onto it names a directory that does not exist:
 
-    bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path plan <group> <id> <name>
+    bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path plan <group> <id> <name>       # real ordinal
+    bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path plan <group> P-<date>-<slug>   # provisional
 
 Write the plan to that path. Status stays `draft`. The `plan finished` event is recorded at approval (Step 11), not here — the plan keeps changing through the self-check, the security offer, and your revisions until it is approved.
 

@@ -33,9 +33,13 @@ Use `$ARGUMENTS` to determine the research target and mode:
 
 ### 2. Determine output location
 
-- **Spec path input:** Resolve the research write path (same directory as the spec):
+- **Spec path input:** Resolve the research write path (same directory as the
+  spec). A spec whose `id:` is a provisional token takes the two-argument form —
+  the token is the whole directory basename, so composing a slug onto it names a
+  directory that does not exist:
 
-      bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path research <group> <id> <name>
+      bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path research <group> <id> <name>       # real ordinal
+      bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh path research <group> P-<date>-<slug>   # provisional
 
   Write the research to that path.
 

@@ -321,7 +321,7 @@ flowchart TD
    id/name/token refused.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`
 
-10. [ ] Update the composing call sites: `skills/spec/SKILL.md:231` branch,
+10. [x] Update the composing call sites: `skills/spec/SKILL.md:231` branch,
     `skills/plan/SKILL.md:120` branch, `skills/research/SKILL.md:38` branch,
     `plan-template.md` back-reference, `spec-template.md` `id:` + H1.
     Depends on task 9.

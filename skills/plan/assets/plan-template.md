@@ -1,6 +1,6 @@
 ---
 title: "{Title}"
-spec: "docs/specs/{group}/{id}-{name}/spec.md"
+spec: "{spec-dir}/spec.md"        # the directory the spec sits in, as read — never recomposed
 type: feature | bug | refactor
 status: draft
 ---
