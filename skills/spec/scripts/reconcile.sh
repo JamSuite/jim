@@ -270,18 +270,23 @@ apply_pending() {
         failed=1; continue
       fi
     fi
+    # Past this point the directory HAS moved, so the REALIZED line is emitted
+    # whatever the frontmatter rewrite does. That line is what puts this identity
+    # into the remap, and the remap is what sweeps the citations the move just
+    # made dead and records the mapping on the ledger. Dropping it on a rewrite
+    # failure leaves a moved directory that nothing points at and nothing
+    # recorded. The run still fails, and the message names what to repair.
     spec="$target/spec.md"
     if [[ -f "$spec" ]]; then
       if ! tmp="$(mktemp "$target/.reconcile.tmp.XXXXXX")"; then
         echo "error: cannot create tmp file in '$target'" >&2
-        failed=1; continue
-      fi
-      if rewrite_id "$spec" "$ord" > "$tmp" && mv "$tmp" "$spec"; then
+        failed=1
+      elif rewrite_id "$spec" "$ord" > "$tmp" && mv "$tmp" "$spec"; then
         :
       else
         rm -f "$tmp"
-        echo "error: $pend — frontmatter rewrite failed for '$spec'" >&2
-        failed=1; continue
+        echo "error: $pend — frontmatter rewrite failed for '$spec'; the directory is renamed and its id still reads provisional" >&2
+        failed=1
       fi
     fi
     printf 'REALIZED %s %s\n' "$pend" "$target"

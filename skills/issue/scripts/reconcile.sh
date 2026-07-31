@@ -162,31 +162,38 @@ rewrite_num() {
 # apply_pending <dir> <pending-rows> <mapping> — rewrite each pending file's
 # num: to its realized ordinal, atomically (tmp + mv) per file. Prints the
 # count of files rewritten.
+#
+# A file that fails is reported and the batch continues: every ordinal in the
+# mapping is already durably published, so abandoning the rest strands more work
+# than it saves and leaves the index describing a state that no longer exists.
+# rc 0 all clear · rc 1 at least one file failed, the rest still rewritten.
+# Mirrors the spec-side realizer's per-identity semantics.
 apply_pending() {
   local dir="$1" rows="$2" mapping="$3"
-  local id file newnum tmp realized=0
+  local id file newnum tmp realized=0 failed=0
   while IFS=$'\t' read -r id file; do
     [[ -n "$id" ]] || continue
     newnum="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' <<<"$mapping")"
     [[ -n "$newnum" ]] || continue
     tmp="$(mktemp "$dir/.reconcile.tmp.XXXXXX")" || {
       echo "error: cannot create tmp file in '$dir'" >&2
-      return 1
+      failed=1; continue
     }
     if rewrite_num "$file" "$newnum" > "$tmp"; then
       mv "$tmp" "$file" || {
         rm -f "$tmp"
         echo "error: atomic rename failed for '$file'" >&2
-        return 1
+        failed=1; continue
       }
     else
       rm -f "$tmp"
       echo "error: rewrite failed for '$file'" >&2
-      return 1
+      failed=1; continue
     fi
     realized=$(( realized + 1 ))
   done <<<"$rows"
   printf '%s\n' "$realized"
+  return "$failed"
 }
 
 cmd_reconcile() {
@@ -221,18 +228,21 @@ cmd_reconcile() {
   fi
 
   if (( apply )); then
-    local realized regen=0
-    realized="$(apply_pending "$dir" "$rows" "$mapping")" || return 1
+    local realized arc
+    # A failure inside the batch is carried, not returned on: the files that DID
+    # rewrite have their ordinals on disk, so returning here would skip the
+    # regeneration below and leave exactly the stale index it exists to prevent.
+    realized="$(apply_pending "$dir" "$rows" "$mapping")"; arc=$?
     # The ordinals are already in the files, so a failed regeneration leaves
     # INDEX.md describing a state that no longer exists. Report it and carry the
     # failure rather than exiting 0 on a stale index.
     if ! bash "$HERE/index.sh" "$dir" >/dev/null 2>&1; then
       echo "error: the issue index failed to regenerate for '$dir'; the realized ordinals are in the files and INDEX.md no longer describes them" >&2
-      regen=1
+      arc=1
     fi
     printf 'reconcile: realized %s provisional issue(s):\n' "$realized"
     printf '%s\n' "$mapping" | sed 's/^/  /'
-    return "$regen"
+    return "$arc"
   else
     printf 'reconcile preview — %s\n\n' "$dir"
     printf '%s\n' "$mapping" | sed 's/^/  /'

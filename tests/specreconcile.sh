@@ -695,6 +695,29 @@ case_specreconcile_apply_still_offline() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
+# AC: a rewrite that changed nothing fails loudly, and the identity still enters
+# the remap. Past the rename the directory HAS moved, so omitting it would leave
+# citations pointing where it used to be and no ledger row behind a rename that
+# did happen. CLI-unreachable — the scan and the rewrite match the same set of
+# inputs — so the realizer is driven directly.
+case_specreconcile_no_op_rewrite_still_reports_the_move() {
+  local repo out rc rows mapping
+  repo="$(specrec_repo sr_noop_rewrite)"
+  mkdir -p "$repo/docs/specs/sdlc/P-20260728-alpha"
+  # No id: field at all, so the bounded rewrite matches nothing and exits 1.
+  printf -- '---\ntitle: "A spec"\ngroup: "sdlc"\n---\nbody\n' \
+    > "$repo/docs/specs/sdlc/P-20260728-alpha/spec.md"
+  rows="$(printf 'sdlc/P-20260728-alpha\tdocs/specs/sdlc/P-20260728-alpha')"
+  mapping="$(printf 'sdlc/P-20260728-alpha\tsdlc/001\tnew')"
+  out="$( cd "$repo" && source "$SCRIPT_specreconcile" >/dev/null 2>&1
+          apply_pending docs/specs "$rows" "$mapping" 2>/dev/null )"
+  rc=$?
+  assert_exit  "rc"                        1 "$rc"
+  assert_match "the move is still reported" 'REALIZED sdlc/P-20260728-alpha' "$out"
+  assert_eq    "directory moved"            "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/001-alpha" ]] && echo yes || echo no)"
+}
+
 # ─── Section: Test cases — citation sweep ────────────────────────────────────
 
 # specrec_commit <repo> — track everything currently in the repo.
