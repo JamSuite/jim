@@ -675,6 +675,102 @@ case_jimfile_nesting_guard_passes_a_real_rename() {
   assert_eq "source not resurrected" "no" "$([[ -d "$src" ]] && echo yes || echo no)"
 }
 
+# AC: a rename that landed by copying rather than by renaming is not mistaken for
+# the race. `mv` guarantees the contents arrive, not that the inode survives — on
+# a cross-device move it copies and deletes, which is what renaming a lower or
+# merged directory on an overlay filesystem becomes. Staged here exactly as `mv`
+# leaves it: new inode, correct tree, source gone.
+case_jimfile_nesting_guard_copy_fallback_reads_as_landed() {
+  local specs src target ino rc err
+  specs=$(empty_dir nestguard_copy)
+  mkdir -p "$specs/sdlc"
+  src="$specs/sdlc/P-20260728-x"
+  target="$specs/sdlc/018-x"
+  mkdir -p "$src"
+  printf 'payload\n' > "$src/spec.md"
+  ino="$(jimfile_dir_inode "$src")"
+  cp -R -- "$src" "$target" && rm -rf -- "$src"
+  err="$( source "$SCRIPT_JIMFILE" >/dev/null 2>&1
+          undo_nested_rename "$src" "$target" "$ino" 2>&1 )"
+  rc=$?
+  assert_exit "rc"                 0         "$rc"
+  assert_eq   "no repair demanded" ""        "$err"
+  assert_eq   "target holds the payload" "payload" "$(cat "$target/spec.md" 2>/dev/null)"
+  assert_eq   "source not resurrected" "no" "$([[ -d "$src" ]] && echo yes || echo no)"
+}
+
+# AC: an unreadable source inode degrades to the basename tell rather than passing
+# everything — the guard still refuses a move that nested. The callers refuse
+# before the move, so this is the residual shape only.
+case_jimfile_nesting_guard_empty_inode_still_detects_nesting() {
+  local specs src target rc
+  specs=$(empty_dir nestguard_noino)
+  mkdir -p "$specs/sdlc"
+  src="$specs/sdlc/P-20260728-x"
+  target="$specs/sdlc/018-x"
+  mkdir -p "$src"
+  mkdir -p "$target"
+  mv -- "$src" "$target/"
+  ( source "$SCRIPT_JIMFILE" >/dev/null 2>&1
+    undo_nested_rename "$src" "$target" "" ) 2>/dev/null
+  rc=$?
+  assert_exit "rc" 1 "$rc"
+  assert_eq "source restored" "yes" "$([[ -d "$src" ]] && echo yes || echo no)"
+}
+
+# jimfile_copying_mv_shim — a directory holding an `mv` that copies and deletes
+# instead of renaming, the way `mv` behaves across devices. Prepended to PATH so
+# the rename verbs are driven through their real command surface against that
+# behavior: the guard's own fixtures call it directly and never exercise the
+# `src_ino` capture or the `|| return 1` wiring, which is where a false positive
+# actually reaches a caller.
+jimfile_copying_mv_shim() {
+  local dir
+  dir=$(empty_dir "$1")
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -uo pipefail' \
+    '[[ "${1:-}" == "--" ]] && shift' \
+    'cp -R -- "$1" "$2" && rm -rf -- "$1"' > "$dir/mv"
+  chmod +x "$dir/mv"
+  printf '%s' "$dir"
+}
+
+# AC: mv-spec-id reports success when the underlying move copied rather than
+# renamed — the whole verb, not the guard in isolation.
+case_jimfile_mv_spec_id_lands_through_a_copying_mv() {
+  local specs cfg shim oldpath
+  specs=$(empty_dir mvspecid_copy)
+  mkdir -p "$specs/sdlc/P-20260728-x"
+  printf 'payload\n' > "$specs/sdlc/P-20260728-x/spec.md"
+  cfg=$(fixture mvspecid-copy.toml "specs_path = \"$specs\"")
+  shim=$(jimfile_copying_mv_shim mvspecid_copy_bin)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x 018 x
+  PATH="$oldpath"
+  assert_exit "rc"          0 "$RC"
+  assert_eq   "no stderr"   "" "$ERR"
+  assert_eq   "landed"      "yes" "$([[ -d "$specs/sdlc/018-x" ]] && echo yes || echo no)"
+  assert_eq   "payload"     "payload" "$(cat "$specs/sdlc/018-x/spec.md" 2>/dev/null)"
+  assert_eq   "source gone" "no" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
+}
+
+# AC: mv-spec has the same wiring and the same exposure — the slug rename must not
+# report a hand-repair instruction over a tree that is already correct.
+case_jimfile_mv_spec_lands_through_a_copying_mv() {
+  local specs cfg shim oldpath
+  specs=$(empty_dir mvspec_copy)
+  mkdir -p "$specs/sdlc/001-old"
+  cfg=$(fixture mvspec-copy.toml "specs_path = \"$specs\"")
+  shim=$(jimfile_copying_mv_shim mvspec_copy_bin)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_jimfile -c "$cfg" mv-spec sdlc 001 new
+  PATH="$oldpath"
+  assert_exit "rc"        0 "$RC"
+  assert_eq   "no stderr" "" "$ERR"
+  assert_eq   "landed"    "yes" "$([[ -d "$specs/sdlc/001-new" ]] && echo yes || echo no)"
+}
+
 # AC: an ordinal spelled with different padding is the same ordinal — a spec
 # ordinal is a number, so '18' collides with an existing '018-…' rather than
 # reading as free space.

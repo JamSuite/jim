@@ -439,8 +439,14 @@ cmd_mv_spec() {
     echo "error: mv-spec target already exists — '$target'" >&2
     return 1
   fi
+  # The post-move guard reads this inode. Refuse now rather than move first and
+  # guard on nothing — before the move, refusing costs nothing.
   local src_ino
   src_ino="$(dir_inode "$src")"
+  if [[ -z "$src_ino" ]]; then
+    echo "error: mv-spec cannot read the identity of '$src'; nothing renamed" >&2
+    return 1
+  fi
   if ! mv -- "$src" "$target"; then
     echo "error: mv-spec failed to rename '$src' -> '$target'" >&2
     return 1
@@ -547,10 +553,27 @@ dir_inode() {
 #   under a directory this command never created — a realized-but-wrong spec
 #   directory, exactly the silent wrong state a rename must not produce.
 #
-#   Detected by identity, not by name: the rename landed only if <target> IS the
-#   directory that was at <src>. Comparing inodes rather than looking for a
-#   nested basename keeps a spec directory that legitimately contains an entry of
-#   that name from reading as the artifact.
+#   PREMISE, stated because reading it wrong is worse than the race it guards:
+#   `mv` guarantees the contents arrive, NOT that the inode survives. A
+#   same-filesystem rename keeps it, so <target> carrying the source's inode
+#   PROVES the rename landed. A cross-device move — what renaming a lower or
+#   merged directory on an overlay filesystem becomes — copies and deletes, so it
+#   lands correctly with a NEW inode. Inode identity is therefore sufficient to
+#   prove a rename landed and useless to disprove it.
+#
+#   The absence of <target>/<basename> is the second tell, and it is the one that
+#   holds on both kinds of filesystem: a rename that landed nested nothing. Only
+#   when <target> is not the moved directory AND something wearing the source's
+#   basename sits inside it is this the race.
+#
+#   The cost of reading it that way: where the move copied, a directory that
+#   legitimately contains an entry named for its own former basename reads as
+#   nested and is restored. That entry would be a provisional spec directory
+#   inside another spec directory — refusing it is the safer error.
+#
+#   An empty <src-inode-before> degrades to the basename tell alone rather than
+#   passing everything through; the callers refuse before the move instead, where
+#   refusing costs nothing.
 #
 #   rc 0 the rename landed · rc 1 it did not; the source is restored where
 #   possible and the caller must fail rather than report a rename that did not
@@ -559,11 +582,14 @@ dir_inode() {
 undo_nested_rename() {
   local src="$1" target="$2" src_ino="$3"
   local base="${src##*/}" nested
-  [[ -n "$src_ino" ]] || return 0
-  [[ "$(dir_inode "$target")" == "$src_ino" ]] && return 0
   nested="$target/$base"
-  if [[ "$(dir_inode "$nested")" == "$src_ino" ]] && [[ ! -e "$src" ]] \
-     && mv -- "$nested" "$src"; then
+  [[ -n "$src_ino" && "$(dir_inode "$target")" == "$src_ino" ]] && return 0
+  [[ -e "$nested" ]] || return 0
+  # The restore is itself a move into a path a concurrent writer can occupy, so
+  # its outcome is verified rather than assumed: the source must be back, and it
+  # must not have nested in turn.
+  if [[ ! -e "$src" ]] && mv -- "$nested" "$src" \
+     && [[ -d "$src" && ! -e "$src/$base" ]]; then
     echo "error: '$target' appeared as a directory during the rename and '$src'" \
          "was moved inside it; restored — nothing was renamed" >&2
   else
@@ -709,8 +735,14 @@ cmd_mv_spec_id() {
     echo "error: mv-spec-id target already exists — '$target'" >&2
     return 1
   fi
+  # The post-move guard reads this inode. Refuse now rather than move first and
+  # guard on nothing — before the move, refusing costs nothing.
   local src_ino
   src_ino="$(dir_inode "$src")"
+  if [[ -z "$src_ino" ]]; then
+    echo "error: mv-spec-id cannot read the identity of '$src'; nothing renamed" >&2
+    return 1
+  fi
   if ! mv -- "$src" "$target"; then
     echo "error: mv-spec-id failed to rename '$src' -> '$target'" >&2
     return 1
