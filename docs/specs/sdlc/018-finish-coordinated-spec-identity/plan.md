@@ -372,7 +372,7 @@ flowchart TD
     guidance.
     **Verify:** `! grep -q "assign the next id when you open the ledger" skills/spec/SKILL.md && grep -q "is unreachable" skills/spec/SKILL.md`
 
-19. [ ] Docs pass: `WORKFLOW.md` (id assignment via the allocator,
+19. [x] Docs pass: `WORKFLOW.md` (id assignment via the allocator,
     provisional identity, the reconcile surface) and `README.md` (next-id
     framing, the `id_coordination_*` config keys, the reconcile surface).
     **Verify:** `grep -q provisional WORKFLOW.md && grep -q id_coordination README.md`

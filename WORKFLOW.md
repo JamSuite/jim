@@ -96,11 +96,11 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | Blueprint | `docs/specs/{group}/000-blueprint/spec.md` | A group's current, present-tense spec — responsibility, provides/requires surface, structure, load-bearing invariants; amalgamated from the group's specs, ARCHITECTURE.md, and code | `/jim:blueprint <group>` |
 | Context map | `BLUEPRINT.md` (project root, `blueprint_path`) | The project-tier context map — the declared partition into spec groups, each with a purpose, role (`domain`/`platform`/`layer`), boundary rationale, relations, and (mode-dependent) code territory; consumed by `/jim:spec`'s assignment advisor; sole authority for the partition | `/jim:blueprint` (bare) |
 | Roadmap | `ROADMAP.md` (project root) | Execution sequence — milestones, phase breakdowns, links to numbered specs with status | `/jim:roadmap` |
-| Spec | `docs/specs/{group}/{00X}-{name}/spec.md` | Work definition — requirements, acceptance criteria, spec type (feature/bug/refactor) | `/jim:spec` |
-| Plan | `docs/specs/{group}/{00X}-{name}/plan.md` | Implementation path — codebase research, atomic tasks, dependencies | `/jim:plan` |
-| Security Review | `docs/specs/{group}/{00X}-{name}/security.md` (spec-scoped) or `{security_adhoc_path}/{YYYYMMDD}-{slug}.md` (ad-hoc opt-in) | Design-time findings — severity, route, phase coverage; gates `/jim:plan` and `/jim:build` start when `require_security` / `auto_security` is set | `/jim:sec` |
-| Review Report | `docs/specs/{group}/{00X}-{name}/review.md` | Post-build findings — drift vs spec/plan/architecture, code + process metrics, security regressions, alignment verdict; mineable frontmatter + narrative | `/jim:review` |
-| Stage Ledger | `docs/specs/{group}/{00X}-{name}/ledger.md` | Append-only event log of SDLC stage boundaries (baseline/head SHAs, per-stage start/finish, interruptions, re-runs); `/jim:build` records the build range and SHAs, and `/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:sec`, and `/jim:review` each record their own start/finish — `/jim:review` also appends its validated alignment verdict and self-commits `review.md` + `ledger.md` (spec 028); `/jim:verify` records its per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits that ledger alone via `commit-verify` (spec 035, its only durable trace — no verdict artifact is persisted); map-tier blueprint, reconcile, and contract-mode runs record `tier=project` events on the specs-root `ledger.md` — the reviewer's process-metric source | `/jim:build` (+ spec/research/plan/sec/review/verify) |
+| Spec | `docs/specs/{group}/{id}-{name}/spec.md` | Work definition — requirements, acceptance criteria, spec type (feature/bug/refactor). `{id}` is the identity the coordination allocator bound: a 3-digit ordinal unique within the group, or — when the coordination point was unreachable and the project configures `provisional` — a reserved `P-{date}-{slug}` token that IS the whole directory name, pending realization | `/jim:spec` |
+| Plan | `docs/specs/{group}/{id}-{name}/plan.md` | Implementation path — codebase research, atomic tasks, dependencies | `/jim:plan` |
+| Security Review | `docs/specs/{group}/{id}-{name}/security.md` (spec-scoped) or `{security_adhoc_path}/{YYYYMMDD}-{slug}.md` (ad-hoc opt-in) | Design-time findings — severity, route, phase coverage; gates `/jim:plan` and `/jim:build` start when `require_security` / `auto_security` is set | `/jim:sec` |
+| Review Report | `docs/specs/{group}/{id}-{name}/review.md` | Post-build findings — drift vs spec/plan/architecture, code + process metrics, security regressions, alignment verdict; mineable frontmatter + narrative | `/jim:review` |
+| Stage Ledger | `docs/specs/{group}/{id}-{name}/ledger.md` | Append-only event log of SDLC stage boundaries (baseline/head SHAs, per-stage start/finish, interruptions, re-runs); `/jim:build` records the build range and SHAs, and `/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:sec`, and `/jim:review` each record their own start/finish — `/jim:review` also appends its validated alignment verdict and self-commits `review.md` + `ledger.md` (spec 028); `/jim:verify` records its per-invariant outcome counts on the group's `000-blueprint/ledger.md` and self-commits that ledger alone via `commit-verify` (spec 035, its only durable trace — no verdict artifact is persisted); map-tier blueprint, reconcile, and contract-mode runs record `tier=project` events on the specs-root `ledger.md` — the reviewer's process-metric source | `/jim:build` (+ spec/research/plan/sec/review/verify) |
 | Debug Report | `docs/debug/{YYYYMMDD}-{topic}.md` | Diagnosis — error analysis, root cause, references to affected specs | `/jim:debug` |
 | Brainstorm | `docs/brainstorms/{YYYYMMDD}-{topic}.md` | Exploratory notes — ideas, risks, options, may feed into specs | `/jim:brainstorm` |
 | Issue | `docs/issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` (configurable via `issues_path`) | Discovery artifacts surfaced during the workflow — one markdown file per issue with a display ordinal (`num`), `open`/`closed` status, typed relations, and an auto-generated index | `/jim:issue` |
@@ -365,12 +365,15 @@ agent: meta
 1. Describe your idea, bug report, or refactor motivation
 2. PM determines spec type (`feature`, `bug`, `refactor`) and asks clarifying questions (1-2 at a time)
 3. Checks alignment against VISION.md and ARCHITECTURE.md; when `BLUEPRINT.md` exists, the assignment advisor consumes the context map to recommend the target group (role-aware reasoning, genuine pushback, developer final authority — mint-new routes through the blueprint surface inline)
-4. Generates spec using template from `spec/assets/spec-template.md`
-5. You review and approve or request changes
+4. Binds the spec's identity through the coordination allocator — never from the tree. A reachable coordination point yields the next 3-digit ordinal for the group; an unreachable one either issues nothing and says so, or (when `id_coordination_unreachable = "provisional"`) binds a reserved `P-{date}-{slug}` token that every later stage runs against unchanged
+5. Generates spec using template from `spec/assets/spec-template.md`
+6. You review and approve or request changes
 
-**Output:** `docs/specs/{group}/{00X}-{name}/spec.md`
+**Output:** `docs/specs/{group}/{id}-{name}/spec.md`
 
 **Gate:** Human approves the spec. Status changes from `draft` to `approved`.
+
+**Realizing a provisional identity:** `/jim:spec reconcile` previews every pending provisional spec and the real ordinal each would take; `--apply` realizes them — renaming each directory onto its ordinal, rewriting its frontmatter, and sweeping in-tree citations of the identity it left. Its issue-side twin is `/jim:issue reconcile`. Both halt loudly rather than write a wrong identity.
 
 ### `/jim:plan`
 
@@ -385,7 +388,7 @@ agent: meta
 6. Surfaces a cross-group **blast-radius advisory** (spec 042) — when the plan's group is a provider in the contract graph, mechanically names every dependent group and the entry it relies on (from the derived `## Contract Graph`, `graph as of <Last reconciled>`), so you can weigh the blast radius before approving; non-blocking and silent on single-group projects. The plan-time complement to the reconcile pass's face-change blast radius (below)
 7. You review and approve
 
-**Output:** `docs/specs/{group}/{00X}-{name}/plan.md`
+**Output:** `docs/specs/{group}/{id}-{name}/plan.md`
 
 **Gate:** Human approves the plan. Build cannot begin without it.
 

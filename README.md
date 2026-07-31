@@ -37,7 +37,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 
 | Command | What it does |
 |---------|-------------|
-| `/jim:spec` | Define a feature, bug, or refactor |
+| `/jim:spec` | Define a feature, bug, or refactor; `reconcile` realizes specs scoped while the coordination point was unreachable |
 | `/jim:plan` | Research codebase + create atomic task plan |
 | `/jim:research` | Investigate codebase + technical landscape before a spec or plan; produces `research.md` |
 | `/jim:build` | TDD red-green-refactor, one task at a time |
@@ -126,6 +126,9 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `health_threshold_<signal>` | `"0"` (disabled) | `/jim:blueprint` reconcile — per-signal arming thresholds for the silent partition-health hook: `cycles` / `fanin` / `uncovered` / `faces_max` (latest reconcile ≥ N) and `breaking_runs` (trailing reconciles carrying breaking findings ≥ N); a malformed or non-positive value stays disabled and is noted |
 | `group_axis` | `"vertical"` | `/jim:blueprint` (bare) — partition doctrine the map-creation proposal steers toward (`vertical` / `layered`) |
 | `group_territory` | `"declared-paths"` | `/jim:blueprint` (bare) — how group↔code binding is captured in the map (`directory` / `declared-paths` / `none`) |
+| `id_coordination_mechanism` | `"git"` | `/jim:spec`, `/jim:issue add` — how spec ordinals and issue ids are coordinated between clones; `git` uses an append-only registry on a shared branch |
+| `id_coordination_branch` | `"jim/registry"` | same — the branch the registry lives on; it holds only the registry logs, never project content |
+| `id_coordination_unreachable` | `"fail"` | same — what happens when the coordination point cannot be reached: `fail` issues no identity and says so, `provisional` binds a local-only `P-{date}-{slug}` token that scoping and every later stage run against unchanged, realized afterwards by `/jim:spec reconcile` (specs) or `/jim:issue reconcile` (issues) |
 | `spec_migration` | `"rewrite"` | `/jim:partition rename` / `split` / `merge` — identity-on-move preference for a moved numbered spec's recorded group identity: `rewrite` edits it to the new group (substance untouched; ambiguous prose frozen on doubt), `forward` freezes the bodies behind the ledger `op=rename` / `op=split` / `op=merge` alias, `immutable` leaves the source in place — split/merge-native (a rename, which relocates the group's home, runs it as `forward`); an unrecognized value degrades to `rewrite`. Governs numbered specs 001+; the `000-blueprint` re-identifies in every mode |
 | `require_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review is a required phase: the build's completion gate is held until the review has run to completion. Its findings stay advisory (a report, not a veto), but the build cannot be marked complete without the review |
 | `auto_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review runs automatically with no prompt; composes independently of `auto_issue_file` |
@@ -175,7 +178,7 @@ Inspect what jim resolves with `/jim:conf`:
 /jim:file slug "Auth Token Expiry"                        # auth-token-expiry
 /jim:file date                                            # YYYYMMDD
 /jim:file now                                             # YYYY-MM-DDThh:mm:ssZ (UTC)
-/jim:file next-id sdlc                                    # next zero-padded spec ID
+/jim:file next-id sdlc                                    # highest tree ordinal + 1 (local view; the allocator mints the real one)
 /jim:file next-num issue                                  # next issue display ordinal
 /jim:file path spec platform 003 jimfile                  # canonical spec path
 /jim:file path debug "auth bug"                           # date-prefixed debug path
