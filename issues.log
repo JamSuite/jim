@@ -163,3 +163,4 @@ issue allocate 162 20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcil
 issue allocate 163 20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table 20260731 jrko
 issue allocate 164 20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer 20260731 jrko
 issue allocate 165 20260731-unmix-the-template-brace-around-arguments-in-the-arch-skill 20260731 jrko
+issue allocate 166 20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe 20260731 jrko
