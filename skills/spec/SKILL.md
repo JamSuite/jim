@@ -83,7 +83,7 @@ List existing specs in every group via !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/
     yet — want to draw the context map? (`/jim:blueprint`)" — suppressed at
     ≤1 group so single-group projects pay no noise.
   ENDIF
-- Note existing spec IDs in the group — for a new spec you'll assign the next id when you open the ledger below.
+- Note existing spec IDs in the group for context only. The id is not derived from the tree — the coordination allocator mints it at Step 8.
 
 Flag potential cross-spec side effects if the new idea overlaps with existing specs in the same group.
 
@@ -111,8 +111,9 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <specs>/<gro
 | :--- | :--- | :--- |
 | `group renamed` | The group was renamed away; stderr names the current one. **Retryable.** | Present the redirect and ask: scope under the named group instead? On explicit agreement, re-run with `--follow-redirect` and continue under **the group the allocator returns** — which is authoritative and may differ from the one asked for. Never substitute silently. |
 | `group exhausted` | No ordinal left the registry could be rebuilt from. **Terminal.** | Report it as terminal and stop. Acknowledging changes nothing; do not retry. |
+| `coordination remote '<r>' is unreachable` | The project configures `fail` for an unreachable coordination point, so no identity is issued at all. **Retryable once the remote is reachable.** | Report that scoping cannot bind an identity right now, name the remote from the message, and stop. Retry when connectivity returns; do not fall back to a provisional identity — that mode is the project's configuration to choose, not this flow's. |
 
-If the coordination point is unreachable, `peek` degrades to the last-seen state — that is fine, it is advisory. Carry any redirect consent forward to Step 8, which needs the same flag.
+If the coordination point is unreachable and the project configures otherwise, `peek` degrades to the last-seen state — that is fine, it is advisory. Carry any redirect consent forward to Step 8, which needs the same flag.
 
 ### 4. Detect spec type
 
@@ -358,7 +359,7 @@ If `$ARGUMENTS` points to an existing spec, or if step 3 identified a name colli
    # … apply the Edits, get confirmation …
    bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh event <spec-dir> spec finished
    ```
-5. If creating new: follow the normal generation path (step 8) with a new ID.
+5. If creating new: follow the normal generation path from Step 3 — open the ledger on a `<peek>-wip` placeholder, bind the identity at Step 8, and rename the placeholder onto it. A differential update never mints an id; a new increment mints one the same way any other new spec does.
 
 ### 14. Realize pending provisional identities
 
@@ -395,7 +396,7 @@ Before presenting any generated spec, verify:
 - [ ] `title` present and descriptive
 - [ ] `type` is one of: feature, bug, refactor
 - [ ] `group` is noun-based, lowercase
-- [ ] `id` is 3-digit zero-padded, sequential within group
+- [ ] `id` is the identity the allocator bound — a 3-digit zero-padded ordinal, or a `P-<date>-<slug>` provisional token — and matches the directory name
 - [ ] `status` is `draft`
 - [ ] `origin` present only if source documents exist (removed otherwise)
 

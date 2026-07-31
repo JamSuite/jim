@@ -365,7 +365,7 @@ flowchart TD
     and date surfaced, not merged).
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
-18. [ ] Reconcile `skills/spec/SKILL.md`: drop the `:86` tree-derivation cue,
+18. [x] Reconcile `skills/spec/SKILL.md`: drop the `:86` tree-derivation cue,
     align Step 13 with the placeholder flow, admit the provisional form in
     the `:395` checklist item, add the `fail`-mode refusal row carrying the
     actual message (`coordination remote '<r>' is unreachable`) with retry
