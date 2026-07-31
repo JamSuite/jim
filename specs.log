@@ -62,3 +62,5 @@ spec allocate sdlc/016 review-verdict 20260726 jim-seed
 spec allocate issue/010 ordinal-coordination 20260728 jim-seed
 spec allocate platform/009 provisional-reconcile 20260728 jim-seed
 spec allocate platform/010 allocator-issue-prefix 20260728 jim-seed
+spec allocate platform/011 rename-path-correctness 20260729 jrko
+spec allocate sdlc/017 coordinated-spec-identity 20260730 jrko
