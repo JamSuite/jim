@@ -353,7 +353,7 @@ flowchart TD
     untracked branches.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile`
 
-16. [ ] Untracked self-citation sweep — directory-scoped enumeration,
+16. [x] Untracked self-citation sweep — directory-scoped enumeration,
     realpath containment before any edit; fixtures: an uncommitted spec's
     own citations are swept, a symlink escape is refused.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile`

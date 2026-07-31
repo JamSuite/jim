@@ -310,12 +310,13 @@ build_remap() {
   done <<<"$applied"
 }
 
-# sweep_citations <remap-rows>
+# sweep_citations <remap-rows> [<realized-dirs>]
 #   Rewrite in-tree citations of each realized identity across the four roots a
 #   citation can live in — specs, issues, brainstorms, debug — over the tracked
-#   markdown in each. The remap IS the whitelist: only an identity that actually
-#   moved is ever rewritten, so a reference to an unrelated spec cannot be
-#   touched by construction.
+#   markdown in each, plus the realized directories' own markdown, which is not
+#   tracked yet when a spec is realized before it is committed. The remap IS the
+#   whitelist: only an identity that actually moved is ever rewritten, so a
+#   reference to an unrelated spec cannot be touched by construction.
 #
 #   The match is whole-token: the character before the identity is not
 #   [a-z0-9-] and the character after is not [a-z0-9-] either. Excluding the
@@ -338,7 +339,7 @@ build_remap() {
 #   regeneration that fails is reported and fails the sweep, since the citations
 #   are already rewritten and INDEX.md no longer describes them.
 sweep_citations() {
-  local remap="$1"
+  local remap="$1" own_dirs="${2:-}"
   [[ -n "$remap" ]] || return 0
   local top
   if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
@@ -355,9 +356,36 @@ sweep_citations() {
   done
   (( ${#roots[@]} )) || return 0
   mapfile -t files < <(git --literal-pathspecs ls-files -- "${roots[@]}" 2>/dev/null | grep -E '\.md$')
+
+  # A directory realized while still uncommitted is invisible to git, so its own
+  # body would keep citing the identity it just left. Enumerate the realized
+  # directories' own markdown — those directories only, never a whole-tree
+  # untracked scan — and merge it in. Every path added here goes through the same
+  # relpath boundary and worktree containment as the tracked targets below,
+  # before any edit: an untracked directory is shapeable in ways tracked content
+  # is not, so it must not be able to direct a rewrite out of the worktree.
+  local d entry
+  if [[ -n "$own_dirs" ]]; then
+    while IFS= read -r d; do
+      [[ -n "$d" && -d "$d" ]] || continue
+      for entry in "$d"/*.md; do
+        [[ -f "$entry" ]] || continue
+        files+=("$entry")
+      done
+    done <<<"$own_dirs"
+  fi
   (( ${#files[@]} )) || return 0
 
   local f resolved
+  local -A seen_file=()
+  local -a unique=()
+  for f in "${files[@]}"; do
+    [[ -n "${seen_file[$f]:-}" ]] && continue
+    seen_file["$f"]=1
+    unique+=("$f")
+  done
+  files=("${unique[@]}")
+
   for f in "${files[@]}"; do
     if ! jf valid-relpath "$f" >/dev/null 2>&1; then
       echo "error: citation sweep — unsafe path rejected: $f" >&2; return 1
@@ -566,11 +594,12 @@ cmd_reconcile() {
     printf 'reconcile — %s\n\n' "$dir"
     printf '%s\n' "$mapping" | sed 's/^/  /'
     printf '\n'
-    local applied arc remap
+    local applied arc remap own_dirs
     applied="$(apply_pending "$dir" "$rows" "$mapping")"; arc=$?
     [[ -n "$applied" ]] && printf '%s\n' "$applied"
     remap="$(build_remap "$applied" "$mapping")"
-    sweep_citations "$remap" || arc=1
+    own_dirs="$(printf '%s\n' "$applied" | awk '$1=="REALIZED"{print $3}')"
+    sweep_citations "$remap" "$own_dirs" || arc=1
     record_realized "$dir" "$remap" || arc=1
     return "$arc"
   fi

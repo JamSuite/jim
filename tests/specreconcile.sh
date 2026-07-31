@@ -121,6 +121,43 @@ case_specreconcile_invalid_token_skipped() {
   assert_eq "bad identity not previewed" "0" "$(printf '%s\n' "$OUT" | grep -c 'P---bad')"
 }
 
+# AC: an uncommitted spec's own citations of the identity it just left are swept
+# too — git cannot see an untracked directory, so its own body would otherwise
+# keep pointing at a provisional identity that no longer exists.
+case_specreconcile_sweeps_uncommitted_own_citations() {
+  local repo dir
+  repo="$(specrec_repo sr_ownsweep)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  dir="$repo/docs/specs/sdlc/P-20260728-alpha"
+  printf 'Planned for sdlc/P-20260728-alpha.\n' > "$dir/plan.md"
+  printf -- '---\ntitle: "A spec"\ngroup: "sdlc"\nid: "P-20260728-alpha"\n---\n\nSee sdlc/P-20260728-alpha.\n' \
+    > "$dir/spec.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "own plan citation swept" 'Planned for sdlc/001\.' \
+    "$(cat "$repo/docs/specs/sdlc/001-alpha/plan.md")"
+  assert_match "own body citation swept" 'See sdlc/001\.' \
+    "$(cat "$repo/docs/specs/sdlc/001-alpha/spec.md")"
+}
+
+# AC: the widened enumeration carries the same containment bound as every other
+# write target — an entry in the realized directory that resolves outside the
+# worktree is refused rather than rewritten.
+case_specreconcile_uncommitted_sweep_refuses_escape() {
+  local repo dir outside
+  repo="$(specrec_repo sr_ownescape)"
+  outside="$TMP_BASE/sr_ownescape_outside.md"
+  printf 'outside sdlc/P-20260728-alpha\n' > "$outside"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  dir="$repo/docs/specs/sdlc/P-20260728-alpha"
+  ln -s "$outside" "$dir/escape.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit     "rc"                 1 "$RC"
+  assert_nonempty "names the refusal"  "$ERR"
+  assert_eq "the file outside is untouched" "outside sdlc/P-20260728-alpha" \
+    "$(cat "$outside")"
+}
+
 # AC: an absolute spelling of the configured specs dir does not split the run's
 # behavior — the tracked and untracked branches compose the same paths, so both
 # realize. One configured spelling, one behavior.
