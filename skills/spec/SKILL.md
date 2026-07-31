@@ -12,7 +12,7 @@ allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *)
 
 # /jim:spec
 
-Turn a rough idea into a structured spec (`docs/specs/{group}/{00X}-{name}/spec.md`) through collaborative interview.
+Turn a rough idea into a structured spec (`docs/specs/{group}/{id}-{name}/spec.md`, or `docs/specs/{group}/P-{date}-{slug}/spec.md` on the provisional branch) through collaborative interview.
 
 *(The `agent: pm` field in this frontmatter is a jim documentation convention, not a Claude Code routing mechanism.)*
 
