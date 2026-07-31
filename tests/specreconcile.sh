@@ -718,6 +718,22 @@ case_specreconcile_no_op_rewrite_still_reports_the_move() {
     "$([[ -d "$repo/docs/specs/sdlc/001-alpha" ]] && echo yes || echo no)"
 }
 
+# AC: the shipped templates carry no trailing comment on a line whose value is
+# parsed. Everything after the colon IS the value, so a comment left in place
+# merges into it — and for the spec's id that means the directory reads as not
+# pending: a warning and a skip, from a template that invited the edit.
+case_specreconcile_shipped_templates_parse_clean() {
+  local spec_tmpl plan_tmpl id_v spec_v
+  spec_tmpl="$REPO_ROOT/skills/spec/assets/spec-template.md"
+  plan_tmpl="$REPO_ROOT/skills/plan/assets/plan-template.md"
+  id_v="$( source "$SCRIPT_specreconcile" >/dev/null 2>&1
+           field_value "$spec_tmpl" id )"
+  spec_v="$( source "$SCRIPT_specreconcile" >/dev/null 2>&1
+             field_value "$plan_tmpl" spec )"
+  assert_eq "spec template id is the placeholder alone"   '{id}'                "$id_v"
+  assert_eq "plan template spec is the placeholder alone" '{spec-dir}/spec.md'  "$spec_v"
+}
+
 # ─── Section: Test cases — citation sweep ────────────────────────────────────
 
 # specrec_commit <repo> — track everything currently in the repo.
