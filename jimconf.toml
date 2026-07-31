@@ -7,3 +7,9 @@
 # Bash permission prompt and validates every edge through jimpartition.sh
 # ingest. This config entry is the only activation channel for the command.
 deps_command_refs = "bash scripts/jim-deps-refs.sh"
+
+# When the ID-coordination point is unreachable, hand back a local provisional
+# identifier instead of hard-failing, so coordinated work continues offline and
+# settles later via `/jim:issue reconcile`. Suited to a sandbox/agent clone with
+# no push credentials for the coordination remote.
+id_coordination_unreachable = "provisional"
