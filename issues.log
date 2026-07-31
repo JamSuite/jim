@@ -180,3 +180,4 @@ issue allocate 179 20260731-move-the-explanatory-comment-off-the-spec-template-i
 issue allocate 180 20260731-skip-symlinked-entries-in-the-realized-directory-sweep 20260731 jrko
 issue allocate 181 20260731-close-the-remaining-edges-of-the-ordinal-identity-invariant 20260731 jrko
 issue allocate 182 20260731-give-issue-resolution-the-same-padding-blind-identity 20260731 jrko
+issue allocate 183 20260731-retire-the-mv-spec-prose-now-that-it-has-no-callers 20260731 jrko
