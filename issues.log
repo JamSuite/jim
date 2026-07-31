@@ -178,3 +178,4 @@ issue allocate 177 20260731-check-the-awk-exit-status-before-installing-a-swept-
 issue allocate 178 20260731-write-the-fixtures-the-plan-named-but-the-build-skipped 20260731 jrko
 issue allocate 179 20260731-move-the-explanatory-comment-off-the-spec-template-id-line 20260731 jrko
 issue allocate 180 20260731-skip-symlinked-entries-in-the-realized-directory-sweep 20260731 jrko
+issue allocate 181 20260731-close-the-remaining-edges-of-the-ordinal-identity-invariant 20260731 jrko
