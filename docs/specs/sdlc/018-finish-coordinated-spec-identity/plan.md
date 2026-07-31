@@ -306,7 +306,7 @@ flowchart TD
    record (and vice versa).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc`
 
-7. [ ] Fold contract: remove the argument self-resolution, document the
+7. [x] Fold contract: remove the argument self-resolution, document the
    pre-resolved contract, update the two raw test callers; fixtures: the
    reused-group-name log (`side→core`, `core→legacy`) against **both**
    `next-id` and realize.

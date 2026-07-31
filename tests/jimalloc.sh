@@ -432,6 +432,55 @@ case_jimalloc_fold_max_issue_counts_rename_source() {
   assert_eq "unallocated source raises the high-water" "9" "$out"
 }
 
+# jimalloc_reused_name_log — a log where a freed group name is taken over by
+# another group: `core` becomes `legacy`, then `side` becomes `core`. The two
+# `core`s are different groups, and every read path has to keep them apart.
+jimalloc_reused_name_log() {
+  printf '%s\n' \
+    'group rename core legacy 20260701 x' \
+    'group rename side core 20260702 x' \
+    'spec allocate side/001 a 20260703 x' \
+    'spec allocate side/002 b 20260704 x' \
+    'spec allocate side/003 c 20260705 x' \
+    'spec allocate legacy/001 d 20260706 x'
+}
+
+# AC: the fold answers about the group it is ASKED about — the caller-resolved
+# current name — counting every record that group holds under any former name,
+# and counting nothing for a name the group no longer answers to. Resolving the
+# argument a second time inside the fold is what lets a caller's answer land on
+# another group's high-water.
+case_jimalloc_fold_max_spec_takes_a_resolved_group() {
+  local log
+  log="$(jimalloc_reused_name_log)"
+  assert_eq "current name counts its records under every former name" "3" \
+    "$(source "$SCRIPT_jimalloc"; alloc_fold_max_spec core <<< "$log")"
+  assert_eq "the group that vacated the name is separate" "1" \
+    "$(source "$SCRIPT_jimalloc"; alloc_fold_max_spec legacy <<< "$log")"
+  assert_eq "a name no longer answered to holds nothing" "0" \
+    "$(source "$SCRIPT_jimalloc"; alloc_fold_max_spec side <<< "$log")"
+}
+
+# AC: on a reused-group-name log, next-id reports no ordinal the current group
+# already holds.
+case_jimalloc_next_id_spec_reused_group_name() {
+  local log out
+  log="$(jimalloc_reused_name_log)"
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec side --follow-redirect <<< "$log")"
+  assert_eq "clears every ordinal the current group holds" "core/004" "$out"
+}
+
+# AC: realize reports none either — the same fold, the same log, the same answer,
+# so the two read paths cannot publish a duplicate record between them.
+case_jimalloc_realize_spec_reused_group_name() {
+  local log
+  log="$(jimalloc_reused_name_log)"
+  run_realize_spec "$log" side/P-20260728-x
+  assert_exit "rc" 0 "$RC"
+  assert_eq "clears every ordinal the current group holds" \
+    "$(printf 'side/P-20260728-x\tcore/004\tnew')" "$OUT"
+}
+
 # AC: miscounting errs only toward skipping — an ordinal too large to compute
 # with reliably is passed over as malformed rather than counted, so it cannot
 # drag the high-water somewhere the registry could never be rebuilt from.

@@ -371,9 +371,16 @@ alloc_group_alias_map() {
 #   high-water. Folds allocate ids, rename destinations, and rename *sources* —
 #   a source is an ordinal the group held and can never reissue, so counting it
 #   makes the permanent gap unconditional instead of resting on every source
-#   having its own allocate record. Group membership is decided through
-#   alloc_group_alias_map, and <group> itself is aliased too, so the answer is
-#   the same whichever of a group's names you ask about.
+#   having its own allocate record. RECORD-side group membership is decided
+#   through alloc_group_alias_map, so a record filed under a former name still
+#   counts.
+#
+#   CONTRACT: <group> is the caller-RESOLVED current group name. This fold never
+#   resolves its own argument. Both production callers must resolve anyway — for
+#   their output and their redirect refusal — and resolving in two layers is how
+#   a caller's already-current name gets aliased a second time onto a DIFFERENT
+#   group's high-water when a freed name has been taken over. Asking under a name
+#   the group no longer answers to therefore yields 0, not that group's ordinals.
 #
 #   Every candidate is revalidated at the id boundary and skipped if it fails,
 #   independently of its sibling field. An ordinal wider than
@@ -391,7 +398,6 @@ alloc_fold_max_spec() {
       [[ -n "$k" ]] && alias["$k"]="$v"
     done < <(printf '%s\n' "${lines[@]}" | alloc_group_alias_map)
   fi
-  group="${alias[$group]:-$group}"
   local -a cands=()
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
@@ -636,7 +642,8 @@ alloc_reconcile_realize() {
 #   grammar can express: (group, slug, issuance-date). A `spec allocate` record
 #   whose group (after alias resolution), slug, and date field all match maps to
 #   "have" — its ordinal, no new allocation; otherwise the identity draws a fresh
-#   ordinal from the shared high-water (alloc_fold_max_spec — group-aliased and
+#   ordinal from the shared high-water (alloc_fold_max_spec, asked under the
+#   group name this function already resolved — record-side aliased and
 #   source-counting), incremented per newly-realized identity in pending order.
 #   The publish step stamps each new record's date from the pending token rather
 #   than from the day it runs, which is what keeps the key stable: a re-run after
