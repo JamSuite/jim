@@ -61,12 +61,21 @@ were already present and still pass.
 
 Recorded rather than silently absorbed.
 
-### Task 20 — the `jim` blueprint fold was declined, not performed
+### Task 20 — the `jim` blueprint fold was declined, and AC 13 was amended
 
-The plan's task 20 and spec AC 13 call for folding `spec-id-sequencing` in
-**both** the `sdlc` and `jim` blueprints. The `sdlc` fold was performed through
-the blueprint surface (`--from-review`, violation fork answered `fold the
-intent`) and is committed.
+**Resolution:** AC 13 was amended in place after the build (`/jim:spec`
+differential update) to scope the restatement to blueprints a live group's
+verification consults, explicitly excluding a retired group's. The `jim`
+decision below is therefore no longer a deviation from the spec — it is what the
+spec now requires. It remains a deviation from the plan's task-20 *text*, which
+predates the amendment and still names the `jim` pass and checks that file in its
+Verify command; task 20 is left unchecked rather than marked against superseded
+text.
+
+The plan's task 20 and AC 13 *as originally written* called for folding
+`spec-id-sequencing` in **both** the `sdlc` and `jim` blueprints. The `sdlc` fold
+was performed through the blueprint surface (`--from-review`, violation fork
+answered `fold the intent`) and is committed.
 
 The `jim` fold was **not** performed, by developer decision during the build.
 `docs/specs/jim/000-blueprint/spec.md` carries `status: retired` — the group was
@@ -94,12 +103,23 @@ For the same reason: with `jim` absent from the map it has no territory, so the
 run degrades to `UNSCOPED` — a repo-wide floor and judge fan-out scoring a
 superseded document. Skipped by decision.
 
-### AC 13's second clause is not met as worded
+### AC 13's verify clause — scored partial, then amended
 
-AC 13 requires that after the fold, "a `/jim:verify` pass of each group scores
-the invariant as holding". The `/jim:verify sdlc` run (recorded at
+AC 13 originally required that after the fold, "a `/jim:verify` pass of each
+group scores the invariant as holding". The `/jim:verify sdlc` run (recorded at
 `docs/specs/sdlc/000-blueprint/ledger.md`, committed `b4f7a16`) scored
 `spec-id-sequencing` **partial → violated**.
+
+The amendment reframes the bar to the restated identity clauses holding, with any
+residual non-holding clause named and tracked. That was a deliberate,
+developer-approved decision made *after* seeing the partial — recorded here
+plainly because it is the shape of a moved goalpost, and the reasoning should be
+auditable rather than implied. The justification: the invariant row bundles three
+independent clauses, this spec restates two, and the third lives in a different
+skill and predates this work, so no correct execution here could have satisfied
+the original wording. The amended bar still requires the verify to run, the
+restated clauses to verify holding, and the residual to be tracked — all of which
+happened.
 
 The fold itself succeeded: the invariant's two identity clauses — allocator-minted
 rather than tree-derived, and both identity states admitted — were each judged

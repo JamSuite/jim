@@ -146,15 +146,19 @@ both scripts are fixed in one pass.
       tracked/untracked behavior; an uncommitted provisional spec's own-body
       citations are swept, or their staleness is explicitly warned about.
 - [ ] The `spec-id-sequencing` invariant is restated through the blueprint
-      surface in both the `sdlc` and `jim` blueprints so it covers both
-      identity states a bound spec can legitimately hold — a
+      surface in every blueprint a live group's verification consults, so it
+      covers both identity states a bound spec can legitimately hold — a
       coordination-allocator-minted 3-digit ordinal, or a reserved provisional
       token pending realization — naming the allocator as the minting
-      mechanism; afterward a `/jim:verify` pass of each group scores the
-      invariant as holding. *(External Constraint — blueprints change only
-      through their own surface, never a hand edit; sourced to
-      `ARCHITECTURE.md` → Core Components → Skills, the blueprint-update
-      machinery.)*
+      mechanism. A retired group's blueprint is out of scope: it is superseded
+      by the context map, excluded from the reconcile and the contract graph,
+      and consulted by no verification pass. Afterward a `/jim:verify` pass of
+      each restating group scores the restated identity clauses as holding, and
+      any residual non-holding clause of the same invariant is named and
+      tracked rather than silently absorbed. *(External Constraint —
+      blueprints change only through their own surface, never a hand edit;
+      sourced to `ARCHITECTURE.md` → Core Components → Skills, the
+      blueprint-update machinery.)*
 - [ ] The user-facing docs describe the shipped world: `WORKFLOW.md`,
       `README.md`, and the spec template document provisional identity and the
       reconcile surface, and `skills/spec/SKILL.md`'s four self-contradictions
