@@ -96,6 +96,33 @@ case_jimalloc_resolve_spec_identity() {
   assert_eq   "current" "core/003" "$OUT"
 }
 
+# AC: resolve treats two spellings of one ordinal as one identity — a query for
+# the canonical form finds a record written unpadded, and a query written
+# unpadded finds the canonical record. Either way the answer is canonical, so
+# resolve and the fold cannot disagree about what an ordinal is.
+case_jimalloc_resolve_spec_padding_is_one_identity() {
+  local dir; dir=$(empty_dir res_padding)
+  printf '%s\n' 'spec allocate core/18 my-slug 20260726 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/018
+  assert_exit "canonical query rc" 0         "$RC"
+  assert_eq   "canonical answer"   "core/018" "$OUT"
+  printf '%s\n' 'spec allocate core/018 my-slug 20260726 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/18
+  assert_exit "unpadded query rc" 0          "$RC"
+  assert_eq   "canonical answer"  "core/018" "$OUT"
+}
+
+# AC: the padding-blind identity holds through replay too — a rename recorded
+# against one spelling still moves a citation written in the other.
+case_jimalloc_resolve_spec_padding_replay() {
+  local dir; dir=$(empty_dir res_padding_replay)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane
+spec rename core/3 ui/7 20260727' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit "rc"                 0        "$RC"
+  assert_eq   "renamed, canonical" "ui/007" "$OUT"
+}
+
 # AC: a multi-hop rename (A→B→C) resolves the original citation to the current
 # name; the current name resolves to itself.
 case_jimalloc_resolve_spec_multihop_rename() {
@@ -1670,6 +1697,32 @@ case_jimalloc_realize_spec_keyed_have() {
   assert_exit "rc" 0 "$RC"
   assert_eq "already realized → its ordinal, no new allocation" \
     "$(printf 'core/P-20260728-beta\tcore/003\thave')" "$OUT"
+}
+
+# AC: two spellings of one ordinal are one identity at the realize path's
+# find-or-allocate readback — a resumed realization finds its own prior record
+# even when that record spells the ordinal unpadded, and reports it canonically,
+# so a crafted spelling can neither split the resume nor re-open the
+# duplicate-ordinal seam.
+case_jimalloc_realize_spec_unpadded_record_converges() {
+  local log
+  log=$(printf '%s\n' 'spec allocate core/3 beta 20260728 jane')
+  run_realize_spec "$log" core/P-20260728-beta
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unpadded record → its own ordinal, canonical, no new allocation" \
+    "$(printf 'core/P-20260728-beta\tcore/003\thave')" "$OUT"
+}
+
+# AC: the padding-blind readback does not leak into the high-water either — an
+# unpadded record still counts as its ordinal, so the next new allocation clears
+# it instead of reissuing it.
+case_jimalloc_realize_spec_unpadded_record_counts_in_high_water() {
+  local log
+  log=$(printf '%s\n' 'spec allocate core/7 beta 20260728 jane')
+  run_realize_spec "$log" core/P-20260728-gamma
+  assert_exit "rc" 0 "$RC"
+  assert_eq "next ordinal clears the unpadded record" \
+    "$(printf 'core/P-20260728-gamma\tcore/008\tnew')" "$OUT"
 }
 
 # AC: the key carries the date the provisional identity was issued, not the day

@@ -383,6 +383,28 @@ case_specreconcile_apply_resume_converges() {
   assert_eq "exactly one record, no second allocation" "1" "$count"
 }
 
+# AC: a resumed realization converges against a log holding an UNPADDED record —
+# it finds its own prior record rather than allocating a second ordinal, and
+# lands on the canonical directory and frontmatter. Two spellings of one ordinal
+# are one identity all the way from the registry to the tree.
+case_specreconcile_apply_resume_unpadded_record() {
+  local repo count
+  repo="$(specrec_repo sr_resume_unpadded)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_commit "$repo"
+  specrec_craft_registry "$repo" 'spec allocate sdlc/18 alpha 20260728 jane'
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "canonical dir" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/018-alpha" ]] && echo yes || echo no)"
+  assert_eq "no unpadded twin" "no" \
+    "$([[ -d "$repo/docs/specs/sdlc/18-alpha" ]] && echo yes || echo no)"
+  assert_match "canonical frontmatter" '^id: "018"$' \
+    "$(cat "$repo/docs/specs/sdlc/018-alpha/spec.md")"
+  count="$(specrec_registry "$repo" | grep -c '^spec allocate sdlc/')"
+  assert_eq "no second allocation" "1" "$count"
+}
+
 # AC: once realized, a spec is no longer pending — a further run has nothing to
 # do, so realization is idempotent at the surface the developer touches.
 case_specreconcile_apply_idempotent() {

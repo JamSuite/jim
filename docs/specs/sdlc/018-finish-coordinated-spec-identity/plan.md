@@ -300,7 +300,7 @@ flowchart TD
    row warns + non-zero exit.
    **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile`
 
-6. [ ] `jimalloc.sh`: add `alloc_canon_specid`; canonicalize the `have`
+6. [x] `jimalloc.sh`: add `alloc_canon_specid`; canonicalize the `have`
    branch and resolve's anchor/replay comparisons; fixtures: resume against
    an unpadded record converges, `resolve spec sdlc/018` finds a `sdlc/18`
    record (and vice versa).

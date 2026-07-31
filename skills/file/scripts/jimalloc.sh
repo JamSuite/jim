@@ -161,6 +161,25 @@ alloc_valid_specid() {
   alloc_valid_token "$grp"
 }
 
+# alloc_canon_specid <group>/<ord> — print the id with its ordinal in canonical
+# form: the documented 3-digit zero-padded width, or its own width when wider.
+# rc 1 if the id is not a spec id, or its ordinal is wider than the registry
+# could be rebuilt from.
+#
+#   A spec ordinal is a NUMBER written zero-padded, so 'core/18' and 'core/018'
+#   name one identity. The log is append-only and push-writable, so both
+#   spellings can be present in it; comparing them as strings would let a
+#   resumed realization miss its own prior record, or let resolve and the fold
+#   disagree about which ordinals are taken. Every site that compares or reports
+#   an ordinal passes it through here first, so there is one spelling to compare.
+alloc_canon_specid() {
+  local id="$1" grp num
+  alloc_valid_specid "$id" || return 1
+  grp="${id%/*}"; num="${id##*/}"
+  (( ${#num} > ALLOC_MAX_ORD_DIGITS )) && return 1
+  printf '%s/%03d\n' "$grp" "$((10#$num))"
+}
+
 # alloc_sanitize_who <raw> — reduce a free-text provenance value to a single safe
 # token: every character outside [A-Za-z0-9._@-] (space, tab, NEWLINE, CR, and
 # ref/shell metacharacters) becomes '-', runs collapse, ends trim, cap 64. A
@@ -204,17 +223,21 @@ alloc_encode_allocate_issue() {
 alloc_resolve_spec() {
   local queried="$1"
   alloc_valid_specid "$queried" || { echo "error: invalid spec id '$queried'" >&2; return 1; }
+  queried="$(alloc_canon_specid "$queried")" \
+    || { echo "error: invalid spec id '$1'" >&2; return 1; }
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4 c5 c6
   local qgroup="${queried%/*}"
   local anchor=-1 known=0
+  # Record ids are canonicalized before every comparison, so a record spelling
+  # an ordinal unpadded still anchors and still replays.
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
     if [[ "$c1" == spec && "$c2" == allocate ]]; then
-      alloc_valid_specid "$c3" || continue
+      c3="$(alloc_canon_specid "$c3")" || continue
       [[ "$c3" == "$queried" ]] && { anchor=$i; known=1; }
     elif [[ "$c1" == spec && "$c2" == rename ]]; then
-      alloc_valid_specid "$c3" && alloc_valid_specid "$c4" || continue
+      c3="$(alloc_canon_specid "$c3")" && c4="$(alloc_canon_specid "$c4")" || continue
       [[ "$c4" == "$queried" ]] && { anchor=$i; known=1; }
     elif [[ "$c1" == group && "$c2" == rename ]]; then
       alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
@@ -226,7 +249,7 @@ alloc_resolve_spec() {
     (( anchor >= 0 && i <= anchor )) && continue
     read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
     if [[ "$c1" == spec && "$c2" == rename ]]; then
-      alloc_valid_specid "$c3" && alloc_valid_specid "$c4" || continue
+      c3="$(alloc_canon_specid "$c3")" && c4="$(alloc_canon_specid "$c4")" || continue
       [[ "$c3" == "$current" ]] && current="$c4"
     elif [[ "$c1" == group && "$c2" == rename ]]; then
       alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
@@ -651,7 +674,7 @@ alloc_reconcile_realize_spec() {
   # another, and a record the fold counts is still not an identity to match
   # against unless all three key fields are well-formed.
   local -A existing=()
-  local g num
+  local g num canon
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
     [[ "$c1" == spec && "$c2" == allocate ]] || continue
@@ -662,7 +685,11 @@ alloc_reconcile_realize_spec() {
     [[ "$c5" =~ ^[0-9]{8}$ ]] || continue
     g="${c3%/*}"
     g="${alias[$g]:-$g}"
-    existing["$g/$c4/$c5"]="$g/$num"
+    # Canonical, so a record spelling its ordinal unpadded is the same identity
+    # a `new` answer would report — the have/new asymmetry is closed at the
+    # source rather than left for each consumer to normalize.
+    canon="$(alloc_canon_specid "$g/$num")" || continue
+    existing["$g/$c4/$c5"]="$canon"
   done
   # Pass 1: validate and parse the whole pending batch before emitting anything,
   # so a halt leaves no partial mapping — a preview shows a clean mapping or only
