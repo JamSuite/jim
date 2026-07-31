@@ -164,3 +164,4 @@ issue allocate 163 20260731-unwrap-the-injection-slot-in-the-arch-skill-argument
 issue allocate 164 20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer 20260731 jrko
 issue allocate 165 20260731-unmix-the-template-brace-around-arguments-in-the-arch-skill 20260731 jrko
 issue allocate 166 20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe 20260731 jrko
+issue allocate 167 20260731-make-the-plan-approved-gate-an-allowlist 20260731 jrko
