@@ -26,8 +26,6 @@
 #   bash jimfile.sh slug <topic>                      kebab-case slug
 #   bash jimfile.sh date                              today as YYYYMMDD
 #   bash jimfile.sh next-id <group>                   next zero-padded spec id
-#   bash jimfile.sh mv-spec <group> <id> <new-name>   rename {id}-* spec dir to
-#                                                     {id}-{new-name} (wip rename)
 #   bash jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
 #                                                     rename a spec dir onto a
 #                                                     different id (shift/realize)
@@ -374,99 +372,6 @@ cmd_next_id() {
   printf '%03d\n' "$next"
 }
 
-# cmd_mv_spec <group> <id> <new-name>
-#   Rename the spec directory {specs}/{group}/{id}-* to {id}-{new-name}. The
-#   placeholder rename it was written for now goes through mv-spec-id, which
-#   expresses the same move and the cross-id one; this verb has no production
-#   caller and is kept as a supported slug-only rename. Validates
-#   group/id/new-name before any move, resolves the single {id}-* dir, no-ops if
-#   already named, and refuses to clobber a different target. Prints the
-#   resolved target dir on success.
-cmd_mv_spec() {
-  local group="${1:-}" id="${2:-}" new_name="${3:-}"
-  if [[ -z "$group" || -z "$id" || -z "$new_name" ]]; then
-    echo "error: 'mv-spec' requires <group> <id> <new-name>" >&2
-    return 2
-  fi
-  # group: the broad path-safe allowlist (forecloses '/', '..', leading dash).
-  if ! is_valid_id "$group"; then
-    echo "error: mv-spec group rejected — '$group'" >&2
-    return 1
-  fi
-  # id: a zero-padded 3-digit spec id.
-  if [[ ! "$id" =~ ^[0-9]{3}$ ]]; then
-    echo "error: mv-spec id rejected — '$id' (allowed: ^[0-9]{3}\$)" >&2
-    return 1
-  fi
-  # new-name: the spec dir slug (lowercase alnum + dash, alnum-start).
-  if ! is_valid_slug "$new_name"; then
-    echo "error: mv-spec new-name rejected — '$new_name'" >&2
-    return 1
-  fi
-  local specs_root group_dir
-  specs_root="$(jimconf_get specs)"
-  group_dir="$specs_root/$group"
-  if [[ ! -d "$group_dir" ]]; then
-    echo "error: mv-spec group dir not found — '$group_dir'" >&2
-    return 1
-  fi
-  local target="$group_dir/$id-$new_name"
-  # Resolve the single existing {id}-* source dir.
-  local entry src="" count=0
-  for entry in "$group_dir/$id"-*/; do
-    [[ -d "$entry" ]] || continue
-    src="${entry%/}"
-    count=$(( count + 1 ))
-  done
-  if (( count == 0 )); then
-    echo "error: mv-spec no dir matching '$id-*' in '$group_dir'" >&2
-    return 1
-  fi
-  if (( count > 1 )); then
-    echo "error: mv-spec multiple dirs match '$id-*' in '$group_dir'" >&2
-    return 1
-  fi
-  # Already at the target name → no-op success (idempotent).
-  if [[ "$src" == "$target" ]]; then
-    printf '%s\n' "$target"
-    return 0
-  fi
-  # Another directory on the same ordinal is registry-vs-tree drift; renaming
-  # the slug would carry it forward. Same numeric predicate the cross-id rename
-  # enforces, with the source excluded so an ordinary slug rename is unaffected.
-  local held held_rc
-  held="$(spec_ordinal_holder "$specs_root" "$group" "$id" "$(basename -- "$src")")"
-  held_rc=$?
-  if (( held_rc == 0 )); then
-    echo "error: mv-spec ordinal $id is already held by '$held'" \
-         "(registry-vs-tree drift); nothing renamed" >&2
-    return 1
-  fi
-  if (( held_rc != 1 )); then
-    echo "error: mv-spec could not decide occupancy of ordinal '$id'" >&2
-    return 1
-  fi
-  # Refuse to clobber a different existing target.
-  if [[ -e "$target" ]]; then
-    echo "error: mv-spec target already exists — '$target'" >&2
-    return 1
-  fi
-  # The post-move guard reads this inode. Refuse now rather than move first and
-  # guard on nothing — before the move, refusing costs nothing.
-  local src_ino
-  src_ino="$(dir_inode "$src")"
-  if [[ -z "$src_ino" ]]; then
-    echo "error: mv-spec cannot read the identity of '$src'; nothing renamed" >&2
-    return 1
-  fi
-  if ! mv -- "$src" "$target"; then
-    echo "error: mv-spec failed to rename '$src' -> '$target'" >&2
-    return 1
-  fi
-  undo_nested_rename "$src" "$target" "$src_ino" || return 1
-  printf '%s\n' "$target"
-}
-
 # The reserved prefix a provisional identity's ordinal slot carries. The grammar
 # is the allocator's; it is named here because a spec dir bound offline wears it
 # as a directory name and this boundary has to recognize one.
@@ -665,12 +570,13 @@ cmd_spec_ordinal_holder() {
 
 # cmd_mv_spec_id <group> <old-basename> <new-id> <name>
 #                <group> <old-basename> <provisional-token>
-#   Rename {specs}/{group}/{old-basename}/ onto a different identity — the
-#   cross-id rename mv-spec cannot express, since its single {id} drives both the
-#   source glob and the target name. Three callers need it: an advisory ordinal
-#   that shifted before binding, a placeholder binding to a provisional identity
-#   offline, and a pending provisional identity being realized onto its real
-#   ordinal.
+#   Rename {specs}/{group}/{old-basename}/ onto a different identity — the sole
+#   spec-directory rename primitive for an untracked directory, taking the source
+#   by explicit basename rather than resolving it by ordinal glob, so it
+#   expresses a cross-id move as readily as a slug-only one. Three callers need
+#   it: an advisory ordinal that shifted before binding, a placeholder binding to
+#   a provisional identity offline, and a pending provisional identity being
+#   realized onto its real ordinal.
 #
 #   The four-argument form composes {new-id}-{name}: {new-id} is digits between
 #   the padded floor and the width the registry can be rebuilt from (so an
@@ -1192,7 +1098,6 @@ usage:
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh now                                now as YYYY-MM-DDThh:mm:ssZ (UTC)
   jimfile.sh next-id <group>                    next zero-padded spec id
-  jimfile.sh mv-spec <group> <id> <new-name>    rename {id}-* spec dir to {id}-{new-name}
   jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
                                                 rename a spec dir onto a different id
   jimfile.sh mv-spec-id <group> <old-basename> <provisional-token>
@@ -1246,7 +1151,6 @@ main() {
     now)     cmd_now ;;
     next-id)  cmd_next_id  "$@" ;;
     next-num) cmd_next_num "$@" ;;
-    mv-spec)  cmd_mv_spec  "$@" ;;
     mv-spec-id) cmd_mv_spec_id "$@" ;;
     spec-ordinal-holder) cmd_spec_ordinal_holder "$@" ;;
     path)    cmd_path    "$@" ;;

@@ -269,32 +269,7 @@ case_jimfile_next_id_999_exhaustion_rc1() {
   assert_eq "no id printed" "" "$OUT"
 }
 
-# AC: mv-spec renames the {id}-wip dir to {id}-{name}; the ledger travels with it
-case_jimfile_mv_spec_renames_wip() {
-  local specs cfg
-  specs=$(empty_dir mvspec_rename)
-  mkdir -p "$specs/jim/027-wip"
-  printf 'x\n' > "$specs/jim/027-wip/ledger.md"
-  cfg=$(fixture mvspec-rename.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" mv-spec jim 027 review
-  assert_exit "rc" 0 "$RC"
-  assert_eq "target printed"   "$specs/jim/027-review" "$OUT"
-  assert_eq "wip removed"      "no"  "$([[ -d "$specs/jim/027-wip" ]] && echo yes || echo no)"
-  assert_eq "final exists"     "yes" "$([[ -d "$specs/jim/027-review" ]] && echo yes || echo no)"
-  assert_eq "ledger travelled" "yes" "$([[ -f "$specs/jim/027-review/ledger.md" ]] && echo yes || echo no)"
-}
 
-# AC: mv-spec is a no-op success when the dir already carries the target name
-case_jimfile_mv_spec_noop_when_named() {
-  local specs cfg
-  specs=$(empty_dir mvspec_noop)
-  mkdir -p "$specs/jim/030-review"
-  cfg=$(fixture mvspec-noop.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" mv-spec jim 030 review
-  assert_exit "rc" 0 "$RC"
-  assert_eq "target printed" "$specs/jim/030-review" "$OUT"
-  assert_eq "still exists"   "yes" "$([[ -d "$specs/jim/030-review" ]] && echo yes || echo no)"
-}
 
 # AC: path blueprint <group> resolves the reserved 000-blueprint/spec.md slot
 case_jimfile_path_blueprint_resolves_reserved_slot() {
@@ -328,57 +303,13 @@ case_jimfile_blueprint_dirname_emits_reserved_name() {
   assert_eq "reserved dir name" "000-blueprint" "$OUT"
 }
 
-# AC: mv-spec rejects a non-slug new-name before any move (is_valid_slug)
-case_jimfile_mv_spec_rejects_bad_name() {
-  local specs cfg
-  specs=$(empty_dir mvspec_badname)
-  mkdir -p "$specs/jim/031-wip"
-  cfg=$(fixture mvspec-badname.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" mv-spec jim 031 "../evil"
-  assert_exit     "rc" 1 "$RC"
-  assert_nonempty "stderr" "$ERR"
-  assert_eq "wip untouched" "yes" "$([[ -d "$specs/jim/031-wip" ]] && echo yes || echo no)"
-}
 
-# AC: mv-spec rejects a non-3-digit id
-case_jimfile_mv_spec_rejects_bad_id() {
-  local specs cfg
-  specs=$(empty_dir mvspec_badid)
-  mkdir -p "$specs/jim/032-wip"
-  cfg=$(fixture mvspec-badid.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" mv-spec jim 32 review
-  assert_exit "rc" 1 "$RC"
-}
 
-# AC: mv-spec errors when no {id}-* source dir exists
-case_jimfile_mv_spec_missing_source_exits_1() {
-  local specs cfg
-  specs=$(empty_dir mvspec_nosrc)
-  mkdir -p "$specs/jim"
-  cfg=$(fixture mvspec-nosrc.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" mv-spec jim 040 review
-  assert_exit "rc" 1 "$RC"
-}
 
-# AC: mv-spec refuses when more than one {id}-* dir matches (ambiguous source)
-case_jimfile_mv_spec_multiple_match_exits_1() {
-  local specs cfg
-  specs=$(empty_dir mvspec_multi)
-  mkdir -p "$specs/jim/050-wip" "$specs/jim/050-foo"
-  cfg=$(fixture mvspec-multi.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" mv-spec jim 050 review
-  assert_exit "rc" 1 "$RC"
-}
 
-# AC: mv-spec with too few args exits 2 with a message
-case_jimfile_mv_spec_missing_args_exits_2() {
-  run_jimfile mv-spec jim 027
-  assert_exit     "rc" 2 "$RC"
-  assert_nonempty "stderr" "$ERR"
-}
 
 # AC: mv-spec-id renames a pending provisional dir onto its realized ordinal —
-# the cross-id rename mv-spec cannot express — and the ledger travels with it.
+# taking its source by explicit basename — and the ledger travels with it.
 case_jimfile_mv_spec_id_renames_provisional() {
   local specs cfg
   specs=$(empty_dir mvspecid_prov)
@@ -592,31 +523,7 @@ case_jimfile_mv_spec_id_excludes_its_own_source() {
     "$([[ -d "$specs/sdlc/018-finish-coordinated-spec-identity" ]] && echo yes || echo no)"
 }
 
-# AC: mv-spec carries the same halt — a second directory already holding the
-# ordinal is registry-vs-tree drift, so the slug rename refuses rather than
-# leaving two dirs on one ordinal behind it.
-case_jimfile_mv_spec_refuses_held_ordinal() {
-  local specs cfg
-  specs=$(empty_dir mvspec_held)
-  mkdir -p "$specs/sdlc/001-a" "$specs/sdlc/001"
-  cfg=$(fixture mvspec-held.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" mv-spec sdlc 001 renamed
-  assert_exit     "rc"     1 "$RC"
-  assert_nonempty "stderr" "$ERR"
-  assert_eq "source untouched" "yes" "$([[ -d "$specs/sdlc/001-a" ]] && echo yes || echo no)"
-}
 
-# AC: an ordinary slug rename — the only dir on its ordinal — is unaffected by
-# the halt; the source excludes itself.
-case_jimfile_mv_spec_same_ordinal_rename_unaffected() {
-  local specs cfg
-  specs=$(empty_dir mvspec_selfexcl)
-  mkdir -p "$specs/sdlc/001-a"
-  cfg=$(fixture mvspec-selfexcl.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" mv-spec sdlc 001 renamed
-  assert_exit "rc" 0 "$RC"
-  assert_eq "renamed" "yes" "$([[ -d "$specs/sdlc/001-renamed" ]] && echo yes || echo no)"
-}
 
 # jimfile_dir_inode <path> — the inode of <path> itself, the way the guard reads
 # it, so the fixture and the code agree on what identifies a directory.
@@ -755,21 +662,6 @@ case_jimfile_mv_spec_id_lands_through_a_copying_mv() {
   assert_eq   "source gone" "no" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
 }
 
-# AC: mv-spec has the same wiring and the same exposure — the slug rename must not
-# report a hand-repair instruction over a tree that is already correct.
-case_jimfile_mv_spec_lands_through_a_copying_mv() {
-  local specs cfg shim oldpath
-  specs=$(empty_dir mvspec_copy)
-  mkdir -p "$specs/sdlc/001-old"
-  cfg=$(fixture mvspec-copy.toml "specs_path = \"$specs\"")
-  shim=$(jimfile_copying_mv_shim mvspec_copy_bin)
-  oldpath="$PATH"; PATH="$shim:$PATH"
-  run_jimfile -c "$cfg" mv-spec sdlc 001 new
-  PATH="$oldpath"
-  assert_exit "rc"        0 "$RC"
-  assert_eq   "no stderr" "" "$ERR"
-  assert_eq   "landed"    "yes" "$([[ -d "$specs/sdlc/001-new" ]] && echo yes || echo no)"
-}
 
 # AC: next-id and the occupancy predicate agree on what an ordinal is. A leading
 # token wider than the registry could be rebuilt from is skipped by both, so it
