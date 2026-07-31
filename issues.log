@@ -170,3 +170,4 @@ issue allocate 169 20260731-enumerate-blueprints-through-the-map-in-the-review-o
 issue allocate 170 20260731-fix-the-index-script-exit-trap-leaking-its-temp-file 20260731 jrko
 issue allocate 171 20260731-fix-the-nesting-guard-false-positive-on-the-mv-copy-fallback 20260731 jrko
 issue allocate 172 20260731-make-spec-reconcile-apply-work-from-a-subdirectory 20260731 jrko
+issue allocate 173 20260731-normalize-the-citation-sweep-configured-roots 20260731 jrko
