@@ -2,7 +2,7 @@
 id: 20260731-fix-the-nesting-guard-false-positive-on-the-mv-copy-fallback
 num: 171
 title: "Fix the nesting guard false-positive on the mv copy fallback"
-status: open
+status: closed
 priority: critical
 labels: [file, scripts, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:38:10Z
-updated: 2026-07-31T12:38:10Z
+updated: 2026-07-31T20:08:51Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 ---
 
@@ -64,3 +64,38 @@ Test gap: neither guard fixture drives the code through `cmd_mv_spec` /
 untested end to end, and this shape has no fixture at all.
 
 Finding 1 of `docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md`.
+
+## Resolution (2026-07-31)
+
+All four parts closed in the C′-fix build
+(`docs/notes/20260731-c-prime-fix-build-notes.md`).
+
+**The premise is inverted and written down.** Inode identity is now treated as
+sufficient to prove a rename landed and useless to disprove it, which is what
+`mv` actually guarantees. `<target>/<basename>` is the second tell and the one
+that holds on both kinds of filesystem: a rename that landed nested nothing. The
+claim is stated in the function's own docstring rather than left implicit, since
+its being unstated is why the false one shipped.
+
+**The ambiguous case is resolved toward detection.** Where the move copied,
+`<target>/<basename>` present with a third inode cannot be distinguished from a
+race — no portable tell separates them. It restores and fails. The cost is a
+directory that legitimately contains an entry named for its own former basename,
+which would be a provisional spec directory nested inside another spec directory.
+This narrows the stated intent of the existing "passes a real rename" fixture:
+it still passes, exiting at the inode check, but its premise is now explicitly
+conditional on the filesystem preserving inodes.
+
+**The two supporting defects went with it.** The `src_ino` emptiness check moved
+to both callers as a pre-move refusal, where refusing costs nothing; the function
+degrades to the basename tell rather than passing everything through. The
+restore's own `mv` is verified — the source must be back and must not have nested
+in turn.
+
+**The test gap is closed at the wiring, not just the function.** Four fixtures:
+the copy-fallback shape staged as `cp -R` + `rm -rf`, the empty-inode
+degradation, and — the ones that would have caught this — `mv-spec` and
+`mv-spec-id` driven through their real command surface with `mv` shimmed to copy
+and delete. Both wiring fixtures reproduced the defect before the fix, exercising
+the `src_ino` capture and the `|| return 1` path that no fixture reached. Suite
+954 → 958.
