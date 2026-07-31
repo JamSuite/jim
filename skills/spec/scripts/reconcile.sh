@@ -406,6 +406,13 @@ sweep_citations() {
 #   reaching the record. The mapping is chunked at element boundaries rather
 #   than truncated, so a large batch stays wholly recorded.
 #
+#   This grammar is NARROWER than the scan's id boundary, so a row can arrive
+#   here already renamed and still be unrecordable. That row is dropped from the
+#   record — but loudly, naming the mapping and failing the run: the durable
+#   record is what keeps a citation frozen while the spec was provisional
+#   traceable, so losing one silently at exit 0 is the wrong failure mode. Other
+#   rows in the batch record normally.
+#
 #   The phase token sits outside the measured stage set on purpose — realization
 #   is not a stage. It is inert to the vacated-id floor too, which reads only
 #   split and merge events: a provisional never held a real ordinal, so it
@@ -413,12 +420,15 @@ sweep_citations() {
 record_realized() {
   local root="$1" remap="$2"
   [[ -n "$remap" ]] || return 0
-  local pend real elem cand cur=""
+  local pend real elem cand cur="" failed=0
   local -a tokens=()
   while IFS=$'\t' read -r pend real _; do
     [[ -n "$pend" && -n "$real" ]] || continue
-    [[ "$pend" =~ ^[a-z0-9][a-z0-9-]*/P-[0-9]{8}-[a-z0-9][a-z0-9-]*$ ]] || continue
-    [[ "$real" =~ ^[a-z0-9][a-z0-9-]*/[0-9]{3,15}$ ]] || continue
+    if [[ ! "$pend" =~ ^[a-z0-9][a-z0-9-]*/P-[0-9]{8}-[a-z0-9][a-z0-9-]*$ ]] \
+       || [[ ! "$real" =~ ^[a-z0-9][a-z0-9-]*/[0-9]{3,15}$ ]]; then
+      echo "warning: $pend → $real — the mapping does not clear the record boundary; this realization is NOT in the durable record" >&2
+      failed=1; continue
+    fi
     elem="$pend:$real"
     if [[ -z "$cur" ]]; then cand="moved=$elem"; else cand="$cur,$elem"; fi
     if (( ${#cand} > 256 )) && [[ -n "$cur" ]]; then
@@ -429,8 +439,9 @@ record_realized() {
     fi
   done <<<"$remap"
   [[ -n "$cur" ]] && tokens+=("$cur")
-  (( ${#tokens[@]} )) || return 0
-  bash "$JIMLEDGER" event "$root" spec realized "${tokens[@]}"
+  (( ${#tokens[@]} )) || return "$failed"
+  bash "$JIMLEDGER" event "$root" spec realized "${tokens[@]}" || failed=1
+  return "$failed"
 }
 
 cmd_reconcile() {

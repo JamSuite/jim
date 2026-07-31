@@ -295,7 +295,7 @@ flowchart TD
    Depends on task 2.
    **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile`
 
-5. [ ] Make `record_realized` rejections loud — stderr warning naming the
+5. [x] Make `record_realized` rejections loud — stderr warning naming the
    row, failure status set, batch semantics unchanged; fixture: rejected
    row warns + non-zero exit.
    **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile`

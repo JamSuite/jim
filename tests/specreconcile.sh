@@ -332,6 +332,39 @@ case_specreconcile_apply_halts_on_bare_ordinal_occupant() {
     "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
 }
 
+# AC: a realization whose durable moved= mapping is rejected surfaces loudly — a
+# warning naming the row and a failure status, never a silent drop with exit 0.
+# The record grammar is narrower than the scan's id boundary, so a group the scan
+# accepts can still be unrecordable; the mapping is the audit bridge a citation
+# frozen while the spec was provisional depends on, so losing one has to be
+# visible.
+case_specreconcile_apply_rejected_record_is_loud() {
+  local repo; repo="$(specrec_repo sr_recloud)"
+  specrec_prov_dir "$repo" SDLC P-20260728-alpha
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc"                     1                       "$RC"
+  assert_match "names the rejected row" 'SDLC/P-20260728-alpha'  "$ERR"
+  assert_eq "the rename itself still landed" "yes" \
+    "$([[ -d "$repo/docs/specs/SDLC/001-alpha" ]] && echo yes || echo no)"
+}
+
+# AC: batch semantics are unchanged by the loud rejection — an identity whose
+# mapping records fine still records, and the run's failure status reflects only
+# the one that could not.
+case_specreconcile_apply_rejected_record_keeps_batch() {
+  local repo; repo="$(specrec_repo sr_recbatch)"
+  specrec_prov_dir "$repo" SDLC P-20260728-alpha
+  specrec_prov_dir "$repo" sdlc P-20260728-beta
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc" 1 "$RC"
+  assert_match "the recordable identity is in the ledger" 'sdlc/P-20260728-beta:sdlc/001' \
+    "$(cat "$repo/docs/specs/ledger.md" 2>/dev/null)"
+  assert_eq "both renames landed" "yes" \
+    "$([[ -d "$repo/docs/specs/SDLC/001-alpha" && -d "$repo/docs/specs/sdlc/001-beta" ]] && echo yes || echo no)"
+}
+
 # AC: a crashed apply converges on re-run — the ordinal is durable before any
 # rename, so the second pass finds its own record and renames onto the same
 # ordinal rather than allocating a second one.
