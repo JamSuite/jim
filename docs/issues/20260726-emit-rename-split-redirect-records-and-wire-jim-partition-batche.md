@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-31T06:38:04Z
+updated: 2026-07-31T19:58:26Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -253,6 +253,55 @@ vacated ids through the ledger's split/merge events, while the registry fold has
 no floor record at all — the same gap that leaves the retired-group high-water to
 this spec (see `platform/008` Out of Scope). Worth deciding whether this spec
 converges the two surfaces or documents them as deliberately separate.
+
+## Inherited constraint from sdlc/018 — the width gate is joint, not per-side
+
+Recorded 2026-07-31 from the C′-fix build's fork analysis; the width policy half
+is settled there, this half is not, and it is this spec's to take.
+
+`alloc_canon_specid` (`skills/file/scripts/jimalloc.sh:164-181`) replaced
+`alloc_valid_specid` as the guard at three comparison sites in
+`alloc_resolve_spec`. The prior guard accepted any `^[0-9]+$`; the canon helper
+rejects an ordinal wider than `ALLOC_MAX_ORD_DIGITS`.
+
+**The narrowing itself is settled as deliberate**
+([[20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio]]):
+that constant exists because recoverability was the real requirement, so an
+ordinal wider than it is one the registry could not be rebuilt from, and `resolve`
+must not return an id the seed cannot reproduce.
+
+**What is not settled is that the gate is applied jointly.** A rename record is
+dropped when *either* side fails canonicalization, so an over-wide **source** — a
+tombstone, by construction — kills the establishing record of an otherwise
+perfectly representable destination:
+
+| Log | `resolve spec core/003` |
+| :--- | :--- |
+| `spec rename <16-digit-src> core/003` as its only establishing record | **error: not allocated** (rc 1) |
+| the same, with `spec allocate core/003` present | `core/003` (rc 0) |
+
+The replay side fails in the opposite direction and more quietly: a
+`spec rename core/003 grp/<16 digits>` is not applied at all, so `resolve` returns
+the **pre-rename** name at rc 0 — a confident wrong answer rather than a refusal.
+
+**Why it lands on this spec.** It is the same question as *Inherited constraints
+→ 1* asked from the other side: what a rename **source** is allowed to do to the
+resolver's `known` gate. There the source's absence from the gate makes a valid
+citation unresolvable; here the source's *unrepresentability* does the same thing
+to its destination. Both live logs still hold zero rename records, so this is
+crafted-log-only today — and the first rename record this spec emits is what makes
+it reachable, which is exactly the sequencing argument the *Preconditions* section
+already makes for the other three edges.
+
+**Recommended resolution: gate per side.** Canonicalize each side independently
+and let a record anchor whichever side is representable. A source that the width
+policy cannot express is a fact about the tombstone, not about the destination —
+dropping the destination's establishing record punishes the wrong id.
+
+**Interaction to settle alongside option 2 above.** If this spec counts a rename
+source as known, per-side gating stops being tidiness and becomes load-bearing:
+a source-only id's resolvability would otherwise depend on that source clearing a
+width gate it was never minted under. Take the two decisions together.
 
 ## Demonstrated live (2026-07-31)
 
