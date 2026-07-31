@@ -2,7 +2,7 @@
 id: 20260730-harden-the-spec-realize-path-against-silent-failures
 num: 151
 title: "Harden the spec realize path against silent failures"
-status: open
+status: closed
 priority: low
 labels: [id-coordination, spec]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T19:35:15Z
-updated: 2026-07-30T19:35:15Z
+updated: 2026-07-31T20:41:26Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 
@@ -65,3 +65,24 @@ or warn explicitly when the directory is untracked.
 
 Surfaced by `sdlc/017`'s post-build review (the `major-drift` pass of
 2026-07-30), which recorded these as the batchable hardening residue.
+
+## Resolution (2026-07-31) — all four items
+
+Items 3 and 4 landed clean in `sdlc/018`. Items 1 and 2 shipped **defective** in
+that same build and are closed by the C′-fix build, which is what this issue was
+waiting on.
+
+| Item | Outcome |
+| :--- | :--- |
+| 1 · `mv` can nest instead of refusing | `mv -T` was rejected as GNU-only; `sdlc/018` built a portable inode guard whose premise was false, and that guard is fixed in [[20260731-fix-the-nesting-guard-false-positive-on-the-mv-copy-fallback]] |
+| 2 · absolute specs dir splits the behavior | Settled on one spelling in `sdlc/018`; the relativization it used then broke subdirectory runs, fixed in [[20260731-make-spec-reconcile-apply-work-from-a-subdirectory]], and the sweep's own roots got the same treatment in [[20260731-normalize-the-citation-sweep-configured-roots]] |
+| 3 · index regen swallows its exit code | `sdlc/018`, and the reachable abort it opened is closed in [[20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure]] |
+| 4 · untracked self-citations stay stale | `sdlc/018`; the enumeration it added is now scoped against symlinks in [[20260731-skip-symlinked-entries-in-the-realized-directory-sweep]] |
+
+Worth recording, since this issue's whole framing was *"something goes wrong and
+the run still reports success"*: **every one of item 1's and item 2's follow-ons
+was that same failure mode again**, introduced by the fix. A guard that
+false-positives on a correct rename, an `--apply` that reports nothing to do
+while the preview lists work, and a sweep that rewrites citations without
+regenerating the index are all the original defect wearing new code. The pattern
+did not survive the second pass.

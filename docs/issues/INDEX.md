@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 98
-- Closed: 85
+- Open: 96
+- Closed: 87
 
 ## Issues
 
@@ -136,7 +136,7 @@
 - `20260728-fix-vacuous-inline-backtick-wikilink-test-in-tests-issues-sh` — Fix vacuous inline-backtick wikilink test in tests/issues.sh · status: open · num: 128 · priority: low · created: 2026-07-28T21:39:09Z · labels: [test, hygiene] · origin: docs/specs/platform/010-allocator-issue-prefix/plan.md
 - `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew` — new.sh mixed-pin (--slug XOR --num) registry/on-disk skew · status: open · num: 132 · priority: low · created: 2026-07-28T21:39:38Z · labels: [id-coordination] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-reconcile-sh-provisional-detection-not-fence-bounded` — reconcile.sh provisional detection not fence-bounded · status: closed · num: 133 · priority: low · created: 2026-07-28T21:39:43Z · labels: [id-coordination, security] · origin: docs/specs/issue/010-ordinal-coordination/review.md
-- `20260728-reconcile-sh-swallows-the-index-regen-exit-code` — reconcile.sh swallows the index-regen exit code · status: open · num: 134 · priority: low · created: 2026-07-28T21:39:49Z · labels: [id-coordination] · origin: docs/specs/issue/010-ordinal-coordination/review.md
+- `20260728-reconcile-sh-swallows-the-index-regen-exit-code` — reconcile.sh swallows the index-regen exit code · status: closed · num: 134 · priority: low · created: 2026-07-28T21:39:49Z · labels: [id-coordination] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-registry-drift-catch-up-has-no-incremental-seed-verb` — Registry drift catch-up has no incremental seed verb · status: open · num: 130 · priority: low · created: 2026-07-28T21:39:26Z · labels: [id-coordination, registry] · origin: docs/specs/platform/008-registry-seed/spec.md
 - `20260728-remove-spec-id-citations-from-issue-group-script-comments` — Remove spec-ID citations from issue-group script comments · status: open · num: 131 · priority: low · created: 2026-07-28T21:39:32Z · labels: [test, convention] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-spec-batch-cas-candidate-batch-allocation-7a-rework` — Spec batch-CAS candidate-batch allocation (§7a rework) · status: open · num: 127 · priority: high · created: 2026-07-28T06:59:35Z · labels: [id-coordination, candidate-batch, cross-group] · origin: docs/specs/issue/010-ordinal-coordination/plan.md
@@ -155,7 +155,7 @@
 - `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id` — Fixture the terminal exhaustion refusal in next-id · status: open · num: 141 · priority: medium · created: 2026-07-30T00:49:54Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
 - `20260730-fold-spec-id-sequencing-to-admit-provisional-identities` — Fold spec-id-sequencing to admit provisional identities · status: open · num: 149 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, blueprint] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` — Gate the realized spec ordinal and stop silent record loss · status: closed · num: 150 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, security] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
-- `20260730-harden-the-spec-realize-path-against-silent-failures` — Harden the spec realize path against silent failures · status: open · num: 151 · priority: low · created: 2026-07-30T19:35:15Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-harden-the-spec-realize-path-against-silent-failures` — Harden the spec realize path against silent failures · status: closed · num: 151 · priority: low · created: 2026-07-30T19:35:15Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-lift-realization-redirects-into-the-registry` — Lift realization redirects into the registry · status: open · num: 143 · priority: medium · created: 2026-07-30T06:45:19Z · labels: [id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/spec.md
 - `20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path` — Memoize the id-validation boundary in the allocator read path · status: open · num: 142 · priority: medium · created: 2026-07-30T00:50:00Z · labels: [id-coordination, performance, availability] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
 - `20260730-realization-cannot-follow-a-group-renamed-since-issuance` — Realization cannot follow a group renamed since issuance · status: open · num: 152 · priority: medium · created: 2026-07-30T10:36:05Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
@@ -257,6 +257,7 @@
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
 - `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` --related-to--> `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity`
+- `20260728-reconcile-sh-swallows-the-index-regen-exit-code` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260730-spec-creation-halts-only-on-an-exact-name-collision`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260726-add-an-only-door-verification-sweep-for-the-id-registry`
@@ -266,6 +267,11 @@
 - `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` --related-to--> `20260730-close-the-coordinated-spec-identity-fixture-gaps`
 - `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` --related-to--> `20260730-spec-creation-halts-only-on-an-exact-name-collision`
 - `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
+- `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260731-fix-the-nesting-guard-false-positive-on-the-mv-copy-fallback`
+- `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
+- `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260731-normalize-the-citation-sweep-configured-roots`
+- `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
+- `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260731-skip-symlinked-entries-in-the-realized-directory-sweep`
 - `20260730-lift-realization-redirects-into-the-registry` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260730-settle-what-a-partition-does-with-pending-provisional-specs` --related-to--> `20260730-realization-cannot-follow-a-group-renamed-since-issuance`
 - `20260730-spec-creation-halts-only-on-an-exact-name-collision` --related-to--> `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss`
