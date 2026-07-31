@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/sdlc/018-finish-coordinated-spec-identity/spec.md"
-reviewed_phases: [spec]
-status: "Needs Plan Review"
+reviewed_phases: [spec, plan]
+status: Active
 date: "2026-07-31"
 ---
 
@@ -9,18 +9,22 @@ date: "2026-07-31"
 
 ## Summary
 
-**Findings:** 0 Critical · 2 Notable · 1 Advisory
+**Findings:** 0 open — all 4 resolved (3 by plan coverage, 1 routed and
+applied to the plan)
 
-Reviewed `spec.md` (requirements-gap lens; no `plan.md` exists yet). This spec
-exists to close two recorded security regressions on the id-coordination
-surface, and its ACs encode the fixes soundly; the findings below are seams
-the ACs as written leave open, not flaws in the remediation direction. STRIDE
-swept in full; LINDDUN inactive (no PII, credentials, or session data in
-scope).
+Second pass, dual lens: `spec.md` re-checked and `plan.md` reviewed
+(design-flaw lens) with the spec↔plan misalignment check. All three
+first-pass findings are resolved — Finding 1 by the AC 4 amendment plus plan
+DD 2/task 6, Finding 2 by DD 9/task 16, Finding 3 by DD 1/task 2. One new
+Notable from the misalignment check: the nesting guard's end state
+contradicts AC 12's refuse-semantics. STRIDE swept in full; LINDDUN inactive
+(no PII, credentials, or session data in scope).
 
 ## Coverage
 
-- spec.md — reviewed 2026-07-31 (requirements-gap lens)
+- spec.md — reviewed 2026-07-31 (requirements-gap lens; re-checked in the
+  dual-lens pass)
+- plan.md — reviewed 2026-07-31 (design-flaw lens + artifact misalignment)
 
 ## Data Classification
 
@@ -34,7 +38,12 @@ scope).
 
 ## Findings
 
-### 1. Padding-variant spellings can still split one ordinal identity inside the registry
+### 1. Padding-variant spellings can still split one ordinal identity inside the registry — RESOLVED
+
+*Resolved 2026-07-31: routed to Spec (AC 4 amendment) at the first pass;
+`plan.md` DD 2 applies `alloc_canon_specid` at resolve's literal comparison
+sites and the `have` branch, task 6 carries the resume-against-unpadded-record
+fixture.*
 
 - **Severity:** Notable
 - **Description:** AC 4 normalizes what the allocator *reports*, and AC 3
@@ -52,7 +61,11 @@ scope).
 - **Route:** Spec
 - **Relates to:** AC 3, AC 4, and inherited `sdlc/017` AC 7 (via AC 1)
 
-### 2. The widened citation sweep is the flow's first write path not enumerated from git
+### 2. The widened citation sweep is the flow's first write path not enumerated from git — RESOLVED
+
+*Resolved 2026-07-31: `plan.md` DD 9 scopes enumeration to the realized
+directory and requires worktree-contained realpath before any edit; task 16
+fixtures the symlink escape.*
 
 - **Severity:** Notable
 - **Description:** AC 12's third clause extends the sweep beyond
@@ -69,7 +82,10 @@ scope).
 - **Route:** Plan
 - **Relates to:** AC 12
 
-### 3. The shared occupancy predicate should degrade per-identity on junk siblings
+### 3. The shared occupancy predicate should degrade per-identity on junk siblings — RESOLVED
+
+*Resolved 2026-07-31: `plan.md` DD 1 skips malformed/over-wide sibling
+basenames (never counted as holders, never an error); task 2 fixtures it.*
 
 - **Severity:** Advisory
 - **Description:** the new predicate parses sibling directory basenames
@@ -81,6 +97,33 @@ scope).
   matching the realizer's existing halt semantics.
 - **Route:** Plan
 - **Relates to:** AC 3
+
+### 4. The nesting guard's end state contradicts AC 12's refuse-semantics — RESOLVED
+
+*Resolved 2026-07-31: routed to Plan and applied — DD 7 now restores the
+source on detection before failing, and task 14's fixture asserts the
+unchanged end state plus a non-zero exit.*
+
+- **Severity:** Notable
+- **Description:** plan DD 7 (correctly) rejects GNU-only `mv -T` and detects
+  the nesting artifact *after* the `mv` — but "fail loudly, undoing nothing"
+  leaves the source directory nested inside the target when the race fires.
+  Spec AC 12 promises the primitive "refuses rather than nests": the promised
+  observable is an unchanged tree plus a loud error, and a realized-but-nested
+  spec directory is precisely the silent-wrong-state class this spec exists
+  to remove — made loud, but still wrong on disk.
+- **Suggestion:** on detecting the artifact, restore the source
+  (`mv` the just-nested directory back to its original path — safe, since the
+  nested entry was created by this same command) and then fail; the fixture
+  asserts end state unchanged plus a non-zero exit.
+- **Route:** Plan
+- **Relates to:** AC 12; plan DD 7, task 14
+
+## Artifact Misalignment
+
+- **Finding 4 — nesting guard end state:** Spec AC 12 states the rename
+  primitives *refuse rather than nest*; plan DD 7 detects the nest post-hoc
+  and leaves it in place. Route: Plan.
 
 ## STRIDE Coverage
 
@@ -105,7 +148,10 @@ scope).
   `Needs Plan Review` status.
 
 ### Plan amendments
-- Finding 2: containment bound on the widened sweep enumeration
-  (realized-directory-only, worktree-contained realpath before edit).
-- Finding 3: per-identity degradation semantics for the occupancy predicate
-  on malformed sibling basenames.
+- Finding 2: containment bound on the widened sweep enumeration —
+  **resolved by DD 9 / task 16.**
+- Finding 3: per-identity degradation semantics for the occupancy predicate —
+  **resolved by DD 1 / task 2.**
+- Finding 4: amend DD 7 and task 14 so the guard restores the source on
+  detection (end state unchanged + loud failure) — **resolved, routed and
+  applied 2026-07-31.**
