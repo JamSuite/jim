@@ -500,7 +500,11 @@ main() {
     echo "error: cannot create tmp file in '$dir'" >&2
     return 1
   }
-  trap 'rm -f "$tmpfile"' EXIT INT TERM
+  # The trap body runs at shell exit, which can be after this function has
+  # returned and its `local` has gone out of scope. Expanding it defensively
+  # keeps that from being fatal under `set -u` — an abort there would take the
+  # cleanup down with it and report a shell-internal error over the real cause.
+  trap 'rm -f "${tmpfile:-}"' EXIT INT TERM
 
   {
     printf '# Issue Index\n\n'
@@ -529,6 +533,10 @@ main() {
 
   mv "$tmpfile" "$dir/$INDEX_FILENAME" || {
     echo "error: atomic rename failed; previous INDEX.md untouched" >&2
+    # Clean up here, while the path is still in scope, rather than leaving it to
+    # a trap that fires after this frame is gone.
+    rm -f "$tmpfile"
+    trap - EXIT INT TERM
     return 1
   }
   trap - EXIT INT TERM

@@ -129,6 +129,30 @@ case_issues_index_empty_dir() {
   assert_match "summary closed" "Closed: 0" "$(cat "$dir/INDEX.md")"
 }
 
+# AC: a failed atomic rename cleans up after itself and reports only the real
+# cause. The EXIT trap names a `local`, so returning before the trap is cleared
+# runs its body with the variable out of scope — fatal under the script's `set -u`
+# preamble, which both aborts the cleanup it exists for and prints a shell-internal
+# error over the accurate one the line above already gave.
+case_issues_index_failed_rename_leaves_no_temp_file() {
+  local dir leftover
+  dir=$(empty_dir index_renamefail)
+  write_issue "$dir" "20260101-x" 'title: "X"
+status: open
+priority: medium'
+  # An unwritable directory where INDEX.md belongs: the rename cannot land.
+  mkdir -p "$dir/INDEX.md"
+  chmod 500 "$dir/INDEX.md"
+  run_index "$dir"
+  chmod 700 "$dir/INDEX.md"
+  leftover="$(find "$dir" -maxdepth 1 -name '.INDEX.md.tmp.*' | grep -c .)"
+  assert_exit "rc"                     1   "$RC"
+  assert_eq   "no temp file left"      "0" "$leftover"
+  assert_eq   "no shell error printed" "0" \
+    "$(printf '%s\n' "$ERR" | grep -c 'unbound variable')"
+  assert_match "names the real cause" 'atomic rename failed' "$ERR"
+}
+
 # AC: one issue produces an Issues entry with the title and status (AC-I1)
 case_issues_index_one_issue_happy_path() {
   local dir
@@ -2478,6 +2502,57 @@ created: 2026-01-01T00:00:00Z"
   assert_exit     "rc"                      1 "$RC"
   assert_nonempty "names the regen failure" "$ERR"
   assert_match "the realization itself landed" '^num: 1$' "$(cat "$dir/$fid.md")"
+}
+
+# AC: a rewrite that changed nothing fails loudly, and does not strand the rest
+# of a batch whose ordinals are already published. Unreachable through the CLI —
+# the scan and the rewrite match the same set of inputs, so a scan that finds the
+# field cannot precede a rewrite that misses it — so the realizer is driven
+# directly, the way pure functions are tested elsewhere in this suite.
+case_issues_reconcile_no_op_rewrite_fails_and_continues() {
+  local dir out rc rows mapping
+  dir=$(empty_dir reconcile_noop_rewrite)
+  # The first file carries no num: field, forcing the no-op. The second is
+  # ordinary, and is what proves the batch was not abandoned at the first.
+  printf -- '---\nid: 20260101-a\ntitle: "A"\n---\nbody\n' > "$dir/a.md"
+  printf -- '---\nid: 20260101-b\nnum: P-20260101-b\ntitle: "B"\n---\nbody\n' > "$dir/b.md"
+  rows="$(printf 'P-20260101-a\t%s/a.md\nP-20260101-b\t%s/b.md' "$dir" "$dir")"
+  mapping="$(printf 'P-20260101-a\t7\nP-20260101-b\t8')"
+  out="$( source "$SCRIPT_RECONCILE" >/dev/null 2>&1
+          apply_pending "$dir" "$rows" "$mapping" 2>/dev/null )"
+  rc=$?
+  assert_exit "rc"                            1        "$rc"
+  assert_eq   "the healthy file still realized" "num: 8" "$(grep '^num:' "$dir/b.md")"
+  assert_eq   "count reports only the realized one" "1" "$out"
+}
+
+# AC: a batch that lost one file to a failed rewrite still regenerates the index.
+# The other files' ordinals are already published, so an abort leaves INDEX.md
+# describing a state that no longer exists — the exact failure the regeneration
+# check exists to prevent, reached through the door the verified rewrite opened.
+case_issues_reconcile_failed_rewrite_still_regenerates_index() {
+  local repo dir rc
+  repo=$(new_repo reconcile_partial_regen)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  write_issue "$dir" "20260101-good" 'id: 20260101-good
+title: "Good"
+status: open
+num: P-20260101-good
+priority: medium
+created: 2026-01-01T00:00:00Z'
+  printf 'stale\n' > "$dir/INDEX.md"
+  # A per-file rewrite failure cannot be staged through the command surface, so
+  # the realizer is shadowed with one reporting a realized file AND a failure —
+  # the state the verified rewrite made reachable. What is asserted is the
+  # CALLER's handling of it: regenerate the index, carry the failure, and do not
+  # return before the regeneration.
+  ( cd "$repo" && source "$SCRIPT_RECONCILE" >/dev/null 2>&1
+    apply_pending() { printf '1\n'; return 1; }
+    cmd_reconcile --apply "$dir" ) >/dev/null 2>&1
+  rc=$?
+  assert_exit "rc"                1   "$rc"
+  assert_eq   "index regenerated" "0" "$(grep -c '^stale$' "$dir/INDEX.md")"
 }
 
 # AC: detection anchors to the leading frontmatter block, the same region the
