@@ -2,7 +2,7 @@
 id: 20260731-enumerate-blueprints-through-the-map-in-the-review-omission-swee
 num: 169
 title: "Enumerate blueprints through the map in the review omission sweep"
-status: open
+status: closed
 priority: high
 labels: [sdlc, review, 000-blueprint]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:08:15Z
-updated: 2026-07-31T12:08:15Z
+updated: 2026-07-31T21:28:44Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 ---
 
@@ -56,3 +56,23 @@ a drift sweep.
 
 Surfaced during the `sdlc/018` build, when the propagated finding reached a task
 that would have edited the retired document.
+
+## Resolution (2026-07-31)
+
+Closed by the C′-fix build, taking the stronger of the two options: the review's
+omission-class guidance now requires liveness to be established **through the
+map** before a group is named in a finding, rather than only reading `status:`.
+
+The probe is the one the other consumers already use —
+`jimverify.sh territory BLUEPRINT.md <group>`, where `group not in map` at rc 2
+is the exclusion — so the sweep stops being the outlier instead of acquiring a
+second way of deciding the same thing. The instruction also says what to do when
+the retired blueprint was the *only* other match: report the declaration as
+single-sited rather than as a pair, which is the specific error that propagated
+through five artifacts.
+
+Corroborating instance found while closing
+[[20260731-describe-both-spec-identity-states-in-the-agent-context-blocks]]:
+`agents/meta.md` hardcoded the same retired group as its spec and plan location.
+This issue's prediction — that it recurs for any group later split, merged, or
+retired — was already true elsewhere in the tree.

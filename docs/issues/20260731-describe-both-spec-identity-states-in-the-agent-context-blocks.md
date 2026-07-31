@@ -2,7 +2,7 @@
 id: 20260731-describe-both-spec-identity-states-in-the-agent-context-blocks
 num: 168
 title: "Describe both spec-identity states in the agent context blocks"
-status: open
+status: closed
 priority: medium
 labels: [sdlc, docs, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:08:07Z
-updated: 2026-07-31T12:08:07Z
+updated: 2026-07-31T21:28:44Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 ---
 
@@ -51,3 +51,20 @@ template.
 
 Surfaced during the `sdlc/018` build and corroborated by a `/jim:verify sdlc`
 judge.
+
+## Resolution (2026-07-31)
+
+Closed by the C′-fix build. The five context blocks name both identity states and
+drop the `{00X}` shape, matching the language already in `skills/spec/SKILL.md`,
+`WORKFLOW.md`, and the spec template.
+
+**A sixth file was stale and is fixed with them.** `agents/meta.md` carried the
+same `{00X}` shape *and* pointed at `docs/specs/jim/` — the group split five days
+before this issue was filed, which now holds nothing but a retired blueprint. So
+the meta agent's only stated reference points for specs and plans named a
+directory with no live specs in it. Both lines now use `{group}`.
+
+That is the same failure this cluster keeps producing from a different angle:
+[[20260731-enumerate-blueprints-through-the-map-in-the-review-omission-swee]] is
+a sweep reading the retired group, and this is a persona hardcoding it. A `grep`
+for the stale token found the second one; nothing else would have.
