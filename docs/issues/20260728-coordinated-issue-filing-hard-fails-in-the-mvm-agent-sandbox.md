@@ -2,7 +2,7 @@
 id: 20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox
 num: 129
 title: "Coordinated issue-filing hard-fails in the mvm agent sandbox"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, workflow, sandbox]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-28T21:39:15Z
-updated: 2026-07-28T21:39:15Z
+updated: 2026-07-31T06:38:04Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -35,3 +35,26 @@ ordinals on the host — which is exactly the provisional/reconcile machinery
 ability to file issues. Alternatively, document `fail` as intended and route all
 sandbox-discovered issues through a host handoff (as was done for the 2026-07-28
 batch).
+
+## Resolution (2026-07-31)
+
+Decided the first way and committed: `id_coordination_unreachable = "provisional"`
+in `jimconf.toml`, as `3d49ce9`.
+
+The dependency that held this open is gone. Under `provisional`, `allocate spec`
+used to mint a spec identity nothing could realize
+([[20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity]]);
+`sdlc/017` shipped spec-side realization, so the mode no longer issues anything
+that cannot be settled, for either kind.
+
+It was also already in force in the working tree before being recorded, which is
+the real argument for closing it rather than deliberating further: two sessions of
+issues and one spec were filed against it and realized cleanly on the host — most
+recently eighteen provisional ordinals realized in one batch onto 143–160, no gap
+and no collision. A config that load-bearing being uncommitted was the worst
+available state.
+
+The alternative — document `fail` as intended and route everything through a host
+handoff — is what the 2026-07-28 batch actually did, and it is why this issue
+exists. It does not scale past a single batch: it makes every sandbox discovery
+wait on a human round trip, which is precisely the friction that loses issues.

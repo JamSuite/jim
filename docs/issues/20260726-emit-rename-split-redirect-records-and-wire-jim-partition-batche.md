@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-30T02:14:41Z
+updated: 2026-07-31T06:38:04Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -253,3 +253,42 @@ vacated ids through the ledger's split/merge events, while the registry fold has
 no floor record at all — the same gap that leaves the retired-group high-water to
 this spec (see `platform/008` Out of Scope). Worth deciding whether this spec
 converges the two surfaces or documents them as deliberately separate.
+
+## Demonstrated live (2026-07-31)
+
+That last paragraph stopped being an argument. A verification sweep after the
+`platform`/`sdlc` registry repair
+([[20260730-align-the-registry-with-tree-scan-era-spec-ordinals]]) found the
+retired `jim` group disagreeing across the two surfaces:
+
+```
+peek spec jim      → jim/001      ← an ordinal the 2026-07-25 split retired
+next-id jim        → 053          ← correct; floors past the vacated range
+```
+
+`next-id` is right because it consults the specs-root ledger's `op=split` remap
+(`jimfile.sh:341-357`). `peek` answers `001` because the registry holds **no
+`jim/` records at all** — and, checked directly, no `group allocate jim` record
+either. The seed derived group records from the tree, `docs/specs/jim/` retains
+only `000-blueprint`, and the seed skips that reserved slot, so the entire group
+fell out of coordination when the split rewrote its 52 identities into
+`sdlc` / `blueprint` / `issue` / `platform`.
+
+**The durable statement of the gap:** `op=split` rewrites identities in the tree
+and writes nothing to the registry, so every split silently drops the source
+group's spent ordinals out of coordination. `allocate spec jim` would mint
+`jim/001` today.
+
+Narrower in consequence than the repaired case — reachable only by scoping into a
+retired group, which the partition doctrine already forbids, and no live group is
+affected — so it was left unrepaired rather than patched.
+
+**One thing this issue's scope does not reach.** Emitting redirect records fixes
+*future* splits. The `jim` split already happened under `identity=rewrite` and
+left nothing behind, so `jim/001`–`jim/052` stay unrecorded even after this ships
+unless something backfills them. That repair half belongs with the registry
+integrity work ([[20260726-add-an-only-door-verification-sweep-for-the-id-registry]],
+[[20260728-registry-drift-catch-up-has-no-incremental-seed-verb]]) — the same
+emission-vs-repair split the `platform`/`sdlc` case had, and the second time in
+two days that "a consumer stops new drift, it does not repair drift that predates
+it" has been the operative sentence.

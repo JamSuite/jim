@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 95
-- Closed: 65
+- Open: 93
+- Closed: 67
 
 ## Issues
 
@@ -132,7 +132,7 @@
 - `20260727-align-seed-landing-with-the-allocation-cas-path` — Align seed landing with the allocation CAS path · status: open · num: 122 · priority: low · created: 2026-07-27T05:34:22Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/008-registry-seed/review.md
 - `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` — Fix jimfile.sh next-id group/kind collision for a group named issue · status: open · num: 123 · priority: medium · created: 2026-07-27T07:20:53Z · labels: [platform, id-coordination, partition] · origin: docs/specs/platform/009-provisional-reconcile/spec.md
 - `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude` — Normalize seed reserved-slot skip and spec-ordinal magnitude · status: open · num: 121 · priority: medium · created: 2026-07-27T05:34:21Z · labels: [id-coordination, alloc, verify] · origin: docs/specs/platform/008-registry-seed/review.md
-- `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` — Coordinated issue-filing hard-fails in the mvm agent sandbox · status: open · num: 129 · priority: medium · created: 2026-07-28T21:39:15Z · labels: [id-coordination, workflow, sandbox] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` — Coordinated issue-filing hard-fails in the mvm agent sandbox · status: closed · num: 129 · priority: medium · created: 2026-07-28T21:39:15Z · labels: [id-coordination, workflow, sandbox] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260728-fix-vacuous-inline-backtick-wikilink-test-in-tests-issues-sh` — Fix vacuous inline-backtick wikilink test in tests/issues.sh · status: open · num: 128 · priority: low · created: 2026-07-28T21:39:09Z · labels: [test, hygiene] · origin: docs/specs/platform/010-allocator-issue-prefix/plan.md
 - `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew` — new.sh mixed-pin (--slug XOR --num) registry/on-disk skew · status: open · num: 132 · priority: low · created: 2026-07-28T21:39:38Z · labels: [id-coordination] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-reconcile-sh-provisional-detection-not-fence-bounded` — reconcile.sh provisional detection not fence-bounded · status: open · num: 133 · priority: low · created: 2026-07-28T21:39:43Z · labels: [id-coordination, security] · origin: docs/specs/issue/010-ordinal-coordination/review.md
@@ -144,7 +144,7 @@
 - `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity` — allocate spec under provisional mints an unrealizable identity · status: closed · num: 135 · priority: medium · created: 2026-07-29T21:02:34Z · labels: [id-coordination, provisional] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins` — Detect duplicate durable ids instead of silent last-wins · status: open · num: 136 · priority: low · created: 2026-07-29T21:02:33Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp` — Provide a recovery path for a group that exhausts its ordinal space · status: open · num: 137 · priority: low · created: 2026-07-29T22:21:54Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
-- `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` — Align the registry with tree-scan-era spec ordinals · status: open · num: 144 · priority: high · created: 2026-07-30T10:32:41Z · labels: [id-coordination, registry] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
+- `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` — Align the registry with tree-scan-era spec ordinals · status: closed · num: 144 · priority: high · created: 2026-07-30T10:32:41Z · labels: [id-coordination, registry] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
 - `20260730-close-the-coordinated-spec-identity-fixture-gaps` — Close the coordinated spec identity fixture gaps · status: open · num: 145 · priority: medium · created: 2026-07-30T19:35:17Z · labels: [id-coordination, test-coverage] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-collapse-the-ordinal-width-predicate-into-a-validator` — Collapse the ordinal-width predicate into a validator · status: open · num: 138 · priority: low · created: 2026-07-30T01:09:08Z · labels: [id-coordination, refactor] · origin: docs/specs/platform/011-rename-path-correctness/review.md
 - `20260730-decide-the-test-suite-timeout-dependency` — Decide the test suite timeout dependency · status: open · num: 139 · priority: low · created: 2026-07-30T01:09:09Z · labels: [testing, portability] · origin: docs/specs/platform/011-rename-path-correctness/review.md
@@ -214,6 +214,9 @@
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260727-align-reconcile-high-water-with-alloc-next-num-issue`
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox`
+- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260730-align-the-registry-with-tree-scan-era-spec-ordinals`
+- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260726-add-an-only-door-verification-sweep-for-the-id-registry`
+- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude`
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260727-align-seed-landing-with-the-allocation-cas-path`
@@ -229,9 +232,11 @@
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
+- `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` --related-to--> `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260730-spec-creation-halts-only-on-an-exact-name-collision`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260726-add-an-only-door-verification-sweep-for-the-id-registry`
+- `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260730-document-provisional-spec-identity-and-the-reconcile-surface` --related-to--> `20260725-refresh-architecture-readme-workflow-for-the-partition`
 - `20260730-document-provisional-spec-identity-and-the-reconcile-surface` --related-to--> `20260726-document-coordination-branch-protection-and-team-setup`
 - `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` --related-to--> `20260730-close-the-coordinated-spec-identity-fixture-gaps`
