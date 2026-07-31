@@ -87,6 +87,24 @@ land a *padding* variant at all; what it can land is a same-ordinal
 different-slug twin (`018-beta` beside `018-alpha`), since `[[ -e "$dst" ]]`
 catches only an exact path.
 
+**6 · Retiring `mv-spec` (decided mid-build).** The verb had zero callers —
+established exhaustively, not carried forward from the review's assertion: one
+dispatch entry, no internal caller, no skill/agent/script, static `case` dispatch
+in all three CLIs so no constructed-verb path, no non-ASCII hyphen spellings.
+Only its own fixtures reached it.
+
+**Retire.** An earlier recommendation to keep it was wrong and is withdrawn: it
+rested on retirement requiring a `platform` blueprint write, and therefore
+tripping the criterion that sends work to a spec. Declining to run a tool is not
+a reason to leave dead code in the tree, and the targeted `--since` adapter
+exists precisely so an out-of-pipeline change can refresh a blueprint cheaply.
+Both doc surfaces were corrected through their own skills — `/jim:blueprint
+platform --since` and `/jim:arch` — rather than by hand.
+
+The retirement's own grounding run corroborated the sweep independently: editing
+the Provides face put the **breaking** detector directly over the removed verb,
+and it reported zero.
+
 ## Guard premises, as claims to check
 
 Every defect this build fixes for AC 12 lives in a guard written fresh, and the
