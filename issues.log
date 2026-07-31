@@ -179,3 +179,4 @@ issue allocate 178 20260731-write-the-fixtures-the-plan-named-but-the-build-skip
 issue allocate 179 20260731-move-the-explanatory-comment-off-the-spec-template-id-line 20260731 jrko
 issue allocate 180 20260731-skip-symlinked-entries-in-the-realized-directory-sweep 20260731 jrko
 issue allocate 181 20260731-close-the-remaining-edges-of-the-ordinal-identity-invariant 20260731 jrko
+issue allocate 182 20260731-give-issue-resolution-the-same-padding-blind-identity 20260731 jrko
