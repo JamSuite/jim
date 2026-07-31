@@ -347,11 +347,30 @@ sweep_citations() {
     echo "error: citation sweep — not in a git repo" >&2
     return 1
   fi
+  # `git ls-files` emits repo-relative paths whatever spelling the pathspec
+  # carries, so a root consumed in its raw configured form can never prefix-match
+  # its own output — which is how an absolute issues root rewrote citations and
+  # then never regenerated the index. A root outside the worktree is worse than
+  # useless: git rejects the whole pathspec set over it, not just that one entry.
+  # Normalize every root to its worktree-relative form once, here, and drop one
+  # that does not resolve inside the worktree rather than sweeping nothing at all.
   local -a roots=() files=()
-  local key root issues_root=""
+  local key root rp issues_root=""
   for key in specs issues brainstorms debug; do
     root="$(jc get "$key" 2>/dev/null)"; root="${root%/}"; root="${root#./}"
     [[ -n "$root" ]] || continue
+    if ! rp="$(realpath -m -- "$root" 2>/dev/null)" || [[ -z "$rp" ]]; then
+      echo "warning: citation sweep — cannot resolve the configured '$key' root ('$root'); not swept" >&2
+      continue
+    fi
+    if [[ "$rp" == "$top" ]]; then
+      root="."
+    elif [[ "$rp" == "$top"/* ]]; then
+      root="${rp#"$top"/}"
+    else
+      echo "warning: citation sweep — the configured '$key' root ('$root') resolves outside the worktree; not swept" >&2
+      continue
+    fi
     roots+=("$root")
     [[ "$key" == issues ]] && issues_root="$root"
   done
@@ -365,11 +384,25 @@ sweep_citations() {
   # relpath boundary and worktree containment as the tracked targets below,
   # before any edit: an untracked directory is shapeable in ways tracked content
   # is not, so it must not be able to direct a rewrite out of the worktree.
-  local d entry
+  local d entry ent_rp
   if [[ -n "$own_dirs" ]]; then
     while IFS= read -r d; do
       [[ -n "$d" && -d "$d" ]] || continue
       for entry in "$d"/*.md; do
+        # This enumeration drops the tracked-ness guard by necessity — the
+        # directory is untracked, which is why it is here at all. A symlink is
+        # then the one way a write can leave the four content roots, since `>`
+        # follows it to its target, and containment alone does not object to an
+        # in-worktree one. A symlink is never a spec's own body, so it is not
+        # swept. One that leaves the worktree entirely is not merely out of
+        # scope, it is anomalous — refuse, before any temp state exists.
+        if [[ -L "$entry" ]]; then
+          if ! ent_rp="$(realpath -m -- "$entry" 2>/dev/null)" || [[ -z "$ent_rp" ]] \
+             || { [[ "$ent_rp" != "$top" && "$ent_rp" != "$top"/* ]]; }; then
+            echo "error: citation sweep — path escapes worktree: $entry" >&2; return 1
+          fi
+          continue
+        fi
         [[ -f "$entry" ]] || continue
         files+=("$entry")
       done
@@ -396,7 +429,7 @@ sweep_citations() {
     fi
   done
 
-  local swtmp parsed tmp_out rec issue_touched=0
+  local swtmp parsed tmp_out rec awk_rc issue_touched=0 sweep_failed=0
   if ! swtmp="$(mktemp -d 2>/dev/null)"; then
     echo "error: citation sweep — cannot create temp dir" >&2; return 1
   fi
@@ -462,10 +495,22 @@ sweep_citations() {
         }
         print out
       }' "$parsed" "$f" > "$tmp_out"
+    # A rewrite that died partway through has already written whatever records it
+    # got to, so a non-empty record file is NOT evidence the output is whole.
+    # Install only on a clean exit; other files still sweep, and the run fails.
+    awk_rc=$?
+    if (( awk_rc != 0 )); then
+      echo "error: citation sweep — the rewrite failed partway through '$f'; nothing installed for it" >&2
+      sweep_failed=1
+      continue
+    fi
     if [[ -s "$rec" ]]; then
       cat -- "$tmp_out" > "$f"
       cat -- "$rec"
-      [[ -n "$issues_root" && "$f" == "$issues_root"/* ]] && issue_touched=1
+      if [[ -n "$issues_root" ]] \
+         && { [[ "$issues_root" == "." ]] || [[ "$f" == "$issues_root"/* ]]; }; then
+        issue_touched=1
+      fi
     fi
   done
   rm -rf -- "$swtmp"
@@ -476,7 +521,7 @@ sweep_citations() {
       return 1
     fi
   fi
-  return 0
+  return "$sweep_failed"
 }
 
 # record_realized <specs_dir> <remap-rows>

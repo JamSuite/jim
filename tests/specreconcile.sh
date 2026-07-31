@@ -951,6 +951,89 @@ case_specreconcile_sweep_index_untouched_when_no_issue_changed() {
     "$(cat "$repo/docs/issues/INDEX.md")"
 }
 
+# AC: an absolutely-spelled content root still triggers the index regeneration.
+# git ls-files emits repo-relative paths whatever the pathspec spelling, so a
+# root consumed in its raw configured form can never prefix-match its own
+# output — the citations get rewritten and the index silently never regenerates.
+case_specreconcile_sweep_regenerates_index_from_absolute_root() {
+  local repo cfg
+  repo="$(specrec_repo sr_sweep_absroot)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  printf -- '---\nid: 20260728-x\nnum: 1\ntitle: "X"\nstatus: open\norigin: docs/specs/sdlc/P-20260728-alpha/spec.md\n---\nbody\n' \
+    > "$repo/docs/issues/20260728-x.md"
+  printf 'stale\n' > "$repo/docs/issues/INDEX.md"
+  specrec_commit "$repo"
+  cfg=$(fixture specrec-absroot.toml "issues_path = \"$repo/docs/issues\"")
+  run_specreconcile_in "$repo" -c "$cfg" --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "citation swept" 'docs/specs/sdlc/001-alpha/spec\.md' \
+    "$(cat "$repo/docs/issues/20260728-x.md")"
+  assert_eq    "index regenerated" "0" \
+    "$(grep -c '^stale$' "$repo/docs/issues/INDEX.md")"
+}
+
+# specrec_failing_awk_shim <name>
+#   A directory holding an `awk` that fails mid-stream — but ONLY for the sweep's
+#   own invocation, identified by its `recfile=` binding; everything else execs
+#   the real awk. It writes a REWROTE record first, so the record file is
+#   non-empty exactly as it would be when a real awk dies partway through a file
+#   it had already rewritten lines of.
+specrec_failing_awk_shim() {
+  local dir real
+  dir=$(empty_dir "$1")
+  real="$(command -v awk)"
+  {
+    printf '%s\n' '#!/usr/bin/env bash' 'set -uo pipefail' 'for a in "$@"; do'
+    printf '%s\n' '  case "$a" in'
+    printf '%s\n' '    recfile=*)'
+    printf '%s\n' '      printf "REWROTE\\tsentinel\\t1\\ttyped-ref\\n" > "${a#recfile=}"'
+    printf '%s\n' '      printf "truncated\\n"; exit 1 ;;'
+    printf '%s\n' '  esac' 'done'
+    printf 'exec %s "$@"\n' "$real"
+  } > "$dir/awk"
+  chmod +x "$dir/awk"
+  printf '%s' "$dir"
+}
+
+# AC: a swept file is installed only when awk actually succeeded. A mid-stream
+# failure after at least one REWROTE record leaves the record file non-empty, so
+# the record-based guard alone would install a truncated file over a real one.
+case_specreconcile_sweep_awk_failure_does_not_install() {
+  local repo shim oldpath
+  repo="$(specrec_repo sr_sweep_awkfail)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf 'see sdlc/P-20260728-alpha\nsecond line\n' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  shim=$(specrec_failing_awk_shim sr_awkfail_bin)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_specreconcile_in "$repo" --apply
+  PATH="$oldpath"
+  assert_exit "rc" 1 "$RC"
+  assert_eq   "file not truncated" "0" \
+    "$(grep -c '^truncated$' "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "original content intact" 'second line' \
+    "$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+}
+
+# AC: a symlinked entry in a realized directory is not swept. The own-directory
+# enumeration drops the tracked-ness guard by necessity, so a symlink is the one
+# way a write can leave the four content roots — `>` follows it to its target.
+# A symlink is never a spec's own body.
+case_specreconcile_sweep_skips_symlinked_own_entry() {
+  local repo
+  repo="$(specrec_repo sr_sweep_symlink)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  printf 'flake sdlc/P-20260728-alpha stays\n' > "$repo/outside.md"
+  ln -s "$repo/outside.md" "$repo/docs/specs/sdlc/P-20260728-alpha/link.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "link target untouched" 'sdlc/P-20260728-alpha stays' \
+    "$(cat "$repo/outside.md")"
+}
+
 # ─── Section: Test cases — durable realize record ────────────────────────────
 
 # AC: every realization durably records its provisional→real mapping as a ledger
