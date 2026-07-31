@@ -175,3 +175,4 @@ issue allocate 174 20260731-regenerate-the-issue-index-before-aborting-on-a-rewr
 issue allocate 175 20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio 20260731 jrko
 issue allocate 176 20260731-document-the-provisional-path-arity-in-the-script-own-help 20260731 jrko
 issue allocate 177 20260731-check-the-awk-exit-status-before-installing-a-swept-file 20260731 jrko
+issue allocate 178 20260731-write-the-fixtures-the-plan-named-but-the-build-skipped 20260731 jrko
