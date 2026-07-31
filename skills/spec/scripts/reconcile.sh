@@ -80,13 +80,27 @@ resolve_specs_dir() {
   printf '%s\n' "$dir"
 }
 
-# field_value <file> <field> — first top-level scalar value, quotes stripped.
-# Frontmatter always precedes the body, so the first occurrence of "^field:" in
-# the whole file is the frontmatter's — mirrors the issue-side realizer.
+# field_value <file> <field> — the value of <field> inside the file's LEADING
+# frontmatter block, quotes stripped; empty when there is no leading block or it
+# does not carry the field.
+#
+# Detection reads the SAME region the rewrite writes. Scanning the whole file
+# instead makes a body line that happens to read "id:" decide that a directory
+# is pending, and the rewrite then cannot touch it — a rename with no
+# frontmatter change behind it. The opening line must be exactly "---": a CRLF
+# "---\r" is not a frontmatter open here, so such a file is simply not pending,
+# which is the fail-safe direction. Mirrors the issue-side realizer.
 field_value() {
-  grep -E "^$2:" "$1" 2>/dev/null \
-    | head -n 1 \
-    | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
+  awk -v f="$2" '
+    NR == 1 { if ($0 != "---") exit; fm = 1; next }
+    fm && $0 == "---" { exit }
+    fm && index($0, f ":") == 1 {
+      v = substr($0, length(f) + 2)
+      sub(/^[[:space:]]+/, "", v); sub(/[[:space:]]+$/, "", v)
+      sub(/^"/, "", v); sub(/"$/, "", v)
+      print v; exit
+    }
+  ' "$1" 2>/dev/null
 }
 
 # is_prov_identity <name>
@@ -164,16 +178,25 @@ is_tracked() {
   [[ -n "$(git --literal-pathspecs ls-files -- "$1" 2>/dev/null)" ]]
 }
 
-# rewrite_id <file> <new-id> — print <file> with its FRONTMATTER id: field (the
-# first top-level field inside the leading --- block) replaced by <new-id>. A
-# body line that happens to read "id:" sits outside that block and is never
-# matched.
+# rewrite_id <file> <new-id> — print <file> with the id: field inside its leading
+# frontmatter block replaced by <new-id>. A body line that happens to read "id:"
+# sits outside that block and is never matched — the same region field_value
+# reads.
+#
+# rc 0 when the field was actually replaced, rc 1 when it was not: a rewrite that
+# changed nothing, behind a directory this run just renamed, is that identity's
+# failure and not a silent success.
 rewrite_id() {
   local file="$1" newid="$2"
   awk -v n="$newid" '
-    /^---$/ { fm++; print; next }
-    fm == 1 && /^id:/ && !done { print "id: \"" n "\""; done = 1; next }
+    NR == 1 && $0 == "---" { fm = 1; print; next }
+    NR == 1                { nofm = 1 }
+    !nofm && fm == 1 && $0 == "---" { fm = 2 }
+    !nofm && fm == 1 && index($0, "id:") == 1 && !done {
+      print "id: \"" n "\""; done = 1; next
+    }
     { print }
+    END { exit (done ? 0 : 1) }
   ' "$file"
 }
 

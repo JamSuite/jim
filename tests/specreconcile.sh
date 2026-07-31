@@ -121,6 +121,54 @@ case_specreconcile_invalid_token_skipped() {
   assert_eq "bad identity not previewed" "0" "$(printf '%s\n' "$OUT" | grep -c 'P---bad')"
 }
 
+# AC: detection and rewrite anchor to the SAME leading-frontmatter region — a
+# file whose only matching identity line sits in the body is never treated as
+# pending, so no directory is renamed behind a rewrite that cannot touch it.
+case_specreconcile_body_id_is_not_pending() {
+  local repo dir
+  repo="$(specrec_repo sr_bodyid)"
+  dir="$repo/docs/specs/sdlc/P-20260728-alpha"
+  mkdir -p "$dir"
+  printf -- '---\ntitle: "A spec"\ngroup: "sdlc"\n---\n\nid: "P-20260728-alpha"\n' \
+    > "$dir/spec.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc"                   0 "$RC"
+  assert_match "nothing to realize"   'nothing to realize' "$OUT"
+  assert_eq "dir untouched" "yes" "$([[ -d "$dir" ]] && echo yes || echo no)"
+}
+
+# AC: a frontmatter opened with a CRLF marker is not a frontmatter open here, so
+# the file is simply not pending — the fail-safe direction (no rename) rather
+# than a rename the rewrite would then no-op behind.
+case_specreconcile_crlf_frontmatter_is_not_pending() {
+  local repo dir
+  repo="$(specrec_repo sr_crlf)"
+  dir="$repo/docs/specs/sdlc/P-20260728-alpha"
+  mkdir -p "$dir"
+  printf -- '---\r\ntitle: "A spec"\r\nid: "P-20260728-alpha"\r\n---\r\n' \
+    > "$dir/spec.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "dir untouched" "yes" "$([[ -d "$dir" ]] && echo yes || echo no)"
+}
+
+# AC: with the identity in the frontmatter AND a mirror line in the body, only
+# the frontmatter is rewritten — the body line is quoted material, not identity.
+case_specreconcile_body_mirror_line_not_rewritten() {
+  local repo dir
+  repo="$(specrec_repo sr_mirror)"
+  dir="$repo/docs/specs/sdlc/P-20260728-alpha"
+  mkdir -p "$dir"
+  printf -- '---\ntitle: "A spec"\ngroup: "sdlc"\nid: "P-20260728-alpha"\n---\n\nid: "P-20260728-alpha"\n' \
+    > "$dir/spec.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "frontmatter realized" '^id: "001"$' \
+    "$(cat "$repo/docs/specs/sdlc/001-alpha/spec.md")"
+  assert_match "body mirror untouched" '^id: "P-20260728-alpha"$' \
+    "$(cat "$repo/docs/specs/sdlc/001-alpha/spec.md")"
+}
+
 # AC: a pending dir whose frontmatter identity disagrees with its directory name
 # is skipped with a warning — the two must corroborate before the identity is
 # treated as this spec's.

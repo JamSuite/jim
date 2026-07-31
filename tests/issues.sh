@@ -2455,6 +2455,48 @@ More prose after it.'
   assert_match "body num line untouched"  '^num: totally-fake-body-line$' "$(cat "$dir/$fid.md")"
 }
 
+# AC: detection anchors to the leading frontmatter block, the same region the
+# rewrite touches — a body line that happens to read "num: P-…" never makes a
+# file pending, so no realization runs behind a rewrite that cannot change it.
+case_issues_reconcile_body_num_is_not_pending() {
+  local repo dir fid before
+  repo=$(new_repo reconcile_bodynum)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-bodynum"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Body num\"
+status: open
+priority: medium
+created: 2026-01-01T00:00:00Z" 'Quoted from another file:
+
+num: P-20260101-bodynum
+End of quote.'
+  before="$(cat "$dir/$fid.md")"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "nothing to realize" 'nothing to realize' "$OUT"
+  assert_eq "file byte-identical" "$before" "$(cat "$dir/$fid.md")"
+}
+
+# AC: a frontmatter opened with a CRLF marker is not a frontmatter open, so the
+# file is not pending — the fail-safe direction rather than a realization the
+# rewrite would then no-op behind.
+case_issues_reconcile_crlf_frontmatter_is_not_pending() {
+  local repo dir fid before
+  repo=$(new_repo reconcile_crlf)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-crlf"
+  printf -- '---\r\nid: %s\r\nnum: P-%s\r\nstatus: open\r\n---\r\n' "$fid" "$fid" \
+    > "$dir/$fid.md"
+  before="$(cat "$dir/$fid.md")"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit  "rc"                 0                    "$RC"
+  assert_match "nothing to realize" 'nothing to realize' "$OUT"
+  assert_eq "file byte-identical" "$before" "$(cat "$dir/$fid.md")"
+}
+
 # AC: reconcile.sh skips a pending file whose frontmatter id fails the
 # jimfile.sh id boundary — a crafted durable id never reaches jimalloc.sh
 # reconcile issue or a composed path, and the file is left untouched

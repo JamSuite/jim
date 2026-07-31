@@ -327,7 +327,7 @@ flowchart TD
     Depends on task 9.
     **Verify:** `! grep -rn '{id}-{name}' skills/plan/assets/ && grep -q 'P-' skills/spec/assets/spec-template.md`
 
-11. [ ] Bound `field_value` to the leading frontmatter block and verify the
+11. [x] Bound `field_value` to the leading frontmatter block and verify the
     rewrite changed the field, in **both** realizers; fixtures: body-`id:`
     file not pending, CRLF `---\r` not pending, mirror case not rewritten,
     forced no-op rewrite fails loudly; issue-side spurious-pending case.
