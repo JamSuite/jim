@@ -337,7 +337,7 @@ flowchart TD
     failing regen fails the run with the status named.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile && bash skills/meta-test/scripts/run.sh issues`
 
-13. [ ] Port the fence tracker and fix the replacement pick; fixtures:
+13. [x] Port the fence tracker and fix the replacement pick; fixtures:
     4-backtick outer fence untouched, `~~~` inside backticks untouched,
     unclosed fence does not skip the tail, first-segment path citation keeps
     its slug, corpus-shape file survives byte-identical.

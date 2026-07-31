@@ -323,11 +323,13 @@ build_remap() {
 #   specs scoped the same day under the same title differ only by a "-2" suffix,
 #   and the shorter identity must not match inside the longer one.
 #
-#   How an identity is written decides what replaces it: preceded by a slash it
-#   is part of a path and takes the realized directory name, slug included;
-#   anywhere else it is a typed reference and takes the bare ordinal. Fenced
-#   blocks are skipped — a citation quoted inside one is verbatim material, not
-#   a live reference.
+#   How an identity is written decides what replaces it: with a slash on EITHER
+#   side it is part of a path and takes the realized directory name, slug
+#   included; anywhere else it is a typed reference and takes the bare ordinal.
+#   Both sides matter — the source token consumes the whole slug, so a path whose
+#   group is the first segment has a slash only after it, and taking the bare
+#   ordinal there would leave a dead link. Fenced blocks are skipped — a citation
+#   quoted inside one is verbatim material, not a live reference.
 #
 #   Guards run over EVERY target before ANY edit: each path clears the relpath
 #   boundary and resolves inside the worktree. Output is location-only — file,
@@ -378,8 +380,35 @@ sweep_citations() {
       FILENAME == rf { SRC[FNR] = $1; TYPED[FNR] = $2; PATHED[FNR] = $3; nmap = FNR; next }
       {
         line = $0
-        if (line ~ /^[[:space:]]*(```|~~~)/) { fence = !fence; print; next }
-        if (fence) { print; next }
+        # Fence tracking records the OPENING marker and closes only on a run of
+        # the same character at least as long, with nothing but whitespace after
+        # it. A boolean toggle instead lets an inner 3-backtick fence close a
+        # 4-backtick block (rewriting quoted material) and lets a tilde line
+        # close a backtick block — after which every later marker is mis-paired
+        # and the rest of the file is skipped. Same semantics as the scanner in
+        # the issue index.
+        probe = line
+        sub(/^[[:space:]]*/, "", probe)
+        if (!in_fence) {
+          first = substr(probe, 1, 1)
+          if (first == "`" || first == "~") {
+            n = 0
+            while (substr(probe, n + 1, 1) == first) n++
+            if (n >= 3) {
+              in_fence = 1; fence_char = first; fence_len = n
+              print; next
+            }
+          }
+        } else {
+          n = 0
+          while (substr(probe, n + 1, 1) == fence_char) n++
+          if (n >= fence_len) {
+            rest = substr(probe, n + 1)
+            sub(/[[:space:]]*$/, "", rest)
+            if (rest == "") { in_fence = 0 }
+          }
+          print; next
+        }
         out = ""; i = 1; L = length(line)
         while (i <= L) {
           matched = 0
@@ -389,7 +418,7 @@ sweep_citations() {
               before = (i > 1) ? substr(line, i - 1, 1) : ""
               ap = i + sl; after = (ap <= L) ? substr(line, ap, 1) : ""
               if (before !~ /[a-z0-9-]/ && after !~ /[a-z0-9-]/) {
-                if (before == "/") {
+                if (before == "/" || after == "/") {
                   out = out PATHED[m]
                   print "REWROTE\t" file "\t" FNR "\tpath" > recfile
                 } else {

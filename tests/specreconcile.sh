@@ -600,6 +600,102 @@ case_specreconcile_sweep_fenced_code_untouched() {
   assert_match "fenced citation kept"    'quoted sdlc/P-20260728-alpha here'   "$body"
 }
 
+# AC: a 4-backtick outer fence is not closed by an inner 3-backtick fence — the
+# inner block stays quoted material, and the prose after the outer close is live
+# again rather than skipped for the rest of the file. This shape is in the swept
+# corpus today.
+case_specreconcile_sweep_nested_backtick_fence() {
+  local repo body
+  repo="$(specrec_repo sr_sweep_nested)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
+    'before sdlc/P-20260728-alpha here' \
+    '````' \
+    '```' \
+    'quoted sdlc/P-20260728-alpha here' \
+    '```' \
+    '````' \
+    'after sdlc/P-20260728-alpha here' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "prose before rewritten"   'before sdlc/002 here'              "$body"
+  assert_match "inner block kept"         'quoted sdlc/P-20260728-alpha here' "$body"
+  assert_match "tail after close is live" 'after sdlc/002 here'               "$body"
+}
+
+# AC: a tilde line inside a backtick block does not toggle it — the block closes
+# only on its own marker, so the tail is swept rather than skipped.
+case_specreconcile_sweep_tilde_inside_backticks() {
+  local repo body
+  repo="$(specrec_repo sr_sweep_tilde)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf '%s\n%s\n%s\n%s\n%s\n' \
+    '```' \
+    '~~~' \
+    'quoted sdlc/P-20260728-alpha here' \
+    '```' \
+    'after sdlc/P-20260728-alpha here' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "fenced citation kept"     'quoted sdlc/P-20260728-alpha here' "$body"
+  assert_match "tail after close is live" 'after sdlc/002 here'               "$body"
+}
+
+# AC: a path citation whose group is the FIRST path segment keeps its slug — the
+# form is decided by a slash on either side of the token, so it takes the
+# directory name rather than becoming a dead link to a bare ordinal.
+case_specreconcile_sweep_first_segment_path_citation() {
+  local repo body
+  repo="$(specrec_repo sr_sweep_firstseg)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf '%s\n%s\n' \
+    'see [x](sdlc/P-20260728-alpha/spec.md)' \
+    'and docs/specs/sdlc/P-20260728-alpha/plan.md' \
+    > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+  assert_match "first-segment path keeps its slug" 'see \[x\]\(sdlc/002-alpha/spec\.md\)' "$body"
+  assert_match "leading-slash path unchanged in form" 'and docs/specs/sdlc/002-alpha/plan\.md' "$body"
+}
+
+# AC: a file whose only citations sit inside a 4-backtick block survives the
+# sweep byte-identical — the live-corpus shape is not rewritten at all.
+case_specreconcile_sweep_corpus_shape_untouched() {
+  local repo before target
+  repo="$(specrec_repo sr_sweep_corpus)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  target="$repo/docs/specs/sdlc/001-other/spec.md"
+  printf '%s\n%s\n%s\n%s\n%s\n%s\n' \
+    'Example of the shape:' \
+    '````markdown' \
+    '```' \
+    'sdlc/P-20260728-alpha and docs/specs/sdlc/P-20260728-alpha/spec.md' \
+    '```' \
+    '````' \
+    > "$target"
+  specrec_commit "$repo"
+  before="$(cat "$target")"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "file byte-identical" "$before" "$(cat "$target")"
+}
+
 # AC: the sweep reports locations, never the content it read — a rewritten line
 # is named by file and line number and the kind of reference, so the report
 # cannot become a channel for whatever the file happened to contain.
