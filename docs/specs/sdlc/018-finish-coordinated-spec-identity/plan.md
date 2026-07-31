@@ -333,7 +333,7 @@ flowchart TD
     forced no-op rewrite fails loudly; issue-side spurious-pending case.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile && bash skills/meta-test/scripts/run.sh issues`
 
-12. [ ] Surface the index-regen exit status in both realizers; fixtures: a
+12. [x] Surface the index-regen exit status in both realizers; fixtures: a
     failing regen fails the run with the status named.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile && bash skills/meta-test/scripts/run.sh issues`
 

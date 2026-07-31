@@ -332,7 +332,9 @@ build_remap() {
 #   Guards run over EVERY target before ANY edit: each path clears the relpath
 #   boundary and resolves inside the worktree. Output is location-only — file,
 #   line, and which form matched — never the content of the line. The issue
-#   index is regenerated once, and only when an issue file actually changed.
+#   index is regenerated once, and only when an issue file actually changed; a
+#   regeneration that fails is reported and fails the sweep, since the citations
+#   are already rewritten and INDEX.md no longer describes them.
 sweep_citations() {
   local remap="$1"
   [[ -n "$remap" ]] || return 0
@@ -411,7 +413,10 @@ sweep_citations() {
   rm -rf -- "$swtmp"
 
   if (( issue_touched )); then
-    bash "$HERE/../../issue/scripts/index.sh" "$issues_root" >/dev/null 2>&1
+    if ! bash "$HERE/../../issue/scripts/index.sh" "$issues_root" >/dev/null 2>&1; then
+      echo "error: citation sweep — the issue index failed to regenerate for '$issues_root'; the rewritten citations are on disk and INDEX.md no longer describes them" >&2
+      return 1
+    fi
   fi
   return 0
 }

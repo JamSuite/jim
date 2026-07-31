@@ -38,8 +38,9 @@
 #
 # EXIT CODES
 #   0  Success (including the nothing-pending no-op).
-#   1  IO failure, or jimalloc.sh reconcile issue halts (a within-batch
-#      duplicate identity or a boundary-invalid pending id).
+#   1  IO failure, a failed index regeneration after the realization landed, or
+#      jimalloc.sh reconcile issue halts (a within-batch duplicate identity or a
+#      boundary-invalid pending id).
 #   2  Malformed invocation (unknown option).
 #
 # Line-oriented only; never source/evals an issue file.
@@ -220,11 +221,18 @@ cmd_reconcile() {
   fi
 
   if (( apply )); then
-    local realized
+    local realized regen=0
     realized="$(apply_pending "$dir" "$rows" "$mapping")" || return 1
-    bash "$HERE/index.sh" "$dir" >/dev/null 2>&1
+    # The ordinals are already in the files, so a failed regeneration leaves
+    # INDEX.md describing a state that no longer exists. Report it and carry the
+    # failure rather than exiting 0 on a stale index.
+    if ! bash "$HERE/index.sh" "$dir" >/dev/null 2>&1; then
+      echo "error: the issue index failed to regenerate for '$dir'; the realized ordinals are in the files and INDEX.md no longer describes them" >&2
+      regen=1
+    fi
     printf 'reconcile: realized %s provisional issue(s):\n' "$realized"
     printf '%s\n' "$mapping" | sed 's/^/  /'
+    return "$regen"
   else
     printf 'reconcile preview — %s\n\n' "$dir"
     printf '%s\n' "$mapping" | sed 's/^/  /'

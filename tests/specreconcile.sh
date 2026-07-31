@@ -121,6 +121,29 @@ case_specreconcile_invalid_token_skipped() {
   assert_eq "bad identity not previewed" "0" "$(printf '%s\n' "$OUT" | grep -c 'P---bad')"
 }
 
+# AC: a failed issue-index regeneration is reported, never swallowed — the sweep
+# rewrote citations on disk, so an INDEX.md that no longer describes them is a
+# failure the run has to carry rather than a silent exit 0.
+case_specreconcile_surfaces_failed_regen() {
+  local repo issues
+  repo="$(specrec_repo sr_regenfail)"
+  issues="$repo/docs/issues"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  printf -- '---\nid: 20260101-c\nnum: 1\nstatus: open\ntitle: "Cites it"\n---\n\nSee sdlc/P-20260728-alpha for context.\n' \
+    > "$issues/20260101-c.md"
+  specrec_commit "$repo"
+  # An unwritable directory where INDEX.md belongs: the atomic write's rename
+  # cannot land, so index.sh fails while the sweep itself still succeeds.
+  mkdir -p "$issues/INDEX.md"
+  chmod 500 "$issues/INDEX.md"
+  run_specreconcile_in "$repo" --apply
+  chmod 700 "$issues/INDEX.md"
+  assert_exit     "rc"                      1 "$RC"
+  assert_nonempty "names the regen failure" "$ERR"
+  assert_match "the citation was rewritten" 'See sdlc/001 for context' \
+    "$(cat "$issues/20260101-c.md")"
+}
+
 # AC: detection and rewrite anchor to the SAME leading-frontmatter region — a
 # file whose only matching identity line sits in the body is never treated as
 # pending, so no directory is renamed behind a rewrite that cannot touch it.

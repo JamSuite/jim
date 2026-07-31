@@ -2455,6 +2455,31 @@ More prose after it.'
   assert_match "body num line untouched"  '^num: totally-fake-body-line$' "$(cat "$dir/$fid.md")"
 }
 
+# AC: a failed index regeneration is reported, never swallowed — the ordinals
+# are in the files but INDEX.md no longer describes them, and a run that exits 0
+# tells the developer the opposite.
+case_issues_reconcile_surfaces_failed_regen() {
+  local repo dir fid
+  repo=$(new_repo reconcile_regenfail)
+  dir="$repo/docs/issues"
+  # An unwritable directory where INDEX.md belongs: the atomic write's rename
+  # cannot land, so index.sh fails while every other step still succeeds.
+  mkdir -p "$dir/INDEX.md"
+  fid="20260101-regen"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Regen\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  chmod 500 "$dir/INDEX.md"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  chmod 700 "$dir/INDEX.md"
+  assert_exit     "rc"                      1 "$RC"
+  assert_nonempty "names the regen failure" "$ERR"
+  assert_match "the realization itself landed" '^num: 1$' "$(cat "$dir/$fid.md")"
+}
+
 # AC: detection anchors to the leading frontmatter block, the same region the
 # rewrite touches — a body line that happens to read "num: P-…" never makes a
 # file pending, so no realization runs behind a rewrite that cannot change it.
