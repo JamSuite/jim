@@ -2,7 +2,7 @@
 id: 20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure
 num: 174
 title: "Regenerate the issue index before aborting on a rewrite failure"
-status: open
+status: closed
 priority: high
 labels: [issue, scripts]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:38:33Z
-updated: 2026-07-31T12:38:33Z
+updated: 2026-07-31T20:41:03Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 ---
 
@@ -45,3 +45,35 @@ failure and regenerate once at the end, matching the spec side's batch
 semantics), and reconcile the two scripts' handling of the rc.
 
 Finding 4 of `docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md`.
+
+## Resolution (2026-07-31)
+
+Closed by the C′-fix build. Both halves of the fix landed, and the two scripts
+now agree.
+
+**Issue side — accumulate and continue.** `apply_pending` reports each failing
+file and carries on; the caller takes its rc instead of returning on it, so the
+index is regenerated for the files that *did* rewrite. Every ordinal in the
+mapping is already durably published, so abandoning the batch stranded more work
+than it saved. The `mktemp` failure path got the same treatment.
+
+**Spec side — the asymmetry closed in the other direction.** The residue this
+issue describes was real and is fixed rather than matched: past the rename the
+directory has moved, so the `REALIZED` line is now emitted whatever the
+frontmatter rewrite does. That line is what puts the identity into the remap, and
+the remap is what sweeps the citations the move just made dead and writes the
+ledger row. Dropping it left a moved directory that nothing pointed at and
+nothing recorded. The run still fails and the message now names the frontmatter
+as what to repair.
+
+**On the fixtures.** The per-file rewrite failure is unreachable through either
+command surface — the bounded scan and the bounded rewrite match the same set of
+inputs, which is exactly why it shipped unfixtured. Both realizers are therefore
+driven directly, the way pure functions are tested elsewhere in this suite, and
+the caller's non-abort is pinned by shadowing the realizer with one that reports
+both a realized file and a failure. That is the guard-wiring discipline this
+build was set up to apply: the function alone was never the part in doubt.
+
+This also lands the first of the three items in
+[[20260731-write-the-fixtures-the-plan-named-but-the-build-skipped]] — the
+"forced no-op rewrite fails loudly" fixture, against both realizers.

@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 100
-- Closed: 83
+- Open: 98
+- Closed: 85
 
 ## Issues
 
@@ -173,7 +173,7 @@
 - `20260731-document-the-provisional-path-arity-in-the-script-own-help` — Document the provisional path arity in the script own help · status: open · num: 176 · priority: medium · created: 2026-07-31T12:38:48Z · labels: [file, scripts, docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe` — Drop the unbounded bash grant from meta-matrix-probe · status: open · num: 166 · priority: high · created: 2026-07-31T11:49:17Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-enumerate-blueprints-through-the-map-in-the-review-omission-swee` — Enumerate blueprints through the map in the review omission sweep · status: open · num: 169 · priority: high · created: 2026-07-31T12:08:15Z · labels: [sdlc, review, 000-blueprint] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
-- `20260731-fix-the-index-script-exit-trap-leaking-its-temp-file` — Fix the index script EXIT trap leaking its temp file · status: open · num: 170 · priority: medium · created: 2026-07-31T12:08:22Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
+- `20260731-fix-the-index-script-exit-trap-leaking-its-temp-file` — Fix the index script EXIT trap leaking its temp file · status: closed · num: 170 · priority: medium · created: 2026-07-31T12:08:22Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-fix-the-nesting-guard-false-positive-on-the-mv-copy-fallback` — Fix the nesting guard false-positive on the mv copy fallback · status: closed · num: 171 · priority: critical · created: 2026-07-31T12:38:10Z · labels: [file, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio` — Fixture or revert the ordinal width narrowing in canonicalization · status: open · num: 175 · priority: medium · created: 2026-07-31T12:38:40Z · labels: [file, scripts, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-give-issue-resolution-the-same-padding-blind-identity` — Give issue resolution the same padding blind identity · status: open · num: 182 · priority: medium · created: 2026-07-31T12:39:31Z · labels: [file, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
@@ -182,7 +182,7 @@
 - `20260731-move-the-explanatory-comment-off-the-spec-template-id-line` — Move the explanatory comment off the spec template id line · status: open · num: 179 · priority: medium · created: 2026-07-31T12:39:09Z · labels: [spec, docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-namespace-bare-agent-handles-and-add-a-checklist-item` — Namespace bare agent handles and add a checklist item · status: open · num: 161 · priority: critical · created: 2026-07-31T11:48:39Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-normalize-the-citation-sweep-configured-roots` — Normalize the citation sweep configured roots · status: closed · num: 173 · priority: high · created: 2026-07-31T12:38:25Z · labels: [spec, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` — Regenerate the issue index before aborting on a rewrite failure · status: open · num: 174 · priority: high · created: 2026-07-31T12:38:33Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` — Regenerate the issue index before aborting on a rewrite failure · status: closed · num: 174 · priority: high · created: 2026-07-31T12:38:33Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer` — Retire BASIC and EXISTS vocabulary from the enforcement layer · status: open · num: 164 · priority: high · created: 2026-07-31T11:49:02Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-retire-the-mv-spec-prose-now-that-it-has-no-callers` — Retire the mv-spec prose now that it has no callers · status: open · num: 183 · priority: low · created: 2026-07-31T12:39:39Z · labels: [docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` — Skip symlinked entries in the realized directory sweep · status: closed · num: 180 · priority: medium · created: 2026-07-31T12:39:17Z · labels: [spec, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
@@ -272,6 +272,7 @@
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id`
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp`
 - `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
+- `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` --related-to--> `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped`
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
 
 ## Integrity Warnings

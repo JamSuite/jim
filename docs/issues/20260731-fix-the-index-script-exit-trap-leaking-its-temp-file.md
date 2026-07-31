@@ -2,7 +2,7 @@
 id: 20260731-fix-the-index-script-exit-trap-leaking-its-temp-file
 num: 170
 title: "Fix the index script EXIT trap leaking its temp file"
-status: open
+status: closed
 priority: medium
 labels: [issue, scripts]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:08:22Z
-updated: 2026-07-31T12:08:22Z
+updated: 2026-07-31T20:41:03Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 ---
 
@@ -60,3 +60,18 @@ before returning.
 
 Surfaced while fixturing the index-regeneration failure path during the
 `sdlc/018` build.
+
+## Resolution (2026-07-31)
+
+Closed by the C′-fix build, taking two of the three suggested fixes rather than
+one, because they close different halves:
+
+- The trap body expands defensively, so a fire after the frame is gone is no
+  longer fatal under `set -u`. That stops the misleading shell-internal error
+  from printing over the accurate message the line above already gave.
+- The failure path cleans up and clears the trap *while the path is still in
+  scope*, which is what actually removes the file — a defensive expansion alone
+  cannot, since the trap has no value to remove by then.
+
+Fixtured on the reproduction this issue supplied: rc 1, no `.INDEX.md.tmp.*`
+left behind, no `unbound variable` on stderr, and the real cause still named.
