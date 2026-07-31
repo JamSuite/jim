@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T10:32:41Z
-updated: 2026-07-30T10:32:41Z
+updated: 2026-07-31T06:06:51Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
 ---
 
@@ -29,22 +29,53 @@ This is the live failure `sdlc/017`'s problem statement names, and shipping the
 consumer does not fix it: the consumer stops *new* drift, it does not repair
 drift that predates it.
 
-The repair is a one-time developer action, not a shipped verb:
+The repair is a one-time developer action, not a shipped verb.
 
-- `jimalloc.sh seed --apply` reconstructs the per-kind logs from the tree, and
-  now skips pending provisional directories, so it is safe to run against a
-  tree holding both realized and pending specs. It refuses when the derived set
-  conflicts with what the registry holds, so read the preview first.
-- Or hand-append the two missing `spec allocate` records, keeping each spec's
-  own creation date in the informational date field.
+**Correction (2026-07-31): `seed --apply` cannot do it.** This issue originally
+named seed as the repair path. Seed is bootstrap-only — it refuses a registry
+whose logs already carry records:
 
-Either way it must run **from the host**, against the real coordination point —
-the mvm agent sandbox cannot reach the coordination remote, which is why the
-build could not do it.
+```
+error: registry already seeded (specs.log/issues.log already have records);
+refusing to re-seed
+```
 
-Verify afterwards that `peek spec platform` and `peek spec sdlc` both answer
-above every ordinal present on disk.
+(`jimalloc.sh:1652`.) `specs.log` holds 60 records, so that door is closed. The
+verb that *would* do this — an incremental catch-up appending only the records a
+non-empty log is missing, under the same CAS and erosion discipline — is
+[[20260728-registry-drift-catch-up-has-no-incremental-seed-verb]], and its `low`
+priority looks increasingly wrong for exactly this reason.
+
+**So the repair today is the hand-append**, two `spec allocate` records carrying
+each spec's own creation date in the informational date field:
+
+```
+spec allocate platform/011 rename-path-correctness 20260729 <who>
+spec allocate sdlc/017 coordinated-spec-identity 20260730 <who>
+```
+
+Append-only growth keeps the erosion guard satisfied (it checks that the
+per-clone baseline stays a byte-prefix of the current log), and parenting the
+commit on the branch tip makes the ordinary push the compare-and-swap. Step-by-
+step commands are in `docs/notes/20260731-host-registry-repair-handoff.md`.
+
+It must run **from the host**, against the real coordination point — the mvm
+agent sandbox cannot reach the coordination remote, which is why the build could
+not do it.
+
+**Do it before scoping anything new in `platform` or `sdlc`.** Both groups now
+allocate through the allocator, and both would be handed an ordinal the tree
+already holds: `peek spec platform` → `platform/011`, `peek spec sdlc` →
+`sdlc/017`, each of which exists on disk. The creation-side halt only catches an
+exact *name* collision
+([[20260730-spec-creation-halts-only-on-an-exact-name-collision]]), so the
+rename would succeed and leave two directories on one ordinal — after the
+duplicate record was already published durably. That also poisons this repair,
+since the log it reconstructs from would then conflict with the tree.
+
+Verify afterwards that `peek spec platform` → `012` and `peek spec sdlc` → `018`.
 
 Standing detection and repair machinery is separate work
-([[20260726-detect-and-repair-registry-drift]] and its siblings); this issue is
+([[20260726-add-an-only-door-verification-sweep-for-the-id-registry]] and
+[[20260728-registry-drift-catch-up-has-no-incremental-seed-verb]]); this issue is
 only the one-time alignment.
