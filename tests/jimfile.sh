@@ -550,6 +550,74 @@ case_jimfile_mv_spec_id_missing_args_exits_2() {
   assert_nonempty "stderr" "$ERR"
 }
 
+# AC: with a directory already on the target ordinal under a different slug,
+# binding that ordinal halts loudly naming the drift instead of writing a second
+# directory onto it. The creation path's halt, enforced in the primitive.
+case_jimfile_mv_spec_id_refuses_held_ordinal() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_held)
+  mkdir -p "$specs/sdlc/P-20260728-foo" "$specs/sdlc/001-bar"
+  cfg=$(fixture mvspecid-held.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-foo 001 foo
+  assert_exit     "rc"     1 "$RC"
+  assert_nonempty "stderr" "$ERR"
+  assert_eq "source untouched" "yes" "$([[ -d "$specs/sdlc/P-20260728-foo" ]] && echo yes || echo no)"
+  assert_eq "no second dir on the ordinal" "no" \
+    "$([[ -d "$specs/sdlc/001-foo" ]] && echo yes || echo no)"
+}
+
+# AC: the creation-side halt is numeric too — a wider-padded occupant holds the
+# same ordinal, so binding it refuses rather than writing a padding twin.
+case_jimfile_mv_spec_id_refuses_padding_variant_holder() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_padheld)
+  mkdir -p "$specs/sdlc/P-20260728-foo" "$specs/sdlc/0018-alpha"
+  cfg=$(fixture mvspecid-padheld.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-foo 018 foo
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no padding twin" "no" "$([[ -d "$specs/sdlc/018-foo" ]] && echo yes || echo no)"
+}
+
+# AC: a rename does not collide with itself — the placeholder already sitting on
+# the ordinal it is being named within is excluded from the occupancy check, so
+# binding a spec's slug onto its own advisory ordinal still works.
+case_jimfile_mv_spec_id_excludes_its_own_source() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_selfexcl)
+  mkdir -p "$specs/sdlc/018-wip"
+  cfg=$(fixture mvspecid-selfexcl.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc 018-wip 018 finish-coordinated-spec-identity
+  assert_exit "rc" 0 "$RC"
+  assert_eq "renamed in place" "yes" \
+    "$([[ -d "$specs/sdlc/018-finish-coordinated-spec-identity" ]] && echo yes || echo no)"
+}
+
+# AC: mv-spec carries the same halt — a second directory already holding the
+# ordinal is registry-vs-tree drift, so the slug rename refuses rather than
+# leaving two dirs on one ordinal behind it.
+case_jimfile_mv_spec_refuses_held_ordinal() {
+  local specs cfg
+  specs=$(empty_dir mvspec_held)
+  mkdir -p "$specs/sdlc/001-a" "$specs/sdlc/001"
+  cfg=$(fixture mvspec-held.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec sdlc 001 renamed
+  assert_exit     "rc"     1 "$RC"
+  assert_nonempty "stderr" "$ERR"
+  assert_eq "source untouched" "yes" "$([[ -d "$specs/sdlc/001-a" ]] && echo yes || echo no)"
+}
+
+# AC: an ordinary slug rename — the only dir on its ordinal — is unaffected by
+# the halt; the source excludes itself.
+case_jimfile_mv_spec_same_ordinal_rename_unaffected() {
+  local specs cfg
+  specs=$(empty_dir mvspec_selfexcl)
+  mkdir -p "$specs/sdlc/001-a"
+  cfg=$(fixture mvspec-selfexcl.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec sdlc 001 renamed
+  assert_exit "rc" 0 "$RC"
+  assert_eq "renamed" "yes" "$([[ -d "$specs/sdlc/001-renamed" ]] && echo yes || echo no)"
+}
+
 # AC: an ordinal spelled with different padding is the same ordinal — a spec
 # ordinal is a number, so '18' collides with an existing '018-…' rather than
 # reading as free space.

@@ -284,7 +284,7 @@ flowchart TD
    held, exclude-source, malformed/over-wide siblings skipped.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`
 
-3. [ ] Enforce the predicate inside `cmd_mv_spec_id` (numeric form) and
+3. [x] Enforce the predicate inside `cmd_mv_spec_id` (numeric form) and
    `cmd_mv_spec`; fixture the creation halt (`001-bar` in tree, target
    `001-foo` refused) and the wip self-exclusion. Depends on task 2.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`

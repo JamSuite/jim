@@ -419,6 +419,21 @@ cmd_mv_spec() {
     printf '%s\n' "$target"
     return 0
   fi
+  # Another directory on the same ordinal is registry-vs-tree drift; renaming
+  # the slug would carry it forward. Same numeric predicate the cross-id rename
+  # enforces, with the source excluded so an ordinary slug rename is unaffected.
+  local held held_rc
+  held="$(spec_ordinal_holder "$specs_root" "$group" "$id" "$(basename -- "$src")")"
+  held_rc=$?
+  if (( held_rc == 0 )); then
+    echo "error: mv-spec ordinal $id is already held by '$held'" \
+         "(registry-vs-tree drift); nothing renamed" >&2
+    return 1
+  fi
+  if (( held_rc != 1 )); then
+    echo "error: mv-spec could not decide occupancy of ordinal '$id'" >&2
+    return 1
+  fi
   # Refuse to clobber a different existing target.
   if [[ -e "$target" ]]; then
     echo "error: mv-spec target already exists — '$target'" >&2
@@ -626,6 +641,26 @@ cmd_mv_spec_id() {
   if [[ ! -d "$src" ]]; then
     echo "error: mv-spec-id source dir not found — '$src'" >&2
     return 1
+  fi
+  # A spec ordinal is path identity, so ANOTHER directory already holding the
+  # target ordinal is registry-vs-tree drift — refuse rather than land a second
+  # directory on it. Numeric, so a differently-padded occupant still collides;
+  # the source excludes itself, since a placeholder already sitting on the
+  # ordinal it is being named within is not a collision. The provisional target
+  # form carries no ordinal, so only the numeric form is checked.
+  local held held_rc
+  if [[ -n "$new_name" ]]; then
+    held="$(spec_ordinal_holder "$specs_root" "$group" "$new_id" "$old")"
+    held_rc=$?
+    if (( held_rc == 0 )); then
+      echo "error: mv-spec-id ordinal $new_id is already held by '$held'" \
+           "(registry-vs-tree drift); nothing renamed" >&2
+      return 1
+    fi
+    if (( held_rc != 1 )); then
+      echo "error: mv-spec-id could not decide occupancy of ordinal '$new_id'" >&2
+      return 1
+    fi
   fi
   if [[ -e "$target" ]]; then
     echo "error: mv-spec-id target already exists — '$target'" >&2
