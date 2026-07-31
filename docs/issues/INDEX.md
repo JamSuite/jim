@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 100
+- Open: 103
 - Closed: 67
 
 ## Issues
@@ -167,7 +167,10 @@
 - `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` — Spec reconcile scan and id rewrite anchor to different regions · status: open · num: 158 · priority: medium · created: 2026-07-30T19:35:09Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-the-shared-spec-fold-resolves-group-aliases-twice` — The shared spec fold resolves group aliases twice · status: open · num: 159 · priority: high · created: 2026-07-30T19:35:07Z · labels: [id-coordination, alloc] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-two-defects-in-the-spec-citation-sweep` — Two defects in the spec citation sweep · status: open · num: 160 · priority: high · created: 2026-07-30T19:35:08Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260731-describe-both-spec-identity-states-in-the-agent-context-blocks` — Describe both spec-identity states in the agent context blocks · status: open · num: 168 · priority: medium · created: 2026-07-31T12:08:07Z · labels: [sdlc, docs, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe` — Drop the unbounded bash grant from meta-matrix-probe · status: open · num: 166 · priority: high · created: 2026-07-31T11:49:17Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-enumerate-blueprints-through-the-map-in-the-review-omission-swee` — Enumerate blueprints through the map in the review omission sweep · status: open · num: 169 · priority: high · created: 2026-07-31T12:08:15Z · labels: [sdlc, review, 000-blueprint] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
+- `20260731-fix-the-index-script-exit-trap-leaking-its-temp-file` — Fix the index script EXIT trap leaking its temp file · status: open · num: 170 · priority: medium · created: 2026-07-31T12:08:22Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-make-the-plan-approved-gate-an-allowlist` — Make the plan approved gate an allowlist · status: open · num: 167 · priority: high · created: 2026-07-31T11:49:24Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-namespace-bare-agent-handles-and-add-a-checklist-item` — Namespace bare agent handles and add a checklist item · status: open · num: 161 · priority: critical · created: 2026-07-31T11:48:39Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer` — Retire BASIC and EXISTS vocabulary from the enforcement layer · status: open · num: 164 · priority: high · created: 2026-07-31T11:49:02Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
