@@ -343,7 +343,7 @@ flowchart TD
     its slug, corpus-shape file survives byte-identical.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile`
 
-14. [ ] Post-mv nesting guard in `cmd_mv_spec_id` and `cmd_mv_spec` —
+14. [x] Post-mv nesting guard in `cmd_mv_spec_id` and `cmd_mv_spec` —
     detect, restore the source, then fail; fixture: end state unchanged and
     exit non-zero when the race fires.
     **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`

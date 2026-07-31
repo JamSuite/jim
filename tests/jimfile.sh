@@ -618,6 +618,63 @@ case_jimfile_mv_spec_same_ordinal_rename_unaffected() {
   assert_eq "renamed" "yes" "$([[ -d "$specs/sdlc/001-renamed" ]] && echo yes || echo no)"
 }
 
+# jimfile_dir_inode <path> — the inode of <path> itself, the way the guard reads
+# it, so the fixture and the code agree on what identifies a directory.
+jimfile_dir_inode() {
+  ls -di -- "$1" 2>/dev/null | awk 'NR==1{print $1}'
+}
+
+# AC: when the target appears as a directory between the existence check and the
+# move, the rename refuses rather than nests — the source goes back where it was
+# and the command fails. The window is a race no CLI invocation can open
+# deterministically (the check and the move are consecutive statements in one
+# process), so the guard is exercised against exactly the state the race leaves.
+case_jimfile_nesting_guard_restores_and_fails() {
+  local specs src target ino err rc
+  specs=$(empty_dir nestguard)
+  mkdir -p "$specs/sdlc"
+  src="$specs/sdlc/P-20260728-x"
+  target="$specs/sdlc/018-x"
+  mkdir -p "$src"
+  printf 'payload\n' > "$src/spec.md"
+  ino="$(jimfile_dir_inode "$src")"
+  # Exactly what `mv <src> <target>` leaves behind when a directory appeared at
+  # the target: the source now sits inside it.
+  mkdir -p "$target"
+  mv -- "$src" "$target/"
+  err="$( source "$SCRIPT_JIMFILE" >/dev/null 2>&1
+          undo_nested_rename "$src" "$target" "$ino" 2>&1 )"
+  rc=$?
+  assert_exit     "rc"     1 "$rc"
+  assert_nonempty "names the race" "$err"
+  assert_eq "source restored"  "yes" "$([[ -d "$src" ]] && echo yes || echo no)"
+  assert_eq "payload restored" "payload" "$(cat "$src/spec.md" 2>/dev/null)"
+  assert_eq "nothing left nested" "no" \
+    "$([[ -d "$target/P-20260728-x" ]] && echo yes || echo no)"
+}
+
+# AC: a rename that actually landed is not mistaken for the race — the guard
+# identifies the moved directory itself, so a target that merely happens to
+# contain a similarly-named entry is left alone.
+case_jimfile_nesting_guard_passes_a_real_rename() {
+  local specs src target ino rc
+  specs=$(empty_dir nestguard_ok)
+  mkdir -p "$specs/sdlc"
+  src="$specs/sdlc/P-20260728-x"
+  target="$specs/sdlc/018-x"
+  mkdir -p "$src"
+  ino="$(jimfile_dir_inode "$src")"
+  mv -- "$src" "$target"
+  # A sub-entry sharing the source basename must not read as the artifact.
+  mkdir -p "$target/P-20260728-x"
+  ( source "$SCRIPT_JIMFILE" >/dev/null 2>&1
+    undo_nested_rename "$src" "$target" "$ino" ) 2>/dev/null
+  rc=$?
+  assert_exit "rc" 0 "$rc"
+  assert_eq "target left in place" "yes" "$([[ -d "$target" ]] && echo yes || echo no)"
+  assert_eq "source not resurrected" "no" "$([[ -d "$src" ]] && echo yes || echo no)"
+}
+
 # AC: an ordinal spelled with different padding is the same ordinal — a spec
 # ordinal is a number, so '18' collides with an existing '018-…' rather than
 # reading as free space.

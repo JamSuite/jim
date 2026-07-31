@@ -439,10 +439,13 @@ cmd_mv_spec() {
     echo "error: mv-spec target already exists — '$target'" >&2
     return 1
   fi
+  local src_ino
+  src_ino="$(dir_inode "$src")"
   if ! mv -- "$src" "$target"; then
     echo "error: mv-spec failed to rename '$src' -> '$target'" >&2
     return 1
   fi
+  undo_nested_rename "$src" "$target" "$src_ino" || return 1
   printf '%s\n' "$target"
 }
 
@@ -532,6 +535,44 @@ spec_ordinal_holder() {
   return 1
 }
 
+# dir_inode <path> — the inode number of <path> itself, empty if unreadable.
+# `ls -di` is the portable spelling; `stat` differs between GNU and BSD.
+dir_inode() {
+  ls -di -- "$1" 2>/dev/null | awk 'NR==1{print $1}'
+}
+
+# undo_nested_rename <src> <target> <src-inode-before>
+#   A directory that appears at <target> between the existence check and the move
+#   turns `mv <src> <target>` into a move INSIDE it, leaving the source nested
+#   under a directory this command never created — a realized-but-wrong spec
+#   directory, exactly the silent wrong state a rename must not produce.
+#
+#   Detected by identity, not by name: the rename landed only if <target> IS the
+#   directory that was at <src>. Comparing inodes rather than looking for a
+#   nested basename keeps a spec directory that legitimately contains an entry of
+#   that name from reading as the artifact.
+#
+#   rc 0 the rename landed · rc 1 it did not; the source is restored where
+#   possible and the caller must fail rather than report a rename that did not
+#   happen. `mv -T` would foreclose the race outright, but it is GNU-only and
+#   this layer is bash plus POSIX tools.
+undo_nested_rename() {
+  local src="$1" target="$2" src_ino="$3"
+  local base="${src##*/}" nested
+  [[ -n "$src_ino" ]] || return 0
+  [[ "$(dir_inode "$target")" == "$src_ino" ]] && return 0
+  nested="$target/$base"
+  if [[ "$(dir_inode "$nested")" == "$src_ino" ]] && [[ ! -e "$src" ]] \
+     && mv -- "$nested" "$src"; then
+    echo "error: '$target' appeared as a directory during the rename and '$src'" \
+         "was moved inside it; restored — nothing was renamed" >&2
+  else
+    echo "error: '$target' appeared as a directory during the rename and '$src'" \
+         "did not land there; it could not be restored — repair '$target' by hand" >&2
+  fi
+  return 1
+}
+
 # cmd_spec_ordinal_holder <group> <ordinal> [--exclude <basename>]
 #   The verb form of spec_ordinal_holder over the configured specs dir, so the
 #   realizer decides occupancy through the same predicate the rename verbs
@@ -591,10 +632,12 @@ cmd_spec_ordinal_holder() {
 #   rename-to-anything escape hatch.
 #
 #   {group} clears the id boundary and {old-basename} the spec-dir basename gate
-#   in both forms. Same parent only; the source must exist and an existing target
-#   is refused rather than clobbered — a spec ordinal is path identity, so a
-#   collision halts instead of overwriting or suffixing. Prints the target dir.
-#   The uncommitted-case twin of jimledger.sh's rename-tracked.
+#   in both forms. Same parent only; the source must exist, an ordinal another
+#   directory already holds is refused, and an existing target is refused rather
+#   than clobbered — a spec ordinal is path identity, so a collision halts
+#   instead of overwriting or suffixing. A target that appears only after that
+#   check is caught after the move and undone. Prints the target dir. The
+#   uncommitted-case twin of jimledger.sh's rename-tracked.
 cmd_mv_spec_id() {
   local group="${1:-}" old="${2:-}" new_id="${3:-}" new_name="${4:-}"
   if [[ -z "$group" || -z "$old" || -z "$new_id" ]]; then
@@ -666,10 +709,13 @@ cmd_mv_spec_id() {
     echo "error: mv-spec-id target already exists — '$target'" >&2
     return 1
   fi
+  local src_ino
+  src_ino="$(dir_inode "$src")"
   if ! mv -- "$src" "$target"; then
     echo "error: mv-spec-id failed to rename '$src' -> '$target'" >&2
     return 1
   fi
+  undo_nested_rename "$src" "$target" "$src_ino" || return 1
   printf '%s\n' "$target"
 }
 
