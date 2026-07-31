@@ -828,7 +828,7 @@ LEDGER_STAGES="spec research plan sec build review blueprint verify"
 #   <stage>_duration_seconds. runs = max(started, finished); interruptions =
 #   started - finished, so a stage restarted after an abandoned attempt counts
 #   each run and surfaces the gap. spec is instrumented like the rest: it opens
-#   its `started` event in a `<id>-wip` dir that `mv-spec` renames into the
+#   its `started` event in a `<id>-wip` dir that `mv-spec-id` renames into the
 #   final spec dir, then records `finished` at approval — so a completed spec
 #   carries both bounds and emits all three metrics. A stage with only
 #   `finished` (e.g. an older checkout that skipped the wip open) still counts
