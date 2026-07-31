@@ -28,7 +28,8 @@
 #   bash reconcile.sh --apply [<specs_dir>]
 #     APPLY: realize through the allocator, then rename each directory onto its
 #     ordinal — git mv when tracked, a plain move when not — and rewrite the
-#     frontmatter id.
+#     frontmatter id. Runs from the worktree top only; anywhere else is refused,
+#     because every path it resolves is relative to the current directory.
 #   bash reconcile.sh -c <config> [...]
 #     Forward -c to jimfile.sh / jimconf.sh / jimalloc.sh (used by tests).
 #   specs_dir default: jimconf.sh get specs
@@ -548,7 +549,27 @@ cmd_reconcile() {
   # absolute configured spelling would otherwise make one branch work and the
   # other refuse, within a single run.
   if (( apply )); then
-    local cfg_dir top rp_cfg rp_dir
+    local cfg_dir top here rp_cfg rp_dir
+    if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+      echo "error: --apply must run inside a git repo" >&2
+      return 1
+    fi
+    top="$(realpath -m -- "$top" 2>/dev/null)"
+    # Every path this step resolves — the configured specs dir, the tracked
+    # rename's arguments, the sweep's targets — is relative to the CURRENT
+    # directory, and jimconf reads ./jimconf.toml from there with no walk-up. The
+    # worktree top is the only directory where the configured spelling and its
+    # consumers agree; the relative form derived below is worktree-relative and
+    # means something else anywhere but there. Refuse, rather than resolve a
+    # directory that does not exist and report nothing to realize at exit 0 —
+    # from a subdirectory an absolute configured spelling still previews the
+    # pending work this step would then silently discard.
+    here="$(realpath -m -- . 2>/dev/null)"
+    if [[ -z "$top" || -z "$here" || "$here" != "$top" ]]; then
+      echo "error: --apply must run from the worktree top ('${top:-unresolved}')," \
+           "not '${here:-unresolved}'" >&2
+      return 1
+    fi
     cfg_dir="$(jc get specs 2>/dev/null)"; cfg_dir="${cfg_dir%/}"
     rp_cfg="$(realpath -m -- "$cfg_dir" 2>/dev/null)"
     rp_dir="$(realpath -m -- "$dir" 2>/dev/null)"
@@ -556,11 +577,6 @@ cmd_reconcile() {
       echo "error: --apply operates on the configured specs dir ('$cfg_dir'), not '$dir'" >&2
       return 1
     fi
-    if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
-      echo "error: --apply must run inside a git repo" >&2
-      return 1
-    fi
-    top="$(realpath -m -- "$top" 2>/dev/null)"
     if [[ "$rp_cfg" != "$top" && "$rp_cfg" != "$top"/* ]]; then
       echo "error: the configured specs dir ('$cfg_dir') resolves outside the worktree" >&2
       return 1
@@ -619,7 +635,7 @@ usage() {
     '' \
     '  bash reconcile.sh --apply [<specs_dir>]' \
     '      Apply: realize through the allocator, rename each directory onto its' \
-    '      ordinal, and rewrite the frontmatter id.' \
+    '      ordinal, and rewrite the frontmatter id. Worktree top only.' \
     '' \
     '  specs_dir default: jimconf.sh get specs'
 }

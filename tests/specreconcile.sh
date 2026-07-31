@@ -422,6 +422,40 @@ case_specreconcile_explicit_specs_dir() {
 
 # ─── Section: Test cases — apply ─────────────────────────────────────────────
 
+# AC: apply refuses when it is not run from the worktree top, rather than
+# realizing nothing at exit 0. Every path this step resolves is CWD-relative and
+# jimconf reads ./jimconf.toml with no walk-up, so the worktree top is the only
+# directory where the configured spelling and its consumers agree.
+case_specreconcile_apply_refuses_below_the_worktree_top() {
+  local repo
+  repo="$(specrec_repo sr_apply_subdir)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/sub"
+  run_specreconcile_in "$repo/sub" --apply
+  assert_exit  "rc"                    1              "$RC"
+  assert_match "names the worktree top" "worktree top" "$ERR"
+  assert_eq    "nothing realized"       "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+}
+
+# AC: the preview/apply contradiction is closed where it actually bites — an
+# absolute configured specs dir lets the preview list pending work from a
+# subdirectory, and the apply that follows must refuse rather than report that
+# there is nothing to realize.
+case_specreconcile_apply_refuses_where_preview_listed_work() {
+  local repo cfg
+  repo="$(specrec_repo sr_apply_abscfg)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/sub"
+  cfg=$(fixture specrec-abscfg.toml "specs_path = \"$repo/docs/specs\"")
+  run_specreconcile_in "$repo/sub" -c "$cfg"
+  assert_exit  "preview rc"          0                  "$RC"
+  assert_match "preview lists work"  "P-20260728-alpha" "$OUT"
+  run_specreconcile_in "$repo/sub" -c "$cfg" --apply
+  assert_exit  "apply rc"               1              "$RC"
+  assert_match "names the worktree top" "worktree top" "$ERR"
+}
+
 # AC: apply realizes an uncommitted pending spec — the directory takes its final
 # ordinal-slug name, the frontmatter carries the real id, and the registry holds
 # the record. The developer is not asked to commit first.
