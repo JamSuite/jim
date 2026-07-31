@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 104
-- Closed: 79
+- Open: 103
+- Closed: 80
 
 ## Issues
 
@@ -177,7 +177,7 @@
 - `20260731-fix-the-nesting-guard-false-positive-on-the-mv-copy-fallback` — Fix the nesting guard false-positive on the mv copy fallback · status: closed · num: 171 · priority: critical · created: 2026-07-31T12:38:10Z · labels: [file, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio` — Fixture or revert the ordinal width narrowing in canonicalization · status: open · num: 175 · priority: medium · created: 2026-07-31T12:38:40Z · labels: [file, scripts, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-give-issue-resolution-the-same-padding-blind-identity` — Give issue resolution the same padding blind identity · status: open · num: 182 · priority: medium · created: 2026-07-31T12:39:31Z · labels: [file, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-make-spec-reconcile-apply-work-from-a-subdirectory` — Make spec reconcile apply work from a subdirectory · status: open · num: 172 · priority: high · created: 2026-07-31T12:38:18Z · labels: [spec, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260731-make-spec-reconcile-apply-work-from-a-subdirectory` — Make spec reconcile apply work from a subdirectory · status: closed · num: 172 · priority: high · created: 2026-07-31T12:38:18Z · labels: [spec, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-make-the-plan-approved-gate-an-allowlist` — Make the plan approved gate an allowlist · status: open · num: 167 · priority: high · created: 2026-07-31T11:49:24Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-move-the-explanatory-comment-off-the-spec-template-id-line` — Move the explanatory comment off the spec template id line · status: open · num: 179 · priority: medium · created: 2026-07-31T12:39:09Z · labels: [spec, docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-namespace-bare-agent-handles-and-add-a-checklist-item` — Namespace bare agent handles and add a checklist item · status: open · num: 161 · priority: critical · created: 2026-07-31T11:48:39Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
