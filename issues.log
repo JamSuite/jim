@@ -159,3 +159,4 @@ issue allocate 158 20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-differe
 issue allocate 159 20260730-the-shared-spec-fold-resolves-group-aliases-twice 20260730 jrko
 issue allocate 160 20260730-two-defects-in-the-spec-citation-sweep 20260730 jrko
 issue allocate 161 20260731-namespace-bare-agent-handles-and-add-a-checklist-item 20260731 jrko
+issue allocate 162 20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcile-script 20260731 jrko
