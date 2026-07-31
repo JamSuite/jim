@@ -4,14 +4,14 @@ num: 123
 title: "Fix jimfile.sh next-id group/kind collision for a group named issue"
 status: open
 priority: medium
-labels: [platform, id-coordination]
+labels: [platform, id-coordination, partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
 created: 2026-07-27T07:20:53Z
-updated: 2026-07-27T07:20:53Z
+updated: 2026-07-31T05:51:48Z
 origin: docs/specs/platform/009-provisional-reconcile/spec.md
 ---
 
@@ -38,3 +38,34 @@ allocator.
 Possible fixes: disambiguate kind vs. group (e.g. an explicit `next-id spec
 <group>` form, or a `--group` flag), or reserve/reject spec-group names that
 collide with a kind keyword.
+
+## Narrowed, not closed (2026-07-31)
+
+`sdlc/017` retired the `/jim:spec` caller — spec creation binds through
+`jimalloc.sh allocate spec`, whose group is positional *after* the `spec` kind
+and therefore unambiguous. That removes the encounter described above, and this
+issue was provisionally dispositioned "moot" on that basis. It is not moot.
+
+**`jimfile.sh next-id` kept its `/jim:partition` caller, and jim's own repo is
+the collision case.** Verified today:
+
+```
+$ bash skills/file/scripts/jimfile.sh next-id issue
+error: 'next-id issue' requires <subject>        ← wanted: 011
+$ bash skills/file/scripts/jimfile.sh next-id sdlc
+018
+```
+
+`docs/specs/issue/` holds 000–010, so the `issue` spec group cannot be asked for
+its next ordinal at all. `/jim:partition merge … into issue` passes
+`jimfile.sh next-id <target>` stdout **verbatim** as `merge-map`'s `<start>`
+(`jimpartition.sh:1409`), so the collision reaches a live consumer. It fails
+loudly rather than mis-assigning an ordinal, which is why it has stayed
+invisible — and why the failure would surface first as a confusing merge error
+rather than as this bug.
+
+Narrower than filed: one caller instead of two, and jim has not yet merged into
+`issue`. Still real, and it now sits with the partition surface rather than with
+the spec surface. The fixes named above stand; an explicit `next-id spec <group>`
+form is cleanest, since it makes the kind always explicit rather than inferring
+it from a name a spec group may legitimately hold.

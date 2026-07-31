@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 97
-- Closed: 63
+- Open: 95
+- Closed: 65
 
 ## Issues
 
@@ -125,12 +125,12 @@
 - `20260726-neutralize-pathspec-magic-in-jimpartition-rewrite-identity-rewri` — Neutralize pathspec magic in jimpartition rewrite-identity/rewrite-refs · status: open · num: 107 · priority: medium · created: 2026-07-26T04:46:06Z · labels: [partition, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/research.md
 - `20260726-retry-the-unreachable-detection-path-and-generalize-the-exhausti` — Retry the unreachable-detection path and generalize the exhaustion message · status: open · num: 119 · priority: low · created: 2026-07-26T22:39:35Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/007-id-coordination-allocator/review.md
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` — Seed the id-coordination registry from existing artifacts · status: closed · num: 114 · priority: high · created: 2026-07-26T19:01:58Z · labels: [id-coordination, migration] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
-- `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` — Wire spec-ID allocation onto the id-coordination allocator · status: open · num: 112 · priority: high · created: 2026-07-26T19:01:56Z · labels: [id-coordination, spec] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` — Wire spec-ID allocation onto the id-coordination allocator · status: closed · num: 112 · priority: high · created: 2026-07-26T19:01:56Z · labels: [id-coordination, spec] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` — Wire the issue display ordinal onto the id-coordination allocator · status: closed · num: 111 · priority: high · created: 2026-07-26T19:01:55Z · labels: [id-coordination, issue] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260727-add-tests-jimalloc-sh-to-platform-map-territory` — Add tests/jimalloc.sh to platform map territory · status: open · num: 125 · priority: low · created: 2026-07-27T11:03:18Z · labels: [blueprint, territory] · origin: docs/specs/platform/009-provisional-reconcile/review.md
 - `20260727-align-reconcile-high-water-with-alloc-next-num-issue` — Align reconcile high-water with alloc_next_num_issue · status: closed · num: 124 · priority: low · created: 2026-07-27T11:03:17Z · labels: [id-coordination, robustness] · origin: docs/specs/platform/009-provisional-reconcile/review.md
 - `20260727-align-seed-landing-with-the-allocation-cas-path` — Align seed landing with the allocation CAS path · status: open · num: 122 · priority: low · created: 2026-07-27T05:34:22Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/008-registry-seed/review.md
-- `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` — Fix jimfile.sh next-id group/kind collision for a group named issue · status: open · num: 123 · priority: medium · created: 2026-07-27T07:20:53Z · labels: [platform, id-coordination] · origin: docs/specs/platform/009-provisional-reconcile/spec.md
+- `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` — Fix jimfile.sh next-id group/kind collision for a group named issue · status: open · num: 123 · priority: medium · created: 2026-07-27T07:20:53Z · labels: [platform, id-coordination, partition] · origin: docs/specs/platform/009-provisional-reconcile/spec.md
 - `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude` — Normalize seed reserved-slot skip and spec-ordinal magnitude · status: open · num: 121 · priority: medium · created: 2026-07-27T05:34:21Z · labels: [id-coordination, alloc, verify] · origin: docs/specs/platform/008-registry-seed/review.md
 - `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` — Coordinated issue-filing hard-fails in the mvm agent sandbox · status: open · num: 129 · priority: medium · created: 2026-07-28T21:39:15Z · labels: [id-coordination, workflow, sandbox] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260728-fix-vacuous-inline-backtick-wikilink-test-in-tests-issues-sh` — Fix vacuous inline-backtick wikilink test in tests/issues.sh · status: open · num: 128 · priority: low · created: 2026-07-28T21:39:09Z · labels: [test, hygiene] · origin: docs/specs/platform/010-allocator-issue-prefix/plan.md
@@ -141,7 +141,7 @@
 - `20260728-remove-spec-id-citations-from-issue-group-script-comments` — Remove spec-ID citations from issue-group script comments · status: open · num: 131 · priority: low · created: 2026-07-28T21:39:32Z · labels: [test, convention] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-spec-batch-cas-candidate-batch-allocation-7a-rework` — Spec batch-CAS candidate-batch allocation (§7a rework) · status: open · num: 127 · priority: high · created: 2026-07-28T06:59:35Z · labels: [id-coordination, candidate-batch, cross-group] · origin: docs/specs/issue/010-ordinal-coordination/plan.md
 - `20260728-spec-issue-placement-config-for-issue-content-location` — Spec issue_placement config for issue content location · status: open · num: 126 · priority: medium · created: 2026-07-28T00:47:22Z · labels: [id-coordination, issue] · origin: docs/specs/issue/010-ordinal-coordination/spec.md
-- `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity` — allocate spec under provisional mints an unrealizable identity · status: open · num: 135 · priority: medium · created: 2026-07-29T21:02:34Z · labels: [id-coordination, provisional] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
+- `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity` — allocate spec under provisional mints an unrealizable identity · status: closed · num: 135 · priority: medium · created: 2026-07-29T21:02:34Z · labels: [id-coordination, provisional] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-detect-duplicate-durable-ids-instead-of-silent-last-wins` — Detect duplicate durable ids instead of silent last-wins · status: open · num: 136 · priority: low · created: 2026-07-29T21:02:33Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/spec.md
 - `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp` — Provide a recovery path for a group that exhausts its ordinal space · status: open · num: 137 · priority: low · created: 2026-07-29T22:21:54Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` — Align the registry with tree-scan-era spec ordinals · status: open · num: 144 · priority: high · created: 2026-07-30T10:32:41Z · labels: [id-coordination, registry] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
@@ -218,6 +218,11 @@
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude`
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260727-align-seed-landing-with-the-allocation-cas-path`
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
+- `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` --related-to--> `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss`
+- `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` --related-to--> `20260730-spec-creation-halts-only-on-an-exact-name-collision`
+- `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` --related-to--> `20260730-define-how-a-provisional-spec-dir-resolves-through-the-path-help`
+- `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` --related-to--> `20260730-fold-spec-id-sequencing-to-admit-provisional-identities`
+- `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` --related-to--> `20260730-align-the-registry-with-tree-scan-era-spec-ordinals`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-remove-spec-id-citations-from-issue-group-script-comments`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-spec-issue-placement-config-for-issue-content-location`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-spec-batch-cas-candidate-batch-allocation-7a-rework`
