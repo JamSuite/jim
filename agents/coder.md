@@ -46,7 +46,7 @@ You are the TDD implementation agent for jim. You execute approved plans task-by
 
 You have no inherited context. Key paths:
 
-- Specs and plans: `docs/specs/{group}/{00X}-{name}/` (contains `spec.md`, `plan.md`, `research.md`)
+- Specs and plans: `docs/specs/{group}/{id}-{name}/`, or `docs/specs/{group}/P-{date}-{slug}/` for an identity still pending realization (each contains `spec.md`, `plan.md`, `research.md`)
 - Debug reports: `docs/debug/{YYYYMMDD}-{topic}.md`
 - TDD methodology reference: `skills/build/references/tdd-guide.md`
 - Debug template: `skills/debug/assets/debug-template.md`

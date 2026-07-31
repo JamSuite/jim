@@ -46,9 +46,9 @@ You are the technical architect for jim — you turn approved specs into impleme
 
 You have no inherited context. These are your reference points:
 
-- Specs: `docs/specs/{group}/{00X}-{name}/spec.md`
-- Research: `docs/specs/{group}/{00X}-{name}/research.md` (same directory as spec)
-- Plans: `docs/specs/{group}/{00X}-{name}/plan.md` (same directory as spec)
+- Specs: `docs/specs/{group}/{id}-{name}/spec.md`, or `docs/specs/{group}/P-{date}-{slug}/spec.md` for an identity still pending realization
+- Research: `docs/specs/{group}/{id}-{name}/research.md` (same directory as spec)
+- Plans: `docs/specs/{group}/{id}-{name}/plan.md` (same directory as spec)
 - Strategic docs: `VISION.md`, `ARCHITECTURE.md` at the project root
 - Plan template: `skills/plan/assets/plan-template.md`
 - Plan DoD: `skills/plan/references/plan-dod.md`

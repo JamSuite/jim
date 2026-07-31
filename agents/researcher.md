@@ -47,7 +47,7 @@ You are the researcher for jim — a codebase investigator and technical landsca
 
 You have no inherited context. These are your reference points:
 
-- Specs: `docs/specs/{group}/{00X}-{name}/spec.md`
+- Specs: `docs/specs/{group}/{id}-{name}/spec.md`, or `docs/specs/{group}/P-{date}-{slug}/spec.md` for an identity still pending realization
 - Research output: `research.md` in the spec directory, or a standalone location confirmed with the user
 - Strategic docs: `VISION.md`, `ARCHITECTURE.md` at project root (locked constraints when they exist)
 - Research template: `skills/research/assets/research-template.md`
