@@ -185,6 +185,43 @@ spec rename other/003 dashboard/001 20260729' > "$dir/specs.log"
   assert_eq   "departed referent" "core/009" "$OUT"
 }
 
+# AC: an ordinal wider than the registry could be rebuilt from is refused by
+# `resolve`, and the message says so rather than reading as a malformed id. The
+# width bound exists because recoverability was the requirement, so resolve must
+# not hand back an id the seed could not reproduce.
+case_jimalloc_resolve_spec_over_wide_ordinal_refused() {
+  local dir; dir=$(empty_dir res_overwide_query)
+  printf '%s\n' 'spec allocate core/003 alpha 20260726 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/1234567890123456
+  assert_exit  "rc"              1        "$RC"
+  assert_match "names the width" 'width'  "$ERR"
+}
+
+# AC: the width gate is applied JOINTLY to a rename record, so an over-wide
+# source drops the whole record — including its destination's establishing
+# claim. Crafted-log-only: nothing in this build can mint such a record, and no
+# live log holds a rename record at all. Pinned as the current semantics; whether
+# to gate per side belongs to the spec that emits the first rename record, and is
+# recorded on the redirect-emission issue.
+case_jimalloc_resolve_spec_over_wide_rename_source_drops_record() {
+  local dir; dir=$(empty_dir res_overwide_anchor)
+  printf '%s\n' 'spec rename core/1234567890123456 core/003 20260727' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: the same joint gate on the replay side — a rename TO an over-wide
+# destination is not applied, so resolve reports the pre-rename name at rc 0
+# rather than following a redirect it cannot represent.
+case_jimalloc_resolve_spec_over_wide_rename_dest_not_applied() {
+  local dir; dir=$(empty_dir res_overwide_replay)
+  printf '%s\n' 'spec allocate core/003 alpha 20260726 jane
+spec rename core/003 core/1234567890123456 20260727' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit "rc"          0         "$RC"
+  assert_eq   "pre-rename name" "core/003" "$OUT"
+}
+
 # AC: the same reuse-via-rename-in shape over issue ordinals resolves to the
 # ordinal's current holder.
 case_jimalloc_resolve_issue_reuse_rename_in() {

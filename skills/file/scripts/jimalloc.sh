@@ -172,6 +172,14 @@ alloc_valid_specid() {
 #   resumed realization miss its own prior record, or let resolve and the fold
 #   disagree about which ordinals are taken. Every site that compares or reports
 #   an ordinal passes it through here first, so there is one spelling to compare.
+#
+#   The WIDTH bound is deliberate and applies at every one of those sites,
+#   `resolve` included: ALLOC_MAX_ORD_DIGITS is the width the registry can be
+#   rebuilt from, so an ordinal wider than it is not one this system can
+#   represent — and resolve must not hand back an id the seed could not
+#   reproduce. Note the consequence on a rename record, where both sides pass
+#   through here: the record is dropped when EITHER side fails, so an over-wide
+#   source also drops its destination's establishing claim.
 alloc_canon_specid() {
   local id="$1" grp num
   alloc_valid_specid "$id" || return 1
@@ -223,8 +231,10 @@ alloc_encode_allocate_issue() {
 alloc_resolve_spec() {
   local queried="$1"
   alloc_valid_specid "$queried" || { echo "error: invalid spec id '$queried'" >&2; return 1; }
+  # Past the shape guard the only way canonicalization fails is the width bound,
+  # so the message names it rather than repeating "invalid".
   queried="$(alloc_canon_specid "$queried")" \
-    || { echo "error: invalid spec id '$1'" >&2; return 1; }
+    || { echo "error: spec id '$1' exceeds the ordinal width the registry can be rebuilt from (max $ALLOC_MAX_ORD_DIGITS digits)" >&2; return 1; }
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4 c5 c6
   local qgroup="${queried%/*}"
