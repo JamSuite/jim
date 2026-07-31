@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 93
+- Open: 100
 - Closed: 67
 
 ## Issues
@@ -167,6 +167,13 @@
 - `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` — Spec reconcile scan and id rewrite anchor to different regions · status: open · num: 158 · priority: medium · created: 2026-07-30T19:35:09Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-the-shared-spec-fold-resolves-group-aliases-twice` — The shared spec fold resolves group aliases twice · status: open · num: 159 · priority: high · created: 2026-07-30T19:35:07Z · labels: [id-coordination, alloc] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-two-defects-in-the-spec-citation-sweep` — Two defects in the spec citation sweep · status: open · num: 160 · priority: high · created: 2026-07-30T19:35:08Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe` — Drop the unbounded bash grant from meta-matrix-probe · status: open · num: 166 · priority: high · created: 2026-07-31T11:49:17Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-make-the-plan-approved-gate-an-allowlist` — Make the plan approved gate an allowlist · status: open · num: 167 · priority: high · created: 2026-07-31T11:49:24Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-namespace-bare-agent-handles-and-add-a-checklist-item` — Namespace bare agent handles and add a checklist item · status: open · num: 161 · priority: critical · created: 2026-07-31T11:48:39Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer` — Retire BASIC and EXISTS vocabulary from the enforcement layer · status: open · num: 164 · priority: high · created: 2026-07-31T11:49:02Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-unmix-the-template-brace-around-arguments-in-the-arch-skill` — Unmix the template brace around ARGUMENTS in the arch skill · status: open · num: 165 · priority: high · created: 2026-07-31T11:49:09Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table` — Unwrap the injection slot in the arch skill argument table · status: open · num: 163 · priority: critical · created: 2026-07-31T11:48:54Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcile-script` — Use CLAUDE_SKILL_DIR for the spec skill own reconcile script · status: open · num: 162 · priority: critical · created: 2026-07-31T11:48:47Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 
 ## Graph
 
