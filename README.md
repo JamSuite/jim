@@ -181,6 +181,7 @@ Inspect what jim resolves with `/jim:conf`:
 /jim:file next-id sdlc                                    # highest tree ordinal + 1 (local view; the allocator mints the real one)
 /jim:file next-num issue                                  # next issue display ordinal
 /jim:file path spec platform 003 jimfile                  # canonical spec path
+/jim:file path spec platform P-20260728-jimfile           # provisional identity (token is the whole basename)
 /jim:file path debug "auth bug"                           # date-prefixed debug path
 /jim:file glob specs platform                             # every spec in the platform group
 /jim:file kinds                                           # valid artifact kinds

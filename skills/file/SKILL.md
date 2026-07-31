@@ -29,6 +29,7 @@ Run jim's file/path resolver:
 - `/jim:file next-id issue "Auth bug"` — date-prefixed issue id (`YYYYMMDD-auth-bug`)
 - `/jim:file next-num issue` — next issue display ordinal (max `num` + 1)
 - `/jim:file path spec platform 003 jimfile` — canonical spec path
+- `/jim:file path spec platform P-20260728-jimfile` — a provisional identity's path (the token is the whole basename)
 - `/jim:file path issue 20260101-auth-bug` — issue file path (slug validated)
 - `/jim:file path debug "auth bug"` — date-prefixed debug path (collision-resolved)
 - `/jim:file glob specs sdlc` — every spec in the `sdlc` group (omit the group to list all groups)

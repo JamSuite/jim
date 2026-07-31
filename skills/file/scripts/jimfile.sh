@@ -31,12 +31,19 @@
 #   bash jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
 #                                                     rename a spec dir onto a
 #                                                     different id (shift/realize)
+#   bash jimfile.sh mv-spec-id <group> <old-basename> <provisional-token>
+#                                                     rename onto a provisional
+#                                                     identity (whole basename)
 #   bash jimfile.sh path <key>                        configured path for <key>,
 #                                                     regardless of existence
 #                                                     (D3 — single-arg form)
 #   bash jimfile.sh path spec      <group> <id> <name>
 #   bash jimfile.sh path plan      <group> <id> <name>
 #   bash jimfile.sh path research  <group> <id> <name>
+#   bash jimfile.sh path spec      <group> <provisional-token>
+#   bash jimfile.sh path plan      <group> <provisional-token>
+#   bash jimfile.sh path research  <group> <provisional-token>
+#                                                     the token IS the basename
 #   bash jimfile.sh path debug     <topic>            collision-resolved
 #   bash jimfile.sh path brainstorm <topic>           collision-resolved
 #   bash jimfile.sh glob specs [<group>]              one path per line
@@ -368,9 +375,10 @@ cmd_next_id() {
 }
 
 # cmd_mv_spec <group> <id> <new-name>
-#   Rename the spec directory {specs}/{group}/{id}-* to {id}-{new-name}. Used by
-#   /jim:spec to rename the `wip` placeholder dir (created at interview start so
-#   the jim ledger has a home) once the spec's slug is settled. Validates
+#   Rename the spec directory {specs}/{group}/{id}-* to {id}-{new-name}. The
+#   placeholder rename it was written for now goes through mv-spec-id, which
+#   expresses the same move and the cross-id one; this verb has no production
+#   caller and is kept as a supported slug-only rename. Validates
 #   group/id/new-name before any move, resolves the single {id}-* dir, no-ops if
 #   already named, and refuses to clobber a different target. Prints the
 #   resolved target dir on success.
@@ -962,12 +970,15 @@ cmd_prefix_from() {
 #     / `path blueprint` (no further args) take the key form and return the
 #     configured `debug` directory / project-tier map path respectively.
 #     Multi-arg form: `path <kind> <args...>` resolves a derived artifact path:
-#       spec     <group> <id> <name>
-#       plan     <group> <id> <name>
-#       research <group> <id> <name>
+#       spec     <group> <id> <name>  |  spec     <group> <provisional-token>
+#       plan     <group> <id> <name>  |  plan     <group> <provisional-token>
+#       research <group> <id> <name>  |  research <group> <provisional-token>
 #       debug      <topic>
 #       brainstorm <topic>
 #       blueprint  <group>            (reserved 000-blueprint/spec.md slot)
+#     The two-argument spec/plan/research form takes a provisional identity,
+#     whose token is the WHOLE directory basename rather than an ordinal that
+#     composes with a separate name.
 cmd_path() {
   local first="${1:-}"
   if [[ -z "$first" ]]; then
@@ -1184,7 +1195,9 @@ usage:
   jimfile.sh mv-spec <group> <id> <new-name>    rename {id}-* spec dir to {id}-{new-name}
   jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
                                                 rename a spec dir onto a different id
-  jimfile.sh spec-ordinal-holder <group> <ordinal> [--exclude <basename>]
+  jimfile.sh mv-spec-id <group> <old-basename> <provisional-token>
+                                                rename onto a provisional identity
+  jimfile.sh spec-ordinal-holder <group> <ordinal> [--exclude <basename>] [--root <dir>]
                                                 dir holding <ordinal> numerically;
                                                 exit 0 held · 1 free · 2 bad input
   jimfile.sh next-num issue                     next display ordinal (max+1)
@@ -1192,6 +1205,9 @@ usage:
   jimfile.sh path spec      <group> <id> <name>
   jimfile.sh path plan      <group> <id> <name>
   jimfile.sh path research  <group> <id> <name>
+  jimfile.sh path spec      <group> <provisional-token>
+  jimfile.sh path plan      <group> <provisional-token>
+  jimfile.sh path research  <group> <provisional-token>
   jimfile.sh path debug     <topic>             collision-resolved
   jimfile.sh path brainstorm <topic>            collision-resolved
   jimfile.sh glob specs [<group>]               one path per line
