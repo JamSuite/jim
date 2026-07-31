@@ -358,7 +358,7 @@ flowchart TD
     own citations are swept, a symlink escape is refused.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile`
 
-17. [ ] Close the remaining #145 fixtures: mixed-batch partial failure,
+17. [x] Close the remaining #145 fixtures: mixed-batch partial failure,
     partially-staged directory routing, group-rename halt (realized group ≠
     issued group), `allocate spec --follow-redirect` end to end, and the
     genuine two-spec residual case (two distinct specs sharing group, slug,

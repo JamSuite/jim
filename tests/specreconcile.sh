@@ -121,6 +121,95 @@ case_specreconcile_invalid_token_skipped() {
   assert_eq "bad identity not previewed" "0" "$(printf '%s\n' "$OUT" | grep -c 'P---bad')"
 }
 
+# AC: one identity halting does not strand the rest of the batch — the others
+# land, and the halted one is absent from the sweep and from the durable record,
+# so nothing claims a move that did not happen.
+case_specreconcile_apply_mixed_batch_partial_failure() {
+  local repo body events
+  repo="$(specrec_repo sr_mixed)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_prov_dir "$repo" sdlc P-20260728-beta
+  specrec_real_dir "$repo" sdlc 001-occupied
+  printf 'cites sdlc/P-20260728-alpha and sdlc/P-20260728-beta\n' \
+    > "$repo/docs/specs/sdlc/001-occupied/notes.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 1 "$RC"
+  assert_eq "the halted identity stays pending" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+  assert_eq "the rest of the batch landed" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/002-beta" ]] && echo yes || echo no)"
+  body="$(cat "$repo/docs/specs/sdlc/001-occupied/notes.md")"
+  assert_match "the landed identity is swept" 'sdlc/002'              "$body"
+  assert_match "the halted identity is not"   'sdlc/P-20260728-alpha' "$body"
+  events="$(grep '	spec	realized	' "$repo/docs/specs/ledger.md" 2>/dev/null)"
+  assert_match "the landed identity is recorded" 'sdlc/P-20260728-beta:sdlc/002' "$events"
+  assert_eq "the halted identity is not recorded" "0" \
+    "$(printf '%s' "$events" | grep -c 'P-20260728-alpha')"
+}
+
+# AC: a directory with some files staged and some not routes to the tracked
+# rename and still carries its untracked siblings — realization never asks the
+# developer to have committed at a particular moment.
+case_specreconcile_apply_partially_staged_dir() {
+  local repo dir
+  repo="$(specrec_repo sr_partial)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  dir="$repo/docs/specs/sdlc/P-20260728-alpha"
+  git -C "$repo" add docs/specs/sdlc/P-20260728-alpha/spec.md >/dev/null 2>&1
+  git -C "$repo" commit -q -m staged
+  printf 'draft plan\n' > "$dir/plan.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "tracked file moved" "yes" \
+    "$([[ -f "$repo/docs/specs/sdlc/001-alpha/spec.md" ]] && echo yes || echo no)"
+  assert_eq "untracked sibling moved" "yes" \
+    "$([[ -f "$repo/docs/specs/sdlc/001-alpha/plan.md" ]] && echo yes || echo no)"
+  assert_eq "source gone" "no" "$([[ -d "$dir" ]] && echo yes || echo no)"
+}
+
+# AC: an identity whose group was renamed since issuance halts — following a
+# group rename is not a move this step can make, so it says so instead of
+# realizing into a namespace the spec was never scoped under.
+case_specreconcile_apply_halts_on_group_rename() {
+  local repo
+  repo="$(specrec_repo sr_grouprename)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_commit "$repo"
+  specrec_craft_registry "$repo" 'group rename sdlc core 20260729 jane'
+  run_specreconcile_in "$repo" --apply
+  assert_exit     "rc"                     1 "$RC"
+  assert_nonempty "names the group rename" "$ERR"
+  assert_eq "pending dir untouched" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+  assert_eq "nothing realized under the new group" "no" \
+    "$([[ -d "$repo/docs/specs/core" ]] && echo yes || echo no)"
+}
+
+# AC: two DISTINCT specs that key alike — same group, same title-slug, same
+# issuance date — are surfaced, not merged. The preview shows the collision as
+# "have", and apply halts on the occupied directory rather than folding one spec
+# onto the other.
+case_specreconcile_two_specs_sharing_a_key_are_surfaced() {
+  local repo
+  repo="$(specrec_repo sr_residual)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_real_dir "$repo" sdlc 005-alpha
+  printf 'the other spec\n' > "$repo/docs/specs/sdlc/005-alpha/marker.md"
+  specrec_commit "$repo"
+  specrec_craft_registry "$repo" 'spec allocate sdlc/005 alpha 20260728 jane'
+  run_specreconcile_in "$repo"
+  assert_exit  "preview rc"       0 "$RC"
+  assert_match "collision surfaced" 'sdlc/P-20260728-alpha	sdlc/005	have' "$OUT"
+  run_specreconcile_in "$repo" --apply
+  assert_exit     "apply rc"        1 "$RC"
+  assert_nonempty "names the drift" "$ERR"
+  assert_eq "the other spec is untouched" "the other spec" \
+    "$(cat "$repo/docs/specs/sdlc/005-alpha/marker.md")"
+  assert_eq "the pending spec stays pending" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+}
+
 # AC: an uncommitted spec's own citations of the identity it just left are swept
 # too — git cannot see an untracked directory, so its own body would otherwise
 # keep pointing at a provisional identity that no longer exists.

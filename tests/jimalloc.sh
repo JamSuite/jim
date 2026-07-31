@@ -745,6 +745,28 @@ alloc_new_repo() {
 
 # alloc_specs_log <repo> — print the specs.log on the coordination branch.
 alloc_specs_log() { git -C "$1" cat-file -p refs/heads/jim/registry:specs.log 2>/dev/null; }
+
+# AC: --follow-redirect carries an allocation into the group the old name now
+# resolves to, end to end — the record lands under the current name and the
+# printed id names it, so a caller that consented to the redirect never mints
+# into a retired namespace.
+case_jimalloc_allocate_spec_follow_redirect_end_to_end() {
+  local repo log
+  repo="$(alloc_new_repo alloc_follow_redirect)"
+  run_jimalloc_in "$repo" allocate spec sdlc "First feature"
+  assert_eq "issued under the original name" "sdlc/001" "$OUT"
+  alloc_append_record "$repo" specs.log 'group rename sdlc core 20260729 jane'
+  run_jimalloc_in "$repo" allocate spec sdlc "Second feature"
+  assert_exit  "refuses without consent" 1         "$RC"
+  assert_match "names the redirect"      'renamed' "$ERR"
+  run_jimalloc_in "$repo" allocate spec sdlc "Second feature" --follow-redirect
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "issued under the current name" "core/002" "$OUT"
+  log="$(alloc_specs_log "$repo")"
+  assert_match "recorded under the current name" '^spec allocate core/002 second-feature ' "$log"
+  assert_eq "nothing minted into the retired name" "0" \
+    "$(printf '%s\n' "$log" | grep -c '^spec allocate sdlc/002 ')"
+}
 # alloc_issues_log <repo> — print the issues.log on the coordination branch.
 alloc_issues_log() { git -C "$1" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null; }
 
