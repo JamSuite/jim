@@ -1386,6 +1386,29 @@ case_jimalloc_seed_derive_issues() {
   assert_eq "derived issue records" "$expected" "$out"
 }
 
+# AC: a hand-authored padded ordinal seeds in canonical form. The fold and the
+# seed's own dedupe read the ordinal numerically, but the issue resolver compares
+# as a string — so seeding `007` verbatim would leave `resolve issue 7` reporting
+# not-allocated while `peek issue` counted it. The spec seed already normalizes;
+# this is the same defect class on the side that was left out.
+case_jimalloc_seed_issues_padded_num_normalized() {
+  local dir out
+  dir="$(empty_dir seed_issues_padded)"
+  seed_issue_file "$dir" "20260726-alpha.md" 007 20260726-alpha 2026-07-26T10:00:00Z
+  out="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_issues "$dir")"
+  assert_eq "seeded unpadded" \
+    "issue allocate 7 20260726-alpha 20260726 jim-seed" "$out"
+}
+
+# AC: the record a padded ordinal seeds is one the resolver can find.
+case_jimalloc_resolve_issue_finds_a_seeded_padded_ordinal() {
+  local dir; dir=$(empty_dir res_issue_padded_seed)
+  seed_issue_file "$dir" "20260726-alpha.md" 007 20260726-alpha 2026-07-26T10:00:00Z
+  ( source "$SCRIPT_jimalloc"; alloc_seed_derive_issues "$dir" ) > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 7
+  assert_exit "rc" 0 "$RC"
+}
+
 # run_seed_fn <fn> <args...> — invoke a sourced seed derivation function,
 # capturing stdout/stderr/rc into OUT/ERR/RC (the derive functions are pure).
 run_seed_fn() {

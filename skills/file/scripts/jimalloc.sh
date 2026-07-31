@@ -891,7 +891,13 @@ alloc_seed_derive_issues() {
     fi
     seen_num[$((10#$num))]=1; seen_id[$id]=1
     cdate="$(alloc_seed_norm_date "$created")"
-    rows+=("$num"$'\t'"$id"$'\t'"$cdate")
+    # Seed the CANONICAL spelling, not the frontmatter's. An issue ordinal is a
+    # number written without padding, and a hand-authored '007' seeded verbatim
+    # splits the registry against itself: the fold and this dedupe read it
+    # numerically while the resolver compares as a string, so the ordinal would
+    # count toward the high-water and still resolve as never allocated. The spec
+    # seed normalizes for the same reason.
+    rows+=("$((10#$num))"$'\t'"$id"$'\t'"$cdate")
   done
   if [[ -n "$conflicts" ]]; then
     printf 'error: cannot seed — issue artifacts have conflicts:\n%s' "$conflicts" >&2
