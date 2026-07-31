@@ -12,3 +12,5 @@
 1785499745	2026-07-31T12:09:05Z	build	finished	head_sha=ff8853e1d0c981c2670c71ff6e34fd11d22190aa
 1785500059	2026-07-31T12:14:19Z	spec	started	
 1785500113	2026-07-31T12:15:13Z	spec	finished	
+1785500157	2026-07-31T12:15:57Z	review	started	
+1785500825	2026-07-31T12:27:05Z	review	finished	alignment=major-drift;findings=13
