@@ -273,7 +273,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] **Reproduce.** Script the #150 exemplar in a temp sandbox: crafted
+1. [x] **Reproduce.** Script the #150 exemplar in a temp sandbox: crafted
    `spec allocate sdlc/18 alpha 20260728` record, pending
    `sdlc/P-20260728-alpha`, tree holding `018-alpha`; confirm today's
    behavior (exit 0, two directories on one ordinal, no ledger row).
