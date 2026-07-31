@@ -550,6 +550,104 @@ case_jimfile_mv_spec_id_missing_args_exits_2() {
   assert_nonempty "stderr" "$ERR"
 }
 
+# AC: an ordinal spelled with different padding is the same ordinal — a spec
+# ordinal is a number, so '18' collides with an existing '018-…' rather than
+# reading as free space.
+case_jimfile_spec_ordinal_holder_padding_variant_held() {
+  local specs cfg
+  specs=$(empty_dir soh_padding)
+  mkdir -p "$specs/sdlc/018-alpha"
+  cfg=$(fixture soh-padding.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 18
+  assert_exit "held rc"       0            "$RC"
+  assert_eq   "names the holder" "018-alpha" "$OUT"
+}
+
+# AC: a bare-ordinal directory (no slug) holds its ordinal too — occupancy is
+# about the ordinal, not about carrying a name after it.
+case_jimfile_spec_ordinal_holder_bare_occupant_held() {
+  local specs cfg
+  specs=$(empty_dir soh_bare)
+  mkdir -p "$specs/sdlc/018"
+  cfg=$(fixture soh-bare.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 018
+  assert_exit "held rc"          0     "$RC"
+  assert_eq   "names the holder" "018" "$OUT"
+}
+
+# AC: an unheld ordinal reports free — rc 1 with no holder named, distinct from
+# the rc 2 an unusable argument earns.
+case_jimfile_spec_ordinal_holder_free_ordinal() {
+  local specs cfg
+  specs=$(empty_dir soh_free)
+  mkdir -p "$specs/sdlc/001-a" "$specs/sdlc/003-c"
+  cfg=$(fixture soh-free.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 002
+  assert_exit "free rc"      1  "$RC"
+  assert_eq   "no holder"    "" "$OUT"
+}
+
+# AC: a rename excludes its own source, so a directory already sitting on the
+# ordinal it is being renamed within does not collide with itself.
+case_jimfile_spec_ordinal_holder_excludes_source() {
+  local specs cfg
+  specs=$(empty_dir soh_exclude)
+  mkdir -p "$specs/sdlc/018-wip"
+  cfg=$(fixture soh-exclude.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 018 --exclude 018-wip
+  assert_exit "excluded source reads free" 1  "$RC"
+  assert_eq   "no holder"                  "" "$OUT"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 018
+  assert_exit "unexcluded still held" 0 "$RC"
+}
+
+# AC: a sibling whose leading token is not a usable ordinal — a plain name, a
+# pending provisional dir, or a token wider than the registry could be rebuilt
+# from — is never counted as a holder and never errors the run.
+case_jimfile_spec_ordinal_holder_skips_malformed_siblings() {
+  local specs cfg
+  specs=$(empty_dir soh_malformed)
+  mkdir -p "$specs/sdlc/notes" "$specs/sdlc/P-20260728-x" \
+           "$specs/sdlc/0000000000000000018-wide" "$specs/sdlc/018-alpha"
+  cfg=$(fixture soh-malformed.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 019
+  assert_exit "junk siblings do not hold 019" 1  "$RC"
+  assert_eq   "no stderr noise"               "" "$ERR"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 18
+  assert_exit "the real holder is still found" 0            "$RC"
+  assert_eq   "names the holder"               "018-alpha"  "$OUT"
+}
+
+# AC: a group with no directory at all holds nothing — free, not an error.
+case_jimfile_spec_ordinal_holder_absent_group_is_free() {
+  local specs cfg
+  specs=$(empty_dir soh_nogroup)
+  mkdir -p "$specs"
+  cfg=$(fixture soh-nogroup.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 001
+  assert_exit "free rc"   1  "$RC"
+  assert_eq   "no holder" "" "$OUT"
+}
+
+# AC: unusable arguments are a usage failure (rc 2), never a silent "free" —
+# reading a rejected ordinal as unoccupied is what lets a bad token through.
+case_jimfile_spec_ordinal_holder_rejects_bad_input() {
+  local specs cfg
+  specs=$(empty_dir soh_badinput)
+  mkdir -p "$specs/sdlc/018-alpha"
+  cfg=$(fixture soh-badinput.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder "../evil" 018
+  assert_exit "bad group rc" 2 "$RC"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 01a
+  assert_exit "non-numeric ordinal rc" 2 "$RC"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 1234567890123456
+  assert_exit "over-wide ordinal rc" 2 "$RC"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 018 --exclude "../evil"
+  assert_exit "bad exclude rc" 2 "$RC"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc
+  assert_exit "missing ordinal rc" 2 "$RC"
+}
+
 # AC: next-id zero-pads to 3 digits even at boundary
 case_jimfile_next_id_zero_pads() {
   local specs cfg

@@ -473,6 +473,91 @@ is_prov_basename() {
   is_valid_id "$body" >/dev/null 2>&1
 }
 
+# spec_ordinal_holder <specs_dir> <group> <ordinal> [<exclude_basename>]
+#   Print the basename of the sibling directory already holding <ordinal> in
+#   <group>. rc 0 held (holder printed) · rc 1 free · rc 2 unusable argument.
+#
+#   Occupancy is decided NUMERICALLY: a spec ordinal is a number that happens to
+#   be written zero-padded, so '18' and '018' are one ordinal, and a bare-ordinal
+#   directory holds it as surely as a slugged one. Deciding it by string match is
+#   what lets a differently-spelled ordinal read as free space and land a second
+#   directory on an ordinal already taken.
+#
+#   A sibling whose leading token is not a usable ordinal — a plain name, a
+#   pending provisional dir, or a token wider than the registry could be rebuilt
+#   from — is skipped: never counted as a holder, never an error. The tree is
+#   branch-writable, so one unusable sibling must decide nothing and stop
+#   nothing. An unusable ARGUMENT is the opposite: rc 2, because reading a
+#   rejected ordinal as "free" is exactly how a bad token gets through.
+#
+#   <exclude_basename> names a directory to ignore, so a rename whose source
+#   already sits on the target ordinal does not collide with itself.
+spec_ordinal_holder() {
+  local root="$1" group="$2" ord="$3" exclude="${4:-}"
+  [[ -n "$root" ]] || return 2
+  is_valid_id "$group" >/dev/null 2>&1 || return 2
+  [[ "$ord" =~ ^[0-9]{1,15}$ ]] || return 2
+  if [[ -n "$exclude" ]]; then
+    is_spec_dir_basename "$exclude" || return 2
+  fi
+  local group_dir="$root/$group"
+  [[ -d "$group_dir" ]] || return 1
+  local entry name tok
+  for entry in "$group_dir"/*/; do
+    [[ -d "$entry" ]] || continue
+    name="${entry%/}"; name="${name##*/}"
+    [[ -n "$exclude" && "$name" == "$exclude" ]] && continue
+    tok="${name%%-*}"
+    [[ "$tok" =~ ^[0-9]{1,15}$ ]] || continue
+    if (( 10#$tok == 10#$ord )); then
+      printf '%s\n' "$name"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# cmd_spec_ordinal_holder <group> <ordinal> [--exclude <basename>]
+#   The verb form of spec_ordinal_holder over the configured specs dir, so the
+#   realizer decides occupancy through the same predicate the rename verbs
+#   enforce rather than keeping a second copy in agreement by convention.
+cmd_spec_ordinal_holder() {
+  local group="" ord="" exclude="" seen=0
+  while (( $# )); do
+    case "$1" in
+      --exclude)
+        if [[ -z "${2:-}" ]]; then
+          echo "error: spec-ordinal-holder: --exclude requires a basename" >&2
+          return 2
+        fi
+        exclude="$2"; shift 2 ;;
+      -*)
+        echo "error: spec-ordinal-holder: unknown option '$1'" >&2
+        return 2 ;;
+      *)
+        case "$seen" in
+          0) group="$1" ;;
+          1) ord="$1" ;;
+          *) echo "error: spec-ordinal-holder: unexpected argument '$1'" >&2; return 2 ;;
+        esac
+        seen=$(( seen + 1 )); shift ;;
+    esac
+  done
+  if [[ -z "$group" || -z "$ord" ]]; then
+    echo "error: 'spec-ordinal-holder' requires <group> <ordinal> [--exclude <basename>]" >&2
+    return 2
+  fi
+  local specs_root rc
+  specs_root="$(jimconf_get specs)"
+  spec_ordinal_holder "$specs_root" "$group" "$ord" "$exclude"
+  rc=$?
+  if (( rc == 2 )); then
+    echo "error: spec-ordinal-holder rejected its arguments — group '$group'," \
+         "ordinal '$ord'${exclude:+, exclude '$exclude'}" >&2
+  fi
+  return "$rc"
+}
+
 # cmd_mv_spec_id <group> <old-basename> <new-id> <name>
 #                <group> <old-basename> <provisional-token>
 #   Rename {specs}/{group}/{old-basename}/ onto a different identity — the
@@ -946,6 +1031,9 @@ usage:
   jimfile.sh mv-spec <group> <id> <new-name>    rename {id}-* spec dir to {id}-{new-name}
   jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
                                                 rename a spec dir onto a different id
+  jimfile.sh spec-ordinal-holder <group> <ordinal> [--exclude <basename>]
+                                                dir holding <ordinal> numerically;
+                                                exit 0 held · 1 free · 2 bad input
   jimfile.sh next-num issue                     next display ordinal (max+1)
   jimfile.sh path <key>                         configured path for <key>
   jimfile.sh path spec      <group> <id> <name>
@@ -991,6 +1079,7 @@ main() {
     next-num) cmd_next_num "$@" ;;
     mv-spec)  cmd_mv_spec  "$@" ;;
     mv-spec-id) cmd_mv_spec_id "$@" ;;
+    spec-ordinal-holder) cmd_spec_ordinal_holder "$@" ;;
     path)    cmd_path    "$@" ;;
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;

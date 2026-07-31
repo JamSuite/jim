@@ -279,7 +279,7 @@ flowchart TD
    behavior (exit 0, two directories on one ordinal, no ledger row).
    **Verify:** `bash /tmp/claude-1000/-home-jrko-src-jim/ceecdf82-1f3d-445f-9755-1343526d6909/scratchpad/repro-150.sh; test $? -eq 0`
 
-2. [ ] Add `spec_ordinal_holder` + the `spec-ordinal-holder` verb to
+2. [x] Add `spec_ordinal_holder` + the `spec-ordinal-holder` verb to
    `jimfile.sh` with fixtures: padding variant held, bare-`NNN` occupant
    held, exclude-source, malformed/over-wide siblings skipped.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`
