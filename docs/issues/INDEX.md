@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 96
-- Closed: 87
+- Open: 95
+- Closed: 88
 
 ## Issues
 
@@ -189,7 +189,7 @@
 - `20260731-unmix-the-template-brace-around-arguments-in-the-arch-skill` — Unmix the template brace around ARGUMENTS in the arch skill · status: open · num: 165 · priority: high · created: 2026-07-31T11:49:09Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table` — Unwrap the injection slot in the arch skill argument table · status: open · num: 163 · priority: critical · created: 2026-07-31T11:48:54Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcile-script` — Use CLAUDE_SKILL_DIR for the spec skill own reconcile script · status: open · num: 162 · priority: critical · created: 2026-07-31T11:48:47Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
-- `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` — Write the fixtures the plan named but the build skipped · status: open · num: 178 · priority: medium · created: 2026-07-31T12:39:02Z · labels: [spec, issue, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` — Write the fixtures the plan named but the build skipped · status: closed · num: 178 · priority: medium · created: 2026-07-31T12:39:02Z · labels: [spec, issue, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Graph
 
@@ -280,6 +280,7 @@
 - `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
 - `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` --related-to--> `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped`
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
+- `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
 
 ## Integrity Warnings
 

@@ -2,7 +2,7 @@
 id: 20260731-write-the-fixtures-the-plan-named-but-the-build-skipped
 num: 178
 title: "Write the fixtures the plan named but the build skipped"
-status: open
+status: closed
 priority: medium
 labels: [spec, issue, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:39:02Z
-updated: 2026-07-31T12:39:02Z
+updated: 2026-07-31T20:58:29Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 ---
 
@@ -51,3 +51,33 @@ unclosed-fence clause as mis-specified or restate it as the assertion actually
 wanted; add the multi-row prefix-overlap fixture.
 
 Finding 8 of `docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md`.
+
+## Resolution (2026-07-31) — all three items
+
+**1 · Forced no-op rewrite fails loudly.** Written against both realizers, driven
+directly, since the reasoning that it is CLI-unreachable holds. Landed with
+[[20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure]],
+whose fix is what gave the rc-1 path consequences worth pinning: the issue side
+now proves the batch continues and the healthy file still realizes; the spec side
+proves the identity still enters the remap.
+
+**2 · Unclosed fence — restated, not dropped.** The clause inverted the correct
+reading: under CommonMark an unclosed fence *does* extend to EOF, so what is
+actually wanted is that the tail stays verbatim. Fixtured that way — the line
+before the fence is rewritten, the fenced line and everything after it are not.
+
+**3 · Multi-row prefix overlap — and it did not say what it looked like.** The
+pair this issue named (`…alpha` with `…alpha-2`) **does not exercise the
+boundary check at all.** Remap rows follow the scan's glob, and under `LC_ALL=C`
+`…alpha-2/` sorts *before* `…alpha/`, because `-` (0x2D) precedes `/` (0x2F). The
+longer identity is therefore row 1 and matches first, so the suffixed sibling is
+protected by row order rather than by the trailing-boundary check.
+
+Verified by mutation: with the trailing boundary check removed, a fixture built
+on that pair alone still **passes**. `…alphax/` sorts *after* `…alpha/`, which
+puts the shorter row first and leaves the boundary as the only thing between
+them — the fixture carries all three identities, and fails under that same
+mutation.
+
+Worth keeping: the sweep's prefix-overlap safety argument was sound, but the
+example it rested on was the one case that would have held without it.
