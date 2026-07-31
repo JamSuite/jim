@@ -2,7 +2,7 @@
 id: 20260731-normalize-the-citation-sweep-configured-roots
 num: 173
 title: "Normalize the citation sweep configured roots"
-status: open
+status: closed
 priority: high
 labels: [spec, scripts, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:38:25Z
-updated: 2026-07-31T12:38:25Z
+updated: 2026-07-31T20:28:56Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 ---
 
@@ -46,3 +46,23 @@ Normalize the four roots the way `$dir` is now normalized — canonicalize and
 derive the worktree-relative form before use.
 
 Finding 3 of `docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md`.
+
+## Resolution (2026-07-31)
+
+Closed by the C′-fix build. Each of the four roots is now canonicalized and
+reduced to its worktree-relative form once, at the point it is read, so the
+trigger compares two paths written the same way.
+
+**A second, larger failure closed with it.** The roots are passed to
+`git ls-files` as one pathspec set. A configured root that resolves *outside* the
+worktree makes git reject the entire set — so a single stray root silently
+disabled the sweep for all four, not just its own. Such a root is now dropped
+with a warning and the remaining three still sweep.
+
+The `.`-valued edge (a root configured as the worktree top itself) is handled at
+the trigger rather than left to a prefix match that cannot fire, since
+`git ls-files` emits no leading `./`.
+
+Fixtured with an absolute `issues_path`, asserting both halves — the citation
+rewritten *and* `INDEX.md` regenerated — because the defect was precisely that
+the first happened without the second.

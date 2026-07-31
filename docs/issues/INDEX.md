@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 103
-- Closed: 80
+- Open: 100
+- Closed: 83
 
 ## Issues
 
@@ -167,7 +167,7 @@
 - `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` — Spec reconcile scan and id rewrite anchor to different regions · status: closed · num: 158 · priority: medium · created: 2026-07-30T19:35:09Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-the-shared-spec-fold-resolves-group-aliases-twice` — The shared spec fold resolves group aliases twice · status: closed · num: 159 · priority: high · created: 2026-07-30T19:35:07Z · labels: [id-coordination, alloc] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-two-defects-in-the-spec-citation-sweep` — Two defects in the spec citation sweep · status: closed · num: 160 · priority: high · created: 2026-07-30T19:35:08Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
-- `20260731-check-the-awk-exit-status-before-installing-a-swept-file` — Check the awk exit status before installing a swept file · status: open · num: 177 · priority: medium · created: 2026-07-31T12:38:54Z · labels: [spec, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260731-check-the-awk-exit-status-before-installing-a-swept-file` — Check the awk exit status before installing a swept file · status: closed · num: 177 · priority: medium · created: 2026-07-31T12:38:54Z · labels: [spec, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-close-the-remaining-edges-of-the-ordinal-identity-invariant` — Close the remaining edges of the ordinal identity invariant · status: open · num: 181 · priority: low · created: 2026-07-31T12:39:24Z · labels: [file, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-describe-both-spec-identity-states-in-the-agent-context-blocks` — Describe both spec-identity states in the agent context blocks · status: open · num: 168 · priority: medium · created: 2026-07-31T12:08:07Z · labels: [sdlc, docs, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-document-the-provisional-path-arity-in-the-script-own-help` — Document the provisional path arity in the script own help · status: open · num: 176 · priority: medium · created: 2026-07-31T12:38:48Z · labels: [file, scripts, docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
@@ -181,11 +181,11 @@
 - `20260731-make-the-plan-approved-gate-an-allowlist` — Make the plan approved gate an allowlist · status: open · num: 167 · priority: high · created: 2026-07-31T11:49:24Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-move-the-explanatory-comment-off-the-spec-template-id-line` — Move the explanatory comment off the spec template id line · status: open · num: 179 · priority: medium · created: 2026-07-31T12:39:09Z · labels: [spec, docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-namespace-bare-agent-handles-and-add-a-checklist-item` — Namespace bare agent handles and add a checklist item · status: open · num: 161 · priority: critical · created: 2026-07-31T11:48:39Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
-- `20260731-normalize-the-citation-sweep-configured-roots` — Normalize the citation sweep configured roots · status: open · num: 173 · priority: high · created: 2026-07-31T12:38:25Z · labels: [spec, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260731-normalize-the-citation-sweep-configured-roots` — Normalize the citation sweep configured roots · status: closed · num: 173 · priority: high · created: 2026-07-31T12:38:25Z · labels: [spec, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` — Regenerate the issue index before aborting on a rewrite failure · status: open · num: 174 · priority: high · created: 2026-07-31T12:38:33Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer` — Retire BASIC and EXISTS vocabulary from the enforcement layer · status: open · num: 164 · priority: high · created: 2026-07-31T11:49:02Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-retire-the-mv-spec-prose-now-that-it-has-no-callers` — Retire the mv-spec prose now that it has no callers · status: open · num: 183 · priority: low · created: 2026-07-31T12:39:39Z · labels: [docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` — Skip symlinked entries in the realized directory sweep · status: open · num: 180 · priority: medium · created: 2026-07-31T12:39:17Z · labels: [spec, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` — Skip symlinked entries in the realized directory sweep · status: closed · num: 180 · priority: medium · created: 2026-07-31T12:39:17Z · labels: [spec, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-unmix-the-template-brace-around-arguments-in-the-arch-skill` — Unmix the template brace around ARGUMENTS in the arch skill · status: open · num: 165 · priority: high · created: 2026-07-31T11:49:09Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table` — Unwrap the injection slot in the arch skill argument table · status: open · num: 163 · priority: critical · created: 2026-07-31T11:48:54Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcile-script` — Use CLAUDE_SKILL_DIR for the spec skill own reconcile script · status: open · num: 162 · priority: critical · created: 2026-07-31T11:48:47Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
@@ -272,6 +272,7 @@
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id`
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp`
 - `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
+- `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
 
 ## Integrity Warnings
 
