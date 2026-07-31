@@ -2,7 +2,7 @@
 id: 20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio
 num: 175
 title: "Fixture or revert the ordinal width narrowing in canonicalization"
-status: open
+status: closed
 priority: medium
 labels: [file, scripts, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T12:38:40Z
-updated: 2026-07-31T12:38:40Z
+updated: 2026-07-31T21:09:14Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 ---
 
@@ -54,3 +54,31 @@ Decide the intent and record it: either fixture the width policy as deliberate
 sites so canonicalization changes padding only.
 
 Finding 5 of `docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md`.
+
+## Resolution (2026-07-31) — deliberate, and now said so
+
+Closed by the C′-fix build taking the first of the two options: the width policy
+is **intended** at every comparison site, `resolve` included.
+
+The reasoning, now in the helper's docstring: `ALLOC_MAX_ORD_DIGITS` is the width
+the registry can be **rebuilt** from — the value the ceiling-versus-gap fork
+settled on when recoverability turned out to be the real requirement. An ordinal
+wider than it is not one this system can represent, so `resolve` accepting it
+would mean handing back an id the seed could not reproduce. Bringing resolve
+under the policy the constant already declares is the coherent reading, not an
+accident of helper reuse — even though it did arrive as one.
+
+All three divergences are fixtured. The query-side message no longer says
+"invalid spec id": past the shape guard the only way canonicalization can fail is
+the width bound, so it names the bound and its value.
+
+**The joint application is not settled here.** A rename record is dropped when
+*either* side fails, so an over-wide source also drops its destination's
+establishing claim — which punishes an id that is perfectly representable. That
+is rename-record semantics rather than width policy, no live log holds a rename
+record, and it interacts with the open question of whether a rename source counts
+as `known`. Recorded on
+[[20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche]]
+with both failure directions and the recommendation to gate per side. The
+fixtures pin today's joint behavior, so that spec has to change them
+deliberately.

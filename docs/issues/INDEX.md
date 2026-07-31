@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 95
-- Closed: 88
+- Open: 93
+- Closed: 90
 
 ## Issues
 
@@ -168,14 +168,14 @@
 - `20260730-the-shared-spec-fold-resolves-group-aliases-twice` — The shared spec fold resolves group aliases twice · status: closed · num: 159 · priority: high · created: 2026-07-30T19:35:07Z · labels: [id-coordination, alloc] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-two-defects-in-the-spec-citation-sweep` — Two defects in the spec citation sweep · status: closed · num: 160 · priority: high · created: 2026-07-30T19:35:08Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260731-check-the-awk-exit-status-before-installing-a-swept-file` — Check the awk exit status before installing a swept file · status: closed · num: 177 · priority: medium · created: 2026-07-31T12:38:54Z · labels: [spec, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-close-the-remaining-edges-of-the-ordinal-identity-invariant` — Close the remaining edges of the ordinal identity invariant · status: open · num: 181 · priority: low · created: 2026-07-31T12:39:24Z · labels: [file, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260731-close-the-remaining-edges-of-the-ordinal-identity-invariant` — Close the remaining edges of the ordinal identity invariant · status: closed · num: 181 · priority: low · created: 2026-07-31T12:39:24Z · labels: [file, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-describe-both-spec-identity-states-in-the-agent-context-blocks` — Describe both spec-identity states in the agent context blocks · status: open · num: 168 · priority: medium · created: 2026-07-31T12:08:07Z · labels: [sdlc, docs, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-document-the-provisional-path-arity-in-the-script-own-help` — Document the provisional path arity in the script own help · status: open · num: 176 · priority: medium · created: 2026-07-31T12:38:48Z · labels: [file, scripts, docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe` — Drop the unbounded bash grant from meta-matrix-probe · status: open · num: 166 · priority: high · created: 2026-07-31T11:49:17Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-enumerate-blueprints-through-the-map-in-the-review-omission-swee` — Enumerate blueprints through the map in the review omission sweep · status: open · num: 169 · priority: high · created: 2026-07-31T12:08:15Z · labels: [sdlc, review, 000-blueprint] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-fix-the-index-script-exit-trap-leaking-its-temp-file` — Fix the index script EXIT trap leaking its temp file · status: closed · num: 170 · priority: medium · created: 2026-07-31T12:08:22Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-fix-the-nesting-guard-false-positive-on-the-mv-copy-fallback` — Fix the nesting guard false-positive on the mv copy fallback · status: closed · num: 171 · priority: critical · created: 2026-07-31T12:38:10Z · labels: [file, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio` — Fixture or revert the ordinal width narrowing in canonicalization · status: open · num: 175 · priority: medium · created: 2026-07-31T12:38:40Z · labels: [file, scripts, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio` — Fixture or revert the ordinal width narrowing in canonicalization · status: closed · num: 175 · priority: medium · created: 2026-07-31T12:38:40Z · labels: [file, scripts, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-give-issue-resolution-the-same-padding-blind-identity` — Give issue resolution the same padding blind identity · status: open · num: 182 · priority: medium · created: 2026-07-31T12:39:31Z · labels: [file, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-make-spec-reconcile-apply-work-from-a-subdirectory` — Make spec reconcile apply work from a subdirectory · status: closed · num: 172 · priority: high · created: 2026-07-31T12:38:18Z · labels: [spec, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-make-the-plan-approved-gate-an-allowlist` — Make the plan approved gate an allowlist · status: open · num: 167 · priority: high · created: 2026-07-31T11:49:24Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
@@ -278,6 +278,7 @@
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id`
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp`
 - `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
+- `20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` --related-to--> `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped`
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
