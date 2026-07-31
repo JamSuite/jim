@@ -2,7 +2,7 @@
 id: 20260730-define-how-a-provisional-spec-dir-resolves-through-the-path-help
 num: 146
 title: "Define how a provisional spec dir resolves through the path helper"
-status: open
+status: closed
 priority: critical
 labels: [id-coordination, jimfile]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T10:55:21Z
-updated: 2026-07-30T19:35:56Z
+updated: 2026-07-31T12:40:00Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 

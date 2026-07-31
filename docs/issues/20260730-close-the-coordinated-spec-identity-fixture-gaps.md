@@ -2,7 +2,7 @@
 id: 20260730-close-the-coordinated-spec-identity-fixture-gaps
 num: 145
 title: "Close the coordinated spec identity fixture gaps"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, test-coverage]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T19:35:17Z
-updated: 2026-07-30T19:35:17Z
+updated: 2026-07-31T12:40:00Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 

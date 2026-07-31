@@ -2,7 +2,7 @@
 id: 20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss
 num: 150
 title: "Gate the realized spec ordinal and stop silent record loss"
-status: open
+status: closed
 priority: critical
 labels: [id-coordination, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T19:35:00Z
-updated: 2026-07-30T19:35:00Z
+updated: 2026-07-31T12:40:00Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 

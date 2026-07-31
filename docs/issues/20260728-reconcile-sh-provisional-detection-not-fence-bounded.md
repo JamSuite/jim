@@ -2,7 +2,7 @@
 id: 20260728-reconcile-sh-provisional-detection-not-fence-bounded
 num: 133
 title: "reconcile.sh provisional detection not fence-bounded"
-status: open
+status: closed
 priority: low
 labels: [id-coordination, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-28T21:39:43Z
-updated: 2026-07-28T21:39:43Z
+updated: 2026-07-31T12:40:00Z
 origin: docs/specs/issue/010-ordinal-coordination/review.md
 ---
 

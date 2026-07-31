@@ -2,7 +2,7 @@
 id: 20260730-fix-jim-spec-checklist-contradicting-its-provisional-branch
 num: 148
 title: "Fix jim spec checklist contradicting its provisional branch"
-status: open
+status: closed
 priority: medium
 labels: [spec, docs]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T10:55:23Z
-updated: 2026-07-30T19:35:56Z
+updated: 2026-07-31T12:40:00Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 

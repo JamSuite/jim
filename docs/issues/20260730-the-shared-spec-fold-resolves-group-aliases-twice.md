@@ -2,7 +2,7 @@
 id: 20260730-the-shared-spec-fold-resolves-group-aliases-twice
 num: 159
 title: "The shared spec fold resolves group aliases twice"
-status: open
+status: closed
 priority: high
 labels: [id-coordination, alloc]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T19:35:07Z
-updated: 2026-07-30T19:35:07Z
+updated: 2026-07-31T12:40:00Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 
