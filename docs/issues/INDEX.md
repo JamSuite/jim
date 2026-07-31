@@ -274,4 +274,4 @@
 
 ## Integrity Warnings
 
-- `20260731-normalize-the-citation-sweep-configured-roots`: malformed wikilink `[[ -n "$issues_root" && "$f" == "$issues_root"/* ]]` ignored.
+_None._

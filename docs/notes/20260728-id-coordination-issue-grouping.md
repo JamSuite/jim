@@ -1,8 +1,11 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-07-31 (third revision) — step 0 is
-done: the registry repaired from the host and the `provisional` flip committed,
-closing #144 and #129. **C′ is now the next move.**
+**Created:** 2026-07-28 · **Revised:** 2026-07-31 (fourth revision) — **C′
+shipped, and shipped `major-drift` with AC 12 unmet.** Step 0 landed earlier the
+same day (registry repaired, `provisional` flip committed, closing #144 and
+#129). See *What C′ changed*: the practices this note adopted were applied and
+they worked — and the spec still shipped with its headline criterion unmet,
+which relocates the constraint again.
 
 The second revision (2026-07-30) is what reshaped the note: Spec A shipped as
 `platform/011` and Spec C as `sdlc/017`, both the same day, and C shipped
@@ -14,13 +17,13 @@ cluster; this note answers "which deserve a spec, and how to group the work"
 without minting a spec per issue.
 
 Working note — not a spec. Delete or fold into a roadmap once the groupings are
-acted on. Two groupings (A, C) have now been acted on.
+acted on. Three groupings (A, C, C′) have now been acted on.
 
 Line/function anchors in this note are as of the revision date.
 `skills/file/scripts/jimalloc.sh` moves under consolidation — treat anchors as
 dated, and re-verify before planning against them.
 
-## The cluster — now 46 issues
+## The cluster — now 62 issues
 
 Original 20: #111, #112, #113, #114, #115, #116, #117, #118, #119, #121, #122,
 #123, #124, #126, #127, #129, #130, #132, #133, #134.
@@ -33,14 +36,39 @@ build, and #145–#151, #154–#160 by its post-build review. All eighteen were
 filed offline against provisional ordinals and realized in one host batch; the
 loop's second clean production run.
 
-**Eight are closed:** #111, #114, #115, #124, plus #112, #135, #144 and #129 on
-2026-07-31.
+**Sixteen added by `sdlc/018` (C′)** — #168 and #170 from its build's candidate
+batch, #169 from the same batch (process, not id-coordination, but generated
+here), and #171–#183 by its post-build review. Filed on the host against real
+ordinals; the provisional path was not exercised this time.
+
+Separately and **not part of this cluster**: #161–#167, seven pre-existing `sdlc`
+blueprint drifts surfaced by C′'s `/jim:verify sdlc` pass. They are living-intent
+debt in the group C′ happened to touch — agent-handle namespacing, own-skill
+sigil, a parenthesized injection slot, retired gate vocabulary, a template brace,
+an unbounded bash grant on a read-only probe, and `/jim:plan`'s blacklist gate.
+None was introduced by C′; none is id-coordination work. Recorded here only so
+the 23 issues filed on 2026-07-31 are fully accounted for.
+
+**Nineteen are closed:** #111, #114, #115, #124, #112, #135, #144, #129, plus
+eleven of C′'s fourteen on 2026-07-31 — #133, #145, #146, #147, #148, #150,
+#156, #157, #158, #159, #160.
+
+**Three of C′'s fourteen deliberately stay open**, because closing them would
+assert something false:
+
+- **#149** — the `jim` half of the blueprint fold was dropped by decision (see
+  *What C′ changed*, item 3). The `sdlc` half landed.
+- **#151** — two of its four items shipped **defective**: the `mv -T` /nesting
+  item is #171 and the absolute-specs-dir item is #172 + #173. Items 3 and 4
+  (regen exit code, untracked self-citation sweep) landed clean.
+- **#134** — fixed by C′'s task 12, then undermined by its own task 11: the new
+  rewrite-failure path aborts before index regeneration (#174).
 
 They are the residue of turning `platform/007`'s allocator foundation (emits
 allocate records only — no consumers, no seed, no rename records) into the
 project's authoritative, drift-proof ID source.
 
-## Closed (8) — shipped and verified
+## Closed (19) — shipped and verified
 
 | Issue | Shipped as | Review | Carve-outs (tracked) |
 |---|---|---|---|
@@ -50,6 +78,7 @@ project's authoritative, drift-proof ID source.
 | **#124** reconcile/allocation high-water split | `platform/011` (as its D4) | minor-drift, 13/13 AC | resolved structurally — see below |
 | **#112** wire spec-id allocation | `sdlc/017` | **major-drift**, 8/15 AC clean | the halt, the path helper, the blueprint fold → C′; registry repair → #144 |
 | **#135** unrealizable provisional spec identity | `sdlc/017` | **major-drift** | fork resolved as provisional-with-realization; no carve-out |
+| **eleven of C′'s fourteen** (#133, #145–#148, #150, #156–#160) | `sdlc/018` | **major-drift**, 16/17 AC | AC 12 unmet → C′-fix; #149, #151, #134 stay open |
 
 Verified live at this revision, not from the review artifacts: after the
 2026-07-31 repair the coordination branch holds **62** `spec allocate` + 4
@@ -219,6 +248,86 @@ numbers sixteen. The count was recorded before the last one was written.)*
    what filed these** — de facto in force at the time of writing, and committed
    the next day as `3d49ce9`.
 
+## What C′ changed
+
+Shipped as `sdlc/018`, `457d2ff..ff8853e`, 26 commits, 954/954 (+51 fixtures).
+Review **major-drift**: 13 findings, 0 security regressions, 16 of 17 ACs met.
+
+1. **AC 12 is unmet, and it is the one that mattered.** The criterion reads: *the
+   realize path cannot silently do the wrong thing where it currently can.* Each
+   of its three clauses shipped a **new** silent-wrong-thing:
+
+   - The portable nesting guard built for its first clause assumes `mv` preserves
+     the inode. It does not — on `EXDEV` `mv` copies and deletes, which is the
+     default for renaming a lower or merged directory on **overlayfs**, i.e. the
+     normal filesystem in containers and microVMs. The guard then reports a hard
+     failure on a *correct* rename and instructs the operator to hand-repair a
+     directory that is already right, while the realizer skips the frontmatter
+     rewrite, the sweep and the ledger row — ordinal already published, `P-`
+     basename gone, retry unable to find it. Half-applied and stranded (**#171**).
+   - The absolute-specs-dir canonicalization built for its second clause derives
+     its path relative to the worktree top while every consumer is CWD-relative,
+     so `--apply` from a subdirectory silently no-ops at exit 0 while the preview
+     from that same directory lists work to do (**#172**) — and it stopped one
+     line short of the sweep's own roots, where the identical absolute-spelling
+     defect survives and silently skips index regeneration (**#173**).
+   - The verified-rewrite hardening interacts with the regen-exit-code fix to
+     create a path that aborts *before* regeneration (**#174**).
+
+   Sixteen of seventeen ACs are met, the suite is green, and every defect
+   `sdlc/017`'s review recorded is closed. AC 12 is the exception, and it is the
+   criterion the whole spec was named for.
+
+2. **The adopted practices ran, and they worked — which is the good news and the
+   limit of the news.** Practice 1 (investigator fan-out before closing the
+   ledger) ran with eight investigators and produced every finding above; the
+   author's own read of the same code had produced none of them. Practice 2
+   (living-intent sensor on the shipping group) ran and forced the `sdlc`
+   blueprint fold at an explicit violation fork. Practice 4 held: the suite was
+   green throughout and said nothing about any of the four.
+
+   But the fan-out runs *after* the build. It caught the defects; it did not
+   prevent them, and C′ shipped its ledger closed with AC 12 unmet exactly as C
+   did. The lever the third revision identified is real and it is not sufficient.
+
+3. **AC 13 named a retired group, and five artifacts carried that forward
+   unchecked.** `sdlc/017`'s review located `spec-id-sequencing` by matching its
+   id across blueprint **files**, and reported `jim`'s copy five days after the
+   group was split and its blueprint retired. #149, this note, C′'s AC 13, its
+   research, and its plan task all inherited the pair without reading `status:`.
+   `/jim:verify` and the reconcile pass both enumerate through the map and
+   exclude a retired group correctly — the review's sweep is the outlier
+   (**#169**). Caught at build time only because the developer asked why a
+   retired blueprint was being edited; AC 13 was then amended in place to scope
+   the restatement to blueprints a live group's verification consults.
+
+4. **The generator has not stopped, but it has changed shape.** C produced 18
+   issues, C′ produced 16. The difference is what they are: C's were three
+   criticals plus two security regressions in *shipped* mechanism; C′'s are one
+   critical, three highs, and nine medium/low, with **zero** security regressions
+   and containment verified intact. The remediation is not converging to zero, it
+   is converging to smaller.
+
+5. **The defects cluster in new guards, not corrected ones.** Both defects
+   `sdlc/017` actually shipped are properly closed, and both survived hostile
+   review: the region-bounded frontmatter parsing was proven correct *by
+   construction* (scan and rewrite predicates are the same set), and the citation
+   sweep withstood every constructed counterexample. Everything that broke was
+   code written fresh for AC 12 — and new guards have no prior fixture shape to
+   inherit. The nesting guard is the sharpest case: its race cannot be produced
+   deterministically from the CLI, so its fixtures exercise the function directly
+   and never the wiring, which is precisely where #171 lives.
+
+6. **Zero pre-existing fixtures were modified** — 928 test insertions, 0
+   deletions. Nothing had to be un-taught, which corroborates C's post-mortem
+   finding that its suite was silent by *omission* rather than by encoding wrong
+   behavior.
+
+7. **The build did not close the issues it fixed.** All fourteen were still
+   `status: open` after the ledger closed; no plan task covered closing them.
+   Eleven were closed during the review, three deliberately not (above). Worth
+   folding into the completion gate rather than leaving to whoever notices.
+
 ## The grouping question, restated
 
 The original question was "which of 29 issues deserve a spec". That question is
@@ -242,15 +351,16 @@ grows by one for an unrelated reason — #123 below). The reason for the absorpt
 is the point of the whole exercise: both are defects in the issue-side
 `reconcile.sh`, and C shipped
 a spec-side `reconcile.sh` carrying **the same two bugs** — a detection/rewrite
-region mismatch (#158) and a swallowed index-regen exit code (#151c). Fixing one
+region mismatch (#158) and a swallowed index-regen exit code (#151 item 3). Fixing one
 file and leaving its twin is how the pattern spread in the first place.
 
 Net effect: **eighteen new issues, zero net new specs.** C′ occupies C's slot;
 nothing else in the grouping grows.
 
-## Grouping: 5 remaining specs + 1 hardening build + 1 refactor + 2 open items
+## Grouping: 4 remaining specs + 2 builds + 1 refactor + 2 open items
 
-A and C are done. C′, B, D, E, F remain.
+A, C and C′ are done. B, D, E, F remain as specs; C′-fix and the grouped
+hardening build remain as builds.
 
 ### ~~Spec A — Rename-path correctness gates~~ · SHIPPED as `platform/011`
 Ran as a spec rather than a build, and the fork was worth resolving that way: the
@@ -314,8 +424,12 @@ safe is bypassable, the path helper composes directories that do not exist, and
 the group's own blueprint now contradicts the code. Those are C's ACs, not new
 scope — hence C′.
 
-### Spec C′ — Finish `sdlc/017` · 12 of C's issues + #133 + #134
-`sdlc`, with allocator-side work in `platform`. **The keystone's second half.**
+### ~~Spec C′ — Finish `sdlc/017`~~ · SHIPPED as `sdlc/018` — **AC 12 unmet**
+`sdlc`, with allocator-side work in `platform`. Eleven of its fourteen issues
+closed; #149, #151 and #134 stay open (see *The cluster*). See *What C′ changed*.
+The residue is **C′-fix** below — a build, not a fourth spec.
+
+The record below is what C′ was scoped to be, kept for provenance.
 
 | Class | Issues |
 |---|---|
@@ -363,6 +477,34 @@ than being laundered into a second aligned spec.
 **Sequence inside C′:** #150 first (it makes #151's silent ledger drop
 unreachable and #145's first two fixtures meaningful), then #156 on the shared
 predicate, then the rest in any order.
+
+### C′-fix — a build, not a spec · #171–#174 + the AC-12 residue
+The four findings that leave AC 12 unmet, plus C′'s smaller review residue.
+**This is a hardening build**, and it is worth saying why, since the same three
+criteria sent C′ the other way:
+
+1. **No security regressions.** C′'s review found zero, and containment on the
+   widened sweep was verified intact. There is nothing for `/jim:sec` to gate.
+2. **Two small forks, not three genuine ones** — whether canonicalization's
+   ordinal-width narrowing is deliberate (#175), and one width policy across the
+   predicate and `next-id` (#181). Both are settleable in a sentence at build
+   time; neither reshapes a design.
+3. **No blueprint write.** The `sdlc` fold already landed at C′'s completion gate.
+
+The core four: **#171** nesting guard (critical — the one that strands a
+realization), **#172** `--apply` from a subdirectory, **#173** sweep roots,
+**#174** issue-index regen abort. Then the residue: **#175** width narrowing,
+**#176** path-arity help, **#177** unchecked awk exit, **#178** the two fixtures
+the plan named and the build skipped, **#179** the spec-template comment trap,
+**#180** symlink write-through, **#181** invariant edges, **#182** issue-side
+resolve padding, **#183** `mv-spec` prose.
+
+Closing #171–#174 is what makes AC 12 hold and lets #151 and #134 close.
+
+**Do not run this as C″.** The rule this note adopted — an issue recording a
+shipped spec's unmet contract belongs to that spec — is about *spec count*, not
+about ceremony: it says the work rides in C's slot, not that it must wear a spec.
+C′ needed a spec for reasons that no longer apply.
 
 ### Spec D — Batch-CAS candidate-batch allocation (§7a rework) · #127
 Collapse an end-of-run candidate batch (8 surfacing skills) into one CAS instead
@@ -491,12 +633,21 @@ present; the pre-emission rename window closed on all four defects.
 **2. ~~C.~~ DONE** — `sdlc/017`. Spec creation goes through the allocator and the
 offline path settles. Shipped major-drift; see C′.
 
-**3. C′ — finish C.** The halt that makes coordinated identity *safe* is
-bypassable today (#150, #156), and the group's blueprint contradicts its own code
-(#149). Until C′ lands, C's guarantee is a claim rather than a property, and the
-two security regressions sit on a surface a crafted registry record reaches.
-This outranks E: a broken halt on a wired path is worse than stale records on an
-unwired one.
+**3. ~~C′ — finish C.~~ DONE** — `sdlc/018`. The halt is no longer bypassable
+(#150, #156 closed), the path helper resolves both identity states (#146), and
+the `sdlc` blueprint no longer contradicts its code (#149's live half). Shipped
+**major-drift** with **AC 12 unmet**; see *What C′ changed*.
+
+**3a. C′-fix — make AC 12 hold.** Four defects, one of them critical, all in code
+C′ wrote fresh to satisfy AC 12 itself. The nesting guard (#171) is the one that
+matters: on overlayfs it reports failure on a correct rename and leaves a
+realization half-applied and unrecoverable — a *worse* failure than the silent
+nesting it was built to prevent, because the ordinal is already published and the
+directory no longer wears the basename the pending scan needs.
+
+This inherits C′'s ranking over E for the same reason C′ had it: a realize path
+that strands its own work on the filesystem jim actually runs on is worse than
+stale records on an unwired one. It is a build, not a spec — see *C′-fix*.
 
 **4. E — the baseline.** A correct fold over records that misrepresent the repo
 still hands out a consumed id. Step 0 repairs today's instance by hand; E is what
@@ -534,9 +685,28 @@ wired the allocator.
 
 ## Adopted practice — the reason C′ exists
 
-Three changes, all process, none of which cost a spec or an issue. They are here
-because the cluster's real cost driver is no longer the backlog, it is the
-completion gate that lets a spec ship with its contract unmet.
+**Status after C′ (2026-07-31): all four ran, all four worked, and the spec still
+shipped with AC 12 unmet.** Practice 1 produced all 13 review findings where the
+author's own read produced none; practice 2 forced the blueprint fold at an
+explicit fork; practice 3's discipline is what caught AC 13 naming a retired
+group; practice 4 held exactly as stated. They are keepers — and they are
+detection, not prevention. Every one of them fires at or after the completion
+gate, which is why C′ still shipped its headline criterion unmet. **A fifth is
+now earned, and it is the first one that acts before code exists:**
+
+5. **A guard written for a race that cannot be reproduced from the CLI needs its
+   wiring fixtured, not just its function.** Both of C′'s worst defects (#171,
+   #172) live in code whose tests call the function directly because the
+   condition — a concurrent writer, a subdirectory CWD — cannot be staged through
+   the command surface. The function was correct in isolation and wrong in
+   context, twice. When a plan proposes a guard whose fixture cannot go through
+   the front door, that is the signal to fixture the *caller* and to state the
+   guard's premise explicitly as a claim to check (#171's premise, "`mv`
+   preserves the inode", is false and was never written down).
+
+The original three, unchanged — they are here because the cluster's real cost
+driver is no longer the backlog, it is the completion gate that lets a spec ship
+with its contract unmet.
 
 1. **Run the review's investigator fan-out before closing the ledger, not after.**
    On C it was the entire difference between `minor-drift`/5 findings and
@@ -556,7 +726,7 @@ three criticals shipped, because each was an omission, a shared assumption, or
 deliberately reused code. Treat "tests pass" as necessary and say nothing more
 about it in a completion gate.
 
-## Per-issue disposition (all 46)
+## Per-issue disposition (all 62)
 
 | # | Pri | Disposition |
 |---|---|---|
@@ -568,20 +738,20 @@ about it in a completion gate.
 | 135 | med  | **closed** — `sdlc/017` shipped the realization path |
 | 123 | med  | hardening build — **narrowed, not moot**; `/jim:partition` still calls `next-id` |
 | 144 | high | **closed** — registry repaired from the host 2026-07-31; standing half → Spec E |
-| 146 | crit | Spec C′ (path helper composes a fabricated dir, 5 call sites) |
-| 149 | crit | Spec C′ (blueprint invariant fold, `sdlc` + `jim`) |
-| 150 | crit | Spec C′ (ordinal gate + silent record loss — 2 security regressions) |
-| 156 | high | Spec C′ (creation-side halt; same predicate as #150) |
-| 159 | high | Spec C′ (shared fold double-resolves group aliases) |
-| 160 | high | Spec C′ (citation sweep: fence tracker + path-vs-typed pick) |
-| 145 | med  | Spec C′ (the nine named fixture gaps) |
-| 147 | med  | Spec C′ (WORKFLOW / README / spec-template) |
-| 148 | med  | Spec C′ (skill self-contradiction, four sections) |
-| 157 | med  | Spec C′ (exhaustion emits before halting) |
-| 158 | med  | Spec C′ (scan/rewrite region mismatch) |
-| 151 | low  | Spec C′ (realize-path silent-failure batch, 4 items) |
-| 133 | low  | Spec C′ *(moved from hardening — issue-side twin of #158)* |
-| 134 | low  | Spec C′ *(moved from hardening — issue-side twin of #151c)* |
+| 146 | crit | **closed** — `sdlc/018`; path helper grew a provisional arity |
+| 149 | crit | **open** — `sdlc` half folded by `sdlc/018`; `jim` half dropped (retired group) |
+| 150 | crit | **closed** — `sdlc/018`; ordinal gated, dropped record now loud |
+| 156 | high | **closed** — `sdlc/018`; halt enforced inside the rename primitives |
+| 159 | high | **closed** — `sdlc/018`; fold takes a pre-resolved group |
+| 160 | high | **closed** — `sdlc/018`; marker-recording fence tracker + either-side-slash pick |
+| 145 | med  | **closed** — `sdlc/018`; all nine fixtures landed |
+| 147 | med  | **closed** — `sdlc/018`; WORKFLOW / README / template / config rows |
+| 148 | med  | **closed** — `sdlc/018`; four contradictions plus a fifth found in review |
+| 157 | med  | **closed** — `sdlc/018`; realize buffers before emitting |
+| 158 | med  | **closed** — `sdlc/018`; scan and rewrite proven the same region |
+| 151 | low  | **open** — items 3–4 closed by `sdlc/018`; items 1–2 shipped defective → #171, #172, #173 |
+| 133 | low  | **closed** — `sdlc/018`; issue-side twin fixed in the same pass |
+| 134 | low  | **open** — fixed by `sdlc/018` task 12, undermined by its task 11 → #174 |
 | 113 | high | Spec B (record emission) — gates closed by `platform/011`; retired-group gap now demonstrated live |
 | 143 | med  | Spec B (lift realization redirects into the registry) |
 | 152 | med  | Spec B (realization cannot follow a renamed group) |
@@ -607,23 +777,58 @@ about it in a completion gate.
 | 139 | low  | decision (`timeout` test dependency) |
 | 137 | low  | deferred, no demand (exhausted-group recovery) |
 
+| 168 | med  | C′-fix (agent context blocks describe one identity shape) |
+| 169 | high | C′-fix (review omission sweep enumerates blueprints by file, not via the map) |
+| 170 | med  | C′-fix (`index.sh` EXIT trap leaks its temp file under `set -u`) |
+| 171 | crit | **C′-fix — AC 12** (nesting guard false-positives on `mv`'s copy fallback) |
+| 172 | high | **C′-fix — AC 12** (`--apply` from a subdirectory silently no-ops at exit 0) |
+| 173 | high | **C′-fix — AC 12** (sweep roots keep the absolute-spelling defect) |
+| 174 | high | **C′-fix — AC 12** (issue-index regen skipped on the new rewrite-failure path) |
+| 175 | med  | C′-fix (canonicalization narrowed resolve's ordinal width — unplanned, unfixtured) |
+| 176 | med  | C′-fix (provisional path arity absent from the script's own help) |
+| 177 | med  | C′-fix (unchecked awk exit can install a truncated file) |
+| 178 | med  | C′-fix (two fixtures the plan named and the build skipped) |
+| 179 | med  | C′-fix (spec template's `id:` comment silently un-pends a spec) |
+| 180 | med  | C′-fix (symlinked own-dir entry written through, defeating root scoping) |
+| 181 | low  | C′-fix (ordinal-identity invariant's remaining edges) |
+| 182 | med  | C′-fix (issue-side resolve lacks the padding-blind identity) |
+| 183 | low  | C′-fix (`mv-spec` prose survives with no callers) |
+
+*(#161–#167 are `sdlc` blueprint drift surfaced by C′'s verify pass, not
+id-coordination work — excluded from this table and from the 62.)*
+
 ## Net
 
-46 issues → **5 remaining specs** (C′, B, D, E, F), **1 hardening build of 11**,
-**1 optional refactor**, **1 doc item + 1 decision + 1 deferred**, **8 closed**.
-The host action is done.
+62 issues → **4 remaining specs** (B, D, E, F), **2 builds** (C′-fix of 16, the
+grouped hardening build of 11), **1 optional refactor**, **1 doc item + 1
+decision + 1 deferred**, **19 closed**. The host action is done.
 
-**The spec count did not move.** C shipped and C′ took its slot; eighteen new
-issues distributed into work that already existed. That is the answer to "how do
-we build this out without an excessive number of specs" — not finer grouping, but
-a rule: *an issue recording a shipped spec's unmet contract belongs to that spec,
-not to a new one.*
+**The spec count still has not moved, and this time it went down.** C shipped and
+C′ took its slot; C′ shipped and its residue became a *build*, not a fourth spec.
+Sixteen more issues distributed into work that already existed. The rule held
+twice: *an issue recording a shipped spec's unmet contract belongs to that spec,
+not to a new one* — and the corollary this revision adds is that the rule governs
+the spec **count**, not the ceremony: C′-fix rides in C's slot without wearing a
+spec, because none of the three criteria that made C′ a spec still apply.
 
 The headline has moved again, though. A's lesson was that the cluster's centre of
-gravity was C and E, not A. C's lesson is sharper and less comfortable: **the
-constraint is no longer which specs to write, it is whether a spec finishes.**
-One spec shipped green, complete, and ledger-closed while three critical defects
-and two security regressions rode along inside it — and the only thing that
-surfaced them was a review method, applied after the fact, that costs one flag.
-Until that runs before the completion gate, every remaining spec in this note
-(B, D, E, F) should be assumed to carry its own C′.
+gravity was C and E, not A. C's lesson was that **the constraint is no longer
+which specs to write, it is whether a spec finishes** — one spec shipped green,
+complete, and ledger-closed while three critical defects and two security
+regressions rode along inside it.
+
+C′ tested that lesson and returned an uncomfortable result. Every practice the
+third revision adopted was applied: the fan-out ran, the sensor ran, the plan's
+verbs were checked, the suite stayed green and was correctly discounted. They
+worked — 13 findings the author's own read had missed. **And the spec still
+shipped with its headline criterion unmet**, because all four practices detect at
+or after the completion gate rather than preventing before it.
+
+So the constraint refines rather than moves: it is not whether a spec finishes,
+it is **whether the thing a spec builds fresh gets the same scrutiny as the thing
+it repairs.** C′ closed both of C's shipped defects cleanly — proven correct by
+construction, hostile review survived. Every defect it shipped was in new code
+written to satisfy an AC, guarded by fixtures that could not reach the guard's own
+wiring. B, D, E and F should each be assumed to carry not a C′, but a C′-fix:
+smaller, cheaper, and concentrated in whatever each one builds that has never
+existed before.

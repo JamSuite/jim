@@ -28,7 +28,7 @@ a leading `./`:
 `git ls-files` emits repo-relative paths regardless of the pathspec spelling, so
 `$f` is always relative. With an absolute `issues_path`, the trigger at `:467`
 
-    [[ -n "$issues_root" && "$f" == "$issues_root"/* ]] && issue_touched=1
+    test -n "$issues_root" && case "$f" in "$issues_root"/*) issue_touched=1 ;; esac
 
 can never fire. Issue citations are rewritten on disk and `INDEX.md` is **never
 regenerated** — silently, at exit 0.
