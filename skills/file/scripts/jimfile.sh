@@ -901,14 +901,39 @@ cmd_path() {
   fi
   case "$kind" in
     spec|plan|research)
+      # Two arities, one per identity state a bound spec can hold. The numeric
+      # form composes {id}-{name}; the two-argument form takes a provisional
+      # token as the WHOLE basename, because that is what the allocator issues —
+      # composing a second slug onto it would name a directory that does not
+      # exist. Every token clears its boundary here, the way the blueprint and
+      # issue arms do, so this helper cannot hand back a path built from a token
+      # the rest of the flow would refuse.
       local group="${1:-}" id="${2:-}" name="${3:-}"
-      if [[ -z "$group" || -z "$id" || -z "$name" ]]; then
-        echo "error: 'path $kind' requires <group> <id> <name>" >&2
+      if [[ -z "$group" || -z "$id" ]]; then
+        echo "error: 'path $kind' requires <group> <id> <name>" \
+             "(or <group> <provisional-token>)" >&2
         return 2
+      fi
+      is_valid_slug "$group" || return 1
+      local base
+      if [[ -z "$name" ]]; then
+        if ! is_prov_basename "$id"; then
+          echo "error: path $kind target rejected — '$id' (the 2-argument form takes" \
+               "a provisional token only; use <id> <name> for a real ordinal)" >&2
+          return 1
+        fi
+        base="$id"
+      else
+        if [[ ! "$id" =~ ^[0-9]{3,15}$ ]]; then
+          echo "error: path $kind id rejected — '$id' (allowed: ^[0-9]{3,15}\$)" >&2
+          return 1
+        fi
+        is_valid_slug "$name" || return 1
+        base="$id-$name"
       fi
       local specs_root
       specs_root="$(jimconf_get specs)"
-      printf '%s/%s/%s-%s/%s.md\n' "$specs_root" "$group" "$id" "$name" "$kind"
+      printf '%s/%s/%s/%s.md\n' "$specs_root" "$group" "$base" "$kind"
       ;;
     blueprint)
       # Reserved per-group slot: {specs}/<group>/000-blueprint/spec.md. The

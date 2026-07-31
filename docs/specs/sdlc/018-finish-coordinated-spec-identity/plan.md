@@ -316,7 +316,7 @@ flowchart TD
    exhaustion in `next-id` and in realize — no partial rows, rc 1.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc`
 
-9. [ ] `cmd_path`: validate the numeric arm, add the provisional arity;
+9. [x] `cmd_path`: validate the numeric arm, add the provisional arity;
    fixtures: provisional form resolves the whole-token basename, malformed
    id/name/token refused.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`

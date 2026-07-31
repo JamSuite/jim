@@ -751,6 +751,53 @@ case_jimfile_path_research_canonical() {
   assert_eq "research path" "docs/specs/jim/008-jimfile/research.md" "$OUT"
 }
 
+# AC: a provisional spec's artifact paths resolve through the same helper — the
+# reserved token IS the whole directory basename, so the two-argument form takes
+# it as one piece rather than composing a fabricated '{token}-{name}' directory.
+case_jimfile_path_spec_provisional_form() {
+  local cfg
+  cfg=$(fixture path-prov.toml 'specs_path = "docs/specs"')
+  run_jimfile -c "$cfg" path spec sdlc P-20260728-new-widget
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "spec path" "docs/specs/sdlc/P-20260728-new-widget/spec.md" "$OUT"
+  run_jimfile -c "$cfg" path plan sdlc P-20260728-new-widget
+  assert_eq "plan path" "docs/specs/sdlc/P-20260728-new-widget/plan.md" "$OUT"
+  run_jimfile -c "$cfg" path research sdlc P-20260728-new-widget
+  assert_eq "research path" "docs/specs/sdlc/P-20260728-new-widget/research.md" "$OUT"
+}
+
+# AC: the two-argument form is the provisional form only — a bare ordinal, a
+# malformed token, or a path escape is refused rather than composed into a
+# directory of its own.
+case_jimfile_path_spec_two_arg_is_provisional_only() {
+  local cfg bad
+  cfg=$(fixture path-prov-only.toml 'specs_path = "docs/specs"')
+  for bad in 018 P---bad "P-20260728" "../evil" "P-2026072-x"; do
+    run_jimfile -c "$cfg" path spec sdlc "$bad"
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [two-arg] accepted '$bad' → $OUT"
+    fi
+  done
+}
+
+# AC: the numeric form validates its tokens at the composition boundary, the way
+# every other path-composing arm does — a malformed group, id, or name never
+# becomes part of a path this helper hands back.
+case_jimfile_path_spec_validates_numeric_form() {
+  local cfg
+  cfg=$(fixture path-numeric-gates.toml 'specs_path = "docs/specs"')
+  run_jimfile -c "$cfg" path spec "../evil" 018 name
+  assert_exit "bad group rc" 1 "$RC"
+  run_jimfile -c "$cfg" path spec sdlc 18 name
+  assert_exit "unpadded id rc" 1 "$RC"
+  run_jimfile -c "$cfg" path spec sdlc 01a name
+  assert_exit "non-numeric id rc" 1 "$RC"
+  run_jimfile -c "$cfg" path spec sdlc 1234567890123456 name
+  assert_exit "over-wide id rc" 1 "$RC"
+  run_jimfile -c "$cfg" path spec sdlc 018 "../evil"
+  assert_exit "bad name rc" 1 "$RC"
+}
+
 # AC: path debug returns date-prefixed canonical debug path
 case_jimfile_path_debug_basic() {
   local cfg today
