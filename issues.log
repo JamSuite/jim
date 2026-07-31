@@ -167,3 +167,4 @@ issue allocate 166 20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe
 issue allocate 167 20260731-make-the-plan-approved-gate-an-allowlist 20260731 jrko
 issue allocate 168 20260731-describe-both-spec-identity-states-in-the-agent-context-blocks 20260731 jrko
 issue allocate 169 20260731-enumerate-blueprints-through-the-map-in-the-review-omission-swee 20260731 jrko
+issue allocate 170 20260731-fix-the-index-script-exit-trap-leaking-its-temp-file 20260731 jrko
