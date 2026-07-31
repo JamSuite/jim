@@ -328,13 +328,17 @@ cmd_next_id() {
       name="$(basename "$entry")"
       # Match leading 3-digit prefix followed by '-' or end.
       id_part="${name%%-*}"
+      # A leading token wider than an ordinal the registry could be rebuilt from
+      # is not an ordinal, so it is skipped rather than counted — the same read
+      # spec_ordinal_holder takes. Counting it would raise this floor past an
+      # ordinal that predicate reports as free, which is how a padding twin gets
+      # permitted; and the arithmetic below would wrap on a wide enough token.
+      [[ "$id_part" =~ ^[0-9]{1,15}$ ]] || continue
       # Strip leading zeros for arithmetic (but guard '000' → 0).
       id_clean="$(printf '%s' "$id_part" | sed 's/^0*//')"
       [[ -z "$id_clean" ]] && id_clean=0
-      if [[ "$id_clean" =~ ^[0-9]+$ ]]; then
-        if (( id_clean > max )); then
-          max=$id_clean
-        fi
+      if (( id_clean > max )); then
+        max=$id_clean
       fi
     done
   fi
@@ -599,12 +603,17 @@ undo_nested_rename() {
   return 1
 }
 
-# cmd_spec_ordinal_holder <group> <ordinal> [--exclude <basename>]
+# cmd_spec_ordinal_holder <group> <ordinal> [--exclude <basename>] [--root <dir>]
 #   The verb form of spec_ordinal_holder over the configured specs dir, so the
 #   realizer decides occupancy through the same predicate the rename verbs
 #   enforce rather than keeping a second copy in agreement by convention.
+#
+#   --root names the specs dir explicitly, for a caller that already carries one
+#   as an argument rather than reading it from config. Without it the two would
+#   have to be assumed equal, and a gate that reads a different tree than the one
+#   it is guarding decides nothing.
 cmd_spec_ordinal_holder() {
-  local group="" ord="" exclude="" seen=0
+  local group="" ord="" exclude="" root="" seen=0
   while (( $# )); do
     case "$1" in
       --exclude)
@@ -613,6 +622,12 @@ cmd_spec_ordinal_holder() {
           return 2
         fi
         exclude="$2"; shift 2 ;;
+      --root)
+        if [[ -z "${2:-}" ]]; then
+          echo "error: spec-ordinal-holder: --root requires a directory" >&2
+          return 2
+        fi
+        root="$2"; shift 2 ;;
       -*)
         echo "error: spec-ordinal-holder: unknown option '$1'" >&2
         return 2 ;;
@@ -626,11 +641,11 @@ cmd_spec_ordinal_holder() {
     esac
   done
   if [[ -z "$group" || -z "$ord" ]]; then
-    echo "error: 'spec-ordinal-holder' requires <group> <ordinal> [--exclude <basename>]" >&2
+    echo "error: 'spec-ordinal-holder' requires <group> <ordinal> [--exclude <basename>] [--root <dir>]" >&2
     return 2
   fi
   local specs_root rc
-  specs_root="$(jimconf_get specs)"
+  specs_root="${root:-$(jimconf_get specs)}"
   spec_ordinal_holder "$specs_root" "$group" "$ord" "$exclude"
   rc=$?
   if (( rc == 2 )); then

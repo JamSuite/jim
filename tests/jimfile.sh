@@ -771,6 +771,23 @@ case_jimfile_mv_spec_lands_through_a_copying_mv() {
   assert_eq   "landed"    "yes" "$([[ -d "$specs/sdlc/001-new" ]] && echo yes || echo no)"
 }
 
+# AC: next-id and the occupancy predicate agree on what an ordinal is. A leading
+# token wider than the registry could be rebuilt from is skipped by both, so it
+# cannot floor next-id past an ordinal the predicate reports as free — the
+# disagreement that would otherwise permit a padding twin on that ordinal.
+case_jimfile_next_id_skips_over_wide_sibling() {
+  local specs cfg
+  specs=$(empty_dir nextid_overwide)
+  mkdir -p "$specs/sdlc/001-alpha" "$specs/sdlc/0000000000000000018-wide"
+  cfg=$(fixture nextid-overwide.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id sdlc
+  assert_exit "rc"                              0     "$RC"
+  assert_eq   "the over-wide sibling is not counted" "002" "$OUT"
+  # The other half of the agreement: the predicate reads that ordinal as free.
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 18
+  assert_exit "predicate reports free" 1 "$RC"
+}
+
 # AC: an ordinal spelled with different padding is the same ordinal — a spec
 # ordinal is a number, so '18' collides with an existing '018-…' rather than
 # reading as free space.

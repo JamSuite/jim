@@ -611,6 +611,26 @@ cmd_move_spec_dir() {
   if [[ -e "$dst" ]]; then
     echo "jimledger move-spec-dir: destination already exists: $dst" >&2; return 1
   fi
+  # An exact-path check does not decide occupancy: a spec ordinal is path
+  # identity, so landing 018-beta beside an existing 018-alpha is two directories
+  # on one ordinal even though neither path collides. Decided through the SAME
+  # predicate the rename and realize paths enforce, over the specs dir this verb
+  # was handed, so a renumber cannot do what those paths refuse. The source
+  # excludes itself, since a within-group renumber onto its own ordinal is not a
+  # collision.
+  local dst_ord held held_rc
+  dst_ord="${dst_base%%-*}"
+  held="$(bash "$JIMFILE" spec-ordinal-holder "$ng" "$dst_ord" \
+            --root "$sd" --exclude "$src_base" 2>/dev/null)"
+  held_rc=$?
+  if (( held_rc == 0 )); then
+    echo "jimledger move-spec-dir: ordinal $dst_ord already held in $ng by '$held'; nothing moved" >&2
+    return 1
+  fi
+  if (( held_rc != 1 )); then
+    echo "jimledger move-spec-dir: could not decide occupancy of ordinal '$dst_ord' in $ng" >&2
+    return 1
+  fi
   mkdir -p -- "$(dirname -- "$dst")" || {
     echo "jimledger move-spec-dir: cannot create destination parent" >&2; return 1
   }

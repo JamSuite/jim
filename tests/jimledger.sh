@@ -1487,6 +1487,33 @@ case_jimledger_move_spec_dir_moves() {
     "$(git -C "$root" diff --cached --name-only)"
 }
 
+# AC: a renumber onto an ordinal another directory already holds is refused, even
+# though the exact destination path is free. A spec ordinal is path identity, so
+# 001-bar beside an existing 001-foo is two directories on one ordinal — the
+# collision the exact-path check cannot see, decided here through the same
+# predicate the rename and realize paths enforce.
+case_jimledger_move_spec_dir_refuses_held_ordinal() {
+  local root; root="$(move_git_fixture msd_held)"
+  mkdir -p "$root/docs/specs/checkout/001-foo"
+  printf '# taken\n' > "$root/docs/specs/checkout/001-foo/spec.md"
+  git -C "$root" add -A; git -C "$root" commit -q -m "occupant"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout 001-bar
+  assert_exit  "rc"                 1          "$RC"
+  assert_match "names the holder"   '001-foo'  "$ERR"
+  assert_eq "source not moved" "1" \
+    "$([[ -d "$root/docs/specs/cart/006-foo" ]] && echo 1 || echo 0)"
+}
+
+# AC: a within-group renumber onto the source's OWN ordinal is not a collision —
+# the source excludes itself, so a slug-only rename still lands.
+case_jimledger_move_spec_dir_same_ordinal_self_excluded() {
+  local root; root="$(move_git_fixture msd_selfexcl)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo cart 006-renamed
+  assert_exit "rc" 0 "$RC"
+  assert_eq "renamed" "1" \
+    "$([[ -d "$root/docs/specs/cart/006-renamed" ]] && echo 1 || echo 0)"
+}
+
 # security Finding 1: an endpoint that resolves inside the worktree but OUTSIDE the
 # specs subtree is refused — the specs-scoping bound that keeps this from
 # relocating an arbitrary repo file.
