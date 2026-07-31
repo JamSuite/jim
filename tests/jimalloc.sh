@@ -1774,6 +1774,37 @@ case_jimalloc_realize_spec_unpadded_record_counts_in_high_water() {
     "$(printf 'core/P-20260728-gamma\tcore/008\tnew')" "$OUT"
 }
 
+# jimalloc_exhausted_log — a log whose group sits on the widest ordinal the
+# registry could be rebuilt from, so the next one is unmintable.
+jimalloc_exhausted_log() {
+  printf '%s\n' 'spec allocate core/999999999999999 a 20260726 x'
+}
+
+# AC: ordinal exhaustion halts BEFORE emitting any row, matching the documented
+# contract. The preview pipes this mapping straight to the developer, so a
+# partial mapping is output that looks like a plan and is not one.
+case_jimalloc_realize_spec_exhaustion_emits_nothing() {
+  local log
+  log="$(jimalloc_exhausted_log)"
+  run_realize_spec "$log" core/P-20260726-a core/P-20260727-b
+  assert_exit     "rc"                1  "$RC"
+  assert_eq       "no partial mapping" "" "$OUT"
+  assert_match    "names the halt"    'exhausted' "$ERR"
+}
+
+# AC: the same ordering on the other read path — next-id prints nothing when the
+# ordinal it would mint is one the registry could not be rebuilt from.
+case_jimalloc_next_id_spec_exhaustion_emits_nothing() {
+  local log out err rc
+  log="$(jimalloc_exhausted_log)"
+  err="$TMP_BASE/.err"
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec core <<< "$log" 2>"$err")"
+  rc=$?
+  assert_exit  "rc"             1           "$rc"
+  assert_eq    "nothing minted" ""          "$out"
+  assert_match "names the halt" 'exhausted' "$(cat "$err")"
+}
+
 # AC: the key carries the date the provisional identity was issued, not the day
 # realization runs — a same-slug record stamped with another date belongs to a
 # different spec and never absorbs the pending identity.

@@ -312,7 +312,7 @@ flowchart TD
    `next-id` and realize.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc`
 
-8. [ ] Buffer realize emission behind the exhaustion check; fixtures:
+8. [x] Buffer realize emission behind the exhaustion check; fixtures:
    exhaustion in `next-id` and in realize — no partial rows, rc 1.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc`
 

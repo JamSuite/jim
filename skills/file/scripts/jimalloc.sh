@@ -721,15 +721,18 @@ alloc_reconcile_realize_spec() {
     p_date+=( "${body%%-*}" )
     p_slug+=( "${body#*-}" )
   done
-  # Pass 2: emit the mapping in pending (issuance) order, one high-water read per
-  # group touched.
+  # Pass 2: compute the mapping in pending (issuance) order, one high-water read
+  # per group touched, buffering every row. Nothing is emitted until the whole
+  # batch computes, so a halt leaves stdout empty rather than a partial mapping
+  # the preview would show the developer as if it were a plan.
   local -A next=()
   local cur ord
+  local -a rows=()
   for ((i=0; i<${#p_group[@]}; i++)); do
     cur="${p_group[i]}"
     k="$cur/${p_slug[i]}/${p_date[i]}"
     if [[ -n "${existing[$k]:-}" ]]; then
-      printf '%s\t%s\thave\n' "${p_id[i]}" "${existing[$k]}"
+      rows+=( "$(printf '%s\t%s\thave' "${p_id[i]}" "${existing[$k]}")" )
       continue
     fi
     if [[ -z "${next[$cur]:-}" ]]; then
@@ -742,8 +745,10 @@ alloc_reconcile_realize_spec() {
       echo "error: group exhausted — '$cur' has no ordinal left that the registry could be rebuilt from" >&2
       return 1
     fi
-    printf '%s\t%s/%03d\tnew\n' "${p_id[i]}" "$cur" "$ord"
+    rows+=( "$(printf '%s\t%s/%03d\tnew' "${p_id[i]}" "$cur" "$ord")" )
   done
+  (( ${#rows[@]} )) && printf '%s\n' "${rows[@]}"
+  return 0
 }
 
 # ─── Section: seed derivation (pure — reads the tree, no git) ─────────────────
