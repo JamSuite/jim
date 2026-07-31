@@ -121,6 +121,25 @@ case_specreconcile_invalid_token_skipped() {
   assert_eq "bad identity not previewed" "0" "$(printf '%s\n' "$OUT" | grep -c 'P---bad')"
 }
 
+# AC: an absolute spelling of the configured specs dir does not split the run's
+# behavior — the tracked and untracked branches compose the same paths, so both
+# realize. One configured spelling, one behavior.
+case_specreconcile_absolute_specs_dir() {
+  local repo cfg
+  repo="$(specrec_repo sr_absdir)"
+  specrec_prov_dir "$repo" sdlc P-20260728-tracked
+  specrec_commit "$repo"
+  specrec_prov_dir "$repo" sdlc P-20260728-loose
+  cfg="$TMP_BASE/absdir.toml"
+  printf 'specs_path = "%s"\n' "$repo/docs/specs" > "$cfg"
+  run_specreconcile_in "$repo" -c "$cfg" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "tracked branch realized" "yes" \
+    "$([[ -n "$(ls -d "$repo"/docs/specs/sdlc/*-tracked 2>/dev/null)" ]] && echo yes || echo no)"
+  assert_eq "untracked branch realized" "yes" \
+    "$([[ -n "$(ls -d "$repo"/docs/specs/sdlc/*-loose 2>/dev/null)" ]] && echo yes || echo no)"
+}
+
 # AC: a failed issue-index regeneration is reported, never swallowed — the sweep
 # rewrote citations on disk, so an INDEX.md that no longer describes them is a
 # failure the run has to carry rather than a silent exit 0.

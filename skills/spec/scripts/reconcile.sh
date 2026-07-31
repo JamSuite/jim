@@ -511,6 +511,36 @@ cmd_reconcile() {
     esac
   done
   dir="$(resolve_specs_dir "$dir")" || return $?
+
+  # The uncommitted-case rename composes its target from the CONFIGURED specs
+  # dir, so applying into a tree other than the one just scanned would move a
+  # directory nobody asked about. Refuse rather than guess — and settle on ONE
+  # spelling before anything is scanned, because the tracked branch takes
+  # worktree-relative paths and the untracked branch composes from config: an
+  # absolute configured spelling would otherwise make one branch work and the
+  # other refuse, within a single run.
+  if (( apply )); then
+    local cfg_dir top rp_cfg rp_dir
+    cfg_dir="$(jc get specs 2>/dev/null)"; cfg_dir="${cfg_dir%/}"
+    rp_cfg="$(realpath -m -- "$cfg_dir" 2>/dev/null)"
+    rp_dir="$(realpath -m -- "$dir" 2>/dev/null)"
+    if [[ -z "$rp_cfg" || "$rp_cfg" != "$rp_dir" ]]; then
+      echo "error: --apply operates on the configured specs dir ('$cfg_dir'), not '$dir'" >&2
+      return 1
+    fi
+    if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+      echo "error: --apply must run inside a git repo" >&2
+      return 1
+    fi
+    top="$(realpath -m -- "$top" 2>/dev/null)"
+    if [[ "$rp_cfg" != "$top" && "$rp_cfg" != "$top"/* ]]; then
+      echo "error: the configured specs dir ('$cfg_dir') resolves outside the worktree" >&2
+      return 1
+    fi
+    dir="${rp_cfg#"$top"/}"
+    [[ "$dir" == "$rp_cfg" ]] && dir="."
+  fi
+
   if [[ ! -d "$dir" ]]; then
     printf 'reconcile: no pending provisional specs — nothing to realize.\n'
     return 0
@@ -521,18 +551,6 @@ cmd_reconcile() {
   if [[ -z "$rows" ]]; then
     printf 'reconcile: no pending provisional specs — nothing to realize.\n'
     return 0
-  fi
-
-  # The uncommitted-case rename composes its target from the CONFIGURED specs
-  # dir, so applying into a tree other than the one just scanned would move a
-  # directory nobody asked about. Refuse rather than guess.
-  if (( apply )); then
-    local cfg_dir
-    cfg_dir="$(jc get specs 2>/dev/null)"; cfg_dir="${cfg_dir%/}"
-    if [[ "$(realpath -m -- "$cfg_dir" 2>/dev/null)" != "$(realpath -m -- "$dir" 2>/dev/null)" ]]; then
-      echo "error: --apply operates on the configured specs dir ('$cfg_dir'), not '$dir'" >&2
-      return 1
-    fi
   fi
 
   local mapping rc

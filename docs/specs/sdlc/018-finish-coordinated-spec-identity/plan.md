@@ -348,7 +348,7 @@ flowchart TD
     exit non-zero when the race fires.
     **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`
 
-15. [ ] Canonicalize an absolute specs-dir spelling at the `--apply` guard;
+15. [x] Canonicalize an absolute specs-dir spelling at the `--apply` guard;
     fixture: the absolute spelling behaves identically on tracked and
     untracked branches.
     **Verify:** `bash skills/meta-test/scripts/run.sh specreconcile`
