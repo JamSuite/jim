@@ -385,7 +385,7 @@ flowchart TD
     session, not the coder subagent.
     **Verify:** `bash skills/verify/scripts/jimverify.sh parse docs/specs/sdlc/000-blueprint/spec.md | grep spec-id-sequencing | grep -qi provisional && bash skills/verify/scripts/jimverify.sh parse docs/specs/jim/000-blueprint/spec.md | grep spec-id-sequencing | grep -qi provisional`
 
-21. [ ] **Regression.** Full suite green; enumerate every modified
+21. [x] **Regression.** Full suite green; enumerate every modified
     pre-existing fixture with the corrected defect it encoded; record the
     017-AC → fixture evidence map in the build notes.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
