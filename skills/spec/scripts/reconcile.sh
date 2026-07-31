@@ -177,20 +177,6 @@ rewrite_id() {
   ' "$file"
 }
 
-# ordinal_holder <specs_dir> <group> <ordinal> — print the directory already
-# holding <ordinal> in <group>, if any. Matches the ordinal, not the whole name:
-# a spec ordinal is path identity, so another slug on the same ordinal is the
-# same collision.
-ordinal_holder() {
-  local root="$1" group="$2" ord="$3" entry
-  for entry in "$root/$group/$ord"-*/ "$root/$group/$ord"/; do
-    [[ -d "$entry" ]] || continue
-    printf '%s\n' "${entry%/}"
-    return 0
-  done
-  return 1
-}
-
 # apply_pending <specs_dir> <pending-rows> <mapping>
 #   Rename each realized identity's directory onto its ordinal and rewrite the
 #   spec's frontmatter id. The rename is history-continuous when the directory
@@ -199,17 +185,20 @@ ordinal_holder() {
 #   change when they commit.
 #
 #   An identity halts — loudly, with nothing applied for it, and the whole run
-#   ending non-zero — when the realized ordinal is already held by a directory
-#   in the group, or when the allocator answered under a different group than
-#   the identity was issued under. Both are registry-vs-tree drift, and a spec
-#   ordinal is path identity: there is no silent suffixing and no overwrite, and
-#   repairing the drift is not this script's business. Other identities in the
-#   batch are unaffected — their ordinals are already durable.
+#   ending non-zero — when the realized ordinal is not one a spec directory can
+#   carry, when that ordinal is already held by a directory in the group, or
+#   when the allocator answered under a different group than the identity was
+#   issued under. The ordinal comes from a push-writable coordination point, so
+#   it is revalidated before it becomes a path, a glob, a git argument, or
+#   frontmatter. The latter two are registry-vs-tree drift, and a spec ordinal is
+#   path identity: there is no silent suffixing and no overwrite, and repairing
+#   the drift is not this script's business. Other identities in the batch are
+#   unaffected — their ordinals are already durable.
 #
 #   Prints one "REALIZED <identity> <dir>" line per directory renamed.
 apply_pending() {
   local root="$1" rows="$2" mapping="$3"
-  local pend dir real group base body slug ord target held spec tmp
+  local pend dir real group base body slug ord target held held_rc spec tmp
   local failed=0
   while IFS=$'\t' read -r pend dir; do
     [[ -n "$pend" ]] || continue
@@ -221,11 +210,29 @@ apply_pending() {
       failed=1; continue
     fi
     ord="${real##*/}"
+    # The realized ordinal is registry-derived, and the coordination branch is
+    # push-writable — so it crosses the id boundary like every other untrusted
+    # token, BEFORE it becomes a path component, a glob, a git argument, or
+    # frontmatter. A non-conforming ordinal halts this identity and writes
+    # nothing for it.
+    if [[ ! "$ord" =~ ^[0-9]{3,15}$ ]]; then
+      echo "error: $pend — the registry answers with ordinal '$ord', which is not an ordinal a spec directory can carry; nothing applied for this identity" >&2
+      failed=1; continue
+    fi
     body="${base#"$PROV_PREFIX"}"
     slug="${body#*-}"
     target="$root/$group/$ord-$slug"
-    if held="$(ordinal_holder "$root" "$group" "$ord")"; then
+    # Occupancy through the same predicate the rename verbs enforce, so the
+    # realize path and the creation path cannot disagree about what an ordinal
+    # is. The tracked branch needs it here in its own right: rename-tracked
+    # gates the new basename's shape, not the ordinal's occupancy.
+    held="$(jf spec-ordinal-holder "$group" "$ord")"; held_rc=$?
+    if (( held_rc == 0 )); then
       echo "error: $pend — realized ordinal $real is already held by '$held' (registry-vs-tree drift); nothing applied for this identity" >&2
+      failed=1; continue
+    fi
+    if (( held_rc != 1 )); then
+      echo "error: $pend — could not decide whether ordinal $real is free; nothing applied for this identity" >&2
       failed=1; continue
     fi
     if is_tracked "$dir"; then

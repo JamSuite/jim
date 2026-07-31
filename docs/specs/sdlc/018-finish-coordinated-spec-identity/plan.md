@@ -289,7 +289,7 @@ flowchart TD
    `001-foo` refused) and the wip self-exclusion. Depends on task 2.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimfile`
 
-4. [ ] `reconcile.sh`: gate `ord` with `^[0-9]{3,15}$` before its first use
+4. [x] `reconcile.sh`: gate `ord` with `^[0-9]{3,15}$` before its first use
    and replace the local `ordinal_holder` with the `spec-ordinal-holder`
    verb; fixtures: padding-variant record halts, bare-`NNN` occupant halts.
    Depends on task 2.

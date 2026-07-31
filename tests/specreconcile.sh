@@ -69,6 +69,20 @@ specrec_registry() {
   git -C "$1" cat-file -p refs/heads/jim/registry:specs.log 2>/dev/null
 }
 
+# specrec_craft_registry <repo> <log-line>...
+#   Plant a specs.log on the coordination branch through plumbing. The branch is
+#   push-writable, so a record the allocator itself would never emit is exactly
+#   what a crafted registry looks like from the realizer's side — the vector the
+#   realized ordinal has to be revalidated against.
+specrec_craft_registry() {
+  local repo="$1"; shift
+  local blob tree commit
+  blob="$(printf '%s\n' "$@" | git -C "$repo" hash-object -w --stdin)"
+  tree="$(printf '100644 blob %s\tspecs.log\n' "$blob" | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" -m crafted)"
+  git -C "$repo" update-ref refs/heads/jim/registry "$commit"
+}
+
 # ─── Section: Test cases — scan ──────────────────────────────────────────────
 
 # AC: the realizer finds every pending provisional spec dir across groups and
@@ -261,6 +275,61 @@ case_specreconcile_apply_halts_on_drift() {
     "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
   assert_eq "occupant untouched" "occupied" \
     "$(cat "$repo/docs/specs/sdlc/001-occupied/spec.md")"
+}
+
+# AC: the realized ordinal is revalidated before it is used as a path component,
+# a glob, a git argument, or written into frontmatter. A crafted unpadded record
+# halts that identity loudly and writes nothing for it — the one registry-derived
+# token that used to cross the boundary ungated.
+case_specreconcile_apply_gates_realized_ordinal() {
+  local repo; repo="$(specrec_repo sr_ordgate)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_real_dir "$repo" sdlc 018-alpha
+  specrec_commit "$repo"
+  specrec_craft_registry "$repo" 'spec allocate sdlc/18 alpha 20260728 attacker'
+  run_specreconcile_in "$repo" --apply
+  assert_exit     "rc"             1 "$RC"
+  assert_nonempty "names the halt" "$ERR"
+  assert_eq "no unpadded dir" "no" \
+    "$([[ -d "$repo/docs/specs/sdlc/18-alpha" ]] && echo yes || echo no)"
+  assert_eq "pending dir untouched" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+  assert_eq "occupant untouched" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/018-alpha" ]] && echo yes || echo no)"
+  assert_match "frontmatter still provisional" '^id: "P-20260728-alpha"$' \
+    "$(cat "$repo/docs/specs/sdlc/P-20260728-alpha/spec.md")"
+}
+
+# AC: occupancy is numeric on the realize path — a differently-padded occupant
+# holds the same ordinal, so realization halts naming the drift instead of
+# landing a second directory on it. The tracked rename is the path that carries
+# this all the way through, since its slug gate admits the twin basename.
+case_specreconcile_apply_halts_on_padding_variant_occupant() {
+  local repo; repo="$(specrec_repo sr_padocc)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_real_dir "$repo" sdlc 0001-legacy
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit     "rc"             1 "$RC"
+  assert_nonempty "names the halt" "$ERR"
+  assert_eq "no twin on the ordinal" "no" \
+    "$([[ -d "$repo/docs/specs/sdlc/001-alpha" ]] && echo yes || echo no)"
+  assert_eq "pending dir untouched" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+}
+
+# AC: a bare-ordinal occupant (no slug) holds its ordinal too — realization onto
+# it halts rather than treating a nameless directory as free space.
+case_specreconcile_apply_halts_on_bare_ordinal_occupant() {
+  local repo; repo="$(specrec_repo sr_bareocc)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_real_dir "$repo" sdlc 001
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit     "rc"             1 "$RC"
+  assert_nonempty "names the halt" "$ERR"
+  assert_eq "pending dir untouched" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
 }
 
 # AC: a crashed apply converges on re-run — the ordinal is durable before any
