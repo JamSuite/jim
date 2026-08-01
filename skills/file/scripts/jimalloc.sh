@@ -239,21 +239,41 @@ alloc_resolve_spec() {
   local n=${#lines[@]} i c1 c2 c3 c4 c5 c6
   local qgroup="${queried%/*}"
   local anchor=-1 known=0
+  # Two allocate records claiming one identity CONCURRENTLY is a contradiction
+  # the registry's uniqueness cannot represent. Answering from the later one
+  # hands back a confidently wrong referent, so both claimants are remembered and
+  # the answer becomes a refusal naming them.
+  #
+  # Concurrently is the load-bearing word: a name this replay already treats as
+  # reusable — vacated by a rename that moved its holder away, then claimed again
+  # — legitimately carries two allocate records, and only one of them is live.
+  # So a vacating event clears the live claims rather than adding to them, which
+  # keeps the refusal aimed at contradictions and off the reuse path.
+  local dup_a=-1 dup_b=-1
   # Record ids are canonicalized before every comparison, so a record spelling
   # an ordinal unpadded still anchors and still replays.
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
     if [[ "$c1" == spec && "$c2" == allocate ]]; then
       c3="$(alloc_canon_specid "$c3")" || continue
-      [[ "$c3" == "$queried" ]] && { anchor=$i; known=1; }
+      if [[ "$c3" == "$queried" ]]; then
+        if (( dup_a < 0 )); then dup_a=$i; elif (( dup_b < 0 )); then dup_b=$i; fi
+        anchor=$i; known=1
+      fi
     elif [[ "$c1" == spec && "$c2" == rename ]]; then
       c3="$(alloc_canon_specid "$c3")" && c4="$(alloc_canon_specid "$c4")" || continue
       [[ "$c4" == "$queried" ]] && { anchor=$i; known=1; }
+      [[ "$c3" == "$queried" ]] && { dup_a=-1; dup_b=-1; }
     elif [[ "$c1" == group && "$c2" == rename ]]; then
       alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
       [[ "$c4" == "$qgroup" ]] && known=1
+      [[ "$c3" == "$qgroup" ]] && { dup_a=-1; dup_b=-1; }
     fi
   done
+  if (( dup_b >= 0 )); then
+    echo "error: duplicate spec identity '$queried' in the registry — claimed by records $((dup_a + 1)) and $((dup_b + 1)); refusing to answer" >&2
+    return 1
+  fi
   local current="$queried"
   for ((i=0; i<n; i++)); do
     (( anchor >= 0 && i <= anchor )) && continue
@@ -281,6 +301,12 @@ alloc_resolve_issue() {
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4 c5 c6
   local target=""
+  # Both claim shapes are contradictions the same way the spec resolver's is: a
+  # durable id claimed twice, and an ordinal claimed twice. Each is remembered
+  # with its claimants' positions and refused rather than answered from the last
+  # record. The ordinal comparison is the one this function already replays with,
+  # so detection and resolution always agree on what "the same ordinal" means.
+  local dup_a=-1 dup_b=-1
   if [[ "$queried" =~ ^[0-9]+$ ]]; then
     target="$queried"
   else
@@ -290,21 +316,37 @@ alloc_resolve_issue() {
       [[ "$c1" == issue && "$c2" == allocate ]] || continue
       [[ "$c3" =~ ^[0-9]+$ ]] || continue
       alloc_valid_token "$c4" || continue
-      [[ "$c4" == "$queried" ]] && target="$c3"
+      if [[ "$c4" == "$queried" ]]; then
+        if (( dup_a < 0 )); then dup_a=$i; elif (( dup_b < 0 )); then dup_b=$i; fi
+        target="$c3"
+      fi
     done
+    if (( dup_b >= 0 )); then
+      echo "error: duplicate durable issue id '$queried' in the registry — claimed by records $((dup_a + 1)) and $((dup_b + 1)); refusing to answer" >&2
+      return 1
+    fi
     [[ -n "$target" ]] || { echo "error: issue id '$queried' not allocated" >&2; return 1; }
   fi
   local anchor=-1 known=0
+  dup_a=-1; dup_b=-1
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
     if [[ "$c1" == issue && "$c2" == allocate ]]; then
       [[ "$c3" =~ ^[0-9]+$ ]] || continue
-      [[ "$c3" == "$target" ]] && { anchor=$i; known=1; }
+      if [[ "$c3" == "$target" ]]; then
+        if (( dup_a < 0 )); then dup_a=$i; elif (( dup_b < 0 )); then dup_b=$i; fi
+        anchor=$i; known=1
+      fi
     elif [[ "$c1" == issue && "$c2" == rename ]]; then
       [[ "$c3" =~ ^[0-9]+$ && "$c4" =~ ^[0-9]+$ ]] || continue
       [[ "$c4" == "$target" ]] && { anchor=$i; known=1; }
+      [[ "$c3" == "$target" ]] && { dup_a=-1; dup_b=-1; }
     fi
   done
+  if (( dup_b >= 0 )); then
+    echo "error: duplicate issue ordinal '$target' in the registry — claimed by records $((dup_a + 1)) and $((dup_b + 1)); refusing to answer" >&2
+    return 1
+  fi
   local current="$target"
   for ((i=0; i<n; i++)); do
     (( anchor >= 0 && i <= anchor )) && continue

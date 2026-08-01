@@ -295,6 +295,112 @@ issue rename 5 8 20260727' > "$dir/issues.log"
   assert_eq "fullid→current ordinal" "8" "$OUT"
 }
 
+# ─── Section: duplicate-identity refusal on the read path (AC 11) ────────────
+#
+# The registry is push-writable and append-only, so two records can claim one
+# identity. Answering from whichever appears last hands back a confidently wrong
+# referent; these cases pin the contradiction being reported instead.
+
+# AC 11: two allocate records claiming one spec ordinal make resolve refuse,
+# naming both claiming record positions rather than answering from the later.
+#
+# Discriminating in both directions, verified by mutation: neutering the refusal
+# fails this case, and neutering the vacating clear that keeps it off the reuse
+# path fails the vacated-reuse case below.
+case_jimalloc_resolve_spec_duplicate_ordinal_refused() {
+  local dir; dir=$(empty_dir res_dup_spec)
+  printf '%s\n' 'spec allocate core/007 alpha 20260726 jane
+spec allocate other/001 x 20260726 jane
+spec allocate core/007 beta 20260727 mallory' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/007
+  assert_exit     "refused"         1         "$RC"
+  assert_eq       "no answer"       ""        "$OUT"
+  assert_match    "names the identity" 'core/007' "$ERR"
+  assert_match    "names both claimants" '1 and 3' "$ERR"
+}
+
+# AC 11: the duplicate check reads ordinals as numbers, so a claim spelled
+# unpadded is the same identity as its padded twin — the contradiction cannot be
+# hidden behind a spelling difference.
+case_jimalloc_resolve_spec_duplicate_across_paddings_refused() {
+  local dir; dir=$(empty_dir res_dup_spec_pad)
+  printf '%s\n' 'spec allocate core/7 alpha 20260726 jane
+spec allocate core/007 beta 20260727 mallory' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/007
+  assert_exit  "refused"           1         "$RC"
+  assert_eq    "no answer"         ""        "$OUT"
+  assert_match "names the identity" 'core/007' "$ERR"
+}
+
+# AC 11: a single claim still resolves — the refusal is a contradiction check,
+# not a ban on re-reading a log that holds many records for many identities.
+case_jimalloc_resolve_spec_distinct_identities_still_resolve() {
+  local dir; dir=$(empty_dir res_dup_spec_ok)
+  printf '%s\n' 'spec allocate core/007 alpha 20260726 jane
+spec allocate core/008 beta 20260727 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/007
+  assert_exit "rc"      0          "$RC"
+  assert_eq   "answer"  "core/007" "$OUT"
+}
+
+# AC 11: a name vacated by a rename and claimed again carries two allocate
+# records and is NOT a contradiction — the reuse path this replay already
+# supports must keep resolving, which is what separates the refusal from a ban
+# on repeated strings. Same shape one level up: a group renamed away vacates
+# every id under its old name.
+case_jimalloc_resolve_spec_vacated_reuse_not_a_duplicate() {
+  local dir; dir=$(empty_dir res_dup_spec_vacated)
+  printf '%s\n' 'spec allocate core/007 alpha 20260726 jane
+spec rename core/007 core/009 20260727
+spec allocate core/007 beta 20260728 kai' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/007
+  assert_exit "vacated-then-reused rc" 0          "$RC"
+  assert_eq   "answers the live claim" "core/007" "$OUT"
+  printf '%s\n' 'spec allocate dashboard/001 first 20260726 jane
+group rename dashboard core 20260727
+spec allocate dashboard/001 second 20260728 kai' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec dashboard/001
+  assert_exit "group-vacated rc" 0 "$RC"
+  assert_nonempty "still answers"   "$OUT"
+}
+
+# AC 11: the issue side reuses the same liveness rule — an ordinal renamed away
+# and later claimed again resolves, so the refusal stays aimed at contradictions.
+case_jimalloc_resolve_issue_vacated_reuse_not_a_duplicate() {
+  local dir; dir=$(empty_dir res_dup_issue_vacated)
+  printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
+issue rename 5 8 20260727
+issue allocate 5 20260728-beta 20260728 kai' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 5
+  assert_exit "vacated-then-reused rc" 0   "$RC"
+  assert_eq   "answers the live claim" "5" "$OUT"
+}
+
+# AC 11: two allocate records claiming one durable issue id make resolve refuse
+# — the last-wins map is exactly where a landed collision would stay invisible.
+case_jimalloc_resolve_issue_duplicate_durable_id_refused() {
+  local dir; dir=$(empty_dir res_dup_issue_id)
+  printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
+issue allocate 9 20260726-alpha 20260727 mallory' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 20260726-alpha
+  assert_exit  "refused"              1                "$RC"
+  assert_eq    "no answer"            ""               "$OUT"
+  assert_match "names the identity"   '20260726-alpha' "$ERR"
+  assert_match "names both claimants" '1 and 2'        "$ERR"
+}
+
+# AC 11: two allocate records claiming one issue ordinal are the same
+# contradiction from the other direction, and are refused the same way.
+case_jimalloc_resolve_issue_duplicate_ordinal_refused() {
+  local dir; dir=$(empty_dir res_dup_issue_ord)
+  printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
+issue allocate 5 20260726-beta 20260727 mallory' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 5
+  assert_exit  "refused"            1   "$RC"
+  assert_eq    "no answer"          ""  "$OUT"
+  assert_match "names both claimants" '1 and 2' "$ERR"
+}
+
 # ─── Section: next-id / next-num / durable-id guard ──────────────────────────
 
 # AC: next spec id in an empty group is <group>/001; otherwise max ordinal + 1,

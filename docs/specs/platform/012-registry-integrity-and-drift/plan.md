@@ -252,7 +252,7 @@ flowchart TD
    preserved bare-`000` skip.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-3. [ ] Parametrize the derivation provenance marker (trailing optional arg,
+3. [x] Parametrize the derivation provenance marker (trailing optional arg,
    default `jim-seed`); assert existing seed fixtures byte-unchanged.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
