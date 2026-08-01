@@ -256,7 +256,7 @@ flowchart TD
    default `jim-seed`); assert existing seed fixtures byte-unchanged.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-4. [ ] Duplicate-identity refusal in `alloc_resolve_spec` and
+4. [x] Duplicate-identity refusal in `alloc_resolve_spec` and
    `alloc_resolve_issue` (AC 11): rc 1 naming both claiming record
    positions; cases per resolver, mutation-tested.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`

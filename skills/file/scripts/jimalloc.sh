@@ -651,11 +651,18 @@ alloc_reconcile_realize() {
   local max
   max="$(printf '%s\n' "$log" | alloc_fold_max_issue)" || return 1
   local -A existing=()   # durable full-id -> its allocated ordinal
+  local -A claim_at=()   # durable full-id -> the record position that claimed it
+  local -A dup_at=()     # durable full-id -> "<first> and <second>" when claimed twice
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
     [[ "$c1" == issue && "$c2" == allocate ]] || continue
     [[ "$c3" =~ ^[0-9]+$ ]] || continue
     alloc_valid_token "$c4" || continue
+    if [[ -z "${claim_at[$c4]:-}" ]]; then
+      claim_at["$c4"]=$((i + 1))
+    elif [[ -z "${dup_at[$c4]:-}" ]]; then
+      dup_at["$c4"]="${claim_at[$c4]} and $((i + 1))"
+    fi
     existing["$c4"]="$c3"
   done
   # Pass 1: validate the whole pending batch before emitting anything, so a halt
@@ -670,6 +677,15 @@ alloc_reconcile_realize() {
     fi
     if [[ -n "${seen[$pend]:-}" ]]; then
       echo "error: duplicate provisional identity within the pending batch: '$pend'" >&2
+      return 1
+    fi
+    # A registry that claims one durable id twice cannot say which ordinal this
+    # marker already holds, and answering from the later record is how a marker
+    # gets realized onto the wrong one. Scoped to the identities this batch
+    # resolves: a contradiction elsewhere in the log is the sweep's to report,
+    # and must not brick an unrelated realization.
+    if [[ -n "${dup_at[$pend]:-}" ]]; then
+      echo "error: duplicate durable issue id '$pend' in the registry — claimed by records ${dup_at[$pend]}; refusing to realize" >&2
       return 1
     fi
     seen["$pend"]=1
@@ -733,6 +749,8 @@ alloc_reconcile_realize_spec() {
   # another, and a record the fold counts is still not an identity to match
   # against unless all three key fields are well-formed.
   local -A existing=()
+  local -A claim_at=()   # key -> the record position that claimed it
+  local -A dup_at=()     # key -> "<first> and <second>" when the key is claimed twice
   local g num canon
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
@@ -748,6 +766,11 @@ alloc_reconcile_realize_spec() {
     # a `new` answer would report — the have/new asymmetry is closed at the
     # source rather than left for each consumer to normalize.
     canon="$(alloc_canon_specid "$g/$num")" || continue
+    if [[ -z "${claim_at[$g/$c4/$c5]:-}" ]]; then
+      claim_at["$g/$c4/$c5"]=$((i + 1))
+    elif [[ -z "${dup_at[$g/$c4/$c5]:-}" ]]; then
+      dup_at["$g/$c4/$c5"]="${claim_at[$g/$c4/$c5]} and $((i + 1))"
+    fi
     existing["$g/$c4/$c5"]="$canon"
   done
   # Pass 1: validate and parse the whole pending batch before emitting anything,
@@ -783,6 +806,15 @@ alloc_reconcile_realize_spec() {
   for ((i=0; i<${#p_group[@]}; i++)); do
     cur="${p_group[i]}"
     k="$cur/${p_slug[i]}/${p_date[i]}"
+    # Two records claiming this triple leave the readback ambiguous — reporting
+    # `have` from the later one is how a resumed realization adopts the wrong
+    # ordinal. Two specs sharing a title-slug in one group on one day is a state
+    # the allocator itself can mint, so the halt fires only on the triple this
+    # batch resolves; the sweep reports the rest.
+    if [[ -n "${dup_at[$k]:-}" ]]; then
+      echo "error: duplicate spec claim '$k' in the registry — claimed by records ${dup_at[$k]}; refusing to realize '${p_id[i]}'" >&2
+      return 1
+    fi
     if [[ -n "${existing[$k]:-}" ]]; then
       rows+=( "$(printf '%s\t%s\thave' "${p_id[i]}" "${existing[$k]}")" )
       continue

@@ -1997,6 +1997,35 @@ case_jimalloc_reconcile_realize_high_water_rename() {
   assert_eq   "next above rename dst" "$(printf '20260726-new\t12\tnew')" "$OUT"
 }
 
+# AC 11: when two records claim the durable id a pending marker would resolve
+# against, realize halts naming both claimants instead of taking the later one —
+# the same contradiction the resolver refuses, on the path that would otherwise
+# realize a marker onto the wrong ordinal.
+case_jimalloc_reconcile_realize_duplicate_claim_halts() {
+  local log
+  log=$(printf '%s\n' 'issue allocate 5 20260726-x 20260726 jane' \
+                      'issue allocate 9 20260726-x 20260727 mallory')
+  run_realize "$log" 20260726-x
+  assert_exit  "halts"              1  "$RC"
+  assert_eq    "no partial mapping" "" "$OUT"
+  assert_match "names the identity" '20260726-x' "$ERR"
+  assert_match "names both claimants" '1 and 2'  "$ERR"
+}
+
+# AC 11: the halt is aimed at the identity the batch actually resolves — a
+# contradiction elsewhere in the log does not brick an unrelated realization.
+# Reporting every registry-internal contradiction is the sweep's job; this path's
+# job is to never answer one wrongly.
+case_jimalloc_reconcile_realize_unrelated_duplicate_does_not_halt() {
+  local log
+  log=$(printf '%s\n' 'issue allocate 5 20260726-x 20260726 jane' \
+                      'issue allocate 9 20260726-x 20260727 mallory')
+  run_realize "$log" 20260801-unrelated
+  assert_exit "unrelated pending still realizes" 0 "$RC"
+  assert_eq   "next above the high-water" \
+    "$(printf '20260801-unrelated\t10\tnew')" "$OUT"
+}
+
 # AC: the ordinal a normal allocation would issue and the one reconcile realizes
 # onto are the same value for every log shape, malformed records included. A
 # record whose ordinal is numeric but whose durable id fails the id boundary
@@ -2067,6 +2096,34 @@ case_jimalloc_realize_spec_keyed_have() {
   assert_exit "rc" 0 "$RC"
   assert_eq "already realized → its ordinal, no new allocation" \
     "$(printf 'core/P-20260728-beta\tcore/003\thave')" "$OUT"
+}
+
+# AC 11: the spec-side map keys on (group, slug, date), and two records claiming
+# that triple make the realization ambiguous — which ordinal is this identity's?
+# Realize halts naming both claimants rather than reporting `have` from the later
+# record, mirroring its own within-batch duplicate halt.
+case_jimalloc_realize_spec_duplicate_claim_halts() {
+  local log
+  log=$(printf '%s\n' 'spec allocate core/003 beta 20260728 jane' \
+                      'spec allocate core/009 beta 20260728 mallory')
+  run_realize_spec "$log" core/P-20260728-beta
+  assert_exit  "halts"              1  "$RC"
+  assert_eq    "no partial mapping" "" "$OUT"
+  assert_match "names the identity" 'beta' "$ERR"
+  assert_match "names both claimants" '1 and 2' "$ERR"
+}
+
+# AC 11: two specs sharing a title-slug in one group on one day is a state the
+# allocator itself can mint, so the halt must fire on the triple the batch
+# resolves and nowhere else — an unrelated identity still realizes.
+case_jimalloc_realize_spec_unrelated_duplicate_does_not_halt() {
+  local log
+  log=$(printf '%s\n' 'spec allocate core/003 beta 20260728 jane' \
+                      'spec allocate core/009 beta 20260728 mallory')
+  run_realize_spec "$log" core/P-20260728-gamma
+  assert_exit "unrelated pending still realizes" 0 "$RC"
+  assert_eq   "next above the high-water" \
+    "$(printf 'core/P-20260728-gamma\tcore/010\tnew')" "$OUT"
 }
 
 # AC: two spellings of one ordinal are one identity at the realize path's
