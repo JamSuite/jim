@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/platform/012-registry-integrity-and-drift/spec.md"
-reviewed_phases: [spec]
-status: Needs Spec Review
+reviewed_phases: [spec, plan]
+status: Needs Plan Review
 date: "2026-08-01"
 ---
 
@@ -9,18 +9,22 @@ date: "2026-08-01"
 
 ## Summary
 
-**Findings:** 0 Critical · 3 Notable · 2 Advisory
+**Findings:** 0 Critical · 5 Notable · 4 Advisory — findings 1–5 discharged
+(1–3 folded into the spec, 4–5 absorbed by the plan's DD 4/DD 5); the live
+set is 6–9 from the dual-lens pass.
 
-Reviewed spec.md (requirements-gap lens; no plan.md exists yet). STRIDE swept;
-LINDDUN inactive — no PII, credentials, or session data (see classification).
-The spec inherits a well-hardened surface (platform/007/008/011's registry
-threat model); every finding is about the two *new* trust flows this spec
-introduces — tree content becoming registry records, and registry content
-becoming report output.
+First pass reviewed spec.md alone (requirements-gap lens). Second pass
+(same date) added plan.md under the design-flaw lens plus the artifact-
+misalignment check. STRIDE swept both passes; LINDDUN inactive — no PII,
+credentials, or session data (see classification). The new findings are two
+spec↔plan misalignments (a detection mechanism underspecified for AC 3, a
+site missed for AC 11), one execution-hygiene advisory, and one follow-on
+gap routed to an issue.
 
 ## Coverage
 
 - spec.md — reviewed 2026-08-01 (requirements-gap lens)
+- plan.md — reviewed 2026-08-01 (design-flaw lens + artifact misalignment)
 
 ## Data Classification
 
@@ -111,16 +115,98 @@ becoming report output.
 - **Route:** Plan
 - **Relates to:** AC 3, AC 4
 
+*Findings 1–3 were folded into the spec on 2026-08-01 (AC 7 clauses, AC 15,
+the Out of Scope boundary statement); findings 4–5 are absorbed by the
+plan's DD 4 and DD 5. The findings below are the dual-lens pass's.*
+
+### 6. AC 3's retired-group naming has no mechanism in the plan
+
+- **Severity:** Notable
+- **Description:** AC 3 requires the sweep to name retired /
+  partition-source groups as non-coverage. Plan task 7 says "retired groups
+  via record-less group detection" — but a retired group (jim's own `jim`)
+  has *no derivable tree rows* (only the reserved slot) *and* no records, so
+  a tree+log comparison never sees it at all: nothing to derive, nothing to
+  match. As specified, the one live instance of the class would be invisible
+  to the shipped sweep.
+- **Suggestion:** Specify the mechanism: a specs-tree group directory whose
+  only entries are the reserved slot (zero derivable rows) and which has
+  zero registry records is named as an uncovered group. That is exactly the
+  retired-group signature the tree exposes, needs no ledger read, and makes
+  the `jim` case the fixture.
+- **Route:** Plan
+- **Relates to:** AC 3, plan task 7
+
+### 7. AC 11's realization clause covers two maps; the plan fixes one
+
+- **Severity:** Notable
+- **Description:** AC 11 includes "realization's already-realized lookup."
+  Plan task 5 names only the issue-side `alloc_reconcile_realize`
+  `existing[]` map. The spec-side `alloc_reconcile_realize_spec` keys its
+  map on (group, slug, date) with the same silent last-wins when two records
+  claim one triple — the deliberate surfaced-not-prevented collision
+  residual makes the *have/new column* visible, but a duplicate-claiming
+  record pair still resolves silently to the later record.
+- **Suggestion:** Extend task 5 to both realize maps: a second record
+  claiming an already-claimed key halts the batch with both claimants named,
+  mirroring the within-batch duplicate halt.
+- **Route:** Plan
+- **Relates to:** AC 11, plan task 5
+
+### 8. Task 11's Verify collapses resolve-and-execute into one line
+
+- **Severity:** Advisory
+- **Description:** The Verify command `bash -c "$(… jimconf.sh get
+  verify_command_id-sweep)"` substitutes a config-resolved string straight
+  into an executing shell. The verify rung's sanctioned pattern is
+  model-mediated: resolve the value, see it, then run it — the nested
+  substitution executes whatever the config holds with no reading step
+  between.
+- **Suggestion:** Split the Verify into resolve-then-run (two commands), so
+  the executed string is visible in the transcript before execution —
+  matching `skills/verify/SKILL.md`'s own discipline for the same value.
+- **Route:** Plan
+- **Relates to:** Plan task 11
+
+### 9. Reported contradictions have no sanctioned repair path
+
+- **Severity:** Advisory
+- **Description:** The sweep reports mismatch and duplicate classes, and the
+  spec correctly scopes their repair out (operator decision). But the
+  operator's only concrete recourse today is hand-editing the push-writable
+  coordination branch — the exact unsanctioned surgery #130 exists to
+  eliminate for the append case. After this spec ships, a reported
+  contradiction is loud but has no documented, disciplined resolution;
+  detection without a repair story invites exactly the ad-hoc edits the
+  registry's guarantees depend on avoiding.
+- **Suggestion:** File as a follow-on: design the sanctioned repair path
+  for registry-internal contradictions (a precedence/tombstone record, a
+  documented manual procedure with erosion-baseline handling, or an
+  explicit "this is destructive, here is the checklist" doc) — decided
+  there, not here.
+- **Route:** Issue
+- **Relates to:** AC 2, AC 9, Out of Scope (mismatch repair)
+
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
 | Spoofing | Yes | Finding 3 (a fabricated record reads as a legitimate identity; the self-asserted `<who>` is platform/007's accepted advisory-provenance posture, referenced not restated) |
-| Tampering | Yes | Finding 2 (report forgery via crafted tokens); tampering with the registry itself inherits the erosion guard + read-side revalidation already documented in ARCHITECTURE.md |
+| Tampering | Yes | Findings 2 (report forgery via crafted tokens), 6–7 (detection-completeness gaps that would let tampered/absent state go unnamed), 9 (a detected contradiction has no disciplined repair); registry tampering itself inherits the erosion guard + read-side revalidation already documented in ARCHITECTURE.md |
 | Repudiation | No | No issues found — records are advisory provenance by design (007 out-of-scope: not an audit trail); AC 10's distinct marker *improves* attribution of catch-up appends |
 | Information Disclosure | No | No issues found — all report content is repo-scoped and derivable by any repo reader |
 | Denial of Service | Yes | Findings 4, 5 (log growth vs the verify timeout; drift-flood report volume); allocation-path contention handling is inherited |
-| Elevation of Privilege | N/A | Ids carry no authority (007 non-goal, restated by 011); no privilege surface — writes ride the operator's ambient git credentials |
+| Elevation of Privilege | N/A | Ids carry no authority (007 non-goal, restated by 011); no privilege surface — writes ride the operator's ambient git credentials. Finding 8 is execution hygiene on a developer-trusted config value, not a privilege boundary |
+
+## Artifact Misalignment
+
+- **Finding 6 — retired-group naming:** spec AC 3 requires naming retired
+  groups as non-coverage; plan task 7's "record-less group detection" cannot
+  see a group with no derivable rows and no records. Route: Plan.
+- **Finding 7 — realization lookup coverage:** spec AC 11 names the
+  realization lookup generically; plan task 5 covers the issue-side map
+  only, missing `alloc_reconcile_realize_spec`'s triple-keyed twin. Route:
+  Plan.
 
 ## Routing Recommendations
 
@@ -133,9 +219,15 @@ All three applied 2026-08-01 at the developer's direction:
   naming #118 as the primary-control dependency → new Out of Scope bullet.
 
 ### Plan amendments
-- Finding 4: batch validation over per-record forks (with #142 referenced) —
-  for the plan when it exists.
-- Finding 5: cap-and-name report truncation — for the plan when it exists.
+All applied 2026-08-01 at the developer's direction:
+- Finding 4: batch validation over per-record forks — **absorbed by plan
+  DD 4**.
+- Finding 5: cap-and-name report truncation — **absorbed by plan DD 5**.
+- Finding 6: retired-group detection specified (empty group dir + zero
+  records → named uncovered) → task 7.
+- Finding 7: duplicate halt extended to both realize maps → task 5.
+- Finding 8: task 11's Verify split into resolve-then-run.
 
 ### Candidate issues
-No findings routed to Issue this run.
+- Finding 9: sanctioned repair path for registry-internal contradictions —
+  filed as `20260801-design-the-repair-path-for-registry-internal-contradictions`.
