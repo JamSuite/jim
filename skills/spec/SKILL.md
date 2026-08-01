@@ -6,7 +6,7 @@ description: >
   want scoped, reports a bug, or wants to refine an existing spec. Do not
   use for technical planning (/jim:plan) or implementation (/jim:build).
 agent: pm
-argument-hint: "[idea-or-name]"
+argument-hint: "[idea-or-name | reconcile]"
 allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh peek spec *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh allocate spec *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/spec/scripts/reconcile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:spec-check) Skill(jim:blueprint) Read Write Edit
 ---
 
