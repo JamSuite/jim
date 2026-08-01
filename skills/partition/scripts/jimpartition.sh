@@ -1783,7 +1783,13 @@ cmd_rewrite_identity() {
       continue
     fi
     if [[ -s "$rec" ]]; then
-      cat -- "$tmp_out" > "$f"
+      # The awk check covers the producer; this covers the consumer. Reporting
+      # REWROTE for an install that failed is the same lie one step later.
+      if ! cat -- "$tmp_out" > "$f"; then
+        echo "jimpartition rewrite-identity: could not install the rewrite of '$(san_field "$f")'; it may be partially written" >&2
+        rw_failed=1
+        continue
+      fi
       cat -- "$rec"
     fi
   done
@@ -1909,7 +1915,13 @@ cmd_rewrite_refs() {
       continue
     fi
     if [[ -s "$rec" ]]; then
-      cat -- "$tmp_out" > "$f"
+      # The awk check covers the producer; this covers the consumer. Reporting
+      # REWROTE for an install that failed is the same lie one step later.
+      if ! cat -- "$tmp_out" > "$f"; then
+        echo "jimpartition rewrite-refs: could not install the rewrite of '$(san_field "$f")'; it may be partially written" >&2
+        rw_failed=1
+        continue
+      fi
       cat -- "$rec"
     fi
   done
