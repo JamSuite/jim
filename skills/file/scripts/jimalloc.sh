@@ -114,8 +114,24 @@ alloc_read_log() {
 # (is_valid_id). THE single security boundary — no fourth copy. Forecloses
 # option-injection (leading '-'), path traversal ('..'), and ref metacharacters,
 # all of which fall outside the ^[A-Za-z0-9][A-Za-z0-9._-]*$ allowlist.
+#
+# Each DISTINCT token crosses jimfile.sh once per process. Validity is a pure
+# function of the token, so the cache cannot change an answer — it removes the
+# repeat forks a whole-registry scan pays, where the same group, slug, or id is
+# revalidated on both the tree side and the record side. The cache lives inside
+# the boundary rather than beside it, so no call site has to remember to use a
+# faster variant.
+declare -A ALLOC_TOKEN_OK=()
 alloc_valid_token() {
-  bash "$JIMFILE" valid-id "$1" >/dev/null 2>&1
+  local tok="$1"
+  if [[ -z "${ALLOC_TOKEN_OK[$tok]:-}" ]]; then
+    if bash "$JIMFILE" valid-id "$tok" >/dev/null 2>&1; then
+      ALLOC_TOKEN_OK[$tok]=y
+    else
+      ALLOC_TOKEN_OK[$tok]=n
+    fi
+  fi
+  [[ "${ALLOC_TOKEN_OK[$tok]}" == y ]]
 }
 
 # alloc_is_prov_form <name> — exit 0 iff <name> is the reserved provisional
@@ -850,6 +866,18 @@ alloc_seed_field() {
   sed -n "s/^$2:[[:space:]]*//p" "$1" 2>/dev/null | head -n1 | sed 's/^"//; s/"$//'
 }
 
+# alloc_is_reserved_ord <ord> — exit 0 iff <ord> is the reserved blueprint slot:
+# a zero-VALUED ordinal, not one spelling of it, so `0`, `00` and `000` are one
+# rule. Deriving a record for any of them would mint the `<group>/000` identity
+# the registry treats as drift, and the sweep counts the same dirs as
+# non-coverage — one predicate, so the two can never disagree about which dirs
+# are reserved. The digits guard must precede the arithmetic: `10#` on a
+# non-numeric token is a fatal arithmetic error.
+alloc_is_reserved_ord() {
+  [[ "${1:-}" =~ ^[0-9]+$ ]] || return 1
+  (( 10#$1 == 0 ))
+}
+
 # alloc_seed_norm_date <raw> — reduce an ISO-ish timestamp to YYYYMMDD; fall back
 # to today when absent or unparseable (the date field is informational only).
 alloc_seed_norm_date() {
@@ -893,13 +921,7 @@ alloc_seed_derive_specs() {
       [[ -d "$entry" ]] || continue
       name="$(basename "$entry")"
       ord="${name%%-*}"
-      # The reserved blueprint slot is a zero-VALUED ordinal, not one spelling of
-      # it: `0-`, `00-` and `000-` name the same reserved dir, and deriving a
-      # record for any of them would mint the `<group>/000` identity the registry
-      # treats as drift. The digits guard has to precede the arithmetic — `10#`
-      # on a non-numeric token is a fatal arithmetic error, and this runs before
-      # the ordinal class check below.
-      [[ "$ord" =~ ^[0-9]+$ ]] && (( 10#$ord == 0 )) && continue
+      alloc_is_reserved_ord "$ord" && continue
       # A pending provisional dir holds a reserved identity that never entered
       # the registry, so the bootstrap passes over it like the blueprint slot:
       # no record to derive, and nothing to call a conflict.
@@ -959,6 +981,11 @@ alloc_seed_derive_issues() {
     if [[ -z "$num" ]]; then
       conflicts+="  issue file has no display ordinal (num): $base"$'\n'; continue
     fi
+    # A pending provisional issue holds a reserved ordinal that never entered the
+    # registry — the file's twin of a pending provisional spec dir, and passed
+    # over for the same reason. Without this, deriving over a tree that has one
+    # halts, which is exactly the offline state that produces them.
+    alloc_is_prov_form "$num" && continue
     # ordinal: pure digits, no wider than the allocator's own legality value.
     if [[ ! "$num" =~ ^[0-9]+$ ]] || (( ${#num} > ALLOC_MAX_ORD_DIGITS )); then
       conflicts+="  issue file has an invalid display ordinal: $base ($num)"$'\n'; continue
@@ -1025,20 +1052,6 @@ alloc_seed_derive_issues() {
 # absent while its spec records are present raises no finding, matching the
 # catch-up rule that appends a group record only alongside a spec record for it.
 
-# alloc_valid_token_memo <tok> — the id boundary with an in-run cache: each
-# distinct token crosses jimfile.sh once per process. Validity is a pure function
-# of the token, so caching cannot change an answer — it removes the repeat forks
-# a whole-registry scan would otherwise pay per record (#142 owns the general
-# case; this is the in-run dedupe, not a fourth copy of the rule).
-declare -A ALLOC_TOKEN_OK=()
-alloc_valid_token_memo() {
-  local tok="$1"
-  if [[ -z "${ALLOC_TOKEN_OK[$tok]:-}" ]]; then
-    if alloc_valid_token "$tok"; then ALLOC_TOKEN_OK[$tok]=y; else ALLOC_TOKEN_OK[$tok]=n; fi
-  fi
-  [[ "${ALLOC_TOKEN_OK[$tok]}" == y ]]
-}
-
 # alloc_classify_emit <class> <kind> <identity> <detail> — one finding row.
 alloc_classify_emit() {
   printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4"
@@ -1064,7 +1077,7 @@ alloc_classify_spec() {
     read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
     if [[ "$c1" == spec && "$c2" == allocate ]]; then
       canon="$(alloc_canon_specid "$c3")" || continue
-      alloc_valid_token_memo "$c4" || continue
+      alloc_valid_token "$c4" || continue
       if [[ -n "${live_at[$canon]:-}" ]]; then
         alloc_classify_emit DUP-ORD spec "$canon" "records ${live_at[$canon]} and $((i + 1))"
         continue
@@ -1081,7 +1094,7 @@ alloc_classify_spec() {
       fi
       unset 'live_at[$canon]' 'live_slug[$canon]'
     elif [[ "$c1" == group && "$c2" == rename ]]; then
-      alloc_valid_token_memo "$c3" && alloc_valid_token_memo "$c4" || continue
+      alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
       for key in "${!live_at[@]}"; do
         [[ "$key" == "$c3"/* ]] || continue
         src_only["$key"]=1
@@ -1090,7 +1103,7 @@ alloc_classify_spec() {
         unset 'live_at[$key]' 'live_slug[$key]'
       done
     elif [[ "$c1" == group && "$c2" == allocate ]]; then
-      alloc_valid_token_memo "$c3" || continue
+      alloc_valid_token "$c3" || continue
       reg_groups["$c3"]=1
     fi
   done
@@ -1098,14 +1111,14 @@ alloc_classify_spec() {
   # enumerate one artifact set (reserved slots and pending provisionals are
   # already excluded there — the sweep counts those separately as non-coverage).
   local -A tree_slug=() tree_groups=()
-  if [[ -n "$derived" && -f "$derived" ]]; then
+  if [[ -n "$derived" && -r "$derived" ]]; then
     while read -r c1 c2 c3 c4 _; do
       if [[ "$c1" == spec && "$c2" == allocate ]]; then
         canon="$(alloc_canon_specid "$c3")" || continue
-        alloc_valid_token_memo "$c4" || continue
+        alloc_valid_token "$c4" || continue
         tree_slug["$canon"]="$c4"
       elif [[ "$c1" == group && "$c2" == allocate ]]; then
-        alloc_valid_token_memo "$c3" || continue
+        alloc_valid_token "$c3" || continue
         tree_groups["$c3"]=1
       fi
     done < "$derived"
@@ -1150,7 +1163,7 @@ alloc_classify_issue() {
     if [[ "$c1" == issue && "$c2" == allocate ]]; then
       [[ "$c3" =~ ^[0-9]+$ ]] || continue
       (( ${#c3} > ALLOC_MAX_ORD_DIGITS )) && continue
-      alloc_valid_token_memo "$c4" || continue
+      alloc_valid_token "$c4" || continue
       ord=$((10#$c3))
       if [[ -n "${id_at[$c4]:-}" ]]; then
         alloc_classify_emit DUP-ID issue "$c4" "records ${id_at[$c4]} and $((i + 1))"
@@ -1178,11 +1191,11 @@ alloc_classify_issue() {
     fi
   done
   local -A tree_id=()
-  if [[ -n "$derived" && -f "$derived" ]]; then
+  if [[ -n "$derived" && -r "$derived" ]]; then
     while read -r c1 c2 c3 c4 _; do
       [[ "$c1" == issue && "$c2" == allocate ]] || continue
       [[ "$c3" =~ ^[0-9]+$ ]] || continue
-      alloc_valid_token_memo "$c4" || continue
+      alloc_valid_token "$c4" || continue
       tree_id["$((10#$c3))"]="$c4"
     done < "$derived"
   fi
@@ -2032,6 +2045,237 @@ alloc_seed_land() {
   alloc_publish alloc_seed_publish_builder "$spec_records" "$issue_records"
 }
 
+# ─── Section: sweep (read-only integrity report) ─────────────────────────────
+#
+# A read-only comparison of the working tree against the registry, reporting
+# every finding under a named class and — as loudly — everything it did NOT
+# cover. It mutates nothing: the coordination ref is refreshed the way `peek`
+# refreshes it (best-effort, never binding), and no other state is touched.
+#
+# Exit codes are the contract's load-bearing half, because the report has two
+# consumers that read it differently. A CI consumer reads all four; the verify
+# rung maps exit 0 → holds and any clean non-zero → violated:
+#   0  clean            — checked, and tree and registry agree
+#   3  drift found      — maps to `violated`, which is exactly right
+#   4  could-not-check  — also maps to `violated`, which is wrong but LOUD; the
+#                         report names the degradation, and a check that cannot
+#                         run must never read as a pass
+#   1/2 hard failure / usage, the house convention
+
+# The per-class listing cap. A partition accident or a hostile push can produce
+# thousands of findings, and an unbounded listing floods CI logs and the verify
+# evidence channel. The full count is always printed, so a cap is never a silent
+# drop.
+ALLOC_SWEEP_CAP=100
+
+# alloc_sanitize_field <raw> — one report-safe field: tabs/newlines/CRs become
+# spaces so a crafted value cannot forge a row or shift a column, length capped.
+# Applied on emission to every field, including those that already crossed the id
+# boundary — the boundary decides what is CLASSIFIED, this decides what is
+# PRINTED, and the report must be safe even where a future field is not an id.
+alloc_sanitize_field() {
+  printf '%s' "${1:-}" | tr '\t\n\r' '   ' | cut -c1-256
+}
+
+# alloc_group_has_records <group>   (specs log on stdin) — exit 0 iff the
+# registry holds any valid record for <group>: its group-allocate record, or a
+# spec-allocate record under it. A group with neither is invisible to a
+# tree-vs-registry comparison, which is what makes it non-coverage rather than
+# clean.
+alloc_group_has_records() {
+  local group="$1" line c1 c2 c3
+  while IFS= read -r line; do
+    read -r c1 c2 c3 _ <<< "$line"
+    if [[ "$c1" == group && "$c2" == allocate ]]; then
+      alloc_valid_token "$c3" || continue
+      [[ "$c3" == "$group" ]] && return 0
+    elif [[ "$c1" == spec && ( "$c2" == allocate || "$c2" == rename ) ]]; then
+      alloc_valid_specid "$c3" || continue
+      [[ "${c3%/*}" == "$group" ]] && return 0
+    fi
+  done
+  return 1
+}
+
+# alloc_sweep_reserved_count <specs_root> — how many reserved blueprint slots the
+# comparison passed over, using the same predicate the derivation uses.
+alloc_sweep_reserved_count() {
+  local root="$1" g entry name n=0
+  [[ -d "$root" ]] || { printf '0'; return 0; }
+  for g in "$root"/*/; do
+    [[ -d "$g" ]] || continue
+    for entry in "$g"*/; do
+      [[ -d "$entry" ]] || continue
+      name="$(basename "$entry")"
+      alloc_is_reserved_ord "${name%%-*}" && n=$((n + 1))
+    done
+  done
+  printf '%d' "$n"
+}
+
+# alloc_sweep_pending_count <specs_root> <issues_dir> — how many pending
+# provisional identities the comparison passed over: spec dirs in the reserved
+# form, plus issue files whose display ordinal is one. Both are identities that
+# never entered the registry, so their absence from it is not drift.
+alloc_sweep_pending_count() {
+  local root="$1" dir="$2" g entry name f num n=0
+  if [[ -d "$root" ]]; then
+    for g in "$root"/*/; do
+      [[ -d "$g" ]] || continue
+      for entry in "$g"*/; do
+        [[ -d "$entry" ]] || continue
+        name="$(basename "$entry")"
+        alloc_is_prov_form "$name" && n=$((n + 1))
+      done
+    done
+  fi
+  if [[ -d "$dir" ]]; then
+    # Narrow with one grep before reading anything: an issue collection runs to
+    # hundreds of files and a per-file frontmatter read costs a fork each, while
+    # pending provisionals are typically none. The grep only proposes candidates
+    # — the reserved-form predicate still decides, so a crafted `num` cannot
+    # inflate the count.
+    while IFS= read -r f; do
+      [[ -f "$f" ]] || continue
+      [[ "$(basename "$f")" == "INDEX.md" ]] && continue
+      num="$(alloc_seed_field "$f" num)"
+      alloc_is_prov_form "$num" && n=$((n + 1))
+    done < <(grep -l -- "^num:[[:space:]]*['\"]\{0,1\}$ALLOC_PROV_PREFIX" "$dir"/*.md 2>/dev/null)
+  fi
+  printf '%d' "$n"
+}
+
+# alloc_sweep_uncovered_groups <specs_root> <spec-records>   (specs log on stdin)
+#   Print the names of groups a tree-vs-registry comparison cannot see at all: a
+#   specs-tree group directory that derives no rows (only a reserved slot, or
+#   nothing) AND holds no registry record. That is the retired / partition-source
+#   signature — nothing to derive, nothing to match — so without naming it here,
+#   the one class of group that is entirely outside coordination would read as
+#   clean.
+alloc_sweep_uncovered_groups() {
+  local root="$1" records="$2" log g name out=""
+  log="$(cat)"
+  [[ -d "$root" ]] || return 0
+  for g in "$root"/*/; do
+    [[ -d "$g" ]] || continue
+    name="$(basename "$g")"
+    alloc_valid_token "$name" || continue
+    printf '%s\n' "$records" | grep -q "^spec allocate $name/" && continue
+    printf '%s\n' "$log" | alloc_group_has_records "$name" && continue
+    out+="$name "
+  done
+  printf '%s' "${out% }"
+}
+
+# alloc_sweep_list <label> <class> <rows> — print the findings of one class under
+# the report's indent, capped, with the remainder named. Every field is
+# sanitized on the way out.
+alloc_sweep_list() {
+  local label="$1" class="$2" rows="$3" line kind ident detail n=0 shown=0
+  [[ -n "$rows" ]] || return 0
+  n="$(printf '%s\n' "$rows" | grep -c .)"
+  while IFS=$'\t' read -r _ kind ident detail; do
+    [[ -n "$kind" ]] || continue
+    (( shown >= ALLOC_SWEEP_CAP )) && break
+    printf '    %s\t%s\t%s\t%s\n' "$label" \
+      "$(alloc_sanitize_field "$kind")" \
+      "$(alloc_sanitize_field "$ident")" \
+      "$(alloc_sanitize_field "$detail")"
+    shown=$((shown + 1))
+  done <<< "$rows"
+  (( n > shown )) && printf '    ... and %d more %s findings\n' "$((n - shown))" "$label"
+  return 0
+}
+
+# cmd_sweep — the read-only integrity verb.
+cmd_sweep() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      *) echo "error: unknown option '$1' for sweep (usage: sweep)" >&2; return 2 ;;
+    esac
+  done
+  alloc_in_repo || return 1
+  alloc_preflight || return 1
+  local specs_root issues_dir branch remote tip freshness
+  specs_root="$(alloc_seed_tree_root specs docs/specs)"   || return 1
+  issues_dir="$(alloc_seed_tree_root issues docs/issues)" || return 1
+  branch="$(alloc_coord_branch)" || return 1
+  remote="$(alloc_coord_remote)"
+  freshness="local"
+  if [[ -n "$remote" ]]; then
+    if git fetch --quiet "$remote" "$branch:refs/heads/$branch" 2>/dev/null; then
+      freshness="refreshed"
+    else
+      freshness="last-seen; refresh failed"
+    fi
+  fi
+  tip="$(git rev-parse --verify --quiet --end-of-options "refs/heads/$branch" 2>/dev/null || true)"
+  if [[ -z "$tip" && -z "${JIMALLOC_REGISTRY_DIR:-}" ]]; then
+    echo "error: cannot check — no coordination branch '$branch' here and none could be fetched" >&2
+    return 4
+  fi
+  # A tree the derivation refuses is a tree this comparison cannot read. That is
+  # could-not-check, not clean and not drift: the offenders are already named on
+  # stderr by the derivation itself.
+  local spec_rec issue_rec
+  spec_rec="$(alloc_seed_derive_specs "$specs_root")" || return 4
+  issue_rec="$(alloc_seed_derive_issues "$issues_dir")" || return 4
+  local spec_log issue_log
+  spec_log="$(alloc_read_log spec)"; issue_log="$(alloc_read_log issue)"
+  # Derived records reach the classifier through a process substitution, never a
+  # temp file — the allocator's only filesystem write stays the erosion baseline.
+  local spec_rows issue_rows
+  spec_rows="$(printf '%s\n' "$spec_log" | alloc_classify_spec <(printf '%s\n' "$spec_rec"))"
+  issue_rows="$(printf '%s\n' "$issue_log" | alloc_classify_issue <(printf '%s\n' "$issue_rec"))"
+  local all_rows
+  all_rows="$(printf '%s\n%s\n' "$spec_rows" "$issue_rows" | grep -v '^$' || true)"
+  local spec_checked group_checked issue_checked
+  spec_checked="$(printf '%s\n' "$spec_rows" | grep '^CHECKED	spec	' | head -n1)"
+  group_checked="$(printf '%s\n' "$spec_rows" | grep '^CHECKED	group	' | head -n1)"
+  issue_checked="$(printf '%s\n' "$issue_rows" | grep '^CHECKED	issue	' | head -n1)"
+  local s_tree s_reg g_tree i_tree i_reg
+  IFS=$'\t' read -r _ _ s_tree s_reg <<< "$spec_checked"
+  IFS=$'\t' read -r _ _ g_tree _    <<< "$group_checked"
+  IFS=$'\t' read -r _ _ i_tree i_reg <<< "$issue_checked"
+  printf 'sweep: registry @ %s (%s)\n' \
+    "$(alloc_sanitize_field "${tip:0:12}")" "$freshness"
+  printf '  specs:  %d records vs %d tree dirs, %d groups checked\n' \
+    "${s_reg:-0}" "${s_tree:-0}" "${g_tree:-0}"
+  printf '  issues: %d records vs %d files checked\n' "${i_reg:-0}" "${i_tree:-0}"
+  local drift_rows info_rows
+  drift_rows="$(printf '%s\n' "$all_rows" | grep -E '^(MISSING|MISMATCH|DUP-ORD|DUP-ID|RESERVED)	' || true)"
+  info_rows="$(printf '%s\n' "$all_rows" | grep '^INFO-NO-TREE	' || true)"
+  if [[ -n "$drift_rows" ]]; then
+    printf '  drift:\n'
+    alloc_sweep_list missing-record      MISSING  "$(printf '%s\n' "$drift_rows" | grep '^MISSING	'  || true)"
+    alloc_sweep_list mismatch            MISMATCH "$(printf '%s\n' "$drift_rows" | grep '^MISMATCH	' || true)"
+    alloc_sweep_list duplicate-ordinal   DUP-ORD  "$(printf '%s\n' "$drift_rows" | grep '^DUP-ORD	'  || true)"
+    alloc_sweep_list duplicate-id        DUP-ID   "$(printf '%s\n' "$drift_rows" | grep '^DUP-ID	'   || true)"
+    alloc_sweep_list reserved-slot       RESERVED "$(printf '%s\n' "$drift_rows" | grep '^RESERVED	' || true)"
+  fi
+  if [[ -n "$info_rows" ]]; then
+    printf '  info:\n'
+    alloc_sweep_list record-without-tree INFO-NO-TREE "$info_rows"
+  fi
+  local reserved pending uncovered src_ids
+  reserved="$(alloc_sweep_reserved_count "$specs_root")"
+  pending="$(alloc_sweep_pending_count "$specs_root" "$issues_dir")"
+  uncovered="$(printf '%s\n' "$spec_log" | alloc_sweep_uncovered_groups "$specs_root" "$spec_rec")"
+  src_ids="$(printf '%s\n' "$all_rows" | grep -c '^RENAME-SRC	' || true)"
+  printf '  not covered:\n'
+  printf '    reserved-slots\t%d\n'       "$reserved"
+  printf '    pending-provisionals\t%d\n' "$pending"
+  if [[ -n "$uncovered" ]]; then
+    printf '    uncovered-groups\t%d\t%s\n' \
+      "$(printf '%s\n' "$uncovered" | wc -w)" "$(alloc_sanitize_field "$uncovered")"
+  else
+    printf '    uncovered-groups\t0\n'
+  fi
+  printf '    rename-source-ids\t%d\n' "$src_ids"
+  [[ -n "$drift_rows" ]] && return 3
+  return 0
+}
+
 # ─── Section: reconcile (realize pending provisionals into real ids) ─────────
 
 # alloc_reconcile_publish_builder <cur_specs> <cur_issues> <who> <pending...>
@@ -2270,6 +2514,7 @@ main() {
     peek)      cmd_peek      "$@" ;;
     resolve)   cmd_resolve   "$@" ;;
     seed)      cmd_seed      "$@" ;;
+    sweep)     cmd_sweep     "$@" ;;
     reconcile) cmd_reconcile "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2

@@ -2101,6 +2101,176 @@ case_jimalloc_classify_skips_malformed_records() {
     "$(printf '%s\n' "$OUT" | grep -c 'upload-pack')"
 }
 
+# ─── Section: sweep (read-only integrity report) ─────────────────────────────
+
+# sweep_repo <name> — a repo whose tree and registry agree: two spec groups
+# (each with a reserved blueprint slot), two issues, all seeded.
+sweep_repo() {
+  local repo; repo="$(seed_repo "$1")"
+  run_jimalloc_in "$repo" seed --apply
+  printf '%s' "$repo"
+}
+
+# AC 1/4/5: over a tree and registry that agree, the sweep reports its coverage
+# denominators, finds nothing, mutates nothing, and exits clean.
+case_jimalloc_sweep_clean() {
+  local repo before status_before
+  repo="$(sweep_repo sweep_clean)"
+  before="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  status_before="$(git -C "$repo" status --porcelain)"
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "clean rc"      0 "$RC"
+  assert_match "spec denominators"  '^  specs:  3 records vs 3 tree dirs, 2 groups checked$' "$OUT"
+  assert_match "issue denominators" '^  issues: 2 records vs 2 files checked$'               "$OUT"
+  assert_eq    "no drift section"   "0" "$(printf '%s\n' "$OUT" | grep -c '^  drift:')"
+  assert_eq    "registry untouched" "$before" "$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  assert_eq    "worktree unchanged" "$status_before" "$(git -C "$repo" status --porcelain)"
+}
+
+# AC 1/2/5: a spec directory the registry has never heard of is the collision
+# risk — reported under its own class, with a drift exit distinct from clean.
+case_jimalloc_sweep_missing_record() {
+  local repo
+  repo="$(sweep_repo sweep_missing)"
+  mkdir -p "$repo/docs/specs/core/007-cache"
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "drift rc"     3 "$RC"
+  assert_match "names the class and identity" '^    missing-record	spec	core/007	' "$OUT"
+}
+
+# AC 2: tree and registry disagreeing about the identity they share is a
+# mismatch — reported with both sides, never repaired.
+case_jimalloc_sweep_mismatch() {
+  local repo
+  repo="$(sweep_repo sweep_mismatch)"
+  mv "$repo/docs/specs/core/002-beta" "$repo/docs/specs/core/002-betamax"
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "drift rc" 3 "$RC"
+  assert_match "names both sides" '^    mismatch	spec	core/002	tree betamax, registry beta$' "$OUT"
+}
+
+# AC 2: a registry record with no tree counterpart is informational, not drift —
+# a clean exit, because another clone allocating first is a legitimate state.
+case_jimalloc_sweep_record_without_tree_is_info() {
+  local repo
+  repo="$(sweep_repo sweep_info)"
+  run_jimalloc_in "$repo" allocate spec core "Elsewhere"
+  assert_exit "allocate rc" 0 "$RC"
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "informational, not drift" 0 "$RC"
+  assert_match "reported under info" '^    record-without-tree	spec	core/003	' "$OUT"
+}
+
+# AC 2: registry-internal contradictions are drift in their own right — a
+# duplicate ordinal is reported with both claiming record positions.
+case_jimalloc_sweep_duplicate_record() {
+  local repo
+  repo="$(sweep_repo sweep_dup)"
+  alloc_append_record "$repo" specs.log 'spec allocate core/001 alpha 20260726 mallory'
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "drift rc" 3 "$RC"
+  assert_match "names both claimants" '^    duplicate-ordinal	spec	core/001	records ' "$OUT"
+}
+
+# AC 3: the reserved slots and pending provisionals the comparison skips are
+# named with counts, so a clean report is never confused with an unlooked-at one.
+case_jimalloc_sweep_names_non_coverage() {
+  local repo
+  repo="$(sweep_repo sweep_notcovered)"
+  mkdir -p "$repo/docs/specs/core/P-20260801-pending"
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "still clean"           0 "$RC"
+  assert_match "reserved slots counted" '^    reserved-slots	1$'       "$OUT"
+  assert_match "provisionals counted"   '^    pending-provisionals	1$' "$OUT"
+  assert_match "rename sources counted" '^    rename-source-ids	0$'    "$OUT"
+}
+
+# AC 3 (security finding 6): a retired or partition-source group has no
+# derivable rows AND no registry records, so a tree-vs-registry comparison never
+# sees it at all. It is named as uncovered rather than passing silently — jim's
+# own retired `jim` group is exactly this shape.
+case_jimalloc_sweep_names_uncovered_group() {
+  local repo
+  repo="$(sweep_repo sweep_retired)"
+  mkdir -p "$repo/docs/specs/jim/000-blueprint"
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "still clean"        0 "$RC"
+  assert_match "names the group" '^    uncovered-groups	1	jim$' "$OUT"
+}
+
+# AC 3/6: with an unreachable coordination point the sweep still runs against
+# the last-fetched state and says so in its header — it does not refuse, and the
+# staleness is visible at a glance rather than inferred.
+case_jimalloc_sweep_offline_names_staleness() {
+  local repo
+  repo="$(sweep_repo sweep_offline)"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-sweep.git"
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "runs anyway"      0            "$RC"
+  assert_match "names last-seen"  'last-seen'  "$OUT"
+  assert_match "names the tip"    '^sweep: registry @ [0-9a-f]{7,} ' "$OUT"
+}
+
+# AC 5: could-not-check is distinguishable from both clean and drift — a repo
+# with no coordination branch at all cannot be swept, and says so with its own
+# exit code rather than reporting a clean or dirty registry it never read.
+case_jimalloc_sweep_no_registry_cannot_check() {
+  local repo
+  repo="$(alloc_new_repo sweep_noreg)"
+  mkdir -p "$repo/docs/specs/core/001-alpha" "$repo/docs/issues"
+  run_jimalloc_in "$repo" sweep
+  assert_exit     "could-not-check rc" 4 "$RC"
+  assert_nonempty "names the reason"   "$ERR"
+}
+
+# AC 15: a crafted record cannot forge or shift a report row — its fields are
+# revalidated at the id boundary before the row is composed, so the record is
+# skipped and its payload never reaches stdout.
+case_jimalloc_sweep_crafted_record_cannot_forge_a_row() {
+  local repo
+  repo="$(sweep_repo sweep_crafted)"
+  alloc_append_record "$repo" specs.log \
+    'spec allocate core/004 ../../etc/passwd 20260726 mallory'
+  run_jimalloc_in "$repo" sweep
+  assert_eq "crafted payload never echoed" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'passwd')"
+}
+
+# AC 5 (DD 5): a drift flood is bounded but never silently truncated — the
+# listing caps and the full count is always reported.
+case_jimalloc_sweep_caps_the_listing() {
+  local repo i n
+  repo="$(sweep_repo sweep_cap)"
+  for ((i = 10; i < 130; i++)); do mkdir -p "$repo/docs/specs/core/$i-flood"; done
+  run_jimalloc_in "$repo" sweep
+  assert_exit "drift rc" 3 "$RC"
+  n="$(printf '%s\n' "$OUT" | grep -c '^    missing-record	spec	')"
+  assert_eq    "listing capped"        "100" "$n"
+  assert_match "remainder named" 'and 20 more' "$OUT"
+}
+
+# AC 3: a pending provisional issue file is reserved like a provisional spec dir
+# — the derivation passes over it instead of halting, so the sweep still runs in
+# exactly the offline state that produces one.
+case_jimalloc_sweep_pending_provisional_issue() {
+  local repo
+  repo="$(sweep_repo sweep_prov_issue)"
+  seed_issue_file "$repo/docs/issues" "20260801-pending.md" \
+    "P-20260801-pending" 20260801-pending 2026-08-01T10:00:00Z
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "runs, does not halt"     0 "$RC"
+  assert_match "counted as provisional" '^    pending-provisionals	1$' "$OUT"
+}
+
+# AC 1: the sweep validates its own arguments — an unknown option is a usage
+# error, distinct from every content outcome.
+case_jimalloc_sweep_usage() {
+  run_jimalloc sweep --bogus
+  assert_exit     "usage rc"    2  "$RC"
+  assert_eq       "stdout empty" "" "$OUT"
+  assert_nonempty "explains"    "$ERR"
+}
+
 # ─── Section: reconcile — realize logic (pure, no git) ───────────────────────
 
 # run_realize <log> <pending...> — source the allocator and run the pure

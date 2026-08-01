@@ -269,7 +269,7 @@ flowchart TD
    on each side (security finding 7).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-6. [ ] Classifier cores `alloc_classify_spec` / `alloc_classify_issue` per
+6. [x] Classifier cores `alloc_classify_spec` / `alloc_classify_issue` per
    the Interface Contract (AC 1, 2, 4 substrate): every class row + CHECKED
    denominators; sourced-function cases covering each class, canonical
    spelling (unpadded record vs padded dir), and token dedupe.
