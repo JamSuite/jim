@@ -9,7 +9,25 @@
 #   pure record layer (grammar parse, emit-encode, forward-replay resolution),
 #   next-id/next-num + durable-id guard, the two-tier compare-and-swap (local
 #   update-ref, origin push non-fast-forward), the erosion growth guard,
-#   config wiring + failure semantics, write-containment, and peek.
+#   config wiring + failure semantics, write-containment, peek, and the
+#   integrity surface — tree-vs-registry classification, the read-only sweep,
+#   and the catch-up repair verb.
+#
+# MUTATION AUDIT (2026-08-01, the integrity surface)
+#   Every guard and detection in that surface was neutered in turn and its
+#   fixtures confirmed to FAIL, then restored — 29 mutations, all
+#   discriminating. Covered: the origin-tip boundary; the reserved-ordinal
+#   predicate; both resolver duplicate refusals and the vacating clear that
+#   keeps them off the reuse path; both realize halts; every classifier class
+#   (MISSING / MISMATCH / RESERVED / INFO-NO-TREE / DUP-ORD / DUP-ID /
+#   rename liveness) and its record-token validation; the sweep's drift and
+#   could-not-check exits, listing cap, uncovered-group naming, both pending
+#   counters, staleness header, and field sanitizer; the derivation's
+#   provisional-issue skip; and catch-up's marker, group-record rule, blocked
+#   listing, partial-repair exit, at-the-tip recomputation, and its inherited
+#   erosion refusal. A fixture that still passes while its guard is neutered
+#   is not testing that guard — the audit is what makes AC 14's "discriminates"
+#   a measurement rather than a claim.
 #
 # HOW TO RUN
 #   bash tests/jimalloc.sh                  # every case in this file
@@ -2221,6 +2239,24 @@ case_jimalloc_sweep_no_registry_cannot_check() {
   run_jimalloc_in "$repo" sweep
   assert_exit     "could-not-check rc" 4 "$RC"
   assert_nonempty "names the reason"   "$ERR"
+}
+
+# AC 15: the emission-side sanitizer collapses the characters that would forge a
+# row or shift a column, and caps length.
+#
+# Exercised directly, and deliberately so: every value the report prints today
+# has already crossed the id boundary (the case below proves a crafted record is
+# dropped before a row is composed), so no CLI input can currently reach this
+# function with a tab or newline in it. That makes it defense in depth for the
+# next field added to the report rather than a guard with a reachable path —
+# stated here because a fixture that could not fail would otherwise read as
+# coverage it is not.
+case_jimalloc_sweep_sanitizes_an_emitted_field() {
+  local out
+  out="$(source "$SCRIPT_jimalloc"; alloc_sanitize_field "$(printf 'a\tb\nc\rd')")"
+  assert_eq "row-forging characters collapsed" "a b c d" "$out"
+  out="$(source "$SCRIPT_jimalloc"; alloc_sanitize_field "$(printf 'x%.0s' {1..400})")"
+  assert_eq "length capped" "256" "${#out}"
 }
 
 # AC 15: a crafted record cannot forge or shift a report row — its fields are

@@ -302,7 +302,7 @@ flowchart TD
 10. [x] `usage()` + README + WORKFLOW rows (AC 17).
     **Verify:** `grep -c 'catch-up' README.md WORKFLOW.md skills/file/scripts/jimalloc.sh | grep -v ':0'`
 
-11. [ ] Wire `verify_command_id-sweep` in `jimconf.toml`; resolve the
+11. [x] Wire `verify_command_id-sweep` in `jimconf.toml`; resolve the
     command, inspect it, then run it — two steps, so the executed string is
     visible before execution (security finding 8) — confirming the DD 2
     mapping (0/3 observed); stage the `registry-tree-consistency` invariant
