@@ -179,6 +179,28 @@ is_tracked() {
   [[ -n "$(git --literal-pathspecs ls-files -- "$1" 2>/dev/null)" ]]
 }
 
+# worktree_top — print the worktree's top directory, normalized. rc 1 outside a
+# git tree.
+#
+# One resolver for both callers — the sweep's containment bound and --apply's
+# spelling gate — so the two sides of a containment comparison cannot drift into
+# different forms.
+#
+# The `realpath` is belt-and-braces, not a fix: `git rev-parse --show-toplevel`
+# already returns a symlink-resolved path, verified across a symlinked cwd, a
+# linked worktree reached through a symlink, and GIT_WORK_TREE pointed at one.
+# It is kept so the top is in the same form as every candidate this script
+# resolves, which is what makes the comparison well-defined rather than
+# incidentally true. Falls back to the raw top if realpath fails, since an empty
+# top would fail every containment check open rather than closed.
+worktree_top() {
+  local t
+  if ! t="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$t" ]]; then
+    return 1
+  fi
+  realpath -m -- "$t" 2>/dev/null || printf '%s\n' "$t"
+}
+
 # rewrite_id <file> <new-id> — print <file> with the id: field inside its leading
 # frontmatter block replaced by <new-id>. A body line that happens to read "id:"
 # sits outside that block and is never matched — the same region field_value
@@ -250,7 +272,14 @@ apply_pending() {
     # realize path and the creation path cannot disagree about what an ordinal
     # is. The tracked branch needs it here in its own right: rename-tracked
     # gates the new basename's shape, not the ordinal's occupancy.
-    held="$(jf spec-ordinal-holder "$group" "$ord")"; held_rc=$?
+    #
+    # --root makes the gate read the tree it is about to write into rather than
+    # the configured specs dir. The two cannot diverge today — the apply gate
+    # refuses a <specs_dir> argument that does not resolve to the configured one
+    # — so this is defense in depth, not a live fix. It is here because the gate
+    # should not silently depend on a refusal held elsewhere for its own
+    # reasons, and because the sibling caller in jimledger.sh already passes it.
+    held="$(jf spec-ordinal-holder "$group" "$ord" --root "$root")"; held_rc=$?
     if (( held_rc == 0 )); then
       echo "error: $pend — realized ordinal $real is already held by '$held' (registry-vs-tree drift); nothing applied for this identity" >&2
       failed=1; continue
@@ -347,8 +376,12 @@ build_remap() {
 sweep_citations() {
   local remap="$1" own_dirs="${2:-}"
   [[ -n "$remap" ]] || return 0
+  # Declared here, not at the rewrite loop below: the root-resolution pass drops
+  # roots and must be able to fail the sweep, and a later `local … =0` would
+  # reset whatever it recorded.
+  local sweep_failed=0
   local top
-  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+  if ! top="$(worktree_top)"; then
     echo "error: citation sweep — not in a git repo" >&2
     return 1
   fi
@@ -364,8 +397,12 @@ sweep_citations() {
   for key in specs issues brainstorms debug; do
     root="$(jc get "$key" 2>/dev/null)"; root="${root%/}"; root="${root#./}"
     [[ -n "$root" ]] || continue
+    # A dropped root means some citations are rewritten and others are not, and
+    # the issue index is never regenerated for the dropped one. That is a partial
+    # sweep, so it fails the run — the caller cannot see it any other way.
     if ! rp="$(realpath -m -- "$root" 2>/dev/null)" || [[ -z "$rp" ]]; then
       echo "warning: citation sweep — cannot resolve the configured '$key' root ('$root'); not swept" >&2
+      sweep_failed=1
       continue
     fi
     if [[ "$rp" == "$top" ]]; then
@@ -374,12 +411,17 @@ sweep_citations() {
       root="${rp#"$top"/}"
     else
       echo "warning: citation sweep — the configured '$key' root ('$root') resolves outside the worktree; not swept" >&2
+      sweep_failed=1
       continue
     fi
     roots+=("$root")
     [[ "$key" == issues ]] && issues_root="$root"
   done
-  (( ${#roots[@]} )) || return 0
+  # Every root dropped: nothing was swept, and the drops already recorded why.
+  # Defensive — the specs root has to resolve for --apply to reach this at all,
+  # so no CLI path leaves this set empty. It carries the failure out regardless,
+  # rather than making the early return a second way to report a clean sweep.
+  (( ${#roots[@]} )) || return "$sweep_failed"
   mapfile -t files < <(git --literal-pathspecs ls-files -- "${roots[@]}" 2>/dev/null | grep -E '\.md$')
 
   # A directory realized while still uncommitted is invisible to git, so its own
@@ -434,7 +476,7 @@ sweep_citations() {
     fi
   done
 
-  local swtmp parsed tmp_out rec awk_rc issue_touched=0 sweep_failed=0
+  local swtmp parsed tmp_out rec awk_rc issue_touched=0
   if ! swtmp="$(mktemp -d 2>/dev/null)"; then
     echo "error: citation sweep — cannot create temp dir" >&2; return 1
   fi
@@ -510,7 +552,15 @@ sweep_citations() {
       continue
     fi
     if [[ -s "$rec" ]]; then
-      cat -- "$tmp_out" > "$f"
+      # The awk guard above covers the producer; this covers the consumer. A
+      # read-only target or a full disk fails here, and reporting REWROTE for a
+      # rewrite that did not land — or worse, for one that landed truncated — is
+      # the same lie one step later in the pipeline.
+      if ! cat -- "$tmp_out" > "$f"; then
+        echo "error: citation sweep — could not install the rewrite of '$f'; it may be partially written" >&2
+        sweep_failed=1
+        continue
+      fi
       cat -- "$rec"
       if [[ -n "$issues_root" ]] \
          && { [[ "$issues_root" == "." ]] || [[ "$f" == "$issues_root"/* ]]; }; then
@@ -600,11 +650,10 @@ cmd_reconcile() {
   # other refuse, within a single run.
   if (( apply )); then
     local cfg_dir top here rp_cfg rp_dir
-    if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    if ! top="$(worktree_top)"; then
       echo "error: --apply must run inside a git repo" >&2
       return 1
     fi
-    top="$(realpath -m -- "$top" 2>/dev/null)"
     # Every path this step resolves — the configured specs dir, the tracked
     # rename's arguments, the sweep's targets — is relative to the CURRENT
     # directory, and jimconf reads ./jimconf.toml from there with no walk-up. The

@@ -1124,6 +1124,72 @@ case_specreconcile_sweep_awk_failure_does_not_install() {
     "$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
 }
 
+# AC: a content root that resolves outside the worktree is dropped, and the drop
+# fails the run. Some citations are rewritten and others are not, and the index
+# is never regenerated for the dropped root — a partial sweep the caller can see
+# no other way. The surviving roots still sweep (accumulate-and-continue).
+case_specreconcile_sweep_dropped_root_fails_the_run() {
+  local repo outside
+  repo="$(specrec_repo sr_droproot)"
+  outside="$TMP_BASE/sr_droproot_outside"
+  mkdir -p "$outside"
+  printf 'brainstorms_path = "%s"\n' "$outside" > "$repo/jimconf.toml"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf 'see sdlc/P-20260728-alpha\n' > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the dropped root" 'brainstorms' "$ERR"
+  assert_match "surviving root still swept" 'sdlc/002' \
+    "$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+}
+
+# AC: invoked through a symlinked path, the run still realizes and sweeps.
+#
+# This does NOT discriminate the worktree-top normalization: `git rev-parse
+# --show-toplevel` resolves symlinks itself, so the raw and normalized tops are
+# always equal and a mutant that drops the normalization still passes. It is
+# kept as coverage of the symlinked-invocation path itself, which nothing else
+# exercises — not as a guard on the resolver.
+case_specreconcile_sweep_through_symlinked_worktree() {
+  local repo link
+  repo="$(specrec_repo sr_symtop)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf 'see sdlc/P-20260728-alpha\n' > "$repo/docs/specs/sdlc/001-other/spec.md"
+  specrec_commit "$repo"
+  link="$TMP_BASE/sr_symtop_link"
+  ln -sfn "$repo" "$link"
+  run_specreconcile_in "$link" --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "citation swept through the symlink" 'sdlc/002' \
+    "$(cat "$repo/docs/specs/sdlc/001-other/spec.md")"
+}
+
+# AC: the installer is guarded like the rewrite that feeds it. An unwritable
+# target cannot be installed, so the run fails and no REWROTE is claimed for it.
+case_specreconcile_sweep_uninstallable_target_fails() {
+  local repo target before
+  repo="$(specrec_repo sr_noinstall)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  target="$repo/docs/specs/sdlc/001-other/spec.md"
+  printf 'see sdlc/P-20260728-alpha\nsecond line\n' > "$target"
+  specrec_commit "$repo"
+  before="$(cat "$target")"
+  chmod 0444 "$target"
+  run_specreconcile_in "$repo" --apply
+  chmod 0644 "$target"
+  assert_exit "rc" 1 "$RC"
+  assert_eq   "target byte-unchanged" "$before" "$(cat "$target")"
+  assert_eq   "no REWROTE claimed for it" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '001-other')"
+}
+
 # AC: a symlinked entry in a realized directory is not swept. The own-directory
 # enumeration drops the tracked-ness guard by necessity, so a symlink is the one
 # way a write can leave the four content roots — `>` follows it to its target.
