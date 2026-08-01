@@ -187,3 +187,10 @@ issue allocate 186 20260801-reconcile-literal-pathspec-use-between-the-commit-an
 issue allocate 187 20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer 20260731 jrko
 issue allocate 188 20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation 20260731 jrko
 issue allocate 189 20260801-two-test-files-are-claimed-by-no-group-s-territory 20260731 jrko
+issue allocate 190 20260801-citation-sweep-exits-0-after-dropping-a-content-root 20260801 jrko
+issue allocate 191 20260801-citation-sweep-installer-discards-cat-s-exit-status 20260801 jrko
+issue allocate 192 20260801-index-sh-publishes-a-truncated-index-md-as-success 20260801 jrko
+issue allocate 193 20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro 20260801 jrko
+issue allocate 194 20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions 20260801 jrko
+issue allocate 195 20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization 20260801 jrko
+issue allocate 196 20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage 20260801 jrko
