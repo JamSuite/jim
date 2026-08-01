@@ -247,7 +247,7 @@ flowchart TD
    `ls-remote` output via PATH-shimmed `git`, mutation-tested).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-2. [ ] Normalize the reserved-slot skip to digits-guarded numeric zero in
+2. [x] Normalize the reserved-slot skip to digits-guarded numeric zero in
    `alloc_seed_derive_specs` (AC 16); cases for `0-foo`, `00-foo`, and the
    preserved bare-`000` skip.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`

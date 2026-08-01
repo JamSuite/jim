@@ -784,13 +784,18 @@ alloc_seed_norm_date() {
   if [[ -n "$d" ]]; then printf '%s' "$d"; else bash "$JIMFILE" date; fi
 }
 
-# alloc_seed_derive_specs <specs_root> — print the specs.log record set derived
-# from <specs_root>/<group>/<NNN>-<slug>/ dirs: one `group allocate` per group
-# that holds a non-blueprint spec, one `spec allocate` per dir, skipping the
-# reserved 000-blueprint slot. Groups sorted; specs ascending by ordinal. Empty
-# output when the tree is absent or holds no non-blueprint specs.
+# alloc_seed_derive_specs <specs_root> [<marker>] — print the specs.log record
+# set derived from <specs_root>/<group>/<NNN>-<slug>/ dirs: one `group allocate`
+# per group that holds a non-blueprint spec, one `spec allocate` per dir,
+# skipping the reserved blueprint slot. Groups sorted; specs ascending by
+# ordinal. Empty output when the tree is absent or holds no non-blueprint specs.
+#
+# <marker> is the provenance value stamped into each record, defaulting to the
+# bootstrap's `jim-seed`. It is a parameter because more than one writer derives
+# from the same tree, and which writer produced a record is the only forensic
+# distinction between them — the record content is otherwise identical.
 alloc_seed_derive_specs() {
-  local root="$1" date
+  local root="$1" marker="${2:-jim-seed}" date
   [[ -d "$root" ]] || return 0
   date="$(bash "$JIMFILE" date)" || return 1
   local -a groups=()
@@ -847,9 +852,9 @@ alloc_seed_derive_specs() {
       rows+=("$ord"$'\t'"$slug")
     done
     (( ${#rows[@]} )) || continue
-    out+="group allocate $gname $date jim-seed"$'\n'
+    out+="group allocate $gname $date $marker"$'\n'
     while IFS=$'\t' read -r ord slug; do
-      out+="$(printf 'spec allocate %s/%03d %s %s jim-seed' "$gname" "$((10#$ord))" "$slug" "$date")"$'\n'
+      out+="$(printf 'spec allocate %s/%03d %s %s %s' "$gname" "$((10#$ord))" "$slug" "$date" "$marker")"$'\n'
     done < <(printf '%s\n' "${rows[@]}" | LC_ALL=C sort -t$'\t' -k1,1n)
   done
   if [[ -n "$conflicts" ]]; then
@@ -859,11 +864,12 @@ alloc_seed_derive_specs() {
   printf '%s' "$out"
 }
 
-# alloc_seed_derive_issues <issues_dir> — print the issues.log record set derived
-# from <issues_dir>/*.md frontmatter (num, id, created), excluding INDEX.md;
-# ascending by ordinal. Empty output when the dir is absent or holds no issues.
+# alloc_seed_derive_issues <issues_dir> [<marker>] — print the issues.log record
+# set derived from <issues_dir>/*.md frontmatter (num, id, created), excluding
+# INDEX.md; ascending by ordinal. Empty output when the dir is absent or holds no
+# issues. <marker> carries the same provenance contract as the spec derivation's.
 alloc_seed_derive_issues() {
-  local dir="$1"
+  local dir="$1" marker="${2:-jim-seed}"
   [[ -d "$dir" ]] || return 0
   local out="" conflicts=""
   local -a rows=()
@@ -912,7 +918,7 @@ alloc_seed_derive_issues() {
   (( ${#rows[@]} )) || return 0
   local rnum rid rdate
   while IFS=$'\t' read -r rnum rid rdate; do
-    out+="issue allocate $rnum $rid $rdate jim-seed"$'\n'
+    out+="issue allocate $rnum $rid $rdate $marker"$'\n'
   done < <(printf '%s\n' "${rows[@]}" | LC_ALL=C sort -t$'\t' -k1,1n)
   printf '%s' "$out"
 }

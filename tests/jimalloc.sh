@@ -1498,6 +1498,41 @@ case_jimalloc_seed_issues_padded_num_normalized() {
     "issue allocate 7 20260726-alpha 20260726 jim-seed" "$out"
 }
 
+# AC 10: the derivation's provenance marker is a parameter, so a writer other
+# than the bootstrap can stamp its own — the forensic distinguisher between a
+# bootstrap append and a catch-up append.
+case_jimalloc_seed_derive_marker_parametrized() {
+  local root dir today specs issues
+  root="$(seed_specs_tree seed_marker_specs core/001-alpha)"
+  dir="$(empty_dir seed_marker_issues)"
+  seed_issue_file "$dir" "20260726-a.md" 1 20260726-a 2026-07-26T10:00:00Z
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  specs="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_specs "$root" jim-catchup)"
+  issues="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_issues "$dir" jim-catchup)"
+  assert_eq "spec group record carries the marker" \
+    "group allocate core $today jim-catchup" "$(printf '%s\n' "$specs" | head -n1)"
+  assert_match "spec record carries the marker" \
+    "^spec allocate core/001 alpha $today jim-catchup\$" "$specs"
+  assert_eq "issue record carries the marker" \
+    "issue allocate 1 20260726-a 20260726 jim-catchup" "$issues"
+}
+
+# AC 10: omitting the marker leaves the bootstrap's own output byte-identical —
+# the parameter is additive, and `jim-seed` stays what a seed writes.
+case_jimalloc_seed_derive_marker_default_unchanged() {
+  local root dir today specs issues
+  root="$(seed_specs_tree seed_marker_default core/001-alpha)"
+  dir="$(empty_dir seed_marker_default_issues)"
+  seed_issue_file "$dir" "20260726-a.md" 1 20260726-a 2026-07-26T10:00:00Z
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  specs="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_specs "$root")"
+  issues="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_issues "$dir")"
+  assert_eq "specs default" \
+    "$(printf 'group allocate core %s jim-seed\nspec allocate core/001 alpha %s jim-seed' "$today" "$today")" \
+    "$specs"
+  assert_eq "issues default" "issue allocate 1 20260726-a 20260726 jim-seed" "$issues"
+}
+
 # AC: the record a padded ordinal seeds is one the resolver can find.
 case_jimalloc_resolve_issue_finds_a_seeded_padded_ordinal() {
   local dir; dir=$(empty_dir res_issue_padded_seed)
