@@ -2271,6 +2271,93 @@ case_jimalloc_sweep_usage() {
   assert_nonempty "explains"    "$ERR"
 }
 
+# ─── Section: catch-up (incremental repair of a non-empty registry) ──────────
+
+# AC 7: bare `catch-up` is a preview — it renders each record it would append
+# VERBATIM rather than a count, and writes nothing.
+case_jimalloc_catchup_preview_renders_records_verbatim() {
+  local repo before today
+  repo="$(sweep_repo catchup_prev)"
+  before="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  mkdir -p "$repo/docs/specs/core/007-cache"
+  seed_issue_file "$repo/docs/issues" "20260801-late.md" 9 20260801-late 2026-08-01T10:00:00Z
+  run_jimalloc_in "$repo" catch-up
+  assert_exit  "preview rc" 0 "$RC"
+  assert_match "spec record verbatim" \
+    "^    spec allocate core/007 cache $today jim-catchup\$" "$OUT"
+  assert_match "issue record verbatim, with the issue's own date" \
+    '^    issue allocate 9 20260801-late 20260801 jim-catchup$' "$OUT"
+  assert_eq "registry untouched" "$before" \
+    "$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+}
+
+# AC 10: the appended records carry a marker distinguishing a catch-up append
+# from both the bootstrap and a live allocation — the only forensic difference
+# between them, since the record content is otherwise identical.
+case_jimalloc_catchup_preview_marks_provenance() {
+  local repo
+  repo="$(sweep_repo catchup_marker)"
+  mkdir -p "$repo/docs/specs/core/007-cache"
+  run_jimalloc_in "$repo" catch-up
+  assert_eq "no bootstrap marker on an appended record" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^    spec allocate .* jim-seed$')"
+}
+
+# AC 7: a group the registry has never seen gets its group record alongside the
+# spec record that first claims it — the same rule an allocation follows.
+case_jimalloc_catchup_preview_claims_a_new_group() {
+  local repo
+  repo="$(sweep_repo catchup_group)"
+  mkdir -p "$repo/docs/specs/newgroup/001-thing"
+  run_jimalloc_in "$repo" catch-up
+  assert_match "group record"  '^    group allocate newgroup .* jim-catchup$'      "$OUT"
+  assert_match "spec record"   '^    spec allocate newgroup/001 thing .* jim-catchup$' "$OUT"
+}
+
+# AC 7/9: mismatch-class drift is not appendable — it is listed as unrepairable
+# and excluded from the append set, because choosing a winner is an operator
+# decision this verb never makes.
+case_jimalloc_catchup_preview_lists_unrepairable() {
+  local repo
+  repo="$(sweep_repo catchup_mismatch)"
+  mv "$repo/docs/specs/core/002-beta" "$repo/docs/specs/core/002-betamax"
+  run_jimalloc_in "$repo" catch-up
+  assert_match "named as unrepairable" '^    mismatch	spec	core/002	' "$OUT"
+  assert_eq "not in the append set" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^    spec allocate core/002 ')"
+}
+
+# AC 8: with nothing missing, the preview says so and proposes no record — the
+# same no-op a re-run after a clean apply reports.
+case_jimalloc_catchup_preview_clean_is_a_noop() {
+  local repo
+  repo="$(sweep_repo catchup_clean)"
+  run_jimalloc_in "$repo" catch-up
+  assert_exit  "rc" 0 "$RC"
+  assert_match "says nothing to append" 'nothing to append' "$OUT"
+}
+
+# AC 16: the reserved blueprint slot is never derived into a record, so a
+# catch-up can no more mint `<group>/000` than the bootstrap can.
+case_jimalloc_catchup_preview_never_proposes_the_reserved_slot() {
+  local repo
+  repo="$(sweep_repo catchup_reserved)"
+  mkdir -p "$repo/docs/specs/newgroup/0-blueprint" "$repo/docs/specs/newgroup/001-thing"
+  run_jimalloc_in "$repo" catch-up
+  assert_eq "no reserved-slot record proposed" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'newgroup/000')"
+}
+
+# AC 1: catch-up validates its own arguments — an unknown option is a usage
+# error, distinct from every content outcome.
+case_jimalloc_catchup_usage() {
+  run_jimalloc catch-up --bogus
+  assert_exit     "usage rc"     2  "$RC"
+  assert_eq       "stdout empty" "" "$OUT"
+  assert_nonempty "explains"     "$ERR"
+}
+
 # ─── Section: reconcile — realize logic (pure, no git) ───────────────────────
 
 # run_realize <log> <pending...> — source the allocator and run the pure

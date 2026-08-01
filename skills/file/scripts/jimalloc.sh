@@ -2276,6 +2276,140 @@ cmd_sweep() {
   return 0
 }
 
+# ─── Section: catch-up (incremental repair of a non-empty registry) ──────────
+#
+# The bootstrap refuses a log that already has records, which is why both live
+# instances of tree-vs-registry drift were repaired by hand-editing the shared
+# coordination branch. This verb is the sanctioned path: it appends exactly the
+# records the sweep classifies as MISSING, under the same CAS and erosion
+# discipline as an allocation, and repairs nothing else.
+#
+# Preview-then-apply, and the preview renders each record verbatim — an operator
+# approving a count is approving nothing, since working-tree content in a team
+# setting includes other people's merged contributions.
+
+# The provenance marker for a catch-up append. The erosion guard's accepted
+# residual is that a WELL-FORMED append is undetectable, and a catch-up append
+# is exactly that shape — so the marker is the only forensic distinguisher
+# between this verb, the bootstrap, and a live allocation.
+ALLOC_CATCHUP_MARKER="jim-catchup"
+
+# alloc_catchup_compute <spec-derived> <issue-derived> <spec-log> <issue-log>
+#   The single decision behind both the preview and the apply: what would be
+#   appended, and what cannot be repaired. Sets, through dynamic scope (the
+#   alloc_publish builder convention — assign, never re-declare):
+#     CU_SPEC     — the spec records to append, in derivation order
+#     CU_ISSUE    — the issue records to append
+#     CU_BLOCKED  — the classifier rows that name unrepairable drift
+#   Both append sets are drawn from the classifier's MISSING class and nowhere
+#   else, so what the sweep reports missing and what this appends are the same
+#   set by construction rather than by agreement.
+#
+#   A group record rides along only when the group is absent from the log AND
+#   this batch carries a spec record for it — the rule an allocation follows.
+alloc_catchup_compute() {
+  local spec_rec="$1" issue_rec="$2" spec_log="$3" issue_log="$4"
+  local rows id line c1 c2 c3
+  CU_SPEC=""; CU_ISSUE=""; CU_BLOCKED=""
+  local -A want_spec=() want_issue=() want_group=()
+  rows="$(printf '%s\n' "$spec_log" | alloc_classify_spec <(printf '%s\n' "$spec_rec"))"
+  while IFS=$'\t' read -r c1 c2 c3 _; do
+    [[ "$c1" == MISSING && "$c2" == spec ]] && want_spec["$c3"]=1
+  done <<< "$rows"
+  CU_BLOCKED="$(printf '%s\n' "$rows" | grep '^MISMATCH	' || true)"
+  rows="$(printf '%s\n' "$issue_log" | alloc_classify_issue <(printf '%s\n' "$issue_rec"))"
+  while IFS=$'\t' read -r c1 c2 c3 _; do
+    [[ "$c1" == MISSING && "$c2" == issue ]] && want_issue["$c3"]=1
+  done <<< "$rows"
+  local blocked_issue
+  blocked_issue="$(printf '%s\n' "$rows" | grep '^MISMATCH	' || true)"
+  [[ -n "$blocked_issue" ]] && CU_BLOCKED="${CU_BLOCKED:+$CU_BLOCKED$'\n'}$blocked_issue"
+  # Spec side: keep the derivation's own ordering (each group's record ahead of
+  # its specs), so an appended batch reads exactly as a seed of the same tree.
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    read -r c1 c2 c3 _ <<< "$line"
+    if [[ "$c1" == spec && "$c2" == allocate ]]; then
+      id="$(alloc_canon_specid "$c3")" || continue
+      [[ -n "${want_spec[$id]:-}" ]] || continue
+      want_group["${id%/*}"]=1
+      CU_SPEC="${CU_SPEC}$line"$'\n'
+    fi
+  done <<< "$spec_rec"
+  local group_recs=""
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    read -r c1 c2 c3 _ <<< "$line"
+    [[ "$c1" == group && "$c2" == allocate ]] || continue
+    [[ -n "${want_group[$c3]:-}" ]] || continue
+    printf '%s\n' "$spec_log" | alloc_group_present "$c3" && continue
+    group_recs="${group_recs}$line"$'\n'
+  done <<< "$spec_rec"
+  [[ -n "$group_recs" ]] && CU_SPEC="${group_recs}${CU_SPEC}"
+  CU_SPEC="${CU_SPEC%$'\n'}"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    read -r c1 c2 c3 _ <<< "$line"
+    [[ "$c1" == issue && "$c2" == allocate ]] || continue
+    [[ "$c3" =~ ^[0-9]+$ ]] || continue
+    [[ -n "${want_issue[$((10#$c3))]:-}" ]] || continue
+    CU_ISSUE="${CU_ISSUE}$line"$'\n'
+  done <<< "$issue_rec"
+  CU_ISSUE="${CU_ISSUE%$'\n'}"
+  return 0
+}
+
+# alloc_catchup_render_set <label> <records> — the preview's per-log section:
+# every record verbatim, never a count on its own.
+alloc_catchup_render_set() {
+  local label="$1" records="$2" n
+  [[ -n "$records" ]] || return 0
+  n="$(printf '%s\n' "$records" | grep -c .)"
+  printf '  %s: would append %d record(s):\n' "$label" "$n"
+  printf '%s\n' "$records" | sed 's/^/    /'
+}
+
+# cmd_catchup [--apply] — preview (default) or land the missing records.
+cmd_catchup() {
+  local apply=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --apply) apply=1; shift ;;
+      *) echo "error: unknown option '$1' for catch-up (usage: catch-up [--apply])" >&2; return 2 ;;
+    esac
+  done
+  alloc_in_repo || return 1
+  alloc_preflight || return 1
+  local specs_root issues_dir
+  specs_root="$(alloc_seed_tree_root specs docs/specs)"   || return 1
+  issues_dir="$(alloc_seed_tree_root issues docs/issues)" || return 1
+  local spec_rec issue_rec
+  spec_rec="$(alloc_seed_derive_specs "$specs_root" "$ALLOC_CATCHUP_MARKER")"   || return 1
+  issue_rec="$(alloc_seed_derive_issues "$issues_dir" "$ALLOC_CATCHUP_MARKER")" || return 1
+  if (( apply )); then
+    alloc_catchup_land "$spec_rec" "$issue_rec"
+    return $?
+  fi
+  # Preview reads the last-seen state through the peek model: refresh
+  # best-effort, never bind, never mutate.
+  alloc_peek_refresh
+  local CU_SPEC CU_ISSUE CU_BLOCKED
+  alloc_catchup_compute "$spec_rec" "$issue_rec" \
+    "$(alloc_read_log spec)" "$(alloc_read_log issue)" || return 1
+  printf 'catch-up preview (no changes written):\n'
+  if [[ -z "$CU_SPEC" && -z "$CU_ISSUE" ]]; then
+    printf '  nothing to append — every tree identity already has a record\n'
+  else
+    alloc_catchup_render_set "specs.log"  "$CU_SPEC"
+    alloc_catchup_render_set "issues.log" "$CU_ISSUE"
+  fi
+  if [[ -n "$CU_BLOCKED" ]]; then
+    printf '  cannot repair (an operator decides which side is right):\n'
+    printf '%s\n' "$CU_BLOCKED" | sed 's/^MISMATCH\t/mismatch\t/; s/^/    /'
+  fi
+  return 0
+}
+
 # ─── Section: reconcile (realize pending provisionals into real ids) ─────────
 
 # alloc_reconcile_publish_builder <cur_specs> <cur_issues> <who> <pending...>
@@ -2515,6 +2649,7 @@ main() {
     resolve)   cmd_resolve   "$@" ;;
     seed)      cmd_seed      "$@" ;;
     sweep)     cmd_sweep     "$@" ;;
+    catch-up)  cmd_catchup   "$@" ;;
     reconcile) cmd_reconcile "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2

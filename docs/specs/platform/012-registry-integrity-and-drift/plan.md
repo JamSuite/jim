@@ -275,7 +275,7 @@ flowchart TD
    spelling (unpadded record vs padded dir), and token dedupe.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-7. [ ] `sweep` verb (AC 1–6, 15): peek-model refresh, tip/staleness header,
+7. [x] `sweep` verb (AC 1–6, 15): peek-model refresh, tip/staleness header,
    report rendering from classifier rows with sanitization and per-class
    caps (DD 5), non-coverage counters (reserved slots, pending
    provisionals, rename sources, and **uncovered groups**: a specs-tree
