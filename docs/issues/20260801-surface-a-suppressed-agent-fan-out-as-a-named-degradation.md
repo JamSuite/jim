@@ -1,6 +1,6 @@
 ---
 id: 20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation
-num: P-20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation
+num: 188
 title: "Surface a suppressed agent fan-out as a named degradation"
 status: open
 priority: high

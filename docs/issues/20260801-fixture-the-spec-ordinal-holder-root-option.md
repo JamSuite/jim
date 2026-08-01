@@ -1,6 +1,6 @@
 ---
 id: 20260801-fixture-the-spec-ordinal-holder-root-option
-num: P-20260801-fixture-the-spec-ordinal-holder-root-option
+num: 184
 title: "Fixture the spec-ordinal-holder --root option"
 status: open
 priority: low

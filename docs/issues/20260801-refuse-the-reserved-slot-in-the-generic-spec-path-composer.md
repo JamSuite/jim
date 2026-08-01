@@ -1,6 +1,6 @@
 ---
 id: 20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer
-num: P-20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer
+num: 187
 title: "Refuse the reserved slot in the generic spec path composer"
 status: open
 priority: low

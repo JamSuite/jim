@@ -1,6 +1,6 @@
 ---
 id: 20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver
-num: P-20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver
+num: 186
 title: "Reconcile literal-pathspec use between the commit and rename verb families"
 status: open
 priority: medium

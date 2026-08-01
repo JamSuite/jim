@@ -1,6 +1,6 @@
 ---
 id: 20260801-re-validate-the-origin-registry-tip-before-git-interpolation
-num: P-20260801-re-validate-the-origin-registry-tip-before-git-interpolation
+num: 185
 title: "Re-validate the origin registry tip before git interpolation"
 status: open
 priority: medium

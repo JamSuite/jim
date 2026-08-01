@@ -1,6 +1,6 @@
 ---
 id: 20260801-two-test-files-are-claimed-by-no-group-s-territory
-num: P-20260801-two-test-files-are-claimed-by-no-group-s-territory
+num: 189
 title: "Two test files are claimed by no group's territory"
 status: open
 priority: medium
