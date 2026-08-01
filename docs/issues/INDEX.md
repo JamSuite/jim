@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 93
+- Open: 96
 - Closed: 103
 
 ## Issues
@@ -192,12 +192,15 @@
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` — Write the fixtures the plan named but the build skipped · status: closed · num: 178 · priority: medium · created: 2026-07-31T12:39:02Z · labels: [spec, issue, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260801-citation-sweep-exits-0-after-dropping-a-content-root` — Citation sweep exits 0 after dropping a content root · status: closed · num: 190 · priority: high · created: 2026-08-01T06:36:03Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-citation-sweep-installer-discards-cat-s-exit-status` — Citation sweep installer discards cat's exit status · status: closed · num: 191 · priority: high · created: 2026-08-01T06:36:04Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
+- `20260801-cover-untracked-files-in-the-realize-citation-sweep` — Cover untracked files in the realize citation sweep · status: open · num: 197 · priority: medium · created: 2026-08-01T21:23:36Z · labels: [sdlc, spec, scripts, id-coordination] · origin: conversation
 - `20260801-fixture-the-spec-ordinal-holder-root-option` — Fixture the spec-ordinal-holder --root option · status: open · num: 184 · priority: low · created: 2026-08-01T00:22:46Z · labels: [platform, file, scripts, test] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-index-sh-publishes-a-truncated-index-md-as-success` — index.sh publishes a truncated INDEX.md as success · status: closed · num: 192 · priority: high · created: 2026-08-01T06:36:06Z · labels: [scripts, issue] · origin: docs/notes/20260801-c-prime-fix-handoff.md
+- `20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes` — Narrow the issue skill's jimalloc grant to verb-level prefixes · status: open · num: 198 · priority: low · created: 2026-08-01T20:33:39Z · labels: [issue, permissions, hardening] · origin: docs/specs/platform/012-registry-integrity-and-drift/research.md
 - `20260801-re-validate-the-origin-registry-tip-before-git-interpolation` — Re-validate the origin registry tip before git interpolation · status: open · num: 185 · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, scripts, id-coordination, security] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro` — Realize occupancy gate reads the configured specs dir, not its root · status: closed · num: 193 · priority: low · created: 2026-08-01T06:36:07Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver` — Reconcile literal-pathspec use between the commit and rename verb families · status: open · num: 186 · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, ledger, scripts, security] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer` — Refuse the reserved slot in the generic spec path composer · status: open · num: 187 · priority: low · created: 2026-08-01T00:22:47Z · labels: [platform, file, scripts, 000-blueprint] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-rewrite-the-realized-spec-s-own-h1-identity-token` — Rewrite the realized spec's own H1 identity token · status: open · num: 199 · priority: medium · created: 2026-08-01T21:23:36Z · labels: [sdlc, spec, scripts, id-coordination] · origin: conversation
 - `20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions` — Spec skill's realize-failure guidance is stale in two directions · status: closed · num: 194 · priority: high · created: 2026-08-01T06:36:06Z · labels: [spec, docs, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation` — Surface a suppressed agent fan-out as a named degradation · status: open · num: 188 · priority: high · created: 2026-08-01T00:22:55Z · labels: [sdlc, blueprint, review, verify] · origin: conversation
 - `20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization` — Sweep and reconcile disagree on worktree-top normalization · status: closed · num: 195 · priority: medium · created: 2026-08-01T06:36:05Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md

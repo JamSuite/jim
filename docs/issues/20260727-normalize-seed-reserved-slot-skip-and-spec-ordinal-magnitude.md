@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-27T05:34:21Z
-updated: 2026-07-30T02:14:41Z
+updated: 2026-08-01T21:40:00Z
 origin: docs/specs/platform/008-registry-seed/review.md
 ---
 
@@ -83,3 +83,13 @@ reserved slot."
 
 The digit-length cap and its over-long-ordinal fixture are done
 (`case_jimalloc_fold_max_spec_seed_refuses_over_wide`).
+
+## Remaining half rides Spec E (2026-08-01)
+
+Folded into the registry-integrity spec
+(`docs/specs/platform/012-registry-integrity-and-drift/spec.md`, AC 16) and
+out of the hardening bucket. The coherence argument that moved it: that
+spec's sweep classifies a `<group>/000` record as drift, and its catch-up
+verb reuses this very derivation — detect and derive must agree on the
+reserved-slot rule, or the pipeline flags records its own sibling verb can
+still produce.
