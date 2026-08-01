@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 93
+- Open: 100
 - Closed: 96
 
 ## Issues
@@ -190,12 +190,19 @@
 - `20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table` — Unwrap the injection slot in the arch skill argument table · status: open · num: 163 · priority: critical · created: 2026-07-31T11:48:54Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcile-script` — Use CLAUDE_SKILL_DIR for the spec skill own reconcile script · status: open · num: 162 · priority: critical · created: 2026-07-31T11:48:47Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` — Write the fixtures the plan named but the build skipped · status: closed · num: 178 · priority: medium · created: 2026-07-31T12:39:02Z · labels: [spec, issue, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260801-citation-sweep-exits-0-after-dropping-a-content-root` — Citation sweep exits 0 after dropping a content root · status: open · num: P-20260801-citation-sweep-exits-0-after-dropping-a-content-root · priority: high · created: 2026-08-01T06:36:03Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
+- `20260801-citation-sweep-installer-discards-cat-s-exit-status` — Citation sweep installer discards cat's exit status · status: open · num: P-20260801-citation-sweep-installer-discards-cat-s-exit-status · priority: high · created: 2026-08-01T06:36:04Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-fixture-the-spec-ordinal-holder-root-option` — Fixture the spec-ordinal-holder --root option · status: open · num: 184 · priority: low · created: 2026-08-01T00:22:46Z · labels: [platform, file, scripts, test] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-index-sh-publishes-a-truncated-index-md-as-success` — index.sh publishes a truncated INDEX.md as success · status: open · num: P-20260801-index-sh-publishes-a-truncated-index-md-as-success · priority: high · created: 2026-08-01T06:36:06Z · labels: [scripts, issue] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-re-validate-the-origin-registry-tip-before-git-interpolation` — Re-validate the origin registry tip before git interpolation · status: open · num: 185 · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, scripts, id-coordination, security] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro` — Realize occupancy gate reads the configured specs dir, not its root · status: open · num: P-20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro · priority: low · created: 2026-08-01T06:36:07Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver` — Reconcile literal-pathspec use between the commit and rename verb families · status: open · num: 186 · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, ledger, scripts, security] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer` — Refuse the reserved slot in the generic spec path composer · status: open · num: 187 · priority: low · created: 2026-08-01T00:22:47Z · labels: [platform, file, scripts, 000-blueprint] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions` — Spec skill's realize-failure guidance is stale in two directions · status: open · num: P-20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions · priority: high · created: 2026-08-01T06:36:06Z · labels: [spec, docs, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation` — Surface a suppressed agent fan-out as a named degradation · status: open · num: 188 · priority: high · created: 2026-08-01T00:22:55Z · labels: [sdlc, blueprint, review, verify] · origin: conversation
+- `20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization` — Sweep and reconcile disagree on worktree-top normalization · status: open · num: P-20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization · priority: medium · created: 2026-08-01T06:36:05Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-two-test-files-are-claimed-by-no-group-s-territory` — Two test files are claimed by no group's territory · status: open · num: 189 · priority: medium · created: 2026-08-01T00:28:40Z · labels: [blueprint, 000-blueprint, partition] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage` — Uncommitted-sweep containment guard lost its only coverage · status: open · num: P-20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage · priority: medium · created: 2026-08-01T06:36:08Z · labels: [test, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 
 ## Graph
 
