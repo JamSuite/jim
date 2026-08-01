@@ -2,7 +2,7 @@
 id: 20260801-citation-sweep-exits-0-after-dropping-a-content-root
 num: 190
 title: "Citation sweep exits 0 after dropping a content root"
-status: open
+status: closed
 priority: high
 labels: [scripts, spec, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T06:36:03Z
-updated: 2026-08-01T06:36:03Z
+updated: 2026-08-01T10:01:09Z
 origin: docs/notes/20260801-c-prime-fix-handoff.md
 ---
 
@@ -51,3 +51,14 @@ Reported by the five-investigator review of the sdlc/issue-territory changes
 re-confirmed 2026-08-01 — the missing assignment is visible in the source. The
 downstream consequence follows directly from the control flow but was not
 reproduced end-to-end.
+
+## Resolution (2026-08-01)
+
+Fixed. Both drop sites set `sweep_failed=1`, and the declaration moved to the
+top of the function — it sat below the root-resolution pass, so a later
+`local … =0` would have reset whatever the drops recorded. The empty-roots early
+return carries the flag out too, though no CLI path reaches it: the specs root
+must resolve for `--apply` to get that far.
+
+Covered by `case_specreconcile_sweep_dropped_root_fails_the_run`, which is
+mutation-tested — with the flag removed it fails.

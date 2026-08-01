@@ -2,7 +2,7 @@
 id: 20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization
 num: 195
 title: "Sweep and reconcile disagree on worktree-top normalization"
-status: open
+status: closed
 priority: medium
 labels: [scripts, spec, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T06:36:05Z
-updated: 2026-08-01T06:36:05Z
+updated: 2026-08-01T10:01:09Z
 origin: docs/notes/20260801-c-prime-fix-handoff.md
 ---
 
@@ -54,3 +54,21 @@ Reported by the five-investigator review of the sdlc/issue-territory changes
 re-confirmed 2026-08-01 — the asymmetry between `:351` and `:607` is visible in
 the source. The symlinked-worktree failure was reasoned from the comparison, not
 reproduced on a symlinked checkout.
+
+## Resolution (2026-08-01) — premise incorrect
+
+**The reported failure cannot occur.** `git rev-parse --show-toplevel` already
+returns a symlink-resolved path. Verified three ways: a symlinked cwd, a linked
+worktree reached through a symlink, and `GIT_WORK_TREE` pointed at one. All
+three yield a top identical to its own `realpath`, so the raw and normalized
+forms are never different and no root can read as outside its own tree.
+
+Found because the fixture written for it would not fail under mutation — the
+guard was removed and the test still passed, which is the only reason the
+premise was re-examined.
+
+The asymmetry was real as *code* and is gone: both callers now share a
+`worktree_top` helper, so the two sides of the containment comparison cannot
+drift into different forms. That is deduplication, not a bug fix. The symlink
+fixture is kept as coverage of the symlinked-invocation path, with a comment
+stating plainly that it does not discriminate the normalization.

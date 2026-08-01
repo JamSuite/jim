@@ -2,7 +2,7 @@
 id: 20260801-citation-sweep-installer-discards-cat-s-exit-status
 num: 191
 title: "Citation sweep installer discards cat's exit status"
-status: open
+status: closed
 priority: high
 labels: [scripts, spec, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T06:36:04Z
-updated: 2026-08-01T06:36:04Z
+updated: 2026-08-01T10:01:09Z
 origin: docs/notes/20260801-c-prime-fix-handoff.md
 ---
 
@@ -55,3 +55,12 @@ Reported by the five-investigator review of the sdlc/issue-territory changes
 (`docs/notes/20260801-c-prime-fix-handoff.md` § 4, finding N2). Anchor
 re-confirmed 2026-08-01 — the unchecked `cat` is visible in the source. The
 ENOSPC and read-only consequences were reasoned from the code, not reproduced.
+
+## Resolution (2026-08-01)
+
+Fixed in all three places: the citation sweep's installer and both siblings in
+`jimpartition.sh`, whose awk exit was already checked but whose install was not.
+
+Covered by `case_specreconcile_sweep_uninstallable_target_fails`, which stages a
+read-only target and is mutation-tested — with the guard removed it fails and
+the target is overwritten.

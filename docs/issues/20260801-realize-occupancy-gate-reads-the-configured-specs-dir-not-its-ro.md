@@ -2,7 +2,7 @@
 id: 20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro
 num: 193
 title: "Realize occupancy gate reads the configured specs dir, not its root"
-status: open
+status: closed
 priority: low
 labels: [scripts, spec, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T06:36:07Z
-updated: 2026-08-01T06:36:07Z
+updated: 2026-08-01T10:01:09Z
 origin: docs/notes/20260801-c-prime-fix-handoff.md
 ---
 
@@ -55,3 +55,15 @@ Reported by the five-investigator review of the sdlc/issue-territory changes
 not introduced by that build. Anchor re-confirmed 2026-08-01 — the missing
 `--root` is visible in the source. Latent: no reproduction exists today because
 the guard makes the two paths agree.
+
+## Resolution (2026-08-01)
+
+Fixed — `--root "$root"` is now passed, matching the sibling call in
+`jimledger.sh`.
+
+**No live divergence exists, and none is reachable.** The apply gate refuses a
+`<specs_dir>` argument that does not resolve to the configured specs dir, so the
+two are forced equal on the only path that reaches this gate. The change is
+defense in depth: the gate should not depend on a refusal held elsewhere for its
+own reasons. Not separately fixtured, because no CLI input can make the two
+differ.

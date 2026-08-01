@@ -2,7 +2,7 @@
 id: 20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage
 num: 196
 title: "Uncommitted-sweep containment guard lost its only coverage"
-status: open
+status: closed
 priority: medium
 labels: [test, spec, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T06:36:08Z
-updated: 2026-08-01T06:36:08Z
+updated: 2026-08-01T10:01:09Z
 origin: docs/notes/20260801-c-prime-fix-handoff.md
 ---
 
@@ -54,3 +54,16 @@ Reported by the five-investigator review of the sdlc/issue-territory changes
 re-confirmed 2026-08-01. The claim that the case no longer reaches the
 containment guard is the investigator's reading of the two arms and was not
 confirmed by mutation — step 3 above is what would settle it.
+
+## Resolution (2026-08-01) — not a defect
+
+**The guard is covered.** Mutation-tested directly: neutering the escape
+refusal in the own-directory enumeration makes
+`case_specreconcile_uncommitted_sweep_refuses_escape` fail on both assertions.
+
+The finding assumed the symlink arm and the containment guard were separable.
+They are not — the escape refusal lives *inside* the symlink branch, because a
+symlink is the only way an entry under a realized spec directory can resolve
+outside the worktree. A plain `*.md` entry there is inside by construction. So
+the case exercises exactly what its AC comment describes, and no coverage was
+lost. No code or test change.

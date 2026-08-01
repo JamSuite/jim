@@ -2,7 +2,7 @@
 id: 20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions
 num: 194
 title: "Spec skill's realize-failure guidance is stale in two directions"
-status: open
+status: closed
 priority: high
 labels: [spec, docs, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T06:36:06Z
-updated: 2026-08-01T06:36:06Z
+updated: 2026-08-01T10:01:09Z
 origin: docs/notes/20260801-c-prime-fix-handoff.md
 ---
 
@@ -73,3 +73,12 @@ here because they are the same paragraph and the same edit). The SKILL.md text
 was re-read and re-confirmed 2026-08-01. The `scan_pending` blind spot is the
 investigator's analysis and has **not** been reproduced — verify it before
 relying on the exact wording of the second bullet.
+
+## Resolution (2026-08-01)
+
+Fixed. The paragraph is now a table keyed on the **stderr message** rather than
+the exit code, since rc 1 no longer identifies one condition, with the distinct
+repair for each outcome. Two explicit warnings added: do not revert a realized
+directory (the sweep has already rewritten every citation, so reverting strands
+them), and do not assume a re-run converges (an identity that moved and was
+recorded but kept a stale `id:` is no longer pending, so a re-run exits 0).

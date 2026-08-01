@@ -2,7 +2,7 @@
 id: 20260801-index-sh-publishes-a-truncated-index-md-as-success
 num: 192
 title: "index.sh publishes a truncated INDEX.md as success"
-status: open
+status: closed
 priority: high
 labels: [scripts, issue]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T06:36:06Z
-updated: 2026-08-01T06:36:06Z
+updated: 2026-08-01T10:01:09Z
 origin: docs/notes/20260801-c-prime-fix-handoff.md
 ---
 
@@ -68,3 +68,14 @@ Reported by the five-investigator review of the sdlc/issue-territory changes
 not introduced by that build. Anchors re-confirmed 2026-08-01: the unchecked
 block, the contract text, and the three guarded siblings all read as described.
 The ENOSPC consequence was reasoned from the code, not reproduced.
+
+## Resolution (2026-08-01)
+
+Fixed, guarded the way every sibling emitter guards its write
+(`} > "$tmpfile" || { … }`). A filled disk fails the block's last write too, so
+the group's exit status is what catches exhaustion.
+
+Covered by `case_issues_index_failed_compose_preserves_prior_index`, which shims
+`mktemp` to return a read-only target. Mutation-tested: with the guard removed
+the run returns 0 **and** replaces the good INDEX.md — the reported harm,
+reproduced.
