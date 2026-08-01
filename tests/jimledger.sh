@@ -1504,6 +1504,23 @@ case_jimledger_move_spec_dir_refuses_held_ordinal() {
     "$([[ -d "$root/docs/specs/cart/006-foo" ]] && echo 1 || echo 0)"
 }
 
+# AC: on a CROSS-group move the source does not exclude anything in the
+# destination. Self-exclusion answers "the source already sits on this ordinal",
+# which can only be true within one group — carrying it across parents skips a
+# genuine holder in the destination that happens to share the source's basename,
+# and the exact-path check cannot see the collision because the slugs differ.
+case_jimledger_move_spec_dir_cross_group_does_not_exclude_holder() {
+  local root; root="$(move_git_fixture msd_xgroup)"
+  mkdir -p "$root/docs/specs/checkout/006-foo"
+  printf '# taken\n' > "$root/docs/specs/checkout/006-foo/spec.md"
+  git -C "$root" add -A; git -C "$root" commit -q -m "occupant sharing the source basename"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout 006-bar
+  assert_exit  "rc"               1         "$RC"
+  assert_match "names the holder" '006-foo' "$ERR"
+  assert_eq "no second dir on the ordinal" "0" \
+    "$([[ -d "$root/docs/specs/checkout/006-bar" ]] && echo 1 || echo 0)"
+}
+
 # AC: a within-group renumber onto the source's OWN ordinal is not a collision —
 # the source excludes itself, so a slug-only rename still lands.
 case_jimledger_move_spec_dir_same_ordinal_self_excluded() {

@@ -620,8 +620,17 @@ cmd_move_spec_dir() {
   # collision.
   local dst_ord held held_rc
   dst_ord="${dst_base%%-*}"
-  held="$(bash "$JIMFILE" spec-ordinal-holder "$ng" "$dst_ord" \
-            --root "$sd" --exclude "$src_base" 2>/dev/null)"
+  # The exclusion answers "the source already sits on this ordinal", which can
+  # only be true when the move stays inside one group — the predicate matches it
+  # against the DESTINATION group's siblings. Carrying it across parents skips a
+  # genuine holder there that happens to share the source's basename, and the
+  # exact-path check cannot see that collision because the slugs differ.
+  if [[ "$og" == "$ng" ]]; then
+    held="$(bash "$JIMFILE" spec-ordinal-holder "$ng" "$dst_ord" \
+              --root "$sd" --exclude "$src_base" 2>/dev/null)"
+  else
+    held="$(bash "$JIMFILE" spec-ordinal-holder "$ng" "$dst_ord" --root "$sd" 2>/dev/null)"
+  fi
   held_rc=$?
   if (( held_rc == 0 )); then
     echo "jimledger move-spec-dir: ordinal $dst_ord already held in $ng by '$held'; nothing moved" >&2
