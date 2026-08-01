@@ -69,8 +69,9 @@ provisional ordinals and realized in one host batch onto 190–196 — contiguou
 from 189, no gap, no collision. Fifth clean production run of the provisional
 path.
 
-**Thirty-seven are closed.** The nineteen the fourth revision listed, plus all
-sixteen of C′-fix's own (#168–#183) and the two it unblocked (#151, #134).
+**Forty-four are closed.** The nineteen the fourth revision listed, plus all
+sixteen of C′-fix's own (#168–#183), the two it unblocked (#151, #134), and all
+seven the review filed (#190–#196).
 
 That count under-reports the repair work, and deliberately so: **five of the
 review's findings were fixed without ever being filed** (two `/jim:review`
@@ -92,7 +93,7 @@ They are the residue of turning `platform/007`'s allocator foundation (emits
 allocate records only — no consumers, no seed, no rename records) into the
 project's authoritative, drift-proof ID source.
 
-## Closed (37) — shipped and verified
+## Closed (44) — shipped and verified
 
 | Issue | Shipped as | Review | Carve-outs (tracked) |
 |---|---|---|---|
@@ -979,29 +980,37 @@ about it in a completion gate.
 | 187 | low  | hardening (generic path composer accepts the reserved slot) |
 | 188 | high | **process** — a suppressed agent fan-out leaves no trace in its own artifact |
 | 189 | med  | Spec B / partition (two test files claimed by no group's territory) |
-| 190 | high | hardening (citation sweep reports success after dropping a content root) |
-| 191 | high | hardening (citation sweep installer discards `cat`'s exit status) |
-| 192 | high | hardening (issue index publishes a truncated INDEX.md as success) |
-| 193 | low  | hardening (realize occupancy gate reads the configured specs dir, not its root) |
-| 194 | high | hardening (spec skill's realize-failure guidance stale in two directions) |
-| 195 | med  | hardening (sweep and reconcile disagree on worktree-top normalization) |
-| 196 | med  | hardening (uncommitted-sweep containment guard lost its only coverage) |
+| 190 | high | **closed** — sweep fails on a dropped root; mutation-tested |
+| 191 | high | **closed** — installer guarded in all three sites; mutation-tested |
+| 192 | high | **closed** — compose guarded; harm reproduced under mutation |
+| 193 | low  | **closed** — `--root` passed; divergence unreachable, defense in depth |
+| 194 | high | **closed** — guidance keyed on stderr, with the destructive repair removed |
+| 195 | med  | **closed** — premise incorrect; show-toplevel already resolves. Dedup kept |
+| 196 | med  | **closed** — not a defect; guard is covered, proven by mutation |
 
 *(#161–#167 are `sdlc` blueprint drift surfaced by C′'s verify pass, not
 id-coordination work — excluded from this table and from the 75.)*
 
-*(#190–#196 all land in the hardening build rather than Spec E: E's subject is
-the **ID registry**, while these are write-integrity and guidance defects in the
-sweep, the issue index, and the realize path. #192 is the closest call — it is
-index integrity, not registry integrity, and is filed here on that distinction.
-Three of them — #190, #191, #192 — are one shape, a write whose failure reports
-as success, and are worth doing together whichever build takes them.)*
+*(#190–#196 ran as one build rather than folding into Spec E — they were one
+surface, six of the seven in the realize/sweep path, which is why one review
+surfaced them all. **Three of the seven were real**: #190, #191, #192, all one
+shape, a write whose failure reports as success. #193 hardens a divergence no
+input can produce; #194 was a documentation defect whose documented repair
+destroyed work.*
+
+***Two were wrong.** #195's failure cannot occur — `git rev-parse
+--show-toplevel` already returns a symlink-resolved path — and #196's guard was
+covered all along. Both were filed as investigator reasoning explicitly marked
+unreproduced, and both were caught by mutation-testing the fixtures written for
+them: #195's refused to fail, #196's existing case did fail when the guard was
+neutered. That is practice 7 paying for itself twice in one build, and the
+reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 
 ## Net
 
-75 issues → **11 assigned to the 4 remaining specs** (B, D, E, F), **21 to the
+75 issues → **11 assigned to the 4 remaining specs** (B, D, E, F), **14 to the
 grouped hardening build**, **1 optional refactor**, **1 doc item + 1 decision +
-1 deferred + 1 process item**, **#149 open**, **37 closed**. That is 75; the
+1 deferred + 1 process item**, **#149 open**, **44 closed**. That is 75; the
 enumeration closes, which it did not before this revision — #149 was discussed
 throughout and counted nowhere. Both the host action and C′-fix are done, C′-fix
 now including its review.
