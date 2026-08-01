@@ -1,6 +1,6 @@
 ---
 id: 20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization
-num: P-20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization
+num: 195
 title: "Sweep and reconcile disagree on worktree-top normalization"
 status: open
 priority: medium

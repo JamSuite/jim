@@ -1,6 +1,6 @@
 ---
 id: 20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions
-num: P-20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions
+num: 194
 title: "Spec skill's realize-failure guidance is stale in two directions"
 status: open
 priority: high

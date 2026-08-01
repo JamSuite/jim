@@ -1,6 +1,6 @@
 ---
 id: 20260801-index-sh-publishes-a-truncated-index-md-as-success
-num: P-20260801-index-sh-publishes-a-truncated-index-md-as-success
+num: 192
 title: "index.sh publishes a truncated INDEX.md as success"
 status: open
 priority: high

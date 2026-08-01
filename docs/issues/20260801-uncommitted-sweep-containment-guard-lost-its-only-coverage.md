@@ -1,6 +1,6 @@
 ---
 id: 20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage
-num: P-20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage
+num: 196
 title: "Uncommitted-sweep containment guard lost its only coverage"
 status: open
 priority: medium

@@ -1,6 +1,6 @@
 ---
 id: 20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro
-num: P-20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro
+num: 193
 title: "Realize occupancy gate reads the configured specs dir, not its root"
 status: open
 priority: low

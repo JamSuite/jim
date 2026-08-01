@@ -1,6 +1,6 @@
 ---
 id: 20260801-citation-sweep-installer-discards-cat-s-exit-status
-num: P-20260801-citation-sweep-installer-discards-cat-s-exit-status
+num: 191
 title: "Citation sweep installer discards cat's exit status"
 status: open
 priority: high

@@ -1,6 +1,6 @@
 ---
 id: 20260801-citation-sweep-exits-0-after-dropping-a-content-root
-num: P-20260801-citation-sweep-exits-0-after-dropping-a-content-root
+num: 190
 title: "Citation sweep exits 0 after dropping a content root"
 status: open
 priority: high
