@@ -1,5 +1,8 @@
 ---
-id: {prefix}-{slug}   # prefix from the configured scheme (default YYYYMMDD-; spec 021)
+# id — the bound identity; the prefix comes from the configured scheme
+# (default `YYYYMMDD-`). Keep notes on their own line: everything after the
+# colon is the value, so a comment left beside it becomes part of the identity.
+id: {prefix}-{slug}
 num: {num}
 title: "{title}"
 status: open
