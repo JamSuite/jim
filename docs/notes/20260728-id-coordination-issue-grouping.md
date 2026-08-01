@@ -626,7 +626,7 @@ Collapse an end-of-run candidate batch (8 surfacing skills) into one CAS instead
 of N sequential pushes. Cross-group blast radius (sdlc + blueprint + issue) and
 its own all-or-nothing-vs-partial failure-semantics decision. Independent.
 
-### Spec E — Registry integrity & drift · #116 + #130 + #136
+### Spec E — Registry integrity & drift · #116 + #130 + #136 + #185 + #121's remaining half
 Complementary halves — "detect drift" and "fix drift":
 - #116 — a `jim:verify`-style only-door sweep: every spec dir / issue ordinal on
   the coordination branch must have a matching registry record.
@@ -701,7 +701,7 @@ bodies earlier and wider), and reconciliation with the VISION non-goal that issu
 capture is a discovery artifact, not a coordination primitive. The one clause of
 #111 that did not ship. Genuine undecided design → its own scoping.
 
-### One grouped hardening build (14) — no spec
+### One grouped hardening build (13) — no spec
 Localized fixes, each a testable one-to-few-line change with a test per fix.
 
 One returned from the dead:
@@ -709,11 +709,14 @@ One returned from the dead:
   `/jim:partition` still calls the verb and jim's own `issue` group is the
   collision case. An explicit `next-id spec <group>` form is the cleanest fix
 
-Four from the `008`/`009`/`010` reviews:
+Three from the `008`/`009`/`010` reviews:
 - #119 retry the unreachable-detection path + generalize the exhaustion message
-- #121 normalize the seed reserved-slot skip *(magnitude half shipped with A)*
 - #132 `new.sh` mixed-pin (`--slug` XOR `--num`) registry/on-disk skew
 - #117 `moved-to` tombstone guarding coordination-branch relocation
+
+*(#121's reserved-slot half moved to Spec E on 2026-08-01 — its sweep flags
+`<group>/000` records as drift while its catch-up reuses the derivation that
+could still mint one, so detect and derive settle the rule together.)*
 
 *(#133 and #134 moved to C′ — their spec-side twins are C's, and the two must be
 fixed in one pass or the pattern keeps spreading.)*
@@ -993,7 +996,7 @@ about it in a completion gate.
 | 126 | med  | Spec F (issue_placement) |
 | 117 | low  | hardening build |
 | 119 | low  | hardening build |
-| 121 | med  | hardening build (reserved-slot half only; magnitude half shipped) |
+| 121 | med  | Spec E (reserved-slot half folded 2026-08-01; magnitude half shipped) |
 | 132 | low  | hardening build |
 | 138 | low  | hardening build (`platform/011` residue) |
 | 140 | med  | hardening build (`platform/011` residue — test gap) |
@@ -1057,8 +1060,9 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 
 ## Net
 
-75 issues → **11 assigned to the 4 remaining specs** (B, D, E, F), **14 to the
-grouped hardening build**, **1 optional refactor**, **1 doc item + 1 decision +
+75 issues → **12 assigned to the 4 remaining specs** (B, D, E, F — #121's
+reserved-slot half moved to E on 2026-08-01), **13 to the grouped hardening
+build**, **1 optional refactor**, **1 doc item + 1 decision +
 1 deferred + 1 process item**, **#149 open**, **44 closed**. That is 75; the
 enumeration closes, which it did not before this revision — #149 was discussed
 throughout and counted nowhere. Both the host action and C′-fix are done, C′-fix
