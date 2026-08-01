@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 96
+- Open: 97
 - Closed: 103
 
 ## Issues
@@ -193,6 +193,7 @@
 - `20260801-citation-sweep-exits-0-after-dropping-a-content-root` — Citation sweep exits 0 after dropping a content root · status: closed · num: 190 · priority: high · created: 2026-08-01T06:36:03Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-citation-sweep-installer-discards-cat-s-exit-status` — Citation sweep installer discards cat's exit status · status: closed · num: 191 · priority: high · created: 2026-08-01T06:36:04Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-cover-untracked-files-in-the-realize-citation-sweep` — Cover untracked files in the realize citation sweep · status: open · num: 197 · priority: medium · created: 2026-08-01T21:23:36Z · labels: [sdlc, spec, scripts, id-coordination] · origin: conversation
+- `20260801-design-the-repair-path-for-registry-internal-contradictions` — Design the repair path for registry-internal contradictions · status: open · num: 200 · priority: medium · created: 2026-08-01T22:36:01Z · labels: [stride-tampering, id-coordination, alloc] · origin: docs/specs/platform/012-registry-integrity-and-drift/spec.md
 - `20260801-fixture-the-spec-ordinal-holder-root-option` — Fixture the spec-ordinal-holder --root option · status: open · num: 184 · priority: low · created: 2026-08-01T00:22:46Z · labels: [platform, file, scripts, test] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-index-sh-publishes-a-truncated-index-md-as-success` — index.sh publishes a truncated INDEX.md as success · status: closed · num: 192 · priority: high · created: 2026-08-01T06:36:06Z · labels: [scripts, issue] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes` — Narrow the issue skill's jimalloc grant to verb-level prefixes · status: open · num: 198 · priority: low · created: 2026-08-01T20:33:39Z · labels: [issue, permissions, hardening] · origin: docs/specs/platform/012-registry-integrity-and-drift/research.md
