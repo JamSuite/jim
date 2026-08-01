@@ -1391,6 +1391,46 @@ case_jimalloc_seed_derive_specs_blueprint_only() {
   assert_eq "blueprint-only group → no records" "" "$out"
 }
 
+# AC 16: any zero-valued ordinal names the reserved blueprint slot, whatever its
+# padding — `0-`, `00-`, and `000-` are one rule, so the derivation can never
+# mint the `<group>/000` record the sweep classifies as drift.
+case_jimalloc_seed_derive_specs_zero_ordinal_widths_reserved() {
+  local root today out expected
+  root="$(seed_specs_tree seed_zeroord \
+    core/0-blueprint core/001-alpha ui/00-blueprint ui/001-widget)"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  out="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_specs "$root")"
+  expected="$(printf '%s\n' \
+    "group allocate core $today jim-seed" \
+    "spec allocate core/001 alpha $today jim-seed" \
+    "group allocate ui $today jim-seed" \
+    "spec allocate ui/001 widget $today jim-seed")"
+  assert_eq "zero-valued ordinals reserved at every width" "$expected" "$out"
+}
+
+# AC 16: a group holding only a narrow-spelled reserved slot contributes nothing
+# — same as the canonical spelling, so a blueprint-only group never claims a
+# group record on the strength of its reserved dir.
+case_jimalloc_seed_derive_specs_narrow_zero_only() {
+  local root out
+  root="$(seed_specs_tree seed_zeroonly core/0-blueprint)"
+  out="$(source "$SCRIPT_jimalloc"; alloc_seed_derive_specs "$root")"
+  assert_eq "narrow reserved-only group → no records" "" "$out"
+}
+
+# AC 16: the reserved rule is numeric, so a slugless bare `000` dir still skips
+# rather than falling through to the no-slug conflict — the ordering the check
+# depends on, asserted rather than assumed.
+case_jimalloc_seed_derive_specs_bare_zero_dir_skipped() {
+  local root
+  root="$(seed_specs_tree seed_barezero core/000 core/001-alpha)"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit  "no conflict" 0 "$RC"
+  assert_match "sibling still derived" 'spec allocate core/001 alpha ' "$OUT"
+  assert_eq "no reserved record" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'core/000')"
+}
+
 # AC: a pending provisional spec dir is reserved like the 000 slot — it derives
 # no record, raises no conflict, and its real siblings seed normally.
 case_jimalloc_seed_skips_provisional_dir() {

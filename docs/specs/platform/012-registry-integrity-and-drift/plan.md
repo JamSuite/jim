@@ -242,7 +242,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] Validate the origin tip inside `alloc_origin_tip` (AC 12): non-empty
+1. [x] Validate the origin tip inside `alloc_origin_tip` (AC 12): non-empty
    awk-extracted tip crosses `alloc_valid_token`; add two cases (crafted
    `ls-remote` output via PATH-shimmed `git`, mutation-tested).
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`

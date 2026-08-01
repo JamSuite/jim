@@ -814,7 +814,13 @@ alloc_seed_derive_specs() {
       [[ -d "$entry" ]] || continue
       name="$(basename "$entry")"
       ord="${name%%-*}"
-      [[ "$ord" == "000" ]] && continue
+      # The reserved blueprint slot is a zero-VALUED ordinal, not one spelling of
+      # it: `0-`, `00-` and `000-` name the same reserved dir, and deriving a
+      # record for any of them would mint the `<group>/000` identity the registry
+      # treats as drift. The digits guard has to precede the arithmetic — `10#`
+      # on a non-numeric token is a fatal arithmetic error, and this runs before
+      # the ordinal class check below.
+      [[ "$ord" =~ ^[0-9]+$ ]] && (( 10#$ord == 0 )) && continue
       # A pending provisional dir holds a reserved identity that never entered
       # the registry, so the bootstrap passes over it like the blueprint slot:
       # no record to derive, and nothing to call a conflict.
