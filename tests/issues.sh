@@ -718,6 +718,51 @@ status: open'
   assert_eq "no tmp leftover" "0" "$tmp_files"
 }
 
+# issues_unwritable_mktemp_shim <name>
+#   A directory holding an `mktemp` that, for the INDEX tmpfile template ONLY,
+#   returns a path it has already created read-only; every other call execs the
+#   real mktemp. Opening that path for write fails, which is how a compose that
+#   cannot be written is staged without needing a full disk.
+issues_unwritable_mktemp_shim() {
+  local dir real
+  dir=$(empty_dir "$1")
+  real="$(command -v mktemp)"
+  {
+    printf '%s\n' '#!/usr/bin/env bash' 'set -uo pipefail' 'for a in "$@"; do'
+    printf '%s\n' '  case "$a" in'
+    printf '%s\n' '    *INDEX.md.tmp.*)'
+    printf '%s\n' '      p="${a%.XXXXXX}.locked"'
+    printf '%s\n' '      : > "$p"; chmod 0444 "$p"; printf "%s\\n" "$p"; exit 0 ;;'
+    printf '%s\n' '  esac' 'done'
+    printf 'exec %s "$@"\n' "$real"
+  } > "$dir/mktemp"
+  chmod +x "$dir/mktemp"
+  printf '%s' "$dir"
+}
+
+# AC: a compose that cannot be written never reaches the atomic rename. The
+# rename is what makes this dangerous rather than merely unguarded — a short
+# write would publish a TRUNCATED index over a good one and still return 0, and
+# both reconcilers key their "index failed to regenerate" error off that code.
+case_issues_index_failed_compose_preserves_prior_index() {
+  local dir shim oldpath
+  dir=$(empty_dir index_compose_fail)
+  write_issue "$dir" "20260530-z" 'title: "Z"
+status: open'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local good; good="$(cat "$dir/INDEX.md")"
+  shim=$(issues_unwritable_mktemp_shim index_compose_shim)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_index "$dir"
+  PATH="$oldpath"
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the compose failure" 'compose' "$ERR"
+  assert_eq    "prior INDEX.md byte-unchanged" "$good" "$(cat "$dir/INDEX.md")"
+  chmod 0644 "$dir"/.INDEX.md.tmp.locked 2>/dev/null
+  rm -f "$dir"/.INDEX.md.tmp.locked
+}
+
 # AC: render.sh on an empty dir prints "Open: 0 · Closed: 0" summary line (AC-R1, R2)
 case_issues_render_empty_summary_line() {
   local dir

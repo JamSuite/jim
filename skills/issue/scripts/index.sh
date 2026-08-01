@@ -529,7 +529,19 @@ main() {
     else
       printf '_None._\n'
     fi
-  } > "$tmpfile"
+  # The rename below is atomic, which makes an unchecked compose actively
+  # dangerous rather than merely unguarded: a short write would publish a
+  # TRUNCATED index over a good one and return 0. Both reconcilers key their
+  # "index failed to regenerate" error off this exit code, so that truncation
+  # would reach them as a clean result. Guarded the way every sibling emitter
+  # guards its write — a filled disk fails the block's last write too, so the
+  # group's status is what catches exhaustion.
+  } > "$tmpfile" || {
+    echo "error: failed to compose INDEX.md; previous INDEX.md untouched" >&2
+    rm -f "$tmpfile"
+    trap - EXIT INT TERM
+    return 1
+  }
 
   mv "$tmpfile" "$dir/$INDEX_FILENAME" || {
     echo "error: atomic rename failed; previous INDEX.md untouched" >&2
