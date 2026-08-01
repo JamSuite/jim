@@ -78,3 +78,4 @@
 1785540866	2026-07-31T23:34:26Z	blueprint	started	tier=project;op=reconcile
 1785540954	2026-07-31T23:35:54Z	blueprint	finished	tier=project;op=reconcile;edges=22;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=584;faces=19;faces_max=8;faces_max_group=blueprint;fanin_group=issue,platform
 1785540954	2026-07-31T23:35:54Z	blueprint	finished	tier=project;additions=1;downgrades=0
+1785618342	2026-08-01T21:05:42Z	spec	realized	moved=platform/P-20260801-registry-integrity-and-drift:platform/012
