@@ -1,6 +1,11 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-01 (sixth revision) — **C′-fix's
+**Created:** 2026-07-28 · **Revised:** 2026-08-01 (seventh revision) — **the
+pre-Spec-E context pass.** The registry is re-verified aligned end-to-end (see
+*Closed*), Spec E's scoping forks are recorded in its section and as dated
+addenda on #113, #116, #130, #136 and #185, and #130 is raised to high.
+
+The sixth revision (same day): **C′-fix's
 own review is discharged, and practice 7 is earned.** The fifth revision closed
 C′-fix with AC 12 holding; the review that build never got has since run, and its
 21 findings are resolved: five fixed in place, seven filed as #190–#196, six
@@ -114,6 +119,13 @@ and `sdlc/017`, the first two records jim did not seed — newest `sdlc/017`;
 
 *(An earlier revision reported "64 spec + 4 group" — 64 is the file's total line
 count, not the spec-record count. Corrected above.)*
+
+Re-verified 2026-08-01 (seventh revision): **63** spec + 4 group records —
+`sdlc/018` joined, allocated at creation by the wired consumer, the first spec
+record the allocator itself minted; `issues.log` through 196, matching 196
+issue files; high-waters match the tree in all four live groups; suite
+975/975. Registry and tree currently agree everywhere except the retired `jim`
+group (#113).
 
 **Four more closed 2026-07-31.** Two on `sdlc/017`'s account — #112 (spec-id
 allocation wired, with C′'s carve-outs recorded on it) and #135 (`allocate spec`
@@ -628,14 +640,15 @@ the gap "has already bitten" from three hand-appended records. It is worse than
 that: `platform/011` was created during this work and is *absent* from the
 registry, so `peek spec platform` currently returns an id that exists on disk. A
 detect-and-repair verb is what stands between the registry and a reissued id, and
-nothing else does.
+nothing else does. *(Raised to high on the issue, 2026-08-01.)*
 
 **#144 split, and its urgent half was not E's — that half is now done.** The
 one-time alignment landed from the host on 2026-07-31: two hand-appended records
 carrying each spec's own issuance date, `b1aedca..19c4328`. Note the mechanism
 this note first assumed — `seed --apply` — does **not** work: seed is
 bootstrap-only and refuses a log that already has records
-(`jimalloc.sh:1652`). That refusal is precisely the hole #130 fills, and it is
+(`jimalloc.sh:1707` as of the seventh revision). That refusal is precisely the
+hole #130 fills, and it is
 the third independent piece of evidence in this note that #130's `low` priority
 is wrong: without an incremental catch-up verb, every future instance of this is
 a hand-edit of a coordination branch.
@@ -644,6 +657,42 @@ The *standing* half — detecting and repairing this class of drift automaticall
 is E's charter and stays here. E also inherits the retired-`jim` instance
 recorded under Spec B: emitting records fixes future splits, backfilling the 52
 ordinals the 2026-07-25 split already vacated does not follow from it.
+
+**Pre-spec analysis (2026-08-01, seventh revision).** A context pass ahead of
+scoping; the per-issue corrections live as dated addenda on #116, #130, #136
+and #185. What the interview must settle, and what it can lean on:
+
+- **The repair machinery exists.** `alloc_publish` already gives any batch
+  writer the in-loop erosion re-check, tier CAS, bounded retry and baseline
+  arming; the catch-up verb reduces to a new builder plus four recorded
+  semantics decisions (date stamp, provenance marker, empty-group rule,
+  conflict handling — on #130).
+- **The sweep's real design surface is its non-coverage report.** Four
+  artifact classes are legitimately recordless (reserved slot, pending
+  provisionals, retired groups, rename-source-only ids — on #116); practices
+  6 and 7 make naming them the acceptance criterion. The one genuine
+  structural fork is the detect/repair boundary: #116's "adopt" clause *is*
+  #130's append.
+- **Placement:** allocator verbs in platform territory with a reconcile-style
+  thin wrapper is the precedent; a `/jim:verify` ride-along via a `registry:`
+  check is possible but collides with verify's operator-registry vocabulary
+  and its exit-code mapping (0 / non-zero / crash → holds / violated /
+  failed, vs jimalloc's rc 1 doubling as "unreachable"). Design exit codes so
+  drift stays distinct from could-not-check.
+- **The platform blueprint has no invariant for E's property** — nothing
+  covers append-only growth, erosion, or only-door, so `/jim:verify` is blind
+  to exactly what E enforces. Fold one in at E's completion gate.
+- **The retired-`jim` backfill has a mechanical source** — the ledger's
+  `moved=` pairs, which are B's frozen `spec rename` shape, not catch-up
+  allocates (detail on #113). The lean E answer is the sweep naming the group
+  known-uncovered and the backfill riding B; decide rather than default.
+- **E is almost entirely new code** — two detectors and a writer verb, the
+  exact profile practices 5–7 exist for: fixture the wiring, mutation-test
+  new guard fixtures before trusting them, run the fan-out before the ledger
+  closes and name it if it did not run (#188).
+- #136 is wider than filed (two spec-side last-wins siblings, anchors on the
+  issue); #185 is a one-function fix in `alloc_origin_tip` covering both
+  callers.
 
 ### Spec F — `issue_placement` / issue content location · #126
 Where a filed issue's *content* lives: central branch vs on-branch, the
@@ -939,7 +988,7 @@ about it in a completion gate.
 | 154 | med  | Spec B (partition + blueprint vs pending provisional specs) |
 | 127 | high | Spec D (batch-CAS) |
 | 116 | med  | Spec E (only-door sweep) |
-| 130 | low  | Spec E (catch-up verb — **priority demonstrably wrong**, see above) |
+| 130 | high | Spec E (catch-up verb — raised from low 2026-08-01; demonstrations on the issue) |
 | 136 | low  | Spec E (duplicate durable-id detection) |
 | 126 | med  | Spec F (issue_placement) |
 | 117 | low  | hardening build |
