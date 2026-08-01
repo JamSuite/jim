@@ -299,7 +299,7 @@ flowchart TD
    CAS retry.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-10. [ ] `usage()` + README + WORKFLOW rows (AC 17).
+10. [x] `usage()` + README + WORKFLOW rows (AC 17).
     **Verify:** `grep -c 'catch-up' README.md WORKFLOW.md skills/file/scripts/jimalloc.sh | grep -v ':0'`
 
 11. [ ] Wire `verify_command_id-sweep` in `jimconf.toml`; resolve the

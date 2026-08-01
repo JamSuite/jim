@@ -8,6 +8,14 @@
 # ingest. This config entry is the only activation channel for the command.
 deps_command_refs = "bash scripts/jim-deps-refs.sh"
 
+# The operator command behind the platform blueprint's registry-tree-consistency
+# invariant: /jim:verify resolves this name, runs the string verbatim, and maps
+# exit 0 to holds and any clean non-zero to violated. The sweep is read-only and
+# its exit codes are designed for that mapping — 3 (drift) is exactly a
+# violation, and 4 (could not check) reports as one too, loudly, with the report
+# naming the degradation.
+verify_command_id-sweep = "bash skills/file/scripts/jimalloc.sh sweep"
+
 # When the ID-coordination point is unreachable, hand back a local provisional
 # identifier instead of hard-failing, so coordinated work continues offline and
 # settles later via `/jim:issue reconcile`. Suited to a sandbox/agent clone with
