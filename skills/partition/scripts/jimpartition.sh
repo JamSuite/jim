@@ -31,6 +31,9 @@
 #
 # EXIT CODES
 #   0  Success (HYGIENE / UNCOVERED counts may be > 0 — a report, not an error).
+#   1  The verb ran and reported a failure condition — a dirty worktree, or a
+#      rewrite that could not be installed. Remaining targets were still
+#      processed, so the run is partial rather than abandoned.
 #   2  Malformed invocation, malformed caller-written input, or not a git tree.
 #
 
@@ -1705,7 +1708,7 @@ cmd_rewrite_identity() {
   # rewritten body to a temp, the location-only REWROTE records to a side file.
   # old/new are slug-gated above, so neither can carry a regex/quote
   # metacharacter into awk (-v literals).
-  local rwtmp tmp_out rec
+  local rwtmp tmp_out rec awk_rc rw_failed=0
   if ! rwtmp="$(mktemp -d 2>/dev/null)"; then
     echo "jimpartition rewrite-identity: cannot create temp dir" >&2; return 2
   fi
@@ -1770,13 +1773,22 @@ cmd_rewrite_identity() {
         out = out substr(line, i)
         print out
       }' "$f" > "$tmp_out"
+    # A rewrite that died partway through has already written whatever records it
+    # got to, so a non-empty record file is NOT evidence the output is whole.
+    # Install only on a clean exit; other files still rewrite, and the run fails.
+    awk_rc=$?
+    if (( awk_rc != 0 )); then
+      echo "jimpartition rewrite-identity: the rewrite failed partway through '$(san_field "$f")'; nothing installed for it" >&2
+      rw_failed=1
+      continue
+    fi
     if [[ -s "$rec" ]]; then
       cat -- "$tmp_out" > "$f"
       cat -- "$rec"
     fi
   done
   rm -rf -- "$rwtmp"
-  return 0
+  return "$rw_failed"
 }
 
 # cmd_rewrite_refs <remap-file> <file>... — rewrite whole-token `group/NNN`
@@ -1857,7 +1869,7 @@ cmd_rewrite_refs() {
   # boundary-gated whole-token rewrite per line; location-only records to a side
   # file. og/onum/ng/nnum are slug/digit gated above, so none carries a regex or
   # quote metacharacter.
-  local rwtmp tmp_out rec
+  local rwtmp tmp_out rec awk_rc rw_failed=0
   if ! rwtmp="$(mktemp -d 2>/dev/null)"; then
     echo "jimpartition rewrite-refs: cannot create temp dir" >&2; rm -f "$parsed"; return 2
   fi
@@ -1887,13 +1899,22 @@ cmd_rewrite_refs() {
         }
         print out
       }' "$parsed" "$f" > "$tmp_out"
+    # A rewrite that died partway through has already written whatever records it
+    # got to, so a non-empty record file is NOT evidence the output is whole.
+    # Install only on a clean exit; other files still rewrite, and the run fails.
+    awk_rc=$?
+    if (( awk_rc != 0 )); then
+      echo "jimpartition rewrite-refs: the rewrite failed partway through '$(san_field "$f")'; nothing installed for it" >&2
+      rw_failed=1
+      continue
+    fi
     if [[ -s "$rec" ]]; then
       cat -- "$tmp_out" > "$f"
       cat -- "$rec"
     fi
   done
   rm -rf -- "$rwtmp"; rm -f "$parsed"
-  return 0
+  return "$rw_failed"
 }
 
 # ─── Section: health ─────────────────────────────────────────────────────────

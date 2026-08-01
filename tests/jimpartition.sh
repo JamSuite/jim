@@ -1606,6 +1606,47 @@ case_jimpartition_rewrite_identity_no_git_repo() {
   assert_exit "rc" 2 "$RC"
 }
 
+# jimpart_failing_awk_shim <name>
+#   A directory holding an `awk` that fails mid-stream — but ONLY for a rewrite
+#   verb's own invocation, identified by its `recfile=` binding; everything else
+#   execs the real awk. It writes a REWROTE record first, so the record file is
+#   non-empty exactly as it would be when a real awk dies partway through a file
+#   it had already rewritten lines of.
+jimpart_failing_awk_shim() {
+  local dir real
+  dir=$(empty_dir "$1")
+  real="$(command -v awk)"
+  {
+    printf '%s\n' '#!/usr/bin/env bash' 'set -uo pipefail' 'for a in "$@"; do'
+    printf '%s\n' '  case "$a" in'
+    printf '%s\n' '    recfile=*)'
+    printf '%s\n' '      printf "REWROTE\\tsentinel\\t1\\ttyped-ref\\n" > "${a#recfile=}"'
+    printf '%s\n' '      printf "truncated\\n"; exit 1 ;;'
+    printf '%s\n' '  esac' 'done'
+    printf 'exec %s "$@"\n' "$real"
+  } > "$dir/awk"
+  chmod +x "$dir/awk"
+  printf '%s' "$dir"
+}
+
+# A rewritten file is installed only when awk actually succeeded. A mid-stream
+# failure after at least one REWROTE record leaves the record file non-empty, so
+# the record-based guard alone would install a truncated file over a real one.
+case_jimpartition_rewrite_identity_awk_failure_does_not_install() {
+  local repo spec shim before oldpath
+  repo="$(rewrite_repo rwid_awkfail)"
+  spec="docs/specs/cart/001-initial/spec.md"
+  before="$(cat "$repo/$spec")"
+  shim=$(jimpart_failing_awk_shim rwid_awkfail_bin)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_jimpartition_in "$repo" rewrite-identity cart checkout "$spec"
+  PATH="$oldpath"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "file byte-unchanged" "$before" "$(cat "$repo/$spec")"
+  assert_eq "no truncated marker" "0" "$(grep -c '^truncated$' "$repo/$spec")"
+  assert_eq "no REWROTE claimed" "0" "$(printf '%s\n' "$OUT" | grep -c 'REWROTE')"
+}
+
 # ─── Section: rewrite-identity --skip-typed-refs (spec 051) ───────────────────
 
 # skiptyped_repo <name> — a git_init repo with one tracked numbered-spec fixture
@@ -1915,6 +1956,25 @@ case_jimpartition_rewrite_refs_usage_rc2() {
   printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
   run_jimpartition_in "$dir" rewrite-refs remap.tsv
   assert_exit "rc" 2 "$RC"
+}
+
+# The sibling of the rewrite-identity awk guard: a mid-stream failure leaves a
+# non-empty record file, so the record-based check alone would install a
+# truncated file over a real one.
+case_jimpartition_rewrite_refs_awk_failure_does_not_install() {
+  local dir shim before oldpath
+  dir="$(git_init rr_awkfail)"
+  repo_add "$dir" doc.md 'see cart/006 for details'
+  printf 'cart/006\tcheckout/001\n' > "$dir/remap.tsv"
+  before="$(cat "$dir/doc.md")"
+  shim=$(jimpart_failing_awk_shim rr_awkfail_bin)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv doc.md
+  PATH="$oldpath"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "file byte-unchanged" "$before" "$(cat "$dir/doc.md")"
+  assert_eq "no truncated marker" "0" "$(grep -c '^truncated$' "$dir/doc.md")"
+  assert_eq "no REWROTE claimed" "0" "$(printf '%s\n' "$OUT" | grep -c 'REWROTE')"
 }
 
 # ─── Section: composed-sweep regressions — renumbering moves (spec 051) ───────
