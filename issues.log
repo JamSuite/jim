@@ -194,3 +194,6 @@ issue allocate 193 20260801-realize-occupancy-gate-reads-the-configured-specs-di
 issue allocate 194 20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions 20260801 jrko
 issue allocate 195 20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization 20260801 jrko
 issue allocate 196 20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage 20260801 jrko
+issue allocate 197 20260801-cover-untracked-files-in-the-realize-citation-sweep 20260801 jrko
+issue allocate 198 20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes 20260801 jrko
+issue allocate 199 20260801-rewrite-the-realized-spec-s-own-h1-identity-token 20260801 jrko
