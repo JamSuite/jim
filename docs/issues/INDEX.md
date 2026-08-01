@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 87
+- Open: 92
 - Closed: 96
 
 ## Issues
@@ -190,6 +190,11 @@
 - `20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table` — Unwrap the injection slot in the arch skill argument table · status: open · num: 163 · priority: critical · created: 2026-07-31T11:48:54Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcile-script` — Use CLAUDE_SKILL_DIR for the spec skill own reconcile script · status: open · num: 162 · priority: critical · created: 2026-07-31T11:48:47Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` — Write the fixtures the plan named but the build skipped · status: closed · num: 178 · priority: medium · created: 2026-07-31T12:39:02Z · labels: [spec, issue, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
+- `20260801-fixture-the-spec-ordinal-holder-root-option` — Fixture the spec-ordinal-holder --root option · status: open · num: P-20260801-fixture-the-spec-ordinal-holder-root-option · priority: low · created: 2026-08-01T00:22:46Z · labels: [platform, file, scripts, test] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-re-validate-the-origin-registry-tip-before-git-interpolation` — Re-validate the origin registry tip before git interpolation · status: open · num: P-20260801-re-validate-the-origin-registry-tip-before-git-interpolation · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, scripts, id-coordination, security] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver` — Reconcile literal-pathspec use between the commit and rename verb families · status: open · num: P-20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, ledger, scripts, security] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer` — Refuse the reserved slot in the generic spec path composer · status: open · num: P-20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer · priority: low · created: 2026-08-01T00:22:47Z · labels: [platform, file, scripts, 000-blueprint] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation` — Surface a suppressed agent fan-out as a named degradation · status: open · num: P-20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation · priority: high · created: 2026-08-01T00:22:55Z · labels: [sdlc, blueprint, review, verify] · origin: conversation
 
 ## Graph
 
