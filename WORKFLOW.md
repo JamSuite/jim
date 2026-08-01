@@ -375,6 +375,8 @@ agent: meta
 
 **Realizing a provisional identity:** `/jim:spec reconcile` previews every pending provisional spec and the real ordinal each would take; `--apply` realizes them — renaming each directory onto its ordinal, rewriting its frontmatter, and sweeping in-tree citations of the identity it left. Its issue-side twin is `/jim:issue reconcile`. Both halt loudly rather than write a wrong identity.
 
+**Checking and repairing the registry itself:** identities created outside the allocator — old habits, non-jim tooling, a partition that rewrote them — leave the registry answering below the tree, so the next allocation hands out an id the project already owns. `bash skills/file/scripts/jimalloc.sh sweep` is the read-only check: it reports tree-vs-registry drift under named classes and names what it could not cover (reserved slots, pending provisionals, groups outside coordination, rename-source ids), exiting `0` clean / `3` drift / `4` could-not-check. `catch-up` is its repair half — preview by default, `--apply` appends the missing records as one CAS-guarded commit marked `jim-catchup`, and refuses mismatches, whose resolution is an operator decision. Both are hand-run script verbs, not skills; the in-session path is the `registry-tree-consistency` invariant on the platform blueprint, which `/jim:verify` runs as a configured operator check (`verify_command_id-sweep`).
+
 ### `/jim:plan`
 
 **Purpose:** Research the codebase and create an implementation plan.

@@ -27,6 +27,8 @@
 #   bash jimalloc.sh resolve  spec  <group>/<NNN>       → current "<group>/<NNN>"
 #   bash jimalloc.sh resolve  issue <num|full-id>       → current id
 #   bash jimalloc.sh seed     [--apply]                 preview/apply a one-time bootstrap
+#   bash jimalloc.sh sweep                              read-only tree-vs-registry integrity report
+#   bash jimalloc.sh catch-up [--apply]                 preview/apply the records a non-empty log lacks
 #   bash jimalloc.sh -c <path> <subcmd>                 use <path> as jimconf.toml
 #
 # EXIT CODES
@@ -34,6 +36,11 @@
 #   1  Hard failure (unreachable coordination point / erosion detected /
 #      retries exhausted / a rejected registry or config token).
 #   2  Malformed invocation (missing argument, unknown subcommand).
+#   3  The verb's content outcome: drift found (sweep), or a partial repair
+#      that left unrepairable drift behind (catch-up --apply).
+#   4  Could not check (sweep): no coordination branch to read, or a tree the
+#      derivation refuses. Distinct from both clean and drift, because a check
+#      that could not run must never be read as a pass.
 #
 
 set -uo pipefail
@@ -2674,7 +2681,13 @@ usage:
   jimalloc.sh seed     [--apply]                 preview (or --apply) a one-time registry bootstrap
   jimalloc.sh reconcile issue [--apply]          realize pending provisionals (stdin) into real ids
   jimalloc.sh reconcile spec  [--apply]          realize pending provisional spec identities (stdin)
+  jimalloc.sh sweep                              read-only: report tree-vs-registry drift + non-coverage
+  jimalloc.sh catch-up [--apply]                 preview (or --apply) the records a non-empty registry is missing
   jimalloc.sh -c <path> <subcmd>                 use <path> instead of ./jimconf.toml
+
+  sweep exits 0 clean, 3 drift found, 4 could-not-check — so a check that could
+  not run is never read as a pass. catch-up exits 3 when it lands the records it
+  could and leaves unrepairable drift (a mismatch) behind.
 USAGE
 }
 

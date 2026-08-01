@@ -292,7 +292,7 @@ flowchart TD
    unrepairable; rc 0.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-9. [ ] `catch-up --apply` (AC 7–10): `alloc_publish` builder appending the
+9. [x] `catch-up --apply` (AC 7–10): `alloc_publish` builder appending the
    MISSING set recomputed at tip; reports landed records; rc 3 on partial
    repair; idempotent re-run no-op; cases for fresh gaps, concurrent
    advance between preview and apply, mismatch partial, erosion refusal,
