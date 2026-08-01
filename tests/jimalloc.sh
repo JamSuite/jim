@@ -2349,6 +2349,95 @@ case_jimalloc_catchup_preview_never_proposes_the_reserved_slot() {
     "$(printf '%s\n' "$OUT" | grep -c 'newgroup/000')"
 }
 
+# AC 7: `--apply` lands the missing records as one commit under the same CAS and
+# erosion discipline as an allocation, and reports the records it ACTUALLY
+# appended — recomputed at the tip, not an echo of the preview.
+case_jimalloc_catchup_apply_lands_the_missing_records() {
+  local repo specs issues
+  repo="$(sweep_repo catchup_apply)"
+  mkdir -p "$repo/docs/specs/core/007-cache"
+  seed_issue_file "$repo/docs/issues" "20260801-late.md" 9 20260801-late 2026-08-01T10:00:00Z
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reports the landed spec record" \
+    '^    spec allocate core/007 cache .* jim-catchup$' "$OUT"
+  specs="$(alloc_specs_log "$repo")"; issues="$(alloc_issues_log "$repo")"
+  assert_match "spec record landed"  '^spec allocate core/007 cache .* jim-catchup$' "$specs"
+  assert_match "issue record landed" '^issue allocate 9 20260801-late 20260801 jim-catchup$' "$issues"
+  run_jimalloc_in "$repo" sweep
+  assert_exit "registry now matches the tree" 0 "$RC"
+}
+
+# AC 8: catch-up is idempotent and append-only — a second apply writes nothing,
+# and no existing record is rewritten, reordered, or removed.
+case_jimalloc_catchup_apply_idempotent_and_append_only() {
+  local repo before after sha1 sha2
+  repo="$(sweep_repo catchup_idem)"
+  mkdir -p "$repo/docs/specs/core/007-cache"
+  before="$(alloc_specs_log "$repo")"
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit "first apply rc" 0 "$RC"
+  sha1="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  after="$(alloc_specs_log "$repo")"
+  if [[ "$after" != "$before"* ]]; then
+    CURRENT_FAILED=1; echo "    [append-only] prior content is not a prefix of the new log"
+  fi
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit  "re-run rc" 0 "$RC"
+  assert_match "reports the no-op" 'nothing to append' "$OUT"
+  sha2="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  assert_eq "registry unchanged by the re-run" "$sha1" "$sha2"
+}
+
+# AC 9: on a mix of appendable gaps and unrepairable drift, apply lands the
+# clean records, names every finding it could not repair, and exits non-zero —
+# a partial repair never reads as a clean run.
+case_jimalloc_catchup_apply_partial_repair_exits_nonzero() {
+  local repo specs
+  repo="$(sweep_repo catchup_partial)"
+  mkdir -p "$repo/docs/specs/core/007-cache"
+  mv "$repo/docs/specs/core/002-beta" "$repo/docs/specs/core/002-betamax"
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit  "partial repair rc"   3 "$RC"
+  assert_match "names what it could not repair" '^    mismatch	spec	core/002	' "$OUT"
+  specs="$(alloc_specs_log "$repo")"
+  assert_match "the clean record still landed" '^spec allocate core/007 cache ' "$specs"
+  assert_eq "nothing rewritten for the mismatch" "1" \
+    "$(printf '%s\n' "$specs" | grep -c '^spec allocate core/002 ')"
+}
+
+# AC 7: the append set is recomputed against the tip inside the CAS loop, so a
+# record that landed between preview and apply is not appended a second time —
+# the preview→apply window cannot produce a duplicate.
+case_jimalloc_catchup_apply_recomputes_at_the_tip() {
+  local repo specs
+  repo="$(sweep_repo catchup_race)"
+  mkdir -p "$repo/docs/specs/core/007-cache"
+  run_jimalloc_in "$repo" catch-up
+  assert_match "preview proposes it" '^    spec allocate core/007 cache ' "$OUT"
+  alloc_append_record "$repo" specs.log 'spec allocate core/007 cache 20260801 someone-else'
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit "rc" 0 "$RC"
+  specs="$(alloc_specs_log "$repo")"
+  assert_eq "claimed exactly once" "1" \
+    "$(printf '%s\n' "$specs" | grep -c '^spec allocate core/007 ')"
+}
+
+# AC 7: the append rides the shared publish path, so a coordination history that
+# was truncated or rewritten is refused rather than appended onto.
+case_jimalloc_catchup_apply_refuses_an_eroded_registry() {
+  local repo blob tree commit
+  repo="$(sweep_repo catchup_erosion)"
+  mkdir -p "$repo/docs/specs/core/007-cache"
+  blob="$(printf 'spec allocate core/001 tampered 20200101 x\n' | git -C "$repo" hash-object -w --stdin)"
+  tree="$(printf '100644 blob %s\tspecs.log\n' "$blob" | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" -m rewrite)"
+  git -C "$repo" update-ref refs/heads/jim/registry "$commit"
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit     "refused"          1  "$RC"
+  assert_nonempty "erosion message"  "$ERR"
+}
+
 # AC 1: catch-up validates its own arguments — an unknown option is a usage
 # error, distinct from every content outcome.
 case_jimalloc_catchup_usage() {

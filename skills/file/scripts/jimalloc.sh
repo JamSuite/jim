@@ -2369,6 +2369,56 @@ alloc_catchup_render_set() {
   printf '%s\n' "$records" | sed 's/^/    /'
 }
 
+# alloc_catchup_publish_builder <cur_specs> <cur_issues> <who> <spec-derived> <issue-derived>
+#   The catch-up publish decision (an alloc_publish builder). The append set is
+#   recomputed against THIS attempt's logs, not against the preview's read, so a
+#   record that landed in between is seen as present and never appended twice.
+#   Sets the PUB_* locals alloc_publish reads back through dynamic scope, and
+#   the CATCHUP_BLOCKED global the caller reads for its exit code.
+alloc_catchup_publish_builder() {
+  local cur_specs="$1" cur_issues="$2" _who="$3" spec_rec="$4" issue_rec="$5"
+  local CU_SPEC CU_ISSUE CU_BLOCKED
+  alloc_catchup_compute "$spec_rec" "$issue_rec" "$cur_specs" "$cur_issues" || return 1
+  CATCHUP_BLOCKED="$CU_BLOCKED"
+  PUB_SPEC=""; PUB_ISSUE=""
+  local ns=0 ni=0 payload=""
+  if [[ -n "$CU_SPEC" ]]; then
+    ns="$(printf '%s\n' "$CU_SPEC" | grep -c .)"
+    PUB_SPEC="${cur_specs:+$cur_specs$'\n'}$CU_SPEC"
+  fi
+  if [[ -n "$CU_ISSUE" ]]; then
+    ni="$(printf '%s\n' "$CU_ISSUE" | grep -c .)"
+    PUB_ISSUE="${cur_issues:+$cur_issues$'\n'}$CU_ISSUE"
+  fi
+  # The payload names the records THIS attempt appends — the preview may have
+  # been computed against an earlier tip, so echoing it back would report work
+  # that never happened.
+  if (( ns == 0 && ni == 0 )); then
+    payload="catch-up: nothing to append — every tree identity already has a record"
+  else
+    payload="$(printf 'catch-up: appended %d record(s) to specs.log, %d to issues.log' "$ns" "$ni")"
+    [[ -n "$CU_SPEC"  ]] && payload+=$'\n'"$(printf '%s\n' "$CU_SPEC"  | sed 's/^/    /')"
+    [[ -n "$CU_ISSUE" ]] && payload+=$'\n'"$(printf '%s\n' "$CU_ISSUE" | sed 's/^/    /')"
+  fi
+  if [[ -n "$CU_BLOCKED" ]]; then
+    payload+=$'\n'"  cannot repair (an operator decides which side is right):"
+    payload+=$'\n'"$(printf '%s\n' "$CU_BLOCKED" | sed 's/^MISMATCH\t/mismatch\t/; s/^/    /')"
+  fi
+  PUB_PAYLOAD="$payload"
+  return 0
+}
+
+# alloc_catchup_land <spec-derived> <issue-derived> — land the missing records
+# through the shared batch-publish (tier selection, erosion re-check, CAS retry),
+# then map the outcome onto the verb's exit contract: drift this verb cannot
+# repair leaves the run non-zero, so a partial repair never reads as clean.
+alloc_catchup_land() {
+  CATCHUP_BLOCKED=""
+  alloc_publish alloc_catchup_publish_builder "$1" "$2" || return 1
+  [[ -n "$CATCHUP_BLOCKED" ]] && return 3
+  return 0
+}
+
 # cmd_catchup [--apply] — preview (default) or land the missing records.
 cmd_catchup() {
   local apply=0

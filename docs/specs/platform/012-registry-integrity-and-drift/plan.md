@@ -287,7 +287,7 @@ flowchart TD
    mutation-tested.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-8. [ ] `catch-up` preview (AC 7 preview half, 16): MISSING set rendered as
+8. [x] `catch-up` preview (AC 7 preview half, 16): MISSING set rendered as
    verbatim records with `jim-catchup` marker; mismatches listed as
    unrepairable; rc 0.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
