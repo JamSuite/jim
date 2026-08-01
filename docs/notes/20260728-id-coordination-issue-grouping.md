@@ -1,11 +1,14 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-01 (fifth revision) — **C′-fix
-shipped and AC 12 holds.** The remediation chain terminated: C produced eighteen
-issues, C′ sixteen, C′-fix **six** — and the six are adjacent observations rather
-than defects in shipped mechanism. See *What C′-fix changed*, which also records
-the first failure mode none of this note's practices can see: a practice that did
-not run leaves no trace in its own artifact.
+**Created:** 2026-07-28 · **Revised:** 2026-08-01 (sixth revision) — **C′-fix's
+own review is discharged.** The fifth revision closed C′-fix with AC 12 holding;
+the review that build never got has since run, and its 21 findings are resolved:
+five fixed in place, seven filed as #190–#196, six deliberately left. The
+remediation chain terminated: C produced eighteen issues, C′ sixteen, C′-fix
+**six** — and the six are adjacent observations rather than defects in shipped
+mechanism. See *What C′-fix changed*, which also records the first failure mode
+none of this note's practices can see: a practice that did not run leaves no
+trace in its own artifact.
 
 The second revision (2026-07-30) is what reshaped the note: Spec A shipped as
 `platform/011` and Spec C as `sdlc/017`, both the same day, and C shipped
@@ -23,7 +26,7 @@ Line/function anchors in this note are as of the revision date.
 `skills/file/scripts/jimalloc.sh` moves under consolidation — treat anchors as
 dated, and re-verify before planning against them.
 
-## The cluster — now 68 issues
+## The cluster — now 75 issues
 
 Original 20: #111, #112, #113, #114, #115, #116, #117, #118, #119, #121, #122,
 #123, #124, #126, #127, #129, #130, #132, #133, #134.
@@ -57,8 +60,25 @@ realized in one host batch onto 184–189 — no gap, no collision. Fourth clean
 production run of the provisional path, and the first where every marker came
 from a build rather than a review.
 
+**Seven added by C′-fix's own review** — #190–#196, the filed half of the 21
+findings a five-investigator pass returned over the sdlc/issue-territory changes.
+Nine of those findings were regressions from C′-fix itself. Filed offline against
+provisional ordinals and realized in one host batch onto 190–196 — contiguous
+from 189, no gap, no collision. Fifth clean production run of the provisional
+path.
+
 **Thirty-seven are closed.** The nineteen the fourth revision listed, plus all
 sixteen of C′-fix's own (#168–#183) and the two it unblocked (#151, #134).
+
+That count under-reports the repair work, and deliberately so: **five of the
+review's findings were fixed without ever being filed** (two `/jim:review`
+liveness defects, the issue-template comment trap, two unguarded awk installs,
+and thirteen retired-group references). They were small, all regressions from
+this build, and filing-then-closing them would have been bookkeeping. The
+accounting here is issue-based, so it cannot see them — the commits are
+`6be4ac9`, `4b0d105`, `8f1fb6d`, `998156a`. Six further findings were judged
+lower-confidence or lower-stakes and left unfiled, with their anchors recorded
+in `docs/notes/20260801-c-prime-fix-handoff.md` § 4.
 
 **#149 stays open**, and is now the only survivor of C′'s fourteen: the `jim`
 half of the blueprint fold was dropped by decision (see *What C′ changed*, item
@@ -423,8 +443,8 @@ nothing else in the grouping grows.
 
 ## Grouping: 4 remaining specs + 1 build + 1 refactor + 3 open items
 
-A, C and C′ are done. B, D, E, F remain as specs; C′-fix and the grouped
-hardening build remain as builds.
+A, C, C′ and C′-fix are done. B, D, E, F remain as specs; the grouped hardening
+build is the one build left.
 
 ### ~~Spec A — Rename-path correctness gates~~ · SHIPPED as `platform/011`
 Ran as a spec rather than a build, and the fork was worth resolving that way: the
@@ -542,12 +562,20 @@ than being laundered into a second aligned spec.
 unreachable and #145's first two fixtures meaningful), then #156 on the shared
 predicate, then the rest in any order.
 
-### ~~C′-fix — a build, not a spec~~ · SHIPPED — **AC 12 holds**
+### ~~C′-fix — a build, not a spec~~ · SHIPPED — **AC 12 holds** · reviewed
 All sixteen closed, plus #151 and #134; six new issues (#184–#189). See *What
 C′-fix changed*. The build shape was right — no `/jim:sec` gate was needed, the
 forks settled in conversation, and the two blueprint writes it did turn out to
 need went through their own surfaces (`/jim:blueprint --since`, `/jim:arch`)
 rather than becoming a reason to widen the ceremony.
+
+**The one cost of the build shape was the review.** Running as a build meant no
+spec directory, so `/jim:review`'s normal flow had nowhere to land and the build
+shipped unreviewed. Reviewed after the fact, it returned 21 findings — **nine of
+them regressions from the build itself**. The build shape remains right for the
+same three criteria; what it does not buy is the review, and that has to be run
+deliberately rather than assumed away. Disposition: five fixed, seven filed
+(#190–#196), six left. Detail in `docs/notes/20260801-c-prime-fix-handoff.md` § 4.
 
 The record below is what C′-fix was scoped to be, kept for provenance.
 
