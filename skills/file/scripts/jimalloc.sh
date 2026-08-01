@@ -997,6 +997,219 @@ alloc_seed_derive_issues() {
   printf '%s' "$out"
 }
 
+# ─── Section: integrity classification (pure — tree-derived vs registry) ─────
+#
+# ONE comparison, three consumers: the sweep report, the catch-up preview, and
+# the catch-up builder all read these rows and nothing else, so what the sweep
+# calls missing and what the catch-up appends cannot drift apart. Both sides are
+# canonicalized before any comparison, and every field is revalidated at the id
+# boundary — the registry is push-writable, so a record whose fields do not pass
+# is degraded and skipped rather than classified or echoed.
+#
+# Row grammar (TAB-separated), one per finding:
+#   MISSING       <kind> <identity> <detail>   tree identity with no record
+#   MISMATCH      <kind> <identity> <detail>   both sides present, disagreeing
+#   DUP-ORD       <kind> <identity> <detail>   one ordinal claimed twice, live
+#   DUP-ID        issue  <full-id>  <detail>   one durable id claimed twice
+#   RESERVED      spec   <identity> <detail>   a record for the reserved slot
+#   INFO-NO-TREE  <kind> <identity> <detail>   record with no tree counterpart
+#   RENAME-SRC    <kind> <identity> <detail>   id known only as a rename source
+#   CHECKED       <kind> <tree-n>   <record-n> coverage denominators
+#
+# A record with no tree counterpart is INFORMATIONAL, not drift: another clone
+# allocating first and an ordinal burned by an abandoned binding are both
+# legitimate, and calling them drift would leave every multi-clone project
+# permanently dirty.
+#
+# Group records are not classified. A group whose `group allocate` record is
+# absent while its spec records are present raises no finding, matching the
+# catch-up rule that appends a group record only alongside a spec record for it.
+
+# alloc_valid_token_memo <tok> — the id boundary with an in-run cache: each
+# distinct token crosses jimfile.sh once per process. Validity is a pure function
+# of the token, so caching cannot change an answer — it removes the repeat forks
+# a whole-registry scan would otherwise pay per record (#142 owns the general
+# case; this is the in-run dedupe, not a fourth copy of the rule).
+declare -A ALLOC_TOKEN_OK=()
+alloc_valid_token_memo() {
+  local tok="$1"
+  if [[ -z "${ALLOC_TOKEN_OK[$tok]:-}" ]]; then
+    if alloc_valid_token "$tok"; then ALLOC_TOKEN_OK[$tok]=y; else ALLOC_TOKEN_OK[$tok]=n; fi
+  fi
+  [[ "${ALLOC_TOKEN_OK[$tok]}" == y ]]
+}
+
+# alloc_classify_emit <class> <kind> <identity> <detail> — one finding row.
+alloc_classify_emit() {
+  printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4"
+}
+
+# alloc_classify_spec <derived-records-file>   (specs log on stdin)
+#   Compare the spec identities derived from the working tree against the
+#   registry's live claims and print one row per finding, plus the CHECKED
+#   denominators for specs and groups.
+#
+#   Live claims are computed by replaying the log the way the resolver does:
+#   an allocate record claims an identity, a rename record moves that claim to
+#   its destination, and a group rename moves every claim under that group. So a
+#   vacated id is not a phantom record-without-tree, and an id known only as a
+#   rename source is named as non-coverage rather than as drift.
+alloc_classify_spec() {
+  local derived="$1"
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 c5
+  local -A live_at=() live_slug=() src_only=() reg_groups=()
+  local canon key g
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
+    if [[ "$c1" == spec && "$c2" == allocate ]]; then
+      canon="$(alloc_canon_specid "$c3")" || continue
+      alloc_valid_token_memo "$c4" || continue
+      if [[ -n "${live_at[$canon]:-}" ]]; then
+        alloc_classify_emit DUP-ORD spec "$canon" "records ${live_at[$canon]} and $((i + 1))"
+        continue
+      fi
+      live_at["$canon"]=$((i + 1)); live_slug["$canon"]="$c4"
+    elif [[ "$c1" == spec && "$c2" == rename ]]; then
+      canon="$(alloc_canon_specid "$c3")" && c4="$(alloc_canon_specid "$c4")" || continue
+      src_only["$canon"]=1
+      [[ -n "${live_at[$canon]:-}" ]] || continue
+      if [[ -n "${live_at[$c4]:-}" ]]; then
+        alloc_classify_emit DUP-ORD spec "$c4" "records ${live_at[$c4]} and $((i + 1))"
+      else
+        live_at["$c4"]="${live_at[$canon]}"; live_slug["$c4"]="${live_slug[$canon]}"
+      fi
+      unset 'live_at[$canon]' 'live_slug[$canon]'
+    elif [[ "$c1" == group && "$c2" == rename ]]; then
+      alloc_valid_token_memo "$c3" && alloc_valid_token_memo "$c4" || continue
+      for key in "${!live_at[@]}"; do
+        [[ "$key" == "$c3"/* ]] || continue
+        src_only["$key"]=1
+        live_at["$c4/${key##*/}"]="${live_at[$key]}"
+        live_slug["$c4/${key##*/}"]="${live_slug[$key]}"
+        unset 'live_at[$key]' 'live_slug[$key]'
+      done
+    elif [[ "$c1" == group && "$c2" == allocate ]]; then
+      alloc_valid_token_memo "$c3" || continue
+      reg_groups["$c3"]=1
+    fi
+  done
+  # Tree side: the seed derivation's own output, so the sweep and the bootstrap
+  # enumerate one artifact set (reserved slots and pending provisionals are
+  # already excluded there — the sweep counts those separately as non-coverage).
+  local -A tree_slug=() tree_groups=()
+  if [[ -n "$derived" && -f "$derived" ]]; then
+    while read -r c1 c2 c3 c4 _; do
+      if [[ "$c1" == spec && "$c2" == allocate ]]; then
+        canon="$(alloc_canon_specid "$c3")" || continue
+        alloc_valid_token_memo "$c4" || continue
+        tree_slug["$canon"]="$c4"
+      elif [[ "$c1" == group && "$c2" == allocate ]]; then
+        alloc_valid_token_memo "$c3" || continue
+        tree_groups["$c3"]=1
+      fi
+    done < "$derived"
+  fi
+  local id
+  for id in $(printf '%s\n' "${!tree_slug[@]}" | LC_ALL=C sort); do
+    if [[ -z "${live_at[$id]:-}" ]]; then
+      alloc_classify_emit MISSING spec "$id" "${tree_slug[$id]}"
+    elif [[ "${live_slug[$id]}" != "${tree_slug[$id]}" ]]; then
+      alloc_classify_emit MISMATCH spec "$id" "tree ${tree_slug[$id]}, registry ${live_slug[$id]}"
+    fi
+  done
+  for id in $(printf '%s\n' "${!live_at[@]}" | LC_ALL=C sort); do
+    if [[ "${id##*/}" == 000 ]]; then
+      alloc_classify_emit RESERVED spec "$id" "record ${live_at[$id]}"
+    elif [[ -z "${tree_slug[$id]:-}" ]]; then
+      alloc_classify_emit INFO-NO-TREE spec "$id" "${live_slug[$id]}"
+    fi
+  done
+  for id in $(printf '%s\n' "${!src_only[@]}" | LC_ALL=C sort); do
+    [[ -n "${live_at[$id]:-}" ]] && continue
+    alloc_classify_emit RENAME-SRC spec "$id" "vacated by a rename"
+  done
+  alloc_classify_emit CHECKED spec "${#tree_slug[@]}" "${#live_at[@]}"
+  alloc_classify_emit CHECKED group "${#tree_groups[@]}" "${#reg_groups[@]}"
+  return 0
+}
+
+# alloc_classify_issue <derived-records-file>   (issues log on stdin)
+#   The issue-side twin. Issues carry two unique dimensions — the display ordinal
+#   and the durable id — so a contradiction can appear on either, and a tree file
+#   whose ordinal and durable id land on different records is a mismatch rather
+#   than two separate findings. Issue renames move ordinals, never durable ids.
+alloc_classify_issue() {
+  local derived="$1"
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4
+  local -A live_at=() live_id=() id_at=() id_ord=() src_only=()
+  local ord
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
+    if [[ "$c1" == issue && "$c2" == allocate ]]; then
+      [[ "$c3" =~ ^[0-9]+$ ]] || continue
+      (( ${#c3} > ALLOC_MAX_ORD_DIGITS )) && continue
+      alloc_valid_token_memo "$c4" || continue
+      ord=$((10#$c3))
+      if [[ -n "${id_at[$c4]:-}" ]]; then
+        alloc_classify_emit DUP-ID issue "$c4" "records ${id_at[$c4]} and $((i + 1))"
+      else
+        id_at["$c4"]=$((i + 1)); id_ord["$c4"]="$ord"
+      fi
+      if [[ -n "${live_at[$ord]:-}" ]]; then
+        alloc_classify_emit DUP-ORD issue "$ord" "records ${live_at[$ord]} and $((i + 1))"
+        continue
+      fi
+      live_at["$ord"]=$((i + 1)); live_id["$ord"]="$c4"
+    elif [[ "$c1" == issue && "$c2" == rename ]]; then
+      [[ "$c3" =~ ^[0-9]+$ && "$c4" =~ ^[0-9]+$ ]] || continue
+      (( ${#c3} > ALLOC_MAX_ORD_DIGITS || ${#c4} > ALLOC_MAX_ORD_DIGITS )) && continue
+      ord=$((10#$c3)); local dst=$((10#$c4))
+      src_only["$ord"]=1
+      [[ -n "${live_at[$ord]:-}" ]] || continue
+      if [[ -n "${live_at[$dst]:-}" ]]; then
+        alloc_classify_emit DUP-ORD issue "$dst" "records ${live_at[$dst]} and $((i + 1))"
+      else
+        live_at["$dst"]="${live_at[$ord]}"; live_id["$dst"]="${live_id[$ord]}"
+        id_ord["${live_id[$ord]}"]="$dst"
+      fi
+      unset 'live_at[$ord]' 'live_id[$ord]'
+    fi
+  done
+  local -A tree_id=()
+  if [[ -n "$derived" && -f "$derived" ]]; then
+    while read -r c1 c2 c3 c4 _; do
+      [[ "$c1" == issue && "$c2" == allocate ]] || continue
+      [[ "$c3" =~ ^[0-9]+$ ]] || continue
+      alloc_valid_token_memo "$c4" || continue
+      tree_id["$((10#$c3))"]="$c4"
+    done < "$derived"
+  fi
+  for ord in $(printf '%s\n' "${!tree_id[@]}" | LC_ALL=C sort -n); do
+    if [[ -n "${live_at[$ord]:-}" ]]; then
+      [[ "${live_id[$ord]}" == "${tree_id[$ord]}" ]] && continue
+      alloc_classify_emit MISMATCH issue "$ord" \
+        "tree ${tree_id[$ord]}, registry ${live_id[$ord]}"
+    elif [[ -n "${id_ord[${tree_id[$ord]}]:-}" ]]; then
+      alloc_classify_emit MISMATCH issue "${tree_id[$ord]}" \
+        "tree ordinal $ord, registry ordinal ${id_ord[${tree_id[$ord]}]}"
+    else
+      alloc_classify_emit MISSING issue "$ord" "${tree_id[$ord]}"
+    fi
+  done
+  for ord in $(printf '%s\n' "${!live_at[@]}" | LC_ALL=C sort -n); do
+    [[ -n "${tree_id[$ord]:-}" ]] && continue
+    alloc_classify_emit INFO-NO-TREE issue "$ord" "${live_id[$ord]}"
+  done
+  for ord in $(printf '%s\n' "${!src_only[@]}" | LC_ALL=C sort -n); do
+    [[ -n "${live_at[$ord]:-}" ]] && continue
+    alloc_classify_emit RENAME-SRC issue "$ord" "vacated by a rename"
+  done
+  alloc_classify_emit CHECKED issue "${#tree_id[@]}" "${#live_at[@]}"
+  return 0
+}
+
 # ─── Section: Coordination point + CAS (git plumbing) ────────────────────────
 
 # alloc_in_repo — exit 0 iff CWD is inside a git repository.

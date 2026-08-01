@@ -261,7 +261,7 @@ flowchart TD
    positions; cases per resolver, mutation-tested.
    **Verify:** `bash skills/meta-test/scripts/run.sh jimalloc | tail -1`
 
-5. [ ] Duplicate-claim halts in **both** realize maps (AC 11):
+5. [x] Duplicate-claim halts in **both** realize maps (AC 11):
    `alloc_reconcile_realize`'s durable-id map and
    `alloc_reconcile_realize_spec`'s (group, slug, date) map — a second
    record claiming an already-claimed key halts the batch naming both

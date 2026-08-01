@@ -1939,6 +1939,168 @@ case_jimalloc_seed_publish_detects_erosion() {
   assert_nonempty "erosion message"   "$ERR"
 }
 
+# ─── Section: integrity classification (pure — tree vs registry) ─────────────
+#
+# The classifiers are the single comparison the sweep report, the catch-up
+# preview, and the catch-up builder all read, so detect and repair can never
+# disagree about what is missing. Each case pins one class of that comparison.
+
+# run_classify <fn> <derived-records> <log>
+#   Source the allocator and run a classifier over <derived-records> (written to
+#   a temp file, as the seed derivation would produce them) with <log> on stdin.
+run_classify() {
+  local fn="$1" derived="$2" log="$3"
+  local dir err_file="$TMP_BASE/.err"
+  dir="$(empty_dir "classify_$RANDOM")"
+  printf '%s\n' "$derived" > "$dir/derived"
+  OUT="$(source "$SCRIPT_jimalloc"; "$fn" "$dir/derived" <<< "$log" 2>"$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# classify_rows <class> — the OUT rows of one class, TAB-separated as emitted.
+classify_rows() { printf '%s\n' "$OUT" | grep "^$1	" || true; }
+
+# AC 1/4: a tree and registry that agree produce no finding at all — only the
+# coverage denominators, so a clean report always says what it checked.
+case_jimalloc_classify_spec_clean() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'group allocate core 20260801 jim-seed' \
+                     'spec allocate core/001 alpha 20260801 jim-seed')" \
+    "$(printf '%s\n' 'group allocate core 20260726 jane' \
+                     'spec allocate core/001 alpha 20260726 jane')"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "no findings" "" "$(printf '%s\n' "$OUT" | grep -v '^CHECKED	' || true)"
+  assert_match "spec denominators" '^CHECKED	spec	1	1$' "$OUT"
+}
+
+# AC 2: a tree identity with no registry record is the collision risk — the
+# class the catch-up verb appends from.
+case_jimalloc_classify_spec_missing() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'group allocate core 20260801 jim-seed' \
+                     'spec allocate core/007 cache 20260801 jim-seed')" \
+    ""
+  assert_exit "rc" 0 "$RC"
+  assert_eq "missing row" "$(printf 'MISSING\tspec\tcore/007\tcache')" \
+    "$(classify_rows MISSING)"
+}
+
+# AC 2: tree and registry that disagree about the identity they share are a
+# mismatch — reported with both sides, never repaired.
+case_jimalloc_classify_spec_mismatch() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'spec allocate ui/012 nav 20260801 jim-seed')" \
+    "$(printf '%s\n' 'spec allocate ui/012 navbar 20260726 jane')"
+  assert_match "mismatch names both sides" '^MISMATCH	spec	ui/012	tree nav, registry navbar$' "$OUT"
+}
+
+# AC 2: two live records claiming one spec ordinal are a registry-internal
+# contradiction, reported with both claiming positions.
+case_jimalloc_classify_spec_duplicate_ordinal() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'spec allocate core/007 alpha 20260801 jim-seed')" \
+    "$(printf '%s\n' 'spec allocate core/007 alpha 20260726 jane' \
+                     'spec allocate core/007 beta 20260727 mallory')"
+  assert_match "duplicate named" '^DUP-ORD	spec	core/007	records 1 and 2$' "$OUT"
+}
+
+# AC 2: a record for the reserved blueprint slot is drift on its own — nothing
+# should ever have minted it, and the derivation no longer can.
+case_jimalloc_classify_spec_reserved_slot_record() {
+  run_classify alloc_classify_spec "" \
+    "$(printf '%s\n' 'spec allocate core/000 blueprint 20260726 jane')"
+  assert_match "reserved named" '^RESERVED	spec	core/000	' "$OUT"
+  assert_eq "not also reported as record-without-tree" "" "$(classify_rows INFO-NO-TREE)"
+}
+
+# AC 2: a record with no tree counterpart is informational, not drift —
+# allocation from another clone and an abandoned binding are both legitimate.
+case_jimalloc_classify_spec_record_without_tree() {
+  run_classify alloc_classify_spec "" \
+    "$(printf '%s\n' 'spec allocate core/009 gamma 20260726 jane')"
+  assert_eq "informational row" "$(printf 'INFO-NO-TREE\tspec\tcore/009\tgamma')" \
+    "$(classify_rows INFO-NO-TREE)"
+  assert_eq "not drift" "" "$(classify_rows MISSING)"
+}
+
+# AC 1: both sides are canonicalized, so a record spelling its ordinal unpadded
+# is the same identity as the padded directory — a hand-authored `core/7` is not
+# drift against `core/007-alpha`.
+case_jimalloc_classify_spec_padding_is_one_identity() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'spec allocate core/007 alpha 20260801 jim-seed')" \
+    "$(printf '%s\n' 'spec allocate core/7 alpha 20260726 jane')"
+  assert_eq "no findings" "" "$(printf '%s\n' "$OUT" | grep -v '^CHECKED	' || true)"
+}
+
+# AC 3: an id known only as a rename source has no tree dir by design — it is
+# named as non-coverage, never as drift, and the destination it moved to is what
+# the tree is compared against.
+case_jimalloc_classify_spec_rename_source_not_drift() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'spec allocate core/009 alpha 20260801 jim-seed')" \
+    "$(printf '%s\n' 'spec allocate core/007 alpha 20260726 jane' \
+                     'spec rename core/007 core/009 20260727')"
+  assert_eq   "vacated id is not drift" "" "$(classify_rows INFO-NO-TREE)"
+  assert_eq   "destination matches the tree" "" "$(classify_rows MISSING)"
+  assert_match "vacated id named as non-coverage" '^RENAME-SRC	spec	core/007	' "$OUT"
+}
+
+# AC 2/4: the issue side classifies the same way over ordinals and durable ids —
+# a file with no record is missing, and the denominators count both sides.
+case_jimalloc_classify_issue_missing() {
+  run_classify alloc_classify_issue \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jim-seed')" \
+    ""
+  assert_eq "missing row" "$(printf 'MISSING\tissue\t5\t20260726-alpha')" \
+    "$(classify_rows MISSING)"
+  assert_match "issue denominators" '^CHECKED	issue	1	0$' "$OUT"
+}
+
+# AC 2: an ordinal whose record carries a different durable id is a mismatch —
+# the tree and the registry disagree about which issue that ordinal is.
+case_jimalloc_classify_issue_mismatch() {
+  run_classify alloc_classify_issue \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jim-seed')" \
+    "$(printf '%s\n' 'issue allocate 5 20260726-beta 20260726 jane')"
+  assert_match "mismatch names both sides" \
+    '^MISMATCH	issue	5	tree 20260726-alpha, registry 20260726-beta$' "$OUT"
+}
+
+# AC 2: two records claiming one durable id — the silent last-wins seam — are
+# reported with both claiming positions.
+case_jimalloc_classify_issue_duplicate_durable_id() {
+  run_classify alloc_classify_issue \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jim-seed')" \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane' \
+                     'issue allocate 9 20260726-alpha 20260727 mallory')"
+  assert_match "duplicate id named" '^DUP-ID	issue	20260726-alpha	records 1 and 2$' "$OUT"
+}
+
+# AC 2: two records claiming one issue ordinal are the same contradiction from
+# the other direction.
+case_jimalloc_classify_issue_duplicate_ordinal() {
+  run_classify alloc_classify_issue "" \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane' \
+                     'issue allocate 5 20260726-beta 20260727 mallory')"
+  assert_match "duplicate ordinal named" '^DUP-ORD	issue	5	records 1 and 2$' "$OUT"
+}
+
+# AC 1/15: a record whose fields fail the id boundary is degraded and skipped
+# rather than classified — a crafted record cannot inject a report row, and the
+# well-formed records around it still classify.
+case_jimalloc_classify_skips_malformed_records() {
+  run_classify alloc_classify_issue \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jim-seed')" \
+    "$(printf '%s\n' 'issue allocate 5 --upload-pack=x 20260726 mallory' \
+                     'issue allocate 5 20260726-alpha 20260726 jane')"
+  assert_eq "no findings from the well-formed pair" "" \
+    "$(printf '%s\n' "$OUT" | grep -v '^CHECKED	' || true)"
+  assert_eq "malformed token never echoed" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'upload-pack')"
+}
+
 # ─── Section: reconcile — realize logic (pure, no git) ───────────────────────
 
 # run_realize <log> <pending...> — source the allocator and run the pure
