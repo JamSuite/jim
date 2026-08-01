@@ -1,11 +1,15 @@
-# Handoff — C′-fix shipped, post-review findings undecided
+# Handoff — C′-fix shipped, review findings discharged
 
-**Written:** 2026-08-01 · **Branch:** `feat/id-coordination` @ `4427f0d` ·
-**Session base:** `8a3650b` · 40 commits · tree clean · suite **969/969**
+**Written:** 2026-08-01 · **Second revision** · **Branch:** `feat/id-coordination`
+· **Session base:** `8a3650b` · tree clean · suite **971/971**
 
-Read this before touching anything. Section 4 is the perishable part — a
-five-investigator review produced findings that are **recorded nowhere but
-here**, and a decision on them was pending when the session ended.
+Counts below **include this note's own commit**, so they match what you see on
+arrival — the previous revision's did not, and cost a reconciliation step.
+
+The first revision of this note carried 21 unfiled review findings and an
+undecided split. **That is now resolved** — §4 records the disposition. Nothing
+in this note is perishable in the way that section was; the state it describes
+lives in git and in `docs/issues/`.
 
 Anchors below are as of this date. Two of the files named here move often
 (`skills/spec/scripts/reconcile.sh`, `skills/file/scripts/jimfile.sh`) —
@@ -17,14 +21,14 @@ re-verify a line number before planning against it.
 
 The id-coordination cluster's step 3a (**C′-fix**) is **done**: all sixteen of
 its issues closed, plus #151 and #134 which were held open waiting on it, and
-`sdlc/018`'s AC 12 now holds. Six new issues were filed and realized (#184–#189).
-The grouping note is at its fifth revision and is current. **Then** a review of
-the sdlc/issue-territory changes — which C′-fix never got, because it ran as a
-build with no spec directory — surfaced 21 findings, nine of them regressions
-introduced during that same build. Those findings are **unfiled and unfixed**.
-That is the open item.
+`sdlc/018`'s AC 12 now holds. Six issues were filed and realized (#184–#189).
+The grouping note is at its fifth revision and is current. The review that
+C′-fix never got — it ran as a build, with no spec directory — surfaced 21
+findings, nine of them regressions from that same build; **those have now been
+discharged**: five fixed, seven filed as #190–#196, six deliberately left
+unfiled (§4). The suite went 969 → 971 on two new mutation-tested cases.
 
-**Next in the sequence after that:** step 4, **Spec E** (registry integrity).
+**Next in the sequence:** step 4, **Spec E** (registry integrity).
 
 ---
 
@@ -45,7 +49,8 @@ groups that work into specs rather than minting one spec per issue.
 | **A** | `platform/011` | The cluster's centre of gravity is C and E, not A |
 | **C** | `sdlc/017` | The constraint is not which specs to write — it is **whether a spec finishes**. Shipped green, complete and ledger-closed with three criticals and two security regressions inside it |
 | **C′** | `sdlc/018` | Refines to: **does what a spec builds *fresh* get the same scrutiny as what it repairs?** Every defect it shipped was in new code written to satisfy an AC |
-| **C′-fix** | this build | The chain terminated (18 → 16 → 6 issues). New lesson in §6 |
+| **C′-fix** | build @ `4427f0d` | The chain terminated (18 → 16 → 6 issues) |
+| **C′-fix review** | `bbbffd5..b939407` (6 commits) | New lesson in §6: a finding can under-scope itself the same way code does |
 
 **Remaining:** B (rename/redirect record emission), **D** (batch-CAS), **E**
 (registry integrity — next), **F** (issue_placement), one grouped hardening build
@@ -83,113 +88,79 @@ guard this build wrote.
 
 ---
 
-## 4. ⚠ THE OPEN ITEM — 21 review findings, unfiled
+## 4. The review findings — disposition
 
-Five `jim:investigator` agents reviewed the sdlc/issue-territory changes. **Nine
-findings are regressions from this build.** A split was proposed (fix the five
-worst, file the rest) and **not answered** — that is the first decision to make.
+Five `jim:investigator` agents reviewed the sdlc/issue-territory changes and
+produced 21 findings. The chosen split was **fix the five worst, file the
+substantive rest**. All anchors were re-verified against the tree before acting;
+all held.
 
-Findings marked ✅ were verified empirically this session; the rest are
-investigator reports I did not independently reproduce.
+### Fixed (five findings, four commits)
 
-### HIGH — both in the eleven lines added to `skills/review/SKILL.md`
+| Finding | Commit | What shipped |
+| :--- | :--- | :--- |
+| **H1** map path hardcoded | `6be4ac9` | `review/SKILL.md` resolves the map via `jimfile.sh get blueprint` |
+| **H2** rc 2 conflated four conditions | `6be4ac9` | Keys on outcome, not rc; adds the absent-map degradation clause |
+| **T1** trailing comment on the id line | `4b0d105` | `issue-template.md` note moved to its own line |
+| **T2** two unguarded awk installs | `8f1fb6d` | `jimpartition.sh` installs only on a clean awk exit |
+| **T3** retired group in live examples | `998156a` | Thirteen references repointed |
 
-**H1 · `skills/review/SKILL.md:74` — the map path is hardcoded.** ✅
-Written as `territory BLUEPRINT.md <group>`. All seven other skills resolve it
-via `jimfile.sh get/path blueprint`; review's own Step 4e does so one line below.
-On a project that configures `blueprint` elsewhere — or has no map, the
-un-partitioned majority — every group returns rc 2, so the reviewer concludes
-nothing is live and excludes every blueprint. **An instruction added to stop one
-false positive produces a blanket false negative.** Fix: resolve the path, as
-`:125` already does.
+Three things about those fixes the next session should know:
 
-**H2 · `skills/review/SKILL.md:77` — rc 2 conflates four conditions.** ✅
-Verified: `not-in-map → 2`, `map missing → 2`, `bad slug → 2`, `live group → 0`.
-The instruction claims rc 2 means "not live". It also never says what rc 0 means
-(a live group with no `Territory:` line returns 0 with **empty stdout**), and has
-no degradation clause where `/jim:verify` has one for the same input. Fix: key on
-rc 0 vs. the specific `group not in map` message; add the absent-map degradation.
+- **H1 was invisible from inside this project.** The hardcoded `BLUEPRINT.md` is
+  byte-identical to what the resolver returns here, so the defect was a no-op
+  locally and fired only elsewhere. See §6.
+- **H2's exit codes were established empirically**, not read off the source: rc 0
+  = live (**including empty stdout**, a live group declaring no territory); rc 2
+  conflates not-in-map, invalid slug, and map-not-found. The fix keys on the
+  `group not in map` message.
+- **T3's own scope was too narrow.** The finding named nine hits under `agents/`;
+  a wider sweep found four more on live skill surfaces (`roadmap/SKILL.md`,
+  `roadmap-template.md`, `spec-check/SKILL.md`,
+  `meta-matrix-skill-invocation/SKILL.md`). All thirteen are fixed. Frozen specs,
+  research, and notes keep the old paths as correct provenance.
 
-### The three twins — "fixed one, missed the sibling"
+Two corrections were folded in while the surrounding code was open: the liveness
+rule gained the Validation Checklist entry it lacked, and `jimpartition.sh`'s
+header now documents rc 1, which five existing sites already returned.
 
-**T1 · `skills/issue/assets/issue-template.md:2`** ✅ — the same trailing-comment
-trap fixed in the spec and plan templates, on a line parsed by a byte-identical
-`field_value`. Verified: `id` parses as
-`{prefix}-{slug}   # prefix from the configured scheme (default YYYYMMDD-; spec 021)`.
-That line also carries a stale spec-ID reference.
+### Filed (seven issues, #190–#196)
 
-**T2 · `skills/partition/scripts/jimpartition.sh:1773` and `:1890`** ✅ — the same
-unguarded awk install fixed in `sweep_citations` (#177). One of three sites was
-fixed. The failing-awk shim at `tests/specreconcile.sh` is directly reusable.
+Realized in one host batch — contiguous from 189, no gap, no collision, index
+regenerates to a no-op.
 
-**T3 · `agents/meta.md:14`** ✅ — the agent's own *behavioral example* still reads
-"locate the spec in `docs/specs/jim/`" — the retired group. Lines 52–53 were
-fixed; line 14 was not. **#168's resolution note claims "a grep for the stale
-token found the second one; nothing else would have" — that claim is wrong**; a
-grep for `docs/specs/jim` under `agents/` returns nine hits across seven files.
-Most are illustrative `user:` lines; `meta.md:14` is the assistant's own line and
-`ARCHITECTURE.md:366` makes agent-description examples load-bearing for routing.
+| # | Finding | Priority |
+| :--- | :--- | :--- |
+| **#190** | N1 · sweep exits 0 after dropping a content root | high |
+| **#191** | N2 · sweep installer discards `cat`'s exit status | high |
+| **#192** | P1 · `index.sh` publishes a truncated INDEX.md as success | high |
+| **#193** | P2 · realize occupancy gate reads the configured specs dir, not its root | low |
+| **#194** | N4+N5 · spec skill's realize-failure guidance is stale in two directions | high |
+| **#195** | N3 · sweep and reconcile disagree on worktree-top normalization | medium |
+| **#196** | P3 · uncommitted-sweep containment guard lost its only coverage | medium |
 
-### NOTABLE — incomplete fixes with the shape they replaced
+N4 and N5 are merged: same paragraph, same line, one edit closes both.
 
-**N1 · `skills/spec/scripts/reconcile.sh:369`, `:377`** ✅ — a dropped content
-root warns and `continue`s **without setting `sweep_failed`**. Some citations
-rewritten, others not, `INDEX.md` never regenerated, **exit 0**. Verbatim the
-failure shape #173 removed. One-line fix.
+**Each body separates what was re-confirmed in source from what remains the
+investigator's unreproduced reasoning.** That distinction is load-bearing —
+every anchor was verified, but the runtime consequences (ENOSPC truncation, the
+symlinked-worktree no-op, `scan_pending`'s blind spot) were reasoned from control
+flow, not reproduced. Do not treat them as established.
 
-**N2 · `skills/spec/scripts/reconcile.sh:513`** — the *installer* is still
-unguarded. #177 gated awk's exit status but not `cat -- "$tmp_out" > "$f"`. A
-read-only target reports `REWROTE` for a rewrite that did not happen; ENOSPC
-mid-`cat` truncates a tracked file unrecoverably. Mirror image of the fix.
+### Still unfiled — six, deliberately
 
-**N3 · `skills/spec/scripts/reconcile.sh:351` vs `:607`** — `sweep_citations`
-takes `git rev-parse --show-toplevel` raw while `cmd_reconcile` re-normalizes it
-through `realpath -m`. On a symlinked worktree all four roots read as outside,
-all drop, and `(( ${#roots[@]} )) || return 0` at `:382` returns 0 with nothing
-swept — including the own-directory sweep, whose whole purpose is the uncommitted
-case.
+Judged lower-confidence or lower-stakes and not worth tracking overhead. All six
+anchors re-verified 2026-08-01:
 
-**N4 · `skills/spec/SKILL.md:387` — now wrong in a dangerous direction.** It
-tells the agent rc 1 means "some identity halted… a re-run converges." After
-#174's spec-side change rc 1 also covers *moved, swept, recorded, frontmatter
-stale* — which `scan_pending` can no longer see, so the re-run exits 0 saying
-nothing is pending. Worse, the documented repair (revert the directory, re-run)
-is now **destructive**: the sweep already rewrote every citation. The only correct
-repair is the one-line frontmatter edit named on stderr.
-
-**N5 · `skills/spec/SKILL.md:387`** — also not updated for #172's new refusal, so
-an agent hitting "must run from the worktree top" is told to report
-registry-vs-tree drift and stop, and never surfaces `cd`.
-
-### Pre-existing, in-region, worth filing
-
-**P1 · `skills/issue/scripts/index.sh:509-532`** — the write block's exit status
-is never checked. ENOSPC mid-write publishes a **truncated INDEX.md** over a good
-one and returns 0, contradicting the script's own contract at `:45-46`. Every
-sibling guards this (`new.sh:208`, `backfill.sh:135`, `issue/reconcile.sh:182`);
-`index.sh` is the only one that does not. Both reconcilers key their "index failed
-to regenerate" error off this exit code, so the truncation reads as clean to them.
-
-**P2 · `skills/spec/scripts/reconcile.sh:253`** — the realize path's occupancy
-gate calls `jf spec-ordinal-holder` **without** `--root`, so it reads the
-configured specs dir rather than the `$root` it is guarding. No live divergence
-today — but only because #172's new worktree-top guard forces them equal. That
-dependency is unstated, and the sibling caller (`jimledger.sh:629`) does pass
-`--root`.
-
-**P3 · `tests/specreconcile.sh:235-248`** — `case_..._uncommitted_sweep_refuses_escape`
-now exercises #180's new symlink arm, not the containment guard its AC comment
-describes. That guard has silently lost its only own-directory coverage.
-
-### Also reported, lower confidence / lower stakes
-
-`spec/reconcile.sh:281` mktemp branch reaches the post-rename residue with a
-message naming neither identity nor residue · `issue/reconcile.sh:243` count and
-mapping listing disagree when one file fails · `own_dirs` awk at `:667` truncates
-a specs root containing a space · `agents/pm.md:49` teaches the retired group as
-the canonical example · `agents/security.md:54` plan path admits only the ordinal
-state · `review/SKILL.md` has no Validation Checklist entry for the new rule ·
-`review/SKILL.md:77` does not cover a rule declared *only* in retired blueprints.
+- `spec/reconcile.sh:281` — mktemp branch reaches the post-rename residue with a
+  message naming neither identity nor residue
+- `issue/reconcile.sh:243` — count and mapping listing disagree when one file fails
+- `spec/reconcile.sh:667` — `own_dirs` awk truncates a specs root containing a space
+- `agents/pm.md:49` — teaches the retired `jim` group as a canonical example (the
+  T3 class; the T3 sweep keyed on `docs/specs/jim`, which this bare mention evades)
+- `agents/security.md:54` — plan path admits only the ordinal state
+- `review/SKILL.md` — the liveness rule does not cover a rule declared *only* in
+  retired blueprints
 
 ### What came back sound (do not re-litigate)
 
@@ -217,20 +188,21 @@ from something the developer set. **No supported opt-out.**
 
 **Why it matters here:** jim's quality machinery *is* delegation — `/jim:review`'s
 investigator fan-out, `/jim:verify`'s judge rung, `/jim:partition`'s gatherer, the
-personas. It cost real defects this session (§6).
+personas. It cost real defects in the C′-fix session (§6).
 
 **The workaround is in-band:** the directive is self-limiting. An explicit request
 satisfies it. Say once per session: *"invoking a jim skill authorizes the agents
-that skill prescribes."* Tracked as **#188**, whose actionable half is that jim
+that skill prescribes."* Confirmed working — the review session opened with
+exactly that authorization. Tracked as **#188**, whose actionable half is that jim
 should *name* a suppressed fan-out as a degradation rather than reporting a clean
-result — `/jim:verify` and `/jim:review` already name every degradation they can
-see.
+result.
 
 ---
 
-## 6. What went wrong this session — read this, it is the point
+## 6. What went wrong, and what the fix session added
 
-Three mechanisms found defects. **None of them was me re-reading my own work.**
+**From the C′-fix build — three mechanisms found defects, none of them the author
+re-reading their own work:**
 
 1. **A suppressed judge fan-out reported zero violations over code containing
    two.** The `/jim:verify --since platform` grounding run had its judge rung
@@ -247,40 +219,61 @@ Three mechanisms found defects. **None of them was me re-reading my own work.**
    without checking** — by the same pass whose job was cataloguing territory
    violations. Two more files were unclaimed (#189).
 
-3. **The review in §4 found nine regressions from this build**, including three
-   more "fixed one, missed the twin."
+3. **The review found nine regressions from that build**, including three
+   "fixed one, missed the twin."
 
-**The generalization, now in the note as practice 6:** every practice this cluster
-adopted detects something about the *code*; none detects **its own absence**. A
-suppressed practice is indistinguishable from a satisfied one. And a fixture that
-has never failed proves nothing — the #178 prefix-overlap fixture passed against
-a matcher with its boundary check removed, which only mutation testing revealed.
+**The generalization, now in the grouping note as practice 6:** every practice
+this cluster adopted detects something about the *code*; none detects **its own
+absence**. A suppressed practice is indistinguishable from a satisfied one.
 
-**Two recommendations I made and had to withdraw**, both toward doing less work,
-both correctly rejected by the developer: keeping dead code (`mv-spec`) to avoid a
-blueprint run, and accepting the suppressed fan-out as merely a named degradation
-rather than challenging it.
+**Two things the fix session added:**
+
+4. **A finding can under-scope itself exactly the way code does.** T3 was the
+   *twin-miss* finding — its whole subject was "fixed one, missed the sibling" —
+   and its own stated scope (nine hits under `agents/`) missed four more on live
+   skill surfaces. The recursion is the point: the pass that catches an
+   incomplete sweep can itself sweep incompletely. Re-derive a finding's scope
+   before acting on it; do not inherit the reporter's grep.
+
+5. **A project cannot detect its own unrepresentativeness.** H1's hardcoded
+   `BLUEPRINT.md` equals the resolved value *here*, so it was a no-op in every
+   local check and broke only on projects configured differently — the
+   un-partitioned majority. No test, review, or run against this repo could have
+   surfaced it. When a skill hardcodes a value the resolver would return, the
+   defect is invisible from inside.
+
+**On fixtures:** the #178 prefix-overlap fixture passed against a matcher with its
+boundary check removed, which only mutation testing revealed. The two cases added
+for T2 were therefore mutation-tested *before* being trusted — guards neutered,
+both fail on all four assertions, fixture file genuinely truncates. Do this for
+new guard fixtures rather than after.
+
+**Two recommendations made and withdrawn in the C′-fix session**, both toward
+doing less work, both correctly rejected by the developer: keeping dead code
+(`mv-spec`) to avoid a blueprint run, and accepting the suppressed fan-out as
+merely a named degradation rather than challenging it.
 
 ---
 
 ## 7. Path ahead
 
-1. **Decide the §4 findings.** Recommended split: fix H1, H2, T1, T2, T3 now —
-   all small, all this-session regressions — and file N1–N5, P1–P3. H1 in
-   particular ships a worse failure than the one it replaced.
-2. **Then step 4 — Spec E** (registry integrity): the only-door sweep (#116), the
-   catch-up verb (#130, whose `low` priority the note argues is demonstrably
-   wrong on three independent grounds), duplicate detection (#136), and now #185
-   (the origin registry tip reaching git unvalidated). Two obligations carry in
-   from practice 6: E ships two *detectors*, so each must report what it did
-   **not** cover as loudly as what it found.
+1. **Step 4 — Spec E** (registry integrity): the only-door sweep (#116), the
+   catch-up verb (#130, whose `low` priority the grouping note argues is
+   demonstrably wrong on three independent grounds), duplicate detection (#136),
+   and #185 (the origin registry tip reaching git unvalidated). Two obligations
+   carry in from practice 6: E ships two *detectors*, so each must report what it
+   did **not** cover as loudly as what it found.
+2. **Consider #190–#192 before or with E.** All three are `high`, all three are
+   the same shape — a write whose failure reports as success — and #192
+   (`index.sh`) sits directly under E's registry-integrity surface. They would
+   fold into E's build cheaply, or into the hardening build.
 3. **Watch #138.** It was a tidy-up item; C′-fix made it a sixth inlined site and
    a judge scored `ordinal-single-source` **partial** on exactly that. It is the
    one seam in the ordinal machinery where a divergence would not be caught
    structurally.
 
 **Free-floating:** B, D, F, the hardening build (14), #118, #139, the #122
-refactor.
+refactor, and the six unfiled items in §4.
 
 ---
 
@@ -289,21 +282,25 @@ refactor.
 **Verify the state you inherit:**
 
 ```bash
-bash skills/meta-test/scripts/run.sh              # expect 969/969
-git log --oneline 8a3650b..HEAD | wc -l           # expect 40
+bash skills/meta-test/scripts/run.sh              # expect 971/971
+git log --oneline 8a3650b..HEAD | wc -l           # expect 48
 git status --short                                # expect clean
 ```
 
-**Conventions that bit this session:**
+HEAD should be this note's own commit, the 48th.
+
+**Conventions that bit these sessions:**
 
 - `local a=1 b="$a"` does **not** work — `local` expands every argument before
   assigning any, so `b` sees an unbound `a` under `set -u`. Split the statement.
 - Issue ordinals realize from the host; this sandbox has no coordination
   credentials, so new issues get `P-` provisional ids and settle later. That path
-  has now had four clean production runs.
+  has now had five clean production runs.
+- A realization diff should be **`num:` only**. Body, `id:`, or timestamp churn
+  means something re-emitted rather than realized.
 - `ARCHITECTURE.md` is only ever written through `/jim:arch`; group blueprints and
-  the map only through `/jim:blueprint`. Both were used this session — the
-  targeted `--since` adapter makes an out-of-pipeline blueprint refresh cheap, so
-  "it would need a blueprint run" is never a reason to leave code wrong.
+  the map only through `/jim:blueprint`. The targeted `--since` adapter makes an
+  out-of-pipeline blueprint refresh cheap, so "it would need a blueprint run" is
+  never a reason to leave code wrong.
 - Commit trailers: `Issue: <num>/<id>`, `Spec: <group>/<NNN>`. IDs go in trailers,
   never in the header. No spec IDs in *script* comments (docs notes are fine).
