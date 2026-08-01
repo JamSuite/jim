@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 92
+- Open: 93
 - Closed: 96
 
 ## Issues
@@ -195,6 +195,7 @@
 - `20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver` — Reconcile literal-pathspec use between the commit and rename verb families · status: open · num: P-20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, ledger, scripts, security] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer` — Refuse the reserved slot in the generic spec path composer · status: open · num: P-20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer · priority: low · created: 2026-08-01T00:22:47Z · labels: [platform, file, scripts, 000-blueprint] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation` — Surface a suppressed agent fan-out as a named degradation · status: open · num: P-20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation · priority: high · created: 2026-08-01T00:22:55Z · labels: [sdlc, blueprint, review, verify] · origin: conversation
+- `20260801-two-test-files-are-claimed-by-no-group-s-territory` — Two test files are claimed by no group's territory · status: open · num: P-20260801-two-test-files-are-claimed-by-no-group-s-territory · priority: medium · created: 2026-08-01T00:28:40Z · labels: [blueprint, 000-blueprint, partition] · origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Graph
 
