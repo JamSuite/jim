@@ -1,9 +1,11 @@
 # ID-coordination issue cluster — spec grouping analysis
 
 **Created:** 2026-07-28 · **Revised:** 2026-08-01 (sixth revision) — **C′-fix's
-own review is discharged.** The fifth revision closed C′-fix with AC 12 holding;
-the review that build never got has since run, and its 21 findings are resolved:
-five fixed in place, seven filed as #190–#196, six deliberately left. The
+own review is discharged, and practice 7 is earned.** The fifth revision closed
+C′-fix with AC 12 holding; the review that build never got has since run, and its
+21 findings are resolved: five fixed in place, seven filed as #190–#196, six
+deliberately left. Fixing them earned a seventh practice, practice 6's sibling:
+a result's *coverage* is as invisible in the artifact as a practice's absence. The
 remediation chain terminated: C produced eighteen issues, C′ sixteen, C′-fix
 **six** — and the six are adjacent observations rather than defects in shipped
 mechanism. See *What C′-fix changed*, which also records the first failure mode
@@ -808,6 +810,40 @@ wired the allocator.
 
 ## Adopted practice — the reason C′ exists, and what guards it
 
+**Status after the C′-fix review (2026-08-01): practice 6 has a sibling.**
+C′-fix shipped unreviewed — running as a build left no spec directory for
+`/jim:review` to land in — so the review ran late and returned 21 findings, nine
+of them regressions from that build. Fixing them exposed two failures of the same
+kind, and neither is visible in the artifact that reported it:
+
+- **The finding under-scoped itself.** T3 was *the* twin-miss finding — its
+  entire subject was "fixed one, missed the sibling" — and it stated its scope as
+  nine references under `agents/`. A wider sweep found four more on live skill
+  surfaces. The pass that catches an incomplete sweep swept incompletely, and
+  reported a count that read as exhaustive.
+- **The project could not detect its own unrepresentativeness.** H1's hardcoded
+  `BLUEPRINT.md` is byte-identical to what the resolver returns *here*, so it was
+  a no-op in every local check and broke only where the map is configured
+  elsewhere or absent — the un-partitioned majority. No test, no review, and no
+  run against this repo could have surfaced it.
+
+7. **The coverage of a result is not visible in the result.** Practice 6 says a
+   practice that did not run leaves no trace in its artifact; this is its
+   sibling — a practice that ran over *less than it appears to* leaves no trace
+   either, and reads identically to one that ran over everything. Two corollaries,
+   both concrete. A finding's stated scope is a claim, not a measurement:
+   re-derive it before acting, and never inherit the reporter's grep — the
+   reviewer who wrote it was subject to the same incompleteness it describes. And
+   a green check against this repo is evidence about this repo: where code
+   hardcodes a value that a configured resolver would also return, the two
+   coincide locally and nothing here can tell them apart, so the check must run
+   against a configuration where they differ. The general form: before trusting a
+   clean result, ask what it was computed over — and when that is unrecoverable
+   from the artifact, the artifact is incomplete. The actionable half for jim is
+   the same shape as #188's: a review finding should carry the scope it was
+   derived from, so the next reader can re-derive rather than inherit. **Not yet
+   tracked.**
+
 **Status after C′-fix (2026-08-01): the practices are load-bearing, and a sixth
 is now earned that guards the practices themselves.** Practice 1 caught the one
 defect C′-fix shipped — inside the same session, which is the improvement over C
@@ -870,7 +906,7 @@ three criticals shipped, because each was an omission, a shared assumption, or
 deliberately reused code. Treat "tests pass" as necessary and say nothing more
 about it in a completion gate.
 
-## Per-issue disposition (all 68)
+## Per-issue disposition (all 75)
 
 | # | Pri | Disposition |
 |---|---|---|
@@ -943,16 +979,32 @@ about it in a completion gate.
 | 187 | low  | hardening (generic path composer accepts the reserved slot) |
 | 188 | high | **process** — a suppressed agent fan-out leaves no trace in its own artifact |
 | 189 | med  | Spec B / partition (two test files claimed by no group's territory) |
+| 190 | high | hardening (citation sweep reports success after dropping a content root) |
+| 191 | high | hardening (citation sweep installer discards `cat`'s exit status) |
+| 192 | high | hardening (issue index publishes a truncated INDEX.md as success) |
+| 193 | low  | hardening (realize occupancy gate reads the configured specs dir, not its root) |
+| 194 | high | hardening (spec skill's realize-failure guidance stale in two directions) |
+| 195 | med  | hardening (sweep and reconcile disagree on worktree-top normalization) |
+| 196 | med  | hardening (uncommitted-sweep containment guard lost its only coverage) |
 
 *(#161–#167 are `sdlc` blueprint drift surfaced by C′'s verify pass, not
-id-coordination work — excluded from this table and from the 68.)*
+id-coordination work — excluded from this table and from the 75.)*
+
+*(#190–#196 all land in the hardening build rather than Spec E: E's subject is
+the **ID registry**, while these are write-integrity and guidance defects in the
+sweep, the issue index, and the realize path. #192 is the closest call — it is
+index integrity, not registry integrity, and is filed here on that distinction.
+Three of them — #190, #191, #192 — are one shape, a write whose failure reports
+as success, and are worth doing together whichever build takes them.)*
 
 ## Net
 
-68 issues → **4 remaining specs** (B, D, E, F), **1 build** (the grouped
-hardening build, now 14), **1 optional refactor**, **1 doc item + 1 decision + 1
-deferred + 1 process item**, **37 closed**. Both the host action and C′-fix are
-done.
+75 issues → **11 assigned to the 4 remaining specs** (B, D, E, F), **21 to the
+grouped hardening build**, **1 optional refactor**, **1 doc item + 1 decision +
+1 deferred + 1 process item**, **#149 open**, **37 closed**. That is 75; the
+enumeration closes, which it did not before this revision — #149 was discussed
+throughout and counted nowhere. Both the host action and C′-fix are done, C′-fix
+now including its review.
 
 **The spec count still has not moved, and this time it went down.** C shipped and
 C′ took its slot; C′ shipped and its residue became a *build*, not a fourth spec.
