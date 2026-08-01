@@ -21,7 +21,7 @@ description: >
 
   <example>
   Context: The architect needs codebase context for a plan.
-  user: "/jim:research docs/specs/jim/004-researcher/spec.md"
+  user: "/jim:research docs/specs/sdlc/004-researcher/spec.md"
   assistant: "I'll research the codebase for this spec — finding anchors, patterns, and integration points."
   <commentary>
   Standard spec-linked research for the planning phase.

@@ -15,7 +15,7 @@ description: >
 
   <example>
   Context: The user wants a security review of a spec before planning.
-  user: "/jim:sec docs/specs/jim/016-sec/"
+  user: "/jim:sec docs/specs/sdlc/013-sec/"
   assistant: "I'll review the spec and plan for security gaps. Let me read the artifacts and ARCHITECTURE.md first."
   <commentary>
   Direct invocation of /jim:sec against a spec directory — @jim:security handles design-time security analysis.

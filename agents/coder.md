@@ -11,7 +11,7 @@ description: >
 
   <example>
   Context: The user has an approved plan and wants to start implementation.
-  user: "/jim:build docs/specs/jim/006-coder"
+  user: "/jim:build docs/specs/sdlc/006-coder"
   assistant: "I'll gate the plan, load context from spec.md and research.md, then execute each task via TDD. Starting with task 1."
   <commentary>
   Direct invocation of /jim:build — @jim:coder handles TDD implementation from an approved plan.

@@ -62,7 +62,7 @@ For each item the user describes, determine the appropriate detail level:
 | User describes clear objectives and success criteria | Goal-oriented: Objective / Deliverables / Success Metrics |
 | User lists tactical items or early ideas | Simple bullet list |
 
-When a deliverable matches a known spec from step 3, offer: "I found a spec for that — want me to link it? `[003-pm-strategy](docs/specs/jim/003-pm-strategy/spec.md)`"
+When a deliverable matches a known spec from step 3, offer: "I found a spec for that — want me to link it? `[003-pm-strategy](docs/specs/sdlc/003-pm-strategy/spec.md)`"
 
 ### 6. Conciseness enforcement
 

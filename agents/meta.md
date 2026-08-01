@@ -11,7 +11,7 @@ description: >
   <example>
   Context: The user has an approved spec and plan for a new jim skill.
   user: "/jim:meta-skill my-new-skill"
-  assistant: "I'll use the meta-skill skill to build this. Let me locate the spec in docs/specs/jim/."
+  assistant: "I'll use the meta-skill skill to build this. Let me locate the spec under docs/specs/."
   <commentary>
   Direct invocation of /jim:meta-skill — @jim:meta is the right agent and meta-skill is preloaded.
   </commentary>

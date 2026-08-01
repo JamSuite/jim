@@ -29,4 +29,4 @@
 
 ---
 
-Link items to specs, debug docs, or issues when relevant: `[003-pm-strategy](docs/specs/jim/003-pm-strategy/spec.md)`
+Link items to specs, debug docs, or issues when relevant: `[003-pm-strategy](docs/specs/sdlc/003-pm-strategy/spec.md)`

@@ -79,7 +79,7 @@ The probe characterizes preload-time substitution semantics — a path orthogona
 
 - S1 → path 1 (direct slash-command)
 - S2 → path 4 (Skill tool mid-run)
-- S3 → `$ARGUMENTS` propagation through the Skill tool (closed empirically — see `docs/specs/jim/014-meta-matrix/plan.md` Verification Log row S3)
+- S3 → `$ARGUMENTS` propagation through the Skill tool (closed empirically — see `docs/specs/sdlc/011-meta-matrix/plan.md` Verification Log row S3)
 - S4 → path 2 (`context: fork`), via `skills/meta-matrix-fork-probe/`
 - S5 → path 3 (`skills:` preload), via `agents/meta-matrix-probe.md` + `skills/meta-matrix-preload-probe/`
 

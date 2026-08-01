@@ -12,7 +12,7 @@ description: >
 
   <example>
   Context: A build just finished and the developer wants it checked against the spec.
-  user: "/jim:review docs/specs/jim/026-review/"
+  user: "/jim:review docs/specs/sdlc/014-review/"
   assistant: "I'll review the build against its spec, plan, and architecture, pull the ledger metrics, and write review.md with the alignment verdict."
   <commentary>Direct /jim:review invocation — @reviewer handles post-build review.</commentary>
   </example>
@@ -26,7 +26,7 @@ description: >
 
   <example>
   Context: The developer wants a design-time threat model of a spec, not a review of shipped code.
-  user: "/jim:sec docs/specs/jim/026-review/"
+  user: "/jim:sec docs/specs/sdlc/014-review/"
   assistant: "That's design-time security analysis — use @jim:security, not the reviewer."
   <commentary>@reviewer reviews shipped code after a build; design-time security is @jim:security's job.</commentary>
   </example>

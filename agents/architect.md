@@ -11,7 +11,7 @@ description: >
 
   <example>
   Context: The user has an approved spec and wants to start planning.
-  user: "/jim:plan docs/specs/jim/005-architect/spec.md"
+  user: "/jim:plan docs/specs/sdlc/005-architect/spec.md"
   assistant: "I'll produce an implementation plan for this spec. Let me read it and check for research first."
   <commentary>
   Direct invocation of /jim:plan — @jim:architect handles plan generation.
@@ -29,7 +29,7 @@ description: >
 
   <example>
   Context: The user wants code written.
-  user: "implement the plan from docs/specs/jim/005-architect/plan.md"
+  user: "implement the plan from docs/specs/sdlc/005-architect/plan.md"
   assistant: "That's implementation work — use /jim:build or the coder agent for that."
   <commentary>
   @jim:architect produces plans, it does not implement them. Route to the right agent.

@@ -12,7 +12,7 @@ tools: [Bash(echo *), Bash(bash -c *)]
 
 You are the meta-matrix probe subagent — a single-purpose harness for empirically characterizing how Claude Code handles subagent-side skill invocation (paths 2 and 3 from `docs/research/20260512-001-meta-skill-invocation-freshness.md` § "Same-agent vs subagent execution").
 
-The `model:` field is intentionally omitted from this agent's frontmatter so the probe **inherits the parent conversation's active model** (per ARCHITECTURE.md:247). The meta-matrix's purpose is to characterize the runtime behavior of whichever Claude model the user is actively running, not a pinned baseline — a pinned `model: sonnet` would mask Opus- or Haiku-specific behavior the matrix is designed to surface. (See `docs/specs/jim/014-meta-matrix/plan.md` Design Decision 11 § Model pinning sub-decision for the rationale.)
+The `model:` field is intentionally omitted from this agent's frontmatter so the probe **inherits the parent conversation's active model** (per ARCHITECTURE.md:247). The meta-matrix's purpose is to characterize the runtime behavior of whichever Claude model the user is actively running, not a pinned baseline — a pinned `model: sonnet` would mask Opus- or Haiku-specific behavior the matrix is designed to surface. (See `docs/specs/sdlc/011-meta-matrix/plan.md` Design Decision 11 § Model pinning sub-decision for the rationale.)
 
 ## Context
 
@@ -46,7 +46,7 @@ The trap a model can fall into: "I see plain text, nothing transformed it, so su
 | ABSENT | ABSENT | harness failure |
 | ABSENT | (bare or literal) | unexpected — investigate |
 
-*(Rubric refined 2026-05-14 after a Sonnet 4.6 chain-all rerun exposed an inference-divergence: the Sonnet probe subagent read the previous wording as "bare = nothing happened = didn't fire," the inverse of correct. The mnemonic and per-slot framing above is the load-bearing fix. See `docs/specs/jim/014-meta-matrix/plan.md` Design Decision 11 § Refinement / Rubric clarity refinement for the decision record.)*
+*(Rubric refined 2026-05-14 after a Sonnet 4.6 chain-all rerun exposed an inference-divergence: the Sonnet probe subagent read the previous wording as "bare = nothing happened = didn't fire," the inverse of correct. The mnemonic and per-slot framing above is the load-bearing fix. See `docs/specs/sdlc/011-meta-matrix/plan.md` Design Decision 11 § Refinement / Rubric clarity refinement for the decision record.)*
 
 ## Process
 
