@@ -971,6 +971,64 @@ case_jimalloc_resolve_reads_branch_after_allocate() {
   assert_eq   "resolve current" "core/001" "$OUT"
 }
 
+# ─── Section: origin tip re-validation (untrusted remote input) ──────────────
+
+# alloc_lsremote_shim <name> <first-field>
+#   A directory holding a `git` that answers `ls-remote` with one crafted line
+#   whose first field is <first-field>, and treats `fetch` as a success;
+#   everything else execs the real git. The remote's advertised tip is the one
+#   value the allocator takes from outside and interpolates into later git
+#   arguments, so this shim is how a crafted advertisement is staged.
+alloc_lsremote_shim() {
+  local dir real
+  dir=$(empty_dir "$1")
+  real="$(command -v git)"
+  {
+    printf '%s\n' '#!/usr/bin/env bash' 'set -uo pipefail'
+    printf '%s\n' 'for a in "$@"; do'
+    printf '%s\n' '  case "$a" in'
+    printf '    ls-remote) printf "%%s\\trefs/heads/jim/registry\\n" %q; exit 0 ;;\n' "$2"
+    printf '%s\n' '    fetch) exit 0 ;;'
+    printf '%s\n' '  esac' 'done'
+    printf 'exec %s "$@"\n' "$real"
+  } > "$dir/git"
+  chmod +x "$dir/git"
+  printf '%s' "$dir"
+}
+
+# AC 12: a crafted tip advertised by the remote is refused at the id boundary
+# before it can reach a git command — the value crosses the same boundary every
+# other untrusted token on this surface crosses, so an option-shaped
+# advertisement is rejected rather than interpolated.
+#
+# Discriminating: with the boundary check neutered the case fails on the tip it
+# hands back (`--upload-pack=touch`), not merely on the exit code — verified by
+# mutation.
+case_jimalloc_origin_tip_rejects_crafted_advertisement() {
+  local shim oldpath
+  shim="$(alloc_lsremote_shim tip_crafted_shim '--upload-pack=touch /tmp/pwned')"
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_seed_fn alloc_origin_tip origin jim/registry
+  PATH="$oldpath"
+  assert_exit     "refused"        1  "$RC"
+  assert_eq       "no tip printed" "" "$OUT"
+  assert_nonempty "names a reason" "$ERR"
+}
+
+# AC 12: the guard is a boundary check, not a refusal of every remote — a
+# well-formed advertised tip still returns, so validation costs the normal path
+# nothing.
+case_jimalloc_origin_tip_accepts_wellformed_sha() {
+  local shim oldpath sha
+  sha="0123456789abcdef0123456789abcdef01234567"
+  shim="$(alloc_lsremote_shim tip_ok_shim "$sha")"
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_seed_fn alloc_origin_tip origin jim/registry
+  PATH="$oldpath"
+  assert_exit "rc"  0     "$RC"
+  assert_eq   "tip" "$sha" "$OUT"
+}
+
 # ─── Section: G3 erosion guard ───────────────────────────────────────────────
 
 # AC: if the coordination branch history is truncated or rewritten (force-push

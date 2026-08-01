@@ -1009,6 +1009,12 @@ alloc_coord_remote() {
 # objects locally so the log can be read and a commit built atop it. rc 1 if the
 # remote is unreachable — the origin tier hard-fails rather than silently
 # falling back to an unpublished local allocation.
+#
+# The advertised tip is remote-supplied text, and every consumer interpolates it
+# into a later git argument (a `<tip>:<file>` cat-file spelling, a commit parent,
+# a CAS old-value), so it crosses the id boundary here before it is returned —
+# the one gate that covers every call site. An option-shaped or otherwise
+# rejected advertisement is a hard failure, not a degraded read.
 alloc_origin_tip() {
   local remote="$1" branch="$2" line tip
   if ! line="$(git ls-remote --heads "$remote" "$branch" 2>/dev/null)"; then
@@ -1016,6 +1022,10 @@ alloc_origin_tip() {
     return 1
   fi
   tip="$(printf '%s' "$line" | awk 'NR==1{print $1}')"
+  if [[ -n "$tip" ]] && ! alloc_valid_token "$tip"; then
+    echo "error: coordination remote '$remote' advertised an unusable tip for '$branch'" >&2
+    return 1
+  fi
   if [[ -n "$tip" ]]; then
     if ! git fetch --quiet "$remote" "$branch" 2>/dev/null; then
       echo "error: failed to fetch '$branch' from '$remote'" >&2
