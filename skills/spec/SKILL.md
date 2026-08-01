@@ -384,7 +384,18 @@ A row skipped with a warning is also the developer's business — a pending dire
 bash ${CLAUDE_PLUGIN_ROOT}/skills/spec/scripts/reconcile.sh --apply
 ```
 
-Report what came back verbatim. If it exits non-zero, some identity halted — most likely because the realized ordinal's directory already exists, which is registry-vs-tree drift. Name the drift and stop; do not rename around it, and do not suffix. The other identities in the batch keep their ordinals, which are already durable, so a re-run converges on them.
+Report what came back verbatim. A non-zero exit no longer identifies a single condition, so **read the stderr message, not the exit code** — the repairs differ and one of them is destructive if you pick the wrong one. Ordinals already issued stay durable in every case; nothing below re-mints one.
+
+| What stderr says | What happened | The repair |
+| :--- | :--- | :--- |
+| the realized ordinal is already held | Registry-vs-tree drift | Name the drift and **stop**. Do not rename around it, do not suffix. |
+| a frontmatter `id:` was not rewritten | The directory moved, citations swept, the record landed — only the `id:` field is stale | Apply the **one-line frontmatter edit named on stderr**. Nothing else. |
+| `--apply` must run from the worktree top | The command ran from a subdirectory | `cd` to the worktree top and re-run. Nothing was applied. |
+| a content root was dropped, or a rewrite could not be installed | The sweep was partial | Fix the named root or target, then re-run; the identities that did land stay landed. |
+
+**Do not revert a realized directory to "start clean."** By the time the run reports, the sweep has already rewritten every citation of that identity across the tree. Reverting the directory strands those rewrites pointing at a directory that no longer exists — it destroys work rather than undoing it.
+
+**Do not assume a re-run converges.** It converges only for identities that never started. An identity that moved and was recorded but kept a stale `id:` is no longer pending, so a re-run reports nothing to do and exits 0 — which reads as success over an unrepaired spec.
 
 Realization renames directories and rewrites citations. Do not stage or commit on the developer's behalf — show what changed and let them commit.
 
