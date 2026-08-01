@@ -137,7 +137,7 @@
 - `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew` — new.sh mixed-pin (--slug XOR --num) registry/on-disk skew · status: open · num: 132 · priority: low · created: 2026-07-28T21:39:38Z · labels: [id-coordination] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-reconcile-sh-provisional-detection-not-fence-bounded` — reconcile.sh provisional detection not fence-bounded · status: closed · num: 133 · priority: low · created: 2026-07-28T21:39:43Z · labels: [id-coordination, security] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-reconcile-sh-swallows-the-index-regen-exit-code` — reconcile.sh swallows the index-regen exit code · status: closed · num: 134 · priority: low · created: 2026-07-28T21:39:49Z · labels: [id-coordination] · origin: docs/specs/issue/010-ordinal-coordination/review.md
-- `20260728-registry-drift-catch-up-has-no-incremental-seed-verb` — Registry drift catch-up has no incremental seed verb · status: open · num: 130 · priority: low · created: 2026-07-28T21:39:26Z · labels: [id-coordination, registry] · origin: docs/specs/platform/008-registry-seed/spec.md
+- `20260728-registry-drift-catch-up-has-no-incremental-seed-verb` — Registry drift catch-up has no incremental seed verb · status: open · num: 130 · priority: high · created: 2026-07-28T21:39:26Z · labels: [id-coordination, registry] · origin: docs/specs/platform/008-registry-seed/spec.md
 - `20260728-remove-spec-id-citations-from-issue-group-script-comments` — Remove spec-ID citations from issue-group script comments · status: open · num: 131 · priority: low · created: 2026-07-28T21:39:32Z · labels: [test, convention] · origin: docs/specs/issue/010-ordinal-coordination/review.md
 - `20260728-spec-batch-cas-candidate-batch-allocation-7a-rework` — Spec batch-CAS candidate-batch allocation (§7a rework) · status: open · num: 127 · priority: high · created: 2026-07-28T06:59:35Z · labels: [id-coordination, candidate-batch, cross-group] · origin: docs/specs/issue/010-ordinal-coordination/plan.md
 - `20260728-spec-issue-placement-config-for-issue-content-location` — Spec issue_placement config for issue content location · status: open · num: 126 · priority: medium · created: 2026-07-28T00:47:22Z · labels: [id-coordination, issue] · origin: docs/specs/issue/010-ordinal-coordination/spec.md
@@ -245,6 +245,8 @@
 - `20260711-add-a-territory-name-mismatch-partition-health-sensor` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
 - `20260712-record-and-sense-chronic-domain-domain-straddle-flags` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
 - `20260725-give-retired-group-directories-a-sanctioned-end-of-life` --related-to--> `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold`
+- `20260726-add-an-only-door-verification-sweep-for-the-id-registry` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
+- `20260726-add-an-only-door-verification-sweep-for-the-id-registry` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato`
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator`
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
@@ -271,6 +273,8 @@
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
 - `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` --related-to--> `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity`
 - `20260728-reconcile-sh-swallows-the-index-regen-exit-code` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
+- `20260728-registry-drift-catch-up-has-no-incremental-seed-verb` --related-to--> `20260730-align-the-registry-with-tree-scan-era-spec-ordinals`
+- `20260728-registry-drift-catch-up-has-no-incremental-seed-verb` --related-to--> `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260730-spec-creation-halts-only-on-an-exact-name-collision`
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260726-add-an-only-door-verification-sweep-for-the-id-registry`

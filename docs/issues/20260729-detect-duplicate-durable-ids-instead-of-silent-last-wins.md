@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-29T21:02:33Z
-updated: 2026-07-29T21:02:33Z
+updated: 2026-08-01T19:43:01Z
 origin: docs/specs/platform/011-rename-path-correctness/spec.md
 ---
 
@@ -47,3 +47,20 @@ Add a fixture seeding two allocate records that share a durable id.
 
 Note the read path is deliberately degrade-and-skip for *malformed* records; this
 is the different case of two individually valid records that cannot both be true.
+
+## Wider than filed (2026-08-01)
+
+The last-wins shape is at three read-path sites, not one — the seed halts on
+both duplicate classes, and the read path mirrors neither:
+
+- `alloc_resolve_issue` — the case above
+  (`skills/file/scripts/jimalloc.sh:288-295`).
+- `alloc_resolve_spec` — two `spec allocate` records naming one id: the later
+  record silently wins the replay anchor (`:244-251`), so a duplicate spec
+  ordinal is likewise undetected.
+- `alloc_reconcile_realize` — the `existing[]` durable-id map takes the last
+  duplicate, so a realize can report `have` against the wrong ordinal
+  (`:611-618`).
+
+Spec E should scope detection over all three or record why the spec-side
+siblings stay out.

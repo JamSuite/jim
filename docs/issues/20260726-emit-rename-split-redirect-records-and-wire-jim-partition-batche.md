@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-07-31T19:58:26Z
+updated: 2026-08-01T19:43:01Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -341,3 +341,17 @@ integrity work ([[20260726-add-an-only-door-verification-sweep-for-the-id-regist
 emission-vs-repair split the `platform`/`sdlc` case had, and the second time in
 two days that "a consumer stops new drift, it does not repair drift that predates
 it" has been the operative sentence.
+
+## Backfill source located (2026-08-01)
+
+The repair half has a mechanical source: the specs-root ledger's
+`partition finished` events carry the complete `moved=jim/NNN:<group>/NNN`
+pair list for the 2026-07-25 split, and `jimledger.sh vacated-max` already
+parses that grammar (`skills/ledger/scripts/jimledger.sh:651-694`). Those
+pairs are exactly the frozen `spec rename <old> <new> <date>` record shape —
+so the backfill is this issue's emission grammar applied retroactively, not a
+catch-up append of allocate records (a rename source counts toward the fold's
+high-water, which is all the floor needs). Spec E's sweep should name the
+retired group as known-uncovered; whether the backfill ships with this
+issue's emitter or as a one-time repair alongside it is a decision for
+whichever spec lands first.

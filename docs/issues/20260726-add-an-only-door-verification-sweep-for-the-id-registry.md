@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:02:01Z
-updated: 2026-07-26T19:02:01Z
+updated: 2026-08-01T19:43:01Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -22,3 +22,38 @@ The registry only prevents collisions if allocation is the **sole** path to an I
 Add a mechanical, `jim:verify`-style check (CI-able, deterministic floor) that every spec directory and issue ordinal on the coordination branch has a matching registry record. Rogue entries get adopted into the registry or flagged. Allocation-is-the-only-door is enforced by detection, not trust.
 
 Follow-on to `platform/007` (foundation), gap G2; `platform`-group (verify DNA).
+
+## Scoping corrections (2026-08-01)
+
+Recorded while building Spec E context; anchors as of this date.
+
+- **"On the coordination branch" is the wrong preposition.** That branch holds
+  only the per-kind logs (`platform/007` Out of Scope) — no spec or issue
+  artifact lands there. The sweep reads the *working tree's* spec directories
+  and issue frontmatter against the coordination branch's logs.
+- **The enumerators already exist.** `alloc_seed_derive_specs` /
+  `alloc_seed_derive_issues` (`skills/file/scripts/jimalloc.sh:792`, `:859`)
+  walk exactly the artifact set the sweep must compare, boundary gates
+  included. Both sides of every ordinal comparison must canonicalize
+  (`alloc_canon_specid`), or a hand-authored unpadded ordinal reads as drift.
+- **Four artifact classes are legitimately recordless**, and the sweep must
+  name each as non-coverage rather than flag it or stay silent: the reserved
+  `000-blueprint` slot; pending provisional dirs (`P-<date>-<slug>`, which by
+  design never enter the registry); retired / partition-source groups (the
+  `jim` group's 52 vacated identities —
+  [[20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche]]);
+  and ids appearing only as rename sources (same issue).
+- **The "rogue entries get adopted" clause is #130's append by construction.**
+  Detect-only sweep with the catch-up verb as the repair
+  ([[20260728-registry-drift-catch-up-has-no-incremental-seed-verb]]), or one
+  verb with preview/apply modes, is the genuine scoping fork — they are not
+  independent features.
+- **Two hazards if this rides `/jim:verify`:** "registry" there already means
+  the operator command registry (`verify_command_*`), and the registry rung
+  maps exit 0 / non-zero / crash → holds / violated / failed, which collides
+  with jimalloc's rc 1 doubling as "coordination point unreachable". Exit
+  codes must keep "drift found" distinct from "could not check".
+- **Nothing for verify to judge today:** the platform blueprint's invariant
+  table has no entry for append-only growth, erosion, or the only-door
+  property itself. What this sweep enforces is currently invisible to
+  `/jim:verify`; folding an invariant in belongs at Spec E's completion gate.
