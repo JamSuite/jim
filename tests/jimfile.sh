@@ -843,6 +843,33 @@ case_jimfile_path_spec_two_arg_is_provisional_only() {
   done
 }
 
+# AC 15: the provisional-identity grammar is one authoritative rule — the
+# is_prov_token body is byte-identical across the three scripts that read the
+# form, so a loosened copy fails here instead of silently widening a boundary.
+case_jimfile_is_prov_token_triplicate_identical() {
+  local a b c
+  a="$(extract_fn is_prov_token "$REPO_ROOT/skills/file/scripts/jimfile.sh")"
+  b="$(extract_fn is_prov_token "$REPO_ROOT/skills/file/scripts/jimalloc.sh")"
+  c="$(extract_fn is_prov_token "$REPO_ROOT/skills/spec/scripts/reconcile.sh")"
+  assert_nonempty "jimfile.sh is_prov_token extracted" "$a"
+  assert_eq "jimalloc.sh copy matches jimfile.sh"  "$a" "$b"
+  assert_eq "reconcile.sh copy matches jimfile.sh" "$a" "$c"
+}
+
+# AC 15: the shared rule carries the slug through the id boundary too, so a
+# token the allocator could never mint — its slug leading with a separator — is
+# refused rather than composed into a directory name.
+case_jimfile_path_spec_provisional_slug_clears_boundary() {
+  local cfg bad
+  cfg=$(fixture path-prov-slug.toml 'specs_path = "docs/specs"')
+  for bad in "P-20260728--leading" "P-20260728-.dot" "P-20260728-_under"; do
+    run_jimfile -c "$cfg" path spec sdlc "$bad"
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [slug boundary] accepted '$bad' → $OUT"
+    fi
+  done
+}
+
 # AC: the numeric form validates its tokens at the composition boundary, the way
 # every other path-composing arm does — a malformed group, id, or name never
 # becomes part of a path this helper hands back.
