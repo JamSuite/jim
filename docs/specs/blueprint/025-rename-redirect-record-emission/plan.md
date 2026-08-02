@@ -343,23 +343,22 @@ flowchart TD
     3, 7, 8, 10.
     **Verify:** `bash tests/jimalloc.sh sanitize && bash tests/jimpartition.sh sanitize`
 
-14. [ ] Execute the backfill (AC 13): run `lift` preview then `--apply`
+14. [x] Execute the backfill (AC 13): run `lift` preview then `--apply`
     against the repo's own specs-root ledger (local registry tier); the
     2026-07-25 split's pairs land with `jim-lift`/historical dates; the
     realize event from this spec's own realization lands as a `have`/`emit`
     row. Depends on 8, 9.
     **Verify:** `bash skills/file/scripts/jimalloc.sh peek spec jim && bash skills/file/scripts/jimalloc.sh sweep`
-    **Blocked — host-only.** This project configures a coordination remote,
-    so the publish is origin-tier, and the sandbox cannot reach it; the apply
-    refuses with `coordination remote 'origin' is unreachable` and writes
-    nothing, which is the correct behavior (a local-only registry write would
-    diverge from the shared branch). The run itself is verified: rehearsed on
-    a remote-free clone of this repo's own registry and ledger, all 54 rows
-    corroborate and emit, `peek spec jim` moves `jim/001 → jim/053`, the sweep
-    exits clean with `uncovered-groups 0` and `rename-source-ids 52`, a re-run
-    reports 54 `have`, and `jim/029` dereferences to `blueprint/001` with the
-    unallocated-source disclosure. Run `jimalloc.sh lift` then
-    `lift --apply` on the host to land it.
+    **Done, origin-tier, on the host.** The sandbox configures a coordination
+    remote it cannot reach, so `--apply` correctly refused there rather than
+    writing a local-only registry that would diverge from the shared branch;
+    the run landed from the host. All 54 rows corroborated and emitted — the
+    2026-07-25 split's 52 pairs plus two realizations — each carrying
+    `jim-lift` and its own historical date. Afterwards `peek spec jim` answers
+    `jim/053` instead of the spent `jim/001`, the sweep exits clean with
+    `uncovered-groups 0` and `rename-source-ids 52`, `resolve spec jim/029`
+    answers `blueprint/001` with the unallocated-source disclosure, and a
+    re-run reports all 54 `have` with nothing published.
 
 15. [x] Full-suite closure: entire suite green; sweep clean with the
     retired group covered.
