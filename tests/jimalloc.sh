@@ -2301,7 +2301,7 @@ case_jimalloc_sweep_clean() {
   status_before="$(git -C "$repo" status --porcelain)"
   run_jimalloc_in "$repo" sweep
   assert_exit  "clean rc"      0 "$RC"
-  assert_match "spec denominators"  '^  specs:  3 records vs 3 tree dirs, 2 groups checked$' "$OUT"
+  assert_match "spec denominators"  "^  specs:  3 records vs 3 tree dirs; 2 group records vs 2 tree groups$" "$OUT"
   assert_match "issue denominators" '^  issues: 2 records vs 2 files checked$'               "$OUT"
   assert_eq    "no drift section"   "0" "$(printf '%s\n' "$OUT" | grep -c '^  drift:')"
   assert_eq    "registry untouched" "$before" "$(git -C "$repo" rev-parse refs/heads/jim/registry)"

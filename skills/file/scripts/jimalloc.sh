@@ -2358,14 +2358,14 @@ cmd_sweep() {
   spec_checked="$(printf '%s\n' "$spec_rows" | grep '^CHECKED	spec	' | head -n1)"
   group_checked="$(printf '%s\n' "$spec_rows" | grep '^CHECKED	group	' | head -n1)"
   issue_checked="$(printf '%s\n' "$issue_rows" | grep '^CHECKED	issue	' | head -n1)"
-  local s_tree s_reg g_tree i_tree i_reg
+  local s_tree s_reg g_tree g_reg i_tree i_reg
   IFS=$'\t' read -r _ _ s_tree s_reg <<< "$spec_checked"
-  IFS=$'\t' read -r _ _ g_tree _    <<< "$group_checked"
+  IFS=$'\t' read -r _ _ g_tree g_reg <<< "$group_checked"
   IFS=$'\t' read -r _ _ i_tree i_reg <<< "$issue_checked"
   printf 'sweep: registry @ %s (%s)\n' \
     "$(alloc_sanitize_field "${tip:0:12}")" "$freshness"
-  printf '  specs:  %d records vs %d tree dirs, %d groups checked\n' \
-    "${s_reg:-0}" "${s_tree:-0}" "${g_tree:-0}"
+  printf '  specs:  %d records vs %d tree dirs; %d group records vs %d tree groups\n' \
+    "${s_reg:-0}" "${s_tree:-0}" "${g_reg:-0}" "${g_tree:-0}"
   printf '  issues: %d records vs %d files checked\n' "${i_reg:-0}" "${i_tree:-0}"
   local drift_rows info_rows
   drift_rows="$(printf '%s\n' "$all_rows" | grep -E '^(MISSING|MISMATCH|DUP-ORD|DUP-ID|RESERVED|UNREADABLE)	' || true)"
