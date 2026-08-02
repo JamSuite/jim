@@ -454,12 +454,13 @@ alloc_malformed_count() {
 #   claiming the log is broken when it is merely newer. Blank lines are not
 #   records and do not count.
 alloc_unknown_verb_count() {
-  local line c1 c2 n=0 known
-  known="$(alloc_known_verbs)"
+  local line c1 c2 n=0 pair
+  local -A known=()
+  while IFS= read -r pair; do known["$pair"]=1; done < <(alloc_known_verbs)
   while IFS= read -r line; do
     read -r c1 c2 _ <<< "$line"
     [[ -n "$c1" ]] || continue
-    printf '%s\n' "$known" | grep -qxF "$c1 $c2" || n=$((n + 1))
+    [[ -n "${known[$c1 $c2]:-}" ]] || n=$((n + 1))
   done
   printf '%d' "$n"
 }
