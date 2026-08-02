@@ -2271,6 +2271,80 @@ case_jimalloc_classify_spec_rename_source_not_drift() {
   assert_match "vacated id named as non-coverage" '^RENAME-SRC	spec	core/007	' "$OUT"
 }
 
+# AC 6: a group rename arriving over an OCCUPIED destination is a duplicate, the
+# same finding the spec-rename branch already reports — not a silent overwrite
+# of the claim that was already there.
+case_jimalloc_classify_spec_group_rename_onto_occupied() {
+  run_classify alloc_classify_spec "" \
+    "$(printf '%s\n' 'spec allocate core/001 alpha 20260726 jane' \
+                     'spec allocate ui/001 beta 20260726 kai' \
+                     'group rename core ui 20260727 x')"
+  assert_match "occupied destination reported" '^DUP-ORD	spec	ui/001	' "$OUT"
+}
+
+# AC 6: a group self-rename is inert — it moves every claim onto itself, so the
+# claims must survive it rather than being vacated by their own arrival.
+case_jimalloc_classify_spec_group_self_rename_is_inert() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'spec allocate core/001 alpha 20260801 jim-seed')" \
+    "$(printf '%s\n' 'spec allocate core/001 alpha 20260726 jane' \
+                     'group rename core core 20260727 x')"
+  assert_eq "claim survives"      "" "$(classify_rows MISSING)"
+  assert_eq "no false duplicate"  "" "$(classify_rows DUP-ORD)"
+  assert_eq "not vacated"         "" "$(classify_rows RENAME-SRC)"
+}
+
+# AC 6: a spec self-rename likewise — it parses fine, it just says nothing, so
+# it neither duplicates the claim nor vacates it.
+case_jimalloc_classify_spec_self_rename_is_inert() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'spec allocate core/001 alpha 20260801 jim-seed')" \
+    "$(printf '%s\n' 'spec allocate core/001 alpha 20260726 jane' \
+                     'spec rename core/001 core/001 20260727 x')"
+  assert_eq "claim survives"     "" "$(classify_rows MISSING)"
+  assert_eq "no false duplicate" "" "$(classify_rows DUP-ORD)"
+  assert_eq "not vacated"        "" "$(classify_rows RENAME-SRC)"
+}
+
+# AC 6: a duplicate's provenance cites the record that made the claim it
+# collides with — after a rename, that is the rename record, not the allocate
+# record of the identity that has since moved away.
+case_jimalloc_classify_spec_dup_cites_the_rename_record() {
+  run_classify alloc_classify_spec "" \
+    "$(printf '%s\n' 'spec allocate core/001 alpha 20260726 jane' \
+                     'spec rename core/001 ui/005 20260727 x' \
+                     'spec allocate ui/005 beta 20260728 kai')"
+  assert_match "cites the rename record" '^DUP-ORD	spec	ui/005	records 2 and 3$' "$OUT"
+}
+
+# AC 1: a rename record that is not the one shape names no identity to compare,
+# so it is counted as unreadable rather than passing over in silence.
+case_jimalloc_classify_spec_malformed_rename_is_unreadable() {
+  run_classify alloc_classify_spec "" \
+    "$(printf '%s\n' 'spec allocate core/001 alpha 20260726 jane' \
+                     'spec rename core/001 ui/005 20260727')"
+  assert_match "counted unreadable" '^CHECKED	unreadable	spec	1$' "$OUT"
+}
+
+case_jimalloc_classify_issue_malformed_rename_is_unreadable() {
+  run_classify alloc_classify_issue "" \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane' \
+                     'issue rename 5 8 20260727')"
+  assert_match "counted unreadable" '^CHECKED	unreadable	issue	1$' "$OUT"
+}
+
+# AC 1: an unknown record verb is reported as its own thing rather than folded
+# into the malformed count — the kind namespace stays open, and a log carrying a
+# record this build does not know says so.
+case_jimalloc_sweep_names_unknown_verbs() {
+  local repo
+  repo="$(sweep_repo sweep_unknownverb)"
+  alloc_append_record "$repo" specs.log 'spec supersede core/002 core/044 20260802 jane'
+  run_jimalloc_in "$repo" sweep
+  assert_match "unknown verb counted" '^    unknown-verb-records	1$' "$OUT"
+  assert_match "malformed count untouched" '^    unidentifiable-records	0$' "$OUT"
+}
+
 # AC 2/4: the issue side classifies the same way over ordinals and durable ids —
 # a file with no record is missing, and the denominators count both sides.
 case_jimalloc_classify_issue_missing() {
