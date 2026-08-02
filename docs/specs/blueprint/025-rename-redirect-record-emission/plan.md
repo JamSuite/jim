@@ -305,7 +305,7 @@ flowchart TD
    and refusal-leaves-registry-untouched fixtures. Depends on 5.
    **Verify:** `bash tests/jimalloc.sh partition_batch`
 
-8. [ ] `lift` verb: preview/apply, both event families via `jimledger.sh`
+8. [x] `lift` verb: preview/apply, both event families via `jimledger.sh`
    composition, 3–15 element bounds, corroboration and the `have` dedupe
    recomputed inside the publish builder on every CAS attempt (the preview
    is advisory; the emit set is never replayed), `jim-lift` marker +

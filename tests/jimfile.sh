@@ -136,139 +136,22 @@ case_jimfile_now_utc_iso8601() {
   assert_match "iso8601 utc" '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$OUT"
 }
 
-# AC: next-id for an empty group returns 001 (Spec AC: start at 001 if empty)
-case_jimfile_next_id_empty_group_returns_001() {
+# AC 9: the tree-scan spec-group form is retired. The registry is the one
+# ordinal authority, so this surface no longer answers for a spec group at all —
+# two computations that can disagree mid-move is the window the coordination
+# work exists to close, and a patched second answer is still a second answer.
+case_jimfile_next_id_spec_group_form_retired() {
   local specs cfg
-  specs=$(empty_dir specs_empty_group)
-  mkdir -p "$specs/jim"
-  cfg=$(fixture next-empty.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_exit "rc" 0 "$RC"
-  assert_eq   "001" "001" "$OUT"
-}
-
-# AC: next-id increments max id by 1 (Spec OoS: max+1 rule)
-case_jimfile_next_id_increments_max() {
-  local specs cfg
-  specs=$(empty_dir specs_existing)
-  mkdir -p "$specs/jim/001-foo" "$specs/jim/002-bar"
-  cfg=$(fixture next-existing.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_eq "003" "003" "$OUT"
-}
-
-# AC: next-id with gaps still returns max+1 (Spec OoS: no gap reclamation)
-case_jimfile_next_id_with_gaps() {
-  local specs cfg
-  specs=$(empty_dir specs_with_gaps)
-  mkdir -p "$specs/jim/001-a" "$specs/jim/003-b" "$specs/jim/005-c"
-  cfg=$(fixture next-gaps.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_eq "006 not 002" "006" "$OUT"
-}
-
-# AC: next-id ignores a 000-blueprint dir (parses to id 0, never raises max) —
-#     regression-locks the reserved-slot invariant (029 plan Task 2)
-case_jimfile_next_id_ignores_000_blueprint() {
-  local specs cfg
-  specs=$(empty_dir next_ignores_bp)
-  mkdir -p "$specs/jim/000-blueprint" "$specs/jim/001-foo" "$specs/jim/002-bar"
-  cfg=$(fixture next-bp.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_exit "rc" 0 "$RC"
-  assert_eq "000-blueprint ignored; max is 002" "003" "$OUT"
+  specs=$(empty_dir nextid_retired)
+  mkdir -p "$specs/sdlc/001-alpha"
+  cfg=$(fixture nextid-retired.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id sdlc
+  assert_exit  "rc"                  2  "$RC"
+  assert_eq    "no ordinal on stdout" "" "$OUT"
+  assert_match "points at the allocator" "jimalloc" "$ERR"
 }
 
 # ─── spec 047: next-id vacated-id floor (consults the specs-root ledger) ──────
-
-# AC 11: a tail-move split vacated cart/006..009 — the floor raises next-id past
-# the directory max, so cart never re-mints a moved id.
-case_jimfile_next_id_split_floor_raises() {
-  local specs cfg
-  specs=$(empty_dir nextid_floor)
-  mkdir -p "$specs/cart/001-a" "$specs/cart/005-e"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001,cart/009:checkout/004\n' > "$specs/ledger.md"
-  cfg=$(fixture nextid-floor.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id cart
-  assert_exit "rc" 0 "$RC"
-  assert_eq "floor 009 raises to 010" "010" "$OUT"
-}
-
-# AC 11: the merge is monotonic — when the directory max exceeds the vacated
-# floor, the directory wins (floor only ever raises, never lowers).
-case_jimfile_next_id_dir_max_wins() {
-  local specs cfg
-  specs=$(empty_dir nextid_dirwins)
-  mkdir -p "$specs/cart/012-l"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001,cart/009:checkout/004\n' > "$specs/ledger.md"
-  cfg=$(fixture nextid-dirwins.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id cart
-  assert_eq "dir max 012 wins over floor 009" "013" "$OUT"
-}
-
-# AC 11: no specs-root ledger → the floor consult degrades and next-id keeps its
-# directory-only behavior (older checkouts unaffected).
-case_jimfile_next_id_no_ledger_dir_behavior() {
-  local specs cfg
-  specs=$(empty_dir nextid_noledger)
-  mkdir -p "$specs/cart/001-a" "$specs/cart/002-b"
-  cfg=$(fixture nextid-noledger.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id cart
-  assert_exit "rc" 0 "$RC"
-  assert_eq "pure dir max+1" "003" "$OUT"
-}
-
-# AC 11 / security Finding 2: a malformed moved= element is inert end-to-end — a
-# valid sibling still floors next-id (fail-closed floor).
-case_jimfile_next_id_ignores_malformed_moved() {
-  local specs cfg
-  specs=$(empty_dir nextid_badmoved)
-  mkdir -p "$specs/cart/002-b"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=GARBAGE,cart/006:checkout/001\n' > "$specs/ledger.md"
-  cfg=$(fixture nextid-badmoved.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id cart
-  assert_eq "valid sibling floors to 007" "007" "$OUT"
-}
-
-# AC 11: a group name retired by a symmetric split and later re-minted floors
-# PAST the old archive — a fresh empty cart/ still gets 004, never 001, so a
-# vacated id never comes to mean two specs.
-case_jimfile_next_id_retired_group_remint_floors() {
-  local specs cfg
-  specs=$(empty_dir nextid_remint)
-  mkdir -p "$specs/cart"   # re-minted, empty
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=shop,store;moved=cart/001:shop/001,cart/003:store/001\n' > "$specs/ledger.md"
-  cfg=$(fixture nextid-remint.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id cart
-  assert_eq "floors past old archive" "004" "$OUT"
-}
-
-# AC 15: a source group retired by a merge and later re-minted floors PAST its
-# old archive — a fresh empty wishlist/ gets 004, never 001, so an id absorbed
-# into the merge target never comes to mean two specs (the merge dual of the
-# split re-mint floor, riding task 1's vacated-max widening end-to-end).
-case_jimfile_next_id_merge_retired_source_remint_floors() {
-  local specs cfg
-  specs=$(empty_dir nextid_merge_remint)
-  mkdir -p "$specs/wishlist"   # re-minted, empty
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart;moved=wishlist/001:cart/007,wishlist/002:cart/008,wishlist/003:cart/009\n' > "$specs/ledger.md"
-  cfg=$(fixture nextid-merge-remint.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id wishlist
-  assert_eq "floors past merged-away archive" "004" "$OUT"
-}
-
-# AC 11: id-space exhaustion — a next id above 999 is refused rc 1 with a stderr
-# message, never emitting a 4-digit id.
-case_jimfile_next_id_999_exhaustion_rc1() {
-  local specs cfg
-  specs=$(empty_dir nextid_exhaust)
-  mkdir -p "$specs/cart/999-z"
-  cfg=$(fixture nextid-exhaust.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id cart
-  assert_exit "rc" 1 "$RC"
-  assert_match "names exhaustion" "id space exhausted" "$ERR"
-  assert_eq "no id printed" "" "$OUT"
-}
 
 
 
@@ -664,19 +547,14 @@ case_jimfile_mv_spec_id_lands_through_a_copying_mv() {
 }
 
 
-# AC: next-id and the occupancy predicate agree on what an ordinal is. A leading
-# token wider than the registry could be rebuilt from is skipped by both, so it
-# cannot floor next-id past an ordinal the predicate reports as free — the
-# disagreement that would otherwise permit a padding twin on that ordinal.
-case_jimfile_next_id_skips_over_wide_sibling() {
+# AC: a leading token wider than an ordinal the registry could be rebuilt from
+# is not an ordinal — the predicate reads that ordinal as free rather than held
+# by a sibling it cannot represent.
+case_jimfile_spec_ordinal_holder_over_wide_sibling_is_free() {
   local specs cfg
-  specs=$(empty_dir nextid_overwide)
+  specs=$(empty_dir soh_overwide)
   mkdir -p "$specs/sdlc/001-alpha" "$specs/sdlc/0000000000000000018-wide"
-  cfg=$(fixture nextid-overwide.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id sdlc
-  assert_exit "rc"                              0     "$RC"
-  assert_eq   "the over-wide sibling is not counted" "002" "$OUT"
-  # The other half of the agreement: the predicate reads that ordinal as free.
+  cfg=$(fixture soh-overwide.toml "specs_path = \"$specs\"")
   run_jimfile -c "$cfg" spec-ordinal-holder sdlc 18
   assert_exit "predicate reports free" 1 "$RC"
 }
@@ -777,16 +655,6 @@ case_jimfile_spec_ordinal_holder_rejects_bad_input() {
   assert_exit "bad exclude rc" 2 "$RC"
   run_jimfile -c "$cfg" spec-ordinal-holder sdlc
   assert_exit "missing ordinal rc" 2 "$RC"
-}
-
-# AC: next-id zero-pads to 3 digits even at boundary
-case_jimfile_next_id_zero_pads() {
-  local specs cfg
-  specs=$(empty_dir specs_padding)
-  mkdir -p "$specs/jim/099-x"
-  cfg=$(fixture next-pad.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_eq "100 zero-padded" "100" "$OUT"
 }
 
 # AC: path spec returns canonical {specs}/{group}/{id}-{name}/spec.md
@@ -1318,17 +1186,6 @@ case_jimfile_next_id_issue_handles_dotdot_in_subject() {
   today=$(date +%Y%m%d)
   assert_exit "rc" 0 "$RC"
   assert_eq   "no traversal in slug" "$today-etc-passwd" "$OUT"
-}
-
-# AC: existing next-id <group> behavior is preserved (regression guard)
-# 'issue' as a kind-arg should not break group-name dispatch for other groups.
-case_jimfile_next_id_group_still_works() {
-  local specs cfg
-  specs=$(empty_dir specs_issue_regression)
-  mkdir -p "$specs/jim/001-a"
-  cfg=$(fixture next-issue-regression.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_eq "002 from existing group" "002" "$OUT"
 }
 
 # AC: next-num issue returns 1 when no issue carries a num: field (spec 019 DD #5)

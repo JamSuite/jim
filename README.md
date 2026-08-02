@@ -185,7 +185,7 @@ Inspect what jim resolves with `/jim:conf`:
 /jim:file slug "Auth Token Expiry"                        # auth-token-expiry
 /jim:file date                                            # YYYYMMDD
 /jim:file now                                             # YYYY-MM-DDThh:mm:ssZ (UTC)
-/jim:file next-id sdlc                                    # highest tree ordinal + 1 (local view; the allocator mints the real one)
+/jim:file next-id issue "Auth bug"                        # date-prefixed issue id (spec ordinals come from the allocator)
 /jim:file next-num issue                                  # next issue display ordinal
 /jim:file path spec platform 003 jimfile                  # canonical spec path
 /jim:file path spec platform P-20260728-jimfile           # provisional identity (token is the whole basename)

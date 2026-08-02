@@ -18,7 +18,6 @@ SCRIPT_jimpartition="$REPO_ROOT/skills/partition/scripts/jimpartition.sh"
 # Sibling scripts the rename continuity/ratchet cases (Task 7) compose with.
 SCRIPT_JIMLEDGER="$REPO_ROOT/skills/ledger/scripts/jimledger.sh"
 SCRIPT_jimverify="$REPO_ROOT/skills/verify/scripts/jimverify.sh"
-JIMFILE="$REPO_ROOT/skills/file/scripts/jimfile.sh"
 
 # ─── Section: Per-script invokers ────────────────────────────────────────────
 
@@ -1115,15 +1114,6 @@ case_jimpartition_edges_diff_missing_file() {
 }
 
 # ─── Section: rename continuity + ratchet (Task 7) ───────────────────────────
-
-# AC #16: after the group's spec dir is renamed (history-continuous move),
-# next-id in the renamed group continues max+1 — it never resets. The fixture's
-# cart group holds 000-blueprint + 001-initial, so the next id is 002.
-case_jimpartition_rename_nextid_continuity() {
-  local dir; dir="$(rename_repo r7_nextid)"
-  ( cd "$dir" && bash "$SCRIPT_JIMLEDGER" rename-tracked docs/specs/cart docs/specs/checkout ) >/dev/null 2>&1
-  assert_eq "next-id continues max+1" "002" "$(cd "$dir" && bash "$JIMFILE" next-id checkout)"
-}
 
 # AC #11: invariant ids and provides surface names are byte-for-byte unchanged
 # across a rename (they ratchet — stable keys / code-tracking descriptions),

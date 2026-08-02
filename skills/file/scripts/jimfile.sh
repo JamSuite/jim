@@ -4,7 +4,7 @@
 #
 # PURPOSE
 #   Resolve deterministic file/path operations for jim's skills and agents:
-#   existence checks, slug normalization, today's date, next spec ID,
+#   existence checks, slug normalization, today's date, next issue id,
 #   canonical artifact paths, and glob discovery. Skills consume this via
 #   Claude Code's `!`-injection primitive so the resolved string lands in
 #   the prompt before the LLM reads it. The /jim:file user-facing skill
@@ -25,7 +25,7 @@
 #                                                     existence-checks)
 #   bash jimfile.sh slug <topic>                      kebab-case slug
 #   bash jimfile.sh date                              today as YYYYMMDD
-#   bash jimfile.sh next-id <group>                   next zero-padded spec id
+#   bash jimfile.sh next-id issue <subject>           date-prefixed issue id
 #   bash jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
 #                                                     rename a spec dir onto a
 #                                                     different id (shift/realize)
@@ -82,17 +82,11 @@ export LC_ALL=C
 # travels with the plugin tree (skills/file/scripts/ → skills/conf/scripts/).
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
 
-# Path to the sibling jimledger.sh (the vacated-id floor source). BASH_SOURCE-relative
-# like JIMCONF (skills/file/scripts/ → skills/ledger/scripts/). Consulted
-# best-effort by next-id — an older checkout without the ledger skill resolves to
-# a non-existent path and degrades to directory-only id derivation.
-JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../ledger/scripts" 2>/dev/null && pwd)/jimledger.sh"
-
 # Valid artifact kinds. Drives `path <kind>` validation and `kinds` output.
 readonly KINDS=(spec plan research debug brainstorm issue blueprint)
 
 # The reserved per-group blueprint directory name. Sorts ahead of `001`, parses
-# to id `0`, and is skipped by next-id. The single definition of this literal in
+# to id `0`, and is skipped by every ordinal fold. The single definition of this literal in
 # code — consumed by the blueprint slot resolver and emitted by `blueprint-dirname`
 # for sibling scripts that compose the directory path on their own base.
 readonly BLUEPRINT_DIRNAME="000-blueprint"
@@ -306,70 +300,25 @@ cmd_next_id() {
     echo "error: 'next-id' requires an argument" >&2
     return 2
   fi
-  # Dispatch by first arg: 'issue' takes a subject and returns a
-  # date-prefixed slug; everything else is treated as a spec group name
-  # (existing numeric-id behavior).
-  if [[ "$first" == "issue" ]]; then
-    local subject="${2:-}"
-    if [[ -z "$subject" ]]; then
-      echo "error: 'next-id issue' requires <subject>" >&2
-      return 2
-    fi
-    local slug prefix
-    slug="$(normalize_slug "$subject")" || return 1
-    is_valid_slug "$slug" || return 1
-    prefix="$(resolve_issue_prefix)"
-    printf '%s-%s\n' "$prefix" "$slug"
-    return 0
+  # `issue` is the only kind this verb answers for. A spec ordinal comes from
+  # the coordination allocator and nowhere else: a tree scan is a second
+  # computation of the same number, and two authorities that can disagree
+  # mid-move is exactly the window the registry exists to close.
+  if [[ "$first" != "issue" ]]; then
+    echo "error: 'next-id' answers for issues only — a spec ordinal comes from" \
+         "the coordination allocator (jimalloc.sh peek spec <group>)" >&2
+    return 2
   fi
-  local group="$first"
-  local specs_root group_dir max=0
-  specs_root="$(jimconf_get specs)"
-  group_dir="$specs_root/$group"
-  if [[ -d "$group_dir" ]]; then
-    local entry name id_part id_clean
-    for entry in "$group_dir"/*/; do
-      [[ -d "$entry" ]] || continue
-      name="$(basename "$entry")"
-      # Match leading 3-digit prefix followed by '-' or end.
-      id_part="${name%%-*}"
-      # A leading token wider than an ordinal the registry could be rebuilt from
-      # is not an ordinal, so it is skipped rather than counted — the same read
-      # spec_ordinal_holder takes. Counting it would raise this floor past an
-      # ordinal that predicate reports as free, which is how a padding twin gets
-      # permitted; and the arithmetic below would wrap on a wide enough token.
-      [[ "$id_part" =~ ^[0-9]{1,15}$ ]] || continue
-      # Strip leading zeros for arithmetic (but guard '000' → 0).
-      id_clean="$(printf '%s' "$id_part" | sed 's/^0*//')"
-      [[ -z "$id_clean" ]] && id_clean=0
-      if (( id_clean > max )); then
-        max=$id_clean
-      fi
-    done
+  local subject="${2:-}"
+  if [[ -z "$subject" ]]; then
+    echo "error: 'next-id issue' requires <subject>" >&2
+    return 2
   fi
-  # Vacated-id floor: consult the specs-root ledger's op=split and op=merge
-  # remaps so the group never re-mints an id a split or merge moved out — the
-  # tail-move, split retired-group, and merge retired-source re-mint cases.
-  # Best-effort and monotonic: an absent script, a non-zero rc, or empty output
-  # leaves the floor unset, and the floor only ever raises max, never lowers it
-  # (older checkouts degrade to directory-only).
-  if [[ -f "$JIMLEDGER" ]]; then
-    local floor floor_clean
-    floor="$(bash "$JIMLEDGER" vacated-max "$specs_root" "$group" 2>/dev/null)" || floor=""
-    if [[ "$floor" =~ ^[0-9]{3}$ ]]; then
-      floor_clean="$(printf '%s' "$floor" | sed 's/^0*//')"
-      [[ -z "$floor_clean" ]] && floor_clean=0
-      if (( floor_clean > max )); then
-        max=$floor_clean
-      fi
-    fi
-  fi
-  local next=$(( max + 1 ))
-  if (( next > 999 )); then
-    echo "error: id space exhausted for $group (next id would exceed 999)" >&2
-    return 1
-  fi
-  printf '%03d\n' "$next"
+  local slug prefix
+  slug="$(normalize_slug "$subject")" || return 1
+  is_valid_slug "$slug" || return 1
+  prefix="$(resolve_issue_prefix)"
+  printf '%s-%s\n' "$prefix" "$slug"
 }
 
 # The reserved prefix a provisional identity's ordinal slot carries. The grammar
@@ -1111,7 +1060,7 @@ usage:
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh now                                now as YYYY-MM-DDThh:mm:ssZ (UTC)
-  jimfile.sh next-id <group>                    next zero-padded spec id
+  jimfile.sh next-id issue <subject>            date-prefixed issue id
   jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
                                                 rename a spec dir onto a different id
   jimfile.sh mv-spec-id <group> <old-basename> <provisional-token>
@@ -1200,7 +1149,7 @@ main "$@"
 #    or other cross-agent install scopes. Claude-Code-only substitutions
 #    stay at skill-side call sites.
 #
-# 3. next-id parses the directory basename's leading numeric prefix only.
+# 3. Spec-directory readers parse the basename's leading numeric prefix only.
 #    Non-numeric prefixes (e.g., a stray "draft-foo/") are skipped — they
 #    cannot collide with the 3-digit sequence.
 #

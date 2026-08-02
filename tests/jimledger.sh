@@ -1609,125 +1609,19 @@ case_jimledger_move_spec_dir_refuses_pathspec_magic() {
 
 # security Finding 2: the floor is the highest OLD number a split vacated FROM the
 # group — here cart/006..009 left, so vacated-max cart is 009 (3-digit).
-case_jimledger_vacated_max_floors_from_event() {
-  local sd; sd="$(empty_dir vm_one/spec)"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;identity=rewrite;frozen=0;outcome=split;moved=cart/006:checkout/001,cart/007:checkout/002,cart/008:checkout/003,cart/009:checkout/004\n' > "$sd/ledger.md"
+# AC 9: vacated-max retires with the tree-scan next-id it floored. Its only
+# production consumer is gone, and the registry's own fold subsumes the floor —
+# a rename source is an ordinal the group can never reissue, recorded rather
+# than inferred from an event a fresh clone may not share.
+case_jimledger_vacated_max_retired() {
+  local sd; sd="$(empty_dir vm_retired/spec)"
+  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001\n' > "$sd/ledger.md"
   run_jimledger vacated-max "$sd" cart
-  assert_exit "rc" 0 "$RC"
-  assert_eq "max vacated" "009" "$OUT"
-}
-
-# DD 5: the remap is chunked across repeatable moved= pairs (≤256B each) — every
-# pair is iterated, so a number in a later chunk still raises the floor.
-case_jimledger_vacated_max_iterates_multiple_moved_pairs() {
-  local sd; sd="$(empty_dir vm_multi/spec)"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001,cart/007:checkout/002;moved=cart/011:checkout/003\n' > "$sd/ledger.md"
-  run_jimledger vacated-max "$sd" cart
-  assert_exit "rc" 0 "$RC"
-  assert_eq "max across chunks" "011" "$OUT"
-}
-
-# security Finding 2: a malformed element is inert — ignored — while valid
-# siblings still count (fail-closed: the floor only ever raises).
-case_jimledger_vacated_max_ignores_malformed_element() {
-  local sd; sd="$(empty_dir vm_bad/spec)"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001,GARBAGE,cart/0099:x,cart/009:checkout/002\n' > "$sd/ledger.md"
-  run_jimledger vacated-max "$sd" cart
-  assert_exit "rc" 0 "$RC"
-  assert_eq "valid siblings still counted" "009" "$OUT"
-}
-
-# security Finding 2: an op=rename-only ledger carries no split remap — the
-# whitelisted op=split gate yields nothing (a rename event is invisible here).
-case_jimledger_vacated_max_rename_only_empty() {
-  local sd; sd="$(empty_dir vm_ren/spec)"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=rename;old=cart;new=checkout\n' > "$sd/ledger.md"
-  run_jimledger vacated-max "$sd" cart
-  assert_exit "rc" 0 "$RC"
-  assert_eq "empty" "" "$OUT"
-}
-
-# rc 1 when there is no ledger file (next-id degrades to dir-only behavior).
-case_jimledger_vacated_max_no_ledger_rc1() {
-  local sd; sd="$(empty_dir vm_noledger/spec)"
-  run_jimledger vacated-max "$sd" cart
-  assert_exit "rc" 1 "$RC"
-}
-
-# AC 19: the remap ledger event round-trips end-to-end — an op=split event written
-# through the real `event` verb (not a hand-crafted ledger line) is read back by
-# vacated-max, proving the emit grammar and the parse grammar agree.
-case_jimledger_vacated_max_event_roundtrip() {
-  local sd; sd="$(empty_dir vm_rt/spec)"
-  run_jimledger event "$sd" partition finished \
-    tier=project op=split old=cart new=cart,checkout \
-    moved=cart/006:checkout/001,cart/009:checkout/004
-  assert_exit "event rc" 0 "$RC"
-  run_jimledger vacated-max "$sd" cart
-  assert_exit "vacated-max rc" 0 "$RC"
-  assert_eq "floor read back from the emitted event" "009" "$OUT"
-}
-
-# rc 2 on a missing arg or an invalid group slug (usage, distinct from no-ledger).
-case_jimledger_vacated_max_bad_group_rc2() {
-  local sd; sd="$(empty_dir vm_badgrp/spec)"
-  printf 'x\n' > "$sd/ledger.md"
-  run_jimledger vacated-max "$sd" "Cart_Group"
-  assert_exit "invalid slug rc" 2 "$RC"
-  run_jimledger vacated-max "$sd"
-  assert_exit "missing arg rc" 2 "$RC"
+  assert_exit "unknown subcommand" 2 "$RC"
+  assert_eq   "no floor on stdout"  "" "$OUT"
 }
 
 # ─── spec 048: vacated-max accepts op=merge ──────────────────────────────────
-
-# AC 15: vacated-max reads op=merge events under the same fail-closed element
-# parse — an absorbed source's old ids are vacated, so a re-minted source slug
-# later floors past its historical max (the retirement dual of split's vacated
-# ids). Here wishlist/001..002 were absorbed into cart, so vacated-max wishlist
-# is 002.
-case_jimledger_vacated_max_floors_from_merge_event() {
-  local sd; sd="$(empty_dir vm_merge/spec)"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart;identity=rewrite;frozen=0;outcome=merged;moved=wishlist/001:cart/007,wishlist/002:cart/008\n' > "$sd/ledger.md"
-  run_jimledger vacated-max "$sd" wishlist
-  assert_exit "rc" 0 "$RC"
-  assert_eq "max vacated from absorbed source" "002" "$OUT"
-}
-
-# AC 14 / DD 5: a many-source merge emits more moved= pairs than a split; the
-# repeatable ≤256B chunk grammar covers it — a number in a later chunk still
-# raises the merge floor.
-case_jimledger_vacated_max_merge_multichunk() {
-  local sd; sd="$(empty_dir vm_merge_mc/spec)"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart;moved=wishlist/001:cart/007,wishlist/002:cart/008;moved=wishlist/005:cart/009\n' > "$sd/ledger.md"
-  run_jimledger vacated-max "$sd" wishlist
-  assert_exit "rc" 0 "$RC"
-  assert_eq "max across merge chunks" "005" "$OUT"
-}
-
-# security Finding 3: the op=merge widening reuses split's fail-closed element
-# parse byte for byte — a malformed element is inert while valid siblings still
-# count (the floor only ever raises).
-case_jimledger_vacated_max_merge_ignores_malformed() {
-  local sd; sd="$(empty_dir vm_merge_bad/spec)"
-  printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart;moved=wishlist/001:cart/007,GARBAGE,wishlist/0099:x,wishlist/004:cart/008\n' > "$sd/ledger.md"
-  run_jimledger vacated-max "$sd" wishlist
-  assert_exit "rc" 0 "$RC"
-  assert_eq "valid siblings still counted" "004" "$OUT"
-}
-
-# security Finding 3: the floor is monotonic across events — a later op=merge
-# carrying a LOWER vacated id never lowers the floor an earlier event raised
-# (global max wins).
-case_jimledger_vacated_max_merge_monotonic() {
-  local sd; sd="$(empty_dir vm_merge_mono/spec)"
-  {
-    printf '100\t2026-01-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart;moved=wishlist/008:cart/007\n'
-    printf '200\t2026-02-01T00:00:00Z\tpartition\tfinished\ttier=project;op=merge;old=wishlist,cart;new=cart;moved=wishlist/003:cart/009\n'
-  } > "$sd/ledger.md"
-  run_jimledger vacated-max "$sd" wishlist
-  assert_exit "rc" 0 "$RC"
-  assert_eq "highest across events wins" "008" "$OUT"
-}
 
 # ─── spec 047: commit-split (the split's docs commit) ────────────────────────
 
