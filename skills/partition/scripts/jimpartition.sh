@@ -909,6 +909,49 @@ emit_check() {
   printf 'CHECK\t%s\t%s\t%s\n' "$1" "$2" "$(san_field "$3")"
 }
 
+# pending_provisionals <specs-dir> <group> — print the basename of every spec
+#   directory in <group> wearing the reserved provisional prefix, space-joined.
+#
+#   Prefix match, deliberately: this is a refusal, and the fail-safe reading of
+#   a directory that merely LOOKS provisional is still "do not move it". Asking
+#   the full grammar here would both admit a malformed pending dir into a move
+#   and put a fourth copy of that grammar in a fourth script.
+pending_provisionals() {
+  local specs_dir="$1" group="$2" d bn out=""
+  for d in "$specs_dir/$group"/P-*/; do
+    [[ -d "$d" ]] || continue
+    bn="$(basename "$d")"
+    out+="${out:+ }$bn"
+  done
+  printf '%s' "$out"
+}
+
+# check_pending_provisionals <specs-dir> <group>... — emit the pending-provisional
+#   CHECK fact for each group and, when any holds one, the operator-facing
+#   refusal on stderr. rc 1 iff any group holds a pending identity.
+#
+#   A provisional identity is not issued yet: moving its directory leaves a
+#   pending claim under a name the allocator will resolve away from, and the
+#   realization that follows would have to find it somewhere its own record does
+#   not describe. Refusing is fail-safe and, unlike the map-verb gates behind it,
+#   it happens before the operator has been shown a plan.
+check_pending_provisionals() {
+  local specs_dir="$1"; shift
+  local g pend rc=0
+  for g in "$@"; do
+    pend="$(pending_provisionals "$specs_dir" "$g")"
+    if [[ -n "$pend" ]]; then
+      emit_check pending-provisionals fail "$g: $pend"
+      echo "error: pending provisional spec(s) in $(san_field "$g"): $(san_field "$pend")" \
+           "— realize them first (/jim:spec reconcile), then re-run" >&2
+      rc=1
+    else
+      emit_check pending-provisionals pass "$g"
+    fi
+  done
+  return $rc
+}
+
 # cmd_rename_preflight <map> <specs-dir> <old> <new> — structural preflight for a
 #   group rename. Emits CHECK facts (map-exists, old-mapped, new-slug-valid,
 #   new-collision, blueprint-exists, tree-clean), TERRITORY-IDENTITY lines for
@@ -1003,6 +1046,8 @@ cmd_rename_preflight() {
       printf 'DIRT\t%s\t%s\n' "$klass" "$(san_field "$path")"
     done <<<"$status"
   fi
+
+  check_pending_provisionals "$specs_dir" "$old" || fail=1
 
   [[ $fail -eq 1 ]] && return 1
   return 0
@@ -1134,6 +1179,8 @@ cmd_split_preflight() {
       printf 'DIRT\t%s\t%s\n' "$klass" "$(san_field "$path")"
     done <<<"$status"
   fi
+
+  check_pending_provisionals "$specs_dir" "$old" || fail=1
 
   [[ $fail -eq 1 ]] && return 1
   return 0
@@ -1314,6 +1361,8 @@ cmd_merge_preflight() {
       printf 'DIRT\t%s\t%s\n' "$klass" "$(san_field "$path")"
     done <<<"$status"
   fi
+
+  check_pending_provisionals "$specs_dir" "${effective[@]}" || fail=1
 
   [[ $fail -eq 1 ]] && return 1
   return 0

@@ -314,7 +314,7 @@ flowchart TD
    peek floor. Depends on 5.
    **Verify:** `bash tests/jimalloc.sh lift`
 
-9. [ ] Retire the tree-scan path: remove `jimfile.sh next-id`'s spec-group
+9. [x] Retire the tree-scan path: remove `jimfile.sh next-id`'s spec-group
    branch and `jimledger.sh vacated-max` (verb + dispatch); migrate or
    remove their tests; update `skills/file/SKILL.md` and `README.md`.
    **Verify:** `bash tests/jimfile.sh && bash tests/jimledger.sh`
