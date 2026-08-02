@@ -8,7 +8,9 @@ revision named, five issues adopted into the cluster (#84, #197–#200), and the
 runway reordered: a small **pre-B build** (#203, #197, #199, #198) settles the
 realize-row contract before B consumes it, #189 leaves the spec for a map
 pass, and #149 / #120 / #125 close as bookkeeping. See *Pre-B build*, *Spec B —
-pre-spec analysis*, and *Sequence* step 4a.
+pre-spec analysis*, and *Sequence* step 4a. **The build and the closures ran
+the same day** — see step 4a's shipped note; the #189/#110 map pass is the one
+piece of the runway still open.
 
 The eighth revision (2026-08-02): **Spec E
 shipped as `platform/012`, and the standing prediction held.** The registry is
@@ -586,7 +588,24 @@ Ran as a spec rather than a build, and the fork was worth resolving that way: th
 plan-phase security review found a Critical that changed the design (see above),
 which a build would have had no gate to catch.
 
-### Pre-B build — settle the realize-row contract · #203 + #197 + #199 + #198
+### ~~Pre-B build — settle the realize-row contract · #203 + #197 + #199 + #198~~ · DONE 2026-08-02
+
+Shipped the same day it was scoped: `fc5468b..d9951dc`, seven commits,
+1048/1048 → 1055/1055, zero pre-existing fixtures modified except the two that
+asserted the batch-wide halt #203 ruled a regression — rewritten deliberately
+to the per-identity contract. The issue-side realize path carried the **same**
+batch-wide halt (its own comment promised "must not brick an unrelated
+realization" while the return bricked the batch), so both kinds moved
+together — the twin discipline applied before the twin was filed. All three
+reproductions ran before belief (practice 8): an all-blocked batch, the
+registry-level readback after a mixed apply, a triple-claimed key. The review
+pass returned observations only: the sweep gained one more full-log pass for
+the hazard line (small next to the derivation cost #201 tracks — noted so the
+profile is not mis-attributed), and the issue-side preview shows a blocked
+identity as its `-` ordinal since that surface's 2-field contract drops the
+state column.
+
+The record below is what the build was scoped to be, kept for provenance.
 
 New at the ninth revision. A build, not a spec — the C′-fix shape, and the
 criteria hold the same way: no security regressions in scope, forks settleable
@@ -1086,7 +1105,14 @@ Two obligations carry in, in the spirit of practice 6: E writes an only-door
 sweep and a catch-up verb, both of which are *detectors*, so each needs to report
 what it did **not** cover as loudly as what it found.
 
-**4a. The pre-B build + bookkeeping — new at the ninth revision.** #203 first:
+**4a. ~~The pre-B build + bookkeeping.~~ DONE 2026-08-02** — same session as
+the ninth revision. All four shipped with fixtures at every level, the two
+existing halt fixtures deliberately rewritten to the restored contract, and
+the issue-side twin of #203's halt fixed in the same pass. #149, #120 and #125
+closed as bookkeeping; the #189/#110 map pass remains. Suite 1055/1055; see
+the Pre-B build section's shipped note. The original scoping follows.
+
+#203 first:
 the batch-wide realize halt is a regression against a contract its consumer
 still documents, reachable through ordinary use, and the fix changes the
 realize row grammar — settle that contract before B builds consumers on it.
@@ -1260,7 +1286,7 @@ the build:**
 | 123 | med  | Spec B scoping — one decision with #84; dies if partition converges onto the allocator, else falls back to hardening |
 | 144 | high | **closed** — registry repaired from the host 2026-07-31; standing half → Spec E |
 | 146 | crit | **closed** — `sdlc/018`; path helper grew a provisional arity |
-| 149 | crit | **closing as bookkeeping** — `sdlc` fold verified live this revision; `jim` half deliberately dropped; the body demands a fold that is done |
+| 149 | crit | **closed** — bookkeeping 2026-08-02; `sdlc` fold verified live, `jim` half deliberately dropped with the retired blueprint |
 | 150 | crit | **closed** — `sdlc/018`; ordinal gated, dropped record now loud |
 | 156 | high | **closed** — `sdlc/018`; halt enforced inside the rename primitives |
 | 159 | high | **closed** — `sdlc/018`; fold takes a pre-resolved group |
@@ -1328,13 +1354,13 @@ the build:**
 | 194 | high | **closed** — guidance keyed on stderr, with the destructive repair removed |
 | 195 | med  | **closed** — premise incorrect; show-toplevel already resolves. Dedup kept |
 | 196 | med  | **closed** — not a defect; guard is covered, proven by mutation |
-| 197 | med  | pre-B build — untracked files invisible to the realize citation sweep; regen resurrects a rewrite |
-| 198 | high | pre-B build — narrow the issue skill's jimalloc grant before B widens the verb surface again |
-| 199 | med  | pre-B build — the realized spec's own H1 keeps the provisional token |
+| 197 | med  | **closed** — pre-B build; untracked enumeration under the symlink discipline, regen rebuilds from rewritten sources |
+| 198 | high | **closed** — pre-B build; grant narrowed to `peek issue`, ahead of B widening the verb surface |
+| 199 | med  | **closed** — pre-B build; the own-H1 is a self-identity site, sweep grammar unchanged |
 | 200 | med  | decision — repair-path design; Spec B consults the grammar half (precedence/tombstone record kind) |
 | 201 | med  | hardening — the sweep's per-file frontmatter cost (measured, ~6.9s of ~14s) |
 | 202 | med  | Spec B / rename emission — rename-replay defects in the integrity classifier |
-| 203 | high | pre-B build — settle the realize-row contract (per-identity `blocked`) before B consumes it |
+| 203 | high | **closed** — pre-B build; per-identity `blocked` on both realize paths, hazard class in the sweep |
 
 *(#161–#167 are `sdlc` blueprint drift surfaced by C′'s verify pass, not
 id-coordination work — excluded from this table and from the 83.)*
@@ -1365,14 +1391,14 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 ## Net
 
 83 issues → **7 assigned to the 3 remaining specs** (B: #113, #143, #152,
-#154, #202 · D: #127 · F: #126), **2 riding B's scoping** (#84, #123), **4 to
-the pre-B build** (#203, #197, #199, #198), **1 to the #189/#110 map pass**,
-**13 to the grouped hardening build**, **1 optional refactor**, **1 doc item +
-2 decisions + 1 deferred + 1 process item** (#118 · #139, #200 · #137 · #188),
-**#149 closing as bookkeeping**, **49 closed**. That is 83; the enumeration
-still closes. (#110, #120, #125 stay outside the cluster: the latter two are
-duplicates of each other and already satisfied — `tests/jimalloc.sh` has been
-in platform's territory since C′-fix — and close on sight.)
+#154, #202 · D: #127 · F: #126), **2 riding B's scoping** (#84, #123), **1 to
+the #189/#110 map pass**, **13 to the grouped hardening build**, **1 optional
+refactor**, **1 doc item + 2 decisions + 1 deferred + 1 process item** (#118 ·
+#139, #200 · #137 · #188), **54 closed** — the pre-B build's four (#203,
+#197, #199, #198) and #149 closed 2026-08-02. That is 83; the enumeration
+still closes. (#110, #120, #125 stay outside the cluster; the latter two —
+duplicates of each other, already satisfied since C′-fix repaired the map —
+closed the same day.)
 
 **The spec count still has not moved, and this time it went down.** C shipped and
 C′ took its slot; C′ shipped and its residue became a *build*, not a fourth spec.
@@ -1461,4 +1487,6 @@ none of the three criteria that make a spec is present. And B absorbed #84 and
 #123 without growing: they are not new work, they are one decision B already
 owned — whether the tree-scan `next-id` surface survives — now with its
 instances attached. The runway to B is short and deliberate: one small build,
-three closures, one map pass, then the interview.
+three closures, one map pass, then the interview. The build and the closures
+landed the same day, in-session; the map pass is what remains before the
+interview.
