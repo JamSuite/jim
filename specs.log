@@ -66,3 +66,4 @@ spec allocate platform/011 rename-path-correctness 20260729 jrko
 spec allocate sdlc/017 coordinated-spec-identity 20260730 jrko
 spec allocate sdlc/018 finish-coordinated-spec-identity 20260731 jrko
 spec allocate platform/012 registry-integrity-and-drift 20260801 jrko
+spec allocate blueprint/025 rename-redirect-record-emission 20260802 jrko
