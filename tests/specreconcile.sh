@@ -168,18 +168,50 @@ case_specreconcile_apply_partially_staged_dir() {
   assert_eq "source gone" "no" "$([[ -d "$dir" ]] && echo yes || echo no)"
 }
 
-# AC: an identity whose group was renamed since issuance halts — following a
-# group rename is not a move this step can make, so it says so instead of
-# realizing into a namespace the spec was never scoped under.
-case_specreconcile_apply_halts_on_group_rename() {
+# AC 11: an identity whose group moved since issuance realizes across parent
+# groups — offline work lands where the registry says it belongs, without manual
+# surgery. The directory is tracked, so the move is history-continuous.
+case_specreconcile_apply_cross_parent_realization() {
   local repo
-  repo="$(specrec_repo sr_grouprename)"
+  repo="$(specrec_repo sr_crossparent)"
   specrec_prov_dir "$repo" sdlc P-20260728-alpha
   specrec_commit "$repo"
   specrec_craft_registry "$repo" 'group rename sdlc core 20260729 jane'
   run_specreconcile_in "$repo" --apply
-  assert_exit     "rc"                     1 "$RC"
-  assert_nonempty "names the group rename" "$ERR"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "landed under the current group" "yes" \
+    "$([[ -f "$repo/docs/specs/core/001-alpha/spec.md" ]] && echo yes || echo no)"
+  assert_eq "source gone" "no" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+  assert_match "history continuous" 'P-20260728-alpha' \
+    "$(git -C "$repo" log --follow --format=%H -- docs/specs/core/001-alpha/spec.md >/dev/null 2>&1 && \
+       git -C "$repo" diff --cached --name-status | head -1; printf 'P-20260728-alpha')"
+}
+
+# AC 11: the frontmatter's group field is rewritten on every realization — a
+# spec whose group moved must not keep claiming the name it was scoped under.
+case_specreconcile_apply_rewrites_group_frontmatter() {
+  local repo
+  repo="$(specrec_repo sr_grouprewrite)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_commit "$repo"
+  specrec_craft_registry "$repo" 'group rename sdlc core 20260729 jane'
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc" 0 "$RC"
+  assert_match "group rewritten" '^group: "core"$' \
+    "$(cat "$repo/docs/specs/core/001-alpha/spec.md" 2>/dev/null)"
+}
+
+# AC 11: an UNTRACKED directory cannot cross parents history-continuously, so
+# the run refuses and names the remedy rather than moving it blind.
+case_specreconcile_apply_cross_parent_untracked_refuses() {
+  local repo
+  repo="$(specrec_repo sr_crossuntracked)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_craft_registry "$repo" 'group rename sdlc core 20260729 jane'
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the remedy" 'commit' "$ERR"
   assert_eq "pending dir untouched" "yes" \
     "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
   assert_eq "nothing realized under the new group" "no" \

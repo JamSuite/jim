@@ -1487,6 +1487,31 @@ case_jimledger_move_spec_dir_moves() {
     "$(git -C "$root" diff --cached --name-only)"
 }
 
+# AC 11: the SOURCE basename may be a provisional token — an offline-bound spec
+# wears its whole identity as a directory name, and realizing one whose group
+# moved is exactly a cross-parent move. The DESTINATION gate is unchanged, so no
+# provisional shape can be minted as a move target.
+case_jimledger_move_spec_dir_accepts_provisional_source() {
+  local root; root="$(move_git_fixture msd_prov)"
+  mkdir -p "$root/docs/specs/cart/P-20260802-offline"
+  printf 'spec\n' > "$root/docs/specs/cart/P-20260802-offline/spec.md"
+  git -C "$root" add -A && git -C "$root" commit -q -m prov
+  run_jimledger_in "$root" move-spec-dir docs/specs cart P-20260802-offline checkout 001-offline
+  assert_exit "rc" 0 "$RC"
+  assert_eq "new exists" "1" \
+    "$([[ -f "$root/docs/specs/checkout/001-offline/spec.md" ]] && echo 1 || echo 0)"
+  assert_eq "old gone" "0" \
+    "$([[ -e "$root/docs/specs/cart/P-20260802-offline" ]] && echo 1 || echo 0)"
+}
+
+case_jimledger_move_spec_dir_refuses_provisional_destination() {
+  local root; root="$(move_git_fixture msd_provdst)"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout P-20260802-offline
+  assert_exit "rc" 1 "$RC"
+  assert_eq "nothing created" "0" \
+    "$([[ -e "$root/docs/specs/checkout/P-20260802-offline" ]] && echo 1 || echo 0)"
+}
+
 # AC: a renumber onto an ordinal another directory already holds is refused, even
 # though the exact destination path is free. A spec ordinal is path identity, so
 # 001-bar beside an existing 001-foo is two directories on one ordinal — the
