@@ -83,3 +83,4 @@
 1785655365	2026-08-02T07:22:45Z	blueprint	started	tier=project;op=reconcile
 1785655450	2026-08-02T07:24:10Z	blueprint	finished	tier=project;op=reconcile;edges=22;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=609;faces=19;faces_max=8;faces_max_group=blueprint;fanin_group=issue,platform
 1785655450	2026-08-02T07:24:10Z	blueprint	finished	tier=project;additions=2;downgrades=0
+1785661887	2026-08-02T09:11:27Z	spec	realized	moved=blueprint/P-20260802-rename-redirect-record-emission:blueprint/025
