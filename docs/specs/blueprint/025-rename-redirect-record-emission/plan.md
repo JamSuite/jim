@@ -270,7 +270,7 @@ flowchart TD
    `reconcile.sh`, plus a byte-agreement fixture.
    **Verify:** `bash tests/jimfile.sh prov && bash skills/meta-test/scripts/run.sh | tail -1`
 
-2. [ ] Add `alloc_rename_scan` and migrate the resolver (spec+issue), alias
+2. [x] Add `alloc_rename_scan` and migrate the resolver (spec+issue), alias
    map, both folds, and group coverage onto it; extend the grammar header;
    update every existing rename fixture to the 6-token shape; add 5-token /
    7-token / unknown-verb strictness fixtures.

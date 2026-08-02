@@ -400,21 +400,28 @@ alloc_resolve_spec() {
   local dup_a=-1 dup_b=-1
   # Record ids are canonicalized before every comparison, so a record spelling
   # an ordinal unpadded still anchors and still replays.
+  # Positions where the queried id is named as a rename SOURCE and nothing
+  # establishes it. One such record makes the id dereferenceable-with-disclosure;
+  # two make it incoherent, since a claim that was never made cannot have been
+  # moved twice.
+  local -a src_at=()
   for ((i=0; i<n; i++)); do
     if [[ -n "${rn[$((i + 1))]:-}" ]]; then
       IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
-      [[ "$rsok" == y && "$rdok" == y ]] || continue
       if [[ "$rk" == spec ]]; then
-        [[ "$rdst" == "$queried" ]] && { anchor=$i; known=1; }
+        [[ "$rdok" == y && "$rdst" == "$queried" ]] && { anchor=$i; known=1; }
         # A vacating rename clears the claim it moved — but only when there is
         # one claim to move. With two already live, a rename takes one of them
         # and leaves the other, so which one this id now names is exactly the
         # question the refusal exists to refuse; clearing here would answer it
         # arbitrarily.
-        [[ "$rsrc" == "$queried" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
+        if [[ "$rsok" == y && "$rsrc" == "$queried" ]]; then
+          src_at+=( "$((i + 1))" )
+          (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
+        fi
       else
-        [[ "$rdst" == "$qgroup" ]] && known=1
-        [[ "$rsrc" == "$qgroup" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
+        [[ "$rdok" == y && "$rdst" == "$qgroup" ]] && known=1
+        [[ "$rsok" == y && "$rsrc" == "$qgroup" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
       fi
       continue
     fi
@@ -431,20 +438,45 @@ alloc_resolve_spec() {
     echo "error: duplicate spec identity '$queried' in the registry — claimed by records $((dup_a + 1)) and $((dup_b + 1)); refusing to answer" >&2
     return 1
   fi
+  local disclose_src=0 disclose_dst=0
+  if (( ! known )) && (( ${#src_at[@]} )); then
+    if (( ${#src_at[@]} > 1 )); then
+      echo "error: spec id '$queried' is vacated by more than one rename record and allocated by none — records ${src_at[0]} and ${src_at[1]}; refusing to answer" >&2
+      return 1
+    fi
+    known=1; disclose_src="${src_at[0]}"
+  fi
   local current="$queried"
   for ((i=0; i<n; i++)); do
     (( anchor >= 0 && i <= anchor )) && continue
     [[ -n "${rn[$((i + 1))]:-}" ]] || continue
     IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
-    [[ "$rsok" == y && "$rdok" == y ]] || continue
+    [[ "$rsok" == y ]] || continue
     if [[ "$rk" == spec ]]; then
-      [[ "$rsrc" == "$current" ]] && current="$rdst"
+      [[ "$rsrc" == "$current" ]] || continue
     else
-      [[ "$current" == "$rsrc"/* ]] && current="$rdst/${current#*/}"
+      [[ "$current" == "$rsrc"/* ]] || continue
+    fi
+    # The record applies to this id but names a destination the registry cannot
+    # represent. Reporting the pre-rename name as though the record said nothing
+    # is the confidently-wrong answer; the walk stays put and discloses instead.
+    if [[ "$rdok" != y ]]; then
+      disclose_dst=$((i + 1))
+      continue
+    fi
+    if [[ "$rk" == spec ]]; then
+      current="$rdst"
+    else
+      current="$rdst/${current#*/}"
     fi
   done
   (( known )) || { echo "error: spec id '$queried' not allocated" >&2; return 1; }
   printf '%s\n' "$current"
+  (( disclose_src )) && \
+    echo "note: $queried derives from an unallocated rename source (record $disclose_src)" >&2
+  (( disclose_dst )) && \
+    echo "note: $queried stops at a rename whose destination the registry cannot represent (record $disclose_dst)" >&2
+  return 0
 }
 
 # alloc_valid_ord <tok> — exit 0 iff <tok> is an ordinal this allocator can
@@ -504,15 +536,18 @@ alloc_resolve_issue() {
   fi
   local anchor=-1 known=0
   dup_a=-1; dup_b=-1
+  local -a src_at=()
   for ((i=0; i<n; i++)); do
     if [[ -n "${rn[$((i + 1))]:-}" ]]; then
       IFS=$'\t' read -r _ rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
-      [[ "$rsok" == y && "$rdok" == y ]] || continue
-      (( rdst == target )) && { anchor=$i; known=1; }
+      [[ "$rdok" == y ]] && (( rdst == target )) && { anchor=$i; known=1; }
       # A rename vacates the ordinal — but only when there is a single holder to
       # move. Two live claims cannot be told apart by a rename that moves one of
       # them, so the contradiction stands rather than being cleared.
-      (( rsrc == target )) && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
+      if [[ "$rsok" == y ]] && (( rsrc == target )); then
+        src_at+=( "$((i + 1))" )
+        (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
+      fi
       continue
     fi
     read -r c1 c2 c3 _ <<< "${lines[i]}"
@@ -528,16 +563,34 @@ alloc_resolve_issue() {
     echo "error: duplicate issue ordinal '$target' in the registry — claimed by records $((dup_a + 1)) and $((dup_b + 1)); refusing to answer" >&2
     return 1
   fi
+  local disclose_src=0 disclose_dst=0
+  if (( ! known )) && (( ${#src_at[@]} )); then
+    if (( ${#src_at[@]} > 1 )); then
+      echo "error: issue ordinal '$target' is vacated by more than one rename record and allocated by none — records ${src_at[0]} and ${src_at[1]}; refusing to answer" >&2
+      return 1
+    fi
+    known=1; disclose_src="${src_at[0]}"
+  fi
   local current="$target"
   for ((i=0; i<n; i++)); do
     (( anchor >= 0 && i <= anchor )) && continue
     [[ -n "${rn[$((i + 1))]:-}" ]] || continue
     IFS=$'\t' read -r _ rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
-    [[ "$rsok" == y && "$rdok" == y ]] || continue
-    (( rsrc == current )) && current="$rdst"
+    [[ "$rsok" == y ]] || continue
+    (( rsrc == current )) || continue
+    if [[ "$rdok" != y ]]; then
+      disclose_dst=$((i + 1))
+      continue
+    fi
+    current="$rdst"
   done
   (( known )) || { echo "error: issue '$queried' not allocated" >&2; return 1; }
   printf '%s\n' "$current"
+  (( disclose_src )) && \
+    echo "note: $target derives from an unallocated rename source (record $disclose_src)" >&2
+  (( disclose_dst )) && \
+    echo "note: $target stops at a rename whose destination the registry cannot represent (record $disclose_dst)" >&2
+  return 0
 }
 
 # The widest ordinal this allocator will compute with, in digits. One value

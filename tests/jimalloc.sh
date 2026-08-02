@@ -261,7 +261,7 @@ case_jimalloc_resolve_spec_source_known_discloses() {
   assert_exit  "rc"                0         "$RC"
   assert_eq    "current referent"  "ui/007"  "$OUT"
   assert_match "discloses the unallocated source" \
-               "unallocated rename source (record 1)" "$ERR"
+               "unallocated rename source .record 1." "$ERR"
 }
 
 # AC 7: an id no record mentions at all still errors — source-known widens what
@@ -294,7 +294,7 @@ case_jimalloc_resolve_issue_source_known_discloses() {
   assert_exit  "rc"               0        "$RC"
   assert_eq    "current referent" "8"      "$OUT"
   assert_match "discloses the unallocated source" \
-               "unallocated rename source (record 1)" "$ERR"
+               "unallocated rename source .record 1." "$ERR"
 }
 
 case_jimalloc_resolve_issue_over_wide_source_keeps_dest_claim() {
