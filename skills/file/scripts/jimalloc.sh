@@ -3157,6 +3157,137 @@ alloc_reconcile_issue() {
   fi
 }
 
+# alloc_group_redirect <group>   (specs log on stdin) — print the name <group>
+# now answers to, which is <group> itself when nothing renamed it away.
+alloc_group_redirect() {
+  local group="$1" current="$1" k v
+  while IFS=$'\t' read -r k v; do
+    [[ "$k" == "$group" ]] && current="$v"
+  done < <(alloc_group_alias_map)
+  printf '%s\n' "$current"
+}
+
+# alloc_live_claim_set   (specs log on stdin) → fills the caller's `live` array
+#   The replay's LIVE rows as a set, for a corroborating writer that only needs
+#   to know what is claimed right now.
+alloc_live_claim_set() {
+  local tag ra
+  while IFS=$'\t' read -r tag ra _; do
+    [[ "$tag" == LIVE ]] && live["$ra"]=1
+  done < <(alloc_spec_replay)
+}
+
+# alloc_partition_spec_publish_builder <cur_specs> <cur_issues> <who> <date> <pair...>
+#   The spec-renumber emission decision (an alloc_publish builder). Each pair is
+#   "<old-id>\t<new-id>\t<slug>"; per pair it appends a `spec allocate` for the
+#   destination and a `spec rename` moving the source onto it, preceded by a
+#   `group allocate` for any destination group the registry does not hold.
+#
+#   CORROBORATION RUNS HERE, not at the call site, because here is inside the CAS
+#   window: alloc_publish re-invokes this builder on every attempt against freshly
+#   read logs, so a destination claimed by a concurrent clone between the check and
+#   the commit is caught by the attempt that would have overwritten it. A refusal
+#   returns 1 with the conflict named, and nothing is published at all — the batch
+#   is all-or-none in the failure direction too.
+alloc_partition_spec_publish_builder() {
+  local cur_specs="$1" who="$3"; shift 3
+  local date="$1"; shift
+  local -A live=()
+  alloc_live_claim_set < <(printf '%s\n' "$cur_specs")
+  local pair old new slug oldc newc grp newrecs="" payload=""
+  local -A seen_new=() seen_old=() claimed=()
+  for pair in "$@"; do
+    IFS=$'\t' read -r old new slug <<< "$pair"
+    oldc="$(alloc_canon_specid "$old")" || {
+      echo "error: partition-batch refuses source '$(alloc_sanitize_field "$old")' — not a spec id the registry can represent" >&2; return 1; }
+    newc="$(alloc_canon_specid "$new")" || {
+      echo "error: partition-batch refuses destination '$(alloc_sanitize_field "$new")' — not a spec id the registry can represent" >&2; return 1; }
+    alloc_valid_token "$slug" || {
+      echo "error: partition-batch refuses slug '$(alloc_sanitize_field "$slug")' for '$newc'" >&2; return 1; }
+    if [[ "$oldc" == "$newc" ]]; then
+      echo "error: partition-batch refuses '$oldc' — a rename onto its own name records nothing" >&2
+      return 1
+    fi
+    if [[ -z "${live[$oldc]:-}" ]]; then
+      echo "error: partition-batch refuses '$oldc' — the registry holds no live claim on it (never allocated, or already moved away)" >&2
+      return 1
+    fi
+    if [[ -n "${live[$newc]:-}" ]]; then
+      echo "error: partition-batch refuses '$newc' — destination already claimed in the registry" >&2
+      return 1
+    fi
+    if [[ -n "${seen_old[$oldc]:-}" || -n "${seen_new[$newc]:-}" ]]; then
+      echo "error: partition-batch refuses the pair set — '$oldc → $newc' repeats an identity named earlier in the same batch" >&2
+      return 1
+    fi
+    seen_old["$oldc"]=1; seen_new["$newc"]=1
+    grp="${newc%/*}"
+    if [[ -z "${claimed[$grp]:-}" ]]; then
+      local redirect
+      redirect="$(printf '%s\n' "$cur_specs" | alloc_group_redirect "$grp")"
+      if [[ "$redirect" != "$grp" ]]; then
+        echo "error: group renamed — '$grp' is now '$redirect'; re-run the batch against that name" >&2
+        return 1
+      fi
+      printf '%s' "$cur_specs" | alloc_group_present "$grp" \
+        || newrecs+="$(alloc_encode_allocate_group "$grp" "$date" "$who")"$'\n'
+      claimed["$grp"]=1
+    fi
+    newrecs+="$(alloc_encode_allocate_spec "$newc" "$slug" "$date" "$who")"$'\n'
+    newrecs+="$(alloc_encode_rename_spec "$oldc" "$newc" "$date" "$who")"$'\n'
+    payload+="${oldc}"$'\t'"${newc}"$'\n'
+  done
+  PUB_PAYLOAD="${payload%$'\n'}"
+  if [[ -n "$cur_specs" ]]; then
+    PUB_SPEC="${cur_specs}"$'\n'"${newrecs%$'\n'}"
+  else
+    PUB_SPEC="${newrecs%$'\n'}"
+  fi
+  return 0
+}
+
+# alloc_partition_group_publish_builder <cur_specs> <cur_issues> <who> <old> <new> <date>
+#   The group-rename emission decision. One record moves every claim under <old>
+#   at once, so corroboration is per moved claim: the destination name must hold
+#   none of the ordinals that are about to land on it — the exact shape the
+#   integrity classifier reports as a duplicate, refused here before it can be
+#   written. Same in-CAS placement as the spec builder.
+alloc_partition_group_publish_builder() {
+  local cur_specs="$1" who="$3"; shift 3
+  local old="$1" new="$2" date="$3"
+  if [[ "$old" == "$new" ]]; then
+    echo "error: partition-batch refuses '$old' — a group rename onto its own name records nothing" >&2
+    return 1
+  fi
+  local redirect
+  redirect="$(printf '%s\n' "$cur_specs" | alloc_group_redirect "$old")"
+  if [[ "$redirect" != "$old" ]]; then
+    echo "error: group renamed — '$old' is now '$redirect'; re-run the batch against that name" >&2
+    return 1
+  fi
+  if ! printf '%s\n' "$cur_specs" | alloc_group_has_records "$old"; then
+    echo "error: partition-batch refuses '$old' — the registry holds no record for it" >&2
+    return 1
+  fi
+  local -A live=()
+  alloc_live_claim_set < <(printf '%s\n' "$cur_specs")
+  local key
+  for key in "${!live[@]}"; do
+    [[ "$key" == "$old"/* ]] || continue
+    if [[ -n "${live[$new/${key##*/}]:-}" ]]; then
+      echo "error: partition-batch refuses '$old → $new' — '$new/${key##*/}' is already claimed" >&2
+      return 1
+    fi
+  done
+  PUB_PAYLOAD="${old}"$'\t'"${new}"
+  if [[ -n "$cur_specs" ]]; then
+    PUB_SPEC="${cur_specs}"$'\n'"$(alloc_encode_rename_group "$old" "$new" "$date" "$who")"
+  else
+    PUB_SPEC="$(alloc_encode_rename_group "$old" "$new" "$date" "$who")"
+  fi
+  return 0
+}
+
 # alloc_reconcile_spec_publish_builder <cur_specs> <cur_issues> <who> <pending...>
 #   The spec-reconcile publish decision (an alloc_publish builder): realize the
 #   pending provisional identities against THIS attempt's specs.log, append one
@@ -3290,6 +3421,63 @@ cmd_resolve() {
   esac
 }
 
+# cmd_partition_batch spec  <date>            (renumber pairs on stdin)
+# cmd_partition_batch group <old> <new> <date>
+#   The partition lifecycle's emission surface. Spec mode reads TAB-separated
+#   "<old-id>\t<new-id>\t<slug>" rows and publishes the whole set as one
+#   all-or-none commit; group mode publishes the single record that moves a whole
+#   group. Prints the pairs it published, so a caller can echo what landed.
+#
+#   Every corroboration decision lives in the builder, which alloc_publish
+#   re-invokes per CAS attempt — the freshness AC 5 asks for comes from the
+#   existing retry loop rather than from a second pre-flight that could go stale.
+cmd_partition_batch() {
+  local mode="${1:-}"
+  case "$mode" in
+    spec)
+      local date="${2:-}"
+      if [[ -z "$date" ]]; then
+        echo "error: 'partition-batch spec' requires <date> (renumber pairs on stdin)" >&2
+        return 2
+      fi
+      [[ "$date" =~ ^[0-9]{8}$ ]] || { echo "error: partition-batch date must be YYYYMMDD" >&2; return 2; }
+      local -a pairs=()
+      local old new slug
+      # `|| [[ -n "$old" ]]` keeps a final row that arrived without its newline —
+      # a caller piping a here-string or a command substitution is the normal
+      # case, and silently dropping its last pair would publish half a split.
+      while IFS=$'\t' read -r old new slug || [[ -n "$old" ]]; do
+        [[ -n "$old" ]] || continue
+        pairs+=( "${old}"$'\t'"${new}"$'\t'"${slug}" )
+      done
+      if (( ! ${#pairs[@]} )); then
+        echo "error: partition-batch read no renumber pairs on stdin" >&2
+        return 2
+      fi
+      alloc_in_repo || return 1
+      alloc_preflight || return 1
+      alloc_publish alloc_partition_spec_publish_builder "$date" "${pairs[@]}"
+      ;;
+    group)
+      local old="${2:-}" new="${3:-}" date="${4:-}"
+      if [[ -z "$old" || -z "$new" || -z "$date" ]]; then
+        echo "error: 'partition-batch group' requires <old> <new> <date>" >&2
+        return 2
+      fi
+      alloc_valid_token "$old" || { echo "error: invalid group '$(alloc_sanitize_field "$old")'" >&2; return 1; }
+      alloc_valid_token "$new" || { echo "error: invalid group '$(alloc_sanitize_field "$new")'" >&2; return 1; }
+      [[ "$date" =~ ^[0-9]{8}$ ]] || { echo "error: partition-batch date must be YYYYMMDD" >&2; return 2; }
+      alloc_in_repo || return 1
+      alloc_preflight || return 1
+      alloc_publish alloc_partition_group_publish_builder "$old" "$new" "$date"
+      ;;
+    *)
+      echo "error: partition-batch mode must be 'spec' or 'group'" >&2
+      return 2
+      ;;
+  esac
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 usage() {
@@ -3307,6 +3495,9 @@ usage:
   jimalloc.sh seed     [--apply]                 preview (or --apply) a one-time registry bootstrap
   jimalloc.sh reconcile issue [--apply]          realize pending provisionals (stdin) into real ids
   jimalloc.sh reconcile spec  [--apply]          realize pending provisional spec identities (stdin)
+  jimalloc.sh partition-batch spec  <date>       publish a renumber pair set (stdin: old<TAB>new<TAB>slug)
+  jimalloc.sh partition-batch group <old> <new> <date>
+                                                 publish one group rename
   jimalloc.sh sweep                              read-only: report tree-vs-registry drift + non-coverage
   jimalloc.sh catch-up [--apply]                 preview (or --apply) the records a non-empty registry is missing
   jimalloc.sh -c <path> <subcmd>                 use <path> instead of ./jimconf.toml
@@ -3340,6 +3531,7 @@ main() {
     sweep)     cmd_sweep     "$@" ;;
     catch-up)  cmd_catchup   "$@" ;;
     reconcile) cmd_reconcile "$@" ;;
+    partition-batch) cmd_partition_batch "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
       usage
