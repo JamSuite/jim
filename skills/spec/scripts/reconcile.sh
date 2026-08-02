@@ -104,21 +104,34 @@ field_value() {
   ' "$1" 2>/dev/null
 }
 
-# is_prov_identity <name>
-#   Exit 0 iff <name> is the reserved provisional ordinal form the allocator
-#   issues: the prefix, then an 8-digit issuance date, then a slug, the whole
-#   token through jimfile.sh's id boundary. The full grammar is checked here,
-#   not just the prefix, so a malformed directory is skipped with a warning
-#   instead of halting the batch when the allocator rejects it.
-is_prov_identity() {
-  local name="$1" body date slug
-  [[ "$name" == "$PROV_PREFIX"* ]] || return 1
-  body="${name#"$PROV_PREFIX"}"
+# prov_id_boundary <token> — the id boundary as is_prov_token's shared body
+# reaches it. Local adapter: this script crosses the boundary through
+# jimfile.sh, whose rejection message is noise on what is only a shape probe.
+prov_id_boundary() { jf valid-id "$1" >/dev/null 2>&1; }
+
+# is_prov_token <token>
+#   Exit 0 iff <token> is the reserved provisional ordinal form the allocator
+#   issues: the prefix, then an 8-digit issuance date, then a slug, with the
+#   post-prefix body AND the slug alone each carried through the id boundary.
+#   The full grammar is checked here, not just the prefix, so a malformed
+#   directory is skipped with a warning instead of halting the batch when the
+#   allocator rejects it.
+#
+#   SYNC: the function body below is mirrored verbatim in
+#   skills/file/scripts/jimfile.sh and skills/file/scripts/jimalloc.sh. A
+#   tests/jimfile.sh case asserts the three copies are byte-identical — keep
+#   them in lockstep when editing. Each script supplies its own PROV_PREFIX and
+#   prov_id_boundary; the grammar itself lives entirely in the body.
+is_prov_token() {
+  local token="$1" body date slug
+  [[ "$token" == "$PROV_PREFIX"* ]] || return 1
+  body="${token#"$PROV_PREFIX"}"
   [[ -n "$body" ]] || return 1
   date="${body%%-*}"; slug="${body#*-}"
   [[ "$date" =~ ^[0-9]{8}$ ]] || return 1
   [[ -n "$slug" && "$slug" != "$body" ]] || return 1
-  jf valid-id "$body" >/dev/null 2>&1
+  prov_id_boundary "$body" || return 1
+  prov_id_boundary "$slug"
 }
 
 # scan_pending <specs_dir> — emit one row per pending provisional spec dir:
@@ -138,7 +151,7 @@ scan_pending() {
     for entry in "$gdir$PROV_PREFIX"*/; do
       [[ -d "$entry" ]] || continue
       base="$(basename "$entry")"
-      if ! is_prov_identity "$base"; then
+      if ! is_prov_token "$base"; then
         echo "warning: $group/$base — not a provisional identity the allocator issues; skipped" >&2
         continue
       fi

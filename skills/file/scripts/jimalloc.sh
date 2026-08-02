@@ -67,7 +67,7 @@ CONFIG_FILE=""
 # (allocated ordinals are ^[0-9]+$), so the two can never be confused and a
 # provisional can never enter the registry high-water. Uppercase, so it cannot
 # collide with a jimfile.sh slug (slugs are lowercase).
-ALLOC_PROV_PREFIX="P-"
+PROV_PREFIX="P-"
 
 # ─── Section: Record layer (pure — operates on a log, no git) ────────────────
 #
@@ -154,29 +154,54 @@ alloc_valid_token() {
 # form, so nothing malformed can pass itself off as reserved.
 alloc_is_prov_form() {
   local name="$1" tok
-  [[ "$name" == "$ALLOC_PROV_PREFIX"* ]] || return 1
-  tok="${name#"$ALLOC_PROV_PREFIX"}"
+  [[ "$name" == "$PROV_PREFIX"* ]] || return 1
+  tok="${name#"$PROV_PREFIX"}"
   [[ -n "$tok" ]] || return 1
   alloc_valid_token "$tok"
 }
 
+# prov_id_boundary <token> — the id boundary as is_prov_token's shared body
+# reaches it. Local adapter: the allocator crosses the boundary through its
+# memoized token check, so a repeated probe costs no extra subprocess.
+prov_id_boundary() { alloc_valid_token "$1"; }
+
+# is_prov_token <token>
+#   Exit 0 iff <token> is the reserved provisional ordinal form the allocator
+#   issues: the prefix, then an 8-digit issuance date, then a slug, with the
+#   post-prefix body AND the slug alone each carried through the id boundary.
+#   The token is the whole ordinal slot — a spec bound while the coordination
+#   point was unreachable wears it as its directory name, so there is no
+#   separate ordinal and slug to compose. Grammar-distinct from a real ordinal
+#   by construction: no token satisfies both.
+#
+#   SYNC: the function body below is mirrored verbatim in
+#   skills/file/scripts/jimfile.sh and skills/spec/scripts/reconcile.sh. A
+#   tests/jimfile.sh case asserts the three copies are byte-identical — keep
+#   them in lockstep when editing. Each script supplies its own PROV_PREFIX and
+#   prov_id_boundary; the grammar itself lives entirely in the body.
+is_prov_token() {
+  local token="$1" body date slug
+  [[ "$token" == "$PROV_PREFIX"* ]] || return 1
+  body="${token#"$PROV_PREFIX"}"
+  [[ -n "$body" ]] || return 1
+  date="${body%%-*}"; slug="${body#*-}"
+  [[ "$date" =~ ^[0-9]{8}$ ]] || return 1
+  [[ -n "$slug" && "$slug" != "$body" ]] || return 1
+  prov_id_boundary "$body" || return 1
+  prov_id_boundary "$slug"
+}
+
 # alloc_valid_provid <id> — exit 0 iff <id> is "<group>/P-<date>-<slug>": exactly
 # one '/', a boundary-valid group, and an ordinal slot in the reserved
-# provisional form whose body splits into an 8-digit issuance date and a
-# boundary-valid slug. Grammar-distinct from alloc_valid_specid by construction:
+# provisional form. Grammar-distinct from alloc_valid_specid by construction:
 # no id satisfies both.
 alloc_valid_provid() {
-  local id="$1" grp tok body date slug
+  local id="$1" grp tok
   [[ "$id" == */* ]] || return 1
   grp="${id%/*}"; tok="${id##*/}"
   [[ "$grp" == *"/"* ]] && return 1
   alloc_valid_token "$grp" || return 1
-  alloc_is_prov_form "$tok" || return 1
-  body="${tok#"$ALLOC_PROV_PREFIX"}"
-  date="${body%%-*}"; slug="${body#*-}"
-  [[ "$date" =~ ^[0-9]{8}$ ]] || return 1
-  [[ -n "$slug" && "$slug" != "$body" ]] || return 1
-  alloc_valid_token "$slug"
+  is_prov_token "$tok"
 }
 
 # alloc_valid_specid <id> — exit 0 iff <id> is "<group>/<NNN>": exactly one '/',
@@ -875,7 +900,7 @@ alloc_reconcile_realize_spec() {
     fi
     seen["$pend"]=1
     g="${pend%/*}"; tok="${pend##*/}"
-    body="${tok#"$ALLOC_PROV_PREFIX"}"
+    body="${tok#"$PROV_PREFIX"}"
     p_id+=( "$pend" )
     p_group+=( "${alias[$g]:-$g}" )
     p_date+=( "${body%%-*}" )
@@ -1771,7 +1796,7 @@ alloc_defer_to_provisional() {
 # construction (prefix over a boundary-valid token stays a valid token), so it
 # can never equal an allocated ordinal.
 alloc_prov_ordinal() {
-  printf '%s%s' "$ALLOC_PROV_PREFIX" "$1"
+  printf '%s%s' "$PROV_PREFIX" "$1"
 }
 
 # alloc_provisional_issue <subject> — issue a provisional issue identifier
@@ -2273,7 +2298,7 @@ alloc_sweep_pending_count() {
       [[ "$(basename "$f")" == "INDEX.md" ]] && continue
       num="$(alloc_seed_field "$f" num)"
       alloc_is_prov_form "$num" && n=$((n + 1))
-    done < <(grep -l -- "^num:[[:space:]]*['\"]\{0,1\}$ALLOC_PROV_PREFIX" "$dir"/*.md 2>/dev/null)
+    done < <(grep -l -- "^num:[[:space:]]*['\"]\{0,1\}$PROV_PREFIX" "$dir"/*.md 2>/dev/null)
   fi
   printf '%d' "$n"
 }
@@ -2784,7 +2809,7 @@ alloc_reconcile_spec_publish_builder() {
     mapping+="${pend}"$'\t'"${id}"$'\t'"${state}"$'\n'
     [[ "$state" == new ]] || continue
     grp="${id%/*}"
-    tok="${pend##*/}"; body="${tok#"$ALLOC_PROV_PREFIX"}"
+    tok="${pend##*/}"; body="${tok#"$PROV_PREFIX"}"
     date="${body%%-*}"; slug="${body#*-}"
     if [[ -z "${claimed[$grp]:-}" ]] && ! printf '%s' "$cur_specs" | alloc_group_present "$grp"; then
       newrecs+="$(alloc_encode_allocate_group "$grp" "$gdate" "$who")"$'\n'

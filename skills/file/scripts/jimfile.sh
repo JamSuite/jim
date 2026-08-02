@@ -375,7 +375,38 @@ cmd_next_id() {
 # The reserved prefix a provisional identity's ordinal slot carries. The grammar
 # is the allocator's; it is named here because a spec dir bound offline wears it
 # as a directory name and this boundary has to recognize one.
-SPEC_PROV_PREFIX="P-"
+PROV_PREFIX="P-"
+
+# prov_id_boundary <token> — the id boundary as is_prov_token's shared body
+# reaches it. Local adapter: this script owns is_valid_id, whose rejection
+# message is noise on what is only a shape probe.
+prov_id_boundary() { is_valid_id "$1" >/dev/null 2>&1; }
+
+# is_prov_token <token>
+#   Exit 0 iff <token> is the reserved provisional ordinal form the allocator
+#   issues: the prefix, then an 8-digit issuance date, then a slug, with the
+#   post-prefix body AND the slug alone each carried through the id boundary.
+#   The token is the whole ordinal slot — a spec bound while the coordination
+#   point was unreachable wears it as its directory name, so there is no
+#   separate ordinal and slug to compose. Grammar-distinct from a real ordinal
+#   by construction: no token satisfies both.
+#
+#   SYNC: the function body below is mirrored verbatim in
+#   skills/file/scripts/jimalloc.sh and skills/spec/scripts/reconcile.sh. A
+#   tests/jimfile.sh case asserts the three copies are byte-identical — keep
+#   them in lockstep when editing. Each script supplies its own PROV_PREFIX and
+#   prov_id_boundary; the grammar itself lives entirely in the body.
+is_prov_token() {
+  local token="$1" body date slug
+  [[ "$token" == "$PROV_PREFIX"* ]] || return 1
+  body="${token#"$PROV_PREFIX"}"
+  [[ -n "$body" ]] || return 1
+  date="${body%%-*}"; slug="${body#*-}"
+  [[ "$date" =~ ^[0-9]{8}$ ]] || return 1
+  [[ -n "$slug" && "$slug" != "$body" ]] || return 1
+  prov_id_boundary "$body" || return 1
+  prov_id_boundary "$slug"
+}
 
 # is_spec_dir_basename <name>
 #   Exit 0 iff <name> is a basename a spec directory can carry: a real ordinal
@@ -389,29 +420,12 @@ is_spec_dir_basename() {
   [[ "$name" == *"/"* ]]  && return 1
   [[ "$name" == *".."* ]] && return 1
   [[ "$name" =~ ^[0-9]{3,15}(-.+)?$ ]] && return 0
-  if [[ "$name" == "$SPEC_PROV_PREFIX"* ]]; then
-    tok="${name#"$SPEC_PROV_PREFIX"}"
+  if [[ "$name" == "$PROV_PREFIX"* ]]; then
+    tok="${name#"$PROV_PREFIX"}"
     [[ -n "$tok" ]] || return 1
     is_valid_id "$tok" >/dev/null 2>&1 && return 0
   fi
   return 1
-}
-
-# is_prov_basename <name>
-#   Exit 0 iff <name> is the reserved provisional ordinal form: the prefix, then
-#   an 8-digit issuance date, then a slug, the whole token through the id
-#   boundary. A spec bound while the coordination point was unreachable wears
-#   this as its directory name, and the token is the entire basename — there is
-#   no separate ordinal and slug to compose.
-is_prov_basename() {
-  local name="$1" body date slug
-  [[ "$name" == "$SPEC_PROV_PREFIX"* ]] || return 1
-  body="${name#"$SPEC_PROV_PREFIX"}"
-  [[ -n "$body" ]] || return 1
-  date="${body%%-*}"; slug="${body#*-}"
-  [[ "$date" =~ ^[0-9]{8}$ ]] || return 1
-  [[ -n "$slug" && "$slug" != "$body" ]] || return 1
-  is_valid_id "$body" >/dev/null 2>&1
 }
 
 # spec_ordinal_holder <specs_dir> <group> <ordinal> [<exclude_basename>]
@@ -611,7 +625,7 @@ cmd_mv_spec_id() {
   local new_base
   if [[ -z "$new_name" ]]; then
     # Three-argument form: the provisional token IS the basename.
-    if ! is_prov_basename "$new_id"; then
+    if ! is_prov_token "$new_id"; then
       echo "error: mv-spec-id target rejected — '$new_id' (the 3-argument form takes" \
            "a provisional token only; use <new-id> <name> for a real ordinal)" >&2
       return 1
@@ -927,7 +941,7 @@ cmd_path() {
       is_valid_slug "$group" || return 1
       local base
       if [[ -z "$name" ]]; then
-        if ! is_prov_basename "$id"; then
+        if ! is_prov_token "$id"; then
           echo "error: path $kind target rejected — '$id' (the 2-argument form takes" \
                "a provisional token only; use <id> <name> for a real ordinal)" >&2
           return 1
