@@ -276,7 +276,7 @@ flowchart TD
    7-token / unknown-verb strictness fixtures.
    **Verify:** `bash tests/jimalloc.sh rename`
 
-3. [ ] Per-side width gating + source-known disclosure in the resolver
+3. [x] Per-side width gating + source-known disclosure in the resolver
    (anchor on the representable side; stderr note per Interface Contracts;
    phantom and incoherent-log fixtures stay loud). Depends on task 2.
    **Verify:** `bash tests/jimalloc.sh resolve`

@@ -347,6 +347,55 @@ alloc_rename_scan() {
   done
 }
 
+# alloc_rename_verbs — the kind/verb pairs this build knows, one per line. The
+# scan rule decides what a KNOWN record must look like; this decides which pairs
+# are known at all, so the two answers cannot drift apart.
+alloc_known_verbs() {
+  printf '%s\n' 'spec allocate' 'spec rename' 'group allocate' 'group rename' \
+                'issue allocate' 'issue rename'
+}
+
+# alloc_rename_malformed_count <spec|group|issue>  (log on stdin) → integer
+#   How many records carry a rename verb of the requested selector but not its
+#   one shape. These name no identity to compare a tree against, so they are
+#   non-coverage in the strictest sense — a log full of them must not report
+#   like a clean one. Counted by subtraction from the scan rule's own output, so
+#   the count and the parse can never disagree about what "the one shape" is.
+alloc_rename_malformed_count() {
+  local want="$1" line c1 c2 all=0 good
+  local -a lines=(); mapfile -t lines
+  local i n=${#lines[@]}
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 _ <<< "${lines[i]}"
+    [[ "$c2" == rename ]] || continue
+    case "$want:$c1" in
+      spec:spec|spec:group|group:group|issue:issue) all=$((all + 1)) ;;
+    esac
+  done
+  good=0
+  if (( n )); then
+    good="$(printf '%s\n' "${lines[@]}" | alloc_rename_scan "$want" | grep -c . || true)"
+  fi
+  printf '%d' "$(( all - good ))"
+}
+
+# alloc_unknown_verb_count  (log on stdin) → integer
+#   How many records name a kind/verb pair this build does not know. Reported
+#   apart from the malformed count on purpose: an unknown verb is how a later
+#   record kind arrives, and a reader that folded it into "malformed" would be
+#   claiming the log is broken when it is merely newer. Blank lines are not
+#   records and do not count.
+alloc_unknown_verb_count() {
+  local line c1 c2 n=0 known
+  known="$(alloc_known_verbs)"
+  while IFS= read -r line; do
+    read -r c1 c2 _ <<< "$line"
+    [[ -n "$c1" ]] || continue
+    printf '%s\n' "$known" | grep -qxF "$c1 $c2" || n=$((n + 1))
+  done
+  printf '%d' "$n"
+}
+
 # alloc_rename_index  (log on stdin)  → fills the caller's `rn` associative array
 #   Load alloc_rename_scan's rows keyed by record position, for a consumer that
 #   must walk the log in file order and meet each rename where it sits. The
@@ -1339,11 +1388,52 @@ alloc_classify_emit() {
 alloc_classify_spec() {
   local derived="$1"
   local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4 c5
+  local n=${#lines[@]} i c1 c2 c3 c4
   local -A live_at=() live_slug=() src_only=() reg_groups=() unreadable=()
   local canon key g unreadable_n=0
+  local -A rn=()
+  local rk rsrc rsok rdst rdok
+  if (( n )); then
+    alloc_rename_index spec < <(printf '%s\n' "${lines[@]}")
+    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_rename_malformed_count spec) ))
+  fi
   for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
+    if [[ -n "${rn[$((i + 1))]:-}" ]]; then
+      IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
+      # A rename onto its own name says nothing. Replaying it as a move vacates
+      # the claim on arrival and reports the arrival as a duplicate of itself —
+      # so it is skipped as the no-op it is. The emitter refuses to write one;
+      # this is the fail-safe reading of one that arrives anyway.
+      [[ "$rsok" == y && "$rdok" == y && "$rsrc" != "$rdst" ]] || continue
+      if [[ "$rk" == spec ]]; then
+        src_only["$rsrc"]=1
+        [[ -n "${live_at[$rsrc]:-}" ]] || continue
+        if [[ -n "${live_at[$rdst]:-}" ]]; then
+          alloc_classify_emit DUP-ORD spec "$rdst" "records ${live_at[$rdst]} and $((i + 1))"
+        else
+          # The claim's provenance becomes the record that moved it. Carrying
+          # the allocate position forward would cite a record about a different
+          # identity by the time anything collides with this one.
+          live_at["$rdst"]=$((i + 1)); live_slug["$rdst"]="${live_slug[$rsrc]}"
+        fi
+        unset 'live_at[$rsrc]' 'live_slug[$rsrc]'
+      else
+        for key in "${!live_at[@]}"; do
+          [[ "$key" == "$rsrc"/* ]] || continue
+          src_only["$key"]=1
+          if [[ -n "${live_at[$rdst/${key##*/}]:-}" ]]; then
+            alloc_classify_emit DUP-ORD spec "$rdst/${key##*/}" \
+              "records ${live_at[$rdst/${key##*/}]} and $((i + 1))"
+          else
+            live_at["$rdst/${key##*/}"]=$((i + 1))
+            live_slug["$rdst/${key##*/}"]="${live_slug[$key]}"
+          fi
+          unset 'live_at[$key]' 'live_slug[$key]'
+        done
+      fi
+      continue
+    fi
+    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
     if [[ "$c1" == spec && "$c2" == allocate ]]; then
       # A record that cannot even name an identity is counted, never silently
       # dropped: a registry full of unreadable records must not report like a
@@ -1362,25 +1452,6 @@ alloc_classify_spec() {
         alloc_classify_emit UNREADABLE spec "$canon" "record $((i + 1)) has an unusable slug"
       fi
       live_at["$canon"]=$((i + 1)); live_slug["$canon"]="$c4"
-    elif [[ "$c1" == spec && "$c2" == rename ]]; then
-      canon="$(alloc_canon_specid "$c3")" && c4="$(alloc_canon_specid "$c4")" || continue
-      src_only["$canon"]=1
-      [[ -n "${live_at[$canon]:-}" ]] || continue
-      if [[ -n "${live_at[$c4]:-}" ]]; then
-        alloc_classify_emit DUP-ORD spec "$c4" "records ${live_at[$c4]} and $((i + 1))"
-      else
-        live_at["$c4"]="${live_at[$canon]}"; live_slug["$c4"]="${live_slug[$canon]}"
-      fi
-      unset 'live_at[$canon]' 'live_slug[$canon]'
-    elif [[ "$c1" == group && "$c2" == rename ]]; then
-      alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
-      for key in "${!live_at[@]}"; do
-        [[ "$key" == "$c3"/* ]] || continue
-        src_only["$key"]=1
-        live_at["$c4/${key##*/}"]="${live_at[$key]}"
-        live_slug["$c4/${key##*/}"]="${live_slug[$key]}"
-        unset 'live_at[$key]' 'live_slug[$key]'
-      done
     elif [[ "$c1" == group && "$c2" == allocate ]]; then
       alloc_valid_token "$c3" || continue
       reg_groups["$c3"]=1
@@ -1442,7 +1513,28 @@ alloc_classify_issue() {
   local n=${#lines[@]} i c1 c2 c3 c4
   local -A live_at=() live_id=() id_at=() id_ord=() src_only=() unreadable=()
   local ord unreadable_n=0
+  local -A rn=()
+  local rsrc rsok rdst rdok
+  if (( n )); then
+    alloc_rename_index issue < <(printf '%s\n' "${lines[@]}")
+    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_rename_malformed_count issue) ))
+  fi
   for ((i=0; i<n; i++)); do
+    if [[ -n "${rn[$((i + 1))]:-}" ]]; then
+      IFS=$'\t' read -r _ rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
+      [[ "$rsok" == y && "$rdok" == y ]] || continue
+      (( rsrc == rdst )) && continue     # inert: a rename onto its own ordinal
+      src_only["$rsrc"]=1
+      [[ -n "${live_at[$rsrc]:-}" ]] || continue
+      if [[ -n "${live_at[$rdst]:-}" ]]; then
+        alloc_classify_emit DUP-ORD issue "$rdst" "records ${live_at[$rdst]} and $((i + 1))"
+      else
+        live_at["$rdst"]=$((i + 1)); live_id["$rdst"]="${live_id[$rsrc]}"
+        id_ord["${live_id[$rsrc]}"]="$rdst"
+      fi
+      unset 'live_at[$rsrc]' 'live_id[$rsrc]'
+      continue
+    fi
     read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
     if [[ "$c1" == issue && "$c2" == allocate ]]; then
       { [[ "$c3" =~ ^[0-9]+$ ]] && (( ${#c3} <= ALLOC_MAX_ORD_DIGITS )); } \
@@ -1468,19 +1560,6 @@ alloc_classify_issue() {
         continue
       fi
       live_at["$ord"]=$((i + 1)); live_id["$ord"]="$c4"
-    elif [[ "$c1" == issue && "$c2" == rename ]]; then
-      [[ "$c3" =~ ^[0-9]+$ && "$c4" =~ ^[0-9]+$ ]] || continue
-      (( ${#c3} > ALLOC_MAX_ORD_DIGITS || ${#c4} > ALLOC_MAX_ORD_DIGITS )) && continue
-      ord=$((10#$c3)); local dst=$((10#$c4))
-      src_only["$ord"]=1
-      [[ -n "${live_at[$ord]:-}" ]] || continue
-      if [[ -n "${live_at[$dst]:-}" ]]; then
-        alloc_classify_emit DUP-ORD issue "$dst" "records ${live_at[$dst]} and $((i + 1))"
-      else
-        live_at["$dst"]="${live_at[$ord]}"; live_id["$dst"]="${live_id[$ord]}"
-        id_ord["${live_id[$ord]}"]="$dst"
-      fi
-      unset 'live_at[$ord]' 'live_id[$ord]'
     fi
   done
   local -A tree_id=()
@@ -2643,6 +2722,13 @@ cmd_sweep() {
     [[ "$cu" =~ ^[0-9]+$ ]] && unreadable_n=$((unreadable_n + cu))
   done < <(printf '%s\n' "$all_rows" | grep '^CHECKED	unreadable	' || true)
   printf '    unidentifiable-records\t%d\n' "$unreadable_n"
+  # A verb this build does not know is not a broken record — it is how a later
+  # record kind arrives. Counted on its own so the grammar can grow without
+  # every older clone reporting the newer log as damaged.
+  local unknown_n
+  unknown_n=$(( $(printf '%s\n' "$spec_log"  | alloc_unknown_verb_count) +
+                $(printf '%s\n' "$issue_log" | alloc_unknown_verb_count) ))
+  printf '    unknown-verb-records\t%d\n' "$unknown_n"
   # Two records legitimately claiming one (group, slug, date) triple are not
   # drift — both are individually valid, and the allocator itself can mint the
   # pair — but the realize path refuses any pending identity keyed onto that
