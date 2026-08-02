@@ -3152,6 +3152,12 @@ alloc_reconcile_spec_publish_builder() {
     fi
     claimed["$grp"]=1
     newrecs+="$(alloc_encode_allocate_spec "$id" "$slug" "$date" "$who")"$'\n'
+    # The mapping rides the same CAS as the ordinal it names, in that order, so
+    # the destination is established by the time anything reads the record that
+    # points at it — and there is never a commit where the ordinal exists but
+    # the citation that became it does not resolve. The realization's own date
+    # is today's; the issuance date belongs to the allocate record beside it.
+    newrecs+="$(alloc_encode_realize_spec "$pend" "$id" "$gdate" "$who")"$'\n'
   done <<< "$realized"
   PUB_PAYLOAD="${mapping%$'\n'}"
   if [[ -n "$newrecs" ]]; then

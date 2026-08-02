@@ -287,7 +287,7 @@ flowchart TD
    route to unreadable; sweep names unknown verbs distinctly. Depends on 2.
    **Verify:** `bash tests/jimalloc.sh classify`
 
-5. [ ] Add the four encoders (`rename` ×3, `realize`) and the realize parse
+5. [x] Add the four encoders (`rename` ×3, `realize`) and the realize parse
    arm: `resolve spec <P-token>` answers the real ordinal; the folds ignore
    realize sources (explicit high-water fixture); realize records never
    enter rename parsing. Depends on 2.
