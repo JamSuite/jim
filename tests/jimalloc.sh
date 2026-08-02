@@ -3511,6 +3511,158 @@ case_jimalloc_reconcile_still_offline_noop() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
+# ─── Section: lift — ledger events into registry records (real git) ──────────
+
+# lift_ledger <repo> <line...> — write a specs-root ledger holding <line...> as
+# TAB-separated events. The lift's whole input surface, and ordinary branch
+# content: anyone who can commit can write it.
+lift_ledger() {
+  local repo="$1"; shift
+  mkdir -p "$repo/docs/specs"
+  local line
+  : > "$repo/docs/specs/ledger.md"
+  for line in "$@"; do
+    printf '%s\n' "$line" >> "$repo/docs/specs/ledger.md"
+  done
+}
+
+# lift_split_event <when> <pairs-csv> — one partition-finished split event.
+lift_split_event() {
+  printf '1784966720\t%s\tpartition\tfinished\ttier=project;op=split;old=jim;new=core;moved=%s' "$1" "$2"
+}
+
+# AC 12: the lift previews by default — it reports what it would record and
+# publishes nothing.
+case_jimalloc_lift_preview_publishes_nothing() {
+  local repo before
+  repo="$(sweep_repo lift_prev)"
+  before="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'old/001:core/001')"
+  run_jimalloc_in "$repo" lift
+  assert_exit  "rc" 0 "$RC"
+  assert_match "row previewed" '^spec	old/001	core/001	20260725	emit$' "$OUT"
+  assert_eq    "registry untouched" "$before" "$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+}
+
+# AC 12/14: --apply records the pair, marked as retroactive repair and dated the
+# day the identity actually moved — not the day the repair ran.
+case_jimalloc_lift_apply_marks_and_dates() {
+  local repo specs
+  repo="$(sweep_repo lift_apply)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'old/001:core/001')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit "rc" 0 "$RC"
+  specs="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  assert_match "historical date and lift marker" \
+    '^spec rename old/001 core/001 20260725 jim-lift$' "$specs"
+}
+
+# AC 12: re-running emits nothing already present — idempotency is the lift's
+# primary contract now that live emission covers everything after it.
+case_jimalloc_lift_is_idempotent() {
+  local repo before
+  repo="$(sweep_repo lift_idem)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'old/001:core/001')"
+  run_jimalloc_in "$repo" lift --apply
+  before="$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "reported as already held" '	have$' "$OUT"
+  assert_eq   "nothing published" "$before" "$(git -C "$repo" rev-parse refs/heads/jim/registry)"
+}
+
+# AC 12: a tampered pair whose destination the registry never established is
+# refused BY NAME and never emitted — the confused-deputy shape, where content
+# anyone can push would otherwise mint a redirect to a chosen target.
+case_jimalloc_lift_refuses_uncorroborated_destination() {
+  local repo specs
+  repo="$(sweep_repo lift_tampered)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'core/001:attacker/001')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit  "rc" 1 "$RC"
+  assert_match "refused by name" '^spec	core/001	attacker/001	20260725	refused:destination-not-established$' "$OUT"
+  specs="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  assert_eq "nothing minted" "0" "$(printf '%s\n' "$specs" | grep -c '^spec rename ')"
+}
+
+# AC 12: a source the registry still holds a live claim on is not a vacated
+# identity — recording it would move a claim that never moved.
+case_jimalloc_lift_refuses_claimed_source() {
+  local repo
+  repo="$(sweep_repo lift_claimedsrc)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'core/001:core/002')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit  "rc" 1 "$RC"
+  assert_match "refused by name" 'refused:source-claimed' "$OUT"
+}
+
+# AC 12 / security F5: the emit set is recomputed inside the publish builder on
+# every CAS attempt. A row corroborated against one log must be refused against
+# a fresher one where the destination has since been claimed — the preview is
+# advisory, never replayed.
+case_jimalloc_lift_recorroborates_inside_the_builder() {
+  local stale fresh out_stale out_fresh
+  stale="$(printf '%s\n' 'spec allocate core/002 beta 20260726 jane')"
+  fresh="$(printf '%s\n' 'spec allocate core/002 beta 20260726 jane' \
+                         'spec allocate old/001 squatter 20260727 kai')"
+  out_stale="$(source "$SCRIPT_jimalloc"
+    PUB_SPEC=""; PUB_ISSUE=""; PUB_PAYLOAD=""
+    alloc_lift_publish_builder "$stale" "" jane "$(printf 'spec\told/001\tcore/002\t20260725')"
+    printf '%s' "$PUB_PAYLOAD")"
+  out_fresh="$(source "$SCRIPT_jimalloc"
+    PUB_SPEC=""; PUB_ISSUE=""; PUB_PAYLOAD=""
+    alloc_lift_publish_builder "$fresh" "" jane "$(printf 'spec\told/001\tcore/002\t20260725')"
+    printf '%s' "$PUB_PAYLOAD")"
+  assert_match "advisory preview says emit"   '	emit$'                  "$out_stale"
+  assert_match "fresh log refuses the row"    'refused:source-claimed'  "$out_fresh"
+}
+
+# AC 12/17: an element that fails its gate is inert, never fatal — a 2-digit
+# ordinal and a metacharacter-bearing group are dropped while the representable
+# pair beside them still lifts.
+case_jimalloc_lift_gates_elements() {
+  local repo
+  repo="$(sweep_repo lift_gates)"
+  lift_ledger "$repo" \
+    "$(lift_split_event 2026-07-25T08:05:20Z 'old/01:core/001,he^ad/001:core/001,old/002:core/002')"
+  run_jimalloc_in "$repo" lift
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "only the representable pair" "1" "$(printf '%s\n' "$OUT" | grep -c '^spec	')"
+  assert_match "and it is that one" '^spec	old/002	core/002	20260725	emit$' "$OUT"
+}
+
+# AC 2/12: a realization event lifts to the realize kind, not to a rename.
+case_jimalloc_lift_realization_event() {
+  local repo specs
+  repo="$(sweep_repo lift_realize)"
+  lift_ledger "$repo" \
+    "$(printf '1785618342\t2026-08-01T21:05:42Z\tspec\trealized\tmoved=core/P-20260801-alpha:core/001')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit "rc" 0 "$RC"
+  specs="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  assert_match "realize record written" \
+    '^spec realize core/P-20260801-alpha core/001 20260801 jim-lift$' "$specs"
+  run_jimalloc_in "$repo" resolve spec core/P-20260801-alpha
+  assert_eq "provisional resolves" "core/001" "$OUT"
+}
+
+# AC 13: the shape the backfill exists for — a retired group's ordinals all
+# moved away, so the registry must stop offering one it has already spent.
+case_jimalloc_lift_backfill_raises_the_peek_floor() {
+  local repo
+  repo="$(sweep_repo lift_floor)"
+  lift_ledger "$repo" \
+    "$(lift_split_event 2026-07-25T08:05:20Z 'jim/001:core/001,jim/002:core/002,jim/003:ui/001')"
+  run_jimalloc_in "$repo" peek spec jim
+  assert_eq "spent ordinals still on offer" "jim/001" "$OUT"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit "rc" 0 "$RC"
+  run_jimalloc_in "$repo" peek spec jim
+  assert_eq "floor above every spent ordinal" "jim/004" "$OUT"
+  run_jimalloc_in "$repo" sweep
+  assert_exit "sweep still clean" 0 "$RC"
+}
+
 # ─── Section: partition-batch — emission (real git) ──────────────────────────
 
 # run_batch_in <dir> <stdin> <args...> — invoke the allocator in <dir> feeding
