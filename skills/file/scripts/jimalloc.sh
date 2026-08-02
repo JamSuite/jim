@@ -2451,6 +2451,29 @@ cmd_sweep() {
     [[ "$cu" =~ ^[0-9]+$ ]] && unreadable_n=$((unreadable_n + cu))
   done < <(printf '%s\n' "$all_rows" | grep '^CHECKED	unreadable	' || true)
   printf '    unidentifiable-records\t%d\n' "$unreadable_n"
+  # Two records legitimately claiming one (group, slug, date) triple are not
+  # drift — both are individually valid, and the allocator itself can mint the
+  # pair — but the realize path refuses any pending identity keyed onto that
+  # triple, so the ambiguity is named here before someone hits it. Counted by
+  # the same claim-key reader the realize path folds, so the report and the
+  # refusal cannot disagree.
+  local dup_keys dk_n dk_shown
+  dup_keys="$(printf '%s\n' "$spec_log" | alloc_spec_claim_keys | cut -f1 | sort | uniq -d | tr '\n' ' ')"
+  dup_keys="${dup_keys% }"
+  printf '  realize hazards:\n'
+  if [[ -n "$dup_keys" ]]; then
+    dk_n="$(printf '%s\n' "$dup_keys" | wc -w | tr -d ' ')"
+    dk_shown="$(alloc_sanitize_field "$dup_keys")"
+    # The sanitizer caps length, so say when the list was cut rather than
+    # letting a count and a shorter list silently disagree.
+    if [[ "$dk_shown" != "$dup_keys" ]]; then
+      printf '    duplicate-realize-keys\t%d\t%s … (list truncated)\n' "$dk_n" "$dk_shown"
+    else
+      printf '    duplicate-realize-keys\t%d\t%s\n' "$dk_n" "$dk_shown"
+    fi
+  else
+    printf '    duplicate-realize-keys\t0\n'
+  fi
   [[ -n "$drift_rows" ]] && return 3
   return 0
 }

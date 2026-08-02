@@ -2304,6 +2304,7 @@ case_jimalloc_sweep_clean() {
   assert_match "spec denominators"  "^  specs:  3 records vs 3 tree dirs; 2 group records vs 2 tree groups$" "$OUT"
   assert_match "issue denominators" '^  issues: 2 records vs 2 files checked$'               "$OUT"
   assert_eq    "no drift section"   "0" "$(printf '%s\n' "$OUT" | grep -c '^  drift:')"
+  assert_match "zero hazards still named" '^    duplicate-realize-keys	0$' "$OUT"
   assert_eq    "registry untouched" "$before" "$(git -C "$repo" rev-parse refs/heads/jim/registry)"
   assert_eq    "worktree unchanged" "$status_before" "$(git -C "$repo" status --porcelain)"
 }
@@ -2351,6 +2352,20 @@ case_jimalloc_sweep_duplicate_record() {
   run_jimalloc_in "$repo" sweep
   assert_exit  "drift rc" 3 "$RC"
   assert_match "names both claimants" '^    duplicate-ordinal	spec	core/001	records ' "$OUT"
+}
+
+# AC: two records legitimately claiming one (group, slug, date) triple are not
+# drift — both are individually valid — but the realize path refuses any pending
+# identity keyed onto that triple, so the sweep names the ambiguous key as a
+# hazard while still exiting clean.
+case_jimalloc_sweep_names_duplicate_realize_key() {
+  local repo
+  repo="$(sweep_repo sweep_dupkey)"
+  alloc_append_record "$repo" specs.log 'spec allocate core/007 gadget 20260726 jane'
+  alloc_append_record "$repo" specs.log 'spec allocate core/008 gadget 20260726 jane'
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "a hazard is not drift" 0 "$RC"
+  assert_match "names the ambiguous key" '^    duplicate-realize-keys	1	core/gadget/20260726$' "$OUT"
 }
 
 # AC 3: the reserved slots and pending provisionals the comparison skips are
