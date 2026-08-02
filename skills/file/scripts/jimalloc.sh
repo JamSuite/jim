@@ -685,10 +685,14 @@ alloc_durable_issue_id() {
 #
 #   Prints one line per pending id: "<full-id>\t<ordinal>\t<new|have>" (the first
 #   two fields are the provisional→real mapping; the third tells the publish step
-#   which realizations need a new record). Pure — reads the log, touches no git.
-#   Halts (rc 1) on a within-batch duplicate identity (defense-in-depth against a
-#   buggy or hostile consumer surfacing one identity twice) or a pending id that
-#   fails the id boundary. Cross-batch uniqueness stays the consumer's obligation.
+#   which realizations need a new record). A pending id whose durable id the
+#   registry claims twice is refused alone: its row is "<full-id>\t-\tblocked"
+#   (no ordinal — the consumer leaves it provisional) with the claimants named
+#   on stderr, while the rest of the batch still realizes. Pure — reads the
+#   log, touches no git. Halts (rc 1) on a within-batch duplicate identity
+#   (defense-in-depth against a buggy or hostile consumer surfacing one identity
+#   twice) or a pending id that fails the id boundary. Cross-batch uniqueness
+#   stays the consumer's obligation.
 alloc_reconcile_realize() {
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4
@@ -730,21 +734,21 @@ alloc_reconcile_realize() {
       echo "error: duplicate provisional identity within the pending batch: '$pend'" >&2
       return 1
     fi
-    # A registry that claims one durable id twice cannot say which ordinal this
-    # marker already holds, and answering from the later record is how a marker
-    # gets realized onto the wrong one. Scoped to the identities this batch
-    # resolves: a contradiction elsewhere in the log is the sweep's to report,
-    # and must not brick an unrelated realization.
-    if [[ -n "${dup_at[$pend]:-}" ]]; then
-      echo "error: duplicate durable issue id '$pend' in the registry — claimed by records ${dup_at[$pend]}; refusing to realize" >&2
-      return 1
-    fi
     seen["$pend"]=1
   done
-  # Pass 2: emit the mapping in pending (allocation) order.
+  # Pass 2: emit the mapping in pending (allocation) order. A registry that
+  # claims one durable id twice cannot say which ordinal that marker already
+  # holds, and answering from the later record is how a marker gets realized
+  # onto the wrong one — so the refusal is per-identity: a blocked row with no
+  # ordinal, claimants on stderr, and the rest of the batch still lands. The
+  # contradiction is that identity's, not the batch's; the sweep reports it as
+  # duplicate-id drift, and repairing it is the operator's move.
   local ord next=$((max + 1))
   for pend in "$@"; do
-    if [[ -n "${existing[$pend]:-}" ]]; then
+    if [[ -n "${dup_at[$pend]:-}" ]]; then
+      echo "error: duplicate durable issue id '$pend' in the registry — claimed by records ${dup_at[$pend]}; refusing to realize this identity" >&2
+      printf '%s\t-\tblocked\n' "$pend"
+    elif [[ -n "${existing[$pend]:-}" ]]; then
       printf '%s\t%s\thave\n' "$pend" "${existing[$pend]}"
     else
       ord=$next; next=$((next + 1))
@@ -779,10 +783,14 @@ alloc_reconcile_realize() {
 #   contract alloc_next_id_spec carries.
 #
 #   Prints one line per pending id: "<pending-id>\t<group>/<NNN>\t<new|have>".
-#   Pure — reads the log, touches no git. Halts (rc 1) before emitting anything
-#   on a pending id that fails the reserved-form boundary, on a within-batch
-#   duplicate, or on a group whose next ordinal would be wider than the registry
-#   could be rebuilt from. Cross-batch uniqueness stays the consumer's obligation.
+#   A pending identity whose (group, slug, date) triple the registry claims
+#   twice is refused alone: its row is "<pending-id>\t-\tblocked" (no ordinal —
+#   the consumer applies nothing for it) with the claimants named on stderr,
+#   while the rest of the batch still realizes. Pure — reads the log, touches
+#   no git. Halts (rc 1) before emitting anything on a pending id that fails
+#   the reserved-form boundary, on a within-batch duplicate, or on a group
+#   whose next ordinal would be wider than the registry could be rebuilt from.
+#   Cross-batch uniqueness stays the consumer's obligation.
 alloc_reconcile_realize_spec() {
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4 c5
@@ -860,11 +868,14 @@ alloc_reconcile_realize_spec() {
     # Two records claiming this triple leave the readback ambiguous — reporting
     # `have` from the later one is how a resumed realization adopts the wrong
     # ordinal. Two specs sharing a title-slug in one group on one day is a state
-    # the allocator itself can mint, so the halt fires only on the triple this
-    # batch resolves; the sweep reports the rest.
+    # the allocator itself can mint, so the refusal is per-identity: a blocked
+    # row with no ordinal, claimants on stderr, and the rest of the batch still
+    # lands — one ambiguous key must not strand neighbours whose ordinals are
+    # safe.
     if [[ -n "${dup_at[$k]:-}" ]]; then
       echo "error: duplicate spec claim '$k' in the registry — claimed by records ${dup_at[$k]}; refusing to realize '${p_id[i]}'" >&2
-      return 1
+      rows+=( "$(printf '%s\t-\tblocked' "${p_id[i]}")" )
+      continue
     fi
     if [[ -n "${existing[$k]:-}" ]]; then
       rows+=( "$(printf '%s\t%s\thave' "${p_id[i]}" "${existing[$k]}")" )
@@ -2692,8 +2703,9 @@ alloc_reconcile_issue() {
   else
     # Preview: refresh the last-seen coordination ref (best-effort, non-mutating
     # to the shared branch — the peek model), realize read-only, and print the
-    # same provisional→real mapping apply would (dropping the internal new/have
-    # column). A stop condition surfaces on stderr with no mapping.
+    # same provisional→real mapping apply would (dropping the internal
+    # new/have/blocked column; a blocked identity shows its '-' ordinal). A stop
+    # condition surfaces on stderr with no mapping.
     alloc_peek_refresh
     alloc_read_log issue | alloc_reconcile_realize "${pending[@]}" | cut -f1,2
   fi
@@ -2754,9 +2766,9 @@ alloc_reconcile_spec_publish_builder() {
 #   all-or-none, baseline-armed) and prints the mapping.
 #
 #   Both paths print all three fields, preview included: two identities can key
-#   alike, so whether an identity was found rather than freshly allocated is the
-#   developer's tell before anything is applied, and dropping it would hide the
-#   one signal that separates a resumed run from a collision.
+#   alike, so whether an identity was found, freshly allocated, or refused
+#   (blocked) is the developer's tell before anything is applied, and dropping
+#   it would hide the one signal that separates a resumed run from a collision.
 alloc_reconcile_spec() {
   local apply="$1"
   local -a raw=(); mapfile -t raw

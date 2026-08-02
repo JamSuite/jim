@@ -175,6 +175,13 @@ apply_pending() {
     [[ -n "$id" ]] || continue
     newnum="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' <<<"$mapping")"
     [[ -n "$newnum" ]] || continue
+    # A blocked identity maps to '-', never an ordinal: the registry claims its
+    # durable id twice and the allocator refused to pick a winner. Loud,
+    # per-file, num: left provisional — the rest of the batch still rewrites.
+    if [[ ! "$newnum" =~ ^[0-9]+$ ]]; then
+      echo "error: $id — the allocator refused this identity (blocked; see its report); num: left provisional" >&2
+      failed=1; continue
+    fi
     tmp="$(mktemp "$dir/.reconcile.tmp.XXXXXX")" || {
       echo "error: cannot create tmp file in '$dir'" >&2
       failed=1; continue

@@ -2468,6 +2468,54 @@ created: 2026-01-01T00:00:00Z"
   assert_match "index regenerated" '· num: 1'  "$(cat "$dir/INDEX.md")"
 }
 
+# issues_craft_registry <repo> <issues.log line>...
+#   Plant an issues.log on the coordination branch through plumbing — the branch
+#   is push-writable, so a contradicted registry is exactly what a crafted one
+#   looks like from the realizer's side.
+issues_craft_registry() {
+  local repo="$1"; shift
+  local blob tree commit
+  blob="$(printf '%s\n' "$@" | git -C "$repo" hash-object -w --stdin)"
+  tree="$(printf '100644 blob %s\tissues.log\n' "$blob" | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" -m crafted)"
+  git -C "$repo" update-ref refs/heads/jim/registry "$commit"
+}
+
+# AC: a pending marker whose durable id is claimed twice in the registry is
+# blocked — its num: stays provisional and the failure is loud — while the rest
+# of the batch realizes and the index regenerates. One contradicted identity
+# must not strand neighbours whose ordinals are safe.
+case_issues_reconcile_blocked_identity_keeps_batch() {
+  local repo dir
+  repo=$(new_repo reconcile_blocked)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  write_issue "$dir" "20260101-dup" 'id: 20260101-dup
+title: "Dup"
+status: open
+num: P-20260101-dup
+priority: medium
+created: 2026-01-01T00:00:00Z'
+  write_issue "$dir" "20260101-clean" 'id: 20260101-clean
+title: "Clean"
+status: open
+num: P-20260101-clean
+priority: medium
+created: 2026-01-01T00:00:00Z'
+  issues_craft_registry "$repo" \
+    'issue allocate 5 20260101-dup 20260101 jane' \
+    'issue allocate 9 20260101-dup 20260102 mallory'
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit  "one blocked file fails the run" 1 "$RC"
+  assert_match "names the blocked identity" '20260101-dup' "$ERR"
+  assert_match "blocked num stays provisional" '^num: P-20260101-dup$' \
+    "$(cat "$dir/20260101-dup.md")"
+  assert_match "neighbour realized past the high-water" '^num: 10$' \
+    "$(cat "$dir/20260101-clean.md")"
+  assert_match "index regenerated over the realized neighbour" '· num: 10' \
+    "$(cat "$dir/INDEX.md")"
+}
+
 # AC: reconcile.sh --apply is idempotent — re-running against a file whose
 # frontmatter still cites the provisional marker (e.g. a resumed run after an
 # interruption before the rewrite landed) maps it to its already-realized

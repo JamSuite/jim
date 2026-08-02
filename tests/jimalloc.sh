@@ -2757,18 +2757,36 @@ case_jimalloc_reconcile_realize_high_water_rename() {
 }
 
 # AC 11: when two records claim the durable id a pending marker would resolve
-# against, realize halts naming both claimants instead of taking the later one —
-# the same contradiction the resolver refuses, on the path that would otherwise
-# realize a marker onto the wrong ordinal.
-case_jimalloc_reconcile_realize_duplicate_claim_halts() {
+# against, realize refuses that identity instead of taking the later record —
+# the same contradiction the resolver refuses — and refuses it alone: the
+# refusal travels as a `blocked` row with no ordinal, the claimants are named
+# on stderr, and the rest of the batch still realizes. A batch-wide halt would
+# let one contradicted identity strand neighbours whose ordinals are safe.
+case_jimalloc_reconcile_realize_duplicate_claim_blocks_identity() {
+  local log expected
+  log=$(printf '%s\n' 'issue allocate 5 20260726-x 20260726 jane' \
+                      'issue allocate 9 20260726-x 20260727 mallory')
+  run_realize "$log" 20260726-x 20260801-unrelated
+  assert_exit "per-identity refusal, not a batch halt" 0 "$RC"
+  expected=$(printf '%s\n' \
+    '20260726-x	-	blocked' \
+    '20260801-unrelated	10	new')
+  assert_eq    "blocked row, neighbour realized" "$expected" "$OUT"
+  assert_match "names the identity"   '20260726-x' "$ERR"
+  assert_match "names both claimants" '1 and 2'    "$ERR"
+}
+
+# AC 11: a blocked identity consumes no ordinal — once the contradiction is
+# repaired, a re-run realizes it onto the next free ordinal with no gap burned
+# by the earlier refusal.
+case_jimalloc_reconcile_realize_blocked_consumes_no_ordinal() {
   local log
   log=$(printf '%s\n' 'issue allocate 5 20260726-x 20260726 jane' \
                       'issue allocate 9 20260726-x 20260727 mallory')
-  run_realize "$log" 20260726-x
-  assert_exit  "halts"              1  "$RC"
-  assert_eq    "no partial mapping" "" "$OUT"
-  assert_match "names the identity" '20260726-x' "$ERR"
-  assert_match "names both claimants" '1 and 2'  "$ERR"
+  run_realize "$log" 20260726-x 20260801-a 20260801-b
+  assert_exit "rc" 0 "$RC"
+  assert_eq "neighbours draw contiguous ordinals" \
+    "$(printf '20260726-x\t-\tblocked\n20260801-a\t10\tnew\n20260801-b\t11\tnew')" "$OUT"
 }
 
 # AC 11: the halt is aimed at the identity the batch actually resolves — a
@@ -2859,16 +2877,21 @@ case_jimalloc_realize_spec_keyed_have() {
 
 # AC 11: the spec-side map keys on (group, slug, date), and two records claiming
 # that triple make the realization ambiguous — which ordinal is this identity's?
-# Realize halts naming both claimants rather than reporting `have` from the later
-# record, mirroring its own within-batch duplicate halt.
-case_jimalloc_realize_spec_duplicate_claim_halts() {
-  local log
+# Realize refuses that identity as a `blocked` row naming both claimants rather
+# than reporting `have` from the later record — and refuses it alone, because
+# two specs sharing a title-slug on one day is a state the allocator itself can
+# mint, and the consumer documents that other identities in the batch land.
+case_jimalloc_realize_spec_duplicate_claim_blocks_identity() {
+  local log expected
   log=$(printf '%s\n' 'spec allocate core/003 beta 20260728 jane' \
                       'spec allocate core/009 beta 20260728 mallory')
-  run_realize_spec "$log" core/P-20260728-beta
-  assert_exit  "halts"              1  "$RC"
-  assert_eq    "no partial mapping" "" "$OUT"
-  assert_match "names the identity" 'beta' "$ERR"
+  run_realize_spec "$log" core/P-20260728-beta core/P-20260728-gamma
+  assert_exit "per-identity refusal, not a batch halt" 0 "$RC"
+  expected=$(printf '%s\n' \
+    'core/P-20260728-beta	-	blocked' \
+    'core/P-20260728-gamma	core/010	new')
+  assert_eq    "blocked row, neighbour realized" "$expected" "$OUT"
+  assert_match "names the identity"   'beta'    "$ERR"
   assert_match "names both claimants" '1 and 2' "$ERR"
 }
 

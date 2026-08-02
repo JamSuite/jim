@@ -210,6 +210,32 @@ case_specreconcile_two_specs_sharing_a_key_are_surfaced() {
     "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
 }
 
+# AC: an identity whose realize key is claimed twice in the registry is blocked
+# — previewed as a `blocked` row, refused at apply with nothing applied for it —
+# while its neighbours realize. One contradicted key must not strand a batch
+# whose other ordinals are safe; that is the documented per-identity contract.
+case_specreconcile_blocked_identity_keeps_batch() {
+  local repo
+  repo="$(specrec_repo sr_blocked)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_prov_dir "$repo" sdlc P-20260728-beta
+  specrec_commit "$repo"
+  specrec_craft_registry "$repo" \
+    'spec allocate sdlc/003 alpha 20260728 jane' \
+    'spec allocate sdlc/007 alpha 20260728 mallory'
+  run_specreconcile_in "$repo"
+  assert_exit  "preview rc"            0 "$RC"
+  assert_match "blocked row previewed" 'sdlc/P-20260728-alpha	-	blocked' "$OUT"
+  assert_match "neighbour still previews" 'sdlc/P-20260728-beta	sdlc/008	new' "$OUT"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "apply rc"                   1 "$RC"
+  assert_match "names the blocked identity" 'P-20260728-alpha' "$ERR"
+  assert_eq "blocked identity stays pending" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/P-20260728-alpha" ]] && echo yes || echo no)"
+  assert_eq "neighbour landed" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/008-beta" ]] && echo yes || echo no)"
+}
+
 # AC: an uncommitted spec's own citations of the identity it just left are swept
 # too — git cannot see an untracked directory, so its own body would otherwise
 # keep pointing at a provisional identity that no longer exists.

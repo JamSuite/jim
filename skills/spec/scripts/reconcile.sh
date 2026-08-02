@@ -231,10 +231,11 @@ rewrite_id() {
 #   change when they commit.
 #
 #   An identity halts — loudly, with nothing applied for it, and the whole run
-#   ending non-zero — when the realized ordinal is not one a spec directory can
-#   carry, when that ordinal is already held by a directory in the group, or
-#   when the allocator answered under a different group than the identity was
-#   issued under. The ordinal comes from a push-writable coordination point, so
+#   ending non-zero — when the allocator refused it as `blocked` (a registry
+#   claiming its key twice), when the realized ordinal is not one a spec
+#   directory can carry, when that ordinal is already held by a directory in
+#   the group, or when the allocator answered under a different group than the
+#   identity was issued under. The ordinal comes from a push-writable coordination point, so
 #   it is revalidated before it becomes a path, a glob, a git argument, or
 #   frontmatter. The latter two are registry-vs-tree drift, and a spec ordinal is
 #   path identity: there is no silent suffixing and no overwrite, and repairing
@@ -250,6 +251,13 @@ apply_pending() {
     [[ -n "$pend" ]] || continue
     real="$(awk -F'\t' -v k="$pend" '$1==k{print $2; exit}' <<<"$mapping")"
     [[ -n "$real" ]] || continue
+    # A blocked row carries no ordinal: the registry claims this identity's
+    # (group, slug, date) key twice, and the allocator refused to pick a winner.
+    # Loud, per-identity, nothing applied — the neighbours still land.
+    if [[ "$(awk -F'\t' -v k="$pend" '$1==k{print $3; exit}' <<<"$mapping")" == blocked ]]; then
+      echo "error: $pend — realization blocked: the registry claims this identity's key twice (see the allocator's report); nothing applied for this identity" >&2
+      failed=1; continue
+    fi
     group="${pend%/*}"; base="${pend##*/}"
     if [[ "${real%/*}" != "$group" ]]; then
       echo "error: $pend — the registry answers under group '${real%/*}'; a group renamed since issuance is not a rename this step can follow" >&2
