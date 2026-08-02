@@ -201,3 +201,4 @@ issue allocate 200 20260801-design-the-repair-path-for-registry-internal-contrad
 issue allocate 201 20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays 20260801 jrko
 issue allocate 202 20260802-fix-the-rename-replay-in-the-integrity-classifier 20260801 jrko
 issue allocate 203 20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key 20260801 jrko
+issue allocate 204 20260802-declare-platform-jimalloc-in-the-sdlc-blueprint-s-requires-face 20260802 jrko
