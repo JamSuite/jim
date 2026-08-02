@@ -83,6 +83,14 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:meta-agent` | Create/update a jim plugin agent from spec | `@jim:meta` | `jim/agents/{name}.md` |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite | `@jim:meta` | `jim/tests/{name}.sh` |
 
+Registry integrity is a hand-run script surface rather than a skill — the same
+deliberate choice as the issue-prefix migration:
+
+| Command | What It Does | Agent | Output |
+| :--- | :--- | :--- | :--- |
+| `jimalloc.sh sweep` | Read-only integrity check — tree-vs-registry drift under named classes, plus everything the check did not cover; `0` clean / `3` drift / `4` could-not-check | — (hand-run; `/jim:verify` runs it as the `registry-tree-consistency` check) | report on stdout, no writes |
+| `jimalloc.sh catch-up [--apply]` | Preview (or apply) the records a non-empty registry is missing, under the allocation path's compare-and-swap and erosion guard | — (hand-run) | one appended commit on the coordination branch |
+
 ---
 
 ## Artifacts

@@ -1897,6 +1897,24 @@ alloc_seed_preview() {
   printf 'seed preview (no changes written):\n'
   alloc_seed_preview_kind "specs.log"  "$spec_records"  "$(alloc_read_log spec)"
   alloc_seed_preview_kind "issues.log" "$issue_records" "$(alloc_read_log issue)"
+  alloc_seed_report_skipped
+  return 0
+}
+
+# alloc_seed_report_skipped — name the identities the derivation passed over, so
+# an operator approving a bootstrap knows what it will NOT record. Reserved
+# slots and pending provisionals are deliberately recordless, but "deliberately"
+# is only true if it is said out loud; a silent omission reads as complete
+# coverage.
+alloc_seed_report_skipped() {
+  local specs_root issues_dir reserved pending
+  specs_root="$(alloc_seed_tree_root specs docs/specs)"   || return 0
+  issues_dir="$(alloc_seed_tree_root issues docs/issues)" || return 0
+  reserved="$(alloc_sweep_reserved_count "$specs_root")"
+  pending="$(alloc_sweep_pending_count "$specs_root" "$issues_dir")"
+  (( reserved == 0 && pending == 0 )) && return 0
+  printf '  not recorded: %d reserved blueprint slot(s), %d pending provisional identity(ies)\n' \
+    "$reserved" "$pending"
   return 0
 }
 
@@ -1978,6 +1996,7 @@ alloc_seed_report() {
   printf 'seeded: %d spec record(s), %d issue record(s)\n' "$ns" "$ni"
   (( skip_spec ))  && printf '  specs.log already had records — skipped\n'
   (( skip_issue )) && printf '  issues.log already had records — skipped\n'
+  alloc_seed_report_skipped
   return 0
 }
 
