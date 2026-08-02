@@ -57,6 +57,10 @@ export GIT_TERMINAL_PROMPT=0
 # id/slug/date/path boundary; jimconf.sh resolves the id_coordination_* keys.
 JIMFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/jimfile.sh"
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
+# Path to the ledger CLI. The lift's input is the specs-root ledger, and its
+# grammar belongs to the ledger — this script asks for normalized pair events
+# rather than learning to parse events of its own.
+JIMLEDGER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../ledger/scripts" 2>/dev/null && pwd)/jimledger.sh"
 
 # Optional -c <path> override for jimconf.toml. Empty when not supplied;
 # production consumers never pass it (tests and ad-hoc inspection do).
@@ -3421,6 +3425,209 @@ cmd_resolve() {
   esac
 }
 
+# The provenance marker every lifted record carries, so retroactive repair is
+# distinguishable from live emission in the log itself — the same role
+# jim-seed and jim-catchup play for their appends. It is an audit HINT, not
+# authentication: anyone who can push the branch can write any <who>, and the
+# append-only branch history remains the authoritative trail.
+ALLOC_LIFT_MARKER="jim-lift"
+
+# alloc_lift_state <kind> <src> <dst>   — decide one row against the caller's
+#   corroboration state (`live`, `have_rn`, `have_rz`, `rz_of`, `log`, all
+#   supplied by alloc_lift_states through dynamic scope, the same way an
+#   alloc_publish builder reaches its caller's locals). Prints one of:
+#     emit | have | refused:<reason>
+#
+#   CORROBORATION, stated once here because both the preview and the publish
+#   call it: a pair is recordable only when the registry ALREADY establishes its
+#   destination and holds no live claim on its source. The lift's input is the
+#   specs-root ledger, which lives on ordinary content branches — anyone who can
+#   commit can write a pair into it. Without corroboration, an operator's lift
+#   run would convert that content into registry records under the operator's
+#   own authority, and a crafted pair would mint a redirect pointing a real
+#   citation at a destination of the writer's choosing. Requiring the
+#   destination to be independently established is what makes the ledger a
+#   witness rather than an instruction.
+alloc_lift_state() {
+  local kind="$1" src="$2" dst="$3" key
+  case "$kind" in
+    realize)
+      [[ -n "${have_rz[$src	$dst]:-}" ]] && { printf 'have\n'; return 0; }
+      if [[ -n "${rz_of[$src]:-}" ]]; then
+        printf 'refused:source-conflict\n'; return 0
+      fi
+      [[ -n "${live[$dst]:-}" ]] || { printf 'refused:destination-not-established\n'; return 0; }
+      ;;
+    spec)
+      [[ "$src" != "$dst" ]] || { printf 'refused:self-rename\n'; return 0; }
+      [[ -n "${have_rn[spec	$src	$dst]:-}" ]] && { printf 'have\n'; return 0; }
+      [[ -n "${live[$dst]:-}" ]] || { printf 'refused:destination-not-established\n'; return 0; }
+      [[ -z "${live[$src]:-}" ]] || { printf 'refused:source-claimed\n'; return 0; }
+      ;;
+    group)
+      [[ "$src" != "$dst" ]] || { printf 'refused:self-rename\n'; return 0; }
+      [[ -n "${have_rn[group	$src	$dst]:-}" ]] && { printf 'have\n'; return 0; }
+      printf '%s\n' "$log" | alloc_group_has_records "$dst" \
+        || { printf 'refused:destination-not-established\n'; return 0; }
+      for key in "${!live[@]}"; do
+        [[ "$key" == "$src"/* ]] || continue
+        printf 'refused:source-claimed\n'; return 0
+      done
+      ;;
+    *) printf 'refused:unknown-event\n'; return 0 ;;
+  esac
+  printf 'emit\n'
+}
+
+# alloc_lift_states <row...>   (specs log on stdin)
+#   Decide every row against the log on stdin and print the state table:
+#     <kind> <src> <dst> <date> <emit|have|refused:...>
+#   Each row in is "<kind>\t<src>\t<dst>\t<date>" as jimledger.sh pair-events
+#   emits it. Both the preview and the publish builder go through here, so what
+#   an operator reads and what the CAS attempt decides are the same computation
+#   over different logs — never the same answer replayed.
+alloc_lift_states() {
+  local -a lines=(); mapfile -t lines
+  local log=""; (( ${#lines[@]} )) && log="$(printf '%s\n' "${lines[@]}")"
+  local -A live=() have_rn=() have_rz=() rz_of=()
+  alloc_live_claim_set < <(printf '%s\n' "$log")
+  local rk rsrc rsok rdst rdok zp zpok zr zrok
+  while IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ _; do
+    [[ "$rsok" == y && "$rdok" == y ]] || continue
+    have_rn["$rk"$'\t'"$rsrc"$'\t'"$rdst"]=1
+  done < <(printf '%s\n' "$log" | alloc_rename_scan spec)
+  while IFS=$'\t' read -r zp zpok zr zrok _ _ _; do
+    [[ "$zpok" == y && "$zrok" == y ]] || continue
+    have_rz["$zp"$'\t'"$zr"]=1
+    rz_of["$zp"]="$zr"
+  done < <(printf '%s\n' "$log" | alloc_realize_scan spec)
+  local row kind src dst date canon state
+  for row in "$@"; do
+    IFS=$'\t' read -r kind src dst date <<< "$row"
+    # Normalize both sides the way the registry will spell them, so a row whose
+    # ordinal is written unpadded still meets its own record on a re-run.
+    case "$kind" in
+      realize)
+        if ! alloc_valid_provid "$src" || ! canon="$(alloc_canon_specid "$dst")"; then
+          printf '%s\t%s\t%s\t%s\trefused:unrepresentable\n' \
+            "$kind" "$(alloc_sanitize_field "$src")" "$(alloc_sanitize_field "$dst")" "$date"
+          continue
+        fi
+        dst="$canon"
+        ;;
+      spec)
+        if ! canon="$(alloc_canon_specid "$src")"; then
+          printf '%s\t%s\t%s\t%s\trefused:unrepresentable\n' \
+            "$kind" "$(alloc_sanitize_field "$src")" "$(alloc_sanitize_field "$dst")" "$date"
+          continue
+        fi
+        src="$canon"
+        if ! canon="$(alloc_canon_specid "$dst")"; then
+          printf '%s\t%s\t%s\t%s\trefused:unrepresentable\n' \
+            "$kind" "$src" "$(alloc_sanitize_field "$dst")" "$date"
+          continue
+        fi
+        dst="$canon"
+        ;;
+      group)
+        if ! alloc_valid_token "$src" || ! alloc_valid_token "$dst"; then
+          printf '%s\t%s\t%s\t%s\trefused:unrepresentable\n' \
+            "$kind" "$(alloc_sanitize_field "$src")" "$(alloc_sanitize_field "$dst")" "$date"
+          continue
+        fi
+        ;;
+    esac
+    state="$(alloc_lift_state "$kind" "$src" "$dst")"
+    printf '%s\t%s\t%s\t%s\t%s\n' "$kind" "$src" "$dst" "$date" "$state"
+  done
+}
+
+# alloc_lift_publish_builder <cur_specs> <cur_issues> <who> <row...>
+#   The lift's publish decision (an alloc_publish builder). Recomputes the whole
+#   state table against THIS attempt's log and appends only the rows that come
+#   back `emit` — so a destination claimed between the preview and the commit is
+#   refused by the attempt that would have overwritten it. The preview is
+#   advisory; nothing it decided is carried in here.
+#
+#   <who> is ignored: every lifted record carries the repair marker instead, and
+#   the record's date is the day the identity moved, not today.
+alloc_lift_publish_builder() {
+  local cur_specs="$1"; shift 3
+  local newrecs="" table row kind src dst date state
+  table="$(printf '%s\n' "$cur_specs" | alloc_lift_states "$@")"
+  local -A batch_dst=()
+  while IFS=$'\t' read -r kind src dst date state; do
+    [[ "$state" == emit ]] || continue
+    # Two emit rows landing on one destination corroborate individually and
+    # contradict together; the batch refuses the second rather than writing it.
+    if [[ -n "${batch_dst[$kind	$dst]:-}" ]]; then
+      table="$(printf '%s\n' "$table" | awk -F'\t' -v k="$kind" -v s="$src" -v d="$dst" \
+        'BEGIN{OFS="\t"} $1==k && $2==s && $3==d {$5="refused:duplicate-in-batch"} {print}')"
+      continue
+    fi
+    batch_dst["$kind"$'\t'"$dst"]=1
+    case "$kind" in
+      realize) newrecs+="$(alloc_encode_realize_spec "$src" "$dst" "$date" "$ALLOC_LIFT_MARKER")"$'\n' ;;
+      spec)    newrecs+="$(alloc_encode_rename_spec  "$src" "$dst" "$date" "$ALLOC_LIFT_MARKER")"$'\n' ;;
+      group)   newrecs+="$(alloc_encode_rename_group "$src" "$dst" "$date" "$ALLOC_LIFT_MARKER")"$'\n' ;;
+    esac
+  done <<< "$table"
+  PUB_PAYLOAD="$table"
+  if [[ -n "$newrecs" ]]; then
+    if [[ -n "$cur_specs" ]]; then
+      PUB_SPEC="${cur_specs}"$'\n'"${newrecs%$'\n'}"
+    else
+      PUB_SPEC="${newrecs%$'\n'}"
+    fi
+  else
+    PUB_SPEC=""
+  fi
+  return 0
+}
+
+# cmd_lift [--apply]
+#   Turn the specs-root ledger's durable identity-pair events into registry
+#   records. Preview by default, in the operator-verb family beside sweep and
+#   catch-up: it reports the state of every pair and writes nothing until asked.
+#
+#   The lift covers only history that predates emission — every realization and
+#   every partition operation from here on records itself as it happens. That
+#   makes idempotency its whole contract: a re-run reports `have` for everything
+#   already recorded and publishes nothing.
+#
+#   rc 0 clean · rc 1 at least one pair refused (or the publish failed).
+cmd_lift() {
+  local apply=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --apply) apply=1; shift ;;
+      *) echo "error: unknown option '$1' for lift (usage: lift [--apply])" >&2; return 2 ;;
+    esac
+  done
+  alloc_in_repo || return 1
+  local specs_root
+  specs_root="$(alloc_seed_tree_root specs docs/specs)" || return 1
+  local -a rows=()
+  local line
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && rows+=( "$line" )
+  done < <(bash "$JIMLEDGER" pair-events "$specs_root" 2>/dev/null || true)
+  if (( ! ${#rows[@]} )); then
+    echo "lift: no identity-pair events in ${specs_root%/}/ledger.md — nothing to record"
+    return 0
+  fi
+  local table
+  if (( apply )); then
+    alloc_preflight || return 1
+    table="$(alloc_publish alloc_lift_publish_builder "${rows[@]}")" || return 1
+  else
+    table="$(alloc_read_log spec | alloc_lift_states "${rows[@]}")"
+  fi
+  [[ -n "$table" ]] && printf '%s\n' "$table"
+  printf '%s\n' "$table" | grep -q '	refused:' && return 1
+  return 0
+}
+
 # cmd_partition_batch spec  <date>            (renumber pairs on stdin)
 # cmd_partition_batch group <old> <new> <date>
 #   The partition lifecycle's emission surface. Spec mode reads TAB-separated
@@ -3498,6 +3705,7 @@ usage:
   jimalloc.sh partition-batch spec  <date>       publish a renumber pair set (stdin: old<TAB>new<TAB>slug)
   jimalloc.sh partition-batch group <old> <new> <date>
                                                  publish one group rename
+  jimalloc.sh lift [--apply]                     preview (or --apply) ledger pair events as registry records
   jimalloc.sh sweep                              read-only: report tree-vs-registry drift + non-coverage
   jimalloc.sh catch-up [--apply]                 preview (or --apply) the records a non-empty registry is missing
   jimalloc.sh -c <path> <subcmd>                 use <path> instead of ./jimconf.toml
@@ -3532,6 +3740,7 @@ main() {
     catch-up)  cmd_catchup   "$@" ;;
     reconcile) cmd_reconcile "$@" ;;
     partition-batch) cmd_partition_batch "$@" ;;
+    lift)      cmd_lift      "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
       usage

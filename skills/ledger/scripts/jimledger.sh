@@ -54,6 +54,7 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
   rename-tracked <old-path> <new-path>        sibling-constrained git mv
   move-spec-dir <specs-dir> <og> <src-base> <ng> <dst-base>  cross-parent spec-dir git mv
   vacated-max <specs-dir> <group>             highest split-vacated id for <group>
+  pair-events <specs-dir>                     durable identity-pair events, normalized
   metrics <spec-dir>                          emit key=value metrics to stdout
   events  <spec-dir>                          print recorded events (read-only view)
   files   <spec-dir>                          list changed files over the build range
@@ -691,6 +692,87 @@ cmd_vacated_max() {
   ' "$ledger"
 }
 
+# cmd_pair_events <specs-dir>
+#   Print every durable identity-pair event the specs-root ledger holds, one
+#   normalized TAB-separated row each:
+#     realize <group>/P-<date>-<slug>  <group>/<NNN>  <YYYYMMDD>
+#     spec    <old-group>/<NNN>        <new-group>/<NNN>  <YYYYMMDD>
+#     group   <old-group>              <new-group>        <YYYYMMDD>
+#   Realizations come from `spec realized moved=` events, renumber pairs from
+#   `partition finished` events carrying op=split or op=merge, and group renames
+#   from op=rename's old=/new= (which carries no pair list — the group name is
+#   the whole event).
+#
+#   <YYYYMMDD> is the EVENT's own day, not today's: these rows describe things
+#   that already happened, and a consumer recording them wants the date the
+#   identity actually moved.
+#
+#   Fail-closed like vacated-max: the ledger is ordinary branch content anyone
+#   who can commit can write, so every element is charset-gated and an element
+#   that fails its gate is inert rather than fatal. Ordinals are admitted at
+#   3–15 digits — the width the registry itself can represent — so no
+#   representable pair is silently unliftable. Parsed only; never sourced.
+#   rc 0 (rows, possibly none) · rc 1 no ledger file · rc 2 usage.
+cmd_pair_events() {
+  local dir="${1:-}"
+  if [[ -z "$dir" ]]; then
+    echo "jimledger pair-events: need <specs-dir>" >&2; return 2
+  fi
+  local ledger="${dir%/}/ledger.md"
+  if [[ ! -f "$ledger" ]]; then return 1; fi
+  awk -F'\t' '
+    function isord(s) { return s ~ /^[0-9]+$/ && length(s) >= 3 && length(s) <= 15 }
+    function isgrp(s) { return s ~ /^[a-z0-9][a-z0-9-]*$/ }
+    function isprovtok(s,   b) {
+      if (substr(s, 1, 2) != "P-") return 0
+      b = substr(s, 3)
+      if (length(b) < 10) return 0
+      if (substr(b, 1, 8) !~ /^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]$/) return 0
+      if (substr(b, 9, 1) != "-") return 0
+      return substr(b, 10) ~ /^[a-z0-9][a-z0-9-]*$/
+    }
+    function specid_ok(s,   p) {
+      p = index(s, "/"); if (p == 0) return 0
+      return isgrp(substr(s, 1, p - 1)) && isord(substr(s, p + 1))
+    }
+    function provid_ok(s,   p) {
+      p = index(s, "/"); if (p == 0) return 0
+      return isgrp(substr(s, 1, p - 1)) && isprovtok(substr(s, p + 1))
+    }
+    function day(iso,   t) { t = iso; gsub(/-/, "", t); return substr(t, 1, 8) }
+    function kv(field, key,   c, parts, i) {
+      c = split(field, parts, ";")
+      for (i = 1; i <= c; i++)
+        if (index(parts[i], key "=") == 1) return substr(parts[i], length(key) + 2)
+      return ""
+    }
+    function emit_pairs(field, kind, when,   c, parts, i, m, elems, j, p, src, dst) {
+      c = split(field, parts, ";")
+      for (i = 1; i <= c; i++) {
+        if (index(parts[i], "moved=") != 1) continue
+        m = split(substr(parts[i], 7), elems, ",")
+        for (j = 1; j <= m; j++) {
+          p = index(elems[j], ":")
+          if (p == 0) continue
+          src = substr(elems[j], 1, p - 1); dst = substr(elems[j], p + 1)
+          if (kind == "realize") { if (!provid_ok(src) || !specid_ok(dst)) continue }
+          else                   { if (!specid_ok(src) || !specid_ok(dst)) continue }
+          printf "%s\t%s\t%s\t%s\n", kind, src, dst, when
+        }
+      }
+    }
+    $3 == "spec" && $4 == "realized" { emit_pairs($5, "realize", day($2)); next }
+    $3 == "partition" && $4 == "finished" {
+      op = kv($5, "op")
+      if (op == "split" || op == "merge") { emit_pairs($5, "spec", day($2)); next }
+      if (op == "rename") {
+        old = kv($5, "old"); new = kv($5, "new")
+        if (isgrp(old) && isgrp(new)) printf "group\t%s\t%s\t%s\n", old, new, day($2)
+      }
+    }
+  ' "$ledger"
+}
+
 # cmd_event <spec-dir> <phase> <event> [k=v ...]
 cmd_event() {
   local dir="${1:-}" phase="${2:-}" event="${3:-}"
@@ -1084,6 +1166,7 @@ main() {
     rename-tracked) shift; cmd_rename_tracked "$@" ;;
     move-spec-dir) shift; cmd_move_spec_dir "$@" ;;
     vacated-max) shift; cmd_vacated_max "$@" ;;
+    pair-events) shift; cmd_pair_events "$@" ;;
     commit-rename) shift; cmd_commit_rename "$@" ;;
     commit-split) shift; cmd_commit_split "$@" ;;
     commit-merge) shift; cmd_commit_merge "$@" ;;

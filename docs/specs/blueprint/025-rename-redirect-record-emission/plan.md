@@ -298,7 +298,7 @@ flowchart TD
    registry-readback fixture on the realize path. Depends on 5.
    **Verify:** `bash tests/jimalloc.sh reconcile && bash tests/specreconcile.sh`
 
-7. [ ] `partition-batch` verb (spec-pairs and group modes) with in-builder
+7. [x] `partition-batch` verb (spec-pairs and group modes) with in-builder
    corroboration refusals — including the group-mode occupied-destination
    case, fixtured on the same shape the classifier reports — and the
    retryable-redirect vs terminal-exhaustion stderr contract; all-or-none
