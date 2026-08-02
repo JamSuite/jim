@@ -292,11 +292,15 @@ alloc_resolve_spec() {
     elif [[ "$c1" == spec && "$c2" == rename ]]; then
       c3="$(alloc_canon_specid "$c3")" && c4="$(alloc_canon_specid "$c4")" || continue
       [[ "$c4" == "$queried" ]] && { anchor=$i; known=1; }
-      [[ "$c3" == "$queried" ]] && { dup_a=-1; dup_b=-1; }
+      # A vacating rename clears the claim it moved — but only when there is one
+      # claim to move. With two already live, a rename takes one of them and
+      # leaves the other, so which one this id now names is exactly the question
+      # the refusal exists to refuse; clearing here would answer it arbitrarily.
+      [[ "$c3" == "$queried" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
     elif [[ "$c1" == group && "$c2" == rename ]]; then
       alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
       [[ "$c4" == "$qgroup" ]] && known=1
-      [[ "$c3" == "$qgroup" ]] && { dup_a=-1; dup_b=-1; }
+      [[ "$c3" == "$qgroup" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
     fi
   done
   if (( dup_b >= 0 )); then
@@ -319,6 +323,15 @@ alloc_resolve_spec() {
   printf '%s\n' "$current"
 }
 
+# alloc_valid_ord <tok> — exit 0 iff <tok> is an ordinal this allocator can
+# compute with: all digits, no wider than the width the registry can be rebuilt
+# from. The issue side's counterpart to alloc_valid_specid's numeric half, so
+# the resolver, the fold, and the classifier all admit the same set.
+alloc_valid_ord() {
+  [[ "${1:-}" =~ ^[0-9]+$ ]] || return 1
+  (( ${#1} <= ALLOC_MAX_ORD_DIGITS ))
+}
+
 # alloc_resolve_issue <queried>  (log on stdin)
 #   Resolve an issue citation (an ordinal or a durable full-id) to its current
 #   ordinal, following issue-rename records. A full-id is first mapped to its
@@ -335,19 +348,25 @@ alloc_resolve_issue() {
   # with its claimants' positions and refused rather than answered from the last
   # record. The ordinal comparison is the one this function already replays with,
   # so detection and resolution always agree on what "the same ordinal" means.
+  #
+  # An issue ordinal is a NUMBER written without padding, so every comparison
+  # here is numeric — the reading the fold and the integrity classifier already
+  # use. Comparing as strings let a registry spelling an ordinal `007` and a file
+  # spelling it `7` be one identity to the sweep and two to this function, so a
+  # clean report could sit over a citation that resolves as never allocated.
   local dup_a=-1 dup_b=-1
-  if [[ "$queried" =~ ^[0-9]+$ ]]; then
-    target="$queried"
+  if alloc_valid_ord "$queried"; then
+    target=$((10#$queried))
   else
     alloc_valid_token "$queried" || { echo "error: invalid issue id '$queried'" >&2; return 1; }
     for ((i=0; i<n; i++)); do
       read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
       [[ "$c1" == issue && "$c2" == allocate ]] || continue
-      [[ "$c3" =~ ^[0-9]+$ ]] || continue
+      alloc_valid_ord "$c3" || continue
       alloc_valid_token "$c4" || continue
       if [[ "$c4" == "$queried" ]]; then
         if (( dup_a < 0 )); then dup_a=$i; elif (( dup_b < 0 )); then dup_b=$i; fi
-        target="$c3"
+        target=$((10#$c3))
       fi
     done
     if (( dup_b >= 0 )); then
@@ -361,15 +380,18 @@ alloc_resolve_issue() {
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
     if [[ "$c1" == issue && "$c2" == allocate ]]; then
-      [[ "$c3" =~ ^[0-9]+$ ]] || continue
-      if [[ "$c3" == "$target" ]]; then
+      alloc_valid_ord "$c3" || continue
+      if (( 10#$c3 == target )); then
         if (( dup_a < 0 )); then dup_a=$i; elif (( dup_b < 0 )); then dup_b=$i; fi
         anchor=$i; known=1
       fi
     elif [[ "$c1" == issue && "$c2" == rename ]]; then
-      [[ "$c3" =~ ^[0-9]+$ && "$c4" =~ ^[0-9]+$ ]] || continue
-      [[ "$c4" == "$target" ]] && { anchor=$i; known=1; }
-      [[ "$c3" == "$target" ]] && { dup_a=-1; dup_b=-1; }
+      alloc_valid_ord "$c3" && alloc_valid_ord "$c4" || continue
+      (( 10#$c4 == target )) && { anchor=$i; known=1; }
+      # A rename vacates the ordinal — but only when there is a single holder to
+      # move. Two live claims cannot be told apart by a rename that moves one of
+      # them, so the contradiction stands rather than being cleared.
+      (( 10#$c3 == target )) && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
     fi
   done
   if (( dup_b >= 0 )); then
@@ -381,8 +403,8 @@ alloc_resolve_issue() {
     (( anchor >= 0 && i <= anchor )) && continue
     read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
     [[ "$c1" == issue && "$c2" == rename ]] || continue
-    [[ "$c3" =~ ^[0-9]+$ && "$c4" =~ ^[0-9]+$ ]] || continue
-    [[ "$c3" == "$current" ]] && current="$c4"
+    alloc_valid_ord "$c3" && alloc_valid_ord "$c4" || continue
+    (( 10#$c3 == current )) && current=$((10#$c4))
   done
   (( known )) || { echo "error: issue '$queried' not allocated" >&2; return 1; }
   printf '%s\n' "$current"
@@ -1084,16 +1106,26 @@ alloc_classify_spec() {
   local derived="$1"
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4 c5
-  local -A live_at=() live_slug=() src_only=() reg_groups=()
-  local canon key g
+  local -A live_at=() live_slug=() src_only=() reg_groups=() unreadable=()
+  local canon key g unreadable_n=0
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
     if [[ "$c1" == spec && "$c2" == allocate ]]; then
-      canon="$(alloc_canon_specid "$c3")" || continue
-      alloc_valid_token "$c4" || continue
+      # A record that cannot even name an identity is counted, never silently
+      # dropped: a registry full of unreadable records must not report like a
+      # clean one.
+      canon="$(alloc_canon_specid "$c3")" || { unreadable_n=$((unreadable_n + 1)); continue; }
       if [[ -n "${live_at[$canon]:-}" ]]; then
         alloc_classify_emit DUP-ORD spec "$canon" "records ${live_at[$canon]} and $((i + 1))"
         continue
+      fi
+      # An unusable sibling field does not vacate the claim. The identity IS
+      # taken — the resolvers count it — so calling it missing is what let the
+      # repair path append a second record and turn a degraded record into a
+      # refused citation. It is claimed, and reported under its own class.
+      if ! alloc_valid_token "$c4"; then
+        unreadable["$canon"]=1
+        alloc_classify_emit UNREADABLE spec "$canon" "record $((i + 1)) has an unusable slug"
       fi
       live_at["$canon"]=$((i + 1)); live_slug["$canon"]="$c4"
     elif [[ "$c1" == spec && "$c2" == rename ]]; then
@@ -1138,6 +1170,9 @@ alloc_classify_spec() {
   fi
   local id
   for id in $(printf '%s\n' "${!tree_slug[@]}" | LC_ALL=C sort); do
+    # An identity whose record is unreadable is already reported under that
+    # class; comparing an unusable slug against the tree's would only add noise.
+    [[ -n "${unreadable[$id]:-}" ]] && continue
     if [[ -z "${live_at[$id]:-}" ]]; then
       alloc_classify_emit MISSING spec "$id" "${tree_slug[$id]}"
     elif [[ "${live_slug[$id]}" != "${tree_slug[$id]}" ]]; then
@@ -1145,7 +1180,8 @@ alloc_classify_spec() {
     fi
   done
   for id in $(printf '%s\n' "${!live_at[@]}" | LC_ALL=C sort); do
-    if [[ "${id##*/}" == 000 ]]; then
+    [[ -n "${unreadable[$id]:-}" ]] && continue
+    if alloc_is_reserved_ord "${id##*/}"; then
       alloc_classify_emit RESERVED spec "$id" "record ${live_at[$id]}"
     elif [[ -z "${tree_slug[$id]:-}" ]]; then
       alloc_classify_emit INFO-NO-TREE spec "$id" "${live_slug[$id]}"
@@ -1157,6 +1193,7 @@ alloc_classify_spec() {
   done
   alloc_classify_emit CHECKED spec "${#tree_slug[@]}" "${#live_at[@]}"
   alloc_classify_emit CHECKED group "${#tree_groups[@]}" "${#reg_groups[@]}"
+  alloc_classify_emit CHECKED unreadable spec "$unreadable_n"
   return 0
 }
 
@@ -1169,15 +1206,24 @@ alloc_classify_issue() {
   local derived="$1"
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3 c4
-  local -A live_at=() live_id=() id_at=() id_ord=() src_only=()
-  local ord
+  local -A live_at=() live_id=() id_at=() id_ord=() src_only=() unreadable=()
+  local ord unreadable_n=0
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
     if [[ "$c1" == issue && "$c2" == allocate ]]; then
-      [[ "$c3" =~ ^[0-9]+$ ]] || continue
-      (( ${#c3} > ALLOC_MAX_ORD_DIGITS )) && continue
-      alloc_valid_token "$c4" || continue
+      { [[ "$c3" =~ ^[0-9]+$ ]] && (( ${#c3} <= ALLOC_MAX_ORD_DIGITS )); } \
+        || { unreadable_n=$((unreadable_n + 1)); continue; }
       ord=$((10#$c3))
+      # The ordinal is claimed even when the durable id beside it is unusable —
+      # same rule as the spec side, and the reason the repair path cannot append
+      # a second record over it.
+      if ! alloc_valid_token "$c4"; then
+        unreadable["$ord"]=1
+        [[ -n "${live_at[$ord]:-}" ]] || live_at["$ord"]=$((i + 1))
+        [[ -n "${live_id[$ord]:-}" ]] || live_id["$ord"]="$c4"
+        alloc_classify_emit UNREADABLE issue "$ord" "record $((i + 1)) has an unusable durable id"
+        continue
+      fi
       if [[ -n "${id_at[$c4]:-}" ]]; then
         alloc_classify_emit DUP-ID issue "$c4" "records ${id_at[$c4]} and $((i + 1))"
       else
@@ -1213,6 +1259,7 @@ alloc_classify_issue() {
     done < "$derived"
   fi
   for ord in $(printf '%s\n' "${!tree_id[@]}" | LC_ALL=C sort -n); do
+    [[ -n "${unreadable[$ord]:-}" ]] && continue
     if [[ -n "${live_at[$ord]:-}" ]]; then
       [[ "${live_id[$ord]}" == "${tree_id[$ord]}" ]] && continue
       alloc_classify_emit MISMATCH issue "$ord" \
@@ -1225,7 +1272,7 @@ alloc_classify_issue() {
     fi
   done
   for ord in $(printf '%s\n' "${!live_at[@]}" | LC_ALL=C sort -n); do
-    [[ -n "${tree_id[$ord]:-}" ]] && continue
+    [[ -n "${tree_id[$ord]:-}" || -n "${unreadable[$ord]:-}" ]] && continue
     alloc_classify_emit INFO-NO-TREE issue "$ord" "${live_id[$ord]}"
   done
   for ord in $(printf '%s\n' "${!src_only[@]}" | LC_ALL=C sort -n); do
@@ -1233,6 +1280,7 @@ alloc_classify_issue() {
     alloc_classify_emit RENAME-SRC issue "$ord" "vacated by a rename"
   done
   alloc_classify_emit CHECKED issue "${#tree_id[@]}" "${#live_at[@]}"
+  alloc_classify_emit CHECKED unreadable issue "$unreadable_n"
   return 0
 }
 
@@ -2180,11 +2228,28 @@ alloc_sweep_uncovered_groups() {
   printf '%s' "${out% }"
 }
 
-# alloc_sweep_list <label> <class> <rows> — print the findings of one class under
-# the report's indent, capped, with the remainder named. Every field is
-# sanitized on the way out.
+# alloc_class_label <CLASS> — the operator-facing name for a classifier class.
+# One vocabulary, so the sweep's report and the catch-up's unrepairable listing
+# cannot call the same finding two different things.
+alloc_class_label() {
+  case "$1" in
+    MISSING)      printf 'missing-record' ;;
+    MISMATCH)     printf 'mismatch' ;;
+    DUP-ORD)      printf 'duplicate-ordinal' ;;
+    DUP-ID)       printf 'duplicate-id' ;;
+    RESERVED)     printf 'reserved-slot' ;;
+    UNREADABLE)   printf 'unreadable-record' ;;
+    INFO-NO-TREE) printf 'record-without-tree' ;;
+    *)            printf 'unclassified' ;;
+  esac
+}
+
+# alloc_sweep_list <class> <rows> — print the findings of one class under the
+# report's indent, capped, with the remainder named. Every field is sanitized on
+# the way out.
 alloc_sweep_list() {
-  local label="$1" class="$2" rows="$3" line kind ident detail n=0 shown=0
+  local class="$1" rows="$2" label line kind ident detail n=0 shown=0
+  label="$(alloc_class_label "$class")"
   [[ -n "$rows" ]] || return 0
   n="$(printf '%s\n' "$rows" | grep -c .)"
   while IFS=$'\t' read -r _ kind ident detail; do
@@ -2256,19 +2321,20 @@ cmd_sweep() {
     "${s_reg:-0}" "${s_tree:-0}" "${g_tree:-0}"
   printf '  issues: %d records vs %d files checked\n' "${i_reg:-0}" "${i_tree:-0}"
   local drift_rows info_rows
-  drift_rows="$(printf '%s\n' "$all_rows" | grep -E '^(MISSING|MISMATCH|DUP-ORD|DUP-ID|RESERVED)	' || true)"
+  drift_rows="$(printf '%s\n' "$all_rows" | grep -E '^(MISSING|MISMATCH|DUP-ORD|DUP-ID|RESERVED|UNREADABLE)	' || true)"
   info_rows="$(printf '%s\n' "$all_rows" | grep '^INFO-NO-TREE	' || true)"
   if [[ -n "$drift_rows" ]]; then
     printf '  drift:\n'
-    alloc_sweep_list missing-record      MISSING  "$(printf '%s\n' "$drift_rows" | grep '^MISSING	'  || true)"
-    alloc_sweep_list mismatch            MISMATCH "$(printf '%s\n' "$drift_rows" | grep '^MISMATCH	' || true)"
-    alloc_sweep_list duplicate-ordinal   DUP-ORD  "$(printf '%s\n' "$drift_rows" | grep '^DUP-ORD	'  || true)"
-    alloc_sweep_list duplicate-id        DUP-ID   "$(printf '%s\n' "$drift_rows" | grep '^DUP-ID	'   || true)"
-    alloc_sweep_list reserved-slot       RESERVED "$(printf '%s\n' "$drift_rows" | grep '^RESERVED	' || true)"
+    alloc_sweep_list MISSING  "$(printf '%s\n' "$drift_rows" | grep '^MISSING	'  || true)"
+    alloc_sweep_list MISMATCH "$(printf '%s\n' "$drift_rows" | grep '^MISMATCH	' || true)"
+    alloc_sweep_list DUP-ORD  "$(printf '%s\n' "$drift_rows" | grep '^DUP-ORD	'  || true)"
+    alloc_sweep_list DUP-ID   "$(printf '%s\n' "$drift_rows" | grep '^DUP-ID	'   || true)"
+    alloc_sweep_list RESERVED "$(printf '%s\n' "$drift_rows" | grep '^RESERVED	' || true)"
+    alloc_sweep_list UNREADABLE "$(printf '%s\n' "$drift_rows" | grep '^UNREADABLE	' || true)"
   fi
   if [[ -n "$info_rows" ]]; then
     printf '  info:\n'
-    alloc_sweep_list record-without-tree INFO-NO-TREE "$info_rows"
+    alloc_sweep_list INFO-NO-TREE "$info_rows"
   fi
   local reserved pending uncovered src_ids
   reserved="$(alloc_sweep_reserved_count "$specs_root")"
@@ -2285,6 +2351,14 @@ cmd_sweep() {
     printf '    uncovered-groups\t0\n'
   fi
   printf '    rename-source-ids\t%d\n' "$src_ids"
+  # Records too malformed to name an identity are compared against nothing, so
+  # they are non-coverage in the strictest sense: without this line a registry
+  # full of them reports exactly like a clean one.
+  local unreadable_n=0 cu
+  while IFS=$'\t' read -r _ _ _ cu; do
+    [[ "$cu" =~ ^[0-9]+$ ]] && unreadable_n=$((unreadable_n + cu))
+  done < <(printf '%s\n' "$all_rows" | grep '^CHECKED	unreadable	' || true)
+  printf '    unidentifiable-records\t%d\n' "$unreadable_n"
   [[ -n "$drift_rows" ]] && return 3
   return 0
 }
@@ -2329,13 +2403,16 @@ alloc_catchup_compute() {
   while IFS=$'\t' read -r c1 c2 c3 _; do
     [[ "$c1" == MISSING && "$c2" == spec ]] && want_spec["$c3"]=1
   done <<< "$rows"
-  CU_BLOCKED="$(printf '%s\n' "$rows" | grep '^MISMATCH	' || true)"
+  # Everything this verb cannot repair, not the mismatch class alone: a registry
+  # that contradicts itself is a finding the operator must see, and an exit 0
+  # after a sweep exited 3 reads as "done" when nothing was resolved.
+  CU_BLOCKED="$(printf '%s\n' "$rows" | grep -E '^(MISMATCH|DUP-ORD|DUP-ID|RESERVED|UNREADABLE)	' || true)"
   rows="$(printf '%s\n' "$issue_log" | alloc_classify_issue <(printf '%s\n' "$issue_rec"))"
   while IFS=$'\t' read -r c1 c2 c3 _; do
     [[ "$c1" == MISSING && "$c2" == issue ]] && want_issue["$c3"]=1
   done <<< "$rows"
   local blocked_issue
-  blocked_issue="$(printf '%s\n' "$rows" | grep '^MISMATCH	' || true)"
+  blocked_issue="$(printf '%s\n' "$rows" | grep -E '^(MISMATCH|DUP-ORD|DUP-ID|UNREADABLE)	' || true)"
   [[ -n "$blocked_issue" ]] && CU_BLOCKED="${CU_BLOCKED:+$CU_BLOCKED$'\n'}$blocked_issue"
   # Spec side: keep the derivation's own ordering (each group's record ahead of
   # its specs), so an appended batch reads exactly as a seed of the same tree.
@@ -2370,6 +2447,17 @@ alloc_catchup_compute() {
   done <<< "$issue_rec"
   CU_ISSUE="${CU_ISSUE%$'\n'}"
   return 0
+}
+
+# alloc_catchup_render_blocked <rows> — the findings this verb cannot repair,
+# rendered under the report's indent in the same vocabulary the sweep uses.
+alloc_catchup_render_blocked() {
+  local line class rest
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    class="${line%%$'\t'*}"; rest="${line#*$'\t'}"
+    printf '    %s\t%s\n' "$(alloc_class_label "$class")" "$rest"
+  done <<< "$1"
 }
 
 # alloc_catchup_render_set <label> <records> — the preview's per-log section:
@@ -2415,7 +2503,7 @@ alloc_catchup_publish_builder() {
   fi
   if [[ -n "$CU_BLOCKED" ]]; then
     payload+=$'\n'"  cannot repair (an operator decides which side is right):"
-    payload+=$'\n'"$(printf '%s\n' "$CU_BLOCKED" | sed 's/^MISMATCH\t/mismatch\t/; s/^/    /')"
+    payload+=$'\n'"$(alloc_catchup_render_blocked "$CU_BLOCKED")"
   fi
   PUB_PAYLOAD="$payload"
   return 0
@@ -2446,6 +2534,17 @@ cmd_catchup() {
   local specs_root issues_dir
   specs_root="$(alloc_seed_tree_root specs docs/specs)"   || return 1
   issues_dir="$(alloc_seed_tree_root issues docs/issues)" || return 1
+  # This verb repairs a NON-EMPTY registry. With no coordination branch there is
+  # nothing to catch up to, and creating one here would bootstrap the whole
+  # collection behind this verb's provenance marker and without the bootstrap's
+  # own preview — then leave `seed` refusing as already-seeded.
+  local branch
+  branch="$(alloc_coord_branch)" || return 1
+  if [[ -z "$(git rev-parse --verify --quiet --end-of-options "refs/heads/$branch" 2>/dev/null || true)" \
+        && -z "${JIMALLOC_REGISTRY_DIR:-}" ]]; then
+    echo "error: no coordination branch '$branch' to catch up to — bootstrap it with 'seed --apply' first" >&2
+    return 1
+  fi
   local spec_rec issue_rec
   spec_rec="$(alloc_seed_derive_specs "$specs_root" "$ALLOC_CATCHUP_MARKER")"   || return 1
   issue_rec="$(alloc_seed_derive_issues "$issues_dir" "$ALLOC_CATCHUP_MARKER")" || return 1
@@ -2468,7 +2567,7 @@ cmd_catchup() {
   fi
   if [[ -n "$CU_BLOCKED" ]]; then
     printf '  cannot repair (an operator decides which side is right):\n'
-    printf '%s\n' "$CU_BLOCKED" | sed 's/^MISMATCH\t/mismatch\t/; s/^/    /'
+    alloc_catchup_render_blocked "$CU_BLOCKED"
   fi
   return 0
 }

@@ -2135,16 +2135,95 @@ case_jimalloc_classify_issue_duplicate_ordinal() {
   assert_match "duplicate ordinal named" '^DUP-ORD	issue	5	records 1 and 2$' "$OUT"
 }
 
-# AC 1/15: a record whose fields fail the id boundary is degraded and skipped
-# rather than classified — a crafted record cannot inject a report row, and the
-# well-formed records around it still classify.
+# AC 2: a record that claims an identity but carries an unusable sibling field
+# still CLAIMS it. Reporting the identity as missing is what let the repair verb
+# append a second record for it, so the record is reported under its own class
+# and the identity is never called missing.
+case_jimalloc_classify_unreadable_record_claims_its_identity() {
+  run_classify alloc_classify_issue \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jim-seed')" \
+    "$(printf '%s\n' 'issue allocate 5 --upload-pack=x 20260726 mallory')"
+  assert_eq    "not reported missing" "" "$(classify_rows MISSING)"
+  assert_match "reported unreadable"  '^UNREADABLE	issue	5	' "$OUT"
+  assert_eq "crafted payload never echoed" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'upload-pack')"
+}
+
+# AC 2: the spec side behaves the same way — an unusable slug does not vacate
+# the ordinal's claim.
+case_jimalloc_classify_unreadable_spec_record_claims_its_identity() {
+  run_classify alloc_classify_spec \
+    "$(printf '%s\n' 'spec allocate core/007 cache 20260801 jim-seed')" \
+    "$(printf '%s\n' 'spec allocate core/007 c++port 20260726 mallory')"
+  assert_eq    "not reported missing" "" "$(classify_rows MISSING)"
+  assert_match "reported unreadable"  '^UNREADABLE	spec	core/007	' "$OUT"
+}
+
+# AC 3/4: a record too malformed to name an identity at all is still counted —
+# otherwise a registry full of unreadable records reports exactly like a clean
+# one, which inverts what a clean report is supposed to mean.
+case_jimalloc_classify_counts_unidentifiable_records() {
+  run_classify alloc_classify_spec "" \
+    "$(printf '%s\n' 'spec allocate not-an-id slug 20260726 mallory' \
+                     'spec allocate core/00x slug 20260726 mallory')"
+  assert_match "unreadable count reported" '^CHECKED	unreadable	spec	2$' "$OUT"
+}
+
+# AC 2/7: the repair verb must not append over a claimed identity. This is the
+# scenario that turned catch-up into the instrument that broke resolution: the
+# record was unreadable, the identity read missing, and the append created a
+# second claim the resolver then refused to answer from.
+case_jimalloc_catchup_never_appends_over_an_unreadable_claim() {
+  local repo issues
+  repo="$(sweep_repo catchup_unreadable)"
+  alloc_append_record "$repo" issues.log 'issue allocate 9 --upload-pack=x 20260726 mallory'
+  seed_issue_file "$repo/docs/issues" "20260801-nine.md" 9 20260801-nine 2026-08-01T10:00:00Z
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_eq "nothing appended for the claimed ordinal" "0" \
+    "$(alloc_issues_log "$repo" | grep -c '^issue allocate 9 20260801-nine ')"
+  run_jimalloc_in "$repo" resolve issue 9
+  assert_exit "resolve still answers" 0 "$RC"
+}
+
+# AC 3: the sweep names unreadable records as drift rather than passing over
+# them silently — a record it cannot read is a fact about the registry.
+case_jimalloc_sweep_names_unreadable_records() {
+  local repo
+  repo="$(sweep_repo sweep_unreadable)"
+  alloc_append_record "$repo" specs.log 'spec allocate core/009 c++port 20260726 mallory'
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "drift rc" 3 "$RC"
+  assert_match "named"    '^    unreadable-record	spec	core/009	' "$OUT"
+}
+
+# AC 11: the issue resolver reads an ordinal as a NUMBER, matching the
+# classifier and the fold. A registry spelling it padded and a file spelling it
+# bare are one identity, so the sweep cannot call clean what resolve calls
+# unallocated.
+case_jimalloc_resolve_issue_padding_is_one_identity() {
+  local dir; dir=$(empty_dir res_issue_padding)
+  printf '%s\n' 'issue allocate 007 20260726-alpha 20260726 jane' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 7
+  assert_exit "padded record, bare query" 0   "$RC"
+  assert_eq   "answers canonically"       "7" "$OUT"
+}
+
+# AC 1/2/15: a record whose fields fail the id boundary is reported, never
+# executed and never echoed — and it still CLAIMS its ordinal, so a well-formed
+# record claiming the same one is a genuine duplicate.
+#
+# This case previously asserted "no findings" here, which encoded the defect it
+# now guards: treating the unreadable record as absent made the ordinal read
+# missing, which is what let the repair verb append a second claim and turn a
+# degraded record into a citation the resolver refuses to answer.
 case_jimalloc_classify_skips_malformed_records() {
   run_classify alloc_classify_issue \
     "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jim-seed')" \
     "$(printf '%s\n' 'issue allocate 5 --upload-pack=x 20260726 mallory' \
                      'issue allocate 5 20260726-alpha 20260726 jane')"
-  assert_eq "no findings from the well-formed pair" "" \
-    "$(printf '%s\n' "$OUT" | grep -v '^CHECKED	' || true)"
+  assert_match "unreadable record reported" '^UNREADABLE	issue	5	' "$OUT"
+  assert_match "the second claim is a duplicate" '^DUP-ORD	issue	5	' "$OUT"
+  assert_eq    "never reported missing" "" "$(classify_rows MISSING)"
   assert_eq "malformed token never echoed" "0" \
     "$(printf '%s\n' "$OUT" | grep -c 'upload-pack')"
 }
@@ -2502,6 +2581,32 @@ case_jimalloc_catchup_apply_refuses_an_eroded_registry() {
   run_jimalloc_in "$repo" catch-up --apply
   assert_exit     "refused"          1  "$RC"
   assert_nonempty "erosion message"  "$ERR"
+}
+
+# AC 9: every drift class catch-up cannot repair is named and drives the exit
+# code — not the mismatch class alone. An operator running catch-up to clear a
+# sweep failure must not read exit 0 as "done" while a contradiction stands.
+case_jimalloc_catchup_names_every_unrepairable_class() {
+  local repo
+  repo="$(sweep_repo catchup_unrepairable)"
+  alloc_append_record "$repo" specs.log 'spec allocate core/001 alpha 20260726 mallory'
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit  "non-zero on unrepairable drift" 3 "$RC"
+  assert_match "names the duplicate" 'duplicate-ordinal	spec	core/001' "$OUT"
+}
+
+# AC 7: catch-up repairs a NON-EMPTY registry. With no coordination branch there
+# is nothing to catch up to, and seeding is the bootstrap's job — under its own
+# preview and its own provenance marker, not this verb's.
+case_jimalloc_catchup_refuses_an_unseeded_registry() {
+  local repo
+  repo="$(alloc_new_repo catchup_unseeded)"
+  mkdir -p "$repo/docs/specs/core/001-alpha" "$repo/docs/issues"
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit     "refuses"            1  "$RC"
+  assert_match    "points at the bootstrap" 'seed' "$ERR"
+  assert_eq "no registry created" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
 # AC 1: catch-up validates its own arguments — an unknown option is a usage
