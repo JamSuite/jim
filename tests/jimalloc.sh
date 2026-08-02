@@ -525,6 +525,117 @@ case_jimalloc_next_num_issue_skips_over_wide_ordinal() {
   assert_eq "next ordinal unaffected" "6" "$out"
 }
 
+# ─── Section: rename-record shape strictness ─────────────────────────────────
+
+# AC 1/8: the shared scan rule emits one normalized row per well-formed rename
+# record, carrying a PER-SIDE canonicalization verdict rather than dropping the
+# whole record when one side fails; a record that is not the one shape never
+# appears at all.
+case_jimalloc_rename_scan_normalizes_per_side() {
+  local log out want
+  log=$(printf '%s\n' 'spec allocate core/003 s 20260726 jane' \
+                      'spec rename core/3 ui/7 20260727 jane' \
+                      'spec rename core/1234567890123456 ui/9 20260728 kai' \
+                      'spec rename core/004 ui/010 20260728' \
+                      'group rename dashboard ui 20260729 jane')
+  out="$(source "$SCRIPT_jimalloc"; alloc_rename_scan spec <<< "$log")"
+  want=$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    spec  core/003                 y ui/007 y 20260727 jane 2 \
+    spec  core/1234567890123456    n ui/009 y 20260728 kai  3 \
+    group dashboard                y ui     y 20260729 jane 5)
+  assert_eq "normalized rows, malformed dropped" "$want" "$out"
+}
+
+# AC 1: a rename record missing its provenance field is not half-parsed — it is
+# not a rename at all, so the claim it would have moved stays where it is.
+case_jimalloc_rename_missing_who_is_not_followed() {
+  local dir; dir=$(empty_dir strict_missing_who)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane
+spec rename core/003 ui/007 20260727' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit "rc"                     0          "$RC"
+  assert_eq   "five-token rename ignored" "core/003" "$OUT"
+}
+
+# AC 1: one shape, not a floor — a field past <who> makes a different shape, so
+# the record is ignored rather than leniently accepted on its first six tokens.
+case_jimalloc_rename_extra_field_is_not_followed() {
+  local dir; dir=$(empty_dir strict_extra_field)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane
+spec rename core/003 ui/007 20260727 jane extra' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_eq "seven-token rename ignored" "core/003" "$OUT"
+}
+
+# AC 1: <date> is gated like every other field, not carried along unread.
+case_jimalloc_rename_bad_date_is_not_followed() {
+  local dir; dir=$(empty_dir strict_bad_date)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane
+spec rename core/003 ui/007 2026 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_eq "bad date ignored" "core/003" "$OUT"
+}
+
+# AC 1/18: the <who> slot is field-gated on read, so a pushed record carrying
+# ref metacharacters there is not a record this reader follows.
+case_jimalloc_rename_hostile_who_is_not_followed() {
+  local dir; dir=$(empty_dir strict_hostile_who)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane
+spec rename core/003 ui/007 20260727 he^ad~1:x' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_eq "hostile who ignored" "core/003" "$OUT"
+}
+
+# AC 1: an unknown record verb is not misparsed as a neighbouring one — the
+# kind namespace stays open, so a verb this build does not know moves nothing.
+case_jimalloc_rename_unknown_verb_is_not_followed() {
+  local dir; dir=$(empty_dir strict_unknown_verb)
+  printf '%s\n' 'spec allocate core/003 s 20260726 jane
+spec supersede core/003 ui/007 20260727 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_eq "unknown verb ignored" "core/003" "$OUT"
+}
+
+# AC 1: the spec fold reads the same one shape — a malformed rename cannot raise
+# a group's high-water, so it can never push the next id past a real ordinal.
+case_jimalloc_fold_spec_ignores_malformed_rename() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
+                      'spec rename dashboard/900 core/001 20260727')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
+  assert_eq "malformed rename does not raise the high-water" "dashboard/002" "$out"
+}
+
+# AC 1: the issue fold, same rule.
+case_jimalloc_fold_issue_ignores_malformed_rename() {
+  local log out
+  log=$(printf '%s\n' 'issue rename 9 3 20260727')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
+  assert_eq "malformed rename does not raise the high-water" "1" "$out"
+}
+
+# AC 1: the alias map reads the one shape too — a malformed group rename
+# redirects nothing, so the destination group inherits no ordinals.
+case_jimalloc_alias_map_ignores_malformed_group_rename() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
+                      'group rename dashboard ui 20260727')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec ui <<< "$log")"
+  assert_eq "no aliasing from a malformed record" "ui/001" "$out"
+}
+
+# AC 1: group coverage counts a rename record only when it is the one shape —
+# a malformed one leaves the group as uncovered as no record at all.
+case_jimalloc_group_coverage_ignores_malformed_rename() {
+  local rc
+  ( source "$SCRIPT_jimalloc"
+    alloc_group_has_records core <<< 'spec rename core/003 ui/007 20260727' ); rc=$?
+  assert_exit "malformed rename is not coverage" 1 "$rc"
+  ( source "$SCRIPT_jimalloc"
+    alloc_group_has_records core <<< 'spec rename core/003 ui/007 20260727 x' ); rc=$?
+  assert_exit "well-formed rename is coverage" 0 "$rc"
+}
+
 # ─── Section: group-rename aliasing (next-id membership) ─────────────────────
 
 # AC: after a group is renamed, the next id for it counts every ordinal the
