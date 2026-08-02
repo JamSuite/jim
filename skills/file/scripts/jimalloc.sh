@@ -81,11 +81,17 @@ PROV_PREFIX="P-"
 #   spec  allocate <group>/<NNN> <slug> <date> <who>
 #   group allocate <group> <date> <who>
 #   issue allocate <NNN> <full-id> <date> <who>
-#   spec  rename   <group>/<NNN> <newgroup>/<newNNN> <date>
-#   group rename   <old-group> <new-group> <date>
-#   issue rename   <NNN> <newNNN> <date>
-# Only allocate records are emitted by this build; rename/group-rename are parsed
-# and resolved (format frozen) so a later spec can begin emitting them unchanged.
+#   spec  rename   <group>/<NNN> <newgroup>/<newNNN> <date> <who>
+#   group rename   <old-group> <new-group> <date> <who>
+#   issue rename   <NNN> <newNNN> <date> <who>
+#
+# Every kind carries <who>, and every field count above is EXACT. A record whose
+# verb is one of these but whose shape is not — a field short, a field long, or
+# a field failing its own gate — is not that record: it is degraded and skipped,
+# never half-parsed on the fields that did read. A record whose VERB is unknown
+# is skipped the same way and stays reportable as its own thing, which is what
+# keeps the kind namespace open for a later record kind to be added without any
+# reader here mistaking it for a neighbour.
 
 # alloc_log_file <kind> — the log file name for <kind>. Group records ride the
 # spec log so resolving a spec id replays a single file.
@@ -270,6 +276,89 @@ alloc_encode_allocate_issue() {
   printf 'issue allocate %s %s %s %s\n' "$1" "$2" "$3" "$(alloc_sanitize_who "${4:-}")"
 }
 
+# alloc_rename_side <kind> <token> — print <token> in the comparable form its
+# kind uses (spec ids canonicalized, issue ordinals base-10 normalized, group
+# names as themselves); rc 1 when the token fails that kind's gate.
+alloc_rename_side() {
+  case "$1" in
+    spec)  alloc_canon_specid "$2" ;;
+    group) alloc_valid_token "$2" && printf '%s\n' "$2" ;;
+    issue) alloc_valid_ord "$2" && printf '%s\n' "$((10#$2))" ;;
+    *) return 1 ;;
+  esac
+}
+
+# alloc_rename_scan <spec|group|issue>   (log on stdin)
+#   THE rename-record reader. Every consumer of a rename record — both
+#   resolvers, the alias map, both high-water folds, both integrity classifiers,
+#   group coverage, and the sweep — folds this one output instead of carrying a
+#   private parse. One structure read by many readers with many rules is the
+#   drift this file has already paid for; one rule is how the shape change above
+#   lands in a single place.
+#
+#   Emits one TAB-separated row per record of the requested selector:
+#     <kind> <src> <src_ok> <dst> <dst_ok> <date> <who> <pos>
+#   `spec` selects spec AND group renames, because every spec-side consumer
+#   replays both and needs them interleaved in file order; `group` selects group
+#   renames alone; `issue` selects issue renames. <pos> is the record's 1-based
+#   line number, so a consumer that must interleave with allocate records — the
+#   resolvers do — indexes back into the log it read.
+#
+#   SHAPE is decided here and only here: exactly six fields, a <date> of eight
+#   digits, and a <who> inside the write side's own sanitized character set. A
+#   record failing any of those never appears in the output at all.
+#
+#   CANONICALIZATION is reported PER SIDE rather than being a second shape gate.
+#   A record whose source is an ordinal this system cannot represent still
+#   establishes its destination, so dropping the whole row on either side's
+#   failure would silence a claim that was really made. Consumers apply their own
+#   semantics: the folds count each valid side independently, and the resolvers
+#   anchor on a valid side while disclosing a dropped one. A side that failed
+#   carries its raw token through the report sanitizer, so a row is safe to print
+#   and can never break the row's own delimiter.
+alloc_rename_scan() {
+  local want="$1" line pos=0 c1 c2 c3 c4 c5 c6 c7
+  local src dst src_ok dst_ok
+  while IFS= read -r line; do
+    pos=$((pos + 1))
+    read -r c1 c2 c3 c4 c5 c6 c7 <<< "$line"
+    [[ "$c2" == rename ]] || continue
+    case "$want:$c1" in
+      spec:spec|spec:group|group:group|issue:issue) ;;
+      *) continue ;;
+    esac
+    # c6 present and c7 empty is exactly six fields: `read` puts everything past
+    # the sixth into c7, so a seventh field is as visible as a missing one.
+    [[ -n "$c6" && -z "$c7" ]] || continue
+    [[ "$c5" =~ ^[0-9]{8}$ ]] || continue
+    [[ "$c6" =~ ^[A-Za-z0-9._@-]{1,64}$ ]] || continue
+    if src="$(alloc_rename_side "$c1" "$c3")"; then
+      src_ok=y
+    else
+      src="$(alloc_sanitize_field "$c3")"; src_ok=n
+    fi
+    if dst="$(alloc_rename_side "$c1" "$c4")"; then
+      dst_ok=y
+    else
+      dst="$(alloc_sanitize_field "$c4")"; dst_ok=n
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$c1" "$src" "$src_ok" "$dst" "$dst_ok" "$c5" "$c6" "$pos"
+  done
+}
+
+# alloc_rename_index  (log on stdin)  → fills the caller's `rn` associative array
+#   Load alloc_rename_scan's rows keyed by record position, for a consumer that
+#   must walk the log in file order and meet each rename where it sits. The
+#   caller declares `rn` and passes the selector; each value is the row minus its
+#   position column.
+alloc_rename_index() {
+  local rk rsrc rsok rdst rdok rdate rwho rpos
+  while IFS=$'\t' read -r rk rsrc rsok rdst rdok rdate rwho rpos; do
+    rn[$rpos]="$rk"$'\t'"$rsrc"$'\t'"$rsok"$'\t'"$rdst"$'\t'"$rdok"$'\t'"$rdate"$'\t'"$rwho"
+  done < <(alloc_rename_scan "$1")
+}
+
 # alloc_resolve_spec <queried>  (log on stdin)
 #   Forward-replay a spec id to its current name. Replay is anchored at the
 #   queried id's last *establishing* record — an allocate record naming it, or a
@@ -290,9 +379,14 @@ alloc_resolve_spec() {
   queried="$(alloc_canon_specid "$queried")" \
     || { echo "error: spec id '$1' exceeds the ordinal width the registry can be rebuilt from (max $ALLOC_MAX_ORD_DIGITS digits)" >&2; return 1; }
   local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4 c5 c6
+  local n=${#lines[@]} i c1 c2 c3
   local qgroup="${queried%/*}"
   local anchor=-1 known=0
+  # Rename records come from the one scan rule, keyed by position so they still
+  # apply exactly where they sit among the allocate records.
+  local -A rn=()
+  local rk rsrc rsok rdst rdok
+  (( n )) && alloc_rename_index spec < <(printf '%s\n' "${lines[@]}")
   # Two allocate records claiming one identity CONCURRENTLY is a contradiction
   # the registry's uniqueness cannot represent. Answering from the later one
   # hands back a confidently wrong referent, so both claimants are remembered and
@@ -307,25 +401,30 @@ alloc_resolve_spec() {
   # Record ids are canonicalized before every comparison, so a record spelling
   # an ordinal unpadded still anchors and still replays.
   for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
+    if [[ -n "${rn[$((i + 1))]:-}" ]]; then
+      IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
+      [[ "$rsok" == y && "$rdok" == y ]] || continue
+      if [[ "$rk" == spec ]]; then
+        [[ "$rdst" == "$queried" ]] && { anchor=$i; known=1; }
+        # A vacating rename clears the claim it moved — but only when there is
+        # one claim to move. With two already live, a rename takes one of them
+        # and leaves the other, so which one this id now names is exactly the
+        # question the refusal exists to refuse; clearing here would answer it
+        # arbitrarily.
+        [[ "$rsrc" == "$queried" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
+      else
+        [[ "$rdst" == "$qgroup" ]] && known=1
+        [[ "$rsrc" == "$qgroup" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
+      fi
+      continue
+    fi
+    read -r c1 c2 c3 _ <<< "${lines[i]}"
     if [[ "$c1" == spec && "$c2" == allocate ]]; then
       c3="$(alloc_canon_specid "$c3")" || continue
       if [[ "$c3" == "$queried" ]]; then
         if (( dup_a < 0 )); then dup_a=$i; elif (( dup_b < 0 )); then dup_b=$i; fi
         anchor=$i; known=1
       fi
-    elif [[ "$c1" == spec && "$c2" == rename ]]; then
-      c3="$(alloc_canon_specid "$c3")" && c4="$(alloc_canon_specid "$c4")" || continue
-      [[ "$c4" == "$queried" ]] && { anchor=$i; known=1; }
-      # A vacating rename clears the claim it moved — but only when there is one
-      # claim to move. With two already live, a rename takes one of them and
-      # leaves the other, so which one this id now names is exactly the question
-      # the refusal exists to refuse; clearing here would answer it arbitrarily.
-      [[ "$c3" == "$queried" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
-    elif [[ "$c1" == group && "$c2" == rename ]]; then
-      alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
-      [[ "$c4" == "$qgroup" ]] && known=1
-      [[ "$c3" == "$qgroup" ]] && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
     fi
   done
   if (( dup_b >= 0 )); then
@@ -335,13 +434,13 @@ alloc_resolve_spec() {
   local current="$queried"
   for ((i=0; i<n; i++)); do
     (( anchor >= 0 && i <= anchor )) && continue
-    read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
-    if [[ "$c1" == spec && "$c2" == rename ]]; then
-      c3="$(alloc_canon_specid "$c3")" && c4="$(alloc_canon_specid "$c4")" || continue
-      [[ "$c3" == "$current" ]] && current="$c4"
-    elif [[ "$c1" == group && "$c2" == rename ]]; then
-      alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
-      [[ "$current" == "$c3"/* ]] && current="$c4/${current#*/}"
+    [[ -n "${rn[$((i + 1))]:-}" ]] || continue
+    IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
+    [[ "$rsok" == y && "$rdok" == y ]] || continue
+    if [[ "$rk" == spec ]]; then
+      [[ "$rsrc" == "$current" ]] && current="$rdst"
+    else
+      [[ "$current" == "$rsrc"/* ]] && current="$rdst/${current#*/}"
     fi
   done
   (( known )) || { echo "error: spec id '$queried' not allocated" >&2; return 1; }
@@ -366,8 +465,11 @@ alloc_valid_ord() {
 alloc_resolve_issue() {
   local queried="$1"
   local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4 c5 c6
+  local n=${#lines[@]} i c1 c2 c3 c4
   local target=""
+  local -A rn=()
+  local rsrc rsok rdst rdok
+  (( n )) && alloc_rename_index issue < <(printf '%s\n' "${lines[@]}")
   # Both claim shapes are contradictions the same way the spec resolver's is: a
   # durable id claimed twice, and an ordinal claimed twice. Each is remembered
   # with its claimants' positions and refused rather than answered from the last
@@ -385,7 +487,7 @@ alloc_resolve_issue() {
   else
     alloc_valid_token "$queried" || { echo "error: invalid issue id '$queried'" >&2; return 1; }
     for ((i=0; i<n; i++)); do
-      read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
+      read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
       [[ "$c1" == issue && "$c2" == allocate ]] || continue
       alloc_valid_ord "$c3" || continue
       alloc_valid_token "$c4" || continue
@@ -403,20 +505,23 @@ alloc_resolve_issue() {
   local anchor=-1 known=0
   dup_a=-1; dup_b=-1
   for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
+    if [[ -n "${rn[$((i + 1))]:-}" ]]; then
+      IFS=$'\t' read -r _ rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
+      [[ "$rsok" == y && "$rdok" == y ]] || continue
+      (( rdst == target )) && { anchor=$i; known=1; }
+      # A rename vacates the ordinal — but only when there is a single holder to
+      # move. Two live claims cannot be told apart by a rename that moves one of
+      # them, so the contradiction stands rather than being cleared.
+      (( rsrc == target )) && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
+      continue
+    fi
+    read -r c1 c2 c3 _ <<< "${lines[i]}"
     if [[ "$c1" == issue && "$c2" == allocate ]]; then
       alloc_valid_ord "$c3" || continue
       if (( 10#$c3 == target )); then
         if (( dup_a < 0 )); then dup_a=$i; elif (( dup_b < 0 )); then dup_b=$i; fi
         anchor=$i; known=1
       fi
-    elif [[ "$c1" == issue && "$c2" == rename ]]; then
-      alloc_valid_ord "$c3" && alloc_valid_ord "$c4" || continue
-      (( 10#$c4 == target )) && { anchor=$i; known=1; }
-      # A rename vacates the ordinal — but only when there is a single holder to
-      # move. Two live claims cannot be told apart by a rename that moves one of
-      # them, so the contradiction stands rather than being cleared.
-      (( 10#$c3 == target )) && (( dup_b < 0 )) && { dup_a=-1; dup_b=-1; }
     fi
   done
   if (( dup_b >= 0 )); then
@@ -426,10 +531,10 @@ alloc_resolve_issue() {
   local current="$target"
   for ((i=0; i<n; i++)); do
     (( anchor >= 0 && i <= anchor )) && continue
-    read -r c1 c2 c3 c4 c5 c6 <<< "${lines[i]}"
-    [[ "$c1" == issue && "$c2" == rename ]] || continue
-    alloc_valid_ord "$c3" && alloc_valid_ord "$c4" || continue
-    (( 10#$c3 == current )) && current=$((10#$c4))
+    [[ -n "${rn[$((i + 1))]:-}" ]] || continue
+    IFS=$'\t' read -r _ rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
+    [[ "$rsok" == y && "$rdok" == y ]] || continue
+    (( rsrc == current )) && current="$rdst"
   done
   (( known )) || { echo "error: issue '$queried' not allocated" >&2; return 1; }
   printf '%s\n' "$current"
@@ -465,16 +570,12 @@ ALLOC_MAX_ORD_DIGITS=15
 #   cost a re-point of every entry per record — quadratic on input any pusher can
 #   grow.
 alloc_group_alias_map() {
-  local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4
   local -a src=() dst=()
-  local m=0
-  for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
-    [[ "$c1" == group && "$c2" == rename ]] || continue
-    alloc_valid_token "$c3" && alloc_valid_token "$c4" || continue
-    src[m]="$c3"; dst[m]="$c4"; m=$((m + 1))
-  done
+  local m=0 rsrc rsok rdst rdok
+  while IFS=$'\t' read -r _ rsrc rsok rdst rdok _ _ _; do
+    [[ "$rsok" == y && "$rdok" == y ]] || continue
+    src[m]="$rsrc"; dst[m]="$rdst"; m=$((m + 1))
+  done < <(alloc_rename_scan group)
   (( m )) || return 0
   local -A nextsrc=() landing=()
   local j jn
@@ -518,9 +619,9 @@ alloc_group_alias_map() {
 alloc_fold_max_spec() {
   local group="$1"
   local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4 max=0 g num cand
+  local n=${#lines[@]} i c1 c2 c3 max=0 g num cand
   local -A alias=()
-  local k v
+  local k v rk rsrc rsok rdst rdok
   if (( n )); then
     while IFS=$'\t' read -r k v; do
       [[ -n "$k" ]] && alias["$k"]="$v"
@@ -528,24 +629,26 @@ alloc_fold_max_spec() {
   fi
   local -a cands=()
   for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
-    if [[ "$c1" == spec && "$c2" == allocate ]]; then
-      cands=("$c3")
-    elif [[ "$c1" == spec && "$c2" == rename ]]; then
-      cands=("$c3" "$c4")
-    else
-      continue
-    fi
-    for cand in "${cands[@]}"; do
-      alloc_valid_specid "$cand" || continue
-      num="${cand##*/}"
-      (( ${#num} > ALLOC_MAX_ORD_DIGITS )) && continue
-      g="${cand%/*}"
-      g="${alias[$g]:-$g}"
-      [[ "$g" == "$group" ]] || continue
-      num=$((10#$num))          # base-10 — never octal on leading zeros
-      (( num > max )) && max=$num
-    done
+    read -r c1 c2 c3 _ <<< "${lines[i]}"
+    [[ "$c1" == spec && "$c2" == allocate ]] && cands+=("$c3")
+  done
+  # Each side of a rename is judged on its own, so a source this system cannot
+  # represent does not take its destination's claim down with it.
+  if (( n )); then
+    while IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ _; do
+      [[ "$rk" == spec ]] || continue
+      [[ "$rsok" == y ]] && cands+=("$rsrc")
+      [[ "$rdok" == y ]] && cands+=("$rdst")
+    done < <(printf '%s\n' "${lines[@]}" | alloc_rename_scan spec)
+  fi
+  for cand in ${cands[@]+"${cands[@]}"}; do
+    cand="$(alloc_canon_specid "$cand")" || continue
+    num="${cand##*/}"
+    g="${cand%/*}"
+    g="${alias[$g]:-$g}"
+    [[ "$g" == "$group" ]] || continue
+    num=$((10#$num))            # base-10 — never octal on leading zeros
+    (( num > max )) && max=$num
   done
   printf '%s\n' "$max"
 }
@@ -562,23 +665,23 @@ alloc_fold_max_spec() {
 #   id gate that separately.
 alloc_fold_max_issue() {
   local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4 max=0 cand
+  local n=${#lines[@]} i c1 c2 c3 max=0 cand
+  local rsrc rsok rdst rdok
   local -a cands=()
   for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
-    if [[ "$c1" == issue && "$c2" == allocate ]]; then
-      cands=("$c3")
-    elif [[ "$c1" == issue && "$c2" == rename ]]; then
-      cands=("$c3" "$c4")
-    else
-      continue
-    fi
-    for cand in "${cands[@]}"; do
-      [[ "$cand" =~ ^[0-9]+$ ]] || continue
-      (( ${#cand} > ALLOC_MAX_ORD_DIGITS )) && continue
-      cand=$((10#$cand))
-      (( cand > max )) && max=$cand
-    done
+    read -r c1 c2 c3 _ <<< "${lines[i]}"
+    [[ "$c1" == issue && "$c2" == allocate ]] && cands+=("$c3")
+  done
+  if (( n )); then
+    while IFS=$'\t' read -r _ rsrc rsok rdst rdok _ _ _; do
+      [[ "$rsok" == y ]] && cands+=("$rsrc")
+      [[ "$rdok" == y ]] && cands+=("$rdst")
+    done < <(printf '%s\n' "${lines[@]}" | alloc_rename_scan issue)
+  fi
+  for cand in ${cands[@]+"${cands[@]}"}; do
+    alloc_valid_ord "$cand" || continue
+    cand=$((10#$cand))
+    (( cand > max )) && max=$cand
   done
   printf '%s\n' "$max"
 }
@@ -2241,17 +2344,28 @@ alloc_sanitize_field() {
 # tree-vs-registry comparison, which is what makes it non-coverage rather than
 # clean.
 alloc_group_has_records() {
-  local group="$1" line c1 c2 c3
-  while IFS= read -r line; do
-    read -r c1 c2 c3 _ <<< "$line"
+  local group="$1" i c1 c2 c3 rk rsrc rsok
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]}
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 _ <<< "${lines[i]}"
     if [[ "$c1" == group && "$c2" == allocate ]]; then
       alloc_valid_token "$c3" || continue
       [[ "$c3" == "$group" ]] && return 0
-    elif [[ "$c1" == spec && ( "$c2" == allocate || "$c2" == rename ) ]]; then
+    elif [[ "$c1" == spec && "$c2" == allocate ]]; then
       alloc_valid_specid "$c3" || continue
       [[ "${c3%/*}" == "$group" ]] && return 0
     fi
   done
+  # A group the registry only ever recorded VACATING ordinals is still a group
+  # the registry knows: the rename source is its coverage, which is what a
+  # retired group's records amount to after every id has moved away.
+  if (( n )); then
+    while IFS=$'\t' read -r rk rsrc rsok _ _ _ _ _; do
+      [[ "$rk" == spec && "$rsok" == y ]] || continue
+      [[ "${rsrc%/*}" == "$group" ]] && return 0
+    done < <(printf '%s\n' "${lines[@]}" | alloc_rename_scan spec)
+  fi
   return 1
 }
 

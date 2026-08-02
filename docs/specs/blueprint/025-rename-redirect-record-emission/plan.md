@@ -265,7 +265,7 @@ flowchart TD
 
 ## Task Breakdown
 
-1. [ ] SYNC the provisional-grammar predicates (Tidy First): byte-identical
+1. [x] SYNC the provisional-grammar predicates (Tidy First): byte-identical
    bodies + `SYNC:` comments across `jimalloc.sh` / `jimfile.sh` / spec
    `reconcile.sh`, plus a byte-agreement fixture.
    **Verify:** `bash tests/jimfile.sh prov && bash skills/meta-test/scripts/run.sh | tail -1`
