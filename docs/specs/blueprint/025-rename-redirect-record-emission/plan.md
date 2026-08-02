@@ -336,7 +336,7 @@ flowchart TD
     synthesis discloses excluded pending provisionals. Depends on 7, 9, 10.
     **Verify:** `grep -n 'partition-batch' skills/partition/SKILL.md && grep -n 'pending provisional' skills/blueprint/SKILL.md`
 
-13. [ ] Output-hygiene audit (AC 18): every new stdout/stderr path echoing
+13. [x] Output-hygiene audit (AC 18): every new stdout/stderr path echoing
     a registry or ledger token prints it gated + sanitized/truncation-noted
     (`alloc_sanitize_who` and the sweep idiom); hostile-token fixtures for
     disclosure, batch refusal, preflight, and lift outputs. Depends on
@@ -349,8 +349,19 @@ flowchart TD
     realize event from this spec's own realization lands as a `have`/`emit`
     row. Depends on 8, 9.
     **Verify:** `bash skills/file/scripts/jimalloc.sh peek spec jim && bash skills/file/scripts/jimalloc.sh sweep`
+    **Blocked — host-only.** This project configures a coordination remote,
+    so the publish is origin-tier, and the sandbox cannot reach it; the apply
+    refuses with `coordination remote 'origin' is unreachable` and writes
+    nothing, which is the correct behavior (a local-only registry write would
+    diverge from the shared branch). The run itself is verified: rehearsed on
+    a remote-free clone of this repo's own registry and ledger, all 54 rows
+    corroborate and emit, `peek spec jim` moves `jim/001 → jim/053`, the sweep
+    exits clean with `uncovered-groups 0` and `rename-source-ids 52`, a re-run
+    reports 54 `have`, and `jim/029` dereferences to `blueprint/001` with the
+    unallocated-source disclosure. Run `jimalloc.sh lift` then
+    `lift --apply` on the host to land it.
 
-15. [ ] Full-suite closure: entire suite green; sweep clean with the
+15. [x] Full-suite closure: entire suite green; sweep clean with the
     retired group covered.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
