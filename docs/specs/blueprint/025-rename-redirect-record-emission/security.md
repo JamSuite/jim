@@ -1,7 +1,7 @@
 ---
 spec: "docs/specs/blueprint/025-rename-redirect-record-emission/spec.md"
-reviewed_phases: [spec]
-status: "Needs Spec Review"
+reviewed_phases: [spec, plan]
+status: "Needs Plan Review"
 date: "2026-08-02"
 ---
 
@@ -9,18 +9,19 @@ date: "2026-08-02"
 
 ## Summary
 
-**Findings:** 0 Critical · 2 Notable · 2 Advisory
+**Findings:** 0 Critical · 1 Notable · 1 Advisory open (4 resolved)
 
-Spec-only review (no plan.md yet) of the registry write path: rename/redirect
-record emission, the resolver's disclosure semantics, and the ledger→registry
-lift. Freeform review + STRIDE; LINDDUN active (developer identity tokens in
-records). The spec already carries strong security requirements (AC 12's
-untrusted-ledger handling, AC 6's occupied-destination refusal); the Notable
-findings sharpen under-specified clauses rather than add missing controls.
+Dual-lens review of spec + plan. The spec-phase findings (1–3) are resolved —
+folded into the spec as AC amendments — and Finding 4 is discharged by the
+plan's DD 4. The plan pass adds one Notable (the lift's corroboration must
+run inside the publish builder, mirroring the batch verb's design) and one
+Advisory (fixture explicitness). LINDDUN active (developer identity tokens);
+no spec↔plan misalignment found.
 
 ## Coverage
 
 - spec.md — reviewed 2026-08-02 (requirements-gap lens)
+- plan.md — reviewed 2026-08-02 (design-flaw lens)
 
 ## Data Classification
 
@@ -54,6 +55,9 @@ findings sharpen under-specified clauses rather than add missing controls.
   failing corroboration is refused by name, never emitted.
 - **Route:** Spec
 - **Relates to:** AC #12 (interaction with AC #7)
+- **Resolved (2026-08-02):** folded into AC 12 — corroboration defined
+  (destination established and matching, source conflict-free, refusals by
+  name).
 
 ### 2. New output surfaces echo untrusted tokens without a binding requirement
 
@@ -72,6 +76,8 @@ findings sharpen under-specified clauses rather than add missing controls.
   established sweep discipline.
 - **Route:** Spec
 - **Relates to:** AC #1, #5, #7, #10, #12
+- **Resolved (2026-08-02):** AC 18 added, binding field gating and the
+  sanitize/truncate output discipline to every new token-echoing path.
 
 ### 3. Provenance markers are hints, not authentication
 
@@ -88,6 +94,8 @@ findings sharpen under-specified clauses rather than add missing controls.
 - **Relates to:** AC #14
 - Reinforces ARCHITECTURE.md → Security Considerations (untrusted git
   content); referenced rather than restated.
+- **Resolved (2026-08-02):** AC 14 amended — provenance is an audit hint;
+  branch history is the authoritative trail.
 
 ### 4. Date semantics for lifted records are undecided
 
@@ -103,17 +111,50 @@ findings sharpen under-specified clauses rather than add missing controls.
   repair-time distinction.
 - **Route:** Plan
 - **Relates to:** AC #13, #14
+- **Resolved (2026-08-02):** plan DD 4 — historical event date in `<date>`;
+  the `jim-lift` marker carries repair-time.
+
+### 5. The lift's corroboration runs outside the CAS window
+
+- **Severity:** Notable
+- **Description:** The plan states corroboration-in-the-builder for
+  `partition-batch` ("each CAS attempt re-validates against fresh registry
+  content") but not for the lift. If `lift --apply` publishes a row set
+  corroborated at preview time through a builder that only appends, a
+  registry change between preview and apply — a concurrent lift run, an
+  allocation claiming a destination — publishes stale rows: the same TOCTOU
+  the batch design closed.
+- **Suggestion:** State in task 8 and the lift's interface contract that
+  corroboration and the `have` dedupe run inside the lift's publish builder
+  on every CAS attempt against the fresh log content; the preview is
+  advisory only, and the `emit` set is recomputed at publish, never
+  replayed.
+- **Route:** Plan
+- **Relates to:** Task 8; Interface Contracts (lift verb); AC #12
+
+### 6. Group-mode occupied-destination refusal not explicitly fixtured
+
+- **Severity:** Advisory
+- **Description:** DD 10 decides occupied-destination semantics generically,
+  but task 7's fixture list names only the spec-pair refusals; the
+  group-mode occupied destination — the exact classifier shape #202's first
+  defect fixes — is not named on the emitter side.
+- **Suggestion:** Add the group-mode occupied-destination refusal to task
+  7's fixture list so emitter and classifier are fixtured on the same
+  shape.
+- **Route:** Plan
+- **Relates to:** Task 7; DD 10; AC #6
 
 ## STRIDE Coverage
 
 | Category | Relevant? | Findings |
 | :--- | :--- | :--- |
-| Spoofing | Yes | Finding 3 — self-asserted `<who>`/marker tokens |
-| Tampering | Yes | Findings 1, 2 — ledger tampering feeding the lift; crafted records at parse time. In-flight registry tampering is covered by the existing CAS + erosion re-check the batch publish inherits |
-| Repudiation | Yes | Findings 3, 4 — trail = append-only branch history plus in-record provenance; lifted-record date ambiguity |
+| Spoofing | Yes | Finding 3 (resolved into AC 14) — self-asserted `<who>`/marker tokens |
+| Tampering | Yes | Findings 1, 2 (resolved into ACs 12/18) and 5 — ledger tampering feeding the lift; the lift's CAS-window corroboration. In-flight registry tampering is covered by the existing CAS + erosion re-check the batch publish inherits |
+| Repudiation | Yes | Findings 3, 4 (both resolved) — trail = append-only branch history plus in-record provenance; date semantics settled by plan DD 4 |
 | Information Disclosure | No | No issues found — records are field-gated ids/slugs/dates/identity tokens; spec and issue body content never reaches the registry |
 | Denial of Service | No | No issues found — publish retries bounded; element gates bound token sizes; lift idempotency bounds re-runs; a bloated pushed log is pre-existing exposure owned by the sweep (platform/012) |
-| Elevation of Privilege | Yes | Finding 1 — content-branch write access converted into coordination-branch records through an operator's lift run; corroboration is the control |
+| Elevation of Privilege | Yes | Findings 1 (resolved — corroboration defined in AC 12) and 5 — the control must also hold inside the CAS window |
 
 ## LINDDUN Coverage
 
@@ -127,19 +168,26 @@ findings sharpen under-specified clauses rather than add missing controls.
 | Unawareness & Unintervenability | No | No issues found — developers author records through their own invocations and can read the log; markers distinguish tool-generated repair |
 | Non-compliance | N/A | No privacy policy governs project-internal developer metadata; same class as git commit metadata |
 
+## Artifact Misalignment
+
+No spec↔plan inconsistencies found. Spot-checked pairings: AC 9's
+one-ordinal-authority ↔ DD 6's retirements; AC 2's dereference guarantee ↔
+DD 3's live emission; AC 14's marker class ↔ DD 4's `jim-lift`; AC 15's
+either-form allowance ↔ DD 9's SYNC choice.
+
 ## Routing Recommendations
 
 ### Spec amendments
-- Finding 1: define AC 12's corroboration — destination established and
-  matching, source conflict-free, failures refused by name.
-- Finding 2: one requirement binding field gating + output sanitization on
-  every new token-echoing output, `<who>` included.
-- Finding 3: one sentence marking in-record provenance as an audit hint with
-  branch history as the authoritative trail.
+All applied 2026-08-02: Finding 1 → AC 12; Finding 2 → AC 18; Finding 3 →
+AC 14.
 
 ### Plan amendments
-- Finding 4: decide and document lifted-record date semantics (recommended:
-  historical event date; marker carries repair-time).
+- Finding 4: resolved by DD 4 (historical event date; the marker carries
+  repair-time) — no further action.
+- Finding 5: state the lift's in-builder corroboration and `have` dedupe
+  per CAS attempt in task 8 and the lift's interface contract.
+- Finding 6: add the group-mode occupied-destination refusal to task 7's
+  fixture list.
 
 ### Candidate issues
 No findings route to Issue.
