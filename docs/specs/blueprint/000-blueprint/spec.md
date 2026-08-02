@@ -77,6 +77,10 @@ rest of the plugin cites.
   `spec_migration`, `require_health`/`auto_health`, `health_threshold_*`).
 - `platform.jimfile-cli` — blueprint-slot resolution, `now` timestamps,
   `valid-relpath`/`valid-id`, glob discovery.
+- `platform.jimalloc` — the coordination allocator: `peek spec <group>` seeds a
+  merge's renumber start (advisory), and `partition-batch spec` /
+  `partition-batch group` publish a rename, split, or merge's identity changes
+  as one all-or-none registry commit at the operation's Close.
 - `platform.testlib` — the group's five test files run under the shared
   framework.
 - `issue.emitter` + `issue.candidate-batch-contract` — violations,
@@ -112,6 +116,7 @@ rest of the plugin cites.
 | update-durable-record | Every answered update-mode run durably records `violations=`/`folded=`/`fixed=` on its `blueprint finished` ledger event and self-commits via `commit-blueprint` (a fix-only run commits the ledger record alone) | high | judge |
 | regen-cadence-safety | The regen-cadence count derives from a single-writer `last_full_generate` watermark (stamped only by generate mode, solely from `jimfile.sh now`); the count is validated and bounded, and a non-positive-integer threshold is disabled — a bad watermark or knob degrades to signal-only | high | judge |
 | map-partition-authority | `BLUEPRINT.md` is written only through the project tier of this group's write surface and committed only via `commit-map`; a new spec group comes into being only through the map surface; hand-declared map updates grade by the shared downgrade rule | high | judge |
+| partition-emits-identity-changes | Every partition operation that changes spec identity — rename, split, merge — publishes those changes through the coordination allocator at its Close, before the operation reports success; the ordinals and floors it seeds come from the allocator, never from a tree scan | high | judge |
 | contract-graph-derived | The derived `## Contract Graph` section is written only by the reconcile pass — the recomputable join of group faces, never hand-declared; its rewrite is grading-exempt as mechanical content | high | judge |
 | reconcile-durable-record | Every reconcile run records `blueprint started`/`finished` with `tier=project op=reconcile` at the specs root, the finished line carrying all fifteen counters (seven findings zeros-included, four health-or-`na`, two face sizes, two slug-validated attribution keys present only when their metric > 0); consumers shape-validate the fixed key set | high | judge |
 | reconcile-declared-data | Reconcile detectors fire only on declared data — missing declarations degrade to explicit reporting, never silent exclusion, never violations; face/map evidence appears only in delimited untrusted-content blocks | high | judge |
