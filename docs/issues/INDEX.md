@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 97
+- Open: 100
 - Closed: 103
 
 ## Issues
@@ -196,7 +196,7 @@
 - `20260801-design-the-repair-path-for-registry-internal-contradictions` — Design the repair path for registry-internal contradictions · status: open · num: 200 · priority: medium · created: 2026-08-01T22:36:01Z · labels: [stride-tampering, id-coordination, alloc] · origin: docs/specs/platform/012-registry-integrity-and-drift/spec.md
 - `20260801-fixture-the-spec-ordinal-holder-root-option` — Fixture the spec-ordinal-holder --root option · status: open · num: 184 · priority: low · created: 2026-08-01T00:22:46Z · labels: [platform, file, scripts, test] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-index-sh-publishes-a-truncated-index-md-as-success` — index.sh publishes a truncated INDEX.md as success · status: closed · num: 192 · priority: high · created: 2026-08-01T06:36:06Z · labels: [scripts, issue] · origin: docs/notes/20260801-c-prime-fix-handoff.md
-- `20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes` — Narrow the issue skill's jimalloc grant to verb-level prefixes · status: open · num: 198 · priority: low · created: 2026-08-01T20:33:39Z · labels: [issue, permissions, hardening] · origin: docs/specs/platform/012-registry-integrity-and-drift/research.md
+- `20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes` — Narrow the issue skill's jimalloc grant to verb-level prefixes · status: open · num: 198 · priority: high · created: 2026-08-01T20:33:39Z · labels: [issue, permissions, hardening] · origin: docs/specs/platform/012-registry-integrity-and-drift/research.md
 - `20260801-re-validate-the-origin-registry-tip-before-git-interpolation` — Re-validate the origin registry tip before git interpolation · status: open · num: 185 · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, scripts, id-coordination, security] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro` — Realize occupancy gate reads the configured specs dir, not its root · status: closed · num: 193 · priority: low · created: 2026-08-01T06:36:07Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver` — Reconcile literal-pathspec use between the commit and rename verb families · status: open · num: 186 · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, ledger, scripts, security] · origin: docs/specs/platform/000-blueprint/spec.md
@@ -207,6 +207,9 @@
 - `20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization` — Sweep and reconcile disagree on worktree-top normalization · status: closed · num: 195 · priority: medium · created: 2026-08-01T06:36:05Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-two-test-files-are-claimed-by-no-group-s-territory` — Two test files are claimed by no group's territory · status: open · num: 189 · priority: medium · created: 2026-08-01T00:28:40Z · labels: [blueprint, 000-blueprint, partition] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage` — Uncommitted-sweep containment guard lost its only coverage · status: closed · num: 196 · priority: medium · created: 2026-08-01T06:36:08Z · labels: [test, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
+- `20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays` — Cut the per-file frontmatter cost the registry sweep pays · status: open · num: P-20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays · priority: medium · created: 2026-08-02T00:47:13Z · labels: [allocator, performance, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
+- `20260802-fix-the-rename-replay-in-the-integrity-classifier` — Fix the rename replay in the integrity classifier · status: open · num: P-20260802-fix-the-rename-replay-in-the-integrity-classifier · priority: medium · created: 2026-08-02T00:47:12Z · labels: [allocator, registry, rename] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
+- `20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key` — Halt one identity, not the batch, on a contradicted realize key · status: open · num: P-20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key · priority: high · created: 2026-08-02T00:47:12Z · labels: [allocator, reconcile, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 
 ## Graph
 

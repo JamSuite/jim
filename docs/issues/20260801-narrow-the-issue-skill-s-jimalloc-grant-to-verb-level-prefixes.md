@@ -3,7 +3,7 @@ id: 20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes
 num: 198
 title: "Narrow the issue skill's jimalloc grant to verb-level prefixes"
 status: open
-priority: low
+priority: high
 labels: [issue, permissions, hardening]
 relations:
   blocks: []
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T20:33:39Z
-updated: 2026-08-01T20:33:39Z
+updated: 2026-08-02T00:47:42Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/research.md
 ---
 
@@ -30,3 +30,13 @@ Narrow the grant to the verb-level prefixes the skill body actually invokes, mat
 ## Provenance
 
 Surfaced by the pre-plan research scan for the registry-integrity spec (`docs/specs/platform/012-registry-integrity-and-drift/research.md`), which enumerated every `jimalloc.sh` call site and its covering grant.
+
+## Addendum — 2026-08-02: the condition is live, not anticipated
+
+The registry-integrity spec has shipped, so the wildcard now covers verbs that did not exist when this was filed — including `catch-up --apply`, which writes the shared coordination branch, and `sweep`. The body above describes the risk in the future tense ("would be silently auto-permitted"); it is present tense as of this build.
+
+Nothing changed in `skills/issue/SKILL.md`, and the skill body still invokes exactly one verb (`peek issue`) — every other allocator call reaches the CLI from inside `new.sh` / `reconcile.sh`, which carry their own grants. So narrowing the grant to `peek issue` should cost nothing, and that is now worth confirming rather than deferring.
+
+Raised to high: the gap it describes is no longer hypothetical.
+
+Confirmed by the post-build review of `platform/012` (`docs/specs/platform/012-registry-integrity-and-drift/review.md`), which traced every consumer of the allocator's changed surface.
