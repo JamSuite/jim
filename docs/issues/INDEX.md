@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 88
+- Open: 95
 - Closed: 117
 
 ## Issues
@@ -207,11 +207,18 @@
 - `20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization` — Sweep and reconcile disagree on worktree-top normalization · status: closed · num: 195 · priority: medium · created: 2026-08-01T06:36:05Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-two-test-files-are-claimed-by-no-group-s-territory` — Two test files are claimed by no group's territory · status: closed · num: 189 · priority: medium · created: 2026-08-01T00:28:40Z · labels: [blueprint, 000-blueprint, partition] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage` — Uncommitted-sweep containment guard lost its only coverage · status: closed · num: 196 · priority: medium · created: 2026-08-01T06:36:08Z · labels: [test, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
+- `20260802-close-the-ac-16-17-18-residuals-of-rename-redirect-emission` — Close the AC 16 17 18 residuals of rename redirect emission · status: open · num: P-20260802-close-the-ac-16-17-18-residuals-of-rename-redirect-emission · priority: medium · created: 2026-08-02T21:35:14Z · labels: [id-coordination, registry] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays` — Cut the per-file frontmatter cost the registry sweep pays · status: open · num: 201 · priority: medium · created: 2026-08-02T00:47:13Z · labels: [allocator, performance, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 - `20260802-declare-platform-jimalloc-in-the-sdlc-blueprint-s-requires-face` — Declare platform.jimalloc in the sdlc blueprint's Requires face · status: open · num: 204 · priority: low · created: 2026-08-02T08:27:17Z · labels: [blueprint, sdlc, contract-graph] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/spec.md
+- `20260802-fix-the-lift-s-cross-run-idempotency-hole-and-one-sided-batch-gu` — Fix the lift's cross-run idempotency hole and one-sided batch guard · status: open · num: P-20260802-fix-the-lift-s-cross-run-idempotency-hole-and-one-sided-batch-gu · priority: critical · created: 2026-08-02T21:35:10Z · labels: [id-coordination, registry, lift] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260802-fix-the-rename-replay-in-the-integrity-classifier` — Fix the rename replay in the integrity classifier · status: open · num: 202 · priority: medium · created: 2026-08-02T00:47:12Z · labels: [allocator, registry, rename] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 - `20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key` — Halt one identity, not the batch, on a contradicted realize key · status: closed · num: 203 · priority: high · created: 2026-08-02T00:47:12Z · labels: [allocator, reconcile, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
+- `20260802-make-the-blueprint-pending-provisional-disclosure-enumerable-and` — Make the blueprint pending-provisional disclosure enumerable and bounded · status: open · num: P-20260802-make-the-blueprint-pending-provisional-disclosure-enumerable-and · priority: medium · created: 2026-08-02T21:35:13Z · labels: [blueprint, id-coordination] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260802-refuse-the-three-contradictions-partition-batch-still-writes` — Refuse the three contradictions partition-batch still writes · status: open · num: P-20260802-refuse-the-three-contradictions-partition-batch-still-writes · priority: high · created: 2026-08-02T21:35:11Z · labels: [id-coordination, registry, partition] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260802-replace-the-vacuously-green-vacated-max-test-and-close-the-fixtu` — Replace the vacuously-green vacated-max test and close the fixture gaps · status: open · num: P-20260802-replace-the-vacuously-green-vacated-max-test-and-close-the-fixtu · priority: medium · created: 2026-08-02T21:35:13Z · labels: [test-integrity, id-coordination] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260802-retire-the-stale-documentation-the-emission-build-left-behind` — Retire the stale documentation the emission build left behind · status: open · num: P-20260802-retire-the-stale-documentation-the-emission-build-left-behind · priority: medium · created: 2026-08-02T21:35:12Z · labels: [docs, id-coordination] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil` — Single-source the ordinal width bound across jimalloc and jimfile · status: open · num: P-20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil · priority: medium · created: 2026-08-02T20:57:29Z · labels: [id-coordination, sync-discipline] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/plan.md
+- `20260802-unblock-the-chained-group-rename` — Unblock the chained group rename · status: open · num: P-20260802-unblock-the-chained-group-rename · priority: high · created: 2026-08-02T21:35:11Z · labels: [id-coordination, registry, partition] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Graph
 
