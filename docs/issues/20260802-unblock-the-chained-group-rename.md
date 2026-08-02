@@ -1,6 +1,6 @@
 ---
 id: 20260802-unblock-the-chained-group-rename
-num: P-20260802-unblock-the-chained-group-rename
+num: 213
 title: "Unblock the chained group rename"
 status: open
 priority: high

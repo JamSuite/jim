@@ -1,6 +1,6 @@
 ---
 id: 20260802-make-the-blueprint-pending-provisional-disclosure-enumerable-and
-num: P-20260802-make-the-blueprint-pending-provisional-disclosure-enumerable-and
+num: 208
 title: "Make the blueprint pending-provisional disclosure enumerable and bounded"
 status: open
 priority: medium

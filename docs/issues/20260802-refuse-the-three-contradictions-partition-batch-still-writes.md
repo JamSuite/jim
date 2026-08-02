@@ -1,6 +1,6 @@
 ---
 id: 20260802-refuse-the-three-contradictions-partition-batch-still-writes
-num: P-20260802-refuse-the-three-contradictions-partition-batch-still-writes
+num: 209
 title: "Refuse the three contradictions partition-batch still writes"
 status: open
 priority: high

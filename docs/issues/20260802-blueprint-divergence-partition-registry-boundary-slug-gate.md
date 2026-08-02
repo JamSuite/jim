@@ -1,6 +1,6 @@
 ---
 id: 20260802-blueprint-divergence-partition-registry-boundary-slug-gate
-num: P-20260802-blueprint-divergence-partition-registry-boundary-slug-gate
+num: 205
 title: "Blueprint divergence: partition registry boundary slug gate"
 status: open
 priority: critical

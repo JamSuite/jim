@@ -1,6 +1,6 @@
 ---
 id: 20260802-fix-the-lift-s-cross-run-idempotency-hole-and-one-sided-batch-gu
-num: P-20260802-fix-the-lift-s-cross-run-idempotency-hole-and-one-sided-batch-gu
+num: 207
 title: "Fix the lift's cross-run idempotency hole and one-sided batch guard"
 status: open
 priority: critical
