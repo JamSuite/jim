@@ -84,6 +84,13 @@ PROV_PREFIX="P-"
 #   spec  rename   <group>/<NNN> <newgroup>/<newNNN> <date> <who>
 #   group rename   <old-group> <new-group> <date> <who>
 #   issue rename   <NNN> <newNNN> <date> <who>
+#   spec  realize  <group>/P-<date>-<slug> <group>/<NNN> <date> <who>
+#
+# The realize kind is deliberately NOT a rename. A rename source is an ordinal
+# the group consumed and can never reissue, and the high-water fold counts it as
+# such; a provisional token is no ordinal at all. Giving realization its own verb
+# is what keeps the reserved form out of the vacating fold entirely, rather than
+# relying on every reader to special-case it.
 #
 # Every kind carries <who>, and every field count above is EXACT. A record whose
 # verb is one of these but whose shape is not — a field short, a field long, or
@@ -276,6 +283,36 @@ alloc_encode_allocate_issue() {
   printf 'issue allocate %s %s %s %s\n' "$1" "$2" "$3" "$(alloc_sanitize_who "${4:-}")"
 }
 
+# alloc_encode_rename_spec   <old-specid> <new-specid> <date> <who>
+# alloc_encode_rename_group  <old-group>  <new-group>  <date> <who>
+# alloc_encode_rename_issue  <old-ord>    <new-ord>    <date> <who>
+# alloc_encode_realize_spec  <provid>     <specid>     <date> <who>
+#   The emission half of the grammar above. Same discipline as the allocate
+#   encoders: fixed fields are pre-validated single tokens supplied by the
+#   emitting path, and the trailing free-text <who> is sanitized here.
+alloc_encode_rename_spec() {
+  printf 'spec rename %s %s %s %s\n' "$1" "$2" "$3" "$(alloc_sanitize_who "${4:-}")"
+}
+alloc_encode_rename_group() {
+  printf 'group rename %s %s %s %s\n' "$1" "$2" "$3" "$(alloc_sanitize_who "${4:-}")"
+}
+alloc_encode_rename_issue() {
+  printf 'issue rename %s %s %s %s\n' "$1" "$2" "$3" "$(alloc_sanitize_who "${4:-}")"
+}
+alloc_encode_realize_spec() {
+  printf 'spec realize %s %s %s %s\n' "$1" "$2" "$3" "$(alloc_sanitize_who "${4:-}")"
+}
+
+# alloc_record_tail_ok <date> <who> <rest> — exit 0 iff a six-field record's
+# trailing pair is present, alone, and inside its gates. `read` puts everything
+# past the sixth field into <rest>, so a seventh field is as visible here as a
+# missing one — which is what makes the field count exact rather than a floor.
+alloc_record_tail_ok() {
+  [[ -n "$2" && -z "${3:-}" ]] || return 1
+  [[ "$1" =~ ^[0-9]{8}$ ]] || return 1
+  [[ "$2" =~ ^[A-Za-z0-9._@-]{1,64}$ ]]
+}
+
 # alloc_rename_side <kind> <token> — print <token> in the comparable form its
 # kind uses (spec ids canonicalized, issue ordinals base-10 normalized, group
 # names as themselves); rc 1 when the token fails that kind's gate.
@@ -327,11 +364,7 @@ alloc_rename_scan() {
       spec:spec|spec:group|group:group|issue:issue) ;;
       *) continue ;;
     esac
-    # c6 present and c7 empty is exactly six fields: `read` puts everything past
-    # the sixth into c7, so a seventh field is as visible as a missing one.
-    [[ -n "$c6" && -z "$c7" ]] || continue
-    [[ "$c5" =~ ^[0-9]{8}$ ]] || continue
-    [[ "$c6" =~ ^[A-Za-z0-9._@-]{1,64}$ ]] || continue
+    alloc_record_tail_ok "$c5" "$c6" "$c7" || continue
     if src="$(alloc_rename_side "$c1" "$c3")"; then
       src_ok=y
     else
@@ -347,34 +380,65 @@ alloc_rename_scan() {
   done
 }
 
-# alloc_rename_verbs — the kind/verb pairs this build knows, one per line. The
-# scan rule decides what a KNOWN record must look like; this decides which pairs
+# alloc_realize_scan <spec>   (log on stdin)
+#   THE realize-record reader, the same discipline as alloc_rename_scan over the
+#   other new kind. Emits one TAB-separated row per well-formed record:
+#     <prov> <prov_ok> <real> <real_ok> <date> <who> <pos>
+#   Takes the same selector argument as the rename scan so the two are
+#   interchangeable to a caller that only wants a count; only `spec` yields rows,
+#   because realization is a spec-side event.
+alloc_realize_scan() {
+  local want="$1" line pos=0 c1 c2 c3 c4 c5 c6 c7
+  local prov real prov_ok real_ok
+  [[ "$want" == spec ]] || { cat >/dev/null; return 0; }
+  while IFS= read -r line; do
+    pos=$((pos + 1))
+    read -r c1 c2 c3 c4 c5 c6 c7 <<< "$line"
+    [[ "$c1" == spec && "$c2" == realize ]] || continue
+    alloc_record_tail_ok "$c5" "$c6" "$c7" || continue
+    if alloc_valid_provid "$c3"; then
+      prov="$c3"; prov_ok=y
+    else
+      prov="$(alloc_sanitize_field "$c3")"; prov_ok=n
+    fi
+    if real="$(alloc_canon_specid "$c4")"; then
+      real_ok=y
+    else
+      real="$(alloc_sanitize_field "$c4")"; real_ok=n
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$prov" "$prov_ok" "$real" "$real_ok" "$c5" "$c6" "$pos"
+  done
+}
+
+# alloc_known_verbs — the kind/verb pairs this build knows, one per line. The
+# scan rules decide what a KNOWN record must look like; this decides which pairs
 # are known at all, so the two answers cannot drift apart.
 alloc_known_verbs() {
-  printf '%s\n' 'spec allocate' 'spec rename' 'group allocate' 'group rename' \
+  printf '%s\n' 'spec allocate' 'spec rename' 'spec realize' \
+                'group allocate' 'group rename' \
                 'issue allocate' 'issue rename'
 }
 
-# alloc_rename_malformed_count <spec|group|issue>  (log on stdin) → integer
-#   How many records carry a rename verb of the requested selector but not its
+# alloc_malformed_count <selector> <verb> <scan-fn>  (log on stdin) → integer
+#   How many records carry <verb> under the selector's kinds but not that verb's
 #   one shape. These name no identity to compare a tree against, so they are
-#   non-coverage in the strictest sense — a log full of them must not report
-#   like a clean one. Counted by subtraction from the scan rule's own output, so
-#   the count and the parse can never disagree about what "the one shape" is.
-alloc_rename_malformed_count() {
-  local want="$1" line c1 c2 all=0 good
+#   non-coverage in the strictest sense — a log full of them must not report like
+#   a clean one. Counted by subtraction from the scan rule's own output, so the
+#   count and the parse can never disagree about what "the one shape" is.
+alloc_malformed_count() {
+  local want="$1" verb="$2" scan="$3" c1 c2 all=0 good=0
   local -a lines=(); mapfile -t lines
   local i n=${#lines[@]}
   for ((i=0; i<n; i++)); do
     read -r c1 c2 _ <<< "${lines[i]}"
-    [[ "$c2" == rename ]] || continue
+    [[ "$c2" == "$verb" ]] || continue
     case "$want:$c1" in
       spec:spec|spec:group|group:group|issue:issue) all=$((all + 1)) ;;
     esac
   done
-  good=0
   if (( n )); then
-    good="$(printf '%s\n' "${lines[@]}" | alloc_rename_scan "$want" | grep -c . || true)"
+    good="$(printf '%s\n' "${lines[@]}" | "$scan" "$want" | grep -c . || true)"
   fi
   printf '%d' "$(( all - good ))"
 }
@@ -420,15 +484,33 @@ alloc_rename_index() {
 #   terminates. rc 1 if the id is invalid or never
 #   appears in the registry (as an allocate id, a rename target, or a member of
 #   a renamed-into group).
+#
+#   A PROVISIONAL identity is answerable here too: its realization record names
+#   the ordinal it became, and the walk continues from that ordinal, so an
+#   offline-frozen citation dereferences through whatever happened afterwards.
+#   Unrealized, it is not a claim on anything and does not resolve.
 alloc_resolve_spec() {
   local queried="$1"
-  alloc_valid_specid "$queried" || { echo "error: invalid spec id '$queried'" >&2; return 1; }
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3
+  if alloc_valid_provid "$queried"; then
+    local zprov zpok zreal zrok realized=0
+    while IFS=$'\t' read -r zprov zpok zreal zrok _ _ _; do
+      [[ "$zpok" == y && "$zrok" == y && "$zprov" == "$queried" ]] || continue
+      queried="$zreal"; realized=1
+    done < <(printf '%s\n' ${lines[@]+"${lines[@]}"} | alloc_realize_scan spec)
+    if (( ! realized )); then
+      echo "error: provisional spec id '$queried' has not been realized" >&2
+      return 1
+    fi
+  elif ! alloc_valid_specid "$queried"; then
+    echo "error: invalid spec id '$queried'" >&2
+    return 1
+  fi
   # Past the shape guard the only way canonicalization fails is the width bound,
   # so the message names it rather than repeating "invalid".
   queried="$(alloc_canon_specid "$queried")" \
     || { echo "error: spec id '$1' exceeds the ordinal width the registry can be rebuilt from (max $ALLOC_MAX_ORD_DIGITS digits)" >&2; return 1; }
-  local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3
   local qgroup="${queried%/*}"
   local anchor=-1 known=0
   # Rename records come from the one scan rule, keyed by position so they still
@@ -1395,7 +1477,8 @@ alloc_classify_spec() {
   local rk rsrc rsok rdst rdok
   if (( n )); then
     alloc_rename_index spec < <(printf '%s\n' "${lines[@]}")
-    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_rename_malformed_count spec) ))
+    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_malformed_count spec rename alloc_rename_scan) ))
+    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_malformed_count spec realize alloc_realize_scan) ))
   fi
   for ((i=0; i<n; i++)); do
     if [[ -n "${rn[$((i + 1))]:-}" ]]; then
@@ -1517,7 +1600,7 @@ alloc_classify_issue() {
   local rsrc rsok rdst rdok
   if (( n )); then
     alloc_rename_index issue < <(printf '%s\n' "${lines[@]}")
-    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_rename_malformed_count issue) ))
+    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_malformed_count issue rename alloc_rename_scan) ))
   fi
   for ((i=0; i<n; i++)); do
     if [[ -n "${rn[$((i + 1))]:-}" ]]; then

@@ -281,7 +281,7 @@ flowchart TD
    phantom and incoherent-log fixtures stay loud). Depends on task 2.
    **Verify:** `bash tests/jimalloc.sh resolve`
 
-4. [ ] Migrate both classifiers onto the scan rule and fix #202's four
+4. [x] Migrate both classifiers onto the scan rule and fix #202's four
    shapes (occupied group-rename → duplicate finding; self-renames → inert
    no-op; provenance cites the rename record's position); malformed shapes
    route to unreadable; sweep names unknown verbs distinctly. Depends on 2.
