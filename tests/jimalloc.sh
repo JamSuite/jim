@@ -146,7 +146,7 @@ case_jimalloc_resolve_spec_padding_is_one_identity() {
 case_jimalloc_resolve_spec_padding_replay() {
   local dir; dir=$(empty_dir res_padding_replay)
   printf '%s\n' 'spec allocate core/003 s 20260726 jane
-spec rename core/3 ui/7 20260727' > "$dir/specs.log"
+spec rename core/3 ui/7 20260727 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/003
   assert_exit "rc"                 0        "$RC"
   assert_eq   "renamed, canonical" "ui/007" "$OUT"
@@ -157,8 +157,8 @@ spec rename core/3 ui/7 20260727' > "$dir/specs.log"
 case_jimalloc_resolve_spec_multihop_rename() {
   local dir; dir=$(empty_dir res_multihop)
   printf '%s\n' 'spec allocate core/003 s 20260726 jane
-spec rename core/003 dashboard/001 20260727
-spec rename dashboard/001 ui/002 20260728' > "$dir/specs.log"
+spec rename core/003 dashboard/001 20260727 x
+spec rename dashboard/001 ui/002 20260728 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/003
   assert_eq "old→current" "ui/002" "$OUT"
   run_jimalloc_reg "$dir" resolve spec dashboard/001
@@ -172,7 +172,7 @@ spec rename dashboard/001 ui/002 20260728' > "$dir/specs.log"
 case_jimalloc_resolve_spec_group_rename() {
   local dir; dir=$(empty_dir res_group)
   printf '%s\n' 'spec allocate dashboard/001 s 20260726 jane
-group rename dashboard ui 20260727' > "$dir/specs.log"
+group rename dashboard ui 20260727 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec dashboard/001
   assert_eq "group old→current" "ui/001" "$OUT"
   run_jimalloc_reg "$dir" resolve spec ui/001
@@ -185,7 +185,7 @@ group rename dashboard ui 20260727' > "$dir/specs.log"
 case_jimalloc_resolve_spec_reused_name() {
   local dir; dir=$(empty_dir res_reuse)
   printf '%s\n' 'spec allocate dashboard/001 first 20260726 jane
-spec rename dashboard/001 core/009 20260727
+spec rename dashboard/001 core/009 20260727 x
 spec allocate dashboard/001 second 20260728 kai' > "$dir/specs.log"
   # The moved original resolves forward…
   run_jimalloc_reg "$dir" resolve spec core/009
@@ -203,9 +203,9 @@ spec allocate dashboard/001 second 20260728 kai' > "$dir/specs.log"
 case_jimalloc_resolve_spec_reuse_rename_in() {
   local dir; dir=$(empty_dir res_reuse_rename_in)
   printf '%s\n' 'spec allocate dashboard/001 first 20260726 jane
-spec rename dashboard/001 core/009 20260727
+spec rename dashboard/001 core/009 20260727 x
 spec allocate other/003 second 20260728 kai
-spec rename other/003 dashboard/001 20260729' > "$dir/specs.log"
+spec rename other/003 dashboard/001 20260729 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec dashboard/001
   assert_exit "rc"              0               "$RC"
   assert_eq   "current holder"  "dashboard/001" "$OUT"
@@ -234,7 +234,7 @@ case_jimalloc_resolve_spec_over_wide_ordinal_refused() {
 # recorded on the redirect-emission issue.
 case_jimalloc_resolve_spec_over_wide_rename_source_drops_record() {
   local dir; dir=$(empty_dir res_overwide_anchor)
-  printf '%s\n' 'spec rename core/1234567890123456 core/003 20260727' > "$dir/specs.log"
+  printf '%s\n' 'spec rename core/1234567890123456 core/003 20260727 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/003
   assert_exit "rc" 1 "$RC"
 }
@@ -245,7 +245,7 @@ case_jimalloc_resolve_spec_over_wide_rename_source_drops_record() {
 case_jimalloc_resolve_spec_over_wide_rename_dest_not_applied() {
   local dir; dir=$(empty_dir res_overwide_replay)
   printf '%s\n' 'spec allocate core/003 alpha 20260726 jane
-spec rename core/003 core/1234567890123456 20260727' > "$dir/specs.log"
+spec rename core/003 core/1234567890123456 20260727 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/003
   assert_exit "rc"          0         "$RC"
   assert_eq   "pre-rename name" "core/003" "$OUT"
@@ -256,9 +256,9 @@ spec rename core/003 core/1234567890123456 20260727' > "$dir/specs.log"
 case_jimalloc_resolve_issue_reuse_rename_in() {
   local dir; dir=$(empty_dir res_issue_reuse_rename_in)
   printf '%s\n' 'issue allocate 7 20260726-first 20260726 jane
-issue rename 7 9 20260727
+issue rename 7 9 20260727 x
 issue allocate 3 20260728-second 20260728 kai
-issue rename 3 7 20260729' > "$dir/issues.log"
+issue rename 3 7 20260729 x' > "$dir/issues.log"
   run_jimalloc_reg "$dir" resolve issue 7
   assert_exit "rc"             0   "$RC"
   assert_eq   "current holder" "7" "$OUT"
@@ -271,8 +271,8 @@ issue rename 3 7 20260729' > "$dir/issues.log"
 case_jimalloc_resolve_spec_cycle_revert() {
   local dir; dir=$(empty_dir res_cycle)
   printf '%s\n' 'spec allocate core/003 s 20260726 jane
-spec rename core/003 tmp/001 20260727
-spec rename tmp/001 core/003 20260728' > "$dir/specs.log"
+spec rename core/003 tmp/001 20260727 x
+spec rename tmp/001 core/003 20260728 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/003
   assert_exit "rc"      0          "$RC"
   assert_eq   "reverted" "core/003" "$OUT"
@@ -286,7 +286,7 @@ case_jimalloc_resolve_spec_skips_malformed() {
   printf '%s\n' 'spec allocate --upload-pack=x s 20260726 jane
 spec allocate ../../etc/passwd s 20260726 jane
 spec allocate core/003 good 20260726 jane
-spec rename core/003 he^ad~1:x 20260727' > "$dir/specs.log"
+spec rename core/003 he^ad~1:x 20260727 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/003
   assert_exit "legit rc"       0          "$RC"
   assert_eq   "legit resolves" "core/003" "$OUT"   # malformed rename dst skipped
@@ -309,8 +309,8 @@ case_jimalloc_resolve_spec_unknown() {
 case_jimalloc_resolve_issue_multihop() {
   local dir; dir=$(empty_dir res_issue_hop)
   printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
-issue rename 5 8 20260727
-issue rename 8 12 20260728' > "$dir/issues.log"
+issue rename 5 8 20260727 x
+issue rename 8 12 20260728 x' > "$dir/issues.log"
   run_jimalloc_reg "$dir" resolve issue 5
   assert_eq "issue old→current" "12" "$OUT"
 }
@@ -319,7 +319,7 @@ issue rename 8 12 20260728' > "$dir/issues.log"
 case_jimalloc_resolve_issue_by_fullid() {
   local dir; dir=$(empty_dir res_issue_fid)
   printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
-issue rename 5 8 20260727' > "$dir/issues.log"
+issue rename 5 8 20260727 x' > "$dir/issues.log"
   run_jimalloc_reg "$dir" resolve issue 20260726-alpha
   assert_eq "fullid→current ordinal" "8" "$OUT"
 }
@@ -410,13 +410,13 @@ spec allocate core/008 beta 20260727 jane' > "$dir/specs.log"
 case_jimalloc_resolve_spec_vacated_reuse_not_a_duplicate() {
   local dir; dir=$(empty_dir res_dup_spec_vacated)
   printf '%s\n' 'spec allocate core/007 alpha 20260726 jane
-spec rename core/007 core/009 20260727
+spec rename core/007 core/009 20260727 x
 spec allocate core/007 beta 20260728 kai' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/007
   assert_exit "vacated-then-reused rc" 0          "$RC"
   assert_eq   "answers the live claim" "core/007" "$OUT"
   printf '%s\n' 'spec allocate dashboard/001 first 20260726 jane
-group rename dashboard core 20260727
+group rename dashboard core 20260727 x
 spec allocate dashboard/001 second 20260728 kai' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec dashboard/001
   assert_exit "group-vacated rc" 0 "$RC"
@@ -428,7 +428,7 @@ spec allocate dashboard/001 second 20260728 kai' > "$dir/specs.log"
 case_jimalloc_resolve_issue_vacated_reuse_not_a_duplicate() {
   local dir; dir=$(empty_dir res_dup_issue_vacated)
   printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
-issue rename 5 8 20260727
+issue rename 5 8 20260727 x
 issue allocate 5 20260728-beta 20260728 kai' > "$dir/issues.log"
   run_jimalloc_reg "$dir" resolve issue 5
   assert_exit "vacated-then-reused rc" 0   "$RC"
@@ -477,7 +477,7 @@ case_jimalloc_next_id_spec() {
   assert_eq "max+1 in group" "dashboard/003" "$out"
   # a rename destination into the group counts toward the high-water mark
   log=$(printf '%s\n' 'spec allocate dashboard/001 a 20260726 x' \
-                      'spec rename core/009 dashboard/005 20260727')
+                      'spec rename core/009 dashboard/005 20260727 x')
   out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec dashboard <<< "$log")"
   assert_eq "rename dst counts" "dashboard/006" "$out"
 }
@@ -785,7 +785,7 @@ case_jimalloc_next_num_issue() {
   out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "")"
   assert_eq "empty → 1" "1" "$out"
   log=$(printf '%s\n' 'issue allocate 5 20260726-a 20260726 x' \
-                      'issue rename 5 11 20260727')
+                      'issue rename 5 11 20260727 x')
   out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log")"
   assert_eq "max+1" "12" "$out"
 }
@@ -2100,7 +2100,7 @@ case_jimalloc_classify_spec_rename_source_not_drift() {
   run_classify alloc_classify_spec \
     "$(printf '%s\n' 'spec allocate core/009 alpha 20260801 jim-seed')" \
     "$(printf '%s\n' 'spec allocate core/007 alpha 20260726 jane' \
-                     'spec rename core/007 core/009 20260727')"
+                     'spec rename core/007 core/009 20260727 x')"
   assert_eq   "vacated id is not drift" "" "$(classify_rows INFO-NO-TREE)"
   assert_eq   "destination matches the tree" "" "$(classify_rows MISSING)"
   assert_match "vacated id named as non-coverage" '^RENAME-SRC	spec	core/007	' "$OUT"
@@ -2156,7 +2156,7 @@ case_jimalloc_classify_issue_rename_source_not_drift() {
   run_classify alloc_classify_issue \
     "$(printf '%s\n' 'issue allocate 8 20260726-alpha 20260726 jim-seed')" \
     "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane' \
-                     'issue rename 5 8 20260727')"
+                     'issue rename 5 8 20260727 x')"
   assert_match "vacated ordinal named" '^RENAME-SRC	issue	5	' "$OUT"
   assert_eq    "not drift"             "" "$(classify_rows MISSING)"
 }
@@ -2765,7 +2765,7 @@ case_jimalloc_reconcile_realize_marker_independent() {
 case_jimalloc_reconcile_realize_high_water_rename() {
   local log
   log=$(printf '%s\n' 'issue allocate 5 20260726-a 20260726 jane' \
-                      'issue rename 5 11 20260727')
+                      'issue rename 5 11 20260727 x')
   run_realize "$log" 20260726-new
   assert_exit "rc" 0 "$RC"
   assert_eq   "next above rename dst" "$(printf '20260726-new\t12\tnew')" "$OUT"
