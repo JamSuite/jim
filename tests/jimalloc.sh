@@ -579,6 +579,102 @@ case_jimalloc_next_num_issue_skips_over_wide_ordinal() {
   assert_eq "next ordinal unaffected" "6" "$out"
 }
 
+# ─── Section: rename / realize encoders ──────────────────────────────────────
+
+# AC 1: each rename encoder writes exactly the one shape, with the free-text
+# provenance sanitized on the way in — the write-side complement to the read-side
+# gate, so a newline in <who> cannot forge a second record.
+case_jimalloc_encode_rename_shapes() {
+  local out
+  out="$(source "$SCRIPT_jimalloc"; alloc_encode_rename_spec core/003 ui/007 20260802 'jane doe')"
+  assert_eq "spec rename" "spec rename core/003 ui/007 20260802 jane-doe" "$out"
+  out="$(source "$SCRIPT_jimalloc"; alloc_encode_rename_group core ui 20260802 jane)"
+  assert_eq "group rename" "group rename core ui 20260802 jane" "$out"
+  out="$(source "$SCRIPT_jimalloc"; alloc_encode_rename_issue 5 8 20260802 jane)"
+  assert_eq "issue rename" "issue rename 5 8 20260802 jane" "$out"
+  out="$(source "$SCRIPT_jimalloc"
+        alloc_encode_rename_spec core/003 ui/007 20260802 "$(printf 'a\nspec rename x/001 y/002 20260802 b')")"
+  assert_eq "who cannot forge a record" 1 "$(printf '%s\n' "$out" | grep -c .)"
+}
+
+# AC 2: the realization record is its own kind — a provisional token on the left,
+# the ordinal it became on the right, and it never spells 'rename'.
+case_jimalloc_encode_realize_spec_shape() {
+  local out
+  out="$(source "$SCRIPT_jimalloc"
+        alloc_encode_realize_spec core/P-20260802-alpha core/007 20260802 jane)"
+  assert_eq "realize record" \
+    "spec realize core/P-20260802-alpha core/007 20260802 jane" "$out"
+}
+
+# ─── Section: realization records ────────────────────────────────────────────
+
+# AC 2: once a realization is recorded, the provisional identity resolves to the
+# real ordinal — a citation frozen offline dereferences.
+case_jimalloc_realize_record_resolves_provisional() {
+  local dir; dir=$(empty_dir realize_resolve)
+  printf '%s\n' 'spec allocate core/007 alpha 20260802 jane
+spec realize core/P-20260802-alpha core/007 20260802 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/P-20260802-alpha
+  assert_exit "rc"           0          "$RC"
+  assert_eq   "real ordinal" "core/007" "$OUT"
+}
+
+# AC 2: and it keeps resolving through whatever happened to the ordinal after —
+# realization is the start of the walk, not a separate answer.
+case_jimalloc_realize_record_then_rename() {
+  local dir; dir=$(empty_dir realize_then_rename)
+  printf '%s\n' 'spec allocate core/007 alpha 20260802 jane
+spec realize core/P-20260802-alpha core/007 20260802 jane
+spec rename core/007 ui/003 20260803 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/P-20260802-alpha
+  assert_eq "follows the later rename" "ui/003" "$OUT"
+}
+
+# AC 2: a provisional identity nothing has realized is not resolvable — the
+# reserved form is not a claim on anything.
+case_jimalloc_realize_unrealized_provisional_errors() {
+  local dir; dir=$(empty_dir realize_unrealized)
+  printf '%s\n' 'spec allocate core/007 alpha 20260802 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/P-20260802-alpha
+  assert_exit "rc" 1 "$RC"
+  assert_eq   "no answer" "" "$OUT"
+}
+
+# AC 2: a realization record raises no group's high-water — neither side of it
+# is an ordinal the group consumed by this record, so the fold must not read one.
+case_jimalloc_realize_record_does_not_raise_high_water() {
+  local log out
+  log=$(printf '%s\n' 'spec realize core/P-20260802-alpha core/900 20260802 jane')
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_id_spec core <<< "$log")"
+  assert_eq "no high-water raise" "core/001" "$out"
+}
+
+# AC 2: the realize kind is grammar-distinct — the rename reader never sees one,
+# so a provisional token can never reach the vacating fold.
+case_jimalloc_realize_record_is_not_a_rename() {
+  local log out
+  log=$(printf '%s\n' 'spec realize core/P-20260802-alpha core/007 20260802 jane')
+  out="$(source "$SCRIPT_jimalloc"; alloc_rename_scan spec <<< "$log")"
+  assert_eq "not a rename" "" "$out"
+}
+
+# AC 1/2: a realize record that is not its one shape is unreadable, the same way
+# a malformed rename is; a well-formed one is not an unknown verb.
+case_jimalloc_realize_malformed_is_unreadable() {
+  run_classify alloc_classify_spec "" \
+    "$(printf '%s\n' 'spec allocate core/007 alpha 20260802 jane' \
+                     'spec realize core/P-20260802-alpha core/007 20260802')"
+  assert_match "counted unreadable" '^CHECKED	unreadable	spec	1$' "$OUT"
+}
+
+case_jimalloc_realize_record_is_a_known_verb() {
+  local out
+  out="$(source "$SCRIPT_jimalloc"
+        alloc_unknown_verb_count <<< 'spec realize core/P-20260802-alpha core/007 20260802 jane')"
+  assert_eq "known verb" "0" "$out"
+}
+
 # ─── Section: rename-record shape strictness ─────────────────────────────────
 
 # AC 1/8: the shared scan rule emits one normalized row per well-formed rename
