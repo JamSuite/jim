@@ -2,7 +2,7 @@
 title: "platform — blueprint"
 group: "platform"
 kind: blueprint
-updated: "2026-07-31"
+updated: "2026-08-02"
 last_full_generate: "2026-07-26T08:31:16Z"
 ---
 
@@ -56,10 +56,14 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   preview that never binds), `resolve spec|issue
   <id>` (forward-replay to the current name), and `seed [--apply]` (a one-time
   bootstrap that reconstructs the per-kind logs from the repo's existing spec
-  directories and issue files — preview by default, `--apply` to land), and
-  `reconcile issue [--apply]` (realize a consumer's pending provisional ids into
-  real coordinated ones — preview by default, `--apply` to publish); `-c
-  <path>` override. Guarantee: an
+  directories and issue files — preview by default, `--apply` to land),
+  `reconcile issue|spec [--apply]` (realize a consumer's pending provisional ids
+  into real coordinated ones — preview by default, `--apply` to publish),
+  `sweep` (a read-only integrity report comparing every tree identity against
+  the registry, exiting `0` clean / `3` drift found / `4` could-not-check so a
+  check that could not run is never read as a pass), and `catch-up [--apply]`
+  (append the records a non-empty registry is missing, preview by default);
+  `-c <path>` override. Guarantee: an
   id is returned only after its record is durably committed to a shared,
   append-only registry on a dedicated coordination branch under a compare-and-swap
   (origin-tier `push` non-fast-forward, local-tier `update-ref` old-value), built
@@ -166,6 +170,7 @@ allocation, or an un-derivable template); every replayed or config token is reva
 | ordinal-single-source | Ordinal computation, legality, and occupancy each resolve to one definition: the next-ordinal high-water is one shared fold per kind that every allocation, preview, and reconcile path reads; ordinal legality is one named constant the allocator, the registry bootstrap, and `resolve` all read, while the tree-side path/rename predicates hold the same bound as inlined literals — agreement by convention, not by construction, and the one seam here where a divergence would not be caught structurally; and occupancy is one numeric predicate, exposed as a verb so the realize and partition-move paths consult the definition itself rather than a copy | high | judge |
 | blueprint-slot-reserved | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0`, ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | judge |
 | tests-under-tests | Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are); the runner and scaffold enforce the boundary | medium | judge |
+| registry-tree-consistency | Every spec directory and issue file the collection holds has a matching registry record, and the registry holds no self-contradiction — one identity claimed twice, a record for the reserved slot, or a record too malformed to compare. The check is the read-only sweep, whose exit codes keep clean, drift, and could-not-check apart, and which names what it did not cover as loudly as what it found. Consistency only: a well-formed record is never evidence of provenance or authorization, for which coordination-branch protection is the control | high | registry:id-sweep |
 
 ```verify-checks
 no-third-party-deps polarity=must-not regex=\b(jq|yq|bats)\b scope=skills/
