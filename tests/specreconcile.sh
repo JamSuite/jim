@@ -236,6 +236,49 @@ case_specreconcile_blocked_identity_keeps_batch() {
     "$([[ -d "$repo/docs/specs/sdlc/008-beta" ]] && echo yes || echo no)"
 }
 
+# AC: an untracked file inside a content root that cites the realized identity
+# is swept too — artifacts created in the same offline session are exactly the
+# files most likely to be uncommitted when realize runs — and the index
+# regeneration that follows rebuilds from the rewritten source instead of
+# resurrecting the citation the same run just retired.
+case_specreconcile_sweeps_untracked_files() {
+  local repo body
+  repo="$(specrec_repo sr_untracked)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_commit "$repo"
+  mkdir -p "$repo/docs/issues"
+  printf -- '---\nid: 20260728-track-me\nnum: 7\ntitle: "Track me"\nstatus: open\npriority: low\nlabels: []\ncreated: 2026-07-28T00:00:00Z\nupdated: 2026-07-28T00:00:00Z\norigin: docs/specs/sdlc/P-20260728-alpha/spec.md\n---\n\nsee sdlc/P-20260728-alpha\n' \
+    > "$repo/docs/issues/20260728-track-me.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/issues/20260728-track-me.md")"
+  assert_match "untracked path citation swept"  'docs/specs/sdlc/001-alpha/spec.md' "$body"
+  assert_match "untracked typed citation swept" 'see sdlc/001' "$body"
+  assert_eq "no provisional citation survives the file" "0" \
+    "$(grep -c 'P-20260728-alpha' "$repo/docs/issues/20260728-track-me.md")"
+  assert_eq "the regen does not resurrect the citation" "0" \
+    "$(grep -c 'P-20260728-alpha' "$repo/docs/issues/INDEX.md" 2>/dev/null)"
+  assert_match "the index describes the rewritten origin" 'docs/specs/sdlc/001-alpha/spec.md' \
+    "$(cat "$repo/docs/issues/INDEX.md" 2>/dev/null)"
+}
+
+# AC: the untracked enumeration inherits the symlink discipline — a symlink is
+# never a citation's home, and one that escapes the worktree refuses the sweep
+# rather than letting a shapeable untracked path direct a rewrite outside it.
+case_specreconcile_untracked_symlink_escape_refused() {
+  local repo
+  repo="$(specrec_repo sr_unsym)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_commit "$repo"
+  mkdir -p "$repo/docs/issues"
+  printf 'outside\n' > "$TMP_BASE/outside-unsym.md"
+  ln -s "$TMP_BASE/outside-unsym.md" "$repo/docs/issues/evil.md"
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "sweep refused"    1 "$RC"
+  assert_match "names the escape" 'escapes worktree' "$ERR"
+  assert_eq    "target untouched" "outside" "$(head -1 "$TMP_BASE/outside-unsym.md")"
+}
+
 # AC: an uncommitted spec's own citations of the identity it just left are swept
 # too — git cannot see an untracked directory, so its own body would otherwise
 # keep pointing at a provisional identity that no longer exists.

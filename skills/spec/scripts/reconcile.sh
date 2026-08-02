@@ -356,10 +356,10 @@ build_remap() {
 # sweep_citations <remap-rows> [<realized-dirs>]
 #   Rewrite in-tree citations of each realized identity across the four roots a
 #   citation can live in — specs, issues, brainstorms, debug — over the tracked
-#   markdown in each, plus the realized directories' own markdown, which is not
-#   tracked yet when a spec is realized before it is committed. The remap IS the
-#   whitelist: only an identity that actually moved is ever rewritten, so a
-#   reference to an unrelated spec cannot be touched by construction.
+#   and untracked-but-not-ignored markdown in each, plus the realized
+#   directories' own markdown. The remap IS the whitelist: only an identity
+#   that actually moved is ever rewritten, so a reference to an unrelated spec
+#   cannot be touched by construction.
 #
 #   The match is whole-token: the character before the identity is not
 #   [a-z0-9-] and the character after is not [a-z0-9-] either. Excluding the
@@ -431,6 +431,29 @@ sweep_citations() {
   # rather than making the early return a second way to report a clean sweep.
   (( ${#roots[@]} )) || return "$sweep_failed"
   mapfile -t files < <(git --literal-pathspecs ls-files -- "${roots[@]}" 2>/dev/null | grep -E '\.md$')
+
+  # Untracked-but-not-ignored files are part of the content set too: artifacts
+  # created while the coordination point was unreachable are exactly the files
+  # most likely to be uncommitted when realize runs, and a tracked-only sweep
+  # leaves their citations stale — then the index regeneration below rebuilds
+  # from the unrewritten source and resurrects a citation this run just
+  # retired. Same symlink discipline as the realized-directory enumeration:
+  # untracked content is shapeable in ways tracked content is not, a symlink is
+  # never a citation's home, and one that escapes the worktree is refused
+  # before any temp state exists.
+  local u u_rp
+  while IFS= read -r u; do
+    [[ -n "$u" ]] || continue
+    if [[ -L "$u" ]]; then
+      if ! u_rp="$(realpath -m -- "$u" 2>/dev/null)" || [[ -z "$u_rp" ]] \
+         || { [[ "$u_rp" != "$top" && "$u_rp" != "$top"/* ]]; }; then
+        echo "error: citation sweep — path escapes worktree: $u" >&2; return 1
+      fi
+      continue
+    fi
+    [[ -f "$u" ]] || continue
+    files+=("$u")
+  done < <(git --literal-pathspecs ls-files --others --exclude-standard -- "${roots[@]}" 2>/dev/null | grep -E '\.md$')
 
   # A directory realized while still uncommitted is invisible to git, so its own
   # body would keep citing the identity it just left. Enumerate the realized
