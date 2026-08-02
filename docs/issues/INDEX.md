@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 88
-- Closed: 115
+- Open: 86
+- Closed: 117
 
 ## Issues
 
@@ -117,7 +117,7 @@
 - `20260726-add-an-only-door-verification-sweep-for-the-id-registry` — Add an only-door verification sweep for the id registry · status: closed · num: 116 · priority: medium · created: 2026-07-26T19:02:01Z · labels: [id-coordination, verify] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` — Add provisional and reconcile unreachable-origin mode · status: closed · num: 115 · priority: medium · created: 2026-07-26T19:02:00Z · labels: [id-coordination, config] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-declare-tests-jimalloc-sh-in-platform-territory` — Declare tests/jimalloc.sh in platform territory · status: closed · num: 120 · priority: low · created: 2026-07-26T22:39:36Z · labels: [partition, blueprint] · origin: docs/specs/platform/007-id-coordination-allocator/review.md
-- `20260726-declare-tests-scripthygiene-sh-in-platform-territory` — Declare tests/scripthygiene.sh in platform territory · status: open · num: 110 · priority: low · created: 2026-07-26T08:40:11Z · labels: [partition, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/plan.md
+- `20260726-declare-tests-scripthygiene-sh-in-platform-territory` — Declare tests/scripthygiene.sh in platform territory · status: closed · num: 110 · priority: low · created: 2026-07-26T08:40:11Z · labels: [partition, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/plan.md
 - `20260726-document-coordination-branch-protection-and-team-setup` — Document coordination-branch protection and team setup · status: open · num: 118 · priority: medium · created: 2026-07-26T19:02:03Z · labels: [id-coordination, docs] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` — Emit rename/split redirect records and wire /jim:partition batches · status: open · num: 113 · priority: high · created: 2026-07-26T19:01:57Z · labels: [id-coordination, partition] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-guard-coordination-branch-relocation-with-a-moved-to-tombstone` — Guard coordination_branch relocation with a moved-to tombstone · status: open · num: 117 · priority: low · created: 2026-07-26T19:02:02Z · labels: [id-coordination, config] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
@@ -205,7 +205,7 @@
 - `20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions` — Spec skill's realize-failure guidance is stale in two directions · status: closed · num: 194 · priority: high · created: 2026-08-01T06:36:06Z · labels: [spec, docs, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation` — Surface a suppressed agent fan-out as a named degradation · status: open · num: 188 · priority: high · created: 2026-08-01T00:22:55Z · labels: [sdlc, blueprint, review, verify] · origin: conversation
 - `20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization` — Sweep and reconcile disagree on worktree-top normalization · status: closed · num: 195 · priority: medium · created: 2026-08-01T06:36:05Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
-- `20260801-two-test-files-are-claimed-by-no-group-s-territory` — Two test files are claimed by no group's territory · status: open · num: 189 · priority: medium · created: 2026-08-01T00:28:40Z · labels: [blueprint, 000-blueprint, partition] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260801-two-test-files-are-claimed-by-no-group-s-territory` — Two test files are claimed by no group's territory · status: closed · num: 189 · priority: medium · created: 2026-08-01T00:28:40Z · labels: [blueprint, 000-blueprint, partition] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage` — Uncommitted-sweep containment guard lost its only coverage · status: closed · num: 196 · priority: medium · created: 2026-08-01T06:36:08Z · labels: [test, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays` — Cut the per-file frontmatter cost the registry sweep pays · status: open · num: 201 · priority: medium · created: 2026-08-02T00:47:13Z · labels: [allocator, performance, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 - `20260802-fix-the-rename-replay-in-the-integrity-classifier` — Fix the rename replay in the integrity classifier · status: open · num: 202 · priority: medium · created: 2026-08-02T00:47:12Z · labels: [allocator, registry, rename] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
@@ -260,6 +260,7 @@
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260727-align-reconcile-high-water-with-alloc-next-num-issue`
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox`
 - `20260726-declare-tests-jimalloc-sh-in-platform-territory` --related-to--> `20260801-two-test-files-are-claimed-by-no-group-s-territory`
+- `20260726-declare-tests-scripthygiene-sh-in-platform-territory` --related-to--> `20260801-two-test-files-are-claimed-by-no-group-s-territory`
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio`
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260730-align-the-registry-with-tree-scan-era-spec-ordinals`
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260726-add-an-only-door-verification-sweep-for-the-id-registry`

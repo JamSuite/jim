@@ -8,9 +8,9 @@ revision named, five issues adopted into the cluster (#84, #197–#200), and the
 runway reordered: a small **pre-B build** (#203, #197, #199, #198) settles the
 realize-row contract before B consumes it, #189 leaves the spec for a map
 pass, and #149 / #120 / #125 close as bookkeeping. See *Pre-B build*, *Spec B —
-pre-spec analysis*, and *Sequence* step 4a. **The build and the closures ran
-the same day** — see step 4a's shipped note; the #189/#110 map pass is the one
-piece of the runway still open.
+pre-spec analysis*, and *Sequence* step 4a. **The build, the closures, and the
+#189/#110 map pass all ran the same day** — see step 4a's shipped note. The
+runway to B is clear; next is the interview.
 
 The eighth revision (2026-08-02): **Spec E
 shipped as `platform/012`, and the standing prediction held.** The registry is
@@ -1109,8 +1109,13 @@ what it did **not** cover as loudly as what it found.
 the ninth revision. All four shipped with fixtures at every level, the two
 existing halt fixtures deliberately rewritten to the restored contract, and
 the issue-side twin of #203's halt fixed in the same pass. #149, #120 and #125
-closed as bookkeeping; the #189/#110 map pass remains. Suite 1055/1055; see
-the Pre-B build section's shipped note. The original scoping follows.
+closed as bookkeeping. The #189/#110 map pass landed the same day through the
+project-tier map update (`e2a5635`): `tests/specreconcile.sh` declared under
+`sdlc`, `tests/scripthygiene.sh` under `platform` (decided over the
+recorded-exception alternative — platform already holds the project-wide
+script rules, and its blueprint's Structure names the file), reconcile clean
+at 22 edges / zero findings. Suite 1055/1055; see the Pre-B build section's
+shipped note. The original scoping follows.
 
 #203 first:
 the batch-wide realize halt is a regression against a contract its consumer
@@ -1346,7 +1351,7 @@ the build:**
 | 186 | med  | hardening (commit verbs omit the rename verbs' literal-pathspec semantics) |
 | 187 | low  | hardening (generic path composer accepts the reserved slot) |
 | 188 | high | **process** — a suppressed agent fan-out leaves no trace in its own artifact |
-| 189 | med  | map pass with #110 — bookkeeping through the blueprint surface, not spec work |
+| 189 | med  | **closed** — map pass 2026-08-02; both files declared, `scripthygiene` decided to platform, reconcile clean |
 | 190 | high | **closed** — sweep fails on a dropped root; mutation-tested |
 | 191 | high | **closed** — installer guarded in all three sites; mutation-tested |
 | 192 | high | **closed** — compose guarded; harm reproduced under mutation |
@@ -1391,14 +1396,14 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 ## Net
 
 83 issues → **7 assigned to the 3 remaining specs** (B: #113, #143, #152,
-#154, #202 · D: #127 · F: #126), **2 riding B's scoping** (#84, #123), **1 to
-the #189/#110 map pass**, **13 to the grouped hardening build**, **1 optional
-refactor**, **1 doc item + 2 decisions + 1 deferred + 1 process item** (#118 ·
-#139, #200 · #137 · #188), **54 closed** — the pre-B build's four (#203,
-#197, #199, #198) and #149 closed 2026-08-02. That is 83; the enumeration
-still closes. (#110, #120, #125 stay outside the cluster; the latter two —
-duplicates of each other, already satisfied since C′-fix repaired the map —
-closed the same day.)
+#154, #202 · D: #127 · F: #126), **2 riding B's scoping** (#84, #123), **13
+to the grouped hardening build**, **1 optional refactor**, **1 doc item + 2
+decisions + 1 deferred + 1 process item** (#118 · #139, #200 · #137 · #188),
+**55 closed** — the pre-B build's four (#203, #197, #199, #198), #149, and
+the map pass's #189, all closed 2026-08-02. That is 83; the enumeration still
+closes. (#110, #120, #125 stay outside the cluster and closed the same day —
+the latter two duplicates of each other, already satisfied since C′-fix
+repaired the map.)
 
 **The spec count still has not moved, and this time it went down.** C shipped and
 C′ took its slot; C′ shipped and its residue became a *build*, not a fourth spec.
@@ -1486,7 +1491,6 @@ mechanism's regressed or unmet contracts (`platform/012`'s realize halt,
 none of the three criteria that make a spec is present. And B absorbed #84 and
 #123 without growing: they are not new work, they are one decision B already
 owned — whether the tree-scan `next-id` surface survives — now with its
-instances attached. The runway to B is short and deliberate: one small build,
-three closures, one map pass, then the interview. The build and the closures
-landed the same day, in-session; the map pass is what remains before the
-interview.
+instances attached. The runway to B was short and deliberate: one small build,
+three closures, one map pass — and all of it landed the same day, in-session.
+Next is the interview.

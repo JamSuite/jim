@@ -2,7 +2,7 @@
 id: 20260801-two-test-files-are-claimed-by-no-group-s-territory
 num: 189
 title: "Two test files are claimed by no group's territory"
-status: open
+status: closed
 priority: medium
 labels: [blueprint, 000-blueprint, partition]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T00:28:40Z
-updated: 2026-08-01T00:28:40Z
+updated: 2026-08-02T07:23:52Z
 origin: docs/specs/platform/000-blueprint/spec.md
 ---
 
@@ -73,3 +73,20 @@ repaired in the map during that build. The remaining two were **mis-triaged as
 belonging to other groups' territory without checking**, so the class was left
 half-swept. Recording that, because fixing one instance and leaving its twins is
 the exact pattern this cluster keeps paying for.
+
+## Resolution (2026-08-02)
+
+Both files declared through the project-tier map update (`e2a5635`), closing
+the class this issue recorded as half-swept:
+
+- `tests/specreconcile.sh` → `sdlc`, alongside the script it tests — the
+  mechanical half.
+- `tests/scripthygiene.sh` → `platform`, decided deliberately over the
+  recorded-exception alternative: a corpus-wide check whose rule the platform
+  group already holds project-wide (the `no-third-party-deps` precedent), and
+  the platform blueprint's Structure section already names it — so the map now
+  agrees with the group blueprint, which is what this issue's sharper case
+  demanded.
+
+The reconcile pass ran on the write: 22 edges, zero findings, and the two
+files left the territory-conformance stray set.
