@@ -3511,6 +3511,142 @@ case_jimalloc_reconcile_still_offline_noop() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/registry || true)"
 }
 
+# ─── Section: partition-batch — emission (real git) ──────────────────────────
+
+# run_batch_in <dir> <stdin> <args...> — invoke the allocator in <dir> feeding
+# <stdin>, capturing OUT/ERR/RC. Same shape as run_reconcile_in.
+run_batch_in() {
+  local dir="$1" input="$2"; shift 2
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$dir" && printf '%s' "$input" | bash "$SCRIPT_jimalloc" "$@" 2>"$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# batch_pairs <old> <new> <slug> [...] — TAB-separated renumber rows on stdin.
+batch_pairs() { printf '%s\t%s\t%s\n' "$@"; }
+
+# AC 3/4: a renumber pair set publishes as allocate + rename per pair, so every
+# destination is established by a record of its own and the vacated source
+# resolves forward.
+case_jimalloc_partition_batch_spec_emits_pairs() {
+  local bare A specs
+  bare="$(alloc_new_bare pbatch_bare)"; A="$(alloc_new_clone "$bare" pbatch_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_jimalloc_in "$A" allocate spec jim "beta"
+  run_batch_in "$A" "$(batch_pairs jim/001 platform/001 alpha jim/002 platform/002 beta)" \
+    partition-batch spec 20260802
+  assert_exit "rc" 0 "$RC"
+  specs="$(alloc_bare_specs "$bare")"
+  assert_match "destination allocated" '^spec allocate platform/001 alpha 20260802 ' "$specs"
+  assert_match "source vacated"        '^spec rename jim/001 platform/001 20260802 ' "$specs"
+  assert_match "second pair too"       '^spec rename jim/002 platform/002 20260802 ' "$specs"
+  assert_match "new group claimed"     '^group allocate platform ' "$specs"
+  run_jimalloc_in "$A" resolve spec jim/001
+  assert_eq "citation dereferences" "platform/001" "$OUT"
+}
+
+# AC 4: the whole pair set is one commit — all-or-none, so no clone ever sees
+# half a split.
+case_jimalloc_partition_batch_spec_single_commit() {
+  local bare A before after
+  bare="$(alloc_new_bare pbatch1c_bare)"; A="$(alloc_new_clone "$bare" pbatch1c_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_jimalloc_in "$A" allocate spec jim "beta"
+  before="$(git -C "$bare" rev-list --count refs/heads/jim/registry)"
+  run_batch_in "$A" "$(batch_pairs jim/001 platform/001 alpha jim/002 platform/002 beta)" \
+    partition-batch spec 20260802
+  after="$(git -C "$bare" rev-list --count refs/heads/jim/registry)"
+  assert_eq "one commit for N pairs" "$((before + 1))" "$after"
+}
+
+# AC 5/6: a destination the registry already claims is a contradiction — refused
+# by name, before anything is published, and the registry is untouched.
+case_jimalloc_partition_batch_refuses_occupied_destination() {
+  local bare A before
+  bare="$(alloc_new_bare pbatchocc_bare)"; A="$(alloc_new_clone "$bare" pbatchocc_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_jimalloc_in "$A" allocate spec platform "taken"
+  before="$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+  run_batch_in "$A" "$(batch_pairs jim/001 platform/001 alpha)" partition-batch spec 20260802
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the destination" "platform/001" "$ERR"
+  assert_eq    "registry untouched" "$before" "$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+}
+
+# AC 5: a source the registry holds no live claim on — never allocated, or
+# already moved away — is refused rather than vacated twice.
+case_jimalloc_partition_batch_refuses_vacated_source() {
+  local bare A
+  bare="$(alloc_new_bare pbatchvac_bare)"; A="$(alloc_new_clone "$bare" pbatchvac_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_batch_in "$A" "$(batch_pairs jim/001 platform/001 alpha)" partition-batch spec 20260802
+  run_batch_in "$A" "$(batch_pairs jim/001 platform/009 alpha)" partition-batch spec 20260802
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the source" "jim/001" "$ERR"
+}
+
+# AC 6: a self-rename is a contradiction the emitter never writes.
+case_jimalloc_partition_batch_refuses_self_rename() {
+  local bare A
+  bare="$(alloc_new_bare pbatchself_bare)"; A="$(alloc_new_clone "$bare" pbatchself_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_batch_in "$A" "$(batch_pairs jim/001 jim/001 alpha)" partition-batch spec 20260802
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the identity" "jim/001" "$ERR"
+}
+
+# AC 3: group mode writes exactly one record, and the old name keeps resolving.
+case_jimalloc_partition_batch_group_emits_one_record() {
+  local bare A specs count
+  bare="$(alloc_new_bare pbatchgrp_bare)"; A="$(alloc_new_clone "$bare" pbatchgrp_A)"
+  run_jimalloc_in "$A" allocate spec dashboard "alpha"
+  run_batch_in "$A" "" partition-batch group dashboard ui 20260802
+  assert_exit "rc" 0 "$RC"
+  specs="$(alloc_bare_specs "$bare")"
+  count="$(printf '%s\n' "$specs" | grep -c '^group rename dashboard ui ')"
+  assert_eq "exactly one record" "1" "$count"
+  run_jimalloc_in "$A" resolve spec dashboard/001
+  assert_eq "old name resolves forward" "ui/001" "$OUT"
+}
+
+# AC 3/16: allocating into a name that has been renamed away refuses with the
+# redirect named — the retryable refusal, distinct from a contradiction.
+case_jimalloc_partition_batch_group_redirect_refusal() {
+  local bare A
+  bare="$(alloc_new_bare pbatchred_bare)"; A="$(alloc_new_clone "$bare" pbatchred_A)"
+  run_jimalloc_in "$A" allocate spec dashboard "alpha"
+  run_batch_in "$A" "" partition-batch group dashboard ui 20260802
+  run_batch_in "$A" "" partition-batch group dashboard surface 20260802
+  assert_exit  "rc" 1 "$RC"
+  assert_match "retryable redirect marker" "group renamed" "$ERR"
+  assert_match "names the current group"   "ui"            "$ERR"
+}
+
+# AC 6: group mode meets the same occupied-destination rule the classifier
+# reports — a claim already standing where a moved claim would land is refused
+# by name, on exactly the shape the integrity report calls a duplicate.
+case_jimalloc_partition_batch_group_refuses_occupied_destination() {
+  local bare A before
+  bare="$(alloc_new_bare pbatchgrpocc_bare)"; A="$(alloc_new_clone "$bare" pbatchgrpocc_A)"
+  run_jimalloc_in "$A" allocate spec dashboard "alpha"
+  run_jimalloc_in "$A" allocate spec ui "taken"
+  before="$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+  run_batch_in "$A" "" partition-batch group dashboard ui 20260802
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the colliding identity" "ui/001" "$ERR"
+  assert_eq    "registry untouched" "$before" "$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+}
+
+# AC 6: a group self-rename is refused too.
+case_jimalloc_partition_batch_group_refuses_self_rename() {
+  local bare A
+  bare="$(alloc_new_bare pbatchgrpself_bare)"; A="$(alloc_new_clone "$bare" pbatchgrpself_A)"
+  run_jimalloc_in "$A" allocate spec dashboard "alpha"
+  run_batch_in "$A" "" partition-batch group dashboard dashboard 20260802
+  assert_exit "rc" 1 "$RC"
+}
+
 # ─── Section: reconcile spec — publish + tiers (real git) ────────────────────
 
 # AC: `reconcile spec --apply` realizes each pending provisional spec identity
