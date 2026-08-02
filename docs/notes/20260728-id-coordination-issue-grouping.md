@@ -1,11 +1,19 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-01 (seventh revision) — **the
-pre-Spec-E context pass.** The registry is re-verified aligned end-to-end (see
-*Closed*), Spec E's scoping forks are recorded in its section and as dated
-addenda on #113, #116, #130, #136 and #185, and #130 is raised to high.
+**Created:** 2026-07-28 · **Revised:** 2026-08-02 (eighth revision) — **Spec E
+shipped as `platform/012`, and the standing prediction held.** The registry is
+now *checkable*: a read-only sweep and a catch-up repair verb, the five charter
+issues closed (#116, #130, #136, #185, #121's remaining half), three filed
+(#201–#203). Review **major-drift**, 15 findings, **two criticals in code the
+build wrote fresh** — caught in-session by the fan-out rather than by the next
+spec's review, which is the improvement the practices were adopted for. See
+*What `platform/012` changed*.
 
-The sixth revision (same day): **C′-fix's
+The seventh revision (2026-08-01) was the pre-Spec-E context pass: the registry
+re-verified aligned end-to-end, Spec E's scoping forks recorded as dated addenda
+on #113, #116, #130, #136 and #185, and #130 raised to high.
+
+The sixth revision (2026-08-01): **C′-fix's
 own review is discharged, and practice 7 is earned.** The fifth revision closed
 C′-fix with AC 12 holding; the review that build never got has since run, and its
 21 findings are resolved: five fixed in place, seven filed as #190–#196, six
@@ -27,13 +35,13 @@ cluster; this note answers "which deserve a spec, and how to group the work"
 without minting a spec per issue.
 
 Working note — not a spec. Delete or fold into a roadmap once the groupings are
-acted on. Four groupings (A, C, C′, C′-fix) have now been acted on.
+acted on. Five groupings (A, C, C′, C′-fix, E) have now been acted on.
 
 Line/function anchors in this note are as of the revision date.
 `skills/file/scripts/jimalloc.sh` moves under consolidation — treat anchors as
 dated, and re-verify before planning against them.
 
-## The cluster — now 75 issues
+## The cluster — now 78 issues
 
 Original 20: #111, #112, #113, #114, #115, #116, #117, #118, #119, #121, #122,
 #123, #124, #126, #127, #129, #130, #132, #133, #134.
@@ -74,9 +82,19 @@ provisional ordinals and realized in one host batch onto 190–196 — contiguou
 from 189, no gap, no collision. Fifth clean production run of the provisional
 path.
 
-**Forty-four are closed.** The nineteen the fourth revision listed, plus all
-sixteen of C′-fix's own (#168–#183), the two it unblocked (#151, #134), and all
-seven the review filed (#190–#196).
+**Three added by `platform/012`'s review** — #201 (the sweep's per-file
+frontmatter cost), #202 (rename-replay defects in the integrity classifier,
+unreachable until rename emission lands), #203 (the realize halt's blast radius).
+Filed offline against provisional ordinals and realized in one host batch onto
+201–203 — contiguous from 200, no gap, no collision. Sixth clean production run
+of the provisional path, and the first one the new sweep verb independently
+verified: `203 records vs 203 files checked`, zero drift, zero pending
+provisionals.
+
+**Forty-nine are closed.** The nineteen the fourth revision listed, plus all
+sixteen of C′-fix's own (#168–#183), the two it unblocked (#151, #134), all
+seven the review filed (#190–#196), and Spec E's five charter issues (#116,
+#130, #136, #185, and #121's remaining half).
 
 That count under-reports the repair work, and deliberately so: **five of the
 review's findings were fixed without ever being filed** (two `/jim:review`
@@ -427,6 +445,87 @@ pre-existing fixtures modified. All sixteen of its issues closed, plus #151 and
    put the **breaking** detector directly over the removal. It reported zero,
    independently corroborating a caller sweep it had no knowledge of.
 
+## What `platform/012` changed
+
+Shipped `129e4ba..30236d0`, 23 commits, 1006/1006 → 1048/1048 (+42 fixtures).
+Review **major-drift**: 15 findings, 2 security regressions, 2 criticals — both
+fixed in the same session, before the ledger closed.
+
+1. **The registry is checkable now, and the first thing it checked was itself.**
+   `sweep` reports 64 spec records vs 64 tree dirs across 4 groups and 203 issue
+   records vs 203 files, zero drift — and names the retired `jim` group as
+   uncovered, which is the one class of group a tree-vs-registry comparison
+   structurally cannot see. That case was designed in at plan time from a
+   security finding, and it fired correctly on the real instance rather than on a
+   fixture.
+
+2. **The prediction this note has made four times held again, and hardest yet.**
+   *What a spec builds fresh is where its defects live.* The three riders that
+   repaired existing behavior — tip validation, reserved-slot normalization,
+   marker parametrization — shipped clean. Both criticals were in code written
+   for an AC:
+
+   - the in-run cache added to the id boundary indexed on the raw token, so a
+     record short a field produced an empty array subscript. A **single
+     truncated line pushed to the branch broke `resolve` for every clone** —
+     where the same input previously resolved fine, because the file's contract
+     is that a malformed record is degraded and skipped;
+   - the repair verb **manufactured the contradiction the sweep exists to
+     detect**. The classifier treated a record with an unusable sibling field as
+     absent while the resolvers counted it as a claim, so the identity read
+     missing, `catch-up --apply` appended a second record and exited 0, `resolve`
+     then refused — and the next sweep reported clean.
+
+   Both were reproduced end to end before being believed, and again after being
+   fixed.
+
+3. **Both criticals had one root cause, and it is worth naming as a class.**
+   Three readers of one log — the classifier, the resolvers, the realize path —
+   applied three different rules for *what establishes a claim*. That single
+   disagreement produced the append bug, the "clean report over an unreadable
+   registry" gap, and the padded-vs-bare ordinal split where the sweep read clean
+   and `resolve` said not-allocated. One rule now decides it. When a build adds a
+   second reader of an existing data structure, the question to ask at plan time
+   is not "is the new reader correct" but "does it agree with the old one".
+
+4. **The fan-out earned its cost; verifying it earned more.** Ten investigators
+   produced 15 findings the author's own read produced none of. But of the three
+   reported criticals, **one was refuted by execution** — two investigators
+   independently reasoned that `@`/`*` bypass the id boundary through the cache,
+   and both were wrong about bash subscript semantics. That is the second
+   consecutive build where a reasoned-from-source finding died on contact with a
+   shell (#195, #196 were the first pair). The practice is not "run the fan-out"
+   but **"run the fan-out, then reproduce its criticals before believing them"**.
+
+5. **Practice 7 caught its own author.** The build's mutation audit claimed
+   coverage of "every classifier class" while grading per *class* rather than per
+   *kind × class* — three issue-side emit sites had no discriminating fixture as
+   a result. The audit note now states the scope it actually measured. A coverage
+   claim is only as good as its bounds, and the person best placed to overstate
+   them is the one who wrote the audit.
+
+6. **A plan decision was wrong on measurement, not on judgment.** DD 4 predicted
+   the sweep's cost would be the id boundary and named #142 as the escalation
+   path. Profiled on the live collection: the classification cores are 167 ms of
+   ~14 s, and the cost is per-file frontmatter `sed` forks in the *existing*
+   derivation. Filed as #201 with the phase table, and #142 carries a note not to
+   close one against the other. Worth generalizing: a plan's performance premise
+   is a hypothesis, and the build is where it gets tested.
+
+7. **The verify registry rung ran here for the first time.** No
+   `verify_command_*` had ever been configured in this repo, so the rung existed
+   and had never executed. `registry-tree-consistency` on the platform blueprint
+   plus `verify_command_id-sweep` in `jimconf.toml` closes that — exit 0 →
+   `holds`, observed. The exit-code contract (`3` drift, `4` could-not-check) was
+   designed against that mapping at plan time.
+
+8. **A one-time-migration contract changed under a second consumer.** The
+   provisional-issue skip was added to the shared derivation for the sweep's
+   benefit, and it silently rewrote what `seed --apply` does — from refusing a
+   tree with a pending provisional to seeding everything else without it. The new
+   ordering is genuinely safer, but the bootstrap now says what it passed over,
+   which it did not before. Shared code has more than one contract.
+
 ## The grouping question, restated
 
 The original question was "which of 29 issues deserve a spec". That question is
@@ -456,7 +555,7 @@ file and leaving its twin is how the pattern spread in the first place.
 Net effect: **eighteen new issues, zero net new specs.** C′ occupies C's slot;
 nothing else in the grouping grows.
 
-## Grouping: 4 remaining specs + 1 build + 1 refactor + 3 open items
+## Grouping: 3 remaining specs + 1 build + 1 refactor + 3 open items
 
 A, C, C′ and C′-fix are done. B, D, E, F remain as specs; the grouped hardening
 build is the one build left.
@@ -626,7 +725,24 @@ Collapse an end-of-run candidate batch (8 surfacing skills) into one CAS instead
 of N sequential pushes. Cross-group blast radius (sdlc + blueprint + issue) and
 its own all-or-nothing-vs-partial failure-semantics decision. Independent.
 
-### Spec E — Registry integrity & drift · #116 + #130 + #136 + #185 + #121's remaining half
+### ~~Spec E — Registry integrity & drift~~ · SHIPPED as `platform/012` · reviewed
+All five charter issues closed (#116, #130, #136, #185, #121's remaining half);
+three filed (#201–#203). Review **major-drift**, 15 findings, two criticals in
+freshly-written code — both fixed before the ledger closed. See
+*What `platform/012` changed*.
+
+Every pre-spec prediction below held, which is the useful part of keeping the
+record: the repair machinery *was* `alloc_publish` plus a builder; the sweep's
+real design surface *was* its non-coverage report (it grew a fifth class —
+records too malformed to identify — because a degraded record appeared in no
+number anywhere); the exit-code fork *was* the load-bearing one; the blueprint
+invariant landed at the completion gate as `registry-tree-consistency`; and the
+retired-`jim` backfill stayed with Spec B while the sweep names the group
+uncovered. The one prediction that missed was the cost model — see item 6 of
+*What `platform/012` changed*.
+
+The record below is what Spec E was scoped to be, kept for provenance.
+
 Complementary halves — "detect drift" and "fix drift":
 - #116 — a `jim:verify`-style only-door sweep: every spec dir / issue ordinal on
   the coordination branch must have a matching registry record.
@@ -701,7 +817,7 @@ bodies earlier and wider), and reconciliation with the VISION non-goal that issu
 capture is a discovery artifact, not a coordination primitive. The one clause of
 #111 that did not ship. Genuine undecided design → its own scoping.
 
-### One grouped hardening build (13) — no spec
+### One grouped hardening build (14) — no spec
 Localized fixes, each a testable one-to-few-line change with a test per fix.
 
 One returned from the dead:
@@ -747,6 +863,13 @@ Three from C′-fix:
   reject a leading `:`; establish reachability before choosing the fix
 - #187 refuse the reserved slot in the generic `path spec` composer, or record
   that the guarantee is scoped to the dedicated arm
+
+One from `platform/012`:
+- #201 the registry sweep's per-file frontmatter cost — measured, not guessed:
+  ~6.9 s of a ~14 s sweep is `alloc_seed_derive_issues` forking `sed` per field
+  per file, against 167 ms in the two classification cores. It is a bootstrap
+  path that now runs on every CI check, which is what makes it worth fixing.
+  Distinct from #142; neither closes the other
 
 **#138 is now the load-bearing one in this bucket.** C′-fix's `next-id` change
 made it a sixth inlined site, and a `/jim:verify` judge scored
@@ -818,11 +941,14 @@ normalize (#173), and the index regeneration can no longer be skipped (#174).
 `mv-spec` retired. AC 12 holds; #151 and #134 closed with it. See *What C′-fix
 changed*.
 
-**4. E — the baseline. Next up.** A correct fold over records that misrepresent
-the repo still hands out a consumed id. Step 0 repaired today's instance by hand;
-E is what stops it recurring — the only-door sweep (#116), the catch-up verb
-(#130), and duplicate detection (#136). C stopped *new* drift; only E detects and
-repairs what is already there.
+**4. ~~E — the baseline.~~ DONE** — `platform/012`. The registry can now be
+checked (`sweep`) and repaired (`catch-up`) without hand-editing the shared
+branch, duplicate claims are refused on the read path instead of resolving to
+whichever record came last, and the advertised origin tip crosses the id boundary
+like every other untrusted token. The property this step existed to buy — a flow
+that cannot hand out an id the project already owns — is now *verifiable* rather
+than argued: the sweep answers it on demand, and `/jim:verify` runs it as a
+configured check. See *What `platform/012` changed*.
 
 **E grew by one from C′-fix:** #185, the origin registry tip read from
 `git ls-remote` and interpolated into a git argument without crossing the id
@@ -959,7 +1085,30 @@ three criticals shipped, because each was an omission, a shared assumption, or
 deliberately reused code. Treat "tests pass" as necessary and say nothing more
 about it in a completion gate.
 
-## Per-issue disposition (all 75)
+**Two more from `platform/012` (2026-08-02), both about the review rather than
+the build:**
+
+8. **Reproduce a critical before believing it.** E's fan-out reported three
+   criticals; one was refuted by a thirty-second shell experiment, after two
+   investigators independently reasoned it into existence from bash subscript
+   semantics. This is the second consecutive build where a reasoned-from-source
+   finding died on contact with a shell — #195 and #196 were the first pair, and
+   both were caught the same way. Reading generates findings; running confirms
+   them. A review that reports an unreproduced critical is reporting a
+   hypothesis, and should label it as one. The corollary for the fixes: re-run
+   the same reproduction against the fix, so "fixed" is also a measurement.
+
+9. **A second reader of an existing structure is a disagreement risk, not a
+   correctness risk.** Both of E's criticals came from one root cause — the
+   classifier, the resolvers, and the realize path applied three different rules
+   for what establishes a claim — and no reader was wrong on its own. The
+   question belongs at plan time, beside practice 3's verb assertion: *when a
+   task adds a reader of a structure something already reads, what makes the two
+   agree?* Convention is the answer that fails; a shared predicate is the one
+   that holds (this is `platform/011`'s shared-fold lesson, arriving a second
+   time from a different direction).
+
+## Per-issue disposition (all 78)
 
 | # | Pri | Disposition |
 |---|---|---|
@@ -990,18 +1139,18 @@ about it in a completion gate.
 | 152 | med  | Spec B (realization cannot follow a renamed group) |
 | 154 | med  | Spec B (partition + blueprint vs pending provisional specs) |
 | 127 | high | Spec D (batch-CAS) |
-| 116 | med  | Spec E (only-door sweep) |
-| 130 | high | Spec E (catch-up verb — raised from low 2026-08-01; demonstrations on the issue) |
-| 136 | low  | Spec E (duplicate durable-id detection) |
+| 116 | med  | **closed** — `platform/012`; sweep ships with a five-class non-coverage report |
+| 130 | high | **closed** — `platform/012`; catch-up appends under the shared CAS, refuses an unseeded log |
+| 136 | low  | **closed** — `platform/012`; refused on both resolvers and both realize maps, reported by the sweep |
 | 126 | med  | Spec F (issue_placement) |
 | 117 | low  | hardening build |
 | 119 | low  | hardening build |
-| 121 | med  | Spec E (reserved-slot half folded 2026-08-01; magnitude half shipped) |
+| 121 | med  | **closed** — `platform/012`; one numeric predicate reserves every zero spelling |
 | 132 | low  | hardening build |
 | 138 | low  | hardening build (`platform/011` residue) |
 | 140 | med  | hardening build (`platform/011` residue — test gap) |
 | 141 | med  | hardening build (`platform/011` residue — test gap) |
-| 142 | med  | hardening build (`platform/011` residue) |
+| 142 | med  | hardening build — partly done in-process by `platform/012`'s token cache; NOT the sweep's dominant cost (see 201) |
 | 153 | low  | hardening build (`sdlc/017` residue — `run.sh` filter args) |
 | 155 | med  | hardening build (`sdlc/017` residue — triplicated grammar) |
 | 122 | low  | half closed by `platform/009`; remainder is a standalone refactor |
@@ -1027,7 +1176,7 @@ about it in a completion gate.
 | 182 | med  | **closed** — C′-fix; the seed emits the canonical spelling |
 | 183 | low  | **closed** — C′-fix; `mv-spec` **retired**, both doc surfaces via their own skills |
 | 184 | low  | hardening (`--root` shipped unfixtured) |
-| 185 | med  | Spec E (origin registry tip reaches git without re-validation) |
+| 185 | med  | **closed** — `platform/012`; the advertised tip crosses the boundary in its single reader |
 | 186 | med  | hardening (commit verbs omit the rename verbs' literal-pathspec semantics) |
 | 187 | low  | hardening (generic path composer accepts the reserved slot) |
 | 188 | high | **process** — a suppressed agent fan-out leaves no trace in its own artifact |
@@ -1039,9 +1188,20 @@ about it in a completion gate.
 | 194 | high | **closed** — guidance keyed on stderr, with the destructive repair removed |
 | 195 | med  | **closed** — premise incorrect; show-toplevel already resolves. Dedup kept |
 | 196 | med  | **closed** — not a defect; guard is covered, proven by mutation |
+| 201 | med  | hardening — the sweep's per-file frontmatter cost (measured, ~6.9s of ~14s) |
+| 202 | med  | Spec B / rename emission — rename-replay defects in the integrity classifier |
+| 203 | high | Spec B or a follow-on — the realize halt refuses a batch where it should refuse an identity |
 
 *(#161–#167 are `sdlc` blueprint drift surfaced by C′'s verify pass, not
-id-coordination work — excluded from this table and from the 75.)*
+id-coordination work — excluded from this table and from the 78.)*
+
+*(#201–#203 came from `platform/012`'s review. **All three are adjacent
+observations, not defects in shipped mechanism** — the two criticals that review
+found were fixed in the same session rather than filed, which is why the count is
+three and not five. #202 is unreachable until rename emission lands, so it
+belongs with Spec B rather than ahead of it; #203 is a behavior regression this
+build introduced against a contract its consumer still documents, and is the one
+worth taking soonest.)*
 
 *(#190–#196 ran as one build rather than folding into Spec E — they were one
 surface, six of the seven in the realize/sweep path, which is why one review
@@ -1060,13 +1220,11 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 
 ## Net
 
-75 issues → **12 assigned to the 4 remaining specs** (B, D, E, F — #121's
-reserved-slot half moved to E on 2026-08-01), **13 to the grouped hardening
-build**, **1 optional refactor**, **1 doc item + 1 decision +
-1 deferred + 1 process item**, **#149 open**, **44 closed**. That is 75; the
-enumeration closes, which it did not before this revision — #149 was discussed
-throughout and counted nowhere. Both the host action and C′-fix are done, C′-fix
-now including its review.
+78 issues → **9 assigned to the 3 remaining specs** (B, D, F — E's five closed
+with `platform/012`, and #202/#203 join B), **14 to the grouped hardening build**
+(#201 added), **1 optional refactor**, **1 doc item + 1 decision + 1 deferred +
+1 process item**, **#149 open**, **49 closed**. That is 78; the enumeration still
+closes.
 
 **The spec count still has not moved, and this time it went down.** C shipped and
 C′ took its slot; C′ shipped and its residue became a *build*, not a fourth spec.
@@ -1116,3 +1274,31 @@ one these skills already apply to every other degradation they can see: say so.
 
 The corollary for B, D, E and F: assume each carries a C′-fix, **and** check that
 the machinery meant to find it actually ran before believing a clean report.
+
+**E tested that corollary, and it came back cleanly for the first time.** The
+prediction held — E shipped two criticals, both in code written fresh for an AC,
+none in the three riders that repaired existing behavior. What changed is *when*:
+the fan-out ran before the ledger closed, both criticals were reproduced,
+fixed, and re-verified inside the same session, and the spec closed with its
+contract actually met rather than with a finding filed against it. C shipped
+three criticals and closed anyway. C′ shipped its headline criterion unmet. E
+shipped two criticals and did not close until they were gone. That is the loop
+finally working end to end.
+
+Two things E adds that the practices did not have:
+
+- **Reproduce a critical before believing it.** Of E's three reported criticals,
+  one was refuted by a thirty-second shell experiment after two independent
+  investigators reasoned it into existence. Reading is how findings are
+  generated; running is how they are confirmed. A review that reports an
+  unreproduced critical is reporting a hypothesis.
+- **When a build adds a second reader of an existing structure, the risk is
+  disagreement, not incorrectness.** Both of E's criticals came from one such
+  disagreement, and neither reader was wrong on its own. That question — *does
+  the new reader agree with the old one* — belongs at plan time, next to the
+  existing practice of asserting each named verb has the property its task
+  assumes.
+
+The remaining specs are B, D and F. B now carries E's rename-shaped residue
+(#202, #203) on top of its own charter, which is the expected shape: E detected
+what B will have to emit correctly.
