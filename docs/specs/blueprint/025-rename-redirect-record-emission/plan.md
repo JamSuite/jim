@@ -2,7 +2,7 @@
 title: "Rename/redirect record emission"
 spec: "docs/specs/blueprint/025-rename-redirect-record-emission/spec.md"
 type: feature
-status: draft
+status: approved
 ---
 
 # Rename/redirect record emission — Plan
