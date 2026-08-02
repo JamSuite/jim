@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 87
+- Open: 88
 - Closed: 117
 
 ## Issues
@@ -211,6 +211,7 @@
 - `20260802-declare-platform-jimalloc-in-the-sdlc-blueprint-s-requires-face` — Declare platform.jimalloc in the sdlc blueprint's Requires face · status: open · num: 204 · priority: low · created: 2026-08-02T08:27:17Z · labels: [blueprint, sdlc, contract-graph] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/spec.md
 - `20260802-fix-the-rename-replay-in-the-integrity-classifier` — Fix the rename replay in the integrity classifier · status: open · num: 202 · priority: medium · created: 2026-08-02T00:47:12Z · labels: [allocator, registry, rename] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 - `20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key` — Halt one identity, not the batch, on a contradicted realize key · status: closed · num: 203 · priority: high · created: 2026-08-02T00:47:12Z · labels: [allocator, reconcile, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
+- `20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil` — Single-source the ordinal width bound across jimalloc and jimfile · status: open · num: P-20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil · priority: medium · created: 2026-08-02T20:57:29Z · labels: [id-coordination, sync-discipline] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/plan.md
 
 ## Graph
 
