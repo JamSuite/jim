@@ -13,8 +13,8 @@ insertions: 2263
 deletions: 704
 plan_deviations: 4
 security_regressions: 1
-invariant_violations: ""
-contract_violations: ""
+invariant_violations: 2
+contract_violations: 0
 artifacts_present: [spec, research, security, plan, ledger]
 ---
 
@@ -275,6 +275,15 @@ an agent following it will call a verb that now returns rc 2.
 the agent at has no row for the new untracked cross-parent refusal, which is
 also the one halt whose remedy *is* a re-run.
 
+**17a.** (Surfaced by the living-intent sensor.) The `partition-batch` Close step
+was added to `skills/partition/SKILL.md` at `:328`, `:384` and `:451`, but the
+corresponding Close passages of the referenced full protocol —
+`partition-methodology.md:326-329` (rename), `:533-540` (split), `:734-736`
+(merge) — were not updated, and mention the registry only in passing elsewhere.
+The SKILL body tells the orchestrator to read the methodology before running, so
+the two now describe different Close choreographies. The build did edit the
+methodology's renumber/vacated passages; its Close passages were missed.
+
 ### Hygiene and latent
 
 **18.** `alloc_classify_spec` lost the `local` declarations for `c4` and `canon`
@@ -304,6 +313,99 @@ contradicting the "reported apart on purpose" comment.
       `prov_id_boundary` shims or the three `PROV_PREFIX` constants, where the
       rule's entire security content lives. Loosening one shim leaves the
       fixture green.
+
+## Living intent
+
+The sensor ran against `docs/specs/blueprint/000-blueprint` (15 invariants, all
+judge-rung — this blueprint declares no floor or registry checks). Appetite
+`low`, so every invariant is above threshold; the scoped adapter then selected
+by change. Five of the build's 18 changed files fall inside the group's declared
+territory (`skills/blueprint/SKILL.md`, `skills/partition/SKILL.md`, the
+partition methodology, `jimpartition.sh`, `tests/jimpartition.sh`), which
+selected 4 invariants for judging. Living intent is a dimension distinct from
+the alignment verdict and did not change it.
+
+**2 sensed · 2 violated · 11 skipped (reason `scope`) · 0 failed.**
+
+~~~
+VERIFY-OUTCOME blueprint (adapter: from-review)
+id=partition-registry-boundary criticality=critical rung=judge outcome=violated channel=in-change reason=- evidence=skills/partition/scripts/jimpartition.sh:1365
+id=present-tense criticality=high rung=judge outcome=violated channel=in-change reason=- evidence=skills/blueprint/SKILL.md:63
+id=verify-registry-boundary criticality=critical rung=judge outcome=holds channel=- reason=- evidence=-
+id=map-partition-authority criticality=high rung=judge outcome=holds channel=- reason=- evidence=-
+id=fork-no-silent-rewrite criticality=critical rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=gate-presentation criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=update-durable-record criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=regen-cadence-safety criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=contract-graph-derived criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=reconcile-durable-record criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=reconcile-declared-data criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=partition-health-readonly criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=verify-no-verdict criticality=medium rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=fold-back-loop-grounding criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+id=edge-criticality-ratchet criticality=high rung=judge outcome=skipped channel=- reason=scope evidence=-
+~~~
+
+**`partition-registry-boundary` (critical, violated, in-change).** The command-execution
+clause holds outright — the new code resolves no config value, executes nothing,
+and contains no `eval`/`source`. The breach is the second clause, "dynamic
+suffixes are slug-validated before any lookup": `check_pending_provisionals` is
+called from all three preflights, but only rename and split slug-gate their
+group argument at entry. `cmd_merge_preflight` validates only `specs_dir`, so
+`:1365` hands the whole unvalidated effective set into the `"$specs_dir/$group"/P-*/`
+glob at `:921`. Confirmed by running it: `merge-preflight … cart ../../OUTSIDE`
+probes with the traversal component and echoes it into the CHECK fact, while
+`rename-preflight` rejects the same value at entry with rc 2. Bounded — the group
+is inside double quotes, so no word-splitting, no pattern injection, no
+execution; the probe is read-only and such a source has already set `fail=1`.
+The file states the opposite rule twice in the same function, at `:1264-1265`
+and `:1308-1309`. Minimal fix: `valid_slug`-guard each group inside
+`check_pending_provisionals`, leaving rename/split byte-identical. Same defect
+as review Finding 13, reached independently.
+
+**`present-tense` (high, violated, in-change).** Every composition site still
+cites both canonical rule docs and still runs both exit-door self-scans — the
+invariant's enumerated obligations are intact, and the pointer counts sit at
+exactly the 5/5 minimum the textual-invariant tests assert. The breach is on the
+presentation side: the disclosure added at `skills/blueprint/SKILL.md:63`
+obligates the model to echo pending-provisional directory basenames — untrusted,
+filesystem-derived bytes — into the gate-facing run summary, through no
+sanitizer, no length cap, and no delimiter, inline with the model's own framing.
+The exit-door scans do not cover it (they are textually *draft*-scoped) and
+neither does the secret-scrub obligation (*itemization*-scoped), so the payload
+falls between them. The sibling code handling the identical data pushes every
+basename through `san_field` (`jimpartition.sh:944-946`). Under `auto_blueprint`
+this reaches an unattended write summary. This is the same disclosure review
+Findings 10 and 11 flag as unenforceable and silently truncatable; the sensor
+adds the untrusted-echo dimension, making that one instruction the least-defended
+new output path in the build.
+
+Both violations are `in-change`, so both route to the Step-10 blueprint-update
+fork rather than to the issue batch.
+
+### Contracts
+
+The contract-edge phase ran: the graph names `blueprint` as provider on four
+edges, all consumed by `sdlc` (`advisor`, `blast-radius-facts`,
+`living-intent-sensor`, `gate-presentation-rule`). Only `advisor` is plausibly
+touched — `skills/blueprint/SKILL.md` is its provider surface — and the scoped
+floor (`contracts-check` over the change set) produced 67 `CROSS-REF` facts, one
+`COVERAGE` record, and **no** `provider-ref`/`consumer-ref` outcome rows: those
+entries carry no `contract-checks` data, so the floor abstains rather than
+judging. **4 edges checked · 0 violations · 0 leaks · 0 breaking.** No
+consumer-side impact surfaced.
+
+**Coverage and degradations.** Appetite `low` with no per-group override — no
+invariant was below threshold, so no `reason=appetite` skips. The judge fan-out
+was 4 against a cap of 10, so nothing was capped. The floor ran whole-group per
+the `--from-review` contract and produced no invariant outcomes because this
+blueprint declares none at that rung; territory is declared (11 paths), so no
+`UNSCOPED` degradation. The registry rung had nothing to run — this blueprint
+declares no `registry:` invariants. Territory conformance: 691 files outside the
+declared territory, overwhelmingly project scaffolding (`docs/`, root config,
+`*.md`) on a repo whose blueprint territory is a strict subtree by design; no
+stray group code identified among the build's changed files, all of which are
+either inside a declared territory or scaffolding.
 
 ## Metrics
 
