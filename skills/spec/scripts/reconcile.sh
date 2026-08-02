@@ -27,7 +27,8 @@
 #     ordinal each would take. Mutates nothing.
 #   bash reconcile.sh --apply [<specs_dir>]
 #     APPLY: realize through the allocator, then rename each directory onto its
-#     ordinal — git mv when tracked, a plain move when not — and rewrite the
+#     ordinal — git mv when tracked (crossing parent groups when the registry
+#     answers under a different one), a plain move when not — and rewrite the
 #     frontmatter id. Runs from the worktree top only; anywhere else is refused,
 #     because every path it resolves is relative to the current directory.
 #   bash reconcile.sh -c <config> [...]
@@ -233,13 +234,19 @@ worktree_top() {
 # rewrite that changed nothing, behind a directory this run just renamed, is
 # that identity's failure and not a silent success.
 rewrite_id() {
-  local file="$1" newid="$2" tok="${3:-}"
-  awk -v n="$newid" -v tok="$tok" '
+  local file="$1" newid="$2" tok="${3:-}" newgroup="${4:-}"
+  awk -v n="$newid" -v tok="$tok" -v g="$newgroup" '
     NR == 1 && $0 == "---" { fm = 1; print; next }
     NR == 1                { nofm = 1 }
     !nofm && fm == 1 && $0 == "---" { fm = 2 }
     !nofm && fm == 1 && index($0, "id:") == 1 && !done {
       print "id: \"" n "\""; done = 1; next
+    }
+    # The group field is rewritten on EVERY realization, not only when the group
+    # moved: a spec that keeps claiming the name it was scoped under is drift the
+    # moment anything reads the frontmatter instead of the path.
+    g != "" && !nofm && fm == 1 && index($0, "group:") == 1 && !gdone {
+      print "group: \"" g "\""; gdone = 1; next
     }
     tok != "" && !h1done && (nofm || fm == 2) && index($0, "# " tok) == 1 {
       rest = substr($0, length("# " tok) + 1)
@@ -274,7 +281,7 @@ rewrite_id() {
 #   Prints one "REALIZED <identity> <dir>" line per directory renamed.
 apply_pending() {
   local root="$1" rows="$2" mapping="$3"
-  local pend dir real group base body slug ord target held held_rc spec tmp
+  local pend dir real group newgroup base body slug ord target held held_rc spec tmp
   local failed=0
   while IFS=$'\t' read -r pend dir; do
     [[ -n "$pend" ]] || continue
@@ -288,8 +295,14 @@ apply_pending() {
       failed=1; continue
     fi
     group="${pend%/*}"; base="${pend##*/}"
-    if [[ "${real%/*}" != "$group" ]]; then
-      echo "error: $pend — the registry answers under group '${real%/*}'; a group renamed since issuance is not a rename this step can follow" >&2
+    # The registry may answer under a DIFFERENT group than the identity was
+    # issued under — the group was renamed while this spec sat pending offline.
+    # That is a cross-parent move, not a refusal: the identity belongs where the
+    # registry says it does, and asking the developer to hand-move it is the
+    # manual surgery realization exists to avoid.
+    newgroup="${real%/*}"
+    if ! jf valid-id "$newgroup" >/dev/null 2>&1; then
+      echo "error: $pend — the registry answers under group '$newgroup', which is not a usable group name; nothing applied for this identity" >&2
       failed=1; continue
     fi
     ord="${real##*/}"
@@ -304,7 +317,7 @@ apply_pending() {
     fi
     body="${base#"$PROV_PREFIX"}"
     slug="${body#*-}"
-    target="$root/$group/$ord-$slug"
+    target="$root/$newgroup/$ord-$slug"
     # Occupancy through the same predicate the rename verbs enforce, so the
     # realize path and the creation path cannot disagree about what an ordinal
     # is. The tracked branch needs it here in its own right: rename-tracked
@@ -316,7 +329,7 @@ apply_pending() {
     # — so this is defense in depth, not a live fix. It is here because the gate
     # should not silently depend on a refusal held elsewhere for its own
     # reasons, and because the sibling caller in jimledger.sh already passes it.
-    held="$(jf spec-ordinal-holder "$group" "$ord" --root "$root")"; held_rc=$?
+    held="$(jf spec-ordinal-holder "$newgroup" "$ord" --root "$root")"; held_rc=$?
     if (( held_rc == 0 )); then
       echo "error: $pend — realized ordinal $real is already held by '$held' (registry-vs-tree drift); nothing applied for this identity" >&2
       failed=1; continue
@@ -326,10 +339,22 @@ apply_pending() {
       failed=1; continue
     fi
     if is_tracked "$dir"; then
-      if ! bash "$JIMLEDGER" rename-tracked "$dir" "$target"; then
-        echo "error: $pend — tracked rename to '$target' failed" >&2
+      if [[ "$newgroup" == "$group" ]]; then
+        if ! bash "$JIMLEDGER" rename-tracked "$dir" "$target"; then
+          echo "error: $pend — tracked rename to '$target' failed" >&2
+          failed=1; continue
+        fi
+      elif ! bash "$JIMLEDGER" move-spec-dir "$root" "$group" "$base" "$newgroup" "$ord-$slug"; then
+        echo "error: $pend — cross-group move to '$target' failed" >&2
         failed=1; continue
       fi
+    elif [[ "$newgroup" != "$group" ]]; then
+      # An untracked directory has no history to carry across parents, and the
+      # cross-parent primitive is tracked-only by construction. Naming the
+      # remedy beats a plain move that loses the continuity the tracked case
+      # gets for free.
+      echo "error: $pend — the registry answers under group '$newgroup', but the directory is untracked; commit the directory first, then re-run" >&2
+      failed=1; continue
     else
       if ! jf mv-spec-id "$group" "$base" "$ord" "$slug" >/dev/null; then
         echo "error: $pend — rename to '$target' failed" >&2
@@ -347,7 +372,7 @@ apply_pending() {
       if ! tmp="$(mktemp "$target/.reconcile.tmp.XXXXXX")"; then
         echo "error: cannot create tmp file in '$target'" >&2
         failed=1
-      elif rewrite_id "$spec" "$ord" "$base" > "$tmp" && mv "$tmp" "$spec"; then
+      elif rewrite_id "$spec" "$ord" "$base" "$newgroup" > "$tmp" && mv "$tmp" "$spec"; then
         :
       else
         rm -f "$tmp"

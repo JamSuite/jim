@@ -576,9 +576,18 @@ cmd_move_spec_dir() {
   if [[ ! "$og" =~ ^[a-z0-9][a-z0-9-]*$ || ! "$ng" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     echo "jimledger move-spec-dir: old/new group must be valid slugs" >&2; return 1
   fi
-  local shape='^[0-9]{3}(-[a-z0-9][a-z0-9-]*|-wip)$'
-  if [[ ! "$src_base" =~ $shape || ! "$dst_base" =~ $shape ]]; then
-    echo "jimledger move-spec-dir: basenames must be NNN-slug or NNN-wip: $src_base / $dst_base" >&2; return 1
+  # The SOURCE may also be a provisional token — a spec bound while the
+  # coordination point was unreachable wears its whole identity as a directory
+  # name, and realizing one whose group moved since issuance is exactly this
+  # move. The DESTINATION gate stays closed to that shape: nothing may be minted
+  # INTO the reserved form, only out of it.
+  local src_shape='^([0-9]{3}(-[a-z0-9][a-z0-9-]*|-wip)|P-[0-9]{8}-[a-z0-9][a-z0-9-]*)$'
+  local dst_shape='^[0-9]{3}(-[a-z0-9][a-z0-9-]*|-wip)$'
+  if [[ ! "$src_base" =~ $src_shape ]]; then
+    echo "jimledger move-spec-dir: source basename must be NNN-slug, NNN-wip, or a provisional token: $src_base" >&2; return 1
+  fi
+  if [[ ! "$dst_base" =~ $dst_shape ]]; then
+    echo "jimledger move-spec-dir: destination basename must be NNN-slug or NNN-wip: $dst_base" >&2; return 1
   fi
   local sd="${specs_dir%/}" src dst
   src="$sd/$og/$src_base"; dst="$sd/$ng/$dst_base"

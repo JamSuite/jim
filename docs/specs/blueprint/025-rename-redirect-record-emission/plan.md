@@ -319,7 +319,7 @@ flowchart TD
    remove their tests; update `skills/file/SKILL.md` and `README.md`.
    **Verify:** `bash tests/jimfile.sh && bash tests/jimledger.sh`
 
-10. [ ] Partition preflight refusals: shared pending-provisional detection;
+10. [x] Partition preflight refusals: shared pending-provisional detection;
     rename/split/merge refuse symmetrically naming each identity
     (sanitized). Depends on nothing; independent of 2–9.
     **Verify:** `bash tests/jimpartition.sh provisional`
