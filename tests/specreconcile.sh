@@ -236,6 +236,26 @@ case_specreconcile_blocked_identity_keeps_batch() {
     "$([[ -d "$repo/docs/specs/sdlc/008-beta" ]] && echo yes || echo no)"
 }
 
+# AC: the realized spec's own H1 identity token is a self-identity site like
+# frontmatter id: — rewritten to the realized ordinal in that one file — while
+# the grammar stays narrow: only the file's first heading whose leading token is
+# exactly this identity's own, so a sibling token differing by a suffix and a
+# later bare mention are both left alone (a bare token is ambiguous everywhere
+# but the spec's own heading).
+case_specreconcile_rewrites_own_h1_token() {
+  local repo spec
+  repo="$(specrec_repo sr_h1)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  spec="$repo/docs/specs/sdlc/P-20260728-alpha/spec.md"
+  printf -- '---\ntitle: "Alpha"\ngroup: "sdlc"\nid: "P-20260728-alpha"\nstatus: draft\n---\n\n# P-20260728-alpha-2 sibling heading\n\n# P-20260728-alpha Alpha\n\nbody mentions P-20260728-alpha bare.\n' > "$spec"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  spec="$repo/docs/specs/sdlc/001-alpha/spec.md"
+  assert_match "own H1 realized" '^# 001 Alpha$' "$(cat "$spec")"
+  assert_match "suffixed sibling heading untouched" '^# P-20260728-alpha-2 sibling heading$' "$(cat "$spec")"
+  assert_match "later bare mention untouched" 'body mentions P-20260728-alpha bare' "$(cat "$spec")"
+}
+
 # AC: an untracked file inside a content root that cites the realized identity
 # is swept too — artifacts created in the same offline session are exactly the
 # files most likely to be uncommitted when realize runs — and the index

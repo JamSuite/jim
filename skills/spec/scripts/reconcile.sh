@@ -201,22 +201,38 @@ worktree_top() {
   realpath -m -- "$t" 2>/dev/null || printf '%s\n' "$t"
 }
 
-# rewrite_id <file> <new-id> — print <file> with the id: field inside its leading
-# frontmatter block replaced by <new-id>. A body line that happens to read "id:"
-# sits outside that block and is never matched — the same region field_value
-# reads.
+# rewrite_id <file> <new-id> [<prov-token>] — print <file> with its
+# self-identity sites realized: the id: field inside the leading frontmatter
+# block replaced by <new-id>, and — when <prov-token> is given — the first
+# body heading whose leading token is exactly that identity's own
+# ("# <prov-token> <title>", the shape the spec template composes) retitled
+# onto the ordinal. A body line that happens to read "id:" sits outside the
+# frontmatter block and is never matched — the same region field_value reads.
 #
-# rc 0 when the field was actually replaced, rc 1 when it was not: a rewrite that
-# changed nothing, behind a directory this run just renamed, is that identity's
-# failure and not a silent success.
+# The heading arm stays narrow on purpose: a bare provisional token is
+# ambiguous everywhere except the spec's own first heading, so the global
+# citation sweep never touches the bare form and this is the one place it is
+# rewritten. The token match is whole-word — a sibling identity differing by a
+# suffix does not match — and the heading is optional: its absence is not a
+# failure.
+#
+# rc 0 when the id: field was actually replaced, rc 1 when it was not: a
+# rewrite that changed nothing, behind a directory this run just renamed, is
+# that identity's failure and not a silent success.
 rewrite_id() {
-  local file="$1" newid="$2"
-  awk -v n="$newid" '
+  local file="$1" newid="$2" tok="${3:-}"
+  awk -v n="$newid" -v tok="$tok" '
     NR == 1 && $0 == "---" { fm = 1; print; next }
     NR == 1                { nofm = 1 }
     !nofm && fm == 1 && $0 == "---" { fm = 2 }
     !nofm && fm == 1 && index($0, "id:") == 1 && !done {
       print "id: \"" n "\""; done = 1; next
+    }
+    tok != "" && !h1done && (nofm || fm == 2) && index($0, "# " tok) == 1 {
+      rest = substr($0, length("# " tok) + 1)
+      if (rest == "" || substr(rest, 1, 1) == " ") {
+        print "# " n rest; h1done = 1; next
+      }
     }
     { print }
     END { exit (done ? 0 : 1) }
@@ -318,7 +334,7 @@ apply_pending() {
       if ! tmp="$(mktemp "$target/.reconcile.tmp.XXXXXX")"; then
         echo "error: cannot create tmp file in '$target'" >&2
         failed=1
-      elif rewrite_id "$spec" "$ord" > "$tmp" && mv "$tmp" "$spec"; then
+      elif rewrite_id "$spec" "$ord" "$base" > "$tmp" && mv "$tmp" "$spec"; then
         :
       else
         rm -f "$tmp"
