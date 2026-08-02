@@ -1,6 +1,6 @@
 ---
 id: 20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key
-num: P-20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key
+num: 203
 title: "Halt one identity, not the batch, on a contradicted realize key"
 status: open
 priority: high

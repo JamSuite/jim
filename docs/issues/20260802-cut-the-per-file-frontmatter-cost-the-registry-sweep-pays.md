@@ -1,6 +1,6 @@
 ---
 id: 20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays
-num: P-20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays
+num: 201
 title: "Cut the per-file frontmatter cost the registry sweep pays"
 status: open
 priority: medium
