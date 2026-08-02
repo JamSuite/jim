@@ -88,7 +88,7 @@ re-declared here.*
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-08-02T07:23:52Z
+on every blueprint write; do not edit. Last reconciled: 2026-08-02T21:55:50Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |
@@ -105,6 +105,7 @@ on every blueprint write; do not edit. Last reconciled: 2026-08-02T07:23:52Z
 | blueprint | jimledger-cli (`jimledger.sh` ledger CLI) | platform |
 | blueprint | jimconf-cli (`jimconf.sh` resolver) | platform |
 | blueprint | jimfile-cli (`jimfile.sh` path/id CLI) | platform |
+| blueprint | jimalloc (`jimalloc.sh` ID coordination allocator) | platform |
 | blueprint | testlib (meta-test framework) | platform |
 | blueprint | emitter (`new.sh` single emitter) | issue |
 | blueprint | candidate-batch-contract (§ 7a) | issue |
