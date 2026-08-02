@@ -757,6 +757,43 @@ alloc_reconcile_realize() {
   done
 }
 
+# alloc_spec_claim_keys   (specs log on stdin)
+#   Emit one row per allocate record that establishes a spec realize claim:
+#   "<group>/<slug>/<date>\t<canonical-id>\t<record-position>", the group
+#   resolved through the alias map and every field revalidated at its own
+#   boundary — one malformed field cannot smuggle in another, and a record the
+#   fold counts is still not an identity to match against unless all three key
+#   fields are well-formed. THE one rule for what claims a realize key: the
+#   realize path folds these rows into its find-or-allocate map and the sweep
+#   counts them to name ambiguous keys, so the two readers cannot disagree
+#   about what blocks a realization.
+alloc_spec_claim_keys() {
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 c5 g num canon k v
+  local -A alias=()
+  if (( n )); then
+    while IFS=$'\t' read -r k v; do
+      [[ -n "$k" ]] && alias["$k"]="$v"
+    done < <(printf '%s\n' "${lines[@]}" | alloc_group_alias_map)
+  fi
+  for ((i=0; i<n; i++)); do
+    read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
+    [[ "$c1" == spec && "$c2" == allocate ]] || continue
+    alloc_valid_specid "$c3" || continue
+    num="${c3##*/}"
+    (( ${#num} > ALLOC_MAX_ORD_DIGITS )) && continue
+    alloc_valid_token "$c4" || continue
+    [[ "$c5" =~ ^[0-9]{8}$ ]] || continue
+    g="${c3%/*}"
+    g="${alias[$g]:-$g}"
+    # Canonical, so a record spelling its ordinal unpadded is the same identity
+    # a `new` answer would report — the have/new asymmetry is closed at the
+    # source rather than left for each consumer to normalize.
+    canon="$(alloc_canon_specid "$g/$num")" || continue
+    printf '%s/%s/%s\t%s\t%d\n' "$g" "$c4" "$c5" "$canon" "$((i + 1))"
+  done
+}
+
 # alloc_reconcile_realize_spec <pending-id>...   (specs log on stdin)
 #   Compute the realized mapping for a batch of unique pending provisional spec
 #   identities, each "<group>/P-<date>-<slug>". A spec carries no durable
@@ -803,35 +840,24 @@ alloc_reconcile_realize_spec() {
       [[ -n "$k" ]] && alias["$k"]="$v"
     done < <(printf '%s\n' "${lines[@]}" | alloc_group_alias_map)
   fi
-  # Already-realized map, keyed (current group, slug, date). Every element is
-  # revalidated at its own boundary, so one malformed field cannot smuggle in
-  # another, and a record the fold counts is still not an identity to match
-  # against unless all three key fields are well-formed.
+  # Already-realized map, keyed (current group, slug, date), folded from the
+  # shared claim-key reader so this path and the sweep's ambiguity report
+  # cannot disagree about what claims a key.
   local -A existing=()
   local -A claim_at=()   # key -> the record position that claimed it
   local -A dup_at=()     # key -> "<first> and <second>" when the key is claimed twice
-  local g num canon
-  for ((i=0; i<n; i++)); do
-    read -r c1 c2 c3 c4 c5 _ <<< "${lines[i]}"
-    [[ "$c1" == spec && "$c2" == allocate ]] || continue
-    alloc_valid_specid "$c3" || continue
-    num="${c3##*/}"
-    (( ${#num} > ALLOC_MAX_ORD_DIGITS )) && continue
-    alloc_valid_token "$c4" || continue
-    [[ "$c5" =~ ^[0-9]{8}$ ]] || continue
-    g="${c3%/*}"
-    g="${alias[$g]:-$g}"
-    # Canonical, so a record spelling its ordinal unpadded is the same identity
-    # a `new` answer would report — the have/new asymmetry is closed at the
-    # source rather than left for each consumer to normalize.
-    canon="$(alloc_canon_specid "$g/$num")" || continue
-    if [[ -z "${claim_at[$g/$c4/$c5]:-}" ]]; then
-      claim_at["$g/$c4/$c5"]=$((i + 1))
-    elif [[ -z "${dup_at[$g/$c4/$c5]:-}" ]]; then
-      dup_at["$g/$c4/$c5"]="${claim_at[$g/$c4/$c5]} and $((i + 1))"
-    fi
-    existing["$g/$c4/$c5"]="$canon"
-  done
+  local g num ckey canon cpos
+  if (( n )); then
+    while IFS=$'\t' read -r ckey canon cpos; do
+      [[ -n "$ckey" ]] || continue
+      if [[ -z "${claim_at[$ckey]:-}" ]]; then
+        claim_at["$ckey"]="$cpos"
+      elif [[ -z "${dup_at[$ckey]:-}" ]]; then
+        dup_at["$ckey"]="${claim_at[$ckey]} and $cpos"
+      fi
+      existing["$ckey"]="$canon"
+    done < <(printf '%s\n' "${lines[@]}" | alloc_spec_claim_keys)
+  fi
   # Pass 1: validate and parse the whole pending batch before emitting anything,
   # so a halt leaves no partial mapping — a preview shows a clean mapping or only
   # the stop condition.
