@@ -3578,6 +3578,39 @@ case_jimalloc_reconcile_spec_apply_claims_group_once() {
   assert_match "second spec recorded" '^spec allocate fresh/002 b ' "$specs"
 }
 
+# AC 2: realization records the mapping in the SAME commit as the ordinal it
+# allocates, so there is never a window where the ordinal exists and the
+# provisional citation pointing at it does not resolve. Read back from the
+# published registry, not from the builder.
+case_jimalloc_reconcile_spec_apply_records_realization() {
+  local bare A input specs
+  bare="$(alloc_new_bare recon_specrz_bare)"
+  A="$(alloc_new_clone "$bare" recon_specrz_A)"
+  input=$(printf '%s\n' core/P-20260728-alpha)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit  "rc" 0 "$RC"
+  specs="$(alloc_bare_specs "$bare")"
+  assert_match "realization recorded" \
+    '^spec realize core/P-20260728-alpha core/001 ' "$specs"
+  run_jimalloc_in "$A" resolve spec core/P-20260728-alpha
+  assert_exit "resolve rc"       0          "$RC"
+  assert_eq   "provisional resolves" "core/001" "$OUT"
+}
+
+# AC 2: a resumed realization emits no second realization record — the identity
+# is already held, so the batch has nothing new to say about it.
+case_jimalloc_reconcile_spec_resume_records_realization_once() {
+  local bare A input count
+  bare="$(alloc_new_bare recon_specrz2_bare)"
+  A="$(alloc_new_clone "$bare" recon_specrz2_A)"
+  input=$(printf '%s\n' core/P-20260728-alpha)
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  run_reconcile_in "$A" "$input" reconcile spec --apply
+  assert_exit "rc" 0 "$RC"
+  count="$(alloc_bare_specs "$bare" | grep -c '^spec realize core/P-20260728-alpha ')"
+  assert_eq "recorded exactly once" "1" "$count"
+}
+
 # AC: a group the registry already holds is not re-claimed by realization.
 case_jimalloc_reconcile_spec_apply_group_not_reclaimed() {
   local bare A input count
