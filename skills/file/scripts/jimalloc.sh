@@ -901,6 +901,20 @@ alloc_seed_field() {
   sed -n "s/^$2:[[:space:]]*//p" "$1" 2>/dev/null | head -n1 | sed 's/^"//; s/"$//'
 }
 
+# alloc_emit_conflicts <accumulated> — write the derivation's conflict block to
+# stderr, one sanitized line at a time. These lines name artifacts BECAUSE they
+# failed a boundary, so they are the one report channel carrying tokens that are
+# known-invalid by construction — and both integrity verbs route this block into
+# the report an operator reads. Sanitizing at emission covers every conflict the
+# derivation can raise, including ones added later.
+alloc_emit_conflicts() {
+  local line
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    printf '%s\n' "$(alloc_sanitize_field "$line")" >&2
+  done <<< "${1%$'\n'}"
+}
+
 # alloc_is_reserved_ord <ord> — exit 0 iff <ord> is the reserved blueprint slot:
 # a zero-VALUED ordinal, not one spelling of it, so `0`, `00` and `000` are one
 # rule. Deriving a record for any of them would mint the `<group>/000` identity
@@ -989,7 +1003,8 @@ alloc_seed_derive_specs() {
     done < <(printf '%s\n' "${rows[@]}" | LC_ALL=C sort -t$'\t' -k1,1n)
   done
   if [[ -n "$conflicts" ]]; then
-    printf 'error: cannot seed — spec artifacts have conflicts:\n%s' "$conflicts" >&2
+    printf 'error: cannot seed — spec artifacts have conflicts:\n' >&2
+    alloc_emit_conflicts "$conflicts"
     return 1
   fi
   printf '%s' "$out"
@@ -1048,7 +1063,8 @@ alloc_seed_derive_issues() {
     rows+=("$((10#$num))"$'\t'"$id"$'\t'"$cdate")
   done
   if [[ -n "$conflicts" ]]; then
-    printf 'error: cannot seed — issue artifacts have conflicts:\n%s' "$conflicts" >&2
+    printf 'error: cannot seed — issue artifacts have conflicts:\n' >&2
+    alloc_emit_conflicts "$conflicts"
     return 1
   fi
   (( ${#rows[@]} )) || return 0
@@ -2221,7 +2237,9 @@ alloc_sweep_uncovered_groups() {
     [[ -d "$g" ]] || continue
     name="$(basename "$g")"
     alloc_valid_token "$name" || continue
-    printf '%s\n' "$records" | grep -q "^spec allocate $name/" && continue
+    # Fixed-string matched: the boundary admits '.', which as a regex would let
+    # a group named `a.b` match a record for `axb` and read as covered.
+    printf '%s\n' "$records" | grep -qF "spec allocate $name/" && continue
     printf '%s\n' "$log" | alloc_group_has_records "$name" && continue
     out+="$name "
   done
@@ -2292,6 +2310,16 @@ cmd_sweep() {
     echo "error: cannot check — no coordination branch '$branch' here and none could be fetched" >&2
     return 4
   fi
+  # A tree root that is not there is a tree this comparison never read. Deriving
+  # zero identities from it would reclassify every record as informational and
+  # exit clean — a check that did not look, reading as a pass.
+  local root
+  for root in "$specs_root" "$issues_dir"; do
+    if [[ ! -d "$root" ]]; then
+      echo "error: cannot check — '$(alloc_sanitize_field "$root")' is not a directory; nothing to compare the registry against" >&2
+      return 4
+    fi
+  done
   # A tree the derivation refuses is a tree this comparison cannot read. That is
   # could-not-check, not clean and not drift: the offenders are already named on
   # stderr by the derivation itself.
@@ -2345,8 +2373,16 @@ cmd_sweep() {
   printf '    reserved-slots\t%d\n'       "$reserved"
   printf '    pending-provisionals\t%d\n' "$pending"
   if [[ -n "$uncovered" ]]; then
-    printf '    uncovered-groups\t%d\t%s\n' \
-      "$(printf '%s\n' "$uncovered" | wc -w)" "$(alloc_sanitize_field "$uncovered")"
+    local ug_n ug_shown
+    ug_n="$(printf '%s\n' "$uncovered" | wc -w | tr -d ' ')"
+    ug_shown="$(alloc_sanitize_field "$uncovered")"
+    # The sanitizer caps length, so say when the list was cut rather than
+    # letting a count and a shorter list silently disagree.
+    if [[ "$ug_shown" != "$uncovered" ]]; then
+      printf '    uncovered-groups\t%d\t%s … (list truncated)\n' "$ug_n" "$ug_shown"
+    else
+      printf '    uncovered-groups\t%d\t%s\n' "$ug_n" "$ug_shown"
+    fi
   else
     printf '    uncovered-groups\t0\n'
   fi
@@ -2414,8 +2450,10 @@ alloc_catchup_compute() {
   local blocked_issue
   blocked_issue="$(printf '%s\n' "$rows" | grep -E '^(MISMATCH|DUP-ORD|DUP-ID|UNREADABLE)	' || true)"
   [[ -n "$blocked_issue" ]] && CU_BLOCKED="${CU_BLOCKED:+$CU_BLOCKED$'\n'}$blocked_issue"
-  # Spec side: keep the derivation's own ordering (each group's record ahead of
-  # its specs), so an appended batch reads exactly as a seed of the same tree.
+  # Spec side: the derivation's own ordering within each kind, with the group
+  # records this batch needs hoisted ahead of the spec records. Group records
+  # are order-independent for both the fold and the resolver, so the hoist costs
+  # nothing and keeps the two passes below simple.
   while IFS= read -r line; do
     [[ -n "$line" ]] || continue
     read -r c1 c2 c3 _ <<< "$line"

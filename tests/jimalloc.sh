@@ -13,21 +13,32 @@
 #   integrity surface — tree-vs-registry classification, the read-only sweep,
 #   and the catch-up repair verb.
 #
-# MUTATION AUDIT (2026-08-01, the integrity surface)
-#   Every guard and detection in that surface was neutered in turn and its
-#   fixtures confirmed to FAIL, then restored — 29 mutations, all
-#   discriminating. Covered: the origin-tip boundary; the reserved-ordinal
-#   predicate; both resolver duplicate refusals and the vacating clear that
-#   keeps them off the reuse path; both realize halts; every classifier class
-#   (MISSING / MISMATCH / RESERVED / INFO-NO-TREE / DUP-ORD / DUP-ID /
-#   rename liveness) and its record-token validation; the sweep's drift and
-#   could-not-check exits, listing cap, uncovered-group naming, both pending
-#   counters, staleness header, and field sanitizer; the derivation's
+# MUTATION AUDIT (the integrity surface)
+#   Each guard below was neutered in turn and its fixture confirmed to FAIL,
+#   then restored — 37 mutations, all discriminating. A fixture that still
+#   passes while its guard is neutered is not testing that guard, so this is
+#   what makes "discriminates" a measurement rather than a claim.
+#
+#   Audited: the origin-tip boundary and the empty-token guard in front of it;
+#   the reserved-ordinal predicate; both resolver duplicate refusals and the
+#   vacating clear that keeps them off the reuse path; both realize halts; the
+#   claim rule for a record with an unusable sibling field, on both kinds;
+#   every classifier class on BOTH kinds — MISSING, MISMATCH (ordinal-side and
+#   durable-id-side), RESERVED, INFO-NO-TREE, DUP-ORD, DUP-ID, UNREADABLE and
+#   rename liveness — plus record-token validation; the sweep's drift,
+#   could-not-check and absent-tree-root exits, its listing cap,
+#   uncovered-group naming, both pending counters, the rename-source counter,
+#   the staleness header, and the field sanitizer; the derivation's
 #   provisional-issue skip; and catch-up's marker, group-record rule, blocked
-#   listing, partial-repair exit, at-the-tip recomputation, and its inherited
-#   erosion refusal. A fixture that still passes while its guard is neutered
-#   is not testing that guard — the audit is what makes AC 14's "discriminates"
-#   a measurement rather than a claim.
+#   listing, empty-log refusal, partial-repair exit, at-the-tip recomputation,
+#   and its inherited erosion refusal.
+#
+#   SCOPE, stated because a coverage claim is only as good as its bounds: the
+#   first pass of this audit claimed "every classifier class" while measuring
+#   per class rather than per kind×class, and three issue-side emit sites had
+#   no discriminating fixture as a result. They do now. The audit measures the
+#   guards named above and nothing else — a detection not in that list has not
+#   been shown to be tested.
 #
 # HOW TO RUN
 #   bash tests/jimalloc.sh                  # every case in this file
@@ -2126,6 +2137,49 @@ case_jimalloc_classify_issue_duplicate_durable_id() {
   assert_match "duplicate id named" '^DUP-ID	issue	20260726-alpha	records 1 and 2$' "$OUT"
 }
 
+# AC 2: a tree issue whose ordinal is unclaimed while its durable id is claimed
+# at a DIFFERENT ordinal is a mismatch, not a missing record. Misclassifying it
+# would feed the repair path a second record for a durable id the log already
+# holds — the same shape that made the unreadable-record case dangerous.
+case_jimalloc_classify_issue_mismatch_by_durable_id() {
+  run_classify alloc_classify_issue \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jim-seed')" \
+    "$(printf '%s\n' 'issue allocate 9 20260726-alpha 20260726 jane')"
+  assert_match "reported as a mismatch on the durable id" \
+    '^MISMATCH	issue	20260726-alpha	tree ordinal 5, registry ordinal 9$' "$OUT"
+  assert_eq "never reported missing" "" "$(classify_rows MISSING)"
+}
+
+# AC 3: the issue side names rename-vacated ordinals as non-coverage, exactly as
+# the spec side does.
+case_jimalloc_classify_issue_rename_source_not_drift() {
+  run_classify alloc_classify_issue \
+    "$(printf '%s\n' 'issue allocate 8 20260726-alpha 20260726 jim-seed')" \
+    "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane' \
+                     'issue rename 5 8 20260727')"
+  assert_match "vacated ordinal named" '^RENAME-SRC	issue	5	' "$OUT"
+  assert_eq    "not drift"             "" "$(classify_rows MISSING)"
+}
+
+# AC 2: an issue record with no tree counterpart is informational on the issue
+# side too — another clone allocating first is legitimate for both kinds.
+case_jimalloc_classify_issue_record_without_tree() {
+  run_classify alloc_classify_issue "" \
+    "$(printf '%s\n' 'issue allocate 9 20260726-gamma 20260726 jane')"
+  assert_eq "informational row" "$(printf 'INFO-NO-TREE\tissue\t9\t20260726-gamma')" \
+    "$(classify_rows INFO-NO-TREE)"
+  assert_eq "not drift" "" "$(classify_rows MISSING)"
+}
+
+# AC 3: the sweep's rename-source counter reports a real count, not a constant.
+case_jimalloc_sweep_counts_rename_sources() {
+  local repo
+  repo="$(sweep_repo sweep_renamesrc)"
+  alloc_append_record "$repo" specs.log 'spec rename core/002 core/044 20260802 jane'
+  run_jimalloc_in "$repo" sweep
+  assert_match "counted" '^    rename-source-ids	1$' "$OUT"
+}
+
 # AC 2: two records claiming one issue ordinal are the same contradiction from
 # the other direction.
 case_jimalloc_classify_issue_duplicate_ordinal() {
@@ -2366,6 +2420,32 @@ case_jimalloc_sweep_sanitizes_an_emitted_field() {
   assert_eq "row-forging characters collapsed" "a b c d" "$out"
   out="$(source "$SCRIPT_jimalloc"; alloc_sanitize_field "$(printf 'x%.0s' {1..400})")"
   assert_eq "length capped" "256" "${#out}"
+}
+
+# AC 5: a tree the sweep cannot read is could-not-check, never clean. An absent
+# or misconfigured specs root would otherwise derive zero identities, reclassify
+# every record as informational, and exit 0 — a check that did not look reading
+# as a pass, which is the exact failure this verb exists to prevent.
+case_jimalloc_sweep_absent_tree_root_cannot_check() {
+  local repo
+  repo="$(sweep_repo sweep_noroot)"
+  rm -rf "$repo/docs/specs"
+  run_jimalloc_in "$repo" sweep
+  assert_exit     "could-not-check rc" 4 "$RC"
+  assert_nonempty "names the reason"   "$ERR"
+}
+
+# AC 15: the derivation's conflict lines are part of the report an operator
+# reads, and they echo tree tokens that by construction failed the id boundary —
+# so they are sanitized before emission like every other emitted field.
+case_jimalloc_derivation_conflict_is_sanitized() {
+  local root out
+  root="$(empty_dir seed_conflict_tab)"
+  mkdir -p "$root/core/$(printf '007x\tinjected')-foo"
+  run_seed_fn alloc_seed_derive_specs "$root"
+  assert_exit "halts" 1 "$RC"
+  assert_eq "no raw tab reaches the report" "0" \
+    "$(printf '%s' "$ERR" | grep -c "$(printf '\t')")"
 }
 
 # AC 15: a crafted record cannot forge or shift a report row — its fields are
