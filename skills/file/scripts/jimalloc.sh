@@ -131,6 +131,12 @@ alloc_read_log() {
 declare -A ALLOC_TOKEN_OK=()
 alloc_valid_token() {
   local tok="$1"
+  # The empty token is rejected here rather than by the boundary, because it is
+  # not a usable array subscript and the cache would fault on it. Records are
+  # parsed with `read`, so any line short a field yields one — and the registry
+  # is push-writable, so a single truncated line must stay a skipped record, not
+  # a broken read path for every clone.
+  [[ -n "$tok" ]] || return 1
   if [[ -z "${ALLOC_TOKEN_OK[$tok]:-}" ]]; then
     if bash "$JIMFILE" valid-id "$tok" >/dev/null 2>&1; then
       ALLOC_TOKEN_OK[$tok]=y

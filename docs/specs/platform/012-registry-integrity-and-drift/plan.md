@@ -309,7 +309,7 @@ flowchart TD
     row text for the completion-gate `/jim:blueprint` fold (AC 13).
     **Verify:** `cmd="$(bash skills/conf/scripts/jimconf.sh get verify_command_id-sweep)" && printf 'resolved: %s\n' "$cmd" && bash -c "$cmd"; rc=$?; test $rc -eq 0 -o $rc -eq 3`
 
-12. [ ] Mutation-test audit (AC 14): for each new guard/detection, neuter
+12. [x] Mutation-test audit (AC 14): for each new guard/detection, neuter
     it, assert its fixture fails, restore — recording the pass in the case
     comments (the `tests/specreconcile.sh:799` pattern); full suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh | tail -1`

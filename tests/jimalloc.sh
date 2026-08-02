@@ -313,6 +313,36 @@ issue rename 5 8 20260727' > "$dir/issues.log"
   assert_eq "fullid→current ordinal" "8" "$OUT"
 }
 
+# ─── Section: malformed records stay degraded-and-skipped ────────────────────
+
+# AC 1: a record short a field is degraded and skipped, never fatal. The token
+# cache indexes on the raw token, and an empty one is not a usable array
+# subscript — so the read path has to reject it before the cache sees it, or one
+# truncated line pushed to the branch breaks resolution for every clone.
+case_jimalloc_truncated_record_is_skipped_not_fatal() {
+  local dir; dir=$(empty_dir res_truncated)
+  printf '%s\n' 'spec allocate core/001 alpha 20260726 jane
+group rename core' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/001
+  assert_exit "still resolves"     0          "$RC"
+  assert_eq   "answers"            "core/001" "$OUT"
+  assert_eq   "no interpreter noise on stderr" "0" \
+    "$(printf '%s\n' "$ERR" | grep -c 'array subscript')"
+}
+
+# AC 1: the same shape on the issue side, and through a verb that walks every
+# record rather than one identity.
+case_jimalloc_truncated_issue_record_is_skipped() {
+  local dir; dir=$(empty_dir res_truncated_issue)
+  printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane
+issue allocate' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 5
+  assert_exit "still resolves" 0   "$RC"
+  assert_eq   "answers"        "5" "$OUT"
+  assert_eq   "no interpreter noise on stderr" "0" \
+    "$(printf '%s\n' "$ERR" | grep -c 'array subscript')"
+}
+
 # ─── Section: duplicate-identity refusal on the read path (AC 11) ────────────
 #
 # The registry is push-writable and append-only, so two records can claim one
