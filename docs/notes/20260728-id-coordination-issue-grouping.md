@@ -1,6 +1,16 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-02 (eighth revision) — **Spec E
+**Created:** 2026-07-28 · **Revised:** 2026-08-02 (ninth revision) — **the
+pre-Spec-B context pass.** Ground truth re-verified (68 spec+group records,
+issues through 203, still **zero** rename records — everything in B stays
+pre-emission), three grammar seams surfaced from the code that no prior
+revision named, five issues adopted into the cluster (#84, #197–#200), and the
+runway reordered: a small **pre-B build** (#203, #197, #199, #198) settles the
+realize-row contract before B consumes it, #189 leaves the spec for a map
+pass, and #149 / #120 / #125 close as bookkeeping. See *Pre-B build*, *Spec B —
+pre-spec analysis*, and *Sequence* step 4a.
+
+The eighth revision (2026-08-02): **Spec E
 shipped as `platform/012`, and the standing prediction held.** The registry is
 now *checkable*: a read-only sweep and a catch-up repair verb, the five charter
 issues closed (#116, #130, #136, #185, #121's remaining half), three filed
@@ -41,7 +51,7 @@ Line/function anchors in this note are as of the revision date.
 `skills/file/scripts/jimalloc.sh` moves under consolidation — treat anchors as
 dated, and re-verify before planning against them.
 
-## The cluster — now 78 issues
+## The cluster — now 83 issues
 
 Original 20: #111, #112, #113, #114, #115, #116, #117, #118, #119, #121, #122,
 #123, #124, #126, #127, #129, #130, #132, #133, #134.
@@ -90,6 +100,17 @@ Filed offline against provisional ordinals and realized in one host batch onto
 of the provisional path, and the first one the new sweep verb independently
 verified: `203 records vs 203 files checked`, zero drift, zero pending
 provisionals.
+
+**Five adopted by the ninth revision (2026-08-02).** Four are
+`platform/012`-session filings the eighth revision's accounting missed — it
+counted the review's filings and not the session's: #197 and #199 (realize-path
+citation defects observed in the first production spec realize), #198 (the
+issue skill's wildcard jimalloc grant, live now that mutating verbs exist), and
+#200 (the sanctioned repair path for registry-internal contradictions, whose
+grammar half coordinates with Spec B). The fifth, #84, predates the cluster
+(filed 2026-07-21 against `blueprint/019`): the ledger-side floor for group
+names retired by rename. It joins because its fate hangs on a question Spec B
+already owns — whether the tree-scan `next-id` surface survives at all.
 
 **Forty-nine are closed.** The nineteen the fourth revision listed, plus all
 sixteen of C′-fix's own (#168–#183), the two it unblocked (#151, #134), all
@@ -555,15 +576,56 @@ file and leaving its twin is how the pattern spread in the first place.
 Net effect: **eighteen new issues, zero net new specs.** C′ occupies C's slot;
 nothing else in the grouping grows.
 
-## Grouping: 3 remaining specs + 1 build + 1 refactor + 3 open items
+## Grouping: 3 remaining specs + 2 builds + 1 refactor + open items
 
-A, C, C′ and C′-fix are done. B, D, E, F remain as specs; the grouped hardening
-build is the one build left.
+A, C, C′, C′-fix and E are done. B, D, F remain as specs; two builds remain —
+the pre-B build below, then the grouped hardening build.
 
 ### ~~Spec A — Rename-path correctness gates~~ · SHIPPED as `platform/011`
 Ran as a spec rather than a build, and the fork was worth resolving that way: the
 plan-phase security review found a Critical that changed the design (see above),
 which a build would have had no gate to catch.
+
+### Pre-B build — settle the realize-row contract · #203 + #197 + #199 + #198
+
+New at the ninth revision. A build, not a spec — the C′-fix shape, and the
+criteria hold the same way: no security regressions in scope, forks settleable
+in conversation, no blueprint write. Three of the four are defects in shipped
+mechanism, observed in the first production spec realize (2026-08-01); none
+needs B's grammar decisions.
+
+- **#203 is why this sequences first.** The batch-wide halt is a regression
+  against a contract the consumer still documents
+  (`skills/spec/scripts/reconcile.sh` header: "Other identities in the batch
+  are unaffected"), reachable through ordinary use — and the fix changes the
+  realize row grammar (a per-identity `blocked` state, both consumers moving
+  together). B's consumers inherit whatever this settles; settling it mid-B
+  would move the contract under the spec consuming it. The detection half (a
+  sweep class for the duplicated realize key) rides along, and feeds #200's
+  class list.
+- **#197** — untracked files are invisible to the realize citation sweep, and
+  the post-sweep index regen resurrected a citation the same run had just
+  rewritten. **#199** — the realized spec's own H1 keeps the bare provisional
+  token, which matches neither sweep pattern. Same file family, same
+  observation session.
+- **#198 rides as the grant-narrowing minute.** The issue skill's wildcard
+  jimalloc grant now auto-permits `catch-up --apply`, and B is about to widen
+  the allocator's verb surface again. Narrow to `peek issue` before that
+  happens, not after.
+
+Run the review deliberately afterward — C′-fix's one cost was assuming the
+build shape bought it.
+
+**Bookkeeping alongside, not build work:** close #149 with a note (verified
+this revision: the `sdlc` invariant now admits both identity states and names
+the allocator; the `jim` half was deliberately dropped with the retired
+blueprint — the body still demands a fold that is done, at a priority it no
+longer carries). Close #120/#125 — duplicates of each other, and both
+satisfied: `tests/jimalloc.sh` has been in platform's territory since C′-fix
+repaired the map. Run the #189/#110 territory pass through the blueprint
+surface whenever convenient — pre-B is mildly better, so B's territory-scoped
+verify runs start without permanent stray noise. #188 lands whenever, ideally
+before B's build phase: it guards exactly the review machinery B will rely on.
 
 ### Spec B — Rename/redirect record emission · #113's deliverable
 `blueprint`. **Unblocked** — A closed its three preconditions. Also owns the two
@@ -606,6 +668,67 @@ whether a pending identity is carried or refused), so they scope together. #152
 also carries a latent defect worth taking whenever B is picked up regardless of
 the rest: nothing rewrites a spec's frontmatter `group:` field, harmless today
 only because the group never changes across a realization.
+
+**Pre-spec analysis (2026-08-02, ninth revision).** A context pass ahead of
+scoping, verified against the working tree rather than this note's dated
+anchors. What it found, and what the interview must settle:
+
+- **The read path is done waiting; the write path does not exist.** The frozen
+  grammar is parsed by every reader — resolver replay, alias map, the shared
+  fold (rename sources counted), classifier, sweep — and the allocate encoders
+  are still the only encoders. B's fresh code is exactly: rename encoders, a
+  partition batch builder over `alloc_publish` (the one-CAS template exists;
+  the reconcile builders are the pattern to copy), and the realize lift.
+  Practices 5–9 apply to precisely that list.
+- **Rename records have no `<who>` slot.** Allocates end `<date> <who>` — which
+  is where the `jim-seed`/`jim-catchup` provenance markers live — while renames
+  end at `<date>`. Extending the frozen shape is a grammar change every parser
+  rides; not extending it ships anonymous rename records, and the retired-`jim`
+  backfill batch is exactly where provenance will be missed. A fork no prior
+  revision named.
+- **`op=rename` ledger events carry no `moved=`** — group-rename records must
+  derive from `old=`/`new=` tokens, not a pair list. And the ledger's `moved=`
+  parser gates ordinals at exactly three digits while the registry accepts
+  3–15, so the backfill lift must reconcile the two widths.
+- **The G6 citation clause is mostly built already.** Since #113 was filed,
+  `sdlc/017` shipped the realize citation sweep and the partition side has its
+  remap-driven `rewrite-refs`. B's citation work is verify-and-narrow, not
+  build; the live gaps are #197/#199, which the pre-B build takes.
+- **#84 and #123 ride one decision B already owns** — #113's
+  two-next-id-surfaces constraint. Converge `/jim:partition` onto the allocator
+  and both die; keep the tree-scan path and #123 needs its explicit
+  `next-id spec <group>` form while #84 needs its `maxid=` rename arm. Deciding
+  the surface without deciding them would split the decision, so both move here
+  as scoping riders (from the hardening bucket and from outside the cluster
+  respectively).
+- **#200 is consulted, not absorbed.** B's grammar work must not foreclose a
+  precedence/tombstone record kind — one design decision recorded in B's spec;
+  the repair procedure stays #200's.
+- **#155 is fork-dependent.** If the realize lift mints a `P-`-bearing record
+  kind, the triplicated provisional grammar enters the registry parser for the
+  first time and single-sourcing becomes load-bearing — it rides B. If B keeps
+  `P-` out of the frozen grammar (the fold-safety argument in #143 points that
+  way), it stays in the hardening bucket.
+- **Moved out:** #189 to the map pass (bookkeeping, not spec work); #203 to the
+  pre-B build. #106 gets one sentence in B's rationale — only its
+  reference-repointing half is adjacent. #107/#186 stay hardening riders on
+  files B happens to edit.
+- **One spec, not two.** The straddle is real — emitters and grammar in
+  `platform` territory, the partition consumer in `blueprint`, the realize path
+  in `sdlc` — and the tempting split (a platform grammar spec consumed by a
+  blueprint emission spec) recreates the exact failure `platform/012` paid two
+  criticals for: readers of one structure applying different rules. Emitter,
+  classifier, and resolver semantics are one decision surface (practice 9), so
+  they stay in one spec. C′ set the precedent for a home group with declared
+  cross-group work: home `blueprint`, platform writes named — let the
+  assignment advisor confirm.
+
+Carried in unchanged: the two resolver decisions pre-framed on #113
+(source-known gate with disclosure; per-side width gating — take together), the
+refuse-vs-carry fork with split and merge agreeing (#152/#154), the backfill
+ship-with-emitter-vs-one-time-repair decision, and A's consumer obligations
+(redirect refusal is retryable, exhaustion is terminal, the returned group is
+authoritative).
 
 ### ~~Spec C — Spec-ID allocator consumer~~ · SHIPPED as `sdlc/017`
 `#112` + `#135` closed; `#123` narrowed, not retired. Spec creation now binds through
@@ -817,13 +940,12 @@ bodies earlier and wider), and reconciliation with the VISION non-goal that issu
 capture is a discovery artifact, not a coordination primitive. The one clause of
 #111 that did not ship. Genuine undecided design → its own scoping.
 
-### One grouped hardening build (14) — no spec
+### One grouped hardening build (13) — no spec
 Localized fixes, each a testable one-to-few-line change with a test per fix.
 
-One returned from the dead:
-- #123 `next-id`'s group/kind collision — assumed retired with `sdlc/017`, but
-  `/jim:partition` still calls the verb and jim's own `issue` group is the
-  collision case. An explicit `next-id spec <group>` form is the cleanest fix
+(#123 moved to Spec B's scoping at the ninth revision — its fate is the
+two-next-id-surfaces decision, alongside #84. If B keeps the tree-scan path,
+the explicit `next-id spec <group>` form falls back here.)
 
 Three from the `008`/`009`/`010` reviews:
 - #119 retry the unreachable-detection path + generalize the exhaustion message
@@ -843,7 +965,8 @@ Two from `sdlc/017`:
   task whose second half never ran
 - #155 single-source the provisional identity grammar, or adopt the `is_valid_id`
   discipline (`SYNC:` comments + a byte-identity fixture); it is written three
-  times across a trust boundary today
+  times across a trust boundary today. Fork-dependent since the ninth revision:
+  rides B if the realize lift mints a `P-`-bearing record kind
 
 Four from `platform/011`:
 - #140 fixture the `allocate spec` acknowledgment path (the consent gate shipped
@@ -888,7 +1011,7 @@ builder over one-or-many blobs. Not a correctness gap — guarantees are equival
 today — so this can park indefinitely. Kept out of the hardening build because
 it touches the allocation path rather than a leaf.
 
-### Decisions + docs (2 open, 1 closed) — no spec
+### Decisions + docs (3 open, 1 closed) — no spec
 - **~~#129~~ — DECIDED and committed 2026-07-31 (`3d49ce9`).** jim's agent
   profile runs `id_coordination_unreachable = provisional`. The dependency that
   gated it was gone: #135's unrealizable-spec-identity trap closed when C shipped
@@ -902,6 +1025,10 @@ it touches the allocation path rather than a leaf.
   Justified (a non-terminating walk hangs with no error message) but currently
   undeclared. Accept it explicitly, widen the invariant's scope deliberately, or
   bound the walk in-process.
+- **#200** — the sanctioned repair path for registry-internal contradictions.
+  Spec B consults its grammar half at design time (do not foreclose a
+  precedence/tombstone record kind); the procedure or guarded verb is its own
+  later decision, and #203's duplicated realize key joins its class list.
 
 ### Deferred with no demand — #137
 A group that exhausts its ordinal space now fails loudly rather than minting an
@@ -959,7 +1086,19 @@ Two obligations carry in, in the spirit of practice 6: E writes an only-door
 sweep and a catch-up verb, both of which are *detectors*, so each needs to report
 what it did **not** cover as loudly as what it found.
 
-**5. B, later.** Its allocation-relevant piece remains the vacated-ordinal floor,
+**4a. The pre-B build + bookkeeping — new at the ninth revision.** #203 first:
+the batch-wide realize halt is a regression against a contract its consumer
+still documents, reachable through ordinary use, and the fix changes the
+realize row grammar — settle that contract before B builds consumers on it.
+#197 and #199 ride in the same pass (same file family, same
+first-production-realize observation), and #198 is the grant-narrowing minute
+before B widens the allocator's verb surface again. Alongside, as bookkeeping:
+close #149 (the `sdlc` fold verified live, the `jim` half deliberately
+dropped), close #120/#125 (satisfied duplicates), and run the #189/#110
+territory map pass through the blueprint surface. #188 whenever, ideally
+before B's build phase.
+
+**5. B, next.** Its allocation-relevant piece remains the vacated-ordinal floor,
 and that piece stopped being theoretical on 2026-07-31: the step-0 verification
 sweep found the retired `jim` group answering `peek spec jim` → `jim/001` against
 `next-id jim` → `053`, because the registry holds no `jim/` records — and no
@@ -976,8 +1115,8 @@ Note B splits the same way #144 did: **emission is B's, repairing the instance
 that predates it is E's.** Shipping B fixes future splits; `jim/001`–`jim/052`
 stay unrecorded until something backfills them.
 
-**Free-floating:** D, F, the hardening build, #118, #139, and the #122 refactor —
-any time, any order.
+**Free-floating:** D, F, the hardening build, #118, #139, #200's repair-path
+half, and the #122 refactor — any time, any order.
 
 **What A and C bought, and what they did not.** A bought correct arithmetic over
 the records present and closed the rename window. C bought a door: nothing can
@@ -1108,7 +1247,7 @@ the build:**
    that holds (this is `platform/011`'s shared-fold lesson, arriving a second
    time from a different direction).
 
-## Per-issue disposition (all 78)
+## Per-issue disposition (all 83)
 
 | # | Pri | Disposition |
 |---|---|---|
@@ -1118,10 +1257,10 @@ the build:**
 | 124 | low  | **closed** — shipped as `platform/011`'s D4 |
 | 112 | high | **closed** — `sdlc/017` wired the spec-group consumer |
 | 135 | med  | **closed** — `sdlc/017` shipped the realization path |
-| 123 | med  | hardening build — **narrowed, not moot**; `/jim:partition` still calls `next-id` |
+| 123 | med  | Spec B scoping — one decision with #84; dies if partition converges onto the allocator, else falls back to hardening |
 | 144 | high | **closed** — registry repaired from the host 2026-07-31; standing half → Spec E |
 | 146 | crit | **closed** — `sdlc/018`; path helper grew a provisional arity |
-| 149 | crit | **open** — `sdlc` half folded by `sdlc/018`; `jim` half dropped (retired group) |
+| 149 | crit | **closing as bookkeeping** — `sdlc` fold verified live this revision; `jim` half deliberately dropped; the body demands a fold that is done |
 | 150 | crit | **closed** — `sdlc/018`; ordinal gated, dropped record now loud |
 | 156 | high | **closed** — `sdlc/018`; halt enforced inside the rename primitives |
 | 159 | high | **closed** — `sdlc/018`; fold takes a pre-resolved group |
@@ -1138,6 +1277,7 @@ the build:**
 | 143 | med  | Spec B (lift realization redirects into the registry) |
 | 152 | med  | Spec B (realization cannot follow a renamed group) |
 | 154 | med  | Spec B (partition + blueprint vs pending provisional specs) |
+| 84  | med  | Spec B scoping — the `op=rename` `maxid=` floor; same decision as #123 (adopted 2026-08-02) |
 | 127 | high | Spec D (batch-CAS) |
 | 116 | med  | **closed** — `platform/012`; sweep ships with a five-class non-coverage report |
 | 130 | high | **closed** — `platform/012`; catch-up appends under the shared CAS, refuses an unseeded log |
@@ -1180,7 +1320,7 @@ the build:**
 | 186 | med  | hardening (commit verbs omit the rename verbs' literal-pathspec semantics) |
 | 187 | low  | hardening (generic path composer accepts the reserved slot) |
 | 188 | high | **process** — a suppressed agent fan-out leaves no trace in its own artifact |
-| 189 | med  | Spec B / partition (two test files claimed by no group's territory) |
+| 189 | med  | map pass with #110 — bookkeeping through the blueprint surface, not spec work |
 | 190 | high | **closed** — sweep fails on a dropped root; mutation-tested |
 | 191 | high | **closed** — installer guarded in all three sites; mutation-tested |
 | 192 | high | **closed** — compose guarded; harm reproduced under mutation |
@@ -1188,12 +1328,16 @@ the build:**
 | 194 | high | **closed** — guidance keyed on stderr, with the destructive repair removed |
 | 195 | med  | **closed** — premise incorrect; show-toplevel already resolves. Dedup kept |
 | 196 | med  | **closed** — not a defect; guard is covered, proven by mutation |
+| 197 | med  | pre-B build — untracked files invisible to the realize citation sweep; regen resurrects a rewrite |
+| 198 | high | pre-B build — narrow the issue skill's jimalloc grant before B widens the verb surface again |
+| 199 | med  | pre-B build — the realized spec's own H1 keeps the provisional token |
+| 200 | med  | decision — repair-path design; Spec B consults the grammar half (precedence/tombstone record kind) |
 | 201 | med  | hardening — the sweep's per-file frontmatter cost (measured, ~6.9s of ~14s) |
 | 202 | med  | Spec B / rename emission — rename-replay defects in the integrity classifier |
-| 203 | high | Spec B or a follow-on — the realize halt refuses a batch where it should refuse an identity |
+| 203 | high | pre-B build — settle the realize-row contract (per-identity `blocked`) before B consumes it |
 
 *(#161–#167 are `sdlc` blueprint drift surfaced by C′'s verify pass, not
-id-coordination work — excluded from this table and from the 78.)*
+id-coordination work — excluded from this table and from the 83.)*
 
 *(#201–#203 came from `platform/012`'s review. **All three are adjacent
 observations, not defects in shipped mechanism** — the two criticals that review
@@ -1220,11 +1364,15 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 
 ## Net
 
-78 issues → **9 assigned to the 3 remaining specs** (B, D, F — E's five closed
-with `platform/012`, and #202/#203 join B), **14 to the grouped hardening build**
-(#201 added), **1 optional refactor**, **1 doc item + 1 decision + 1 deferred +
-1 process item**, **#149 open**, **49 closed**. That is 78; the enumeration still
-closes.
+83 issues → **7 assigned to the 3 remaining specs** (B: #113, #143, #152,
+#154, #202 · D: #127 · F: #126), **2 riding B's scoping** (#84, #123), **4 to
+the pre-B build** (#203, #197, #199, #198), **1 to the #189/#110 map pass**,
+**13 to the grouped hardening build**, **1 optional refactor**, **1 doc item +
+2 decisions + 1 deferred + 1 process item** (#118 · #139, #200 · #137 · #188),
+**#149 closing as bookkeeping**, **49 closed**. That is 83; the enumeration
+still closes. (#110, #120, #125 stay outside the cluster: the latter two are
+duplicates of each other and already satisfied — `tests/jimalloc.sh` has been
+in platform's territory since C′-fix — and close on sight.)
 
 **The spec count still has not moved, and this time it went down.** C shipped and
 C′ took its slot; C′ shipped and its residue became a *build*, not a fourth spec.
@@ -1299,6 +1447,18 @@ Two things E adds that the practices did not have:
   existing practice of asserting each named verb has the property its task
   assumes.
 
-The remaining specs are B, D and F. B now carries E's rename-shaped residue
-(#202, #203) on top of its own charter, which is the expected shape: E detected
-what B will have to emit correctly.
+The remaining specs are B, D and F. B carries E's rename-shaped residue where
+it belongs — #202 in scope, #203 discharged ahead of it by the pre-B build so
+the realize-row contract is settled before the spec that consumes it exists.
+E detected what B will have to emit correctly; the pre-B build repairs what E
+regressed before B leans on it.
+
+**The ninth revision grew the cluster by five and the spec count by zero.**
+The rule's corollary applied a second time: #203, #197 and #199 record shipped
+mechanism's regressed or unmet contracts (`platform/012`'s realize halt,
+`sdlc/017`'s citation sweep), so they ride those specs' slots as a build —
+none of the three criteria that make a spec is present. And B absorbed #84 and
+#123 without growing: they are not new work, they are one decision B already
+owned — whether the tree-scan `next-id` surface survives — now with its
+instances attached. The runway to B is short and deliberate: one small build,
+three closures, one map pass, then the interview.
