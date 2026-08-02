@@ -2,7 +2,7 @@
 id: 20260730-fold-spec-id-sequencing-to-admit-provisional-identities
 num: 149
 title: "Fold spec-id-sequencing to admit provisional identities"
-status: open
+status: closed
 priority: critical
 labels: [id-coordination, blueprint]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T19:35:00Z
-updated: 2026-07-30T19:35:00Z
+updated: 2026-08-02T06:52:07Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 
@@ -64,3 +64,25 @@ review's living-intent section counts only what the omission sweep evidenced.
 
 Surfaced by `sdlc/017`'s post-build review (the `major-drift` pass of
 2026-07-30), which recorded it as the single evidenced invariant violation.
+
+## Resolution (2026-08-02)
+
+Closed as discharged on both halves; the body above predates the drop decision
+and this note is the correction.
+
+- **The `sdlc` half landed** with `sdlc/018`'s completion gate, folded through
+  `/jim:blueprint --from-review` at an explicit violation fork. The invariant
+  now reads: "Spec IDs are minted by the coordination allocator — either a
+  3-digit zero-padded ordinal unique within its group, or a reserved
+  provisional token pending realization"
+  (`docs/specs/sdlc/000-blueprint/spec.md:100`) — both identity states, and
+  the allocator named as the minting mechanism. Verified live this date; the
+  residual `partial` a verify judge scores on this invariant is its unrelated
+  approved-before-plan clause.
+- **The `jim` half was deliberately dropped**, not forgotten: the group is
+  retired (`docs/specs/jim/000-blueprint/spec.md`, `status: retired`), absent
+  from the map, excluded from reconcile and the contract graph — editing it
+  would make a superseded document look maintained while staying outside
+  every mechanism that keeps documents current. Its stale invariant text is
+  part of the retired-group end-of-life question tracked on
+  [[20260725-give-retired-group-directories-a-sanctioned-end-of-life]].

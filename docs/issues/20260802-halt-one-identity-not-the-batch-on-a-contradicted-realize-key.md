@@ -2,7 +2,7 @@
 id: 20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key
 num: 203
 title: "Halt one identity, not the batch, on a contradicted realize key"
-status: open
+status: closed
 priority: high
 labels: [allocator, reconcile, registry]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T00:47:12Z
-updated: 2026-08-02T00:47:12Z
+updated: 2026-08-02T06:52:07Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 ---
 
@@ -61,3 +61,22 @@ Two decisions, ideally settled together:
 Surfaced by the post-build review of the registry-integrity spec
 (`docs/specs/platform/012-registry-integrity-and-drift/review.md`, Finding 8),
 which traced the reachable path through the derivation's date stamping.
+
+## Resolution (2026-08-02)
+
+Fixed in the pre-B build. Both realize paths — the spec side's duplicated
+(group, slug, date) triple and the issue side's duplicated durable id, which
+carried the same batch-wide halt — now refuse the contradicted identity alone,
+as a `<pending>\t-\tblocked` row with the claimants named on stderr, while the
+rest of the batch lands. Both consumers surface the refusal loudly per
+identity (the spec realizer applies nothing for it, the issue realizer leaves
+`num:` provisional), and a blocked identity consumes no ordinal, so a repaired
+registry realizes it later with no gap burned.
+
+Detection landed with it: the realize-claim rule is extracted into one shared
+reader (`alloc_spec_claim_keys`) and the sweep names ambiguous keys under a
+`realize hazards` section — an advisory rather than drift, because both
+records are individually valid and the allocator itself can mint the pair, so
+a healthy registry keeps its clean exit and the configured verify mapping
+stays honest. Commits `fc5468b`, `443344e`, `46dd893`; fixtured at the
+function, builder, sweep, and both-consumer levels.

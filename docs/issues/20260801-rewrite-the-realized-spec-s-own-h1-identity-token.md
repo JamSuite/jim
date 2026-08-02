@@ -2,7 +2,7 @@
 id: 20260801-rewrite-the-realized-spec-s-own-h1-identity-token
 num: 199
 title: "Rewrite the realized spec's own H1 identity token"
-status: open
+status: closed
 priority: medium
 labels: [sdlc, spec, scripts, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T21:23:36Z
-updated: 2026-08-01T21:23:36Z
+updated: 2026-08-02T06:52:07Z
 origin: conversation
 ---
 
@@ -44,3 +44,14 @@ the frontmatter `id:` — the realizer rewrites `# <P-token>` to the realized
 ordinal in that one file. This keeps the global sweep grammar unchanged
 (a bare token is ambiguous everywhere else; the spec's own first heading is
 not).
+
+## Resolution (2026-08-02)
+
+Fixed in the pre-B build (`ad3b28d`), as proposed. `rewrite_id` takes the
+identity's own token and retitles the first `# <P-token> …` heading onto the
+realized ordinal, in the same pass and the same atomic install as the
+frontmatter `id:`. The grammar stays narrow: whole-token match on this
+identity's own token only (a sibling differing by a suffix does not match),
+first heading only, and a missing heading is not a failure. The global sweep
+grammar is unchanged. Fixtured with the suffixed-sibling and bare-mention
+discriminators.

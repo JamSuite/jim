@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 95
-- Closed: 108
+- Open: 88
+- Closed: 115
 
 ## Issues
 
@@ -116,7 +116,7 @@
 - `20260726-add-a-per-file-must-each-polarity-to-the-verify-mechanical-floor` — Add a per-file must-each polarity to the verify mechanical floor · status: open · num: 109 · priority: medium · created: 2026-07-26T07:09:09Z · labels: [verify, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/spec.md
 - `20260726-add-an-only-door-verification-sweep-for-the-id-registry` — Add an only-door verification sweep for the id registry · status: closed · num: 116 · priority: medium · created: 2026-07-26T19:02:01Z · labels: [id-coordination, verify] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` — Add provisional and reconcile unreachable-origin mode · status: closed · num: 115 · priority: medium · created: 2026-07-26T19:02:00Z · labels: [id-coordination, config] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
-- `20260726-declare-tests-jimalloc-sh-in-platform-territory` — Declare tests/jimalloc.sh in platform territory · status: open · num: 120 · priority: low · created: 2026-07-26T22:39:36Z · labels: [partition, blueprint] · origin: docs/specs/platform/007-id-coordination-allocator/review.md
+- `20260726-declare-tests-jimalloc-sh-in-platform-territory` — Declare tests/jimalloc.sh in platform territory · status: closed · num: 120 · priority: low · created: 2026-07-26T22:39:36Z · labels: [partition, blueprint] · origin: docs/specs/platform/007-id-coordination-allocator/review.md
 - `20260726-declare-tests-scripthygiene-sh-in-platform-territory` — Declare tests/scripthygiene.sh in platform territory · status: open · num: 110 · priority: low · created: 2026-07-26T08:40:11Z · labels: [partition, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/plan.md
 - `20260726-document-coordination-branch-protection-and-team-setup` — Document coordination-branch protection and team setup · status: open · num: 118 · priority: medium · created: 2026-07-26T19:02:03Z · labels: [id-coordination, docs] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` — Emit rename/split redirect records and wire /jim:partition batches · status: open · num: 113 · priority: high · created: 2026-07-26T19:01:57Z · labels: [id-coordination, partition] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
@@ -127,7 +127,7 @@
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` — Seed the id-coordination registry from existing artifacts · status: closed · num: 114 · priority: high · created: 2026-07-26T19:01:58Z · labels: [id-coordination, migration] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-wire-spec-id-allocation-onto-the-id-coordination-allocator` — Wire spec-ID allocation onto the id-coordination allocator · status: closed · num: 112 · priority: high · created: 2026-07-26T19:01:56Z · labels: [id-coordination, spec] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` — Wire the issue display ordinal onto the id-coordination allocator · status: closed · num: 111 · priority: high · created: 2026-07-26T19:01:55Z · labels: [id-coordination, issue] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
-- `20260727-add-tests-jimalloc-sh-to-platform-map-territory` — Add tests/jimalloc.sh to platform map territory · status: open · num: 125 · priority: low · created: 2026-07-27T11:03:18Z · labels: [blueprint, territory] · origin: docs/specs/platform/009-provisional-reconcile/review.md
+- `20260727-add-tests-jimalloc-sh-to-platform-map-territory` — Add tests/jimalloc.sh to platform map territory · status: closed · num: 125 · priority: low · created: 2026-07-27T11:03:18Z · labels: [blueprint, territory] · origin: docs/specs/platform/009-provisional-reconcile/review.md
 - `20260727-align-reconcile-high-water-with-alloc-next-num-issue` — Align reconcile high-water with alloc_next_num_issue · status: closed · num: 124 · priority: low · created: 2026-07-27T11:03:17Z · labels: [id-coordination, robustness] · origin: docs/specs/platform/009-provisional-reconcile/review.md
 - `20260727-align-seed-landing-with-the-allocation-cas-path` — Align seed landing with the allocation CAS path · status: open · num: 122 · priority: low · created: 2026-07-27T05:34:22Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/008-registry-seed/review.md
 - `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` — Fix jimfile.sh next-id group/kind collision for a group named issue · status: open · num: 123 · priority: medium · created: 2026-07-27T07:20:53Z · labels: [platform, id-coordination, partition] · origin: docs/specs/platform/009-provisional-reconcile/spec.md
@@ -153,7 +153,7 @@
 - `20260730-fix-jim-spec-checklist-contradicting-its-provisional-branch` — Fix jim spec checklist contradicting its provisional branch · status: closed · num: 148 · priority: medium · created: 2026-07-30T10:55:23Z · labels: [spec, docs] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-fixture-the-allocate-spec-acknowledgment-path` — Fixture the allocate spec acknowledgment path · status: open · num: 140 · priority: medium · created: 2026-07-30T01:09:07Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/review.md
 - `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id` — Fixture the terminal exhaustion refusal in next-id · status: open · num: 141 · priority: medium · created: 2026-07-30T00:49:54Z · labels: [id-coordination, test-coverage] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
-- `20260730-fold-spec-id-sequencing-to-admit-provisional-identities` — Fold spec-id-sequencing to admit provisional identities · status: open · num: 149 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, blueprint] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-fold-spec-id-sequencing-to-admit-provisional-identities` — Fold spec-id-sequencing to admit provisional identities · status: closed · num: 149 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, blueprint] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` — Gate the realized spec ordinal and stop silent record loss · status: closed · num: 150 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, security] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-harden-the-spec-realize-path-against-silent-failures` — Harden the spec realize path against silent failures · status: closed · num: 151 · priority: low · created: 2026-07-30T19:35:15Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-lift-realization-redirects-into-the-registry` — Lift realization redirects into the registry · status: open · num: 143 · priority: medium · created: 2026-07-30T06:45:19Z · labels: [id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/spec.md
@@ -192,16 +192,16 @@
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` — Write the fixtures the plan named but the build skipped · status: closed · num: 178 · priority: medium · created: 2026-07-31T12:39:02Z · labels: [spec, issue, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260801-citation-sweep-exits-0-after-dropping-a-content-root` — Citation sweep exits 0 after dropping a content root · status: closed · num: 190 · priority: high · created: 2026-08-01T06:36:03Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-citation-sweep-installer-discards-cat-s-exit-status` — Citation sweep installer discards cat's exit status · status: closed · num: 191 · priority: high · created: 2026-08-01T06:36:04Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
-- `20260801-cover-untracked-files-in-the-realize-citation-sweep` — Cover untracked files in the realize citation sweep · status: open · num: 197 · priority: medium · created: 2026-08-01T21:23:36Z · labels: [sdlc, spec, scripts, id-coordination] · origin: conversation
+- `20260801-cover-untracked-files-in-the-realize-citation-sweep` — Cover untracked files in the realize citation sweep · status: closed · num: 197 · priority: medium · created: 2026-08-01T21:23:36Z · labels: [sdlc, spec, scripts, id-coordination] · origin: conversation
 - `20260801-design-the-repair-path-for-registry-internal-contradictions` — Design the repair path for registry-internal contradictions · status: open · num: 200 · priority: medium · created: 2026-08-01T22:36:01Z · labels: [stride-tampering, id-coordination, alloc] · origin: docs/specs/platform/012-registry-integrity-and-drift/spec.md
 - `20260801-fixture-the-spec-ordinal-holder-root-option` — Fixture the spec-ordinal-holder --root option · status: open · num: 184 · priority: low · created: 2026-08-01T00:22:46Z · labels: [platform, file, scripts, test] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-index-sh-publishes-a-truncated-index-md-as-success` — index.sh publishes a truncated INDEX.md as success · status: closed · num: 192 · priority: high · created: 2026-08-01T06:36:06Z · labels: [scripts, issue] · origin: docs/notes/20260801-c-prime-fix-handoff.md
-- `20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes` — Narrow the issue skill's jimalloc grant to verb-level prefixes · status: open · num: 198 · priority: high · created: 2026-08-01T20:33:39Z · labels: [issue, permissions, hardening] · origin: docs/specs/platform/012-registry-integrity-and-drift/research.md
+- `20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes` — Narrow the issue skill's jimalloc grant to verb-level prefixes · status: closed · num: 198 · priority: high · created: 2026-08-01T20:33:39Z · labels: [issue, permissions, hardening] · origin: docs/specs/platform/012-registry-integrity-and-drift/research.md
 - `20260801-re-validate-the-origin-registry-tip-before-git-interpolation` — Re-validate the origin registry tip before git interpolation · status: closed · num: 185 · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, scripts, id-coordination, security] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro` — Realize occupancy gate reads the configured specs dir, not its root · status: closed · num: 193 · priority: low · created: 2026-08-01T06:36:07Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-reconcile-literal-pathspec-use-between-the-commit-and-rename-ver` — Reconcile literal-pathspec use between the commit and rename verb families · status: open · num: 186 · priority: medium · created: 2026-08-01T00:22:45Z · labels: [platform, ledger, scripts, security] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer` — Refuse the reserved slot in the generic spec path composer · status: open · num: 187 · priority: low · created: 2026-08-01T00:22:47Z · labels: [platform, file, scripts, 000-blueprint] · origin: docs/specs/platform/000-blueprint/spec.md
-- `20260801-rewrite-the-realized-spec-s-own-h1-identity-token` — Rewrite the realized spec's own H1 identity token · status: open · num: 199 · priority: medium · created: 2026-08-01T21:23:36Z · labels: [sdlc, spec, scripts, id-coordination] · origin: conversation
+- `20260801-rewrite-the-realized-spec-s-own-h1-identity-token` — Rewrite the realized spec's own H1 identity token · status: closed · num: 199 · priority: medium · created: 2026-08-01T21:23:36Z · labels: [sdlc, spec, scripts, id-coordination] · origin: conversation
 - `20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions` — Spec skill's realize-failure guidance is stale in two directions · status: closed · num: 194 · priority: high · created: 2026-08-01T06:36:06Z · labels: [spec, docs, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation` — Surface a suppressed agent fan-out as a named degradation · status: open · num: 188 · priority: high · created: 2026-08-01T00:22:55Z · labels: [sdlc, blueprint, review, verify] · origin: conversation
 - `20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization` — Sweep and reconcile disagree on worktree-top normalization · status: closed · num: 195 · priority: medium · created: 2026-08-01T06:36:05Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
@@ -209,7 +209,7 @@
 - `20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage` — Uncommitted-sweep containment guard lost its only coverage · status: closed · num: 196 · priority: medium · created: 2026-08-01T06:36:08Z · labels: [test, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays` — Cut the per-file frontmatter cost the registry sweep pays · status: open · num: 201 · priority: medium · created: 2026-08-02T00:47:13Z · labels: [allocator, performance, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 - `20260802-fix-the-rename-replay-in-the-integrity-classifier` — Fix the rename replay in the integrity classifier · status: open · num: 202 · priority: medium · created: 2026-08-02T00:47:12Z · labels: [allocator, registry, rename] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
-- `20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key` — Halt one identity, not the batch, on a contradicted realize key · status: open · num: 203 · priority: high · created: 2026-08-02T00:47:12Z · labels: [allocator, reconcile, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
+- `20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key` — Halt one identity, not the batch, on a contradicted realize key · status: closed · num: 203 · priority: high · created: 2026-08-02T00:47:12Z · labels: [allocator, reconcile, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 
 ## Graph
 
@@ -259,6 +259,7 @@
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260727-align-reconcile-high-water-with-alloc-next-num-issue`
 - `20260726-add-provisional-and-reconcile-unreachable-origin-mode` --related-to--> `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox`
+- `20260726-declare-tests-jimalloc-sh-in-platform-territory` --related-to--> `20260801-two-test-files-are-claimed-by-no-group-s-territory`
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260731-fixture-or-revert-the-ordinal-width-narrowing-in-canonicalizatio`
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260730-align-the-registry-with-tree-scan-era-spec-ordinals`
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260726-add-an-only-door-verification-sweep-for-the-id-registry`
@@ -278,6 +279,7 @@
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-new-sh-mixed-pin-slug-xor-num-registry-on-disk-skew`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
+- `20260727-add-tests-jimalloc-sh-to-platform-map-territory` --duplicates--> `20260726-declare-tests-jimalloc-sh-in-platform-territory`
 - `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` --related-to--> `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity`
 - `20260728-reconcile-sh-swallows-the-index-regen-exit-code` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
 - `20260728-registry-drift-catch-up-has-no-incremental-seed-verb` --related-to--> `20260730-align-the-registry-with-tree-scan-era-spec-ordinals`
@@ -288,6 +290,7 @@
 - `20260730-align-the-registry-with-tree-scan-era-spec-ordinals` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260730-document-provisional-spec-identity-and-the-reconcile-surface` --related-to--> `20260725-refresh-architecture-readme-workflow-for-the-partition`
 - `20260730-document-provisional-spec-identity-and-the-reconcile-surface` --related-to--> `20260726-document-coordination-branch-protection-and-team-setup`
+- `20260730-fold-spec-id-sequencing-to-admit-provisional-identities` --related-to--> `20260725-give-retired-group-directories-a-sanctioned-end-of-life`
 - `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` --related-to--> `20260730-close-the-coordinated-spec-identity-fixture-gaps`
 - `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` --related-to--> `20260730-spec-creation-halts-only-on-an-exact-name-collision`
 - `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`

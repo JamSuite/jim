@@ -2,7 +2,7 @@
 id: 20260801-narrow-the-issue-skill-s-jimalloc-grant-to-verb-level-prefixes
 num: 198
 title: "Narrow the issue skill's jimalloc grant to verb-level prefixes"
-status: open
+status: closed
 priority: high
 labels: [issue, permissions, hardening]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T20:33:39Z
-updated: 2026-08-02T00:47:42Z
+updated: 2026-08-02T06:52:07Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/research.md
 ---
 
@@ -40,3 +40,14 @@ Nothing changed in `skills/issue/SKILL.md`, and the skill body still invokes exa
 Raised to high: the gap it describes is no longer hypothetical.
 
 Confirmed by the post-build review of `platform/012` (`docs/specs/platform/012-registry-integrity-and-drift/review.md`), which traced every consumer of the allocator's changed surface.
+
+## Resolution (2026-08-02)
+
+Fixed in the pre-B build (`c54e3c9`). The grant is narrowed to
+`jimalloc.sh peek issue *` — the one verb the skill body invokes, re-confirmed
+by sweep before the edit: every other allocator call reaches the CLI from
+inside `new.sh` / `reconcile.sh`, which carry their own grants. The mutating
+`catch-up --apply` and the rest of the allocator surface are no longer
+auto-permitted inside `/jim:issue`, matching the spec skill's verb-level
+discipline. Taken now rather than later because the rename-emission spec is
+about to widen the allocator's verb surface again.

@@ -2,7 +2,7 @@
 id: 20260801-cover-untracked-files-in-the-realize-citation-sweep
 num: 197
 title: "Cover untracked files in the realize citation sweep"
-status: open
+status: closed
 priority: medium
 labels: [sdlc, spec, scripts, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T21:23:36Z
-updated: 2026-08-01T21:23:36Z
+updated: 2026-08-02T06:52:07Z
 origin: conversation
 ---
 
@@ -53,3 +53,14 @@ untracked source closes that hole at the root.
 The window is the normal offline workflow itself: artifacts created while the
 coordination point is unreachable are exactly the files most likely to be
 uncommitted when a realize-before-commit ordering is chosen.
+
+## Resolution (2026-08-02)
+
+Fixed in the pre-B build (`929e9eb`). The sweep enumerates
+untracked-but-not-ignored markdown alongside the tracked set in every content
+root, under the same symlink discipline as the realized-directory enumeration
+— an in-worktree symlink is skipped, one that escapes the worktree refuses the
+sweep before any temp state exists. The index regeneration now rebuilds from
+rewritten sources, which closes the resurrection hole at the root rather than
+naming the exclusion. Fixtured end to end, including the INDEX.md readback the
+production instance corrupted.
