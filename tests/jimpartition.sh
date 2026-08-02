@@ -1679,6 +1679,64 @@ case_jimpartition_rewrite_identity_typed_refs_default_on() {
   assert_match "typed record present" "^REWROTE${T}[^${T}]+${T}[0-9]+${T}typed-ref$" "$OUT"
 }
 
+# ─── Section: pending-provisional preflight refusals ─────────────────────────
+
+# AC 10: a group holding a spec bound while the coordination point was
+# unreachable cannot be moved — the identity has not been issued yet, so a move
+# would leave a pending claim under a name the allocator resolves away from.
+# Rename refuses, naming every pending identity.
+case_jimpartition_rename_preflight_refuses_provisional() {
+  local dir; dir="$(rename_repo pfprov_rename)"
+  mkdir -p "$dir/docs/specs/cart/P-20260802-offline-work"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit  "rc" 1 "$RC"
+  assert_match "check fails"          'pending-provisionals.*fail'  "$OUT"
+  assert_match "names the identity"   'P-20260802-offline-work'     "$OUT"
+  assert_match "names the remedy"     'reconcile'                   "$ERR"
+}
+
+# AC 10: split refuses on the same shape — symmetric with rename, rather than
+# hard-failing later in the renumber map.
+case_jimpartition_split_preflight_refuses_provisional() {
+  local dir; dir="$(split_repo pfprov_split)"
+  mkdir -p "$dir/docs/specs/cart/P-20260802-offline-work"
+  run_jimpartition_in "$dir" split-preflight BLUEPRINT.md docs/specs cart shop store
+  assert_exit  "rc" 1 "$RC"
+  assert_match "check fails"        'pending-provisionals.*fail' "$OUT"
+  assert_match "names the identity" 'P-20260802-offline-work'    "$OUT"
+}
+
+# AC 10: merge refuses on the same shape too — the side that used to skip a
+# pending dir silently is the one this closes.
+case_jimpartition_merge_preflight_refuses_provisional() {
+  local dir; dir="$(merge_repo pfprov_merge)"
+  mkdir -p "$dir/docs/specs/wishlist/P-20260802-offline-work"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart wishlist
+  assert_exit  "rc" 1 "$RC"
+  assert_match "check fails"        'pending-provisionals.*fail' "$OUT"
+  assert_match "names the identity" 'P-20260802-offline-work'    "$OUT"
+}
+
+# AC 10/18: the named identity is a directory basename — untrusted content —
+# so it is sanitized before it is printed, exactly as every other preflight
+# fact is.
+case_jimpartition_preflight_provisional_name_is_sanitized() {
+  local dir; dir="$(rename_repo pfprov_san)"
+  mkdir -p "$dir/docs/specs/cart/$(printf 'P-20260802-a\tb')"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_eq   "no raw tab in the fact" "0" \
+    "$(printf '%s\n' "$OUT" | grep 'pending-provisionals' | awk -F'\t' '{print NF}' | awk '$1>4' | grep -c .)"
+}
+
+# AC 10: a group with no pending provisional passes the check rather than
+# having it silently absent — a gate that did not run must not read like a pass.
+case_jimpartition_rename_preflight_provisional_check_passes_clean() {
+  local dir; dir="$(rename_repo pfprov_clean)"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_match "check present and passing" 'pending-provisionals.*pass' "$OUT"
+}
+
 # ─── Section: split-preflight cases (spec 047 Task 5) ────────────────────────
 
 # AC 1/2: a clean extraction preflight — old ∈ targets, so the ARM is extraction,
