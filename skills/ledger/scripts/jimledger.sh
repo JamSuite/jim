@@ -704,7 +704,13 @@ cmd_pair_events() {
       p = index(s, "/"); if (p == 0) return 0
       return isgrp(substr(s, 1, p - 1)) && isprovtok(substr(s, p + 1))
     }
-    function day(iso,   t) { t = iso; gsub(/-/, "", t); return substr(t, 1, 8) }
+    # The event date is a ledger field like any other: it is gated, not merely
+    # reformatted, so a timestamp that is not a date never becomes the date of a
+    # record nor gets echoed as one. An event whose stamp fails yields no rows.
+    function day(iso,   t) {
+      t = iso; gsub(/-/, "", t); t = substr(t, 1, 8)
+      return (t ~ /^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]$/) ? t : ""
+    }
     function kv(field, key,   c, parts, i) {
       c = split(field, parts, ";")
       for (i = 1; i <= c; i++)
@@ -726,13 +732,15 @@ cmd_pair_events() {
         }
       }
     }
-    $3 == "spec" && $4 == "realized" { emit_pairs($5, "realize", day($2)); next }
+    $3 == "spec" && $4 == "realized" { when = day($2); if (when != "") emit_pairs($5, "realize", when); next }
     $3 == "partition" && $4 == "finished" {
+      when = day($2)
+      if (when == "") next
       op = kv($5, "op")
-      if (op == "split" || op == "merge") { emit_pairs($5, "spec", day($2)); next }
+      if (op == "split" || op == "merge") { emit_pairs($5, "spec", when); next }
       if (op == "rename") {
         old = kv($5, "old"); new = kv($5, "new")
-        if (isgrp(old) && isgrp(new)) printf "group\t%s\t%s\t%s\n", old, new, day($2)
+        if (isgrp(old) && isgrp(new)) printf "group\t%s\t%s\t%s\n", old, new, when
       }
     }
   ' "$ledger"

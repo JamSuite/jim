@@ -3663,6 +3663,51 @@ case_jimalloc_lift_backfill_raises_the_peek_floor() {
   assert_exit "sweep still clean" 0 "$RC"
 }
 
+# ─── Section: output hygiene on the new token-echoing paths ──────────────────
+
+# AC 18: the lift's <date> is a ledger-sourced field like any other and is gated
+# at parse time — a timestamp that is not a date cannot become the date field of
+# a registry record, nor be echoed as one.
+case_jimalloc_sanitize_lift_gates_the_event_date() {
+  local repo
+  repo="$(sweep_repo san_liftdate)"
+  lift_ledger "$repo" \
+    "$(printf '100\tNOT-AN-ISO\tpartition\tfinished\ttier=project;op=split;old=jim;new=core;moved=old/001:core/001')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_eq "no row from an undated event" "0" "$(printf '%s\n' "$OUT" | grep -c '^spec	')"
+  assert_eq "nothing recorded" "0" \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log | grep -c '^spec rename ')"
+}
+
+# AC 18: a batch refusal names the token it refused, and a token that failed its
+# gate is printed through the report sanitizer — never raw, so a control
+# character in pushed content cannot reach the terminal through a refusal.
+case_jimalloc_sanitize_batch_refusal_scrubs_the_token() {
+  local bare A hostile
+  bare="$(alloc_new_bare san_batch_bare)"; A="$(alloc_new_clone "$bare" san_batch_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  hostile="$(printf 'core/\033[31m001')"
+  run_batch_in "$A" "$(printf '%s\t%s\t%s\n' jim/001 "$hostile" alpha)" \
+    partition-batch spec 20260802
+  assert_exit "rc" 1 "$RC"
+  assert_eq   "no escape byte in the refusal" "0" \
+    "$(printf '%s' "$ERR" | grep -c "$(printf '\033')")"
+}
+
+# AC 18: the resolver's disclosure lines echo the QUERIED identity, which has
+# already crossed the id boundary — a hostile record in the log can influence
+# whether a note prints, never what characters it carries.
+case_jimalloc_sanitize_disclosure_echoes_only_gated_tokens() {
+  local dir
+  dir=$(empty_dir san_disclosure)
+  printf '%s\n' 'spec rename core/003 ui/007 20260727 x' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit "rc" 0 "$RC"
+  assert_match "note names the canonical query" 'note: core/003 ' "$ERR"
+  assert_eq   "no control byte in the note" "0" \
+    "$(printf '%s' "$ERR" | tr -d 'A-Za-z0-9 ()/:.,_@-' | wc -c | tr -d ' ')"
+}
+
 # ─── Section: partition-batch — emission (real git) ──────────────────────────
 
 # run_batch_in <dir> <stdin> <args...> — invoke the allocator in <dir> feeding

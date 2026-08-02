@@ -2590,7 +2590,25 @@ ALLOC_SWEEP_CAP=100
 # boundary — the boundary decides what is CLASSIFIED, this decides what is
 # PRINTED, and the report must be safe even where a future field is not an id.
 alloc_sanitize_field() {
-  printf '%s' "${1:-}" | tr '\t\n\r' '   ' | cut -c1-256
+  printf '%s' "${1:-}" \
+    | tr '\t\n\r' '   ' \
+    | tr -d '\000-\037\177' \
+    | cut -c1-256
+}
+
+# alloc_display_field <raw> — a registry- or ledger-sourced token as it is safe
+# to print: the sanitizer's output, marked when that output is not the whole
+# value. A token silently shortened or stripped reads as a DIFFERENT token, and
+# a reader comparing a report against a log would be chasing a value neither
+# side holds — so the report says when what it shows was altered.
+alloc_display_field() {
+  local raw="${1:-}" safe
+  safe="$(alloc_sanitize_field "$raw")"
+  if [[ "$safe" != "$raw" ]]; then
+    printf '%s … (sanitized for display)' "$safe"
+  else
+    printf '%s' "$safe"
+  fi
 }
 
 # alloc_group_has_records <group>   (specs log on stdin) — exit 0 iff the
@@ -3203,11 +3221,11 @@ alloc_partition_spec_publish_builder() {
   for pair in "$@"; do
     IFS=$'\t' read -r old new slug <<< "$pair"
     oldc="$(alloc_canon_specid "$old")" || {
-      echo "error: partition-batch refuses source '$(alloc_sanitize_field "$old")' — not a spec id the registry can represent" >&2; return 1; }
+      echo "error: partition-batch refuses source '$(alloc_display_field "$old")' — not a spec id the registry can represent" >&2; return 1; }
     newc="$(alloc_canon_specid "$new")" || {
-      echo "error: partition-batch refuses destination '$(alloc_sanitize_field "$new")' — not a spec id the registry can represent" >&2; return 1; }
+      echo "error: partition-batch refuses destination '$(alloc_display_field "$new")' — not a spec id the registry can represent" >&2; return 1; }
     alloc_valid_token "$slug" || {
-      echo "error: partition-batch refuses slug '$(alloc_sanitize_field "$slug")' for '$newc'" >&2; return 1; }
+      echo "error: partition-batch refuses slug '$(alloc_display_field "$slug")' for '$newc'" >&2; return 1; }
     if [[ "$oldc" == "$newc" ]]; then
       echo "error: partition-batch refuses '$oldc' — a rename onto its own name records nothing" >&2
       return 1
@@ -3504,6 +3522,15 @@ alloc_lift_states() {
   local row kind src dst date canon state
   for row in "$@"; do
     IFS=$'\t' read -r kind src dst date <<< "$row"
+    # Second gate on the date, independent of the ledger reader's. It becomes a
+    # record field, so it is checked where it is used and not only where it was
+    # read — the discipline every other field on this path already follows.
+    if [[ ! "$date" =~ ^[0-9]{8}$ ]]; then
+      printf '%s\t%s\t%s\t%s\trefused:unrepresentable-date\n' \
+        "$(alloc_display_field "$kind")" "$(alloc_display_field "$src")" \
+        "$(alloc_display_field "$dst")" "$(alloc_display_field "$date")"
+      continue
+    fi
     # Normalize both sides the way the registry will spell them, so a row whose
     # ordinal is written unpadded still meets its own record on a re-run.
     case "$kind" in
@@ -3671,8 +3698,8 @@ cmd_partition_batch() {
         echo "error: 'partition-batch group' requires <old> <new> <date>" >&2
         return 2
       fi
-      alloc_valid_token "$old" || { echo "error: invalid group '$(alloc_sanitize_field "$old")'" >&2; return 1; }
-      alloc_valid_token "$new" || { echo "error: invalid group '$(alloc_sanitize_field "$new")'" >&2; return 1; }
+      alloc_valid_token "$old" || { echo "error: invalid group '$(alloc_display_field "$old")'" >&2; return 1; }
+      alloc_valid_token "$new" || { echo "error: invalid group '$(alloc_display_field "$new")'" >&2; return 1; }
       [[ "$date" =~ ^[0-9]{8}$ ]] || { echo "error: partition-batch date must be YYYYMMDD" >&2; return 2; }
       alloc_in_repo || return 1
       alloc_preflight || return 1

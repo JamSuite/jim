@@ -330,7 +330,7 @@ flowchart TD
     Depends on 1 (SYNC'd predicate).
     **Verify:** `bash tests/specreconcile.sh cross && bash tests/jimledger.sh move_spec`
 
-12. [ ] Instruction-layer convergence: partition SKILL.md + methodology
+12. [x] Instruction-layer convergence: partition SKILL.md + methodology
     Close steps emit through `partition-batch`, seeds via `peek spec` with
     the redirect/exhaustion distinction spelled out; blueprint SKILL.md
     synthesis discloses excluded pending provisionals. Depends on 7, 9, 10.
