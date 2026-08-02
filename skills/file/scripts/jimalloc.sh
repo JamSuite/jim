@@ -1457,6 +1457,89 @@ alloc_classify_emit() {
   printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4"
 }
 
+# alloc_spec_replay   (specs log on stdin)
+#   THE spec-claim replay: what the registry claims right now, and every
+#   contradiction met on the way there. An allocate record claims an identity, a
+#   rename record moves that claim to its destination, and a group rename moves
+#   every claim under that group; a rename onto its own name says nothing and is
+#   skipped as the no-op it reads as.
+#
+#   Rows, TAB-separated:
+#     DUP  <id> <pos-a> <pos-b>   two live claims on one identity
+#     SLUG <id> <pos>             a claim whose slug field is unusable
+#     LIVE <id> <pos> <slug>      claimed now, and the record that made the claim
+#     SRC  <id>                   an identity some rename moved away from
+#     BAD  <n>                    records naming no identity at all
+#   DUP and SLUG appear in encounter order; LIVE and SRC are sorted, after.
+#
+#   ONE replay, because the integrity report and the emission refusals must not
+#   be able to disagree about what "already claimed" means — the report would
+#   name a duplicate the emitter had just written, or the emitter would refuse a
+#   destination the report calls free. A claim moved by a rename carries the
+#   MOVING record's position: citing the allocate position forward would name a
+#   record about a different identity by the time anything collides with this one.
+alloc_spec_replay() {
+  local -a lines=(); mapfile -t lines
+  local n=${#lines[@]} i c1 c2 c3 c4 canon key dst bad=0
+  local -A live_at=() live_slug=() src_only=()
+  local -A rn=()
+  local rk rsrc rsok rdst rdok
+  if (( n )); then
+    alloc_rename_index spec < <(printf '%s\n' "${lines[@]}")
+    # A record that cannot even name an identity is counted, never silently
+    # dropped: a registry full of unreadable records must not report like a
+    # clean one.
+    bad=$(( bad + $(printf '%s\n' "${lines[@]}" | alloc_malformed_count spec rename alloc_rename_scan) ))
+    bad=$(( bad + $(printf '%s\n' "${lines[@]}" | alloc_malformed_count spec realize alloc_realize_scan) ))
+  fi
+  for ((i=0; i<n; i++)); do
+    if [[ -n "${rn[$((i + 1))]:-}" ]]; then
+      IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
+      [[ "$rsok" == y && "$rdok" == y && "$rsrc" != "$rdst" ]] || continue
+      if [[ "$rk" == spec ]]; then
+        src_only["$rsrc"]=1
+        [[ -n "${live_at[$rsrc]:-}" ]] || continue
+        if [[ -n "${live_at[$rdst]:-}" ]]; then
+          printf 'DUP\t%s\t%s\t%s\n' "$rdst" "${live_at[$rdst]}" "$((i + 1))"
+        else
+          live_at["$rdst"]=$((i + 1)); live_slug["$rdst"]="${live_slug[$rsrc]}"
+        fi
+        unset 'live_at[$rsrc]' 'live_slug[$rsrc]'
+      else
+        for key in "${!live_at[@]}"; do
+          [[ "$key" == "$rsrc"/* ]] || continue
+          src_only["$key"]=1
+          dst="$rdst/${key##*/}"
+          if [[ -n "${live_at[$dst]:-}" ]]; then
+            printf 'DUP\t%s\t%s\t%s\n' "$dst" "${live_at[$dst]}" "$((i + 1))"
+          else
+            live_at["$dst"]=$((i + 1)); live_slug["$dst"]="${live_slug[$key]}"
+          fi
+          unset 'live_at[$key]' 'live_slug[$key]'
+        done
+      fi
+      continue
+    fi
+    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
+    [[ "$c1" == spec && "$c2" == allocate ]] || continue
+    canon="$(alloc_canon_specid "$c3")" || { bad=$((bad + 1)); continue; }
+    if [[ -n "${live_at[$canon]:-}" ]]; then
+      printf 'DUP\t%s\t%s\t%s\n' "$canon" "${live_at[$canon]}" "$((i + 1))"
+      continue
+    fi
+    alloc_valid_token "$c4" || printf 'SLUG\t%s\t%s\n' "$canon" "$((i + 1))"
+    live_at["$canon"]=$((i + 1)); live_slug["$canon"]="$c4"
+  done
+  local id
+  for id in $(printf '%s\n' "${!live_at[@]}" | LC_ALL=C sort); do
+    [[ -n "$id" ]] && printf 'LIVE\t%s\t%s\t%s\n' "$id" "${live_at[$id]}" "${live_slug[$id]}"
+  done
+  for id in $(printf '%s\n' "${!src_only[@]}" | LC_ALL=C sort); do
+    [[ -n "$id" ]] && printf 'SRC\t%s\n' "$id"
+  done
+  printf 'BAD\t%d\n' "$bad"
+}
+
 # alloc_classify_spec <derived-records-file>   (specs log on stdin)
 #   Compare the spec identities derived from the working tree against the
 #   registry's live claims and print one row per finding, plus the CHECKED
@@ -1470,76 +1553,29 @@ alloc_classify_emit() {
 alloc_classify_spec() {
   local derived="$1"
   local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3 c4
+  local n=${#lines[@]} i c1 c2 c3
   local -A live_at=() live_slug=() src_only=() reg_groups=() unreadable=()
-  local canon key g unreadable_n=0
-  local -A rn=()
-  local rk rsrc rsok rdst rdok
-  if (( n )); then
-    alloc_rename_index spec < <(printf '%s\n' "${lines[@]}")
-    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_malformed_count spec rename alloc_rename_scan) ))
-    unreadable_n=$(( unreadable_n + $(printf '%s\n' "${lines[@]}" | alloc_malformed_count spec realize alloc_realize_scan) ))
-  fi
+  local g unreadable_n=0 tag ra rb rc
   for ((i=0; i<n; i++)); do
-    if [[ -n "${rn[$((i + 1))]:-}" ]]; then
-      IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ <<< "${rn[$((i + 1))]}"
-      # A rename onto its own name says nothing. Replaying it as a move vacates
-      # the claim on arrival and reports the arrival as a duplicate of itself —
-      # so it is skipped as the no-op it is. The emitter refuses to write one;
-      # this is the fail-safe reading of one that arrives anyway.
-      [[ "$rsok" == y && "$rdok" == y && "$rsrc" != "$rdst" ]] || continue
-      if [[ "$rk" == spec ]]; then
-        src_only["$rsrc"]=1
-        [[ -n "${live_at[$rsrc]:-}" ]] || continue
-        if [[ -n "${live_at[$rdst]:-}" ]]; then
-          alloc_classify_emit DUP-ORD spec "$rdst" "records ${live_at[$rdst]} and $((i + 1))"
-        else
-          # The claim's provenance becomes the record that moved it. Carrying
-          # the allocate position forward would cite a record about a different
-          # identity by the time anything collides with this one.
-          live_at["$rdst"]=$((i + 1)); live_slug["$rdst"]="${live_slug[$rsrc]}"
-        fi
-        unset 'live_at[$rsrc]' 'live_slug[$rsrc]'
-      else
-        for key in "${!live_at[@]}"; do
-          [[ "$key" == "$rsrc"/* ]] || continue
-          src_only["$key"]=1
-          if [[ -n "${live_at[$rdst/${key##*/}]:-}" ]]; then
-            alloc_classify_emit DUP-ORD spec "$rdst/${key##*/}" \
-              "records ${live_at[$rdst/${key##*/}]} and $((i + 1))"
-          else
-            live_at["$rdst/${key##*/}"]=$((i + 1))
-            live_slug["$rdst/${key##*/}"]="${live_slug[$key]}"
-          fi
-          unset 'live_at[$key]' 'live_slug[$key]'
-        done
-      fi
-      continue
-    fi
-    read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
-    if [[ "$c1" == spec && "$c2" == allocate ]]; then
-      # A record that cannot even name an identity is counted, never silently
-      # dropped: a registry full of unreadable records must not report like a
-      # clean one.
-      canon="$(alloc_canon_specid "$c3")" || { unreadable_n=$((unreadable_n + 1)); continue; }
-      if [[ -n "${live_at[$canon]:-}" ]]; then
-        alloc_classify_emit DUP-ORD spec "$canon" "records ${live_at[$canon]} and $((i + 1))"
-        continue
-      fi
+    read -r c1 c2 c3 _ <<< "${lines[i]}"
+    [[ "$c1" == group && "$c2" == allocate ]] || continue
+    alloc_valid_token "$c3" || continue
+    reg_groups["$c3"]=1
+  done
+  while IFS=$'\t' read -r tag ra rb rc; do
+    case "$tag" in
+      LIVE) live_at["$ra"]="$rb"; live_slug["$ra"]="$rc" ;;
+      DUP)  alloc_classify_emit DUP-ORD spec "$ra" "records $rb and $rc" ;;
       # An unusable sibling field does not vacate the claim. The identity IS
       # taken — the resolvers count it — so calling it missing is what let the
       # repair path append a second record and turn a degraded record into a
       # refused citation. It is claimed, and reported under its own class.
-      if ! alloc_valid_token "$c4"; then
-        unreadable["$canon"]=1
-        alloc_classify_emit UNREADABLE spec "$canon" "record $((i + 1)) has an unusable slug"
-      fi
-      live_at["$canon"]=$((i + 1)); live_slug["$canon"]="$c4"
-    elif [[ "$c1" == group && "$c2" == allocate ]]; then
-      alloc_valid_token "$c3" || continue
-      reg_groups["$c3"]=1
-    fi
-  done
+      SLUG) unreadable["$ra"]=1
+            alloc_classify_emit UNREADABLE spec "$ra" "record $rb has an unusable slug" ;;
+      SRC)  src_only["$ra"]=1 ;;
+      BAD)  unreadable_n="$ra" ;;
+    esac
+  done < <(printf '%s\n' ${lines[@]+"${lines[@]}"} | alloc_spec_replay)
   # Tree side: the seed derivation's own output, so the sweep and the bootstrap
   # enumerate one artifact set (reserved slots and pending provisionals are
   # already excluded there — the sweep counts those separately as non-coverage).

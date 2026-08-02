@@ -293,7 +293,7 @@ flowchart TD
    enter rename parsing. Depends on 2.
    **Verify:** `bash tests/jimalloc.sh realize`
 
-6. [ ] Live realize emission: `alloc_reconcile_spec_publish_builder`
+6. [x] Live realize emission: `alloc_reconcile_spec_publish_builder`
    appends the realize record beside each `new` identity's allocate;
    registry-readback fixture on the realize path. Depends on 5.
    **Verify:** `bash tests/jimalloc.sh reconcile && bash tests/specreconcile.sh`
