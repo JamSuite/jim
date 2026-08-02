@@ -4,7 +4,7 @@
 # Blueprint — jim
 
 *Axis: vertical · Territory: declared-paths*
-*Last updated: 2026-07-31 (via /jim:blueprint)*
+*Last updated: 2026-08-02 (via /jim:blueprint)*
 
 *The project-tier context map: the declared partition of this project into
 spec groups, each a deliberate context boundary. Current state only — the
@@ -37,7 +37,7 @@ re-declared here.*
   batches), `blueprint` (assignment advisor, blast-radius facts, living-intent
   sensor, canonical gate rule); provider to `blueprint` (personas its skills
   bind) and `platform` (personas its scaffold gates dispatch).
-- **Territory:** skills/spec, skills/spec-check, skills/research, skills/plan, skills/build, skills/debug, skills/sec, skills/review, skills/vision, skills/roadmap, skills/arch, skills/brainstorm, skills/meta-skill, skills/meta-agent, skills/meta-matrix, skills/meta-matrix-bash-invocation, skills/meta-matrix-conditional-evaluation, skills/meta-matrix-fork-probe, skills/meta-matrix-preload-probe, skills/meta-matrix-skill-invocation, skills/meta-matrix-variable-setting, agents/pm.md, agents/architect.md, agents/researcher.md, agents/coder.md, agents/security.md, agents/reviewer.md, agents/investigator.md, agents/meta.md, agents/meta-matrix-probe.md
+- **Territory:** skills/spec, skills/spec-check, skills/research, skills/plan, skills/build, skills/debug, skills/sec, skills/review, skills/vision, skills/roadmap, skills/arch, skills/brainstorm, skills/meta-skill, skills/meta-agent, skills/meta-matrix, skills/meta-matrix-bash-invocation, skills/meta-matrix-conditional-evaluation, skills/meta-matrix-fork-probe, skills/meta-matrix-preload-probe, skills/meta-matrix-skill-invocation, skills/meta-matrix-variable-setting, agents/pm.md, agents/architect.md, agents/researcher.md, agents/coder.md, agents/security.md, agents/reviewer.md, agents/investigator.md, agents/meta.md, agents/meta-matrix-probe.md, tests/specreconcile.sh
 - **Blueprint:** docs/specs/sdlc/000-blueprint/
 
 ### blueprint
@@ -82,13 +82,13 @@ re-declared here.*
 - **Relations:** requires `issue` (validator-lockstep, dev-time), `sdlc`
   (personas the meta-test scaffold dispatches); provider to `sdlc`,
   `blueprint`, `issue` (the CLIs and test framework).
-- **Territory:** skills/conf, skills/file, skills/ledger, skills/meta-test, tests/jimconf.sh, tests/jimfile.sh, tests/jimalloc.sh, tests/jimledger.sh, tests/metatest.sh
+- **Territory:** skills/conf, skills/file, skills/ledger, skills/meta-test, tests/jimconf.sh, tests/jimfile.sh, tests/jimalloc.sh, tests/jimledger.sh, tests/metatest.sh, tests/scripthygiene.sh
 - **Blueprint:** docs/specs/platform/000-blueprint/
 
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-07-31T23:35:31Z
+on every blueprint write; do not edit. Last reconciled: 2026-08-02T07:23:52Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |
