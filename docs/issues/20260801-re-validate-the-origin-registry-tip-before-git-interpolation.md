@@ -2,7 +2,7 @@
 id: 20260801-re-validate-the-origin-registry-tip-before-git-interpolation
 num: 185
 title: "Re-validate the origin registry tip before git interpolation"
-status: open
+status: closed
 priority: medium
 labels: [platform, scripts, id-coordination, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-01T00:22:45Z
-updated: 2026-08-01T19:43:01Z
+updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/000-blueprint/spec.md
 ---
 
@@ -65,3 +65,16 @@ its tip from `git rev-parse --verify --quiet --end-of-options`; only the
 origin arm trusts `ls-remote` text raw. The discipline to mirror is
 `jimledger.sh resolve_head` (`skills/ledger/scripts/jimledger.sh:95-107`):
 git's own output re-crosses `jimfile.sh valid-id` before reuse.
+
+## Resolution (2026-08-02)
+
+Fixed in `platform/012`. The tip `alloc_origin_tip` extracts from `ls-remote`
+now crosses `alloc_valid_token` before it is returned — the single locus this
+issue identified, so both consumers and every interpolation site downstream of
+them are covered by one gate. An empty tip (the branch does not exist yet) stays
+legal; anything non-empty that fails the boundary is a hard failure rather than
+a degraded read.
+
+Fixtured with a PATH-shimmed `git` that advertises a crafted tip, and
+mutation-tested: with the guard neutered the case fails on the value handed
+back (`--upload-pack=touch`), not merely on the exit code.

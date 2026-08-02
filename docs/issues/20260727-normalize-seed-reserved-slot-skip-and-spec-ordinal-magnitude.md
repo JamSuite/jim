@@ -2,7 +2,7 @@
 id: 20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude
 num: 121
 title: "Normalize seed reserved-slot skip and spec-ordinal magnitude"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, alloc, verify]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-27T05:34:21Z
-updated: 2026-08-01T21:40:00Z
+updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/008-registry-seed/review.md
 ---
 
@@ -93,3 +93,21 @@ spec's sweep classifies a `<group>/000` record as drift, and its catch-up
 verb reuses this very derivation — detect and derive must agree on the
 reserved-slot rule, or the pipeline flags records its own sibling verb can
 still produce.
+
+## Resolution (2026-08-02)
+
+Both halves are now closed. The magnitude half shipped with `platform/011` (the
+`999` value cap became a shared digit-length check). The reserved-slot half
+shipped with `platform/012`: `alloc_is_reserved_ord` replaces the literal
+`"000"` test with a digits-guarded numeric one, so `0-`, `00-` and `000-` name
+the same reserved dir at every width and no derivation can mint the
+`<group>/000` record the sweep classifies as drift.
+
+The predicate is genuinely shared rather than duplicated — the derivation skips
+by it, the sweep's reserved-slot counter counts by it, and the classifier's
+reserved-slot row is decided by it — so the report and the derivation cannot
+disagree about which directories are reserved.
+
+The ordering this issue flagged is preserved and now asserted: the skip runs
+ahead of the no-slug and ordinal-class checks, so a slugless bare `000` still
+skips rather than raising a conflict.

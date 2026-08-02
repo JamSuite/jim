@@ -2,7 +2,7 @@
 id: 20260728-registry-drift-catch-up-has-no-incremental-seed-verb
 num: 130
 title: "Registry drift catch-up has no incremental seed verb"
-status: open
+status: closed
 priority: high
 labels: [id-coordination, registry]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-28T21:39:26Z
-updated: 2026-08-01T19:43:01Z
+updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/008-registry-seed/spec.md
 ---
 
@@ -85,3 +85,25 @@ what stands between the registry and a reissued id; nothing else does.
   the seed derivation this verb reuses still skips the reserved slot with a
   literal `"000"` (`jimalloc.sh:817`), so a `0-foo` dir still derives a
   `<group>/000` record. Fix that first or inherit it knowingly.
+
+## Resolution (2026-08-02)
+
+Shipped as `jimalloc.sh catch-up [--apply]` in `platform/012` — a distinct verb
+rather than `seed --catch-up`, so the bootstrap keeps its crisp empty-log
+contract while both share the same derivation and the same batch publish.
+
+The four semantics decisions this issue asked for: records derive exactly as the
+bootstrap derives them; appends are stamped `jim-catchup`, which is the only
+forensic distinction from a bootstrap or a live allocation given the erosion
+guard's accepted residual; a `group allocate` record rides along only when the
+group is absent from the log *and* the batch carries a spec record for it; and a
+mismatch is never auto-resolved — choosing a winner is an operator decision, so
+apply lands the clean records, names everything it could not repair, and exits
+non-zero.
+
+It refuses a registry that was never bootstrapped, which keeps the "repair a
+non-empty log" contract honest: without that guard the verb doubled as an
+unmarked bootstrap.
+
+The hand-edit of a shared coordination branch that this issue existed to
+eliminate now has a sanctioned path.

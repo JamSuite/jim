@@ -2,7 +2,7 @@
 id: 20260726-add-an-only-door-verification-sweep-for-the-id-registry
 num: 116
 title: "Add an only-door verification sweep for the id registry"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, verify]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:02:01Z
-updated: 2026-08-01T19:43:01Z
+updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -57,3 +57,28 @@ Recorded while building Spec E context; anchors as of this date.
   table has no entry for append-only growth, erosion, or the only-door
   property itself. What this sweep enforces is currently invisible to
   `/jim:verify`; folding an invariant in belongs at Spec E's completion gate.
+
+## Resolution (2026-08-02)
+
+Shipped as `jimalloc.sh sweep` in `platform/012`. It compares every spec
+directory and issue file against the registry and reports each finding under a
+named class — `missing-record`, `mismatch`, `duplicate-ordinal`,
+`duplicate-id`, `reserved-slot`, `unreadable-record` — with records that have no
+tree counterpart reported as *informational* rather than drift, since another
+clone allocating first is a legitimate state.
+
+The design surface this issue predicted — the non-coverage report — is where the
+work went. The sweep names reserved blueprint slots, pending provisionals,
+groups outside coordination entirely, ids known only as rename sources, records
+too malformed to identify, and (when the coordination point could not be
+refreshed) the tip it swept plus the fact that it is last-seen state. Exit codes
+keep clean, drift and could-not-check apart, so a check that could not run is
+never read as a pass — including the case where the tree root itself is absent.
+
+The "adopt" clause resolved as this issue anticipated: it *is* the catch-up
+verb's append, and the two share one classification core so detection and repair
+cannot disagree about what is missing.
+
+Verified on jim's own registry: 64 spec records vs 64 tree dirs across 4 groups,
+203 issue records vs 203 files, zero drift, with the retired `jim` group named
+as uncovered.

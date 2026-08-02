@@ -2,7 +2,7 @@
 title: "Registry integrity and drift"
 spec: "docs/specs/platform/012-registry-integrity-and-drift/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Registry integrity and drift — Plan

@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T00:50:00Z
-updated: 2026-07-30T00:50:00Z
+updated: 2026-08-02T01:07:27Z
 origin: docs/specs/platform/011-rename-path-correctness/plan.md
 ---
 
@@ -77,3 +77,30 @@ fork cost over spec records, and have since the allocator shipped. What
 `platform/011` added is a second record class that pays it. Filing it as the
 measurement that makes the existing cost concrete, not as damage this build
 did.
+
+## Addendum — 2026-08-02: partly done in-process, and the measurement moved
+
+`platform/012` put an in-run cache inside `alloc_valid_token` itself, so each
+distinct token crosses `jimfile.sh` once per process rather than once per use.
+That removes the repeat forks a whole-registry read pays, where the same group,
+slug or id is revalidated on both the tree side and the record side. The cache
+sits inside the boundary rather than beside it, so no call site has to remember
+a faster variant, and it is not a fourth copy of the rule.
+
+Two things this build learned that change what remains here:
+
+- **The cache carries a hazard the plain fork did not.** Indexing on a raw token
+  means an empty one — produced by any record short a field — is not a usable
+  array subscript. That shipped, and broke the read path outright until fixed
+  by rejecting the empty token ahead of the cache. Anything further along these
+  lines should carry a fixture for a truncated record.
+- **The dominant cost is not this boundary.** Profiled on the live collection,
+  the sweep's ~14 s breaks down as ~6.9 s in `alloc_seed_derive_issues`, ~2.2 s
+  in a second per-file pass, ~1.2 s in the spec derivation, and **167 ms** in
+  the two classification cores. The cost is per-file frontmatter `sed` forks,
+  not id validation. That is issue 201, and it is a different problem — **do not
+  close 201 against this issue, and do not assume fixing this one fixes 201.**
+
+Still open for the cross-process case: the derivation, each classifier, and each
+group probe run in their own subshell, so the cache is rebuilt per subshell and
+does not carry between them.
