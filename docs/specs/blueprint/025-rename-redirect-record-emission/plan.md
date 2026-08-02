@@ -324,7 +324,7 @@ flowchart TD
     (sanitized). Depends on nothing; independent of 2–9.
     **Verify:** `bash tests/jimpartition.sh provisional`
 
-11. [ ] Cross-parent realization: widen `move-spec-dir`'s source gate;
+11. [x] Cross-parent realization: widen `move-spec-dir`'s source gate;
     route tracked cross-group realizations through it; rewrite `group:` on
     every realization; untracked cross-group refusal names the remedy.
     Depends on 1 (SYNC'd predicate).

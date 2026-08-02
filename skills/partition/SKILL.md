@@ -15,7 +15,7 @@ description: >
   spec → plan → build workflow).
 agent: architect
 argument-hint: "[greenfield | repartition | path | directory | rename <old> <new> | split <old> into <new>... | merge <src>... into <target> | health]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/partition/scripts/jimpartition.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Skill(jim:blueprint) Agent(gatherer) Read Write Edit Glob Grep
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/partition/scripts/jimpartition.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/verify/scripts/jimverify.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh peek spec *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimalloc.sh partition-batch *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Skill(jim:blueprint) Agent(gatherer) Read Write Edit Glob Grep
 ---
 
 # /jim:partition
@@ -325,7 +325,14 @@ The resolved mode is recorded on the close event as `identity=<mode>` (step 7).
    check cannot run here, end with a named "verification owed" line — the
    command from operator config or an explicit developer instruction only, never
    synthesized (AC #17).
-7. **Close** — `partition finished tier=project op=rename old=<old> new=<new>
+7. **Close** — first `jimalloc.sh partition-batch group <old> <new> <date>`, so
+   the registry records the move and an id issued under `<old>` keeps resolving.
+   The verb refuses by name and publishes nothing when the destination already
+   holds a colliding identity, when `<old>` has no record, or on a self-rename;
+   a `group renamed` refusal is **retryable** — it names the group `<old>` now
+   answers to, and the batch re-runs against that name — while a corroboration
+   refusal is terminal and the Close reports it rather than retrying. Then
+   `partition finished tier=project op=rename old=<old> new=<new>
    identity=<mode> frozen=<count> outcome=<renamed|blocked|declined>` on the
    specs-root ledger, then `commit-map` (map + ledger). `identity=<mode>` is the
    resolved `spec_migration` mode (the durable record of how this move handled
@@ -374,10 +381,16 @@ the specs-root ledger.
 6. **Verify** — the mode-aware zero-unclassified `occurrences` sweep; the graph check
    (`edges-diff` with old == new = pure multiset diff); reconcile-to-clean with health
    alongside, never conflated; name any un-runnable check verification-owed (AC 16).
-7. **Close** — `partition finished … op=split … identity=<mode> frozen=<count>
-   outcome=<split|blocked|declined> moved=<og/onum:ng/nnum>[,...]` on the specs-root
-   ledger (the `moved=` remap chunked ≤256 bytes — the durable bridge), then
-   `commit-map`; offer the frozen mentions as one tracked follow-up (AC 10, 12).
+7. **Close** — first `jimalloc.sh partition-batch spec <date>` with the renumber
+   map on stdin as `<old-id>\t<new-id>\t<slug>` rows, so every destination is
+   established by a record of its own and every vacated source keeps resolving
+   forward. One commit, all-or-none: a refusal (occupied destination, a source
+   with no live claim, a self-rename) publishes nothing and is reported by name
+   rather than retried. Then `partition finished … op=split … identity=<mode>
+   frozen=<count> outcome=<split|blocked|declined> moved=<og/onum:ng/nnum>[,...]`
+   on the specs-root ledger (the `moved=` remap chunked ≤256 bytes — the durable
+   bridge), then `commit-map`; offer the frozen mentions as one tracked
+   follow-up (AC 10, 12).
 
 ## Merge runs (`merge <src>... into <target>`)
 
@@ -410,8 +423,13 @@ ledger.
    delimiters; only developer responses bind (AC 5, 6).
 4. **Renumber** — `merge-map <specs-dir> <target> <start> <src>...`: the target
    keeps its numbers; sources renumber-append in CLI order, ascending, from
-   `<start>` — passed **verbatim from `jimfile.sh next-id <target>` stdout**, so a
-   vacated id is never re-minted (`vacated-max` reads `op=merge` too, AC 9, 15).
+   `<start>` — the ordinal part of `jimalloc.sh peek spec <target>` stdout,
+   which is **advisory** (the batch at Close is what binds). `peek` refuses two
+   ways and they are not the same: `group renamed` is **retryable** — it names
+   the group `<target>` now answers to, and the run continues under the name the
+   allocator returns, which is authoritative — while `group exhausted` is
+   **terminal**, so report it and stop rather than retrying. The registry never
+   forgets a rename, so a vacated id can no longer be re-minted (AC 9, 15).
 5. **The single hard gate (spec 040)** — one presentation of the whole change-set
    per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`),
    led by a **per-group disposition header** naming every participating group once
@@ -430,7 +448,10 @@ ledger.
    10–13, 17).
 7. **Verify + close** — the graph check (`merge-edges-diff <before> <after>
    <target> <src>...`, rc 0 = done); reconcile-to-clean with health alongside,
-   never conflated; then `partition finished … op=merge old=<effective sources>
+   never conflated; then `jimalloc.sh partition-batch spec <date>` with the
+   `merge-map` remap on stdin (`<old-id>\t<new-id>\t<slug>` rows) — one
+   all-or-none commit, refusals named and never retried — and then
+   `partition finished … op=merge old=<effective sources>
    new=<target> [moved=<og/onum:ng/nnum>[,...]] identity=<mode> frozen=<count>
    outcome=<merged|blocked|declined>` — values only from preflight args + the
    `merge-map` remap, never scanned content (AC 14, 18) — and `commit-map`. Offer

@@ -300,8 +300,9 @@ all-or-nothing; a declined gate writes nothing.
      territory paths keep pointing at the unmoved old-named directories, so the
      map stays truthful (AC #9).
 2. *Spec dir* — `jimledger.sh rename-tracked <specs-dir>/<old> <specs-dir>/<new>`.
-   `next-id` continuity holds automatically (AC #16); in-flight `wip` dirs ride
-   the move by contract (AC #10).
+   Ordinal continuity holds automatically — the registry's group-rename record
+   keeps the group's high-water across the move (AC #16); in-flight `wip` dirs
+   ride the move by contract (AC #10).
 3. *Numbered-body identity* (spec 046; **`rewrite` mode only** — a no-op under
    `forward`/`immutable`, whose bodies stay byte-frozen). For each moved numbered
    spec, `jimpartition.sh rewrite-identity <old> <new> <spec-file>...` applies the
@@ -452,8 +453,9 @@ immediately after a clean split reports no new finding.
 computes the full remap the gate presents verbatim: a continuing remainder keeps
 its numbers (gaps preserved); each fresh child renumbers its arrivals to a dense
 `001..N` by source order; wip dirs ride in sequence. Vacated ids are never
-re-minted — `next-id` floors past them via the `op=split` ledger event
-(`jimledger.sh vacated-max`, AC 11).
+re-minted — the Close publishes one `spec rename` record per pair through
+`jimalloc.sh partition-batch spec`, and a rename source is an ordinal the
+registry counts as spent forever after (AC 11).
 
 **Reference sweep assembly.** Under `rewrite`, the reference set is
 `git ls-files -- <specs-root> <issues-dir> <brainstorms-dir> <debug-dir>` (dirs
@@ -638,12 +640,15 @@ ratchet). Every dissolved edge and every disposition is a confirmable gate row
 <src>...` computes the remap the gate presents verbatim: an absorption target
 keeps its numbers (no rows of its own); absorbed sources renumber-append in CLI
 argument order, each source's specs ascending, into a dense run from `<start>`;
-wip dirs ride in sequence. `<start>` is the first id to assign, passed **verbatim
-from `jimfile.sh next-id <target>` stdout** (`001` for a fresh target) — the
-orchestrator copies the script value and never computes it, so a previously
-vacated target id is never re-minted (the floor rides `next-id`'s
-`max(dir-max, vacated-max)`, and `vacated-max` reads `op=merge` events too; AC 9,
-15).
+wip dirs ride in sequence. `<start>` is the first id to assign, taken **verbatim
+from the ordinal part of `jimalloc.sh peek spec <target>` stdout** (`001` for a
+fresh target) — the orchestrator copies the script value and never computes it.
+The peek is advisory; what binds is the Close's `partition-batch spec`, which
+records each pair and so makes a vacated target id permanently spent. `peek`
+refuses two ways that must not be conflated: `group renamed` is retryable and
+names the group `<target>` now answers to (continue under the name the allocator
+returns — it is authoritative), while `group exhausted` is terminal and the run
+reports it and stops (AC 9, 15).
 
 **Reference sweep assembly.** Identical to split under `rewrite`: the reference
 set is `git ls-files` over the spec archive + the issue / brainstorm / debug

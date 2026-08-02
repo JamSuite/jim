@@ -60,7 +60,7 @@ group failed validation — report it and stop. Never compose the path by hand.
 
 Do not fill the blueprint from assumptions — read what the group actually is:
 
-- **Specs:** Glob the group's numbered spec directories under the specs root and read their `spec.md` (and `plan.md` where present).
+- **Specs:** Glob the group's numbered spec directories under the specs root and read their `spec.md` (and `plan.md` where present). A **pending provisional** spec directory — its basename wearing the reserved `P-` prefix, because it was bound while the coordination point was unreachable — is not numbered and is therefore excluded from the synthesis. Say so rather than omitting it silently: name each excluded identity in the run's summary, so a blueprint written over an incomplete group reads as incomplete. Realizing them (`/jim:spec reconcile`) and re-running is what makes the group whole.
 - **Architecture:** Read `ARCHITECTURE.md` for the project-wide structure the group sits within.
 - **Code:** Glob and Grep the group's real source for its components, the surface it exposes, its cross-group references, and its code-shape rules.
 
