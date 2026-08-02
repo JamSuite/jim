@@ -1,16 +1,17 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-02 (ninth revision) — **the
-pre-Spec-B context pass.** Ground truth re-verified (68 spec+group records,
-issues through 203, still **zero** rename records — everything in B stays
-pre-emission), three grammar seams surfaced from the code that no prior
-revision named, five issues adopted into the cluster (#84, #197–#200), and the
-runway reordered: a small **pre-B build** (#203, #197, #199, #198) settles the
-realize-row contract before B consumes it, #189 leaves the spec for a map
-pass, and #149 / #120 / #125 close as bookkeeping. See *Pre-B build*, *Spec B —
-pre-spec analysis*, and *Sequence* step 4a. **The build, the closures, and the
-#189/#110 map pass all ran the same day** — see step 4a's shipped note. The
-runway to B is clear; next is the interview.
+**Created:** 2026-07-28 · **Revised:** 2026-08-02 (tenth revision) — **Spec B
+shipped.** The registry has writers: `blueprint/025` landed the rename/redirect
+grammar, both emission verbs, the lift, and the tree-scan retirement, then the
+backfill ran origin-tier over jim's own history. The pre-emission window is
+closed — the ground truth that framed every prior revision ("**zero** rename
+records") is now 52 rename records, 2 realize records, and `peek spec jim`
+answering `053` instead of the spent `001`. The post-build review returned
+**major-drift** with 20 findings and the living-intent sensor 2 in-change
+violations; nine follow-on issues (#205–#213) carry what did not close. See
+*What `blueprint/025` changed* and *Sequence* step 5. The dereferenceability
+story is delivered; what remains of the cluster is D, F, the hardening build,
+and the emitter edges B left open.
 
 The eighth revision (2026-08-02): **Spec E
 shipped as `platform/012`, and the standing prediction held.** The registry is
@@ -549,6 +550,85 @@ fixed in the same session, before the ledger closed.
    ordering is genuinely safer, but the bootstrap now says what it passed over,
    which it did not before. Shared code has more than one contract.
 
+## What `blueprint/025` changed
+
+The registry gained the write half of a grammar it had only ever parsed. Zero
+rename records existed anywhere when the build started, which is what made the
+shape change free: strictness could be tightened and `<who>` made required with
+no migration exposure, because there was nothing to migrate.
+
+**One rule replaced seven.** `alloc_rename_scan` is the single rename-record
+reader; both resolvers, the alias map, both high-water folds, both integrity
+classifiers, group coverage, and the sweep fold its output. Shape is decided in
+one place — exact six fields, a gated `<date>`, a required `<who>` in the write
+side's own charset — which retired the trailing-token leniency that had lived
+unnoticed in a fixture. Canonicalization is reported **per side**, so an
+unrepresentable source no longer drops its destination's establishing claim: the
+joint gate's cost, pinned as a known defect since A, now paid.
+
+**Resolution reaches further and says less confidently.** A citation whose only
+registry appearance is as a rename source now dereferences, with a stderr note
+that no allocation stands behind the answer; a walk that stops at a destination
+the registry cannot represent discloses rather than answering as though the
+record were absent. One unallocated source vacated twice stays a refusal — it
+has no single referent to name.
+
+**Realization got its own verb.** `spec realize` keeps the reserved `P-` form
+out of rename parsing entirely, so the vacating fold can never count a
+provisional as a consumed ordinal — the fold-safety #143 asked for, structural
+rather than special-cased. It is emitted **live**, in the same CAS batch as the
+realization's allocate, so no window exists where the ordinal is durable and the
+citation that became it resolves nowhere. That left the lift as pure repair,
+which sharpened its idempotency from a nicety into its whole contract.
+
+**Two writers, both corroborating inside the CAS window.** `partition-batch`
+publishes a renumber pair set as allocate + rename per pair (Shape 1, the
+charter's), or one record for a whole group; `lift` turns the specs-root
+ledger's durable pair events into records. Both recompute their refusals inside
+the publish builder on every attempt, so a conflict another clone introduced
+between check and commit is caught by the attempt that would have overwritten
+it. The lift treats the ledger as a **witness, not an instruction**: a pair is
+recorded only where the registry independently establishes its destination and
+holds no live claim on its source — without that, an operator's run would
+convert push-writable content into registry records under their own authority.
+
+**The tree-scan path is gone, not patched.** `jimfile.sh next-id` answers for
+issues only and `jimledger.sh vacated-max` retired with the caller it floored.
+Two computations of one number can disagree mid-move; #84 (the rename floor) and
+#123 (the group/kind collision) were both defects *of that path*, so they ceased
+to exist rather than being fixed. The registry now records a vacated ordinal as
+a rename source, which any clone reads — where the old floor inferred it from a
+ledger event a fresh clone may never have seen.
+
+**The backfill closed the instance that predates emission.** 52 pairs from the
+2026-07-25 split plus 2 realizations, each carrying `jim-lift` and the day the
+identity actually moved. `peek spec jim` moved `001 → 053`; the sweep reports
+`uncovered-groups 0` and `rename-source-ids 52`; `resolve spec jim/029` answers
+`blueprint/001` with the unallocated-source note. A commit trailer written before
+the split now dereferences.
+
+**What it did not close.** The review found two ACs with reproducible
+counterexamples — a chained group rename is impossible (`alloc_group_has_records`
+does not recognise a group established only as a rename *destination*), and the
+lift's batch guard leaves no trace, so a second run writes what the first
+refused. Three more contradictions the emitter still accepts: a vacated ordinal
+re-minted, the reserved `000` slot as a destination, and an unchecked
+destination-group redirect. The living-intent sensor added a critical
+`partition-registry-boundary` violation (merge-preflight probes the filesystem
+with an unvalidated group, where its two siblings gate at entry) and a `high`
+`present-tense` one (the new blueprint disclosure echoes untrusted directory
+names into a gate summary unsanitized). All nine ride #205–#213.
+
+**Practice confirmed, and one added.** Practice 9 (one rule per structure) paid
+again: extracting the claim replay is what let the emitter and the classifier
+agree on "already claimed" — AC 6's *decided once* was unachievable with two
+replays. The new one: **a retirement's Verify must sweep the tree for the
+retired symbol, not just run the tests of the files it edited.** The plan's
+retirement task verified with two per-script suites; both passed, and both were
+the wrong question. That single gap produced a vacuously-green test, a
+model-facing instruction still teaching a retired verb, and eleven stale
+documentation sites.
+
 ## The grouping question, restated
 
 The original question was "which of 29 issues deserve a spec". That question is
@@ -646,8 +726,15 @@ surface whenever convenient — pre-B is mildly better, so B's territory-scoped
 verify runs start without permanent stray noise. #188 lands whenever, ideally
 before B's build phase: it guards exactly the review machinery B will rely on.
 
-### Spec B — Rename/redirect record emission · #113's deliverable
-`blueprint`. **Unblocked** — A closed its three preconditions. Also owns the two
+### ~~Spec B — Rename/redirect record emission~~ · SHIPPED as `blueprint/025` · reviewed **major-drift**
+`blueprint`. All 18 ACs implemented, 15 plan tasks done, backfill executed. Its
+five assigned issues (#113, #143, #152, #154, #202) and both scoping riders
+(#84, #123) are delivered — #84 and #123 died structurally with the tree-scan
+retirement rather than being patched. See *What `blueprint/025` changed*. The
+review's verified AC failures and the sensor's violations ride #205–#213; the
+original framing below is kept as the record of what B was scoped to do.
+
+**Unblocked** — A closed its three preconditions. Also owns the two
 dereferenceability decisions scoped out of A once investigation showed they cannot
 affect allocation: whether the emitter must allocate every rename source, and
 whether the resolver should count a source as known (a source-only id is
@@ -1129,7 +1216,17 @@ dropped), close #120/#125 (satisfied duplicates), and run the #189/#110
 territory map pass through the blueprint surface. #188 whenever, ideally
 before B's build phase.
 
-**5. B, next.** Its allocation-relevant piece remains the vacated-ordinal floor,
+**5. ~~B, next.~~ DONE 2026-08-02 — shipped as `blueprint/025`.** The
+vacated-ordinal floor described below stopped being a live defect the moment the
+backfill landed: `peek spec jim` answers `053`, and it does so from the
+registry's own rename records rather than from a ledger event a fresh clone may
+not share. The split-versus-repair division below — "emission is B's, repairing
+the instance that predates it is E's" — resolved differently than planned: B
+built one **lift** mechanism and ran it over existing history, so the backfill
+*is* the emitter's own repair verb rather than separate work. `jim/001`–`jim/052`
+are recorded. Everything below is the pre-ship framing, kept as the record.
+
+Its allocation-relevant piece remains the vacated-ordinal floor,
 and that piece stopped being theoretical on 2026-07-31: the step-0 verification
 sweep found the retired `jim` group answering `peek spec jim` → `jim/001` against
 `next-id jim` → `053`, because the registry holds no `jim/` records — and no
@@ -1395,13 +1492,18 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 
 ## Net
 
-83 issues → **7 assigned to the 3 remaining specs** (B: #113, #143, #152,
-#154, #202 · D: #127 · F: #126), **2 riding B's scoping** (#84, #123), **13
+83 issues → **2 assigned to the 2 remaining specs** (D: #127 · F: #126), **13
 to the grouped hardening build**, **1 optional refactor**, **1 doc item + 2
 decisions + 1 deferred + 1 process item** (#118 · #139, #200 · #137 · #188),
-**55 closed** — the pre-B build's four (#203, #197, #199, #198), #149, and
-the map pass's #189, all closed 2026-08-02. That is 83; the enumeration still
-closes. (#110, #120, #125 stay outside the cluster and closed the same day —
+**62 closed** — the pre-B build's four (#203, #197, #199, #198), #149, the map
+pass's #189, and B's seven (#113, #143, #152, #154, #202 assigned, plus #84 and
+#123, which died structurally with the tree-scan retirement rather than being
+patched). That is 83; the enumeration still closes.
+
+**B's residue is new work, not reopened work.** The review and sensor findings
+became #205–#213 — nine issues that did not exist when this cluster was
+enumerated, and that belong to the emitter's edges rather than to the
+coordination problem the cluster was about. They are outside the 83. (#110, #120, #125 stay outside the cluster and closed the same day —
 the latter two duplicates of each other, already satisfied since C′-fix
 repaired the map.)
 
