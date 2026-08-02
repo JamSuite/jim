@@ -227,28 +227,82 @@ case_jimalloc_resolve_spec_over_wide_ordinal_refused() {
 }
 
 # AC: the width gate is applied JOINTLY to a rename record, so an over-wide
-# source drops the whole record — including its destination's establishing
-# claim. Crafted-log-only: nothing in this build can mint such a record, and no
-# live log holds a rename record at all. Pinned as the current semantics; whether
-# to gate per side belongs to the spec that emits the first rename record, and is
-# recorded on the redirect-emission issue.
-case_jimalloc_resolve_spec_over_wide_rename_source_drops_record() {
+# source is gated on its own side, so it no longer takes its destination's
+# establishing claim down with it. Crafted-log-only: nothing in this build can
+# mint such a record.
+case_jimalloc_resolve_spec_over_wide_rename_source_keeps_dest_claim() {
   local dir; dir=$(empty_dir res_overwide_anchor)
   printf '%s\n' 'spec rename core/1234567890123456 core/003 20260727 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/003
-  assert_exit "rc" 1 "$RC"
+  assert_exit "rc"                 0          "$RC"
+  assert_eq   "destination stands" "core/003" "$OUT"
 }
 
-# AC: the same joint gate on the replay side — a rename TO an over-wide
-# destination is not applied, so resolve reports the pre-rename name at rc 0
-# rather than following a redirect it cannot represent.
-case_jimalloc_resolve_spec_over_wide_rename_dest_not_applied() {
+# AC 8: a rename TO a destination the registry cannot represent is not applied —
+# resolve reports the pre-rename name, and DISCLOSES that the walk stopped there
+# rather than answering as though the record said nothing.
+case_jimalloc_resolve_spec_over_wide_rename_dest_disclosed() {
   local dir; dir=$(empty_dir res_overwide_replay)
   printf '%s\n' 'spec allocate core/003 alpha 20260726 jane
 spec rename core/003 core/1234567890123456 20260727 x' > "$dir/specs.log"
   run_jimalloc_reg "$dir" resolve spec core/003
-  assert_exit "rc"          0         "$RC"
-  assert_eq   "pre-rename name" "core/003" "$OUT"
+  assert_exit  "rc"              0          "$RC"
+  assert_eq    "pre-rename name" "core/003" "$OUT"
+  assert_match "discloses the unrepresentable destination" "record 2" "$ERR"
+}
+
+# AC 7: an id whose only registry appearance is as a rename source resolves to
+# its current referent, and the answer says so — the citation dereferences, and
+# the reader is told the claim behind it was never allocated.
+case_jimalloc_resolve_spec_source_known_discloses() {
+  local dir; dir=$(empty_dir res_source_known)
+  printf '%s\n' 'spec rename core/003 ui/007 20260727 x' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit  "rc"                0         "$RC"
+  assert_eq    "current referent"  "ui/007"  "$OUT"
+  assert_match "discloses the unallocated source" \
+               "unallocated rename source (record 1)" "$ERR"
+}
+
+# AC 7: an id no record mentions at all still errors — source-known widens what
+# resolves, not what the registry claims to know.
+case_jimalloc_resolve_spec_source_known_does_not_invent() {
+  local dir; dir=$(empty_dir res_source_known_unknown)
+  printf '%s\n' 'spec rename core/003 ui/007 20260727 x' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec other/001
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC 7: the incoherent shape stays loud — one unallocated source vacated by two
+# records has no single referent, so it is refused with both records named
+# rather than answered from whichever applied first.
+case_jimalloc_resolve_spec_source_vacated_twice_refuses() {
+  local dir; dir=$(empty_dir res_source_twice)
+  printf '%s\n' 'spec rename core/003 ui/007 20260727 x
+spec rename core/003 surface/009 20260728 x' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/003
+  assert_exit  "rc"                 1               "$RC"
+  assert_match "names both records" "records 1 and 2" "$ERR"
+  assert_eq    "no answer on stdout" ""             "$OUT"
+}
+
+# AC 7/8: the issue side of both rules.
+case_jimalloc_resolve_issue_source_known_discloses() {
+  local dir; dir=$(empty_dir res_issue_source_known)
+  printf '%s\n' 'issue rename 5 8 20260727 x' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 5
+  assert_exit  "rc"               0        "$RC"
+  assert_eq    "current referent" "8"      "$OUT"
+  assert_match "discloses the unallocated source" \
+               "unallocated rename source (record 1)" "$ERR"
+}
+
+case_jimalloc_resolve_issue_over_wide_source_keeps_dest_claim() {
+  local dir; dir=$(empty_dir res_issue_overwide)
+  printf '%s\n' 'issue rename 1234567890123456 5 20260727 x' > "$dir/issues.log"
+  run_jimalloc_reg "$dir" resolve issue 5
+  assert_exit "rc"                 0   "$RC"
+  assert_eq   "destination stands" "5" "$OUT"
 }
 
 # AC: the same reuse-via-rename-in shape over issue ordinals resolves to the
