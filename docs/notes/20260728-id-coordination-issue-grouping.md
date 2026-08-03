@@ -1,6 +1,20 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-02 (tenth revision) — **Spec B
+**Created:** 2026-07-28 · **Revised:** 2026-08-03 (eleventh revision) — **the
+tracker caught up with the code, and the catching-up was itself the finding.**
+`blueprint/025` delivered seven of this cluster's issues and closed none of
+them, so for a day the collection read seven behind the tree; an eighth (#155)
+was resolved by a fork this note had left open and nobody noticed it land. All
+eight are now closed with resolutions recorded against what actually shipped.
+
+Worse, and new: **six of that review's twenty findings rode none of the nine
+issues it filed.** Each was verified still live in the working tree and is now
+filed as #214–#219. So B's residue is **fifteen** issues, not nine — and the
+gap earns a tenth practice, because nothing anywhere reconciles a review's
+finding count against its filing count. See *What did not close with B*,
+*Grouping* → B′, and practice 10.
+
+**Revised:** 2026-08-02 (tenth revision) — **Spec B
 shipped.** The registry has writers: `blueprint/025` landed the rename/redirect
 grammar, both emission verbs, the lift, and the tree-scan retirement, then the
 backfill ran origin-tier over jim's own history. The pre-emission window is
@@ -48,7 +62,8 @@ cluster; this note answers "which deserve a spec, and how to group the work"
 without minting a spec per issue.
 
 Working note — not a spec. Delete or fold into a roadmap once the groupings are
-acted on. Five groupings (A, C, C′, C′-fix, E) have now been acted on.
+acted on. Seven groupings (A, C, C′, C′-fix, E, the pre-B build, and B) have now
+been acted on; B′ is the eighth and is not yet started.
 
 Line/function anchors in this note are as of the revision date.
 `skills/file/scripts/jimalloc.sh` moves under consolidation — treat anchors as
@@ -115,10 +130,21 @@ grammar half coordinates with Spec B). The fifth, #84, predates the cluster
 names retired by rename. It joins because its fate hangs on a question Spec B
 already owns — whether the tree-scan `next-id` surface survives at all.
 
-**Forty-nine are closed.** The nineteen the fourth revision listed, plus all
+**Sixty-three are closed.** The nineteen the fourth revision listed, plus all
 sixteen of C′-fix's own (#168–#183), the two it unblocked (#151, #134), all
-seven the review filed (#190–#196), and Spec E's five charter issues (#116,
-#130, #136, #185, and #121's remaining half).
+seven the review filed (#190–#196), Spec E's five charter issues (#116, #130,
+#136, #185, and #121's remaining half), the pre-B build's four (#197, #198,
+#199, #203), #149 and #189 as bookkeeping — and, on 2026-08-03, **B's eight**
+(#84, #113, #123, #143, #152, #154, #155, #202).
+
+Those eight are worth a sentence, because the note asserted them delivered a day
+before the tracker agreed. B shipped them on 2026-08-02 and closed none; the
+tenth revision counted them closed on the strength of what the code does. Both
+readings were right about the code and only one was right about the collection.
+#155 is the sharper case: it was parked here as *fork-dependent*, and the fork
+resolved silently the moment `spec realize` put the reserved prefix into the
+registry parser. Nothing watches a conditional disposition for its condition
+becoming true.
 
 That count under-reports the repair work, and deliberately so: **five of the
 review's findings were fixed without ever being filed** (two `/jim:review`
@@ -130,17 +156,18 @@ accounting here is issue-based, so it cannot see them — the commits are
 lower-confidence or lower-stakes and left unfiled, with their anchors recorded
 in `docs/notes/20260801-c-prime-fix-handoff.md` § 4.
 
-**#149 stays open**, and is now the only survivor of C′'s fourteen: the `jim`
-half of the blueprint fold was dropped by decision (see *What C′ changed*, item
-3), and the `sdlc` half landed. #151 and #134 closed with C′-fix — the first
-because its two defective items (#171, #172/#173) are fixed, the second because
-the regeneration can no longer be *skipped* rather than merely checked.
+**None of C′'s fourteen survives.** #149 closed as bookkeeping on 2026-08-02 —
+the `sdlc` half of the blueprint fold landed and the `jim` half was deliberately
+dropped with the retired blueprint (see *What C′ changed*, item 3). #151 and
+#134 closed with C′-fix — the first because its two defective items (#171,
+#172/#173) are fixed, the second because the regeneration can no longer be
+*skipped* rather than merely checked.
 
 They are the residue of turning `platform/007`'s allocator foundation (emits
 allocate records only — no consumers, no seed, no rename records) into the
 project's authoritative, drift-proof ID source.
 
-## Closed (44) — shipped and verified
+## Closed (63) — shipped and verified
 
 | Issue | Shipped as | Review | Carve-outs (tracked) |
 |---|---|---|---|
@@ -168,6 +195,22 @@ record the allocator itself minted; `issues.log` through 196, matching 196
 issue files; high-waters match the tree in all four live groups; suite
 975/975. Registry and tree currently agree everywhere except the retired `jim`
 group (#113).
+
+Re-verified 2026-08-03 (eleventh revision), after the backfill and the
+bookkeeping pass — the first sweep in this note's history with **no exceptions
+of any class except the reserved slots**:
+
+```
+specs:  65 records vs 65 tree dirs; 4 group records vs 4 tree groups
+issues: 219 records vs 219 files checked
+  reserved-slots 5 · pending-provisionals 0 · uncovered-groups 0
+  rename-source-ids 52 · unidentifiable 0 · unknown-verb 0
+  duplicate-realize-keys 0
+```
+
+`peek spec jim` answers `053`; `resolve spec jim/029` answers `blueprint/001`
+with the unallocated-source note. Suite 1097/1097. The retired-`jim` exception
+that qualified every prior verification is gone — it was the last one.
 
 **Four more closed 2026-07-31.** Two on `sdlc/017`'s account — #112 (spec-id
 allocation wired, with C′'s carve-outs recorded on it) and #135 (`allocate spec`
@@ -617,7 +660,31 @@ destination-group redirect. The living-intent sensor added a critical
 `partition-registry-boundary` violation (merge-preflight probes the filesystem
 with an unvalidated group, where its two siblings gate at entry) and a `high`
 `present-tense` one (the new blueprint disclosure echoes untrusted directory
-names into a gate summary unsanitized). All nine ride #205–#213.
+names into a gate summary unsanitized). Those nine ride #205–#213.
+
+**And six more rode nothing at all** (found 2026-08-03, eleventh revision). The
+review reported **twenty** findings; the filing pass produced **nine** issues,
+and the difference was never reconciled by anything. Each of the six was
+verified still live in the working tree before filing — no fix had landed after
+the review closed:
+
+| Finding | Now | What it is |
+|---|---|---|
+| 7 | **#214** | a duplicated realize key is resolved by *position*, not refused, and `alloc_realize_scan`'s three consumers disagree — the resolver takes first, the lift's `rz_of` takes last, `alloc_lift_state` calls it a conflict |
+| 18 | #217 | `alloc_classify_spec` lost `local` on `c4` and `canon`; `g` left dead |
+| 19 | #219 | `alloc_malformed_count`'s selector admits `spec:group`, so one crafted `group realize` line lands in two counters a comment says are reported apart on purpose |
+| 20a | #218 | the id-boundary memo no longer warms across passes — the extraction moved record-side validation into subshells |
+| 20b | #216 | the pure record layer now calls the reporting layer's sanitizer |
+| 20e | #215 | AC 15's byte fixture covers the shared body but not the three `prov_id_boundary` shims or three `PROV_PREFIX` constants, *where the rule's entire security content lives* |
+
+**#214 is the one that matters**, and it is this spec's own lesson turned back
+on it. `blueprint/025` extracted the claim replay precisely so the classifier
+and the emitters could not disagree about "already claimed" — practice 9,
+applied deliberately, and it worked. The *realize* replay got no such treatment,
+so the same three-readers-one-rule shape survives in the file that was rewritten
+to eliminate it. 20e is second: single-sourcing was pinned at the layer that was
+hard to keep in agreement and left unpinned at the layer that decides the
+boundary.
 
 **Practice confirmed, and one added.** Practice 9 (one rule per structure) paid
 again: extracting the claim replay is what let the emitter and the classifier
@@ -658,10 +725,10 @@ file and leaving its twin is how the pattern spread in the first place.
 Net effect: **eighteen new issues, zero net new specs.** C′ occupies C's slot;
 nothing else in the grouping grows.
 
-## Grouping: 3 remaining specs + 2 builds + 1 refactor + open items
+## Grouping: 2 remaining specs + 2 builds + 1 refactor + open items
 
-A, C, C′, C′-fix and E are done. B, D, F remain as specs; two builds remain —
-the pre-B build below, then the grouped hardening build.
+A, C, C′, C′-fix, E, the pre-B build and B are done. **D and F remain as
+specs**; two builds remain — B′ below, then the grouped hardening build.
 
 ### ~~Spec A — Rename-path correctness gates~~ · SHIPPED as `platform/011`
 Ran as a spec rather than a build, and the fork was worth resolving that way: the
@@ -835,6 +902,64 @@ refuse-vs-carry fork with split and merge agreeing (#152/#154), the backfill
 ship-with-emitter-vs-one-time-repair decision, and A's consumer obligations
 (redirect refusal is retryable, exhaustion is terminal, the returned group is
 authoritative).
+
+### B′ — finish `blueprint/025` · a build, not a spec · #205–#219 + #138
+New at the eleventh revision. Sixteen items: the nine B's review filed, the six
+that rode nothing (above), and #138 pulled out of the hardening bucket because
+it and #212 are one decision at two scopes.
+
+**It rides B's slot.** Every one of the fifteen records `blueprint/025`'s own
+unmet or regressed contract, so by the rule this note adopted it is that spec
+finishing, not new work. The remaining-spec count stays at two.
+
+**Run it as a build.** The three criteria that sent C′ to a spec and C′-fix to a
+build resolve the same way C′-fix's did:
+
+1. **One security regression, already localized.** #205 is a new filesystem
+   probe on an unvalidated component — real, and rated `low` by the review
+   because no gating bypass results and the probe is read-only. Its `critical`
+   grade is the *invariant's* criticality, not the finding's severity. There is
+   no threat-model surface for `/jim:sec` to open.
+2. **The forks are settleable in conversation** — with one exception, below.
+3. **The blueprint writes go through their own surfaces.** #211 needs
+   `/jim:blueprint platform` and `/jim:arch`; C′-fix established that this is not
+   a reason to widen the ceremony.
+
+**One escalation trigger, and it is real.** #209's first contradiction — a
+vacated ordinal re-minted — collides with the split protocol, which densifies
+fresh children to `001..N`. Refusing the re-mint means a split into a group name
+that was previously retired cannot densify from `001`. If that turns out to
+reshape `/jim:partition split` rather than just gate the emitter, B′ becomes a
+spec. Decide this **first**, before writing anything.
+
+**Sequence inside B′ — correctness first, because these write unrecoverable
+contradictions to a shared append-only branch through the documented Close:**
+
+1. **#207, #209, #213, #214.** One surface (`partition-batch`, `lift`, the two
+   replays) and one question: *what establishes a claim, and what vacates one.*
+   #209's `a→X`+`a→Y` case makes a source permanently unresolvable; #213 blocks
+   the rename Close for any group already renamed once; #214 is the realize
+   replay's version of the same disagreement. **Do not split these** — that is
+   the exact class `platform/012` paid two criticals for, and the reason B
+   extracted the claim replay in the first place. Take
+   `skills/partition/SKILL.md:366` from #211 in this pass too: it is one line,
+   and it teaches an agent mid-partition to call a verb that now returns rc 2.
+2. **#212 + #138 + #206's AC-17 floor.** One bound, three files, six inlined
+   predicates, no test asserting any two agree — and the three sites do not
+   accept the same set, since the registry has no lower bound while
+   `jimledger.sh:689` floors at three digits. Settle the floor semantics and
+   single-source in one pass; this is the seam the note has called load-bearing
+   since the seventh revision.
+3. **#205, #206's remainder, #208, #215, #216, #217, #218, #219** — gates,
+   fixtures, hygiene. #215 belongs near #212: both are single-sourcing pinned at
+   the wrong layer.
+4. **#210 and #211's remainder** — the vacuous test, the orphaned headers, and
+   the fifteen documentation sites. Last because they are the cheapest and the
+   least coupled.
+
+**Run the review deliberately**, and land **#188** before the build phase — it
+guards exactly the machinery B′ will lean on, and it has been "whenever, ideally
+before B" since the ninth revision without landing.
 
 ### ~~Spec C — Spec-ID allocator consumer~~ · SHIPPED as `sdlc/017`
 `#112` + `#135` closed; `#123` narrowed, not retired. Spec creation now binds through
@@ -1046,12 +1171,13 @@ bodies earlier and wider), and reconciliation with the VISION non-goal that issu
 capture is a discovery artifact, not a coordination primitive. The one clause of
 #111 that did not ship. Genuine undecided design → its own scoping.
 
-### One grouped hardening build (13) — no spec
+### One grouped hardening build (11) — no spec
 Localized fixes, each a testable one-to-few-line change with a test per fix.
 
-(#123 moved to Spec B's scoping at the ninth revision — its fate is the
-two-next-id-surfaces decision, alongside #84. If B keeps the tree-scan path,
-the explicit `next-id spec <group>` form falls back here.)
+(#123 fell out entirely: B retired the tree-scan path, so the explicit
+`next-id spec <group>` form this bucket held as a fallback has nothing left to
+disambiguate. #84 died the same way. Neither needed the two-next-id-surfaces
+decision resolved — the surface itself is gone.)
 
 Three from the `008`/`009`/`010` reviews:
 - #119 retry the unreachable-detection path + generalize the exhaustion message
@@ -1065,23 +1191,24 @@ could still mint one, so detect and derive settle the rule together.)*
 *(#133 and #134 moved to C′ — their spec-side twins are C's, and the two must be
 fixed in one pass or the pattern keeps spreading.)*
 
-Two from `sdlc/017`:
+One from `sdlc/017`:
 - #153 `run.sh` honors only its first filter argument, so a multi-filter Verify
   command silently checks less than it claims — which is how C's plan carried a
   task whose second half never ran
-- #155 single-source the provisional identity grammar, or adopt the `is_valid_id`
-  discipline (`SYNC:` comments + a byte-identity fixture); it is written three
-  times across a trust boundary today. Fork-dependent since the ninth revision:
-  rides B if the realize lift mints a `P-`-bearing record kind
 
-Four from `platform/011`:
+*(#155 left this bucket by resolving its own fork. It was parked here as "rides
+B if the realize lift mints a `P-`-bearing record kind"; `spec realize` does, so
+B single-sourced the grammar under the `SYNC:` discipline and #155 closed
+2026-08-03. Its residue — the fixture stopping at the shared body — is #215, in
+B′.)*
+
+Three from `platform/011`:
 - #140 fixture the `allocate spec` acknowledgment path (the consent gate shipped
   with only its `peek spec` half fixtured — behavior verified by hand)
 - #141 fixture the terminal exhaustion refusal (one record reaches it)
-- #138 collapse the ordinal-width predicate into a validator (one shared *value*,
-  but the predicate around it is inlined at five sites)
 - #142 memoize the id-validation boundary (~56ms/record of forks; measured linear,
-  and log length is attacker-influenceable)
+  and log length is attacker-influenceable). Note B *regressed* this at the sweep's
+  call sites — the memo no longer warms across passes (#218, in B′)
 
 Three from C′-fix:
 - #184 fixture `spec-ordinal-holder`'s `--root` (the option exists so a gate never
@@ -1100,13 +1227,17 @@ One from `platform/012`:
   path that now runs on every CI check, which is what makes it worth fixing.
   Distinct from #142; neither closes the other
 
-**#138 is now the load-bearing one in this bucket.** C′-fix's `next-id` change
-made it a sixth inlined site, and a `/jim:verify` judge scored
-`ordinal-single-source` **partial** on exactly that: legality is one *named* value
-inside `jimalloc.sh`, and a bare literal at six sites in `jimfile.sh`, with no
-test asserting the two agree. The invariant's text was corrected to say so. That
-is the one seam in the ordinal machinery where a divergence would not be caught
-structurally, which is a different weight class from the rest of this bucket.
+**#138 left this bucket at the eleventh revision, upward.** It was already the
+load-bearing item here — C′-fix's `next-id` change made it a sixth inlined site,
+and a `/jim:verify` judge scored `ordinal-single-source` **partial** on exactly
+that. B then found a *third file* holding the same bound in a third spelling
+(`jimledger.sh:689`), and made the bound decide, per side, whether a
+destination's establishing claim survives. So it is no longer a leaf fix with a
+test: it is one decision surface spanning three files, it belongs with #212, and
+both are in B′ step 2.
+
+What is left in this bucket is genuinely leaves — which is the first time that
+has been true.
 
 (#124 closed with A; #122 is below.)
 
@@ -1132,9 +1263,13 @@ it touches the allocation path rather than a leaf.
   undeclared. Accept it explicitly, widen the invariant's scope deliberately, or
   bound the walk in-process.
 - **#200** — the sanctioned repair path for registry-internal contradictions.
-  Spec B consults its grammar half at design time (do not foreclose a
-  precedence/tombstone record kind); the procedure or guarded verb is its own
-  later decision, and #203's duplicated realize key joins its class list.
+  **No longer speculative** (eleventh revision): B's grammar half landed without
+  foreclosing a precedence/tombstone kind, and the *demand* arrived with it —
+  #207 and #209 are contradictions the shipped emitters actually write, and
+  #209's re-minted ordinal is unrecoverable on an append-only branch. The class
+  list now holds #203's duplicated realize key, #207's double rename source,
+  #209's re-mint and reserved-slot destination, and #214's duplicated realize
+  key. Settle it inside B′'s scoping rather than after it.
 
 ### Deferred with no demand — #137
 A group that exhausts its ordinal space now fails loudly rather than minting an
@@ -1243,8 +1378,28 @@ Note B splits the same way #144 did: **emission is B's, repairing the instance
 that predates it is E's.** Shipping B fixes future splits; `jim/001`–`jim/052`
 stay unrecorded until something backfills them.
 
+**5a. The bookkeeping pass. DONE 2026-08-03.** B's eight closed with
+resolutions, the six untracked findings filed as #214–#219 and realized onto
+contiguous ordinals, index and sweep clean, suite 1097/1097. Not build work —
+but it is what makes the sequence below trustworthy, since every step of it is
+stated in issue numbers.
+
+**6. B′ — finish B.** Next, and for the same reason C′ followed C: the emitters
+can write contradictions to a shared append-only branch, two of them
+unrecoverable, through the Close that `/jim:partition` documents. Settle #209's
+re-mint fork first — it is the one that decides whether B′ stays a build. Then
+the correctness set (#207, #209, #213, #214) as one surface, the width bound
+(#212 + #138) as another, then the rest. See *Grouping* → B′.
+
 **Free-floating:** D, F, the hardening build, #118, #139, #200's repair-path
-half, and the #122 refactor — any time, any order.
+half, and the #122 refactor — any time, any order. Two qualifications the
+eleventh revision adds: **#200 stops being speculative** (B's #207 and #209 are
+the registry-internal contradictions its repair path was reserved for, and
+#209's re-mint is unrecoverable on an append-only branch — so consult it inside
+B′ rather than after), and **D should follow B′** — not because it is blocked,
+but because D adds another batch writer over the claim structure, and practice 9
+says the question *does the new reader agree with the old one* belongs at plan
+time. Let D inherit one settled rule instead of a contradicted one.
 
 **What A and C bought, and what they did not.** A bought correct arithmetic over
 the records present and closed the rename window. C bought a door: nothing can
@@ -1255,6 +1410,32 @@ disk that the registry has never heard of, and one of them is the spec that
 wired the allocator.
 
 ## Adopted practice — the reason C′ exists, and what guards it
+
+**Status after the bookkeeping pass (2026-08-03): a tenth practice, and it is
+the first one that is purely arithmetic.**
+
+10. **Reconcile a review's finding count against its filing count.** B's review
+    reported **20** findings. Its filing pass produced **9** issues. Six of the
+    eleven remaining were neither fixed nor deliberately left — they were simply
+    lost, and nothing anywhere noticed, because no artifact holds both numbers.
+    The review records its findings; the issues record themselves; no third thing
+    says *every finding has a disposition*.
+
+    This is practice 7's sibling once more — a result whose coverage is invisible
+    in the result — but with a property none of the others have: **the check is
+    mechanical.** The ledger already stores `findings=N`. A completion gate can
+    demand N dispositions, each one of *fixed in session* (with a commit),
+    *filed* (with an issue), or *left* (with a reason). C′-fix's review actually
+    did this — "five fixed, seven filed, six left" — but it did it in prose, in a
+    handoff note, by hand. Making it a counted obligation of the review artifact
+    is a small change that closes a gap four practices of judgment did not.
+
+    The same arithmetic catches the sibling failure this pass also found:
+    **a shipped spec that closes none of its issues.** C′ recorded that exact
+    observation as item 7 of *What C′ changed* — "the build did not close the
+    issues it fixed" — and B then did it again, seven issues' worth. A lesson
+    recorded in a working note has no mechanism behind it. **Not yet tracked**
+    (#188 is the nearest neighbour and is about a different absence).
 
 **Status after the C′-fix review (2026-08-01): practice 6 has a sibling.**
 C′-fix shipped unreviewed — running as a build left no spec directory for
@@ -1385,7 +1566,7 @@ the build:**
 | 124 | low  | **closed** — shipped as `platform/011`'s D4 |
 | 112 | high | **closed** — `sdlc/017` wired the spec-group consumer |
 | 135 | med  | **closed** — `sdlc/017` shipped the realization path |
-| 123 | med  | Spec B scoping — one decision with #84; dies if partition converges onto the allocator, else falls back to hardening |
+| 123 | med  | **closed** — `blueprint/025`; died with the tree-scan path, the consumer converged on `peek spec`; two prose sites → #211 |
 | 144 | high | **closed** — registry repaired from the host 2026-07-31; standing half → Spec E |
 | 146 | crit | **closed** — `sdlc/018`; path helper grew a provisional arity |
 | 149 | crit | **closed** — bookkeeping 2026-08-02; `sdlc` fold verified live, `jim` half deliberately dropped with the retired blueprint |
@@ -1401,11 +1582,11 @@ the build:**
 | 151 | low  | **closed** — C′-fix; items 1–2 fixed (#171, #172, #173), items 3–4 by `sdlc/018` |
 | 133 | low  | **closed** — `sdlc/018`; issue-side twin fixed in the same pass |
 | 134 | low  | **closed** — C′-fix; regeneration can no longer be skipped, only checked |
-| 113 | high | Spec B (record emission) — gates closed by `platform/011`; retired-group gap now demonstrated live |
-| 143 | med  | Spec B (lift realization redirects into the registry) |
-| 152 | med  | Spec B (realization cannot follow a renamed group) |
-| 154 | med  | Spec B (partition + blueprint vs pending provisional specs) |
-| 84  | med  | Spec B scoping — the `op=rename` `maxid=` floor; same decision as #123 (adopted 2026-08-02) |
+| 113 | high | **closed** — `blueprint/025`; both emitters, the lift, and the backfill origin-tier; residue → #205–#219 |
+| 143 | med  | **closed** — `blueprint/025`; a distinct `spec realize` verb, emitted live in the realization's own CAS |
+| 152 | med  | **closed** — `blueprint/025`; all four points, incl. the `group:` rewrite; missing repair-table row → #211 |
+| 154 | med  | **closed** — `blueprint/025`; settled as *refuse*, symmetric across all three preflights; synthesis half → #208 |
+| 84  | med  | **closed** — `blueprint/025`; the floor's consumer is retired, and rename sources now carry the guarantee |
 | 127 | high | Spec D (batch-CAS) |
 | 116 | med  | **closed** — `platform/012`; sweep ships with a five-class non-coverage report |
 | 130 | high | **closed** — `platform/012`; catch-up appends under the shared CAS, refuses an unseeded log |
@@ -1420,7 +1601,7 @@ the build:**
 | 141 | med  | hardening build (`platform/011` residue — test gap) |
 | 142 | med  | hardening build — partly done in-process by `platform/012`'s token cache; NOT the sweep's dominant cost (see 201) |
 | 153 | low  | hardening build (`sdlc/017` residue — `run.sh` filter args) |
-| 155 | med  | hardening build (`sdlc/017` residue — triplicated grammar) |
+| 155 | med  | **closed** — `blueprint/025`; fork resolved to B, `SYNC:` discipline adopted; fixture residue → #215 |
 | 122 | low  | half closed by `platform/009`; remainder is a standalone refactor |
 | 129 | med  | **closed** — `provisional` committed as `3d49ce9` |
 | 118 | med  | docs (coordination-branch protection / team setup) |
@@ -1459,13 +1640,48 @@ the build:**
 | 197 | med  | **closed** — pre-B build; untracked enumeration under the symlink discipline, regen rebuilds from rewritten sources |
 | 198 | high | **closed** — pre-B build; grant narrowed to `peek issue`, ahead of B widening the verb surface |
 | 199 | med  | **closed** — pre-B build; the own-H1 is a self-identity site, sweep grammar unchanged |
-| 200 | med  | decision — repair-path design; Spec B consults the grammar half (precedence/tombstone record kind) |
+| 200 | med  | decision — repair-path design; demand now real (#207/#209 write the contradictions), settle inside B′ |
 | 201 | med  | hardening — the sweep's per-file frontmatter cost (measured, ~6.9s of ~14s) |
-| 202 | med  | Spec B / rename emission — rename-replay defects in the integrity classifier |
+| 202 | med  | **closed** — `blueprint/025`; all four shapes over one shared claim replay; fixture residue → #210 |
 | 203 | high | **closed** — pre-B build; per-identity `blocked` on both realize paths, hazard class in the sweep |
 
 *(#161–#167 are `sdlc` blueprint drift surfaced by C′'s verify pass, not
-id-coordination work — excluded from this table and from the 83.)*
+id-coordination work — excluded from this table and from the 83. Worth one line
+anyway at the eleventh revision: **all seven are still open, three critical and
+four high**, untouched through four builds. Correctly excluded, and now the
+highest-criticality open set in the collection.)*
+
+## Outside the 83 — B's residue (15) + #204
+
+Not cluster issues: they did not exist when the cluster was enumerated, and they
+belong to the emitter's edges rather than to the coordination problem. The
+fifteen are B′'s; #204 is a single blueprint run and rides nothing. Priorities as
+filed. (B′ holds **sixteen** items — these fifteen plus #138, pulled up from the
+hardening bucket to join #212.)
+
+| # | Pri | Disposition |
+|---|---|---|
+| 205 | crit | B′ — merge-preflight probes the filesystem with an unvalidated group (invariant criticality; review severity `low`) |
+| 206 | med  | B′ — AC 16/17/18 residuals: retryable refusal in terminal language, width floor, one ungated echo |
+| 207 | crit | B′ step 1 — the lift's batch guard leaves no trace and is destination-only; a re-run writes what the first run refused |
+| 208 | med  | B′ — the blueprint pending-provisional disclosure cannot fire, and truncates unbounded |
+| 209 | high | B′ step 1 — three contradictions `partition-batch` accepts: re-minted vacated ordinal, reserved `000` destination, unchecked destination redirect |
+| 210 | med  | B′ step 4 — a vacuously-green test survived the retirement, plus four fixture gaps |
+| 211 | med  | B′ step 4 (one line in step 1) — fifteen documentation sites contradicting the code |
+| 212 | med  | B′ step 2 — the ordinal width bound in three files, three spellings, no test that any two agree |
+| 213 | high | B′ step 1 — a group renamed once cannot be renamed again |
+| 214 | med  | B′ step 1 — the duplicate-realize rule decided three different ways by three readers |
+| 215 | med  | B′ step 3 — the provisional-grammar byte fixture stops short of the shims and constants |
+| 216 | low  | B′ step 3 — the record layer calls the reporting layer's sanitizer |
+| 217 | low  | B′ step 3 — `alloc_classify_spec`'s lost `local` declarations |
+| 218 | med  | B′ step 3 — the id-boundary memo no longer warms across passes |
+| 219 | low  | B′ step 3 — a `group realize` counted in two non-coverage counters |
+| 204 | low  | one `/jim:blueprint sdlc` run — declare `platform.jimalloc` in the Requires face |
+
+*(#214–#219 are the six the review found and the filing pass lost; see* What did
+not close with B*. #204 is not review residue — it was surfaced during B's
+scoping, parked in a handoff note, and filed durably; it appeared in no prior
+revision of this note.)*
 
 *(#201–#203 came from `platform/012`'s review. **All three are adjacent
 observations, not defects in shipped mechanism** — the two criticals that review
@@ -1492,19 +1708,25 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 
 ## Net
 
-83 issues → **2 assigned to the 2 remaining specs** (D: #127 · F: #126), **13
-to the grouped hardening build**, **1 optional refactor**, **1 doc item + 2
-decisions + 1 deferred + 1 process item** (#118 · #139, #200 · #137 · #188),
-**62 closed** — the pre-B build's four (#203, #197, #199, #198), #149, the map
-pass's #189, and B's seven (#113, #143, #152, #154, #202 assigned, plus #84 and
-#123, which died structurally with the tree-scan retirement rather than being
-patched). That is 83; the enumeration still closes.
+83 issues → **2 assigned to the 2 remaining specs** (D: #127 · F: #126), **11
+to the grouped hardening build**, **1 to B′** (#138, joining #212), **1 optional
+refactor** (#122), **1 doc item + 2 decisions + 1 deferred + 1 process item**
+(#118 · #139, #200 · #137 · #188), **63 closed**.
 
-**B's residue is new work, not reopened work.** The review and sensor findings
-became #205–#213 — nine issues that did not exist when this cluster was
-enumerated, and that belong to the emitter's edges rather than to the
-coordination problem the cluster was about. They are outside the 83. (#110, #120, #125 stay outside the cluster and closed the same day —
-the latter two duplicates of each other, already satisfied since C′-fix
+The closed 63 are: the 49 the tenth revision's own accounting reached, the pre-B
+build's four (#197, #198, #199, #203), #149 and the map pass's #189 — and **B's
+eight**, closed 2026-08-03 rather than 2026-08-02: #113, #143, #152, #154 and
+#202 delivered outright; #84 and #123 dead structurally with the tree-scan
+retirement rather than patched; #155 delivered by the fork it was parked on.
+2 + 11 + 1 + 1 + 5 + 63 = 83. The enumeration still closes.
+
+**B's residue is new work, not reopened work — and it is sixteen, not nine.**
+The review, the sensor and the six findings the filing pass lost became
+#205–#219, plus #204 from B's scoping. None existed when this cluster was
+enumerated; all belong to the emitter's edges rather than to the coordination
+problem the cluster was about. They are outside the 83 and enumerated in *B's
+residue* above. (#110, #120, #125 stay outside the cluster and closed the same
+day — the latter two duplicates of each other, already satisfied since C′-fix
 repaired the map.)
 
 **The spec count still has not moved, and this time it went down.** C shipped and
@@ -1580,11 +1802,12 @@ Two things E adds that the practices did not have:
   existing practice of asserting each named verb has the property its task
   assumes.
 
-The remaining specs are B, D and F. B carries E's rename-shaped residue where
-it belongs — #202 in scope, #203 discharged ahead of it by the pre-B build so
-the realize-row contract is settled before the spec that consumes it exists.
-E detected what B will have to emit correctly; the pre-B build repairs what E
-regressed before B leans on it.
+The remaining specs are **D and F** (B shipped 2026-08-02). B carried E's
+rename-shaped residue where it belonged — #202 in scope, #203 discharged ahead
+of it by the pre-B build so the realize-row contract was settled before the spec
+consuming it existed. E detected what B had to emit correctly; the pre-B build
+repaired what E regressed before B leaned on it. Both held: #202 closed inside
+B, and no realize-row surprise reached it.
 
 **The ninth revision grew the cluster by five and the spec count by zero.**
 The rule's corollary applied a second time: #203, #197 and #199 record shipped
@@ -1596,3 +1819,26 @@ owned — whether the tree-scan `next-id` surface survives — now with its
 instances attached. The runway to B was short and deliberate: one small build,
 three closures, one map pass — and all of it landed the same day, in-session.
 Next is the interview.
+
+**The eleventh revision grew nothing and corrected the record.** B shipped what
+this cluster was built to reach — the registry writes, the citations
+dereference, the retired group is covered, the sweep reports no exception of any
+class but the reserved slots. Every prediction the note has made about *where*
+defects live held again: B's are in `partition-batch`, the lift, and the two
+replays, all written fresh for an AC; nothing it repaired came back.
+
+What is new is smaller and more awkward. The cluster's two most durable
+lessons — *a spec must close the issues it fixes*, and *a result's coverage is
+invisible in the result* — both recurred in the same build, and both had already
+been written down here. C′ recorded the first as an observation in July; B did
+it again in August, seven issues' worth. Practice 7 named the second in general
+terms; B's review then filed nine follow-ons for twenty findings and nothing
+compared the numbers.
+
+So the constraint's next form is not about specs, or about reviews, or about
+what a build creates fresh. It is: **a lesson recorded in prose does not
+execute.** Every practice this note has adopted lives in this file, and this
+file runs nowhere. Practice 10 is the first one deliberately chosen for being
+*arithmetic* — a count against a count, checkable at a gate — and that property
+matters more than its subject. The ones worth adopting next are the ones that
+can be counted.
