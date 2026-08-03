@@ -556,9 +556,11 @@ cmd_commit_merge() {
 #   SIBLING-only rename, this deliberately crosses parents, so its bound set is
 #   NARROWER instead of wider: both endpoints must resolve
 #   under <specs-dir> — never an arbitrary repo file — and each basename must be a
-#   spec-dir shape (NNN-slug or NNN-wip). Guards, all before git runs: 5 args;
-#   specs-dir clears the jimfile valid-relpath boundary; both groups are valid
-#   slugs; both basenames match the spec-dir shape; the specs anchor and both
+#   spec-dir shape. The two sides differ: the DESTINATION is NNN-slug or NNN-wip,
+#   while the SOURCE additionally admits a provisional token, so a spec bound
+#   offline can be realized across parent groups. Guards, all before git runs: 5
+#   args; specs-dir clears the jimfile valid-relpath boundary; both groups are
+#   valid slugs; each basename matches its own side's shape; the specs anchor and both
 #   endpoints resolve inside `git rev-parse --show-toplevel` AND inside the specs
 #   subtree (realpath -m, so a symlinked group dir cannot slip an endpoint out of
 #   either); <src> is tracked; <dst> does not yet exist (its parent is created).

@@ -196,19 +196,23 @@ Inspect what jim resolves with `/jim:conf`:
 
 Path-and-name resolution only — the script never reads, writes, or deletes files. Slug normalization, the `.`/`..` reject, and the 64-char cap are enforced by the script (security boundary).
 
-### Registry integrity — `jimalloc.sh sweep` / `catch-up`
+### Registry integrity — `jimalloc.sh sweep` / `catch-up` / `lift`
 
-The registry prevents collisions only while it faithfully represents the repo. Two hand-run allocator verbs keep that true — a read-only check and its repair:
+The registry prevents collisions only while it faithfully represents the repo. Three hand-run allocator verbs keep that true — a read-only check and two repairs that draw on different evidence:
 
 ```bash
 bash skills/file/scripts/jimalloc.sh sweep              # read-only: what drifted, and what was not covered
 bash skills/file/scripts/jimalloc.sh catch-up           # preview the records the registry is missing
 bash skills/file/scripts/jimalloc.sh catch-up --apply   # append them, under the same CAS + erosion guard as an allocation
+bash skills/file/scripts/jimalloc.sh lift               # preview the rename records a past move left unrecorded
+bash skills/file/scripts/jimalloc.sh lift --apply       # record them, so a citation frozen before the move still resolves
 ```
 
 `sweep` compares every spec directory and issue file against the coordination branch and reports each finding under a named class — `missing-record` (the collision risk), `mismatch`, `duplicate-ordinal`, `duplicate-id`, `reserved-slot` — plus the records with no tree counterpart as *informational*, since another clone allocating first is legitimate. It then names what it did **not** cover: reserved blueprint slots, pending provisionals, groups outside coordination entirely (a retired or partition-source group has neither rows nor records, so a comparison never sees it), and ids known only as rename sources. It exits `0` clean, `3` drift found, `4` could-not-check, so a check that could not run is never read as a pass — and it mutates nothing.
 
 `catch-up` appends exactly what the sweep classifies as `missing-record`, previewing every record verbatim before `--apply` lands them as one commit. It never invents identity data, marks its appends `jim-catchup` so they stay distinguishable from a bootstrap or a live allocation, and refuses to repair a mismatch — choosing which side is right is an operator decision. A run that lands the clean records and leaves a mismatch behind exits non-zero, so a partial repair never reads as a clean one.
+
+`lift` repairs a different gap: a rename, split, or merge that moved identities *before* the registry could record moves left no trail, so a commit trailer written against the old id resolves nowhere. It reads the durable `moved=` pairs a partition recorded on the specs-root ledger and turns them into rename records. The ledger is treated as a **witness, not an instruction** — a pair is recorded only where the registry independently establishes its destination and holds no live claim on its source, so branch content nobody vetted cannot redirect a citation at an attacker-chosen target. Appends are marked `jim-lift` and carry the date the identity actually moved.
 
 Wire the sweep into `/jim:verify` by configuring the operator check the platform blueprint's `registry-tree-consistency` invariant names:
 

@@ -226,8 +226,8 @@ case_jimalloc_resolve_spec_over_wide_ordinal_refused() {
   assert_match "names the width" 'width'  "$ERR"
 }
 
-# AC: the width gate is applied JOINTLY to a rename record, so an over-wide
-# source is gated on its own side, so it no longer takes its destination's
+# AC: the width gate is applied PER SIDE to a rename record, so an over-wide
+# source is gated on its own side and no longer takes its destination's
 # establishing claim down with it. Crafted-log-only: nothing in this build can
 # mint such a record.
 case_jimalloc_resolve_spec_over_wide_rename_source_keeps_dest_claim() {

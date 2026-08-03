@@ -392,6 +392,7 @@ Report what came back verbatim. A non-zero exit no longer identifies a single co
 | a frontmatter `id:` was not rewritten | The directory moved, citations swept, the record landed — only the `id:` field is stale | Apply the **one-line frontmatter edit named on stderr**. Nothing else. |
 | `--apply` must run from the worktree top | The command ran from a subdirectory | `cd` to the worktree top and re-run. Nothing was applied. |
 | a content root was dropped, or a rewrite could not be installed | The sweep was partial | Fix the named root or target, then re-run; the identities that did land stay landed. |
+| the registry answers under a different group, but the directory is untracked | The group moved during the offline window, and an untracked directory has no history to carry across parents | **Commit the directory, then re-run.** This is the one halt whose repair *is* a re-run — the identity never started, so nothing is stranded. |
 
 **Do not revert a realized directory to "start clean."** By the time the run reports, the sweep has already rewritten every citation of that identity across the tree. Reverting the directory strands those rewrites pointing at a directory that no longer exists — it destroys work rather than undoing it.
 

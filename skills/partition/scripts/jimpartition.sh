@@ -1458,9 +1458,11 @@ cmd_renumber_map() {
 #   renumber-append remap, the deterministic id arithmetic the gate presents
 #   verbatim (no LLM arithmetic). Reads each source group's numbered spec dirs
 #   under <specs-dir> and appends them onto <target> starting at <start> — the
-#   first id to assign, passed VERBATIM from `jimfile.sh next-id <target>` stdout
-#   (001 for a fresh target), so the model copies a script value and never
-#   computes the vacated-floor seed. Sources are consumed in CLI argument order,
+#   first id to assign, passed VERBATIM as the ordinal part of
+#   `jimalloc.sh peek spec <target>` stdout (001 for a fresh target), so the
+#   model copies a script value and never computes the seed itself. The peek is
+#   advisory; what binds the ids is the Close's `partition-batch spec`.
+#   Sources are consumed in CLI argument order,
 #   each source's specs ascending by original id (the LC_ALL=C dir glob is
 #   pre-sorted); a source equal to <target> (the absorption target) emits no
 #   rows; the 000-blueprint is never a moved spec; an in-flight `-wip` dir rides

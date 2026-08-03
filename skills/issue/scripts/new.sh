@@ -134,8 +134,8 @@ issues_dir="${issues_dir%/}"
 # Provisional local disambiguation / real-mode drift guard: only the id this
 # call resolved itself is eligible — a caller-pinned --slug is never altered.
 # A provisional durable id is computed over an empty log (no registry to
-# disambiguate against), so the local clone suffixes it the same way
-# next-id's tree scan did, mirroring the suffix into the stored provisional
+# disambiguate against), so the local clone suffixes it against the on-disk
+# collection instead, mirroring the suffix into the stored provisional
 # ordinal. A real ordinal is already registry-disambiguated, so a local
 # filename collision here is tree/registry drift — refused, never overwritten.
 if (( slug_via_alloc )); then

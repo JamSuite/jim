@@ -215,9 +215,11 @@ worktree_top() {
   realpath -m -- "$t" 2>/dev/null || printf '%s\n' "$t"
 }
 
-# rewrite_id <file> <new-id> [<prov-token>] — print <file> with its
+# rewrite_id <file> <new-id> [<prov-token>] [<new-group>] — print <file> with its
 # self-identity sites realized: the id: field inside the leading frontmatter
-# block replaced by <new-id>, and — when <prov-token> is given — the first
+# block replaced by <new-id>, the group: field replaced by <new-group> when one
+# is given (a realization that crosses parent groups moves both), and — when
+# <prov-token> is given — the first
 # body heading whose leading token is exactly that identity's own
 # ("# <prov-token> <title>", the shape the spec template composes) retitled
 # onto the ordinal. A body line that happens to read "id:" sits outside the
@@ -261,17 +263,21 @@ rewrite_id() {
 
 # apply_pending <specs_dir> <pending-rows> <mapping>
 #   Rename each realized identity's directory onto its ordinal and rewrite the
-#   spec's frontmatter id. The rename is history-continuous when the directory
-#   is already tracked (git mv, through the sibling-constrained ledger verb) and
-#   a plain move when it is not, so realization never asks the developer to
-#   change when they commit.
+#   spec's frontmatter id and group. A tracked directory moves history-continuously
+#   through a ledger git primitive — the sibling-constrained one within a group,
+#   the cross-parent one when the registry answers under a different group — and
+#   an untracked directory within its own group moves plainly, so realization
+#   never asks the developer to change when they commit.
 #
 #   An identity halts — loudly, with nothing applied for it, and the whole run
 #   ending non-zero — when the allocator refused it as `blocked` (a registry
 #   claiming its key twice), when the realized ordinal is not one a spec
 #   directory can carry, when that ordinal is already held by a directory in
-#   the group, or when the allocator answered under a different group than the
-#   identity was issued under. The ordinal comes from a push-writable coordination point, so
+#   the group, when the answered group name is not one this system can use, or
+#   when the answered group differs and the directory is untracked (no history
+#   to carry, and the cross-parent primitive is tracked-only by construction —
+#   the remedy is named, and it is the one halt whose remedy is to commit and
+#   re-run). The ordinal comes from a push-writable coordination point, so
 #   it is revalidated before it becomes a path, a glob, a git argument, or
 #   frontmatter. The latter two are registry-vs-tree drift, and a spec ordinal is
 #   path identity: there is no silent suffixing and no overwrite, and repairing
@@ -388,9 +394,12 @@ apply_pending() {
 # build_remap <applied-lines> <mapping>
 #   Turn the identities apply_pending actually renamed into the sweep's
 #   whitelist, one row per identity:
-#     "<group>/P-<token>\t<group>/<NNN>\t<group>/<NNN>-<slug>"
+#     "<old-group>/P-<token>\t<new-group>/<NNN>\t<new-group>/<NNN>-<slug>"
 #   the second field being how the identity is written as a typed reference and
-#   the third how it is written inside a path. An identity that halted is
+#   the third how it is written inside a path. The source group is the one the
+#   identity was issued under and the destination group the one the registry
+#   answered with; they differ on a realization that crossed parents. An
+#   identity that halted is
 #   absent, so the sweep cannot rewrite a citation of a spec that did not move.
 build_remap() {
   local applied="$1" mapping="$2"
@@ -685,9 +694,10 @@ sweep_citations() {
 #   rows in the batch record normally.
 #
 #   The phase token sits outside the measured stage set on purpose — realization
-#   is not a stage. It is inert to the vacated-id floor too, which reads only
-#   split and merge events: a provisional never held a real ordinal, so it
-#   vacates nothing and no floor may rise because of it.
+#   is not a stage. It raises no group's high-water either: the registry records
+#   a realization under its own verb rather than as a rename, so the fold that
+#   counts consumed ordinals never sees it. A provisional never held a real
+#   ordinal, so it vacates nothing.
 record_realized() {
   local root="$1" remap="$2"
   [[ -n "$remap" ]] || return 0

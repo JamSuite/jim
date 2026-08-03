@@ -55,7 +55,7 @@ Append-only is the design, not an implementation detail — it captures the hard
 - **`/jim:review`** derives its process metrics (per-stage `_runs` / `_interruptions` / `_duration_seconds`), resolves the build range for its diff, and surfaces the verdict trajectory. See [the review feature](review.md).
 - **`/jim:blueprint`** consumes the review's shape-validated verdict in its `--from-review` update adapter, counts targeted updates for the regen cadence (`updates-since`), and reads the prior reconcile event (`last-reconcile`) to render each health measurement's delta.
 - **`/jim:partition health`** evaluates its trend signals over the full reconcile counter series (`reconcile-series`) — rising cycles, recurring breaking findings, face growth — entirely from the ledger, no new storage.
-- **The partition verbs** machine-consume their own history: `next-id` floors past ids vacated by a split or merge (`vacated-max`), and the identity sweep derives retired group slugs from the recorded `op=` events.
+- **The partition verbs** machine-consume their own history: the identity sweep derives retired group slugs from the recorded `op=` events, and `pair-events` reads a move's durable `moved=` remap so the allocator can lift those pairs into registry records. Ordinal authority itself is the registry's, not the ledger's — a vacated ordinal is recorded as a rename source there rather than inferred from an event a fresh clone may never have seen.
 - **Future mining** — per-spec now, aggregate later: the fixed-key format means a cross-spec dashboard is a grep sweep away, with no new format needed. (No aggregator ships today; the data is mineable by construction.)
 
 ## `jimledger.sh` at a glance
@@ -65,7 +65,7 @@ The ledger's single owner is `skills/ledger/scripts/jimledger.sh` — bash + POS
 | Group | Subcommands |
 | :--- | :--- |
 | Record | `start`, `finish` (build boundary), `event` (generic stage event) |
-| Read | `events`, `metrics`, `updates-since`, `last-reconcile`, `reconcile-series`, `vacated-max` |
+| Read | `events`, `metrics`, `updates-since`, `last-reconcile`, `reconcile-series`, `pair-events` |
 | Build range | `files`, `diff` (ledger-resolved), `files-range`, `diff-range` (validated ad-hoc range) |
 | Commit | `commit-review`, `commit-blueprint`, `commit-map`, `commit-verify`, `commit-rename`, `commit-split`, `commit-merge` |
 | Moves | `rename-tracked`, `move-spec-dir` (guarded `git mv` — staging, never committing) |

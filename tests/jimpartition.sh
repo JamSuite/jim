@@ -2383,8 +2383,8 @@ mm_specs() {
 }
 
 # AC 9 / DD 2 / security Finding 6: the first absorbed spec receives EXACTLY the
-# passed <start> — merge-map copies next-id's output and never computes the seed
-# from the target's directory contents; the source's specs ascend.
+# passed <start> — merge-map copies the allocator's advisory peek and never
+# computes the seed from the target's directory contents; the source's specs ascend.
 case_jimpartition_merge_map_first_is_start() {
   local dir; dir="$(merge_repo mm_start)"
   run_jimpartition_in "$dir" merge-map docs/specs cart 003 wishlist
@@ -2417,8 +2417,9 @@ case_jimpartition_merge_map_wip_rides() {
 }
 
 # AC 9 / security Finding 6: the append seed is honored verbatim — a caller-passed
-# start of 010 (the floored next-id past a dir-max of 5) assigns the first
-# absorbed spec target/010, never re-deriving from the target's dir contents.
+# start of 010 (past a dir-max of 5, as the registry's high-water would answer)
+# assigns the first absorbed spec target/010, never re-deriving from the target's
+# dir contents.
 case_jimpartition_merge_map_floored_start() {
   local root; root="$(mm_specs mm_floor cart/001-a cart/002-b cart/005-e wishlist/001-p)"
   run_jimpartition_in "$root" merge-map specs cart 010 wishlist

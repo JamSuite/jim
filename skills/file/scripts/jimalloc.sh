@@ -96,10 +96,12 @@ PROV_PREFIX="P-"
 # is what keeps the reserved form out of the vacating fold entirely, rather than
 # relying on every reader to special-case it.
 #
-# Every kind carries <who>, and every field count above is EXACT. A record whose
-# verb is one of these but whose shape is not — a field short, a field long, or
-# a field failing its own gate — is not that record: it is degraded and skipped,
-# never half-parsed on the fields that did read. A record whose VERB is unknown
+# Every kind carries <who>. Field counts are EXACT for `rename` and `realize`: a
+# record whose verb is one of those but whose shape is not — a field short, a
+# field long, or a field failing its own gate — is not that record, and is
+# degraded and skipped rather than half-parsed on the fields that did read.
+# `allocate` is looser by history: it reads the fields it needs, so a record
+# short its trailing fields still registers a live claim. A record whose VERB is unknown
 # is skipped the same way and stays reportable as its own thing, which is what
 # keeps the kind namespace open for a later record kind to be added without any
 # reader here mistaking it for a neighbour.
@@ -248,9 +250,10 @@ alloc_valid_specid() {
 #   `resolve` included: ALLOC_MAX_ORD_DIGITS is the width the registry can be
 #   rebuilt from, so an ordinal wider than it is not one this system can
 #   represent — and resolve must not hand back an id the seed could not
-#   reproduce. Note the consequence on a rename record, where both sides pass
-#   through here: the record is dropped when EITHER side fails, so an over-wide
-#   source also drops its destination's establishing claim.
+#   reproduce. On a rename record each side is judged INDEPENDENTLY: an
+#   unrepresentable source no longer drops its destination's establishing claim,
+#   and a walk that stops at a side this function cannot represent discloses
+#   that rather than reading as though the record were absent.
 alloc_canon_specid() {
   local id="$1" grp num
   alloc_valid_specid "$id" || return 1
@@ -3664,8 +3667,10 @@ cmd_lift() {
 #   group. Prints the pairs it published, so a caller can echo what landed.
 #
 #   Every corroboration decision lives in the builder, which alloc_publish
-#   re-invokes per CAS attempt — the freshness AC 5 asks for comes from the
-#   existing retry loop rather than from a second pre-flight that could go stale.
+#   re-invokes per CAS attempt, so each refusal is recomputed against the log
+#   that attempt is about to overwrite. Freshness comes from the existing retry
+#   loop rather than from a second pre-flight that could go stale between the
+#   check and the commit.
 cmd_partition_batch() {
   local mode="${1:-}"
   case "$mode" in

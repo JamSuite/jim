@@ -362,8 +362,9 @@ the specs-root ledger.
    cross-child edges + counts, `STRADDLE` = spanning units); fan out `Agent(gatherer)`
    per child. A spanning invariant/file gets a proposed owner + a `new.sh` issue (AC 3–6).
 3. **Renumber** — `renumber-map <old> <targets-csv> <assign-file>`: the remainder
-   keeps its numbers, fresh children densify to `001..N`, wip rides in sequence;
-   vacated ids never re-mint (`next-id` floors via the `op=split` event, AC 11).
+   keeps its numbers, fresh children densify to `001..N`, wip rides in sequence.
+   The map is a **proposal**; the ids bind at the Close, where
+   `partition-batch spec` publishes them and names any it refuses.
 4. **The single gate (spec 040)** — one presentation of the whole change-set per the
    gate-presentation rule (`skills/blueprint/references/gate-presentation.md`):
    rangeable assignment rows, revealed edges (confirm each), spanning rows, the

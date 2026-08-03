@@ -323,7 +323,11 @@ all-or-nothing; a declined gate writes nothing.
    <touched-blueprint>...` (the arm's returned list). The moved spec-dir pair is
    auto-staged — including any `rewrite`-edited numbered bodies under it (step 3)
    — so nothing outside the explicit set rides it (AC #12).
-6. *Map + ledger* — record `partition finished tier=project op=rename old=<old>
+6. *Registry* — `jimalloc.sh partition-batch group <old> <new> <date>` publishes
+   the one record that moves the whole group, so a citation frozen in history
+   still dereferences. It refuses rather than guesses: an `<old>` the registry
+   holds no record for, or a `<new>` already claimed.
+7. *Map + ledger* — record `partition finished tier=project op=rename old=<old>
    new=<new> outcome=renamed` on the specs-root ledger, then `commit-map`. Three
    commits total (code / spec-dirs + blueprints / map + ledger), each atomic and
    literal-path staged (AC #12, #13).
@@ -530,7 +534,12 @@ decline writes nothing (`outcome=declined`).
    named **verification owed** — the command from operator config or an explicit
    developer instruction only, never synthesized (AC 16).
 
-**Close.** `partition finished tier=project op=split old=<old> new=<t1>,<t2>[,...]
+**Close.** First `jimalloc.sh partition-batch spec <date>` with the
+`renumber-map` remap on stdin (`<old-id>\t<new-id>\t<slug>` rows) — one
+all-or-none commit publishing every pair as an allocation plus a rename, so a
+citation frozen against a pre-split id still dereferences. Refusals are named
+and never retried around. Then `partition finished tier=project op=split
+old=<old> new=<t1>,<t2>[,...]
 identity=<mode> frozen=<count> outcome=<split|blocked|declined>
 moved=<og/onum:ng/nnum>[,...]` on the specs-root ledger, then `commit-map`. The
 `moved=` remap is the durable old→new bridge in every mode, carried as one or more
@@ -731,7 +740,12 @@ no code moves (AC 13).
    is named **verification owed** — the command from operator config or an
    explicit developer instruction only, never synthesized.
 
-**Close.** `partition finished tier=project op=merge old=<effective sources>
+**Close.** First `jimalloc.sh partition-batch spec <date>` with the `merge-map`
+remap on stdin (`<old-id>\t<new-id>\t<slug>` rows) — one all-or-none commit
+publishing every pair as an allocation plus a rename, which is what makes the
+advisory `peek spec` seed binding and keeps a citation frozen against a
+pre-merge id dereferenceable. Refusals are named and never retried around. Then
+`partition finished tier=project op=merge old=<effective sources>
 new=<target> [moved=<og/onum:ng/nnum>[,...]] identity=<mode> frozen=<count>
 outcome=<merged|blocked|declined>` on the specs-root ledger, then `commit-map`.
 The `old=` list carries the effective sources (including an absorbed target);
