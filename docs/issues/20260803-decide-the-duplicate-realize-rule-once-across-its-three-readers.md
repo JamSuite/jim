@@ -1,6 +1,6 @@
 ---
 id: 20260803-decide-the-duplicate-realize-rule-once-across-its-three-readers
-num: P-20260803-decide-the-duplicate-realize-rule-once-across-its-three-readers
+num: 214
 title: "Decide the duplicate-realize rule once across its three readers"
 status: open
 priority: medium

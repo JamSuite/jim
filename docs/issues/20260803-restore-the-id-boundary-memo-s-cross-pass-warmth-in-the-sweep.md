@@ -1,6 +1,6 @@
 ---
 id: 20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep
-num: P-20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep
+num: 218
 title: "Restore the id-boundary memo's cross-pass warmth in the sweep"
 status: open
 priority: medium

@@ -1,6 +1,6 @@
 ---
 id: 20260803-restore-the-classifier-s-lost-local-declarations
-num: P-20260803-restore-the-classifier-s-lost-local-declarations
+num: 217
 title: "Restore the classifier's lost local declarations"
 status: open
 priority: low

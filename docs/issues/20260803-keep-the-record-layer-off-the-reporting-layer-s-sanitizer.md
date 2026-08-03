@@ -1,6 +1,6 @@
 ---
 id: 20260803-keep-the-record-layer-off-the-reporting-layer-s-sanitizer
-num: P-20260803-keep-the-record-layer-off-the-reporting-layer-s-sanitizer
+num: 216
 title: "Keep the record layer off the reporting layer's sanitizer"
 status: open
 priority: low
