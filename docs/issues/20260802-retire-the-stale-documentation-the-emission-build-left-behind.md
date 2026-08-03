@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:12Z
-updated: 2026-08-02T21:35:12Z
+updated: 2026-08-03T06:46:15Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -94,3 +94,58 @@ retirement task's Verify should include a tree-wide sweep for the retired
 symbol. That single gap accounts for most of this issue.
 
 Surfaced by the post-build review of blueprint/025 (findings 15, 16, 17, 17a).
+
+## Scope re-derived, and widened (2026-08-03)
+
+The "fifteen sites" above is a **claim, not a measurement** — the reporter was
+subject to the same incompleteness the finding describes. Re-derived
+mechanically: the retired-symbol set was extracted from the build's own diff
+(removed function definitions and dispatch arms), then each symbol swept
+tree-wide with dated artifacts excluded and every hit classified by hand.
+
+Everything listed above is confirmed still live. Five more sites and classes
+were not listed, and one of them is the highest-visibility surface in the repo.
+
+**1. `README.md:200` — the project's front page undercounts the repair verbs.**
+"Two hand-run allocator verbs keep that true" plus a code block showing only
+`sweep` and `catch-up`. `lift` is a third verb of exactly that family — hand-run,
+previewed, repairs the registry from durable history — and it does not appear.
+This is the surface no pipeline phase refreshes: the build gate regenerates
+`ARCHITECTURE.md` and nothing else.
+
+**2. `docs/features/blueprints.md` — zero occurrences of `partition-batch`.**
+The feature doc describes `rename`, `split` and `merge` without the registry
+Close step that `skills/partition/SKILL.md:328,384,451` now carries. Same defect
+as the methodology finding above, one surface further out, and also
+user-facing.
+
+**3. `ARCHITECTURE.md:282, :284` — the per-spec narrative still presents
+`vacated-max` as a live `jimledger.sh` verb**, describing its signature and its
+`op=split` grammar ownership. `:308` and `:393` correctly announce the
+retirement, so the document contradicts itself. Only `:390`, `:391` and `:395`
+are listed above.
+
+**4. `tests/jimpartition.sh:2386, :2420` — the twin of `jimpartition.sh:1461`.**
+Both comments state that `merge-map`'s `<start>` "copies `next-id`'s output" and
+describe "the floored `next-id` past a dir-max of 5". The start now comes from
+`jimalloc.sh peek spec`. The script-side site is listed above; its test-side
+sibling is not — the same fix-one-miss-the-sibling shape this issue's own root
+cause describes.
+
+**5. `skills/issue/scripts/new.sh:138` — a comment explains current behavior by
+reference to a retired mechanism** ("the local clone suffixes it the same way
+`next-id`'s tree scan did"). `CLAUDE.md` scopes script comments to current
+behavior.
+
+**Verified correct, needing no change** — recorded so the next sweep does not
+re-derive them: `README.md:56`/`:188`/`:189` and `skills/file/SKILL.md:10`/`:28`
+(both `next-id` and `next-num` still exist, and the spec-ordinal caveat is
+already written); `ARCHITECTURE.md:90`, `:308`, `:391`, `:393` (updated by the
+build's `/jim:arch` run); `tests/jimfile.sh:143-152`, which asserts the
+retirement correctly. `WORKFLOW.md` carries no occurrence of any retired symbol.
+
+**Out of scope, pointed elsewhere:** `docs/specs/jim/000-blueprint/spec.md:89-90`
+still enumerates `mv-spec` and the pre-retirement `jimfile.sh` verb set. That is
+the retired group's blueprint holding authoritative-looking content, which is
+[[20260725-give-retired-group-directories-a-sanctioned-end-of-life]]'s subject,
+not this issue's.

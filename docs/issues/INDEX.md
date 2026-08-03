@@ -336,6 +336,7 @@
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
 - `20260802-fix-the-rename-replay-in-the-integrity-classifier` --related-to--> `20260802-replace-the-vacuously-green-vacated-max-test-and-close-the-fixtu`
+- `20260802-retire-the-stale-documentation-the-emission-build-left-behind` --related-to--> `20260725-give-retired-group-directories-a-sanctioned-end-of-life`
 - `20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con` --related-to--> `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and`
 - `20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con` --related-to--> `20260730-single-source-the-provisional-identity-grammar`
 - `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` --related-to--> `20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path`
