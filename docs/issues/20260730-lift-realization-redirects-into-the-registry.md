@@ -2,7 +2,7 @@
 id: 20260730-lift-realization-redirects-into-the-registry
 num: 143
 title: "Lift realization redirects into the registry"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T06:45:19Z
-updated: 2026-07-30T07:20:34Z
+updated: 2026-08-03T05:46:40Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/spec.md
 ---
 
@@ -59,3 +59,27 @@ Decide inside the rename-emitting follow-on's scoping
 ([[20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche]]);
 this issue exists so the obligation created by `sdlc/017`'s ledger-redirect
 decision is not lost between the two specs.
+
+## Resolution (2026-08-03)
+
+Delivered by `blueprint/025`. The grammar fork resolved as **a distinct record
+verb**, not a widened rename-source token class:
+
+```
+spec realize <group>/P-<date>-<slug> <group>/<NNN> <date> <who>
+```
+
+That keeps the reserved `P-` form out of rename parsing entirely, so the
+vacating fold can never count a provisional as a consumed ordinal — the
+fold-safety this issue asked for, structural rather than special-cased and
+without a fixture standing between the guarantee and its mechanism.
+
+The record is emitted **live**, in the same CAS batch as the realization's own
+allocate, so no window exists where the ordinal is durable and the citation that
+became it resolves nowhere. That left the lift as pure repair, which is what
+sharpened its idempotency from a nicety into its whole contract.
+
+The untrusted-input obligation held: corroboration is recomputed entirely inside
+the publish builder on every CAS attempt, every emitted field is charset-gated,
+and the review traced `cmd_pair_events`' awk end to end without constructing an
+escape.

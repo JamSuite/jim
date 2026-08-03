@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 96
-- Closed: 117
+- Open: 88
+- Closed: 125
 
 ## Issues
 
@@ -89,7 +89,7 @@
 - `20260717-post-approval-correction-evolution-flow-edit-approved-plans-and-` — Post-approval correction/evolution flow: edit approved plans and propagate fixes to code and migrations · status: open · num: 80 · priority: high · created: 2026-07-17T22:21:05Z · labels: [skill, plan, correction, lifecycle, workflow] · origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 - `20260717-reconcile-brainstorm-skill-passive-capture-stance-with-active-ev` — Reconcile brainstorm skill's passive-capture stance with users' expectation of active evaluation · status: open · num: 77 · priority: medium · created: 2026-07-17T18:07:21Z · labels: [brainstorm, skill, ux] · origin: conversation
 - `20260721-fill-rewrite-identity-guard-and-negative-branch-test-gaps` — Fill rewrite-identity guard and negative-branch test gaps · status: closed · num: 83 · priority: medium · created: 2026-07-21T05:45:36Z · labels: [046, test-coverage] · origin: docs/specs/blueprint/018-spec-migration/review.md
-- `20260721-floor-next-id-for-group-names-retired-by-rename` — Floor next-id for group names retired by rename · status: open · num: 84 · priority: medium · created: 2026-07-21T18:50:19Z · labels: [partition, rename, ledger] · origin: docs/specs/blueprint/019-partition-split/spec.md
+- `20260721-floor-next-id-for-group-names-retired-by-rename` — Floor next-id for group names retired by rename · status: closed · num: 84 · priority: medium · created: 2026-07-21T18:50:19Z · labels: [partition, rename, ledger] · origin: docs/specs/blueprint/019-partition-split/spec.md
 - `20260721-narrow-rewrite-identity-dotted-key-and-typed-ref-over-match` — Narrow rewrite-identity dotted-key and typed-ref over-match · status: closed · num: 82 · priority: low · created: 2026-07-21T05:45:35Z · labels: [046, rewrite-identity, hardening] · origin: docs/specs/blueprint/018-spec-migration/review.md
 - `20260722-align-partition-split-flow-to-interview-plus-gate-shape` — Align partition split flow to interview-plus-gate shape · status: open · num: 85 · priority: medium · created: 2026-07-22T21:20:25Z · labels: [partition, ux] · origin: docs/brainstorms/20260722-partition-merge.md
 - `20260722-define-the-merge-signal-interpretive-rule-for-partition-health` — Define the merge-signal interpretive rule for partition health · status: open · num: 86 · priority: medium · created: 2026-07-22T22:24:13Z · labels: [partition, health] · origin: docs/brainstorms/20260722-partition-merge.md
@@ -119,7 +119,7 @@
 - `20260726-declare-tests-jimalloc-sh-in-platform-territory` — Declare tests/jimalloc.sh in platform territory · status: closed · num: 120 · priority: low · created: 2026-07-26T22:39:36Z · labels: [partition, blueprint] · origin: docs/specs/platform/007-id-coordination-allocator/review.md
 - `20260726-declare-tests-scripthygiene-sh-in-platform-territory` — Declare tests/scripthygiene.sh in platform territory · status: closed · num: 110 · priority: low · created: 2026-07-26T08:40:11Z · labels: [partition, blueprint] · origin: docs/specs/platform/006-script-preamble-conformance/plan.md
 - `20260726-document-coordination-branch-protection-and-team-setup` — Document coordination-branch protection and team setup · status: open · num: 118 · priority: medium · created: 2026-07-26T19:02:03Z · labels: [id-coordination, docs] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
-- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` — Emit rename/split redirect records and wire /jim:partition batches · status: open · num: 113 · priority: high · created: 2026-07-26T19:01:57Z · labels: [id-coordination, partition] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
+- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` — Emit rename/split redirect records and wire /jim:partition batches · status: closed · num: 113 · priority: high · created: 2026-07-26T19:01:57Z · labels: [id-coordination, partition] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-guard-coordination-branch-relocation-with-a-moved-to-tombstone` — Guard coordination_branch relocation with a moved-to tombstone · status: open · num: 117 · priority: low · created: 2026-07-26T19:02:02Z · labels: [id-coordination, config] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260726-neutralize-pathspec-magic-in-jimledger-commit-pathspec-calls` — Neutralize pathspec magic in jimledger commit-* pathspec calls · status: open · num: 108 · priority: medium · created: 2026-07-26T05:56:09Z · labels: [platform, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/review.md
 - `20260726-neutralize-pathspec-magic-in-jimpartition-rewrite-identity-rewri` — Neutralize pathspec magic in jimpartition rewrite-identity/rewrite-refs · status: open · num: 107 · priority: medium · created: 2026-07-26T04:46:06Z · labels: [partition, security] · origin: docs/specs/platform/005-ledger-literal-pathspecs/research.md
@@ -130,7 +130,7 @@
 - `20260727-add-tests-jimalloc-sh-to-platform-map-territory` — Add tests/jimalloc.sh to platform map territory · status: closed · num: 125 · priority: low · created: 2026-07-27T11:03:18Z · labels: [blueprint, territory] · origin: docs/specs/platform/009-provisional-reconcile/review.md
 - `20260727-align-reconcile-high-water-with-alloc-next-num-issue` — Align reconcile high-water with alloc_next_num_issue · status: closed · num: 124 · priority: low · created: 2026-07-27T11:03:17Z · labels: [id-coordination, robustness] · origin: docs/specs/platform/009-provisional-reconcile/review.md
 - `20260727-align-seed-landing-with-the-allocation-cas-path` — Align seed landing with the allocation CAS path · status: open · num: 122 · priority: low · created: 2026-07-27T05:34:22Z · labels: [id-coordination, alloc] · origin: docs/specs/platform/008-registry-seed/review.md
-- `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` — Fix jimfile.sh next-id group/kind collision for a group named issue · status: open · num: 123 · priority: medium · created: 2026-07-27T07:20:53Z · labels: [platform, id-coordination, partition] · origin: docs/specs/platform/009-provisional-reconcile/spec.md
+- `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` — Fix jimfile.sh next-id group/kind collision for a group named issue · status: closed · num: 123 · priority: medium · created: 2026-07-27T07:20:53Z · labels: [platform, id-coordination, partition] · origin: docs/specs/platform/009-provisional-reconcile/spec.md
 - `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude` — Normalize seed reserved-slot skip and spec-ordinal magnitude · status: closed · num: 121 · priority: medium · created: 2026-07-27T05:34:21Z · labels: [id-coordination, alloc, verify] · origin: docs/specs/platform/008-registry-seed/review.md
 - `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` — Coordinated issue-filing hard-fails in the mvm agent sandbox · status: closed · num: 129 · priority: medium · created: 2026-07-28T21:39:15Z · labels: [id-coordination, workflow, sandbox] · origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 - `20260728-fix-vacuous-inline-backtick-wikilink-test-in-tests-issues-sh` — Fix vacuous inline-backtick wikilink test in tests/issues.sh · status: open · num: 128 · priority: low · created: 2026-07-28T21:39:09Z · labels: [test, hygiene] · origin: docs/specs/platform/010-allocator-issue-prefix/plan.md
@@ -156,12 +156,12 @@
 - `20260730-fold-spec-id-sequencing-to-admit-provisional-identities` — Fold spec-id-sequencing to admit provisional identities · status: closed · num: 149 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, blueprint] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss` — Gate the realized spec ordinal and stop silent record loss · status: closed · num: 150 · priority: critical · created: 2026-07-30T19:35:00Z · labels: [id-coordination, security] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-harden-the-spec-realize-path-against-silent-failures` — Harden the spec realize path against silent failures · status: closed · num: 151 · priority: low · created: 2026-07-30T19:35:15Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
-- `20260730-lift-realization-redirects-into-the-registry` — Lift realization redirects into the registry · status: open · num: 143 · priority: medium · created: 2026-07-30T06:45:19Z · labels: [id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/spec.md
+- `20260730-lift-realization-redirects-into-the-registry` — Lift realization redirects into the registry · status: closed · num: 143 · priority: medium · created: 2026-07-30T06:45:19Z · labels: [id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/spec.md
 - `20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path` — Memoize the id-validation boundary in the allocator read path · status: open · num: 142 · priority: medium · created: 2026-07-30T00:50:00Z · labels: [id-coordination, performance, availability] · origin: docs/specs/platform/011-rename-path-correctness/plan.md
-- `20260730-realization-cannot-follow-a-group-renamed-since-issuance` — Realization cannot follow a group renamed since issuance · status: open · num: 152 · priority: medium · created: 2026-07-30T10:36:05Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
+- `20260730-realization-cannot-follow-a-group-renamed-since-issuance` — Realization cannot follow a group renamed since issuance · status: closed · num: 152 · priority: medium · created: 2026-07-30T10:36:05Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
 - `20260730-run-sh-honors-only-its-first-filter-argument` — run.sh honors only its first filter argument · status: open · num: 153 · priority: low · created: 2026-07-30T10:32:47Z · labels: [meta-test, testing] · origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
-- `20260730-settle-what-a-partition-does-with-pending-provisional-specs` — Settle what a partition does with pending provisional specs · status: open · num: 154 · priority: medium · created: 2026-07-30T10:55:24Z · labels: [partition, id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
-- `20260730-single-source-the-provisional-identity-grammar` — Single-source the provisional identity grammar · status: open · num: 155 · priority: medium · created: 2026-07-30T10:55:22Z · labels: [id-coordination, refactor] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-settle-what-a-partition-does-with-pending-provisional-specs` — Settle what a partition does with pending provisional specs · status: closed · num: 154 · priority: medium · created: 2026-07-30T10:55:24Z · labels: [partition, id-coordination] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
+- `20260730-single-source-the-provisional-identity-grammar` — Single-source the provisional identity grammar · status: closed · num: 155 · priority: medium · created: 2026-07-30T10:55:22Z · labels: [id-coordination, refactor] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-spec-creation-halts-only-on-an-exact-name-collision` — Spec creation halts only on an exact-name collision · status: closed · num: 156 · priority: high · created: 2026-07-30T19:35:01Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` — Spec realize exhaustion emits rows before halting · status: closed · num: 157 · priority: medium · created: 2026-07-30T19:35:09Z · labels: [id-coordination, alloc] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 - `20260730-spec-reconcile-scan-and-id-rewrite-anchor-to-different-regions` — Spec reconcile scan and id rewrite anchor to different regions · status: closed · num: 158 · priority: medium · created: 2026-07-30T19:35:09Z · labels: [id-coordination, spec] · origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
@@ -212,7 +212,7 @@
 - `20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays` — Cut the per-file frontmatter cost the registry sweep pays · status: open · num: 201 · priority: medium · created: 2026-08-02T00:47:13Z · labels: [allocator, performance, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 - `20260802-declare-platform-jimalloc-in-the-sdlc-blueprint-s-requires-face` — Declare platform.jimalloc in the sdlc blueprint's Requires face · status: open · num: 204 · priority: low · created: 2026-08-02T08:27:17Z · labels: [blueprint, sdlc, contract-graph] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/spec.md
 - `20260802-fix-the-lift-s-cross-run-idempotency-hole-and-one-sided-batch-gu` — Fix the lift's cross-run idempotency hole and one-sided batch guard · status: open · num: 207 · priority: critical · created: 2026-08-02T21:35:10Z · labels: [id-coordination, registry, lift] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
-- `20260802-fix-the-rename-replay-in-the-integrity-classifier` — Fix the rename replay in the integrity classifier · status: open · num: 202 · priority: medium · created: 2026-08-02T00:47:12Z · labels: [allocator, registry, rename] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
+- `20260802-fix-the-rename-replay-in-the-integrity-classifier` — Fix the rename replay in the integrity classifier · status: closed · num: 202 · priority: medium · created: 2026-08-02T00:47:12Z · labels: [allocator, registry, rename] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 - `20260802-halt-one-identity-not-the-batch-on-a-contradicted-realize-key` — Halt one identity, not the batch, on a contradicted realize key · status: closed · num: 203 · priority: high · created: 2026-08-02T00:47:12Z · labels: [allocator, reconcile, registry] · origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 - `20260802-make-the-blueprint-pending-provisional-disclosure-enumerable-and` — Make the blueprint pending-provisional disclosure enumerable and bounded · status: open · num: 208 · priority: medium · created: 2026-08-02T21:35:13Z · labels: [blueprint, id-coordination] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260802-refuse-the-three-contradictions-partition-batch-still-writes` — Refuse the three contradictions partition-batch still writes · status: open · num: 209 · priority: high · created: 2026-08-02T21:35:11Z · labels: [id-coordination, registry, partition] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
@@ -275,6 +275,9 @@
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260730-align-the-registry-with-tree-scan-era-spec-ordinals`
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260726-add-an-only-door-verification-sweep-for-the-id-registry`
 - `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
+- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260802-refuse-the-three-contradictions-partition-batch-still-writes`
+- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260802-fix-the-lift-s-cross-run-idempotency-hole-and-one-sided-batch-gu`
+- `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche` --related-to--> `20260802-unblock-the-chained-group-rename`
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260727-normalize-seed-reserved-slot-skip-and-spec-ordinal-magnitude`
 - `20260726-seed-the-id-coordination-registry-from-existing-artifacts` --related-to--> `20260727-align-seed-landing-with-the-allocation-cas-path`
@@ -291,6 +294,7 @@
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-provisional-detection-not-fence-bounded`
 - `20260726-wire-the-issue-display-ordinal-onto-the-id-coordination-allocato` --related-to--> `20260728-reconcile-sh-swallows-the-index-regen-exit-code`
 - `20260727-add-tests-jimalloc-sh-to-platform-map-territory` --duplicates--> `20260726-declare-tests-jimalloc-sh-in-platform-territory`
+- `20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is` --related-to--> `20260802-retire-the-stale-documentation-the-emission-build-left-behind`
 - `20260728-coordinated-issue-filing-hard-fails-in-the-mvm-agent-sandbox` --related-to--> `20260729-allocate-spec-under-provisional-mints-an-unrealizable-identity`
 - `20260728-reconcile-sh-swallows-the-index-regen-exit-code` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
 - `20260728-registry-drift-catch-up-has-no-incremental-seed-verb` --related-to--> `20260730-align-the-registry-with-tree-scan-era-spec-ordinals`
@@ -311,7 +315,10 @@
 - `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
 - `20260730-harden-the-spec-realize-path-against-silent-failures` --related-to--> `20260731-skip-symlinked-entries-in-the-realized-directory-sweep`
 - `20260730-lift-realization-redirects-into-the-registry` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
+- `20260730-realization-cannot-follow-a-group-renamed-since-issuance` --related-to--> `20260802-retire-the-stale-documentation-the-emission-build-left-behind`
 - `20260730-settle-what-a-partition-does-with-pending-provisional-specs` --related-to--> `20260730-realization-cannot-follow-a-group-renamed-since-issuance`
+- `20260730-settle-what-a-partition-does-with-pending-provisional-specs` --related-to--> `20260802-make-the-blueprint-pending-provisional-disclosure-enumerable-and`
+- `20260730-settle-what-a-partition-does-with-pending-provisional-specs` --related-to--> `20260802-blueprint-divergence-partition-registry-boundary-slug-gate`
 - `20260730-spec-creation-halts-only-on-an-exact-name-collision` --related-to--> `20260730-gate-the-realized-spec-ordinal-and-stop-silent-record-loss`
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260730-fixture-the-terminal-exhaustion-refusal-in-next-id`
 - `20260730-spec-realize-exhaustion-emits-rows-before-halting` --related-to--> `20260729-provide-a-recovery-path-for-a-group-that-exhausts-its-ordinal-sp`
@@ -322,6 +329,7 @@
 - `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` --related-to--> `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped`
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
+- `20260802-fix-the-rename-replay-in-the-integrity-classifier` --related-to--> `20260802-replace-the-vacuously-green-vacated-max-test-and-close-the-fixtu`
 
 ## Integrity Warnings
 

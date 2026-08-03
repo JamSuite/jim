@@ -2,7 +2,7 @@
 id: 20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche
 num: 113
 title: "Emit rename/split redirect records and wire /jim:partition batches"
-status: open
+status: closed
 priority: high
 labels: [id-coordination, partition]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-26T19:01:57Z
-updated: 2026-08-01T19:43:01Z
+updated: 2026-08-03T05:46:40Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md
 ---
 
@@ -355,3 +355,30 @@ high-water, which is all the floor needs). Spec E's sweep should name the
 retired group as known-uncovered; whether the backfill ships with this
 issue's emitter or as a one-time repair alongside it is a decision for
 whichever spec lands first.
+
+## Resolution (2026-08-03)
+
+Delivered by `blueprint/025`. `jimalloc.sh partition-batch` publishes a renumber
+pair set as allocate + rename per pair (Shape 1, this issue's) or as one record
+for a whole group; `lift` turns the specs-root ledger's durable pair events into
+records. Both recompute their refusals inside the publish builder on every CAS
+attempt, so a conflict another clone introduced between check and commit is
+caught by the attempt that would have overwritten it. The lift treats the ledger
+as a **witness, not an instruction**: a pair is recorded only where the registry
+independently establishes its destination and holds no live claim on its source.
+
+The two dereferenceability decisions pre-framed here landed as source-known
+**with disclosure** (a citation whose only registry appearance is a rename source
+resolves, with a stderr note that no allocation stands behind the answer) and
+per-side width gating (an unrepresentable source no longer drops its
+destination's establishing claim).
+
+The backfill half this issue scoped out — `jim/001`–`jim/052` — ran origin-tier
+from the host as part of the same emitter, so it became the lift's own repair
+rather than separate work. Verified: `resolve spec jim/029` answers
+`blueprint/001` with the unallocated-source note, and the sweep reports
+`uncovered-groups 0` / `rename-source-ids 52`.
+
+The emitter's own edges did not all close with it — see [[20260802-refuse-the-three-contradictions-partition-batch-still-writes]],
+[[20260802-fix-the-lift-s-cross-run-idempotency-hole-and-one-sided-batch-gu]]
+and [[20260802-unblock-the-chained-group-rename]].

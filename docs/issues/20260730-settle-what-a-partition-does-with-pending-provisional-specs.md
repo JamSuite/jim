@@ -2,7 +2,7 @@
 id: 20260730-settle-what-a-partition-does-with-pending-provisional-specs
 num: 154
 title: "Settle what a partition does with pending provisional specs"
-status: open
+status: closed
 priority: medium
 labels: [partition, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T10:55:24Z
-updated: 2026-07-30T19:35:56Z
+updated: 2026-08-03T05:46:40Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 
@@ -75,3 +75,23 @@ that silently omits in-flight work is the more consequential of the two.
 
 Surfaced by `sdlc/017`'s post-build review. Amended 2026-07-30 when the
 review's investigated second pass superseded its first.
+
+## Resolution (2026-08-03)
+
+Settled as **refuse**, and settled symmetrically — which was this issue's real
+ask. `blueprint/025` added a shared `pending_provisionals` detection helper to
+`jimpartition.sh` and called it from all three preflights, so rename, split and
+merge now meet the same wall and name every pending identity. The prior state —
+a hard failure on one path and a silent skip on another — was, as filed, two
+accidents rather than a decision.
+
+The blueprint-synthesis half was instructed but not made enforceable, so it does
+not close here. The exclusion note added at `skills/blueprint/SKILL.md:63` cannot
+fire (the same sentence directs a glob over *numbered* directories, which never
+surfaces a `P-` basename), and the CHECK fact truncates at 512 bytes with no
+note. That half continues as
+[[20260802-make-the-blueprint-pending-provisional-disclosure-enumerable-and]].
+
+The merge preflight's unvalidated source set — passed into the new filesystem
+probe without a slug gate, where its two siblings gate at entry — is
+[[20260802-blueprint-divergence-partition-registry-boundary-slug-gate]].

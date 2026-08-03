@@ -2,7 +2,7 @@
 id: 20260721-floor-next-id-for-group-names-retired-by-rename
 num: 84
 title: "Floor next-id for group names retired by rename"
-status: open
+status: closed
 priority: medium
 labels: [partition, rename, ledger]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-21T18:50:19Z
-updated: 2026-07-25T07:49:14Z
+updated: 2026-08-03T05:46:40Z
 origin: docs/specs/blueprint/019-partition-split/spec.md
 ---
 
@@ -39,3 +39,20 @@ ambiguity is bridged only by event timestamps.
 
 Relates to spec 047 (`docs/specs/blueprint/019-partition-split/`) AC 11 and the
 043 `op=rename` event shape.
+
+## Resolution (2026-08-03)
+
+Died structurally with the tree-scan retirement in `blueprint/025`, rather than
+being fixed. `jimledger.sh vacated-max` is gone and `jimfile.sh next-id` no
+longer answers for spec ordinals, so the floor this issue proposed to extend has
+no consumer left to floor.
+
+The guarantee survives in a different place. The registry records a vacated
+ordinal as a rename **source**, and the shared high-water fold counts sources
+directly — so no `maxid=` key on the `op=rename` event is needed, and the
+information no longer has to be inferred from a ledger event a fresh clone may
+never have seen. Any clone reads it from the log.
+
+Verified live: the 2026-07-25 `jim` split's 52 pairs are recorded as rename
+sources, and `peek spec jim` answers `053` where it previously answered the spent
+`001`.

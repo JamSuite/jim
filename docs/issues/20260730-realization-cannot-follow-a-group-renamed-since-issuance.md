@@ -2,7 +2,7 @@
 id: 20260730-realization-cannot-follow-a-group-renamed-since-issuance
 num: 152
 title: "Realization cannot follow a group renamed since issuance"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, spec]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T10:36:05Z
-updated: 2026-07-30T10:36:05Z
+updated: 2026-08-03T05:46:40Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
 ---
 
@@ -68,3 +68,22 @@ A fix is four points:
 Not urgent — it takes a group rename landing inside an offline window, and the
 failure is a loud halt with a converging manual path. Point 4 is worth doing
 whenever this is picked up, regardless of the rest.
+
+## Resolution (2026-08-03)
+
+All four points delivered by `blueprint/025`.
+
+1. `move-spec-dir`'s source-basename gate widened to admit a provisional token;
+   the destination side stays `NNN-slug`.
+2. The realizer routes to it when the realized group differs from the issued
+   group (`skills/spec/scripts/reconcile.sh:347`).
+3. The untracked case refuses loudly and names the remedy rather than being
+   worked around (`:356`) — no cross-parent plain-move verb was added.
+4. The frontmatter `group:` field is now rewritten alongside `id:` (`:248-249`),
+   closing the latent defect this issue flagged as worth doing regardless.
+
+One caveat carried forward: that new untracked refusal is the one realize halt
+whose remedy genuinely **is** a re-run, and `skills/spec/SKILL.md`'s
+stderr→repair table has no row for it while its general advice argues against
+re-running. Tracked in
+[[20260802-retire-the-stale-documentation-the-emission-build-left-behind]].

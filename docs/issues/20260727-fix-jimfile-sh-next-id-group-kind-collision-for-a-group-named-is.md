@@ -2,7 +2,7 @@
 id: 20260727-fix-jimfile-sh-next-id-group-kind-collision-for-a-group-named-is
 num: 123
 title: "Fix jimfile.sh next-id group/kind collision for a group named issue"
-status: open
+status: closed
 priority: medium
 labels: [platform, id-coordination, partition]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-27T07:20:53Z
-updated: 2026-07-31T05:51:48Z
+updated: 2026-08-03T05:46:40Z
 origin: docs/specs/platform/009-provisional-reconcile/spec.md
 ---
 
@@ -69,3 +69,19 @@ Narrower than filed: one caller instead of two, and jim has not yet merged into
 the spec surface. The fixes named above stand; an explicit `next-id spec <group>`
 form is cleanest, since it makes the kind always explicit rather than inferring
 it from a name a spec group may legitimately hold.
+
+## Resolution (2026-08-03)
+
+Dead structurally, not patched. `blueprint/025` retired the tree-scan
+spec-ordinal path: `jimfile.sh next-id` answers for issues only and refuses a
+group argument outright, so a kind can no longer be inferred from a name that a
+spec group may legitimately hold. The explicit `next-id spec <group>` form this
+issue recommended is moot — there is no spec arm to disambiguate.
+
+The live consumer converged rather than being taught the collision.
+`/jim:partition merge` now takes `<start>` from `jimalloc.sh peek spec <target>`
+(`skills/partition/SKILL.md:426`), which is group-explicit by construction.
+
+Two stale references survive in prose only, neither reachable as behavior:
+`jimpartition.sh:1461`'s `merge-map` docstring and `skills/partition/SKILL.md:366`.
+Both are enumerated in [[20260802-retire-the-stale-documentation-the-emission-build-left-behind]].

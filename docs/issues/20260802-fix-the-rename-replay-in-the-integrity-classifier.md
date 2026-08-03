@@ -2,7 +2,7 @@
 id: 20260802-fix-the-rename-replay-in-the-integrity-classifier
 num: 202
 title: "Fix the rename replay in the integrity classifier"
-status: open
+status: closed
 priority: medium
 labels: [allocator, registry, rename]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T00:47:12Z
-updated: 2026-08-02T00:47:12Z
+updated: 2026-08-03T05:46:40Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 ---
 
@@ -63,3 +63,21 @@ Surfaced by the post-build review of the registry-integrity spec
 (`docs/specs/platform/012-registry-integrity-and-drift/review.md`, Finding 16 /
 the classifier investigation), which traced each shape line by line and confirmed
 associative-array iteration order is *not* load-bearing in that replay.
+
+## Resolution (2026-08-03)
+
+Delivered by `blueprint/025`. All four shapes are implemented over **one
+extracted claim replay** shared by the integrity classifier and both new
+emitters, so "already claimed" cannot diverge between the reader that detects a
+contradiction and the writer that could create one. That extraction went beyond
+the plan's letter and was judged in scope precisely because two replays could
+not have guaranteed it.
+
+Two adjacent defects were fixed unasked: an issue self-rename raising a false
+duplicate, and issue-arm duplicate provenance.
+
+Fixture residue rides
+[[20260802-replace-the-vacuously-green-vacated-max-test-and-close-the-fixtu]]:
+the group-arm provenance assertion does not discriminate (its scenario reports
+the same records under old and new code), and both unasked fixes shipped with no
+test.

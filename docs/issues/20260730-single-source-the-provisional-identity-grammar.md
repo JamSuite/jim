@@ -2,7 +2,7 @@
 id: 20260730-single-source-the-provisional-identity-grammar
 num: 155
 title: "Single-source the provisional identity grammar"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, refactor]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-30T10:55:22Z
-updated: 2026-07-30T19:35:56Z
+updated: 2026-08-03T05:46:40Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 ---
 
@@ -52,3 +52,23 @@ id-charset slugs, so a hand-typed `P-20260728-New.Widget` creates a directory
 the realize path later rejects.
 
 Surfaced by `sdlc/017`'s post-build review.
+
+## Resolution (2026-08-03)
+
+Delivered by `blueprint/025`, in the second of the two shapes this issue named.
+
+The fork that decided where this work belonged resolved toward the emission
+spec: `spec realize` put the `P-` grammar into the registry parser for the first
+time, which made single-sourcing load-bearing rather than tidy.
+
+`is_prov_token`'s body is byte-identical across `jimalloc.sh:194`,
+`jimfile.sh:343` and `reconcile.sh:121`, each carrying a `SYNC:` comment naming
+its copies, and each supplying its own `PROV_PREFIX` and `prov_id_boundary` so
+the grammar itself lives entirely in the shared body. `is_prov_basename` is gone.
+The concrete consequence recorded here — `P-20260728-New.Widget` creating a
+directory the realize path later rejects — closed with the tightening, which was
+confirmed to break no live data.
+
+One gap remains and is filed separately: the byte-agreement fixture covers the
+shared body but not the three `prov_id_boundary` shims or the three
+`PROV_PREFIX` constants, so loosening a shim leaves it green.
