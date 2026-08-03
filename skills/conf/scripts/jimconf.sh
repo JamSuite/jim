@@ -35,6 +35,10 @@
 #
 
 set -uo pipefail
+# LC_ALL=C keeps the regex character classes below locale-independent. The
+# dynamic-suffix key gate is an accept/reject boundary, and a collation range
+# must not admit under one locale what it is written to refuse under another.
+export LC_ALL=C
 
 # ─── Section: Constants ──────────────────────────────────────────────────────
 

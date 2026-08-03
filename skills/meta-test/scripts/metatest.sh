@@ -33,6 +33,9 @@
 #
 
 set -uo pipefail
+# LC_ALL=C keeps this script's character classes and glob collation
+# locale-independent, matching every sibling under skills/*/scripts/.
+export LC_ALL=C
 
 # ─── Section: Globals ────────────────────────────────────────────────────────
 
