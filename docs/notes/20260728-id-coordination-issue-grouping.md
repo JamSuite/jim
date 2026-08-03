@@ -1,6 +1,20 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-03 (eleventh revision) — **the
+**Created:** 2026-07-28 · **Revised:** 2026-08-03 (twelfth revision) — **the
+documentation pass, and what running the engine over it found.** #211's "fifteen
+sites" was a claim; re-derived from the build's own diff it is **twenty**, and
+the miss that matters is `README.md` — the front page described two hand-run
+repair verbs when there are three, because the build gate regenerates
+`ARCHITECTURE.md` and nothing else. All twenty are corrected.
+
+Grounding the blueprint half ran nine judges over `platform`: **six hold, four
+violated**. Two were folded with restoration obligations recorded, two were
+fixed. The fixes exposed a second-order lesson the suite caught twice — see
+*What the doc pass changed* — and the width-bound judge caught **this note's own
+author** inheriting a site count while re-deriving its neighbour's. Practice 11
+is earned, and it is about folds rather than detection.
+
+**Revised:** 2026-08-03 (eleventh revision) — **the
 tracker caught up with the code, and the catching-up was itself the finding.**
 `blueprint/025` delivered seven of this cluster's issues and closed none of
 them, so for a day the collection read seven behind the tree; an eighth (#155)
@@ -696,6 +710,58 @@ the wrong question. That single gap produced a vacuously-green test, a
 model-facing instruction still teaching a retired verb, and eleven stale
 documentation sites.
 
+## What the doc pass changed
+
+A documentation cleanup, one `/jim:verify --since` run, two folds and two fixes.
+Cheap work that produced three findings worth more than the cleanup.
+
+1. **A stated scope is a claim, and this note proved it twice in one session.**
+   #211 said fifteen sites. Re-derived mechanically — retired symbols extracted
+   from the build's diff, each swept tree-wide, every hit classified — it is
+   twenty. The five it missed include `README.md` (the repair-verb count) and
+   `docs/features/blueprints.md`, both surfaces no pipeline phase refreshes.
+   Then the `ordinal-single-source` judge found **#212 undercounted the same
+   way**: nine deciding sites in three incompatible accepted widths, not three.
+   That count had been re-stated here in the very pass that re-derived #211's —
+   inherited, not measured. Practice 7 names this exact failure, and naming it
+   did not prevent it.
+
+2. **The engine found four violations, and none of them was B's doing.**
+   `script-preamble`, `bash-source-relative`, `ordinal-single-source` and
+   `blueprint-slot-reserved` all failed; all four are drift older than the
+   emission build, surfaced only because `--since` classifies every violation
+   `in-change` by construction. The prediction this note has made six times —
+   *what a spec builds fresh is where its defects live* — held once more in the
+   negative: the four criticals over B's own new code (`no-source-eval`,
+   `ref-validation`, `relpath-validation`, `ledger-commit-discipline`) all hold,
+   with the judges confirming the widened `move-spec-dir` gate is charset-closed
+   and the lift's ledger interface fail-closed on both sides independently.
+
+3. **The suite caught the fixer twice, and the second one is the keeper.**
+   Fixing `bash-source-relative` by anchoring `metatest.sh`'s paths broke a
+   deliberate contract — the sandbox tests `cd` into a temp dir precisely so
+   `scaffold` writes there — and the broken run wrote a stray test file into the
+   **production** `tests/` directory. Then adding `export LC_ALL=C` to
+   `testlib.sh` stopped the provenance detector's en/em-dash range from matching,
+   converting a real check into a silent pass. A harness must not impose a
+   collation on what it runs; that is now pinned by its own case, asserting the
+   two framework files export **no** locale, because gaining it is the
+   regression.
+
+   Both were caught by fixtures exercised through the front door, which is
+   practice 5 paying out on the repair side rather than the build side.
+
+4. **Three independent judges converged on a non-defect.** `run.sh:54`'s
+   CWD-relative discovery was flagged by `tests-under-tests`,
+   `bash-source-relative`, and noted again in passing — same mechanism each time,
+   a mis-cwd'd run reporting `Ran 0 tests` at exit 0. It is deliberate: the
+   runner's zero-discovery path is what keeps the sandbox tests from recursing
+   into the real suite, and a test comment says so. Convergence of independent
+   readers is evidence about a *mechanism*, not about whether it is a defect —
+   the fixtures were the tiebreaker, exactly as practice 8 says for criticals.
+   The residual hazard is real but narrower than three judges made it look, and
+   it is the same shape as #153.
+
 ## The grouping question, restated
 
 The original question was "which of 29 issues deserve a spec". That question is
@@ -906,7 +972,12 @@ authoritative).
 ### B′ — finish `blueprint/025` · a build, not a spec · #205–#219 + #138
 New at the eleventh revision. Sixteen items: the nine B's review filed, the six
 that rode nothing (above), and #138 pulled out of the hardening bucket because
-it and #212 are one decision at two scopes.
+it and #212 are one decision at two scopes. Two of the sixteen shrank at the
+twelfth revision — #211 is 19-of-20 done, and #206's output-hygiene half gained
+one more edge from the grounding run — and two grew obligations rather than
+items: #209 and #212 each now carry a folded invariant to restore. Alongside
+them sits one task that is not an issue at all: the contract-edge phase the
+grounding run skipped.
 
 **It rides B's slot.** Every one of the fifteen records `blueprint/025`'s own
 unmet or regressed contract, so by the rule this note adopted it is that spec
@@ -953,13 +1024,35 @@ contradictions to a shared append-only branch through the documented Close:**
 3. **#205, #206's remainder, #208, #215, #216, #217, #218, #219** — gates,
    fixtures, hygiene. #215 belongs near #212: both are single-sourcing pinned at
    the wrong layer.
-4. **#210 and #211's remainder** — the vacuous test, the orphaned headers, and
-   the fifteen documentation sites. Last because they are the cheapest and the
-   least coupled.
+4. **#210** — the vacuous test, the orphaned headers, and the four fixture gaps.
+   Last because it is the cheapest and the least coupled. *(#211 left this step
+   at the twelfth revision: 19 of its 20 sites are corrected, and the survivor —
+   `docs/features/blueprints.md` — is held for its own branch rather than B′.)*
+
+**Two invariants are folded open, and closing them is part of B′'s definition of
+done.** The twelfth revision weakened `ordinal-single-source` and
+`blueprint-slot-reserved` in the `platform` blueprint so they would stop
+asserting what the code does not do. Each fold is a **waypoint**: #212 and #209
+carry the pre-fold text verbatim and the obligation to restore it through
+`/jim:blueprint`, at least as strong as it was. Both should come back *stronger*
+— a restored claim can rest on a fixture rather than on convention, and each
+pre-fold text contains a clause that must not survive (one confesses
+agreement-by-convention; the other names the retired `next-id` mechanism). **B′
+is not done while either invariant still reads as folded.**
+
+**One task carried in that is not an issue: run the contract-edge phase.** The
+grounding run skipped it, and its existence conditions held — the map has a
+contract graph, it names `platform` as provider to all three other groups, and
+the change touched provides-side code in all three CLIs. It is the one rung that
+would have surfaced cross-group impact, and nothing else in B′ covers it.
 
 **Run the review deliberately**, and land **#188** before the build phase — it
 guards exactly the machinery B′ will lean on, and it has been "whenever, ideally
-before B" since the ninth revision without landing.
+before B" since the ninth revision without landing. The grounding run is the
+argument: its judge fan-out was suppressed by a standing session directive, ran
+only after an explicit authorization, and nothing in the engine's own output
+would have distinguished the suppressed run from a clean one. Second recorded
+instance, and both were caught by a person rather than by a mechanism.
 
 ### ~~Spec C — Spec-ID allocator consumer~~ · SHIPPED as `sdlc/017`
 `#112` + `#135` closed; `#123` narrowed, not retired. Spec creation now binds through
@@ -1411,6 +1504,29 @@ wired the allocator.
 
 ## Adopted practice — the reason C′ exists, and what guards it
 
+**Status after the doc pass (2026-08-03): an eleventh practice, and it is the
+first about a legitimate process step rather than a failure.**
+
+11. **A fold is a waypoint; record the restoration target verbatim.** Folding a
+    blueprint invariant to match reality is the right move when the code
+    contradicts it — the alternative is a document that lies. But the fold
+    silently rewrites *intent*: what was an assertion becomes a description, and
+    the next reader has no way to tell a deliberate temporary weakening from a
+    considered statement of what the group is for. Nothing in the surface marks
+    the difference, and the pre-fold text survives only in git.
+
+    So a fold has two halves, and only the first is automatic. Write the
+    weakened text, **and** record on the issue that owns the fix: the pre-fold
+    text quoted verbatim (so restoration is mechanical, not archaeological), the
+    obligation that closing is incomplete until the invariant returns through
+    `/jim:blueprint` at least as strong, and which clauses of the old text should
+    *not* come back — a fold is also the moment to notice that the original
+    conceded too much or named a mechanism since retired.
+
+    The general form, and why it belongs beside the others: every practice above
+    detects something that went wrong. This one guards a step that went
+    *right* — and whose correctness is exactly what makes the loss invisible.
+
 **Status after the bookkeeping pass (2026-08-03): a tenth practice, and it is
 the first one that is purely arithmetic.**
 
@@ -1665,10 +1781,10 @@ hardening bucket to join #212.)
 | 206 | med  | B′ — AC 16/17/18 residuals: retryable refusal in terminal language, width floor, one ungated echo |
 | 207 | crit | B′ step 1 — the lift's batch guard leaves no trace and is destination-only; a re-run writes what the first run refused |
 | 208 | med  | B′ — the blueprint pending-provisional disclosure cannot fire, and truncates unbounded |
-| 209 | high | B′ step 1 — three contradictions `partition-batch` accepts: re-minted vacated ordinal, reserved `000` destination, unchecked destination redirect |
+| 209 | high | B′ step 1 — three contradictions `partition-batch` accepts, and the chain into `lift`; **carries a fold-restoration obligation** |
 | 210 | med  | B′ step 4 — a vacuously-green test survived the retirement, plus four fixture gaps |
-| 211 | med  | B′ step 4 (one line in step 1) — fifteen documentation sites contradicting the code |
-| 212 | med  | B′ step 2 — the ordinal width bound in three files, three spellings, no test that any two agree |
+| 211 | med  | **19 of 20 done 2026-08-03** — twenty sites, not the fifteen claimed; only `docs/features/blueprints.md` remains, held for its own branch |
+| 212 | med  | B′ step 2 — the ordinal width bound at **nine** sites in three incompatible widths, no test that any two agree; **carries a fold-restoration obligation** |
 | 213 | high | B′ step 1 — a group renamed once cannot be renamed again |
 | 214 | med  | B′ step 1 — the duplicate-realize rule decided three different ways by three readers |
 | 215 | med  | B′ step 3 — the provisional-grammar byte fixture stops short of the shims and constants |

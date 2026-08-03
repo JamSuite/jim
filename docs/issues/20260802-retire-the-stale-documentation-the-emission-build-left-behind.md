@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:12Z
-updated: 2026-08-03T06:46:15Z
+updated: 2026-08-03T09:16:43Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -149,3 +149,23 @@ still enumerates `mv-spec` and the pre-retirement `jimfile.sh` verb set. That is
 the retired group's blueprint holding authoritative-looking content, which is
 [[20260725-give-retired-group-directories-a-sanctioned-end-of-life]]'s subject,
 not this issue's.
+
+## Progress — 19 of 20 corrected (2026-08-03)
+
+Everything above is fixed except one site, deliberately held back.
+
+**Done.** The three model-facing surfaces (the split step's retired verb, the
+methodology's three Close passages, the spec skill's repair table); all seven
+script-contract headers, including the `AC 5` citation this file's own rule
+forbids; `tests/jimalloc.sh`'s self-contradicting sentence and
+`tests/jimpartition.sh`'s two `next-id` comments; `README.md`'s repair-verb
+count and the new `lift` paragraph; `docs/features/ledger.md`;
+`ARCHITECTURE.md` via `/jim:arch`; and the platform blueprint's two Provides
+claims via `/jim:blueprint --since`.
+
+**Deferred, not missed:** `docs/features/blueprints.md` — zero occurrences of
+`partition-batch`, so the feature doc still describes a Close choreography the
+skill no longer runs. Separate updates to that file are landing on their own
+branch first; this correction rides them rather than racing them.
+
+This issue stays open on that one site.
