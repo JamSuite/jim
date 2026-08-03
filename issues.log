@@ -211,3 +211,9 @@ issue allocate 210 20260802-replace-the-vacuously-green-vacated-max-test-and-clo
 issue allocate 211 20260802-retire-the-stale-documentation-the-emission-build-left-behind 20260802 jrko
 issue allocate 212 20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil 20260802 jrko
 issue allocate 213 20260802-unblock-the-chained-group-rename 20260802 jrko
+issue allocate 214 20260803-decide-the-duplicate-realize-rule-once-across-its-three-readers 20260802 jrko
+issue allocate 215 20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con 20260802 jrko
+issue allocate 216 20260803-keep-the-record-layer-off-the-reporting-layer-s-sanitizer 20260802 jrko
+issue allocate 217 20260803-restore-the-classifier-s-lost-local-declarations 20260802 jrko
+issue allocate 218 20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep 20260802 jrko
+issue allocate 219 20260803-stop-double-counting-a-group-realize-across-two-non-coverage-cou 20260802 jrko
