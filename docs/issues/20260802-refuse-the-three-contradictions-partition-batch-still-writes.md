@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:11Z
-updated: 2026-08-02T21:35:11Z
+updated: 2026-08-03T08:35:15Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -76,3 +76,73 @@ vacated *destination* case falls outside its letter, which is why it shipped;
 the never-reuse invariant is what it breaches.
 
 Surfaced by the post-build review of blueprint/025 (findings 4, 5, 6).
+
+## The reserved-slot contradiction compounds into the lift (2026-08-03)
+
+A `/jim:verify` judge over the platform territory reached shape 2 independently
+and found it does not stop at `partition-batch`. Three additions.
+
+**1. `lift` is safe only by side-effect.** `alloc_lift_publish_builder` carries no
+reserved predicate. A `000` destination is refused today only because
+`refused:destination-not-established` fires first — the slot is never claimed, so
+nothing establishes it. The moment `partition-batch` mints `<group>/000`, that
+incidental guard stops holding and `lift` accepts renames naming it. The two
+defects are filed separately; they are one chain.
+
+**2. `pair-events` normalizes `000` and hands it over.** `jimledger.sh:691`'s
+`isord` admits three-digit `000`, so a ledger pair naming `<group>/000` passes the
+producing side's gate and reaches the lift as a well-formed row. The interface is
+fail-closed on charset and width, and open on the reservation.
+
+**3. Three more writers admit the slot**, none of them the emitter this issue is
+about: `mv-spec-id` (`jimfile.sh:584`) can rename a spec dir onto `000-<slug>`;
+`move-spec-dir`'s `dst_shape` (`jimledger.sh:587`) admits `000-…`;
+`rename-tracked`'s new-basename gate (`jimledger.sh:289`) admits `000-blueprint`.
+Each is guarded only by the ordinal-occupancy check, which passes in any group
+that does not yet hold a `000-*` directory.
+
+The reservation is genuinely enforced on the derivation and reporting paths — one
+predicate (`alloc_is_reserved_ord`) drives the seed, the classifier, the sweep and
+catch-up, and normal allocator arithmetic can never yield `000`. It is the write
+paths that are open, and the only zero-ordinal write guard anywhere is
+`jimpartition.sh:1486`'s `10#$start < 1` in `merge-map` — a caller, not the
+boundary.
+
+**No test asserts a reserved-slot refusal** in `partition-batch`, `lift`,
+`path spec`, or `mv-spec-id`. Whichever way this lands, the fixture set is the
+deliverable: the reservation is currently a property of arithmetic rather than of
+a gate, which is why it survived every read-path check.
+
+Related: [[20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer]]
+covers the `path spec` composer half.
+
+## The blueprint was weakened to match this defect — closing must reverse that
+
+On 2026-08-03 the `platform` blueprint's `blueprint-slot-reserved` invariant was
+**deliberately weakened** so it would stop claiming a reservation the write paths
+do not enforce. That fold is a waypoint, not a destination.
+
+**Closing this issue is not complete until the invariant is restored to at least
+its pre-fold strength through `/jim:blueprint`** — never by hand. Refusing the
+reserved slot at every writer is what earns the original claim back.
+
+The pre-fold text, recorded verbatim so the restoration target needs no
+archaeology:
+
+> The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0`,
+> ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint
+> <group>`
+
+Restoring it as-is would be a small regression of its own: `ignored by next-id`
+names a mechanism the tree-scan retirement removed. The restored claim should
+say the reservation is enforced at every writer and every composer, name the one
+predicate that decides it, and drop the retired-mechanism clause — stronger than
+the original, and true for a different reason than the original was.
+
+What must disappear from the current folded text on close: the whole
+"enforced on the derivation and reporting paths … **not** enforced on the write
+paths … protected by arithmetic rather than by a gate" admission.
+
+The sibling fold on `ordinal-single-source` carries the same obligation under
+[[20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil]];
+both were weakened in one pass and both must come back.

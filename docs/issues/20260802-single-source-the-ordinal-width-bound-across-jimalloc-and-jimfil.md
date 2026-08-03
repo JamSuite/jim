@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T20:57:29Z
-updated: 2026-08-02T22:42:56Z
+updated: 2026-08-03T08:34:53Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/plan.md
 ---
 
@@ -83,3 +83,77 @@ Surfaced during the rename/redirect record emission build, which touched every
 reader of that bound and added the third site, but deliberately left this seam
 alone as out of scope. The post-build review recorded the lower-bound
 divergence as a partial satisfaction of that spec's width-agreement criterion.
+
+## Scope re-derived (2026-08-03) — nine sites, three disagreeing sets
+
+The table above says three sites. That count was inherited, not measured, and it
+is wrong in both directions: it omits four deciding sites, and it describes the
+disagreement as narrower than it is. Re-derived by a `/jim:verify` judge over the
+platform territory, then confirmed against the files.
+
+| Accepted set | Sites |
+| :--- | :--- |
+| 1–15 digits | `jimalloc.sh:741` (`ALLOC_MAX_ORD_DIGITS`, the one named constant) · `jimfile.sh:403` (occupancy-predicate argument) · `jimfile.sh:415` (sibling leading token) |
+| 3–15 digits | `jimfile.sh:371` (`is_spec_dir_basename`) · `jimfile.sh:584` (`mv-spec-id` new-id) · `jimfile.sh:900` (`path spec\|plan\|research` id) · `jimledger.sh:691` (awk `isord`) |
+| exactly 3 | `jimledger.sh:586` (`move-spec-dir` `src_shape`) · `jimledger.sh:587` (`move-spec-dir` `dst_shape`) |
+
+One named constant, **eight** inlined literals, **three** mutually incompatible
+accepted sets. The registry itself has no lower bound at all
+(`alloc_valid_specid` is `^[0-9]+$`, printed `%03d`).
+
+**A functional consequence nothing records.** `alloc_next_id_spec` mints a
+4-digit ordinal once a group passes 999, and `jimfile.sh:371/584/900` accept it —
+but `move-spec-dir`'s gates are `exactly 3` on **both** sides, so the move
+primitive cannot move such a spec at all. A group that crosses 999 can allocate
+specs it can never renumber, rename, or realize across parents. That is not a
+tidiness problem; it is a reachable dead end.
+
+**Nothing mechanical would catch a further divergence.** `tests/` contains no
+reference to `ALLOC_MAX_ORD_DIGITS`; the SYNC fixtures cover `is_valid_id`,
+`is_prov_token` and the timestamp shape only; `tests/scripthygiene.sh` has no
+width check. Whatever shape the fix takes, it needs a fixture asserting the
+sites agree — the same discipline the provisional grammar got.
+
+## Provenance of this correction
+
+Filed by the emission build, which counted the sites it happened to touch. A
+later session re-derived a sibling issue's scope from scratch and, in the same
+pass, repeated this issue's count without deriving it — the exact failure the
+cluster note's practice 7 describes (*a finding's stated scope is a claim, not a
+measurement; never inherit the reporter's grep*). The count above is measured.
+
+## The blueprint was weakened to match this defect — closing must reverse that
+
+On 2026-08-03 the `platform` blueprint's `ordinal-single-source` invariant was
+**deliberately weakened** so it would stop asserting something the code does not
+do. That fold is a waypoint, not a destination: it makes the blueprint honest
+about today, and it must not become the permanent statement of intent.
+
+**Closing this issue is not complete until the invariant is restored to at least
+its pre-fold strength through `/jim:blueprint`** — never by hand. The fix
+single-sources the bound; the invariant should then be able to claim it again,
+and more strongly than before, because the restored claim can rest on a fixture
+rather than on convention.
+
+The pre-fold text, recorded verbatim so the restoration target needs no
+archaeology:
+
+> Ordinal computation, legality, and occupancy each resolve to one definition:
+> the next-ordinal high-water is one shared fold per kind that every allocation,
+> preview, and reconcile path reads; ordinal legality is one named constant the
+> allocator, the registry bootstrap, and `resolve` all read, while the tree-side
+> path/rename predicates hold the same bound as inlined literals — agreement by
+> convention, not by construction, and the one seam here where a divergence
+> would not be caught structurally; and occupancy is one numeric predicate,
+> exposed as a verb so the realize and partition-move paths consult the
+> definition itself rather than a copy
+
+Note what the restored text should *drop*: "agreement by convention, not by
+construction" and "the one seam where a divergence would not be caught
+structurally" were true confessions when written. Once a fixture asserts the
+sites agree, both clauses become false in the good direction and the invariant
+should say so — construction, not convention.
+
+Two clauses of the current folded text must also disappear on close: the
+eight-inlined-literals / three-accepted-widths admission, and the
+tree-derived `next-num` carve-out on the issue kind if that is folded in too.
