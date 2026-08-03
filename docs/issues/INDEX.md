@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 88
+- Open: 94
 - Closed: 125
 
 ## Issues
@@ -220,6 +220,12 @@
 - `20260802-retire-the-stale-documentation-the-emission-build-left-behind` — Retire the stale documentation the emission build left behind · status: open · num: 211 · priority: medium · created: 2026-08-02T21:35:12Z · labels: [docs, id-coordination] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil` — Single-source the ordinal width bound across jimalloc, jimfile and jimledger · status: open · num: 212 · priority: medium · created: 2026-08-02T20:57:29Z · labels: [id-coordination, sync-discipline] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/plan.md
 - `20260802-unblock-the-chained-group-rename` — Unblock the chained group rename · status: open · num: 213 · priority: high · created: 2026-08-02T21:35:11Z · labels: [id-coordination, registry, partition] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260803-decide-the-duplicate-realize-rule-once-across-its-three-readers` — Decide the duplicate-realize rule once across its three readers · status: open · num: P-20260803-decide-the-duplicate-realize-rule-once-across-its-three-readers · priority: medium · created: 2026-08-03T05:50:14Z · labels: [id-coordination, registry] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con` — Extend the provisional-grammar byte fixture to its shims and constants · status: open · num: P-20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con · priority: medium · created: 2026-08-03T05:50:30Z · labels: [id-coordination, test-integrity, sync-discipline] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260803-keep-the-record-layer-off-the-reporting-layer-s-sanitizer` — Keep the record layer off the reporting layer's sanitizer · status: open · num: P-20260803-keep-the-record-layer-off-the-reporting-layer-s-sanitizer · priority: low · created: 2026-08-03T05:50:29Z · labels: [id-coordination, hygiene] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260803-restore-the-classifier-s-lost-local-declarations` — Restore the classifier's lost local declarations · status: open · num: P-20260803-restore-the-classifier-s-lost-local-declarations · priority: low · created: 2026-08-03T05:50:27Z · labels: [id-coordination, hygiene] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` — Restore the id-boundary memo's cross-pass warmth in the sweep · status: open · num: P-20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep · priority: medium · created: 2026-08-03T05:50:29Z · labels: [id-coordination, performance] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260803-stop-double-counting-a-group-realize-across-two-non-coverage-cou` — Stop double-counting a group realize across two non-coverage counters · status: open · num: P-20260803-stop-double-counting-a-group-realize-across-two-non-coverage-cou · priority: low · created: 2026-08-03T05:50:28Z · labels: [id-coordination, registry] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Graph
 
@@ -330,6 +336,10 @@
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
 - `20260802-fix-the-rename-replay-in-the-integrity-classifier` --related-to--> `20260802-replace-the-vacuously-green-vacated-max-test-and-close-the-fixtu`
+- `20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con` --related-to--> `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and`
+- `20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con` --related-to--> `20260730-single-source-the-provisional-identity-grammar`
+- `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` --related-to--> `20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path`
+- `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` --related-to--> `20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays`
 
 ## Integrity Warnings
 
