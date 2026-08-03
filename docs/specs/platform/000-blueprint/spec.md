@@ -38,9 +38,10 @@ agent, plus the developer via the `/jim:conf`, `/jim:file`, and
   `valid-id`/`valid-relpath`/`mv-spec-id`/`spec-ordinal-holder`/`prefix-from`.
   Guarantee: the single deterministic path/id boundary every skill calls; honors
   `jimconf.toml` overrides; validates ids through one `is_valid_id` gate;
-  `next-id` floors past vacated ids (split/merge ledger events) so a vacated id
-  is never re-minted, and skips a leading token too wide to be an ordinal so it
-  and the occupancy predicate agree on what one is; `spec-ordinal-holder` decides
+  `next-id` answers for issue ids alone — a spec ordinal comes from the
+  coordination allocator, which is the sole ordinal authority and floors past a
+  vacated ordinal by counting rename sources in the registry itself;
+  `spec-ordinal-holder` decides
   occupancy numerically — over the configured specs dir or an explicit `--root`,
   so the gate always reads the tree it guards — and a differently-padded spelling
   is the same ordinal; `mv-spec-id` is the sole rename primitive for an untracked
@@ -110,7 +111,7 @@ allocation, or an un-derivable template); every replayed or config token is reva
   (`commit-review`/`commit-blueprint`/`commit-map`/`commit-verify`/
   `commit-rename`/`commit-split`/`commit-merge`), the git-mv primitives
   `rename-tracked` (sibling-constrained) and `move-spec-dir` (cross-parent,
-  specs-subtree-scoped, ordinal-occupancy-gated), `vacated-max`,
+  specs-subtree-scoped, ordinal-occupancy-gated), `pair-events`,
   `updates-since`, `last-reconcile`/
   `reconcile-series`. Guarantee: a trusted, fixed-key, shape-validated metrics
   channel that never echoes commit/diff text; commits are literal-path staged
@@ -167,8 +168,8 @@ allocation, or an un-derivable template); every replayed or config token is reva
 | ref-validation | Every untrusted id / SHA / ref is validated before git interpolation: the single `is_valid_id` boundary (byte-identical copies in the issue group), and ad-hoc git refs through a ref-safety gate + `git rev-parse --verify --end-of-options` | critical | judge |
 | relpath-validation | Repo-relative path inputs (map territory declarations, `commit-map`'s config-derived arguments, the `rename-tracked` / `move-spec-dir` git-mv primitives) pass `valid-relpath` (non-empty, not absolute, no `..` segment) before recording or git use; and the `rename-tracked` / `move-spec-dir` git-mv primitives additionally hand their path arguments to git only under literal-pathspec semantics (`git --literal-pathspecs …` — the tracked-file `ls-files` check and `git mv`), so a valid-relpath'd path's pathspec magic (`:(exclude)` / `:/` / `:(glob)`) is never interpreted there (project-wide script rule) | critical | judge |
 | ledger-commit-discipline | `jimledger.sh` exposes a fixed-key, shape-validated `metrics` channel over a fixed stage allowlist; ledger content is untrusted and never `source`d; the script commits in exactly seven path-scoped verbs (literal paths, `--` guard, never `git add -A`) plus the non-committing git-mv primitives `rename-tracked` (sibling-constrained) and `move-spec-dir` (cross-parent, specs-subtree-scoped, and gated on the shared ordinal-occupancy predicate so a renumber cannot land a second directory on an ordinal another already holds) | critical | judge |
-| ordinal-single-source | Ordinal computation, legality, and occupancy each resolve to one definition: the next-ordinal high-water is one shared fold per kind that every allocation, preview, and reconcile path reads; ordinal legality is one named constant the allocator, the registry bootstrap, and `resolve` all read, while the tree-side path/rename predicates hold the same bound as inlined literals — agreement by convention, not by construction, and the one seam here where a divergence would not be caught structurally; and occupancy is one numeric predicate, exposed as a verb so the realize and partition-move paths consult the definition itself rather than a copy | high | judge |
-| blueprint-slot-reserved | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0`, ignored by `next-id`) and is resolved only via `jimfile.sh path blueprint <group>` | high | judge |
+| ordinal-single-source | Ordinal computation and occupancy each resolve to one definition: the next-ordinal high-water is one shared fold per kind that every registry allocation, preview, and reconcile path reads (the issue kind additionally keeps a tree-derived `next-num` that the `{seq}` prefix path answers from), and occupancy is one numeric predicate exposed as a verb, so the realize and partition-move paths consult the definition itself rather than a copy. Legality does **not** resolve to one definition: one named constant governs the registry while eight inlined literals govern the tree and ledger sides, spanning three incompatible accepted widths, and no test asserts any two agree — the one seam in the ordinal machinery where a divergence is caught by nothing | high | judge |
+| blueprint-slot-reserved | The `000-blueprint` slot is reserved (sorts ahead of `001`, parses to id `0`) and its dedicated resolver is `jimfile.sh path blueprint <group>`. The reservation is enforced on the derivation and reporting paths — one zero-valued predicate drives the seed, the integrity classifier, the sweep and catch-up, and the allocator's high-water arithmetic can never yield it. It is **not** enforced on the write paths: the partition emitter, the lift, the generic path composer, and the two directory-move primitives each accept a zero ordinal, so the slot is currently protected by arithmetic rather than by a gate | high | judge |
 | tests-under-tests | Tests live under `tests/` and are never loaded by Claude Code (only `skills/` + `agents/` are); the runner and scaffold enforce the boundary | medium | judge |
 | registry-tree-consistency | Every spec directory and issue file the collection holds has a matching registry record, and the registry holds no self-contradiction — one identity claimed twice, a record for the reserved slot, or a record too malformed to compare. The check is the read-only sweep, whose exit codes keep clean, drift, and could-not-check apart, and which names what it did not cover as loudly as what it found. Consistency only: a well-formed record is never evidence of provenance or authorization, for which coordination-branch protection is the control | high | registry:id-sweep |
 
