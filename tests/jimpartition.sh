@@ -1717,6 +1717,20 @@ case_jimpartition_merge_preflight_refuses_provisional() {
   assert_match "names the identity" 'P-20260802-offline-work'    "$OUT"
 }
 
+# The registry-boundary rule: a dynamic path component is slug-validated before
+# ANY filesystem lookup. merge-preflight passed its effective source set to the
+# provisional probe ungated — the one probe in its function that did not follow
+# the convention the surrounding code states twice.
+case_jimpartition_merge_preflight_slug_gates_the_provisional_probe() {
+  local dir; dir="$(merge_repo pfslug_merge)"
+  run_jimpartition_in "$dir" merge-preflight BLUEPRINT.md docs/specs cart '../../OUTSIDE'
+  assert_exit  "rc" 1 "$RC"
+  assert_match "the probe is refused, not run" \
+    $'pending-provisionals\tfail\t../../OUTSIDE: invalid group slug' "$OUT"
+  assert_eq    "never reported as clean" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c $'pending-provisionals\tpass\t\\.\\./')"
+}
+
 # AC 10/18: the named identity is a directory basename — untrusted content —
 # so it is sanitized before it is printed, exactly as every other preflight
 # fact is.
