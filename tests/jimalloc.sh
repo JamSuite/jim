@@ -3684,6 +3684,73 @@ case_jimalloc_lift_conflicted_realization_refused_not_have() {
     '	refused:source-conflict$' "$out"
 }
 
+# The batch guard must hold across runs: what run 1 refuses as a duplicate,
+# run 2 must refuse too — anchored in the log, not in the first run's memory —
+# or re-running a verb whose contract is that re-running is safe writes the
+# exact contradiction the guard exists to prevent.
+case_jimalloc_lift_second_run_refuses_what_the_first_refused() {
+  local repo specs
+  repo="$(sweep_repo lift_rerun)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'old/001:core/001,other/002:core/001')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit "first run refuses the duplicate" 1 "$RC"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit  "second run still refuses" 1 "$RC"
+  assert_match "still refused by name" 'refused:' "$OUT"
+  specs="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  assert_eq "one rename onto the destination, ever" "1" \
+    "$(printf '%s\n' "$specs" | grep -c '^spec rename [^ ]* core/001 ')"
+}
+
+# Two rows sharing a SOURCE contradict as surely as two sharing a destination:
+# recording both makes the source permanently unresolvable ("vacated by more
+# than one rename record") on an append-only branch. The preview must name the
+# refusal too — it is the same computation as the publish, not a happier one.
+case_jimalloc_lift_batch_guard_covers_the_source_side() {
+  local repo specs
+  repo="$(sweep_repo lift_srcdup)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'old/001:core/001,old/001:core/002')"
+  run_jimalloc_in "$repo" lift
+  assert_match "preview names the duplicate too" 'refused:duplicate-in-batch' "$OUT"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit  "rc" 1 "$RC"
+  assert_match "second row refused" 'refused:duplicate-in-batch' "$OUT"
+  specs="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  assert_eq "the source is vacated once, not twice" "1" \
+    "$(printf '%s\n' "$specs" | grep -c '^spec rename old/001 ')"
+  run_jimalloc_in "$repo" resolve spec old/001
+  assert_exit "the source still resolves" 0 "$RC"
+}
+
+# Same shape on the realize kind: one provisional realized to two ordinals in
+# one batch would write the contradiction the realize fold refuses to answer.
+case_jimalloc_lift_batch_guard_covers_the_realize_source() {
+  local repo specs
+  repo="$(sweep_repo lift_rzdup)"
+  lift_ledger "$repo" \
+    "$(printf '1784966720\t2026-07-25T08:05:20Z\tspec\trealized\tmoved=core/P-20260720-a:core/001,core/P-20260720-a:core/002')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit  "rc" 1 "$RC"
+  specs="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  assert_eq "one realization, not two" "1" \
+    "$(printf '%s\n' "$specs" | grep -c '^spec realize core/P-20260720-a ')"
+}
+
+# Byte-identical rows are one event recorded twice: the batch lifts it once,
+# and the payload marks the LATER row as the duplicate — reporting the row the
+# commit actually published as refused is a false report, and rc 1 on a run
+# that wrote the record misgrades the run.
+case_jimalloc_lift_identical_rows_lift_once_reporting_the_written_row() {
+  local repo specs
+  repo="$(sweep_repo lift_idrows)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'old/001:core/001,old/001:core/001')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_match "written row reported emit" '^spec	old/001	core/001	20260725	emit$' "$OUT"
+  assert_match "later duplicate refused"   'refused:duplicate-in-batch' "$OUT"
+  specs="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  assert_eq "lifted once" "1" "$(printf '%s\n' "$specs" | grep -c '^spec rename old/001 core/001 ')"
+}
+
 # AC 12 / security F5: the emit set is recomputed inside the publish builder on
 # every CAS attempt. A row corroborated against one log must be refused against
 # a fresher one where the destination has since been claimed — the preview is
