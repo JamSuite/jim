@@ -3232,13 +3232,18 @@ alloc_group_redirect() {
   printf '%s\n' "$current"
 }
 
-# alloc_live_claim_set   (specs log on stdin) → fills the caller's `live` array
-#   The replay's LIVE rows as a set, for a corroborating writer that only needs
-#   to know what is claimed right now.
+# alloc_live_claim_set   (specs log on stdin) → fills the caller's `live` and
+#   `spent` arrays. The replay's LIVE rows are what is claimed right now; its
+#   SRC rows are ordinals a rename moved away from — spent, never reissued — so
+#   a corroborating writer can refuse a destination that would give a frozen
+#   citation a second referent.
 alloc_live_claim_set() {
   local tag ra
   while IFS=$'\t' read -r tag ra _; do
-    [[ "$tag" == LIVE ]] && live["$ra"]=1
+    case "$tag" in
+      LIVE) live["$ra"]=1 ;;
+      SRC)  spent["$ra"]=1 ;;
+    esac
   done < <(alloc_spec_replay)
 }
 
@@ -3257,7 +3262,7 @@ alloc_live_claim_set() {
 alloc_partition_spec_publish_builder() {
   local cur_specs="$1" who="$3"; shift 3
   local date="$1"; shift
-  local -A live=()
+  local -A live=() spent=()
   alloc_live_claim_set < <(printf '%s\n' "$cur_specs")
   local pair old new slug oldc newc grp newrecs="" payload=""
   local -A seen_new=() seen_old=() claimed=()
@@ -3269,6 +3274,10 @@ alloc_partition_spec_publish_builder() {
       echo "error: partition-batch refuses destination '$(alloc_display_field "$new")' — not a spec id the registry can represent" >&2; return 1; }
     alloc_valid_token "$slug" || {
       echo "error: partition-batch refuses slug '$(alloc_display_field "$slug")' for '$newc'" >&2; return 1; }
+    if alloc_is_reserved_ord "${newc##*/}"; then
+      echo "error: partition-batch refuses '$newc' — the zero ordinal is the reserved blueprint slot, never a destination" >&2
+      return 1
+    fi
     if [[ "$oldc" == "$newc" ]]; then
       echo "error: partition-batch refuses '$oldc' — a rename onto its own name records nothing" >&2
       return 1
@@ -3279,6 +3288,10 @@ alloc_partition_spec_publish_builder() {
     fi
     if [[ -n "${live[$newc]:-}" ]]; then
       echo "error: partition-batch refuses '$newc' — destination already claimed in the registry" >&2
+      return 1
+    fi
+    if [[ -n "${spent[$newc]:-}" ]]; then
+      echo "error: partition-batch refuses '$newc' — vacated by an earlier rename; the registry never reissues an ordinal (the group's ordinals resume at peek)" >&2
       return 1
     fi
     if [[ -n "${seen_old[$oldc]:-}" || -n "${seen_new[$newc]:-}" ]]; then
@@ -3330,17 +3343,33 @@ alloc_partition_group_publish_builder() {
     echo "error: group renamed — '$old' is now '$redirect'; re-run the batch against that name" >&2
     return 1
   fi
+  # The destination's redirect is checked the way the spec builder checks its
+  # destination group: a rename into a name that itself renamed away leaves the
+  # resolver non-idempotent — the moved claims answer to a name that answers to
+  # another.
+  redirect="$(printf '%s\n' "$cur_specs" | alloc_group_redirect "$new")"
+  if [[ "$redirect" != "$new" ]]; then
+    echo "error: group renamed — '$new' is now '$redirect'; re-run the batch against that name" >&2
+    return 1
+  fi
   if ! printf '%s\n' "$cur_specs" | alloc_group_has_records "$old"; then
     echo "error: partition-batch refuses '$old' — the registry holds no record for it" >&2
     return 1
   fi
-  local -A live=()
+  local -A live=() spent=()
   alloc_live_claim_set < <(printf '%s\n' "$cur_specs")
   local key
   for key in "${!live[@]}"; do
     [[ "$key" == "$old"/* ]] || continue
     if [[ -n "${live[$new/${key##*/}]:-}" ]]; then
       echo "error: partition-batch refuses '$old → $new' — '$new/${key##*/}' is already claimed" >&2
+      return 1
+    fi
+    # A spent name is as closed to arrivals as a claimed one: landing a live
+    # claim on it reissues an ordinal the destination group vacated, and a
+    # citation frozen before the vacating silently changes referent.
+    if [[ -n "${spent[$new/${key##*/}]:-}" ]]; then
+      echo "error: partition-batch refuses '$old → $new' — '$new/${key##*/}' was vacated by an earlier rename and is never reissued" >&2
       return 1
     fi
   done
@@ -3556,7 +3585,7 @@ alloc_lift_state() {
 alloc_lift_states() {
   local -a lines=(); mapfile -t lines
   local log=""; (( ${#lines[@]} )) && log="$(printf '%s\n' "${lines[@]}")"
-  local -A live=() have_rn=() rz_real=() rz_conflict=()
+  local -A live=() spent=() have_rn=() rz_real=() rz_conflict=()
   alloc_live_claim_set < <(printf '%s\n' "$log")
   local rk rsrc rsok rdst rdok ztag zp za zb
   while IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ _; do
