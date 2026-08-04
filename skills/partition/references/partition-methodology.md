@@ -453,13 +453,18 @@ immediately after a clean split reports no new finding.
   owner** so coverage has no gap, plus an offered code-split issue routed to the
   normal spec→plan→build workflow. The split performs no code moves (AC 6).
 
-**Renumber map.** `jimpartition.sh renumber-map <old> <targets-csv> <assign-file>`
-computes the full remap the gate presents verbatim: a continuing remainder keeps
-its numbers (gaps preserved); each fresh child renumbers its arrivals to a dense
-`001..N` by source order; wip dirs ride in sequence. Vacated ids are never
-re-minted — the Close publishes one `spec rename` record per pair through
-`jimalloc.sh partition-batch spec`, and a rename source is an ordinal the
-registry counts as spent forever after (AC 11).
+**Renumber map.** `jimpartition.sh renumber-map <old> <targets-csv>
+<assign-file> <child>=<start>...` computes the full remap the gate presents
+verbatim: a continuing remainder keeps its numbers (gaps preserved); each fresh
+child renumbers its arrivals densely from its `<start>` by source order; wip
+dirs ride in sequence. Every fresh child requires a start — the ordinal part of
+`jimalloc.sh peek spec <child>` stdout, copied verbatim — because vacated ids
+are never re-minted: a fresh name peeks to `001`, while a child name that was
+previously retired resumes above its registry high-water, proposing only
+ordinals the Close can accept. The peek is advisory; the Close binds by
+publishing one `spec rename` record per pair through `jimalloc.sh
+partition-batch spec`, and a rename source is an ordinal the registry counts as
+spent forever after (AC 11).
 
 **Reference sweep assembly.** Under `rewrite`, the reference set is
 `git ls-files -- <specs-root> <issues-dir> <brainstorms-dir> <debug-dir>` (dirs
