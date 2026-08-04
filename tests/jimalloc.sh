@@ -631,6 +631,51 @@ spec rename core/007 ui/003 20260803 jane' > "$dir/specs.log"
   assert_eq "follows the later rename" "ui/003" "$OUT"
 }
 
+# THE duplicate-realize rule, stated once for every reader: one record — or the
+# same (token, ordinal) pair recorded again — realizes; two records naming
+# different ordinals for one token are a contradiction, reported with both
+# positions rather than answered from either record.
+case_jimalloc_realize_fold_decides_duplicates_once() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate core/007 alpha 20260802 jane' \
+                      'spec realize core/P-20260801-x core/007 20260802 jane' \
+                      'spec realize core/P-20260801-x core/007 20260802 jane' \
+                      'spec realize core/P-20260801-y core/008 20260802 jane' \
+                      'spec realize core/P-20260801-y core/009 20260803 jane')
+  out="$(source "$SCRIPT_jimalloc"; alloc_realize_fold <<< "$log")"
+  assert_match "idempotent duplicate is realized by its first record" \
+    '^REAL	core/P-20260801-x	core/007	2$' "$out"
+  assert_match "contradiction names both positions" \
+    '^CONFLICT	core/P-20260801-y	4	5$' "$out"
+}
+
+# A token realized by two records naming different ordinals has no single
+# referent — answering from either record is confidently wrong, the same shape
+# as a duplicate allocate. The resolver refuses and names both records.
+case_jimalloc_resolve_refuses_conflicting_realization() {
+  local dir; dir=$(empty_dir realize_conflict)
+  printf '%s\n' 'spec allocate core/007 alpha 20260802 jane
+spec allocate core/008 beta 20260802 jane
+spec realize core/P-20260801-x core/007 20260802 jane
+spec realize core/P-20260801-x core/008 20260803 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/P-20260801-x
+  assert_exit  "rc" 1 "$RC"
+  assert_eq    "no answer" "" "$OUT"
+  assert_match "names both records" 'records 3 and 4' "$ERR"
+}
+
+# The refusal is aimed at contradictions and stays off the idempotent path: the
+# same realization recorded twice still has one referent, and it answers.
+case_jimalloc_resolve_accepts_idempotent_realization_duplicate() {
+  local dir; dir=$(empty_dir realize_idem_dup)
+  printf '%s\n' 'spec allocate core/007 alpha 20260802 jane
+spec realize core/P-20260801-x core/007 20260802 jane
+spec realize core/P-20260801-x core/007 20260802 jane' > "$dir/specs.log"
+  run_jimalloc_reg "$dir" resolve spec core/P-20260801-x
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "still resolves" "core/007" "$OUT"
+}
+
 # AC 2: a provisional identity nothing has realized is not resolvable — the
 # reserved form is not a claim on anything.
 case_jimalloc_realize_unrealized_provisional_errors() {
@@ -3594,6 +3639,22 @@ case_jimalloc_lift_refuses_claimed_source() {
   run_jimalloc_in "$repo" lift --apply
   assert_exit  "rc" 1 "$RC"
   assert_match "refused by name" 'refused:source-claimed' "$OUT"
+}
+
+# A registry already holding two realizations for one token is contradicted;
+# the lift consumes the same duplicate-realize rule the resolver does and
+# refuses every row naming that token — including a recorded pair — rather
+# than reporting the contradiction as held.
+case_jimalloc_lift_conflicted_realization_refused_not_have() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate core/007 alpha 20260802 jane' \
+                      'spec allocate core/008 beta 20260802 jane' \
+                      'spec realize core/P-20260801-x core/007 20260802 jane' \
+                      'spec realize core/P-20260801-x core/008 20260803 jane')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'realize\tcore/P-20260801-x\tcore/007\t20260802')" <<< "$log")"
+  assert_match "recorded pair on a conflicted token is refused" \
+    '	refused:source-conflict$' "$out"
 }
 
 # AC 12 / security F5: the emit set is recomputed inside the publish builder on
