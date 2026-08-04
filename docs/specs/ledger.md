@@ -88,3 +88,5 @@
 1785707786	2026-08-02T21:56:26Z	blueprint	finished	tier=project;op=reconcile;edges=23;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=626;faces=19;faces_max=8;faces_max_group=blueprint;fanin_group=issue,platform
 1785747730	2026-08-03T09:02:10Z	blueprint	started	tier=project;op=reconcile
 1785747777	2026-08-03T09:02:57Z	blueprint	finished	tier=project;op=reconcile;edges=23;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=632;faces=19;faces_max=8;faces_max_group=blueprint;fanin_group=issue,platform
+1785876060	2026-08-04T20:41:00Z	verify	started	tier=project;op=contracts
+1785876060	2026-08-04T20:41:00Z	verify	finished	tier=project;op=contracts;edges=14;holds=10;violated=0;failed=0;skipped=18;leaks=0;breaking=0;dead=0
