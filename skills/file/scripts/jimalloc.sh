@@ -148,6 +148,20 @@ alloc_read_log() {
 # the boundary rather than beside it, so no call site has to remember to use a
 # faster variant.
 declare -A ALLOC_TOKEN_OK=()
+# alloc_sanitize_field <raw> — one report-safe field: tabs/newlines/CRs become
+# spaces so a crafted value cannot forge a row or shift a column, length capped.
+# A RECORD-LAYER primitive, deliberately: a field that fails its gate is
+# sanitized once, where it is read, so every consumer of a scan row — resolver,
+# fold, classifier, emitter — can echo a degraded field without each reasoning
+# about output safety. The id boundary decides what is CLASSIFIED; this decides
+# what is PRINTED, and the report must be safe even where a field is not an id.
+alloc_sanitize_field() {
+  printf '%s' "${1:-}" \
+    | tr '\t\n\r' '   ' \
+    | tr -d '\000-\037\177' \
+    | cut -c1-256
+}
+
 alloc_valid_token() {
   local tok="$1"
   # The empty token is rejected here rather than by the boundary, because it is
@@ -2634,18 +2648,6 @@ alloc_seed_land() {
 # evidence channel. The full count is always printed, so a cap is never a silent
 # drop.
 ALLOC_SWEEP_CAP=100
-
-# alloc_sanitize_field <raw> — one report-safe field: tabs/newlines/CRs become
-# spaces so a crafted value cannot forge a row or shift a column, length capped.
-# Applied on emission to every field, including those that already crossed the id
-# boundary — the boundary decides what is CLASSIFIED, this decides what is
-# PRINTED, and the report must be safe even where a future field is not an id.
-alloc_sanitize_field() {
-  printf '%s' "${1:-}" \
-    | tr '\t\n\r' '   ' \
-    | tr -d '\000-\037\177' \
-    | cut -c1-256
-}
 
 # alloc_display_field <raw> — a registry- or ledger-sourced token as it is safe
 # to print: the sanitizer's output, marked when that output is not the whole
