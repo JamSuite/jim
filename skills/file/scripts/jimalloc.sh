@@ -3298,6 +3298,16 @@ alloc_partition_spec_publish_builder() {
       return 1
     fi
     if [[ -z "${live[$oldc]:-}" ]]; then
+      # A source whose GROUP was renamed concurrently is the retryable shape —
+      # the claims live on under the redirect, and every source in a split
+      # shares one group. Name the redirect so the consumer re-runs against
+      # the current name instead of reporting a terminal failure.
+      local sredirect
+      sredirect="$(printf '%s\n' "$cur_specs" | alloc_group_redirect "${oldc%/*}")"
+      if [[ "$sredirect" != "${oldc%/*}" ]]; then
+        echo "error: group renamed — '${oldc%/*}' is now '$sredirect'; re-run the batch with its source ids under that name" >&2
+        return 1
+      fi
       echo "error: partition-batch refuses '$oldc' — the registry holds no live claim on it (never allocated, or already moved away)" >&2
       return 1
     fi
@@ -3319,7 +3329,7 @@ alloc_partition_spec_publish_builder() {
       local redirect
       redirect="$(printf '%s\n' "$cur_specs" | alloc_group_redirect "$grp")"
       if [[ "$redirect" != "$grp" ]]; then
-        echo "error: group renamed — '$grp' is now '$redirect'; re-run the batch against that name" >&2
+        echo "error: group renamed — '$grp' is now '$redirect'; rewrite the batch's destination ids under that name and re-run" >&2
         return 1
       fi
       printf '%s' "$cur_specs" | alloc_group_present "$grp" \
@@ -3683,6 +3693,15 @@ alloc_lift_states() {
             "$kind" "$(alloc_sanitize_field "$src")" "$(alloc_sanitize_field "$dst")" "$date"
           continue
         fi
+        ;;
+      *)
+        # An unrecognised kind never reaches the state decision: its tokens
+        # are ledger content and this is the one path that would otherwise
+        # echo them raw.
+        printf '%s\t%s\t%s\t%s\trefused:unknown-event\n' \
+          "$(alloc_sanitize_field "$kind")" "$(alloc_sanitize_field "$src")" \
+          "$(alloc_sanitize_field "$dst")" "$date"
+        continue
         ;;
     esac
     # The reserved blueprint slot is never a writer's operand: no legitimate

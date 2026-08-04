@@ -110,6 +110,12 @@ field_value() {
 # jimfile.sh, whose rejection message is noise on what is only a shape probe.
 prov_id_boundary() { jf valid-id "$1" >/dev/null 2>&1; }
 
+# display_field <raw> — reduce an untrusted token to something safe to echo in
+# a diagnostic: control bytes stripped, length capped. Mirrors jimpartition's
+# san_field contract; used on values whose whole reason for being printed is
+# that they just failed a gate.
+display_field() { printf '%s' "$1" | tr -d '\000-\037\177' | cut -c1-512; }
+
 # is_prov_token <token>
 #   Exit 0 iff <token> is the reserved provisional ordinal form the allocator
 #   issues: the prefix, then an 8-digit issuance date, then a slug, with the
@@ -308,7 +314,7 @@ apply_pending() {
     # manual surgery realization exists to avoid.
     newgroup="${real%/*}"
     if ! jf valid-id "$newgroup" >/dev/null 2>&1; then
-      echo "error: $pend — the registry answers under group '$newgroup', which is not a usable group name; nothing applied for this identity" >&2
+      echo "error: $pend — the registry answers under group '$(display_field "$newgroup")', which is not a usable group name; nothing applied for this identity" >&2
       failed=1; continue
     fi
     ord="${real##*/}"
