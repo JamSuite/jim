@@ -724,6 +724,31 @@ case_jimfile_is_prov_token_triplicate_identical() {
   assert_eq "reconcile.sh copy matches jimfile.sh" "$a" "$c"
 }
 
+# The shared is_prov_token body delegates every charset decision to each
+# file's prov_id_boundary shim and PROV_PREFIX constant — the boundary is
+# where the rule's security content lives, so the copies that DECIDE are
+# pinned as hard as the copy that was easy to keep byte-identical. The shims
+# legitimately differ (each is that file's route to the one is_valid_id rule),
+# so each is pinned verbatim: loosening any one fails here, deliberately.
+case_jimfile_prov_boundary_shims_and_prefixes_pinned() {
+  assert_eq "jimfile shim routes through is_valid_id" \
+    'prov_id_boundary() { is_valid_id "$1" >/dev/null 2>&1; }' \
+    "$(grep -E '^prov_id_boundary\(\)' "$REPO_ROOT/skills/file/scripts/jimfile.sh")"
+  assert_eq "jimalloc shim routes through alloc_valid_token" \
+    'prov_id_boundary() { alloc_valid_token "$1"; }' \
+    "$(grep -E '^prov_id_boundary\(\)' "$REPO_ROOT/skills/file/scripts/jimalloc.sh")"
+  assert_eq "reconcile shim routes through jf valid-id" \
+    'prov_id_boundary() { jf valid-id "$1" >/dev/null 2>&1; }' \
+    "$(grep -E '^prov_id_boundary\(\)' "$REPO_ROOT/skills/spec/scripts/reconcile.sh")"
+  local p
+  p="$(grep -h 'PROV_PREFIX="' \
+       "$REPO_ROOT/skills/file/scripts/jimfile.sh" \
+       "$REPO_ROOT/skills/file/scripts/jimalloc.sh" \
+       "$REPO_ROOT/skills/spec/scripts/reconcile.sh" \
+       | sed 's/^readonly //' | sort -u)"
+  assert_eq "one prefix value across the three copies" 'PROV_PREFIX="P-"' "$p"
+}
+
 # AC 15: the shared rule carries the slug through the id boundary too, so a
 # token the allocator could never mint — its slug leading with a separator — is
 # refused rather than composed into a directory name.
