@@ -418,6 +418,41 @@ alloc_realize_scan() {
   done
 }
 
+# alloc_realize_fold   (log on stdin)
+#   THE duplicate-realize decision, stated once for every reader. A token
+#   realized by one record — or by the same (token, ordinal) pair recorded
+#   again — is realized. Two records naming different ordinals for one token
+#   are a contradiction the registry's uniqueness cannot represent: answering
+#   from either record hands back a confidently wrong referent, so the token
+#   is reported as conflicted with both positions named, the same treatment a
+#   duplicate allocate gets. Emits one row per token, sorted:
+#     REAL\t<prov>\t<ordinal>\t<pos>    — established, by its first record
+#     CONFLICT\t<prov>\t<pos1>\t<pos2>  — first establishing and first
+#                                         contradicting record positions
+#   Only rows whose two sides both validate participate; a degraded side is
+#   already named by the scan and folds to nothing here.
+alloc_realize_fold() {
+  local zp zpok zr zrok zpos
+  local -A real_of=() pos_of=() con_a=() con_b=()
+  while IFS=$'\t' read -r zp zpok zr zrok _ _ zpos; do
+    [[ "$zpok" == y && "$zrok" == y ]] || continue
+    if [[ -z "${real_of[$zp]:-}" ]]; then
+      real_of["$zp"]="$zr"; pos_of["$zp"]="$zpos"
+    elif [[ "${real_of[$zp]}" != "$zr" && -z "${con_b[$zp]:-}" ]]; then
+      con_a["$zp"]="${pos_of[$zp]}"; con_b["$zp"]="$zpos"
+    fi
+  done < <(alloc_realize_scan spec)
+  local p
+  for p in $(printf '%s\n' "${!real_of[@]}" | LC_ALL=C sort); do
+    [[ -n "$p" ]] || continue
+    if [[ -n "${con_b[$p]:-}" ]]; then
+      printf 'CONFLICT\t%s\t%s\t%s\n' "$p" "${con_a[$p]}" "${con_b[$p]}"
+    else
+      printf 'REAL\t%s\t%s\t%s\n' "$p" "${real_of[$p]}" "${pos_of[$p]}"
+    fi
+  done
+}
+
 # alloc_known_verbs — the kind/verb pairs this build knows, one per line. The
 # scan rules decide what a KNOWN record must look like; this decides which pairs
 # are known at all, so the two answers cannot drift apart.
@@ -502,11 +537,15 @@ alloc_resolve_spec() {
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]} i c1 c2 c3
   if alloc_valid_provid "$queried"; then
-    local zprov zpok zreal zrok realized=0
-    while IFS=$'\t' read -r zprov zpok zreal zrok _ _ _; do
-      [[ "$zpok" == y && "$zrok" == y && "$zprov" == "$queried" ]] || continue
-      queried="$zreal"; realized=1
-    done < <(printf '%s\n' ${lines[@]+"${lines[@]}"} | alloc_realize_scan spec)
+    local zorig="$queried" ztag zprov za zb realized=0
+    while IFS=$'\t' read -r ztag zprov za zb; do
+      [[ "$zprov" == "$zorig" ]] || continue
+      if [[ "$ztag" == CONFLICT ]]; then
+        echo "error: provisional spec id '$zorig' is realized twice in the registry — records $za and $zb name different ordinals; refusing to answer" >&2
+        return 1
+      fi
+      queried="$za"; realized=1
+    done < <(printf '%s\n' ${lines[@]+"${lines[@]}"} | alloc_realize_fold)
     if (( ! realized )); then
       echo "error: provisional spec id '$queried' has not been realized" >&2
       return 1
@@ -3455,8 +3494,8 @@ cmd_resolve() {
 ALLOC_LIFT_MARKER="jim-lift"
 
 # alloc_lift_state <kind> <src> <dst>   — decide one row against the caller's
-#   corroboration state (`live`, `have_rn`, `have_rz`, `rz_of`, `log`, all
-#   supplied by alloc_lift_states through dynamic scope, the same way an
+#   corroboration state (`live`, `have_rn`, `rz_real`, `rz_conflict`, `log`,
+#   all supplied by alloc_lift_states through dynamic scope, the same way an
 #   alloc_publish builder reaches its caller's locals). Prints one of:
 #     emit | have | refused:<reason>
 #
@@ -3474,8 +3513,14 @@ alloc_lift_state() {
   local kind="$1" src="$2" dst="$3" key
   case "$kind" in
     realize)
-      [[ -n "${have_rz[$src	$dst]:-}" ]] && { printf 'have\n'; return 0; }
-      if [[ -n "${rz_of[$src]:-}" ]]; then
+      # A token the registry already realized twice has no single referent;
+      # every row naming it is refused — including a recorded pair, which must
+      # not report the contradiction as held.
+      if [[ -n "${rz_conflict[$src]:-}" ]]; then
+        printf 'refused:source-conflict\n'; return 0
+      fi
+      [[ "${rz_real[$src]:-}" == "$dst" && -n "$dst" ]] && { printf 'have\n'; return 0; }
+      if [[ -n "${rz_real[$src]:-}" ]]; then
         printf 'refused:source-conflict\n'; return 0
       fi
       [[ -n "${live[$dst]:-}" ]] || { printf 'refused:destination-not-established\n'; return 0; }
@@ -3511,18 +3556,20 @@ alloc_lift_state() {
 alloc_lift_states() {
   local -a lines=(); mapfile -t lines
   local log=""; (( ${#lines[@]} )) && log="$(printf '%s\n' "${lines[@]}")"
-  local -A live=() have_rn=() have_rz=() rz_of=()
+  local -A live=() have_rn=() rz_real=() rz_conflict=()
   alloc_live_claim_set < <(printf '%s\n' "$log")
-  local rk rsrc rsok rdst rdok zp zpok zr zrok
+  local rk rsrc rsok rdst rdok ztag zp za zb
   while IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ _; do
     [[ "$rsok" == y && "$rdok" == y ]] || continue
     have_rn["$rk"$'\t'"$rsrc"$'\t'"$rdst"]=1
   done < <(printf '%s\n' "$log" | alloc_rename_scan spec)
-  while IFS=$'\t' read -r zp zpok zr zrok _ _ _; do
-    [[ "$zpok" == y && "$zrok" == y ]] || continue
-    have_rz["$zp"$'\t'"$zr"]=1
-    rz_of["$zp"]="$zr"
-  done < <(printf '%s\n' "$log" | alloc_realize_scan spec)
+  while IFS=$'\t' read -r ztag zp za zb; do
+    if [[ "$ztag" == CONFLICT ]]; then
+      rz_conflict["$zp"]=1
+    else
+      rz_real["$zp"]="$za"
+    fi
+  done < <(printf '%s\n' "$log" | alloc_realize_fold)
   local row kind src dst date canon state
   for row in "$@"; do
     IFS=$'\t' read -r kind src dst date <<< "$row"
