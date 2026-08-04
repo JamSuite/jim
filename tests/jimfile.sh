@@ -151,10 +151,6 @@ case_jimfile_next_id_spec_group_form_retired() {
   assert_match "points at the allocator" "jimalloc" "$ERR"
 }
 
-# ─── spec 047: next-id vacated-id floor (consults the specs-root ledger) ──────
-
-
-
 # AC: path blueprint <group> resolves the reserved 000-blueprint/spec.md slot
 case_jimfile_path_blueprint_resolves_reserved_slot() {
   local specs cfg

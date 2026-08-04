@@ -1487,6 +1487,19 @@ case_jimledger_move_spec_dir_moves() {
     "$(git -C "$root" diff --cached --name-only)"
 }
 
+# The widened source gate stays charset-closed: a P-shaped basename that is
+# not the reserved form — short date, or a slug the boundary refuses — is
+# refused before any path resolves.
+case_jimledger_move_spec_dir_refuses_malformed_provisional_source() {
+  local root bad
+  root="$(move_git_fixture msd_badprov)"
+  for bad in 'P-2026080-short' 'P-20260801--lead' 'P-20260801-UPPER'; do
+    run_jimledger_in "$root" move-spec-dir docs/specs cart "$bad" checkout 001-x
+    assert_exit "refused: $bad" 1 "$RC"
+    assert_match "names the source gate: $bad" 'source basename' "$ERR"
+  done
+}
+
 # The move primitive accepts every ordinal the allocator can mint: a group
 # past 999 allocates 4-digit ordinals, and a gate pinned to exactly three
 # digits strands them — allocatable but unmovable, unrenumberable, unrealizable
@@ -1645,11 +1658,45 @@ case_jimledger_move_spec_dir_refuses_pathspec_magic() {
   assert_match "refused at tracked-check, not git mv" 'not tracked' "$ERR"
 }
 
-# ─── spec 047: vacated-max (vacated-id floor source) ─────────────────────────
+# ─── pair-events (durable identity pairs → lift rows) ────────────────────────
 
-# security Finding 2: the floor is the highest OLD number a split vacated FROM the
-# group — here cart/006..009 left, so vacated-max cart is 009 (3-digit).
-# AC 9: vacated-max retires with the tree-scan next-id it floored. Its only
+# The lift's whole input surface: split/merge moved= pairs become spec rows,
+# realized moved= pairs become realize rows, a rename event becomes one group
+# row — each side gated awk-side, so a malformed token never leaves the parser.
+case_jimledger_pair_events_emits_each_kind() {
+  local sd
+  sd="$(empty_dir pe_kinds/spec)"
+  printf '%s\n' \
+    $'100\t2026-07-25T08:05:20Z\tpartition\tfinished\ttier=project;op=split;old=cart;new=cart,checkout;moved=cart/006:checkout/001' \
+    $'101\t2026-07-26T09:00:00Z\tspec\trealized\tmoved=core/P-20260720-x:core/007' \
+    $'102\t2026-07-27T10:00:00Z\tpartition\tfinished\ttier=project;op=rename;old=dashboard;new=ui' \
+    > "$sd/ledger.md"
+  run_jimledger pair-events "$sd"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "split pair"    $'^spec\tcart/006\tcheckout/001\t20260725$'      "$OUT"
+  assert_match "realize pair"  $'^realize\tcore/P-20260720-x\tcore/007\t20260726$' "$OUT"
+  assert_match "rename event"  $'^group\tdashboard\tui\t20260727$'              "$OUT"
+}
+
+# Fail-closed on every gate: an event whose timestamp is not a date yields no
+# rows, a pair whose ordinal is below the canonical spelling is dropped, and a
+# side whose group fails the slug charset never leaves the parser.
+case_jimledger_pair_events_drops_ungated_rows() {
+  local sd
+  sd="$(empty_dir pe_gates/spec)"
+  printf '%s\n' \
+    $'100\tnot-a-date\tpartition\tfinished\ttier=project;op=split;old=a;new=b;moved=a/001:b/001' \
+    $'101\t2026-07-25T08:05:20Z\tpartition\tfinished\ttier=project;op=split;old=a;new=b;moved=a/01:b/001' \
+    $'102\t2026-07-25T08:05:20Z\tpartition\tfinished\ttier=project;op=split;old=a;new=b;moved=BAD_GRP/001:b/002' \
+    > "$sd/ledger.md"
+  run_jimledger pair-events "$sd"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "nothing leaves the parser" "" "$OUT"
+}
+
+# ─── vacated-max stays retired ───────────────────────────────────────────────
+
+# vacated-max retired with the tree-scan next-id it floored. Its only
 # production consumer is gone, and the registry's own fold subsumes the floor —
 # a rename source is an ordinal the group can never reissue, recorded rather
 # than inferred from an event a fresh clone may not share.
@@ -1660,8 +1707,6 @@ case_jimledger_vacated_max_retired() {
   assert_exit "unknown subcommand" 2 "$RC"
   assert_eq   "no floor on stdout"  "" "$OUT"
 }
-
-# ─── spec 048: vacated-max accepts op=merge ──────────────────────────────────
 
 # ─── spec 047: commit-split (the split's docs commit) ────────────────────────
 

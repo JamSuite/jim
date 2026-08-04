@@ -2458,7 +2458,45 @@ case_jimalloc_classify_spec_group_rename_onto_occupied() {
     "$(printf '%s\n' 'spec allocate core/001 alpha 20260726 jane' \
                      'spec allocate ui/001 beta 20260726 kai' \
                      'group rename core ui 20260727 x')"
-  assert_match "occupied destination reported" '^DUP-ORD	spec	ui/001	' "$OUT"
+  assert_match "occupied destination reported" '^DUP-ORD	spec	ui/001	records 2 and 3$' "$OUT"
+}
+
+# AC 6 provenance: when the earlier claim ARRIVED by group rename, the
+# duplicate names the rename record as the first claimant — records 2 and 3
+# here, where naming the source's allocate (record 1) would send a reader to a
+# record that claims a different identity.
+case_jimalloc_classify_spec_group_arm_provenance_names_the_rename() {
+  run_classify alloc_classify_spec "" \
+    "$(printf '%s\n' 'spec allocate a/001 alpha 20260726 jane' \
+                     'group rename a b 20260727 x' \
+                     'spec allocate b/001 beta 20260728 kai')"
+  assert_match "the rename record is the earlier claimant" \
+    '^DUP-ORD	spec	b/001	records 2 and 3$' "$OUT"
+}
+
+# An issue self-rename moves a claim onto itself: the claim must survive it —
+# vacated-by-its-own-arrival would erase a live identity from the registry's
+# answer while its file still sits in the tree.
+case_jimalloc_classify_issue_self_rename_claim_survives() {
+  local log out
+  log=$(printf '%s\n' 'issue allocate 7 20260726-a 20260726 jane' \
+                      'issue rename 7 7 20260727 x')
+  run_classify alloc_classify_issue "" "$log"
+  assert_eq   "no duplicate reported" "" "$(printf '%s\n' "$OUT" | grep '^DUP-ORD' || true)"
+  assert_match "the claim is still live" '^INFO-NO-TREE	issue	7	' "$OUT"
+  out="$(source "$SCRIPT_jimalloc"; alloc_resolve_issue 7 <<< "$log")"
+  assert_eq "still resolves to itself" "7" "$out"
+}
+
+# The issue arm carries the same provenance rule as the spec arm: a claim that
+# arrived by rename is named by its rename record's position.
+case_jimalloc_classify_issue_arm_provenance_names_the_rename() {
+  run_classify alloc_classify_issue "" \
+    "$(printf '%s\n' 'issue allocate 7 20260726-a 20260726 jane' \
+                     'issue rename 7 8 20260727 x' \
+                     'issue allocate 8 20260728-b 20260728 kai')"
+  assert_match "the rename record is the earlier claimant" \
+    '^DUP-ORD	issue	8	records 2 and 3$' "$OUT"
 }
 
 # AC 6: a group self-rename is inert — it moves every claim onto itself, so the
@@ -3700,6 +3738,22 @@ case_jimalloc_lift_refuses_claimed_source() {
   run_jimalloc_in "$repo" lift --apply
   assert_exit  "rc" 1 "$RC"
   assert_match "refused by name" 'refused:source-claimed' "$OUT"
+}
+
+# The lift's group kind end to end: a partition rename event becomes one
+# `group rename` record when the destination is independently established, and
+# a re-run reports it held.
+case_jimalloc_lift_group_kind_lifts_and_holds() {
+  local repo specs
+  repo="$(sweep_repo lift_grp)"
+  lift_ledger "$repo" \
+    "$(printf '1784966720\t2026-07-25T08:05:20Z\tpartition\tfinished\ttier=project;op=rename;old=dashboard;new=ui')"
+  run_jimalloc_in "$repo" lift --apply
+  assert_exit "rc" 0 "$RC"
+  specs="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  assert_match "record written" '^group rename dashboard ui 20260725 jim-lift$' "$specs"
+  run_jimalloc_in "$repo" lift
+  assert_match "re-run reports it held" '^group	dashboard	ui	20260725	have$' "$OUT"
 }
 
 # An unrecognised event kind is refused with every echoed field gated — the

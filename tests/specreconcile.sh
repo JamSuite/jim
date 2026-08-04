@@ -1415,22 +1415,6 @@ case_specreconcile_realized_event_chunks_at_boundaries() {
   fi
 }
 
-# AC: the realize record feeds no vacated-id floor — a provisional never held a
-# real ordinal, so it vacates nothing and next-id must be unaffected by it.
-case_specreconcile_realized_event_inert_to_vacated_max() {
-  local repo before after
-  repo="$(specrec_repo sr_event_vacated)"
-  specrec_prov_dir "$repo" sdlc P-20260728-alpha
-  mkdir -p "$repo/docs/specs"
-  before="$( cd "$repo" && bash "$REPO_ROOT/skills/ledger/scripts/jimledger.sh" \
-    vacated-max docs/specs sdlc 2>/dev/null )"
-  run_specreconcile_in "$repo" --apply
-  assert_exit "rc" 0 "$RC"
-  after="$( cd "$repo" && bash "$REPO_ROOT/skills/ledger/scripts/jimledger.sh" \
-    vacated-max docs/specs sdlc 2>/dev/null )"
-  assert_eq "vacated floor unchanged by realization" "$before" "$after"
-}
-
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
