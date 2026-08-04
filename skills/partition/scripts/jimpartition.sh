@@ -937,7 +937,7 @@ pending_provisionals() {
 #   it happens before the operator has been shown a plan.
 check_pending_provisionals() {
   local specs_dir="$1"; shift
-  local g pend rc=0
+  local g pend shown rc=0
   for g in "$@"; do
     # Slug-gate before the filesystem probe — never glob an unvalidated
     # component. Rename and split gate their group at entry, so this changes
@@ -949,8 +949,14 @@ check_pending_provisionals() {
     fi
     pend="$(pending_provisionals "$specs_dir" "$g")"
     if [[ -n "$pend" ]]; then
-      emit_check pending-provisionals fail "$g: $pend"
-      echo "error: pending provisional spec(s) in $(san_field "$g"): $(san_field "$pend")" \
+      # The fact's whole point is naming EVERY pending identity, so a display
+      # cut must say so — a capped list with no note reads as the whole list
+      # (the sweep's truncation discipline). Capped below the emit_check field
+      # limit so the note itself survives the fact's own sanitizer.
+      shown="$(san_field "$pend" | cut -c1-256)"
+      [[ "$shown" != "$pend" ]] && shown="$shown … (list truncated)"
+      emit_check pending-provisionals fail "$g: $shown"
+      echo "error: pending provisional spec(s) in $(san_field "$g"): $shown" \
            "— realize them first (/jim:spec reconcile), then re-run" >&2
       rc=1
     else
