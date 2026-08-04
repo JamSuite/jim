@@ -180,6 +180,35 @@ alloc_valid_token() {
   [[ "${ALLOC_TOKEN_OK[$tok]}" == y ]]
 }
 
+# alloc_warm_token_memo   (log on stdin)
+#   Validate, IN THE CALLER'S SHELL, every token this log can send through the
+#   id boundary, so the memo is warm before any capture subshell forks — a
+#   subshell inherits the cache but cannot write back. Purely advisory: it
+#   duplicates the grammar's token positions, but a missed field only costs
+#   speed (the consumer validates it cold, correctly) and never correctness,
+#   so this list may lag the grammar without breaking anything.
+alloc_warm_token_memo() {
+  local c1 c2 c3 c4 _rest tok
+  while read -r c1 c2 c3 c4 _rest; do
+    case "$c1 $c2" in
+      'spec allocate')  alloc_valid_token "${c3%%/*}" || true
+                        alloc_valid_token "${c4:-}"   || true ;;
+      'group allocate') alloc_valid_token "${c3:-}"   || true ;;
+      'issue allocate') alloc_valid_token "${c4:-}"   || true ;;
+      'spec rename')    alloc_valid_token "${c3%%/*}" || true
+                        alloc_valid_token "${c4%%/*}" || true ;;
+      'group rename')   alloc_valid_token "${c3:-}"   || true
+                        alloc_valid_token "${c4:-}"   || true ;;
+      'spec realize')   alloc_valid_token "${c3%%/*}" || true
+                        alloc_valid_token "${c4%%/*}" || true
+                        tok="${c3##*/}"
+                        [[ "$tok" == "$PROV_PREFIX"* ]] \
+                          && { alloc_valid_token "${tok#"$PROV_PREFIX"}" || true; } ;;
+    esac
+  done
+  return 0
+}
+
 # alloc_is_prov_form <name> — exit 0 iff <name> is the reserved provisional
 # ordinal form: the reserved prefix over a boundary-valid token, exactly what
 # alloc_prov_ordinal builds. Narrow by construction — a name that merely starts
@@ -2851,11 +2880,18 @@ cmd_sweep() {
   # A tree the derivation refuses is a tree this comparison cannot read. That is
   # could-not-check, not clean and not drift: the offenders are already named on
   # stderr by the derivation itself.
+  # The logs are read and the id-boundary memo warmed IN THIS SHELL before any
+  # pass forks — including the tree derivations, whose tokens are the same
+  # names the registry holds. A capture subshell inherits the cache but cannot
+  # write its misses back, so a cold miss inside one costs a jimfile
+  # subprocess every time it recurs.
+  local spec_log issue_log
+  spec_log="$(alloc_read_log spec)"; issue_log="$(alloc_read_log issue)"
+  alloc_warm_token_memo <<< "$spec_log"
+  alloc_warm_token_memo <<< "$issue_log"
   local spec_rec issue_rec
   spec_rec="$(alloc_seed_derive_specs "$specs_root")" || return 4
   issue_rec="$(alloc_seed_derive_issues "$issues_dir")" || return 4
-  local spec_log issue_log
-  spec_log="$(alloc_read_log spec)"; issue_log="$(alloc_read_log issue)"
   # Derived records reach the classifier through a process substitution, never a
   # temp file — the allocator's only filesystem write stays the erosion baseline.
   local spec_rows issue_rows
