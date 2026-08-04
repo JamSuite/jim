@@ -2675,11 +2675,18 @@ alloc_group_has_records() {
   done
   # A group the registry only ever recorded VACATING ordinals is still a group
   # the registry knows: the rename source is its coverage, which is what a
-  # retired group's records amount to after every id has moved away.
+  # retired group's records amount to after every id has moved away. And a
+  # group-rename DESTINATION establishes the new name — the record moves every
+  # claim under it, though it writes no allocate of its own — so a group whose
+  # name came from a prior rename is held too.
   if (( n )); then
-    while IFS=$'\t' read -r rk rsrc rsok _ _ _ _ _; do
-      [[ "$rk" == spec && "$rsok" == y ]] || continue
-      [[ "${rsrc%/*}" == "$group" ]] && return 0
+    while IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ _; do
+      if [[ "$rk" == spec && "$rsok" == y && "${rsrc%/*}" == "$group" ]]; then
+        return 0
+      fi
+      if [[ "$rk" == group && "$rdok" == y && "$rdst" == "$group" ]]; then
+        return 0
+      fi
     done < <(printf '%s\n' "${lines[@]}" | alloc_rename_scan spec)
   fi
   return 1
