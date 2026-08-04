@@ -2799,6 +2799,29 @@ case_jimalloc_sweep_names_non_coverage() {
   assert_match "rename sources counted" '^    rename-source-ids	0$'    "$OUT"
 }
 
+# The id-boundary memo warms in the sweep's own shell before any pass forks: a
+# capture subshell inherits the cache but cannot write its misses back, so
+# without the warm every pass re-pays one jimfile subprocess per token —
+# measured at 826 forks per sweep on live logs, 535 of them repeats. Pinned by
+# counting boundary crossings through a wrapper: no token may cross twice.
+case_jimalloc_sweep_validates_each_token_once() {
+  local repo probe
+  repo="$(sweep_repo sweep_memo)"
+  probe="$TMP_BASE/memo_probe"
+  mkdir -p "$probe/skills/conf" "$probe/skills/ledger"
+  cp -r "$REPO_ROOT/skills/file"           "$probe/skills/file"
+  cp -r "$REPO_ROOT/skills/conf/scripts"   "$probe/skills/conf/scripts"
+  cp -r "$REPO_ROOT/skills/ledger/scripts" "$probe/skills/ledger/scripts"
+  mv "$probe/skills/file/scripts/jimfile.sh" "$probe/skills/file/scripts/jimfile-real.sh"
+  printf '#!/usr/bin/env bash\nprintf "%%s %%s\\n" "${1:-}" "${2:-}" >> "%s/forks.log"\nexec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/jimfile-real.sh" "$@"\n' \
+    "$probe" > "$probe/skills/file/scripts/jimfile.sh"
+  : > "$probe/forks.log"
+  ( cd "$repo" && bash "$probe/skills/file/scripts/jimalloc.sh" sweep > /dev/null 2>&1 )
+  assert_nonempty "the boundary was consulted at all" "$(cat "$probe/forks.log")"
+  assert_eq "no token crosses the boundary twice" "" \
+    "$(grep '^valid-id ' "$probe/forks.log" | sort | uniq -d)"
+}
+
 # AC 3 (security finding 6): a retired or partition-source group has no
 # derivable rows AND no registry records, so a tree-vs-registry comparison never
 # sees it at all. It is named as uncovered rather than passing silently — jim's
