@@ -65,7 +65,7 @@ usage: jimpartition.sh <subcommand> [args]
   rename-preflight <map> <specs-dir> <old> <new>   CHECK/DIRT/TERRITORY-IDENTITY
   split-preflight <map> <specs-dir> <old> <new>...  ARM/CHECK/DIRT/TERRITORY-IDENTITY
   merge-preflight <map> <specs-dir> <target> <src>...  ARM/EFFECTIVE/CHECK/COLLAPSE/DIRT
-  renumber-map <old> <targets-csv> <assign-file>   split spec renumber remap → MAP
+  renumber-map <old> <targets-csv> <assign-file> <child>=<start>...   split spec renumber remap → MAP
   merge-map <specs-dir> <target> <start> <src>...  merge spec renumber-append remap → MAP
   occurrences <slug> <path>...                  whole-token hits → HIT file line kind
   rewrite-identity [--skip-typed-refs] <old> <new> <file>...  in-place identity rewrite → REWROTE file line kind
@@ -1368,20 +1368,27 @@ cmd_merge_preflight() {
   return 0
 }
 
-# cmd_renumber_map <old> <targets-csv> <assign-file> — compute the full spec
-#   renumber remap for a split, the deterministic id arithmetic the
-#   gate presents verbatim (no LLM arithmetic). Each assign
+# cmd_renumber_map <old> <targets-csv> <assign-file> <child>=<start>... —
+#   compute the full spec renumber remap for a split, the deterministic id
+#   arithmetic the gate presents verbatim (no LLM arithmetic). Each assign
 #   line is `<NNN[-wip]>\t<child>` (child ∈ targets). Emits one
 #   `MAP\t<old>/<src>\t<child>/<new>` per assignment: a continuing child
-#   (child == old) keeps its numbers; a fresh child renumbers its arrivals to a
-#   dense 001..N ordered by ascending source number (a `-wip` row rides in the
-#   same sequence, suffix preserved). rc 0 · 1 validation (unknown child,
-#   duplicate source, bad shape) · 2 usage.
+#   (child == old) keeps its numbers; a fresh child renumbers its arrivals
+#   densely from its <start>, ordered by ascending source number (a `-wip` row
+#   rides in the same sequence, suffix preserved). Every fresh child REQUIRES a
+#   start — the ordinal part of `jimalloc.sh peek spec <child>` stdout, copied
+#   verbatim — because the registry never reissues a vacated ordinal, so a
+#   child name that was previously retired must resume above its high-water
+#   rather than assume 001. The peek is advisory; what binds the ids is the
+#   Close's `partition-batch spec`, which refuses any ordinal claimed or spent
+#   in the meantime. rc 0 · 1 validation (unknown child, duplicate source, bad
+#   shape, id space exhausted — no partial output) · 2 usage / bad start.
 cmd_renumber_map() {
   local old="${1:-}" targets_csv="${2:-}" assign="${3:-}"
   if [[ -z "$old" || -z "$targets_csv" || -z "$assign" ]]; then
-    echo "jimpartition renumber-map: need <old> <targets-csv> <assign-file>" >&2; return 2
+    echo "jimpartition renumber-map: need <old> <targets-csv> <assign-file> <child>=<start>..." >&2; return 2
   fi
+  shift 3
   if ! valid_slug "$old"; then
     echo "jimpartition renumber-map: invalid old slug: $old" >&2; return 2
   fi
@@ -1396,6 +1403,38 @@ cmd_renumber_map() {
   local t
   for t in "${targets[@]}"; do
     valid_slug "$t" || { echo "jimpartition renumber-map: invalid target slug: $t" >&2; return 2; }
+  done
+
+  # Per-fresh-child starts: <child>=<NNN>, child a fresh target, NNN a 3-digit
+  # nonzero id. Required for every fresh child, refused for the continuing one.
+  local -A start_of=()
+  local arg schild snnn
+  for arg in "$@"; do
+    if [[ "$arg" != *=* ]]; then
+      echo "jimpartition renumber-map: bad start (want <child>=<NNN>): $arg" >&2; return 2
+    fi
+    schild="${arg%%=*}"; snnn="${arg#*=}"
+    local known=0
+    for t in "${targets[@]}"; do [[ "$schild" == "$t" ]] && known=1; done
+    if [[ $known -eq 0 ]]; then
+      echo "jimpartition renumber-map: start names an unknown child: $schild" >&2; return 2
+    fi
+    if [[ "$schild" == "$old" ]]; then
+      echo "jimpartition renumber-map: the continuing child keeps its numbers — no start for: $schild" >&2; return 2
+    fi
+    if [[ ! "$snnn" =~ ^[0-9]{3}$ ]] || (( 10#$snnn < 1 )); then
+      echo "jimpartition renumber-map: start must be a 3-digit id 001-999: $arg" >&2; return 2
+    fi
+    if [[ -n "${start_of[$schild]:-}" ]]; then
+      echo "jimpartition renumber-map: duplicate start for: $schild" >&2; return 2
+    fi
+    start_of["$schild"]=$((10#$snnn))
+  done
+  for t in "${targets[@]}"; do
+    [[ "$t" == "$old" ]] && continue
+    if [[ -z "${start_of[$t]:-}" ]]; then
+      echo "jimpartition renumber-map: missing start for fresh child: $t (pass $t=<NNN>, the ordinal part of jimalloc.sh peek spec $t)" >&2; return 2
+    fi
   done
 
   local rowsfile
@@ -1434,9 +1473,12 @@ cmd_renumber_map() {
   local sorted="$rowsfile.sorted"
   sort -t$'\t' -k2,2n -k3,3 "$rowsfile" > "$sorted"
 
+  # Rows are buffered so an overflow returns rc 1 with no partial output —
+  # the gate presents this map verbatim, so half a map must never print.
   local ch seq srctok suffix newtok _c _n
+  local -a out_rows=()
   for ch in "${targets[@]}"; do
-    seq=0
+    seq="${start_of[$ch]:-0}"
     while IFS=$'\t' read -r _c _n srctok; do
       [[ -z "${srctok:-}" ]] && continue
       suffix=""
@@ -1444,13 +1486,19 @@ cmd_renumber_map() {
       if [[ "$ch" == "$old" ]]; then
         newtok="$srctok"                       # continuing child keeps its number
       else
+        if (( seq > 999 )); then
+          echo "jimpartition renumber-map: id space exhausted for $ch (would exceed 999)" >&2
+          rm -f "$rowsfile" "$sorted"; return 1
+        fi
+        newtok="$(printf '%03d' "$seq")$suffix" # fresh child: dense from its start
         seq=$(( seq + 1 ))
-        newtok="$(printf '%03d' "$seq")$suffix" # fresh child: dense 001..N
       fi
-      printf 'MAP\t%s/%s\t%s/%s\n' "$old" "$srctok" "$ch" "$newtok"
+      out_rows+=("$(printf 'MAP\t%s/%s\t%s/%s' "$old" "$srctok" "$ch" "$newtok")")
     done < <(awk -F'\t' -v c="$ch" '$1==c' "$sorted")
   done
   rm -f "$rowsfile" "$sorted"
+  local r
+  for r in "${out_rows[@]}"; do printf '%s\n' "$r"; done
   return 0
 }
 

@@ -1929,7 +1929,7 @@ case_jimpartition_renumber_map_start_overflow_rc1() {
 case_jimpartition_renumber_map_unknown_child_rc1() {
   local assign
   assign=$(fixture rm-unk.txt $'006\tnonesuch')
-  run_jimpartition renumber-map cart cart,checkout "$assign"
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001
   assert_exit "rc" 1 "$RC"
 }
 
@@ -1937,7 +1937,7 @@ case_jimpartition_renumber_map_unknown_child_rc1() {
 case_jimpartition_renumber_map_duplicate_source_rc1() {
   local assign
   assign=$(fixture rm-dup.txt $'006\tcheckout\n006\tcheckout')
-  run_jimpartition renumber-map cart cart,checkout "$assign"
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001
   assert_exit "rc" 1 "$RC"
 }
 
@@ -1945,7 +1945,7 @@ case_jimpartition_renumber_map_duplicate_source_rc1() {
 case_jimpartition_renumber_map_bad_shape_rc1() {
   local assign
   assign=$(fixture rm-bad.txt $'6\tcheckout')
-  run_jimpartition renumber-map cart cart,checkout "$assign"
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001
   assert_exit "rc" 1 "$RC"
 }
 
