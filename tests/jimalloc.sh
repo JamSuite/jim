@@ -713,6 +713,30 @@ case_jimalloc_realize_malformed_is_unreadable() {
   assert_match "counted unreadable" '^CHECKED	unreadable	spec	1$' "$OUT"
 }
 
+# realize has no group form: a `group realize` line is an unknown verb, not a
+# malformed realize — one crafted line must land in exactly one non-coverage
+# counter, or the sweep's numbers stop reconciling against the record count.
+case_jimalloc_group_realize_counts_in_exactly_one_counter() {
+  local log m u
+  log='group realize core/P-20260802-a core/007 20260802 jane'
+  m="$(source "$SCRIPT_jimalloc"; alloc_malformed_count spec realize alloc_realize_scan <<< "$log")"
+  u="$(source "$SCRIPT_jimalloc"; alloc_unknown_verb_count <<< "$log")"
+  assert_eq "not a malformed realize" "0" "$m"
+  assert_eq "an unknown verb"         "1" "$u"
+}
+
+# Every function declares its own locals: the classifier's tree-derivation
+# variables must not leak into the caller's scope when invoked un-subshelled.
+case_jimalloc_classify_spec_leaks_no_globals() {
+  local f out
+  f="$TMP_BASE/leak.rows"
+  printf 'spec allocate core/001 alpha\n' > "$f"
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_classify_spec "$f" <<< 'spec allocate core/001 alpha 20260802 jane' > /dev/null
+    declare -p c4 canon 2>/dev/null | grep -c .)"
+  assert_eq "c4 and canon stay function-local" "0" "$out"
+}
+
 case_jimalloc_realize_record_is_a_known_verb() {
   local out
   out="$(source "$SCRIPT_jimalloc"
