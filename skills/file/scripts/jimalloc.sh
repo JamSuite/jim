@@ -3644,6 +3644,15 @@ alloc_lift_states() {
         fi
         ;;
     esac
+    # The reserved blueprint slot is never a writer's operand: no legitimate
+    # history vacates or establishes a zero ordinal, and corroboration cannot
+    # refuse what a crafted allocate record establishes — so a row naming one
+    # on any ordinal side is refused before it is judged.
+    if { [[ "$kind" == spec ]] && { alloc_is_reserved_ord "${src##*/}" || alloc_is_reserved_ord "${dst##*/}"; }; } \
+       || { [[ "$kind" == realize ]] && alloc_is_reserved_ord "${dst##*/}"; }; then
+      printf '%s\t%s\t%s\t%s\trefused:reserved-ordinal\n' "$kind" "$src" "$dst" "$date"
+      continue
+    fi
     state="$(alloc_lift_state "$kind" "$src" "$dst")"
     printf '%s\t%s\t%s\t%s\t%s\n' "$kind" "$src" "$dst" "$date" "$state"
   done
