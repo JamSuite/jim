@@ -1524,6 +1524,16 @@ case_jimfile_ordinal_width_bound_single_sourced() {
   assert_match "isord: canonical floor and the shared ceiling, in awk" \
     "length\(s\) >= 3 && length\(s\) <= $max" \
     "$(grep 'function isord' "$ledger")"
+  local reconcile="$REPO_ROOT/skills/spec/scripts/reconcile.sh"
+  assert_eq "reconcile canonical-spelling sites" "2" \
+    "$(grep -cE "\[0-9\]\{3,$max\}" "$reconcile")"
+  assert_eq "reconcile carries no other width spelling" "2" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$reconcile" | wc -l | tr -d ' ')"
+  # The omission class: a NEW script gaining its own width literal is the one
+  # divergence none of the per-file counts above would see.
+  assert_eq "no width spelling in any other script" "0" \
+    "$(grep -rloE '\[0-9\]\{[0-9]+,[0-9]+\}' --include='*.sh' "$REPO_ROOT/skills" \
+       | grep -vE '(jimfile|jimledger|reconcile)\.sh$' | grep -c .)"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

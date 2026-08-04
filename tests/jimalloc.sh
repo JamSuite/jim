@@ -3679,6 +3679,17 @@ case_jimalloc_lift_refuses_claimed_source() {
   assert_match "refused by name" 'refused:source-claimed' "$OUT"
 }
 
+# An unrecognised event kind is refused with every echoed field gated — the
+# row's tokens are ledger content, and this is the one path that would
+# otherwise print them raw.
+case_jimalloc_lift_unknown_kind_refused_gated() {
+  local out
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'weird\tsrc\x01tok\tdst\t20260725')" <<< '')"
+  assert_match "refused by name" 'refused:unknown-event' "$out"
+  assert_eq "no raw control byte" "0" "$(printf '%s' "$out" | grep -c $'\x01')"
+}
+
 # The reserved blueprint slot is never a lift operand: a crafted allocate can
 # establish a zero ordinal as a live claim, and without its own gate the lift
 # would then record a rename onto it — the corroboration cannot refuse what a
@@ -3960,6 +3971,37 @@ case_jimalloc_partition_batch_refuses_vacated_source() {
   run_batch_in "$A" "$(batch_pairs jim/001 platform/009 alpha)" partition-batch spec 20260802
   assert_exit  "rc" 1 "$RC"
   assert_match "names the source" "jim/001" "$ERR"
+}
+
+# When the SOURCE group was renamed concurrently — the exact shape a split
+# faces, where every source shares one group — the refusal is retryable: it
+# carries the `group renamed` marker and names the redirect, so the consumer
+# re-runs against the current name instead of reporting a terminal failure.
+case_jimalloc_partition_batch_source_group_renamed_is_retryable() {
+  local bare A
+  bare="$(alloc_new_bare pbatchsrcren_bare)"; A="$(alloc_new_clone "$bare" pbatchsrcren_A)"
+  run_jimalloc_in "$A" allocate spec dashboard "alpha"
+  run_batch_in "$A" "" partition-batch group dashboard ui 20260802
+  run_batch_in "$A" "$(batch_pairs dashboard/001 core/001 alpha)" partition-batch spec 20260803
+  assert_exit  "rc" 1 "$RC"
+  assert_match "retryable marker"   "group renamed" "$ERR"
+  assert_match "names the redirect" "ui"            "$ERR"
+}
+
+# The destination-group redirect names the actual remedy: the batch's <new-id>
+# column must be rewritten under the current name — a plain re-run would feed
+# the same stale ids back in.
+case_jimalloc_partition_batch_dst_group_redirect_names_rewrite() {
+  local bare A
+  bare="$(alloc_new_bare pbatchdstren_bare)"; A="$(alloc_new_clone "$bare" pbatchdstren_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_jimalloc_in "$A" allocate spec dashboard "beta"
+  run_batch_in "$A" "" partition-batch group dashboard ui 20260802
+  run_batch_in "$A" "$(batch_pairs jim/001 dashboard/002 alpha)" partition-batch spec 20260803
+  assert_exit  "rc" 1 "$RC"
+  assert_match "retryable marker"   "group renamed" "$ERR"
+  assert_match "names the redirect" "ui"            "$ERR"
+  assert_match "names the remedy"   "rewrit"        "$ERR"
 }
 
 # An ordinal a rename vacated is spent — the group held it and can never

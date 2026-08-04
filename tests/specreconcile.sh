@@ -839,6 +839,25 @@ case_specreconcile_no_op_rewrite_still_reports_the_move() {
     "$([[ -d "$repo/docs/specs/sdlc/001-alpha" ]] && echo yes || echo no)"
 }
 
+# The unusable-group halt fires BECAUSE the registry-derived group failed its
+# gate, so the echoed token is exactly the untrusted value — it must cross a
+# sanitizer before stderr.
+case_specreconcile_unusable_group_halt_is_sanitized() {
+  local repo rows mapping err rc
+  repo="$(specrec_repo sr_badgroup_san)"
+  mkdir -p "$repo/docs/specs/sdlc/P-20260728-alpha"
+  printf -- '---\nid: "sdlc/P-20260728-alpha"\n---\nbody\n' \
+    > "$repo/docs/specs/sdlc/P-20260728-alpha/spec.md"
+  rows="$(printf 'sdlc/P-20260728-alpha\tdocs/specs/sdlc/P-20260728-alpha')"
+  mapping="$(printf 'sdlc/P-20260728-alpha\tBAD\x01GRP/007\tnew')"
+  err="$( cd "$repo" && source "$SCRIPT_specreconcile" >/dev/null 2>&1
+          apply_pending docs/specs "$rows" "$mapping" 2>&1 >/dev/null )"
+  rc=$?
+  assert_exit  "halts" 1 "$rc"
+  assert_match "names the halt" 'not a usable group name' "$err"
+  assert_eq    "no raw control byte on stderr" "0" "$(printf '%s' "$err" | grep -c $'\x01')"
+}
+
 # AC: the shipped templates carry no trailing comment on a line whose value is
 # parsed. Everything after the colon IS the value, so a comment left in place
 # merges into it — and for the spec's id that means the directory reads as not
