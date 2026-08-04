@@ -482,10 +482,16 @@ alloc_known_verbs() {
 alloc_malformed_count() {
   local want="$1" verb="$2" scan="$3" c1 c2 all=0 good=0
   local -a lines=(); mapfile -t lines
-  local i n=${#lines[@]}
+  local i n=${#lines[@]} pair
+  # Only kind/verb pairs this build knows count toward the verb's total: a
+  # verb on a kind that has no such form (`group realize`) is an unknown-verb
+  # record, and counting it here too would land one line in two counters.
+  local -A known=()
+  while IFS= read -r pair; do known["$pair"]=1; done < <(alloc_known_verbs)
   for ((i=0; i<n; i++)); do
     read -r c1 c2 _ <<< "${lines[i]}"
     [[ "$c2" == "$verb" ]] || continue
+    [[ -n "${known[$c1 $verb]:-}" ]] || continue
     case "$want:$c1" in
       spec:spec|spec:group|group:group|issue:issue) all=$((all + 1)) ;;
     esac
@@ -1602,9 +1608,9 @@ alloc_spec_replay() {
 alloc_classify_spec() {
   local derived="$1"
   local -a lines=(); mapfile -t lines
-  local n=${#lines[@]} i c1 c2 c3
+  local n=${#lines[@]} i c1 c2 c3 c4 canon
   local -A live_at=() live_slug=() src_only=() reg_groups=() unreadable=()
-  local g unreadable_n=0 tag ra rb rc
+  local unreadable_n=0 tag ra rb rc
   for ((i=0; i<n; i++)); do
     read -r c1 c2 c3 _ <<< "${lines[i]}"
     [[ "$c1" == group && "$c2" == allocate ]] || continue
