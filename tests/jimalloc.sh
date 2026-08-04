@@ -831,6 +831,20 @@ case_jimalloc_group_coverage_ignores_malformed_rename() {
   assert_exit "well-formed rename is coverage" 0 "$rc"
 }
 
+# A group-rename destination establishes the new name: the record moves every
+# claim under it, so the registry plainly holds the group — for the emitter's
+# source gate and the sweep's uncovered-groups line alike.
+case_jimalloc_group_rename_destination_is_coverage() {
+  local rc out dir
+  ( source "$SCRIPT_jimalloc"
+    alloc_group_has_records ui <<< 'group rename dashboard ui 20260802 x' ); rc=$?
+  assert_exit "destination recognized" 0 "$rc"
+  dir=$(empty_dir grpdst_cov); mkdir -p "$dir/ui/000-blueprint"
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_sweep_uncovered_groups "$dir" "" <<< 'group rename dashboard ui 20260802 x')"
+  assert_eq "not uncovered" "" "$out"
+}
+
 # ─── Section: group-rename aliasing (next-id membership) ─────────────────────
 
 # AC: after a group is renamed, the next id for it counts every ordinal the
@@ -3925,6 +3939,20 @@ case_jimalloc_partition_batch_group_redirect_refusal() {
   assert_exit  "rc" 1 "$RC"
   assert_match "retryable redirect marker" "group renamed" "$ERR"
   assert_match "names the current group"   "ui"            "$ERR"
+}
+
+# A group whose name came from a prior rename is a group the registry holds —
+# renaming it again must not refuse it as unknown, or the documented Close is
+# blocked for every group that ever moved.
+case_jimalloc_partition_batch_group_chained_rename() {
+  local bare A
+  bare="$(alloc_new_bare pbatchchain_bare)"; A="$(alloc_new_clone "$bare" pbatchchain_A)"
+  run_jimalloc_in "$A" allocate spec dashboard "alpha"
+  run_batch_in "$A" "" partition-batch group dashboard ui 20260802
+  run_batch_in "$A" "" partition-batch group ui surface 20260803
+  assert_exit "rc" 0 "$RC"
+  run_jimalloc_in "$A" resolve spec dashboard/001
+  assert_eq "resolves through the chain" "surface/001" "$OUT"
 }
 
 # Group mode checks its DESTINATION's redirect the way spec mode does: writing
