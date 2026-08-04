@@ -582,9 +582,11 @@ cmd_move_spec_dir() {
   # coordination point was unreachable wears its whole identity as a directory
   # name, and realizing one whose group moved since issuance is exactly this
   # move. The DESTINATION gate stays closed to that shape: nothing may be minted
-  # INTO the reserved form, only out of it.
-  local src_shape='^([0-9]{3}(-[a-z0-9][a-z0-9-]*|-wip)|P-[0-9]{8}-[a-z0-9][a-z0-9-]*)$'
-  local dst_shape='^[0-9]{3}(-[a-z0-9][a-z0-9-]*|-wip)$'
+  # INTO the reserved form, only out of it. The ordinal width is the canonical
+  # {3,15} spelling — every ordinal the allocator can mint, so a group past 999
+  # never holds a spec this primitive cannot move.
+  local src_shape='^([0-9]{3,15}(-[a-z0-9][a-z0-9-]*|-wip)|P-[0-9]{8}-[a-z0-9][a-z0-9-]*)$'
+  local dst_shape='^[0-9]{3,15}(-[a-z0-9][a-z0-9-]*|-wip)$'
   if [[ ! "$src_base" =~ $src_shape ]]; then
     echo "jimledger move-spec-dir: source basename must be NNN-slug, NNN-wip, or a provisional token: $src_base" >&2; return 1
   fi
@@ -688,6 +690,10 @@ cmd_pair_events() {
   local ledger="${dir%/}/ledger.md"
   if [[ ! -f "$ledger" ]]; then return 1; fi
   awk -F'\t' '
+    # The 3-digit floor is the CANONICAL SPELLING rule, deliberate: registry
+    # ids are printed %03d, so a ledger token below three digits is not a
+    # canonical id and is dropped fail-closed rather than normalized here.
+    # Normalization belongs to the registry read path, not to this parser.
     function isord(s) { return s ~ /^[0-9]+$/ && length(s) >= 3 && length(s) <= 15 }
     function isgrp(s) { return s ~ /^[a-z0-9][a-z0-9-]*$/ }
     function isprovtok(s,   b) {

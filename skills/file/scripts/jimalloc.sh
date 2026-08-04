@@ -258,8 +258,19 @@ alloc_canon_specid() {
   local id="$1" grp num
   alloc_valid_specid "$id" || return 1
   grp="${id%/*}"; num="${id##*/}"
-  (( ${#num} > ALLOC_MAX_ORD_DIGITS )) && return 1
+  alloc_valid_ord "$num" || return 1
   printf '%s/%03d\n' "$grp" "$((10#$num))"
+}
+
+# alloc_valid_ord <tok> — exit 0 iff <tok> is an ordinal this build can compute
+# with: all digits, no wider than the width the registry can be rebuilt from.
+# THE ordinal-legality predicate, both kinds: every fold, mint, seed derivation,
+# classifier and canonicalization admits this one set, so the read path and the
+# bootstrap can never disagree about which ordinals exist. The width itself is
+# the one named constant, compared nowhere else.
+alloc_valid_ord() {
+  [[ "${1:-}" =~ ^[0-9]+$ ]] || return 1
+  (( ${#1} <= ALLOC_MAX_ORD_DIGITS ))
 }
 
 # alloc_sanitize_who <raw> — reduce a free-text provenance value to a single safe
@@ -657,15 +668,6 @@ alloc_resolve_spec() {
   return 0
 }
 
-# alloc_valid_ord <tok> — exit 0 iff <tok> is an ordinal this allocator can
-# compute with: all digits, no wider than the width the registry can be rebuilt
-# from. The issue side's counterpart to alloc_valid_specid's numeric half, so
-# the resolver, the fold, and the classifier all admit the same set.
-alloc_valid_ord() {
-  [[ "${1:-}" =~ ^[0-9]+$ ]] || return 1
-  (( ${#1} <= ALLOC_MAX_ORD_DIGITS ))
-}
-
 # alloc_resolve_issue <queried>  (log on stdin)
 #   Resolve an issue citation (an ordinal or a durable full-id) to its current
 #   ordinal, following issue-rename records. A full-id is first mapped to its
@@ -968,7 +970,7 @@ alloc_next_id_spec() {
   local max next
   max="$(printf '%s\n' "$log" | alloc_fold_max_spec "$current")" || return 1
   next=$((max + 1))
-  if (( ${#next} > ALLOC_MAX_ORD_DIGITS )); then
+  if ! alloc_valid_ord "$next"; then
     echo "error: group exhausted — '$current' has no ordinal left that the registry could be rebuilt from" >&2
     return 1
   fi
@@ -1140,7 +1142,7 @@ alloc_spec_claim_keys() {
     [[ "$c1" == spec && "$c2" == allocate ]] || continue
     alloc_valid_specid "$c3" || continue
     num="${c3##*/}"
-    (( ${#num} > ALLOC_MAX_ORD_DIGITS )) && continue
+    alloc_valid_ord "$num" || continue
     alloc_valid_token "$c4" || continue
     [[ "$c5" =~ ^[0-9]{8}$ ]] || continue
     g="${c3%/*}"
@@ -1272,7 +1274,7 @@ alloc_reconcile_realize_spec() {
     fi
     ord="${next[$cur]}"
     next["$cur"]=$((ord + 1))
-    if (( ${#ord} > ALLOC_MAX_ORD_DIGITS )); then
+    if ! alloc_valid_ord "$ord"; then
       echo "error: group exhausted — '$cur' has no ordinal left that the registry could be rebuilt from" >&2
       return 1
     fi
@@ -1375,11 +1377,11 @@ alloc_seed_derive_specs() {
         conflicts+="  spec dir has no slug: $gname/$name"$'\n'; continue
       fi
       slug="${name#*-}"
-      # ordinal: pure digits, no wider than the allocator's own legality value —
-      # a numeric class check beyond the id boundary, which admits e.g. 007x.
-      # Reading the same constant the fold reads is what keeps the bootstrap from
-      # refusing an ordinal the allocator can mint.
-      if [[ ! "$ord" =~ ^[0-9]+$ ]] || (( ${#ord} > ALLOC_MAX_ORD_DIGITS )); then
+      # ordinal: the allocator's own legality predicate — a numeric class check
+      # beyond the id boundary, which admits e.g. 007x. Reading the same rule
+      # the fold reads is what keeps the bootstrap from refusing an ordinal the
+      # allocator can mint.
+      if ! alloc_valid_ord "$ord"; then
         conflicts+="  spec dir has an invalid ordinal: $gname/$name"$'\n'; continue
       fi
       if ! alloc_valid_token "$slug"; then
@@ -1432,8 +1434,8 @@ alloc_seed_derive_issues() {
     # over for the same reason. Without this, deriving over a tree that has one
     # halts, which is exactly the offline state that produces them.
     alloc_is_prov_form "$num" && continue
-    # ordinal: pure digits, no wider than the allocator's own legality value.
-    if [[ ! "$num" =~ ^[0-9]+$ ]] || (( ${#num} > ALLOC_MAX_ORD_DIGITS )); then
+    # ordinal: the allocator's own legality predicate.
+    if ! alloc_valid_ord "$num"; then
       conflicts+="  issue file has an invalid display ordinal: $base ($num)"$'\n'; continue
     fi
     if [[ -z "$id" ]]; then
@@ -1703,7 +1705,7 @@ alloc_classify_issue() {
     fi
     read -r c1 c2 c3 c4 _ <<< "${lines[i]}"
     if [[ "$c1" == issue && "$c2" == allocate ]]; then
-      { [[ "$c3" =~ ^[0-9]+$ ]] && (( ${#c3} <= ALLOC_MAX_ORD_DIGITS )); } \
+      alloc_valid_ord "$c3" \
         || { unreadable_n=$((unreadable_n + 1)); continue; }
       ord=$((10#$c3))
       # The ordinal is claimed even when the durable id beside it is unusable —
