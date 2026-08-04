@@ -3530,9 +3530,10 @@ cmd_resolve() {
 ALLOC_LIFT_MARKER="jim-lift"
 
 # alloc_lift_state <kind> <src> <dst>   — decide one row against the caller's
-#   corroboration state (`live`, `have_rn`, `rz_real`, `rz_conflict`, `log`,
-#   all supplied by alloc_lift_states through dynamic scope, the same way an
-#   alloc_publish builder reaches its caller's locals). Prints one of:
+#   corroboration state (`live`, `have_rn`, `rn_src`, `rn_dst`, `rz_real`,
+#   `rz_conflict`, `rz_dst`, `log`, all supplied by alloc_lift_states through
+#   dynamic scope, the same way an alloc_publish builder reaches its caller's
+#   locals). Prints one of:
 #     emit | have | refused:<reason>
 #
 #   CORROBORATION, stated once here because both the preview and the publish
@@ -3559,17 +3560,38 @@ alloc_lift_state() {
       if [[ -n "${rz_real[$src]:-}" ]]; then
         printf 'refused:source-conflict\n'; return 0
       fi
+      if [[ -n "${rz_dst[$dst]:-}" ]]; then
+        printf 'refused:destination-conflict\n'; return 0
+      fi
       [[ -n "${live[$dst]:-}" ]] || { printf 'refused:destination-not-established\n'; return 0; }
       ;;
     spec)
       [[ "$src" != "$dst" ]] || { printf 'refused:self-rename\n'; return 0; }
       [[ -n "${have_rn[spec	$src	$dst]:-}" ]] && { printf 'have\n'; return 0; }
+      # A side a recorded rename already claims is closed to a DIFFERENT pair:
+      # a second vacating makes the source permanently unresolvable, a second
+      # arrival gives the destination two histories. Anchored in the log, so a
+      # re-run refuses what an earlier run recorded past.
+      if [[ -n "${rn_src[spec	$src]:-}" ]]; then
+        printf 'refused:source-conflict\n'; return 0
+      fi
+      if [[ -n "${rn_dst[spec	$dst]:-}" ]]; then
+        printf 'refused:destination-conflict\n'; return 0
+      fi
       [[ -n "${live[$dst]:-}" ]] || { printf 'refused:destination-not-established\n'; return 0; }
       [[ -z "${live[$src]:-}" ]] || { printf 'refused:source-claimed\n'; return 0; }
       ;;
     group)
       [[ "$src" != "$dst" ]] || { printf 'refused:self-rename\n'; return 0; }
       [[ -n "${have_rn[group	$src	$dst]:-}" ]] && { printf 'have\n'; return 0; }
+      if [[ -n "${rn_src[group	$src]:-}" ]]; then
+        printf 'refused:source-conflict\n'; return 0
+      fi
+      # A destination name that itself renamed away, or that another rename
+      # already arrived at, cannot take arrivals coherently.
+      if [[ -n "${rn_src[group	$dst]:-}" || -n "${rn_dst[group	$dst]:-}" ]]; then
+        printf 'refused:destination-conflict\n'; return 0
+      fi
       printf '%s\n' "$log" | alloc_group_has_records "$dst" \
         || { printf 'refused:destination-not-established\n'; return 0; }
       for key in "${!live[@]}"; do
@@ -3592,20 +3614,24 @@ alloc_lift_state() {
 alloc_lift_states() {
   local -a lines=(); mapfile -t lines
   local log=""; (( ${#lines[@]} )) && log="$(printf '%s\n' "${lines[@]}")"
-  local -A live=() spent=() have_rn=() rz_real=() rz_conflict=()
+  local -A live=() spent=() have_rn=() rn_src=() rn_dst=() rz_real=() rz_conflict=() rz_dst=()
   alloc_live_claim_set < <(printf '%s\n' "$log")
   local rk rsrc rsok rdst rdok ztag zp za zb
   while IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ _; do
     [[ "$rsok" == y && "$rdok" == y ]] || continue
     have_rn["$rk"$'\t'"$rsrc"$'\t'"$rdst"]=1
+    rn_src["$rk"$'\t'"$rsrc"]=1
+    rn_dst["$rk"$'\t'"$rdst"]=1
   done < <(printf '%s\n' "$log" | alloc_rename_scan spec)
   while IFS=$'\t' read -r ztag zp za zb; do
     if [[ "$ztag" == CONFLICT ]]; then
       rz_conflict["$zp"]=1
     else
       rz_real["$zp"]="$za"
+      rz_dst["$za"]=1
     fi
   done < <(printf '%s\n' "$log" | alloc_realize_fold)
+  local -A batch_src=() batch_dst=()
   local row kind src dst date canon state
   for row in "$@"; do
     IFS=$'\t' read -r kind src dst date <<< "$row"
@@ -3661,6 +3687,20 @@ alloc_lift_states() {
       continue
     fi
     state="$(alloc_lift_state "$kind" "$src" "$dst")"
+    # In-batch duplicate claims are decided HERE, where the whole row set is
+    # visible, so the preview and the publish name the same refusals and the
+    # publish builder can append every emit row as-is. Both sides are claims —
+    # two rows sharing a source contradict as surely as two sharing a
+    # destination — and the FIRST recordable row wins, so a later duplicate is
+    # the one marked, never the row a commit actually publishes.
+    if [[ "$state" == emit ]]; then
+      if [[ -n "${batch_src[$kind	$src]:-}" || -n "${batch_dst[$kind	$dst]:-}" ]]; then
+        state="refused:duplicate-in-batch"
+      else
+        batch_src["$kind"$'\t'"$src"]=1
+        batch_dst["$kind"$'\t'"$dst"]=1
+      fi
+    fi
     printf '%s\t%s\t%s\t%s\t%s\n' "$kind" "$src" "$dst" "$date" "$state"
   done
 }
@@ -3677,18 +3717,12 @@ alloc_lift_states() {
 alloc_lift_publish_builder() {
   local cur_specs="$1"; shift 3
   local newrecs="" table row kind src dst date state
+  # The state table already decided everything, including in-batch duplicates,
+  # so every emit row is appended as-is — the payload the operator reads and
+  # the records the commit publishes cannot disagree.
   table="$(printf '%s\n' "$cur_specs" | alloc_lift_states "$@")"
-  local -A batch_dst=()
   while IFS=$'\t' read -r kind src dst date state; do
     [[ "$state" == emit ]] || continue
-    # Two emit rows landing on one destination corroborate individually and
-    # contradict together; the batch refuses the second rather than writing it.
-    if [[ -n "${batch_dst[$kind	$dst]:-}" ]]; then
-      table="$(printf '%s\n' "$table" | awk -F'\t' -v k="$kind" -v s="$src" -v d="$dst" \
-        'BEGIN{OFS="\t"} $1==k && $2==s && $3==d {$5="refused:duplicate-in-batch"} {print}')"
-      continue
-    fi
-    batch_dst["$kind"$'\t'"$dst"]=1
     case "$kind" in
       realize) newrecs+="$(alloc_encode_realize_spec "$src" "$dst" "$date" "$ALLOC_LIFT_MARKER")"$'\n' ;;
       spec)    newrecs+="$(alloc_encode_rename_spec  "$src" "$dst" "$date" "$ALLOC_LIFT_MARKER")"$'\n' ;;
