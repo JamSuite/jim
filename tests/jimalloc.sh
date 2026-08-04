@@ -3844,6 +3844,39 @@ case_jimalloc_partition_batch_refuses_vacated_source() {
   assert_match "names the source" "jim/001" "$ERR"
 }
 
+# An ordinal a rename vacated is spent — the group held it and can never
+# reissue it, or a citation frozen before the vacating silently changes
+# referent. The emitter must see spent ordinals, not just live ones.
+case_jimalloc_partition_batch_refuses_reminted_destination() {
+  local bare A before
+  bare="$(alloc_new_bare pbatchmint_bare)"; A="$(alloc_new_clone "$bare" pbatchmint_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_jimalloc_in "$A" allocate spec jim "beta"
+  run_jimalloc_in "$A" allocate spec other "gamma"
+  run_batch_in "$A" "$(batch_pairs jim/002 core/002 beta)" partition-batch spec 20260802
+  before="$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+  run_batch_in "$A" "$(batch_pairs other/001 jim/002 gamma)" partition-batch spec 20260803
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the spent ordinal" "jim/002" "$ERR"
+  assert_match "says it was vacated"     "vacated" "$ERR"
+  assert_eq    "registry untouched" "$before" "$(git -C "$bare" rev-parse refs/heads/jim/registry)"
+  run_jimalloc_in "$A" resolve spec jim/002
+  assert_eq "frozen citation keeps its referent" "core/002" "$OUT"
+}
+
+# The zero ordinal is the reserved blueprint slot on every path, including the
+# write path — every other writer is immune by arithmetic; the emitter must be
+# immune by a gate.
+case_jimalloc_partition_batch_refuses_reserved_destination() {
+  local bare A
+  bare="$(alloc_new_bare pbatchzero_bare)"; A="$(alloc_new_clone "$bare" pbatchzero_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_batch_in "$A" "$(batch_pairs jim/001 zed/000 alpha)" partition-batch spec 20260802
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the slot"    "zed/000"  "$ERR"
+  assert_match "says it is reserved" "reserved" "$ERR"
+}
+
 # AC 6: a self-rename is a contradiction the emitter never writes.
 case_jimalloc_partition_batch_refuses_self_rename() {
   local bare A
@@ -3879,6 +3912,36 @@ case_jimalloc_partition_batch_group_redirect_refusal() {
   assert_exit  "rc" 1 "$RC"
   assert_match "retryable redirect marker" "group renamed" "$ERR"
   assert_match "names the current group"   "ui"            "$ERR"
+}
+
+# Group mode checks its DESTINATION's redirect the way spec mode does: writing
+# a rename into a name that itself renamed away would leave the resolver
+# non-idempotent — the moved claims answer to a name that answers to another.
+case_jimalloc_partition_batch_group_refuses_redirected_destination() {
+  local bare A
+  bare="$(alloc_new_bare pbatchgdst_bare)"; A="$(alloc_new_clone "$bare" pbatchgdst_A)"
+  run_jimalloc_in "$A" allocate spec ui "alpha"
+  run_jimalloc_in "$A" allocate spec dashboard "beta"
+  run_batch_in "$A" "" partition-batch group ui surface 20260802
+  run_batch_in "$A" "" partition-batch group dashboard ui 20260803
+  assert_exit  "rc" 1 "$RC"
+  assert_match "retryable redirect marker" "group renamed" "$ERR"
+  assert_match "names the current group"   "surface"       "$ERR"
+}
+
+# The never-reissue rule holds through the sibling door too: a group rename
+# landing a live claim on a name an earlier rename vacated would reissue that
+# name, and a citation frozen before the vacating silently changes referent.
+case_jimalloc_partition_batch_group_refuses_spent_destination() {
+  local bare A
+  bare="$(alloc_new_bare pbatchgspent_bare)"; A="$(alloc_new_clone "$bare" pbatchgspent_A)"
+  run_jimalloc_in "$A" allocate spec b "alpha"
+  run_batch_in "$A" "$(batch_pairs b/001 c/001 alpha)" partition-batch spec 20260802
+  run_jimalloc_in "$A" allocate spec a "beta"
+  run_batch_in "$A" "" partition-batch group a b 20260803
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the spent identity" "b/001"   "$ERR"
+  assert_match "says it was vacated"      "vacated" "$ERR"
 }
 
 # AC 6: group mode meets the same occupied-destination rule the classifier
