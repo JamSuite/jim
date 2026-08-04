@@ -3641,6 +3641,19 @@ case_jimalloc_lift_refuses_claimed_source() {
   assert_match "refused by name" 'refused:source-claimed' "$OUT"
 }
 
+# The reserved blueprint slot is never a lift operand: a crafted allocate can
+# establish a zero ordinal as a live claim, and without its own gate the lift
+# would then record a rename onto it — the corroboration cannot refuse what a
+# crafted record establishes. Refused by name on either ordinal side.
+case_jimalloc_lift_refuses_reserved_ordinal() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate zed/000 squat 20260726 kai')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'spec\tzed/001\tzed/000\t20260725')" \
+                      "$(printf 'realize\tzed/P-20260725-a\tzed/000\t20260725')" <<< "$log")"
+  assert_eq "both rows refused" "2" "$(printf '%s\n' "$out" | grep -c 'refused:reserved-ordinal$')"
+}
+
 # A registry already holding two realizations for one token is contradicted;
 # the lift consumes the same duplicate-realize rule the resolver does and
 # refuses every row naming that token — including a recorded pair — rather
