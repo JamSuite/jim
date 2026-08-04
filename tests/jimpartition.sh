@@ -1824,12 +1824,12 @@ case_jimpartition_split_preflight_usage_rc2() {
 # ─── Section: renumber-map cases (spec 047 Task 6) ───────────────────────────
 
 # AC 7/11: extraction tail move — the continuing remainder (child == old) keeps
-# its numbers; the fresh child renumbers its arrivals to a dense 001..N by source
-# order.
+# its numbers; the fresh child renumbers its arrivals densely from its peek-fed
+# start, by source order.
 case_jimpartition_renumber_map_extraction_tail() {
   local assign
   assign=$(fixture rm-tail.txt $'001\tcart\n002\tcart\n005\tcart\n006\tcheckout\n007\tcheckout\n008\tcheckout\n009\tcheckout')
-  run_jimpartition renumber-map cart cart,checkout "$assign"
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001
   assert_exit "rc" 0 "$RC"
   assert_match "remainder keeps 005" $'MAP\tcart/005\tcart/005'      "$OUT"
   assert_match "006 -> checkout/001" $'MAP\tcart/006\tcheckout/001'  "$OUT"
@@ -1837,11 +1837,11 @@ case_jimpartition_renumber_map_extraction_tail() {
 }
 
 # AC 7: interleaved extraction — the remainder preserves its numbering gaps while
-# the fresh child is dense from 001.
+# the fresh child is dense from its start.
 case_jimpartition_renumber_map_interleaved() {
   local assign
   assign=$(fixture rm-inter.txt $'001\tcart\n003\tcart\n005\tcheckout\n007\tcheckout\n009\tcheckout')
-  run_jimpartition renumber-map cart cart,checkout "$assign"
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001
   assert_exit "rc" 0 "$RC"
   assert_match "gap 003 preserved" $'MAP\tcart/003\tcart/003'     "$OUT"
   assert_match "fresh dense 005->001" $'MAP\tcart/005\tcheckout/001' "$OUT"
@@ -1849,11 +1849,11 @@ case_jimpartition_renumber_map_interleaved() {
 }
 
 # AC 7: symmetric split — old ∉ targets, so BOTH children are fresh and each
-# renumbers from 001.
+# carries its own start.
 case_jimpartition_renumber_map_symmetric() {
   local assign
   assign=$(fixture rm-sym.txt $'001\tshop\n002\tshop\n003\tstore\n004\tstore')
-  run_jimpartition renumber-map cart shop,store "$assign"
+  run_jimpartition renumber-map cart shop,store "$assign" shop=001 store=001
   assert_exit "rc" 0 "$RC"
   assert_match "shop from 001"  $'MAP\tcart/001\tshop/001'  "$OUT"
   assert_match "store from 001" $'MAP\tcart/003\tstore/001' "$OUT"
@@ -1863,9 +1863,66 @@ case_jimpartition_renumber_map_symmetric() {
 case_jimpartition_renumber_map_wip_rides() {
   local assign
   assign=$(fixture rm-wip.txt $'006\tcheckout\n007\tcheckout\n010-wip\tcheckout')
-  run_jimpartition renumber-map cart cart,checkout "$assign"
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001
   assert_exit "rc" 0 "$RC"
   assert_match "wip renumbered, suffix kept" $'MAP\tcart/010-wip\tcheckout/003-wip' "$OUT"
+}
+
+# A fresh child whose name was previously retired densifies from its peek-fed
+# start, not from 001 — the registry never reissues a vacated ordinal, so the
+# map must propose only ordinals the Close's partition-batch can accept.
+case_jimpartition_renumber_map_start_resumes_retired_name() {
+  local assign
+  assign=$(fixture rm-retired.txt $'006\tcheckout\n007\tcheckout\n010-wip\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=053
+  assert_exit "rc" 0 "$RC"
+  assert_match "resumes at the start" $'MAP\tcart/006\tcheckout/053'      "$OUT"
+  assert_match "dense from there"     $'MAP\tcart/007\tcheckout/054'      "$OUT"
+  assert_match "wip rides in sequence" $'MAP\tcart/010-wip\tcheckout/055-wip' "$OUT"
+}
+
+# rc 2: every fresh child requires a start — the map must not silently assume
+# 001 for a name whose registry high-water nobody consulted.
+case_jimpartition_renumber_map_missing_start_rc2() {
+  local assign
+  assign=$(fixture rm-nostart.txt $'006\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign"
+  assert_exit  "rc" 2 "$RC"
+  assert_match "names the child and the remedy" 'checkout' "$ERR"
+  assert_match "points at peek" 'peek' "$ERR"
+}
+
+# rc 2: the continuing child keeps its numbers — a start for it is a
+# contradiction in the invocation.
+case_jimpartition_renumber_map_start_for_continuing_child_rc2() {
+  local assign
+  assign=$(fixture rm-contstart.txt $'006\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001 cart=005
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 2: a start that is not <known-child>=<3-digit nonzero id> is refused.
+case_jimpartition_renumber_map_bad_start_rc2() {
+  local assign
+  assign=$(fixture rm-badstart.txt $'006\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=0
+  assert_exit "rc" 2 "$RC"
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=000
+  assert_exit "rc" 2 "$RC"
+  run_jimpartition renumber-map cart cart,checkout "$assign" nonesuch=004
+  assert_exit "rc" 2 "$RC"
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001 checkout=002
+  assert_exit "rc" 2 "$RC"
+}
+
+# rc 1: an assignment that would pass 999 exhausts the child's id space — no
+# partial output, mirroring merge-map's overflow contract.
+case_jimpartition_renumber_map_start_overflow_rc1() {
+  local assign
+  assign=$(fixture rm-over.txt $'006\tcheckout\n007\tcheckout\n008\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=998
+  assert_exit "rc" 1 "$RC"
+  assert_eq   "no partial output" "" "$OUT"
 }
 
 # rc 1: an assignment to a child not in the target set.
