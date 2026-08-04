@@ -939,6 +939,14 @@ check_pending_provisionals() {
   local specs_dir="$1"; shift
   local g pend rc=0
   for g in "$@"; do
+    # Slug-gate before the filesystem probe — never glob an unvalidated
+    # component. Rename and split gate their group at entry, so this changes
+    # nothing for them; merge passes its whole effective set through here.
+    if ! valid_slug "$g"; then
+      emit_check pending-provisionals fail "$g: invalid group slug"
+      rc=1
+      continue
+    fi
     pend="$(pending_provisionals "$specs_dir" "$g")"
     if [[ -n "$pend" ]]; then
       emit_check pending-provisionals fail "$g: $pend"
