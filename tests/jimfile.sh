@@ -1489,6 +1489,43 @@ case_jimfile_valid_relpath_rejects_unsafe() {
   assert_exit "empty"           1 "$RC"
 }
 
+# ─── Section: ordinal width bound (cross-file value agreement) ───────────────
+
+# The ordinal width bound is ONE value — ALLOC_MAX_ORD_DIGITS in jimalloc.sh —
+# worn in spellings that cannot be byte-compared: jimalloc compares against the
+# constant (in exactly one function, alloc_valid_ord), jimfile and jimledger
+# carry regex literals, and jimledger's awk isord carries arithmetic bounds.
+# This case compares extracted VALUES, so a divergence in any spelling is loud.
+# Two deliberate rules share the ceiling: CANONICAL SPELLING {3,15} (the %03d
+# form — tree basenames, mv-spec-id, the path composer, the ledger parser and
+# move gates) and NUMERIC ACCEPTANCE {1,15} (occupancy, which reads '18' and
+# '018' as one ordinal, the same leniency the registry's canon input has). The
+# partition maps' exactly-3 starts are a protocol cap (≤999), not this bound.
+case_jimfile_ordinal_width_bound_single_sourced() {
+  local alloc="$REPO_ROOT/skills/file/scripts/jimalloc.sh"
+  local ledger="$REPO_ROOT/skills/ledger/scripts/jimledger.sh"
+  local max
+  max="$(grep -oE '^ALLOC_MAX_ORD_DIGITS=[0-9]+' "$alloc" | cut -d= -f2)"
+  assert_eq "the one named constant" "15" "$max"
+  assert_eq "jimalloc compares against the constant in one function only" "1" \
+    "$(grep -cE '[<>]=? ALLOC_MAX_ORD_DIGITS' "$alloc")"
+  assert_eq "jimalloc spells no width literal of its own" "0" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$alloc" | wc -l | tr -d ' ')"
+  assert_eq "jimfile canonical-spelling sites (3 gates + 2 messages)" "5" \
+    "$(grep -cE "\[0-9\]\{3,$max\}" "$SCRIPT_JIMFILE")"
+  assert_eq "jimfile numeric-acceptance sites (occupancy pair)" "2" \
+    "$(grep -cE "\[0-9\]\{1,$max\}" "$SCRIPT_JIMFILE")"
+  assert_eq "jimfile carries no other width spelling" "7" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$SCRIPT_JIMFILE" | wc -l | tr -d ' ')"
+  assert_eq "jimledger canonical-spelling sites (the two move gates)" "2" \
+    "$(grep -cE "\[0-9\]\{3,$max\}" "$ledger")"
+  assert_eq "jimledger carries no other width spelling" "2" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$ledger" | wc -l | tr -d ' ')"
+  assert_match "isord: canonical floor and the shared ceiling, in awk" \
+    "length\(s\) >= 3 && length\(s\) <= $max" \
+    "$(grep 'function isord' "$ledger")"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -1487,6 +1487,21 @@ case_jimledger_move_spec_dir_moves() {
     "$(git -C "$root" diff --cached --name-only)"
 }
 
+# The move primitive accepts every ordinal the allocator can mint: a group
+# past 999 allocates 4-digit ordinals, and a gate pinned to exactly three
+# digits strands them — allocatable but unmovable, unrenumberable, unrealizable
+# across parents.
+case_jimledger_move_spec_dir_accepts_wide_ordinal() {
+  local root; root="$(move_git_fixture msd_wide)"
+  mkdir -p "$root/docs/specs/cart/1000-tall"
+  printf '# tall\n' > "$root/docs/specs/cart/1000-tall/spec.md"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "wide"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 1000-tall checkout 1000-tall
+  assert_exit "rc" 0 "$RC"
+  assert_eq "new exists" "1" "$([[ -f "$root/docs/specs/checkout/1000-tall/spec.md" ]] && echo 1 || echo 0)"
+}
+
 # AC 11: the SOURCE basename may be a provisional token — an offline-bound spec
 # wears its whole identity as a directory name, and realizing one whose group
 # moved is exactly a cross-parent move. The DESTINATION gate is unchanged, so no
