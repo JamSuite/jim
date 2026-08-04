@@ -1717,6 +1717,20 @@ case_jimpartition_merge_preflight_refuses_provisional() {
   assert_match "names the identity" 'P-20260802-offline-work'    "$OUT"
 }
 
+# "Naming every pending identity" must say when it could not: a long list is
+# capped for display, and a cap without a note reads as the whole list — the
+# sweep's own truncation discipline, applied to the preflight fact.
+case_jimpartition_pending_provisional_list_truncation_is_noted() {
+  local dir i
+  dir="$(rename_repo pftrunc)"
+  for i in $(seq 1 24); do
+    mkdir -p "$dir/docs/specs/cart/P-20260801-pending-identity-number-$(printf '%02d' "$i")"
+  done
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit  "rc" 1 "$RC"
+  assert_match "the cut is disclosed" 'list truncated' "$OUT"
+}
+
 # The registry-boundary rule: a dynamic path component is slug-validated before
 # ANY filesystem lookup. merge-preflight passed its effective source set to the
 # provisional probe ungated — the one probe in its function that did not follow
