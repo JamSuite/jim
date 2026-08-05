@@ -2,7 +2,7 @@
 id: 20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh
 num: 232
 title: "Sanitize the four remaining failed-gate echoes in reconcile.sh"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, security, scripts]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:42Z
-updated: 2026-08-05T01:53:42Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -69,3 +69,41 @@ deciding whether that divergence is deliberate.
 
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 4).
+
+## Resolution (2026-08-05)
+
+All six sites routed through the sanitizer, including `$ord` — the one the issue
+listed as currently unreachable — for exactly the reason the issue gives: the
+argument for having the primitive is that a reader should not re-derive
+reachability per site.
+
+`jimledger.sh` had no sanitizer at all, so it gained one with the same contract
+its two siblings carry, rather than the single call site being special-cased.
+
+**The two open questions are settled, one each way.**
+
+*The tab/newline divergence is deliberate and now says so.* `alloc_sanitize_field`
+maps them to spaces because its output is TAB-separated report rows, where
+deleting a tab would join two fields into one plausible-looking token;
+`display_field` deletes them because its output is prose on stderr, where a
+surviving newline would forge a whole diagnostic line. Each is the safe choice
+for where its result lands. The 512-vs-256 cap difference is arbitrary, nothing
+depends on either value, and the comment says that too rather than implying a
+rationale.
+
+*The alteration disclosure was not added.* `alloc_display_field`'s "(sanitized
+for display)" earns its keep where a report row is machine-read and a silently
+stripped token reads as a different token. These sites are one-line human
+diagnostics that already name what failed, so the suffix would be noise on every
+message to disambiguate a case the operator is not comparing anything against.
+
+Pinned behaviourally where each site is reachable — a hostile frontmatter id, a
+hostile group name, a hostile provisional dirname, and a hostile occupancy holder
+in `jimledger` — each asserting the offender is still named while no control byte
+reaches the terminal. The remaining site, `$held` in the realize path, is harder
+to reach behaviourally and is covered by a **class sweep** instead: no diagnostic
+in `reconcile.sh` may interpolate `$held`, `$id` or `$ord` without the sanitizer.
+Unwrapping that one site turns the sweep red, which is what makes the site
+without a behavioural fixture something other than a blind spot.
+
+Six mutations red, including one that strips the sanitizer's own body.

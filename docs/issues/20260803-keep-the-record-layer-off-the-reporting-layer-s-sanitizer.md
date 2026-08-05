@@ -2,7 +2,7 @@
 id: 20260803-keep-the-record-layer-off-the-reporting-layer-s-sanitizer
 num: 216
 title: "Keep the record layer off the reporting layer's sanitizer"
-status: open
+status: closed
 priority: low
 labels: [id-coordination, hygiene]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-03T05:50:29Z
-updated: 2026-08-05T02:25:13Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -83,3 +83,10 @@ exists at `:2834-6` and `:3709-3741`. An omission, not an overclaim.
 
 Source: post-build review of the B-prime cluster,
 `docs/notes/20260805-b-prime-review.md` (Finding 11).
+
+## Delivered in full (2026-08-05)
+
+The second clause landed, so this closes with its follow-on. The section header
+now states what is true rather than a purity the accessor inside it does not
+have, and the boundary is held by a fixture rather than by attention. Details on
+the follow-on item.

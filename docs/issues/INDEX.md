@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 92
-- Closed: 144
+- Open: 89
+- Closed: 147
 
 ## Issues
 
@@ -222,11 +222,11 @@
 - `20260802-unblock-the-chained-group-rename` — Unblock the chained group rename · status: closed · num: 213 · priority: high · created: 2026-08-02T21:35:11Z · labels: [id-coordination, registry, partition] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260803-decide-the-duplicate-realize-rule-once-across-its-three-readers` — Decide the duplicate-realize rule once across its three readers · status: closed · num: 214 · priority: medium · created: 2026-08-03T05:50:14Z · labels: [id-coordination, registry] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con` — Extend the provisional-grammar byte fixture to its shims and constants · status: open · num: 215 · priority: medium · created: 2026-08-03T05:50:30Z · labels: [id-coordination, test-integrity, sync-discipline] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
-- `20260803-keep-the-record-layer-off-the-reporting-layer-s-sanitizer` — Keep the record layer off the reporting layer's sanitizer · status: open · num: 216 · priority: low · created: 2026-08-03T05:50:29Z · labels: [id-coordination, hygiene] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260803-keep-the-record-layer-off-the-reporting-layer-s-sanitizer` — Keep the record layer off the reporting layer's sanitizer · status: closed · num: 216 · priority: low · created: 2026-08-03T05:50:29Z · labels: [id-coordination, hygiene] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260803-restore-the-classifier-s-lost-local-declarations` — Restore the classifier's lost local declarations · status: closed · num: 217 · priority: low · created: 2026-08-03T05:50:27Z · labels: [id-coordination, hygiene] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` — Restore the id-boundary memo's cross-pass warmth in the sweep · status: closed · num: 218 · priority: medium · created: 2026-08-03T05:50:29Z · labels: [id-coordination, performance] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260803-stop-double-counting-a-group-realize-across-two-non-coverage-cou` — Stop double-counting a group realize across two non-coverage counters · status: closed · num: 219 · priority: low · created: 2026-08-03T05:50:28Z · labels: [id-coordination, registry] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
-- `20260805-correct-the-record-layer-s-section-header-to-admit-its-git-reads` — Correct the record layer's section header to admit its git reads · status: open · num: 220 · priority: medium · created: 2026-08-05T01:53:48Z · labels: [id-coordination, scripts] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-correct-the-record-layer-s-section-header-to-admit-its-git-reads` — Correct the record layer's section header to admit its git reads · status: closed · num: 220 · priority: medium · created: 2026-08-05T01:53:48Z · labels: [id-coordination, scripts] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-detect-a-stray-test-file-instead-of-silently-not-running-it` — Detect a stray test file instead of silently not running it · status: open · num: 221 · priority: medium · created: 2026-08-05T02:19:12Z · labels: [000-blueprint, verify, test] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260805-exclude-by-path-not-basename-in-the-ordinal-width-guard` — Exclude by path, not basename, in the ordinal width guard · status: open · num: 222 · priority: medium · created: 2026-08-05T01:53:44Z · labels: [id-coordination, test] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-gate-the-issue-side-ordinal-mint-against-the-width-ceiling` — Gate the issue-side ordinal mint against the width ceiling · status: closed · num: 223 · priority: medium · created: 2026-08-05T01:53:47Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
@@ -240,7 +240,7 @@
 - `20260805-refuse-a-vacated-ordinal-in-catch-up-instead-of-silently-reissui` — Refuse a vacated ordinal in catch-up instead of silently reissuing it · status: closed · num: 229 · priority: critical · created: 2026-08-05T01:53:40Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header` — Restore alloc_group_has_records's locals and correct its header · status: open · num: 230 · priority: medium · created: 2026-08-05T01:53:47Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-retire-the-four-stale-doc-sites-the-emission-cluster-left-behind` — Retire the four stale doc sites the emission cluster left behind · status: open · num: 231 · priority: medium · created: 2026-08-05T01:53:46Z · labels: [docs, workflow] · origin: docs/notes/20260805-b-prime-review.md
-- `20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh` — Sanitize the four remaining failed-gate echoes in reconcile.sh · status: open · num: 232 · priority: medium · created: 2026-08-05T01:53:42Z · labels: [id-coordination, security, scripts] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh` — Sanitize the four remaining failed-gate echoes in reconcile.sh · status: closed · num: 232 · priority: medium · created: 2026-08-05T01:53:42Z · labels: [id-coordination, security, scripts] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming` — Scope the token memo warmer to the log it is warming · status: closed · num: 233 · priority: high · created: 2026-08-05T01:53:42Z · labels: [id-coordination, registry, security] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-warm-the-id-boundary-memo-in-catch-up-and-lift` — Warm the id-boundary memo in catch-up and lift · status: closed · num: 234 · priority: medium · created: 2026-08-05T01:53:44Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 

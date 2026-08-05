@@ -2,7 +2,7 @@
 id: 20260805-correct-the-record-layer-s-section-header-to-admit-its-git-reads
 num: 220
 title: "Correct the record layer's section header to admit its git reads"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, scripts]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:48Z
-updated: 2026-08-05T01:53:48Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -78,3 +78,24 @@ notice.
 
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 11).
+
+## Resolution (2026-08-05)
+
+The second clause landed. The header no longer claims a git-free purity; it names
+what the section owns (the grammar, the two boundaries, the folds and scans —
+all of which are pure), states that the log accessor is the single deliberate
+exception and why it sits with the grammar it accesses, and says that no other
+function in the section may reach for git. The dropped clause about the sanitizer
+applying on emission to every field, including ones that already crossed the id
+boundary, is restored with its reason: the two boundaries answer different
+questions, and sanitizing only the fields already rejected would be safe by
+coincidence.
+
+The issue also asked whether the layering is worth a fixture, given that the only
+thing holding it was someone noticing. It is, and there is one now:
+`alloc_sanitize_field` must be defined once, its body must call no other
+allocator function, and no call site may precede its definition — with a
+fail-closed count so a broken extraction cannot pass vacuously. It also asserts
+the header carries no "no git" claim, so this issue cannot be reopened by a
+revert. Moving the block back upward, or giving it a single function dependency,
+turns it red.
