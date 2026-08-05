@@ -73,6 +73,15 @@ usage: jimledger.sh <subcommand> <spec-dir> [args]
 USAGE
 }
 
+# display_field <raw> — reduce an untrusted token to something safe to echo in
+#   a diagnostic: control bytes stripped, length capped. The same contract as
+#   reconcile.sh's display_field and jimpartition.sh's san_field, for the same
+#   reason — a value is echoed here precisely BECAUSE it just failed a gate, so
+#   it is the one class of output that is attacker-shaped by construction. A
+#   tree basename reaches this file through spec-ordinal-holder, which constrains
+#   only the leading ordinal, so the rest of the name is whatever was on disk.
+display_field() { printf '%s' "$1" | tr -d '\000-\037\177' | cut -c1-512; }
+
 # append_line <spec-dir> <phase> <event> <kv>
 #   Append one TAB-separated event to <spec-dir>/ledger.md.
 append_line() {
@@ -646,7 +655,7 @@ cmd_move_spec_dir() {
   fi
   held_rc=$?
   if (( held_rc == 0 )); then
-    echo "jimledger move-spec-dir: ordinal $dst_ord already held in $ng by '$held'; nothing moved" >&2
+    echo "jimledger move-spec-dir: ordinal $dst_ord already held in $ng by '$(display_field "$held")'; nothing moved" >&2
     return 1
   fi
   if (( held_rc != 1 )); then

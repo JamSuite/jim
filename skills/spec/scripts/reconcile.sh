@@ -114,6 +114,14 @@ prov_id_boundary() { jf valid-id "$1" >/dev/null 2>&1; }
 # a diagnostic: control bytes stripped, length capped. Mirrors jimpartition's
 # san_field contract; used on values whose whole reason for being printed is
 # that they just failed a gate.
+#
+# It DELETES tabs and newlines where jimalloc's alloc_sanitize_field maps them to
+# spaces, and that difference follows the output shape rather than being drift.
+# jimalloc's output is TAB-separated report rows, where deleting a tab would join
+# two fields into one plausible-looking token; here the output is prose on
+# stderr, where a surviving newline would forge a whole diagnostic line. Each is
+# the safe choice for where its result lands. The 512-vs-256 cap is arbitrary and
+# nothing depends on either value.
 display_field() { printf '%s' "$1" | tr -d '\000-\037\177' | cut -c1-512; }
 
 # is_prov_token <token>
@@ -152,14 +160,14 @@ scan_pending() {
     [[ -d "$gdir" ]] || continue
     group="$(basename "$gdir")"
     if ! jf valid-id "$group" >/dev/null 2>&1; then
-      echo "warning: $group — group name failed validation; skipped" >&2
+      echo "warning: $(display_field "$group") — group name failed validation; skipped" >&2
       continue
     fi
     for entry in "$gdir$PROV_PREFIX"*/; do
       [[ -d "$entry" ]] || continue
       base="$(basename "$entry")"
       if ! is_prov_token "$base"; then
-        echo "warning: $group/$base — not a provisional identity the allocator issues; skipped" >&2
+        echo "warning: $group/$(display_field "$base") — not a provisional identity the allocator issues; skipped" >&2
         continue
       fi
       specmd="${entry%/}/spec.md"
@@ -169,7 +177,7 @@ scan_pending() {
       fi
       id="$(field_value "$specmd" id)"
       if [[ "$id" != "$base" ]]; then
-        echo "warning: $group/$base — frontmatter id '$id' disagrees with the directory; skipped" >&2
+        echo "warning: $group/$base — frontmatter id '$(display_field "$id")' disagrees with the directory; skipped" >&2
         continue
       fi
       printf '%s/%s\t%s\n' "$group" "$base" "${entry%/}"
@@ -324,7 +332,7 @@ apply_pending() {
     # frontmatter. A non-conforming ordinal halts this identity and writes
     # nothing for it.
     if [[ ! "$ord" =~ ^[0-9]{3,15}$ ]]; then
-      echo "error: $pend — the registry answers with ordinal '$ord', which is not an ordinal a spec directory can carry; nothing applied for this identity" >&2
+      echo "error: $pend — the registry answers with ordinal '$(display_field "$ord")', which is not an ordinal a spec directory can carry; nothing applied for this identity" >&2
       failed=1; continue
     fi
     body="${base#"$PROV_PREFIX"}"
@@ -343,7 +351,7 @@ apply_pending() {
     # reasons, and because the sibling caller in jimledger.sh already passes it.
     held="$(jf spec-ordinal-holder "$newgroup" "$ord" --root "$root")"; held_rc=$?
     if (( held_rc == 0 )); then
-      echo "error: $pend — realized ordinal $real is already held by '$held' (registry-vs-tree drift); nothing applied for this identity" >&2
+      echo "error: $pend — realized ordinal $real is already held by '$(display_field "$held")' (registry-vs-tree drift); nothing applied for this identity" >&2
       failed=1; continue
     fi
     if (( held_rc != 1 )); then

@@ -2700,6 +2700,29 @@ case_jimalloc_sweep_names_a_retired_tree_group() {
 
 # AC 2: two records claiming one issue ordinal are the same contradiction from
 # the other direction.
+case_jimalloc_sanitizer_stays_a_record_layer_primitive() {
+  local def body_deps first_use n
+  def="$(grep -n '^alloc_sanitize_field() {' "$SCRIPT_jimalloc" | cut -d: -f1)"
+  assert_eq "the primitive is defined exactly once" "1" \
+    "$(printf '%s\n' "$def" | grep -c .)"
+  # Zero function dependencies: a body that called anything could be pulled back
+  # up by whatever it called, which is how it drifted into the reporting layer.
+  body_deps="$(sed -n "$def,/^}/p" "$SCRIPT_jimalloc" | grep -cE '\balloc_[a-z_]+ ')"
+  assert_eq "its body calls no other allocator function" "0" "$body_deps"
+  # Every caller is downward, so the record layer never depends on a later one.
+  first_use="$(grep -n 'alloc_sanitize_field' "$SCRIPT_jimalloc" \
+               | grep -v '^[0-9]*:#' | cut -d: -f1 | sort -n | head -1)"
+  assert_eq "no call site precedes the definition" "yes" \
+    "$([[ "$first_use" -ge "$def" ]] && echo yes || echo no)"
+  n="$(grep -c 'alloc_sanitize_field' "$SCRIPT_jimalloc")"
+  assert_eq "the call sites were read (>= 10, got $n)" "yes" \
+    "$([[ "$n" -ge 10 ]] && echo yes || echo no)"
+  # The section header is what the next editor reasons from, so it may not claim
+  # a git-free purity the accessor inside it does not have.
+  assert_eq "the record-layer header claims no purity it lacks" "0" \
+    "$(sed -n '/^# ─── Section: Record layer/p' "$SCRIPT_jimalloc" | grep -c 'no git')"
+}
+
 case_jimalloc_class_label_covers_every_emitted_class() {
   local emitted labels grammar c n missing=""
   emitted="$(grep -o 'alloc_classify_emit [A-Z][A-Z-]*' "$SCRIPT_jimalloc" \

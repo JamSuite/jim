@@ -73,7 +73,19 @@ CONFIG_FILE=""
 # collide with a jimfile.sh slug (slugs are lowercase).
 PROV_PREFIX="P-"
 
-# ─── Section: Record layer (pure — operates on a log, no git) ────────────────
+# ─── Section: Record layer (the log's grammar, and the accessor that reads it) ─
+#
+# What this section owns: the record grammar, the id and report boundaries every
+# field crosses, and the folds and scans that turn a log into answers. Those are
+# pure — a log in, a value out, no git.
+#
+# It is NOT git-free, and the one exception is deliberate rather than a leak.
+# `alloc_read_log` forks `git cat-file` to fetch the log a caller then hands to
+# everything else here, so the accessor sits with the grammar it accesses; it
+# reaches up to the git-plumbing section for the branch name and the config. No
+# other function in this section touches git, and none may: the folds and scans
+# are reused by a resolver, two folds, a classifier and two emitters precisely
+# because they answer from a log alone.
 #
 # The registry is one append-only, space-separated, newline-delimited log per
 # kind, file-order authoritative. It is writable by anyone who can push the
@@ -155,6 +167,9 @@ declare -A ALLOC_TOKEN_OK=()
 # fold, classifier, emitter — can echo a degraded field without each reasoning
 # about output safety. The id boundary decides what is CLASSIFIED; this decides
 # what is PRINTED, and the report must be safe even where a field is not an id.
+# Applied on emission to EVERY field, including fields that already crossed the
+# id boundary: the two answer different questions, and a report that sanitized
+# only the fields it had already rejected would be safe by coincidence.
 alloc_sanitize_field() {
   printf '%s' "${1:-}" \
     | tr '\t\n\r' '   ' \

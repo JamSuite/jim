@@ -1487,6 +1487,23 @@ case_jimledger_move_spec_dir_moves() {
     "$(git -C "$root" diff --cached --name-only)"
 }
 
+# The occupancy holder is echoed BECAUSE the move just failed its gate, and
+# spec-ordinal-holder constrains only the leading ordinal token — so the rest of
+# a holder's name is whatever was on disk. Same class as reconcile.sh's
+# failed-gate echoes, one file over.
+case_jimledger_move_spec_dir_sanitizes_the_occupancy_holder() {
+  local root esc
+  root="$(move_git_fixture msd_escheld)"
+  esc="$(printf '001-evil\033[1;31mRED')"
+  mkdir -p "$root/docs/specs/checkout/$esc"
+  printf '# x\n' > "$root/docs/specs/checkout/$esc/spec.md"
+  run_jimledger_in "$root" move-spec-dir docs/specs cart 006-foo checkout 001-foo
+  assert_exit  "refuses" 1 "$RC"
+  assert_match "the holder is still named" 'RED' "$ERR"
+  assert_eq "no control byte reaches the terminal" "0" \
+    "$(printf '%s' "$ERR" | LC_ALL=C grep -c '[[:cntrl:]]')"
+}
+
 # The widened source gate stays charset-closed: a P-shaped basename that is
 # not the reserved form — short date, or a slug the boundary refuses — is
 # refused before any path resolves.

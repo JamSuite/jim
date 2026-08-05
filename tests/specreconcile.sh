@@ -470,6 +470,63 @@ case_specreconcile_id_mismatch_warns() {
   assert_eq "nothing previewed" "0" "$(printf '%s\n' "$OUT" | grep -c '	sdlc/')"
 }
 
+# A value reaches these diagnostics precisely BECAUSE it just failed a gate, so
+# this is the one output class that is attacker-shaped by construction. The
+# frontmatter id is controlled by anyone who can land a file in the repo, and the
+# group and directory names by anyone who can create a directory.
+case_specreconcile_failed_gate_values_are_always_sanitized() {
+  local raw n
+  # $held, $id and $ord are echoed ONLY where they have just failed a gate, so
+  # any diagnostic naming one must route it through the sanitizer. $group and
+  # $base are deliberately not swept: both are also echoed after passing
+  # validation, where wrapping them would be noise rather than safety — their
+  # pre-validation sites are covered behaviourally below.
+  n="$(grep -cE 'echo .*>&2' "$SCRIPT_specreconcile")"
+  assert_eq "the diagnostics were read (>= 8, got $n)" "yes" \
+    "$([[ "$n" -ge 8 ]] && echo yes || echo no)"
+  raw="$(grep -nE 'echo .*>&2' "$SCRIPT_specreconcile" \
+         | grep -E '\$\{?(held|id|ord)\}?[^a-zA-Z_0-9]' \
+         | grep -v 'display_field' | cut -d: -f1 | tr '\n' ' ')"
+  assert_eq "no failed-gate value is echoed raw (offending lines)" "" "${raw% }"
+}
+
+case_specreconcile_sanitizes_a_hostile_frontmatter_id() {
+  local repo esc
+  repo="$(specrec_repo sr_escid)"
+  esc="$(printf 'P-20260728-evil\033[1;31mRED')"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha "$esc"
+  run_specreconcile_in "$repo"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the offending value is still named" 'RED' "$ERR"
+  assert_eq "no control byte reaches the terminal" "0" \
+    "$(printf '%s' "$ERR" | LC_ALL=C grep -c '[[:cntrl:]]')"
+}
+
+case_specreconcile_sanitizes_a_hostile_group_name() {
+  local repo esc
+  repo="$(specrec_repo sr_escgroup)"
+  esc="$(printf 'bad\033[1;31mGROUP')"
+  mkdir -p "$repo/docs/specs/$esc"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  run_specreconcile_in "$repo"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the offending group is still named" 'GROUP' "$ERR"
+  assert_eq "no control byte reaches the terminal" "0" \
+    "$(printf '%s' "$ERR" | LC_ALL=C grep -c '[[:cntrl:]]')"
+}
+
+case_specreconcile_sanitizes_a_hostile_provisional_dirname() {
+  local repo esc
+  repo="$(specrec_repo sr_escdir)"
+  esc="$(printf 'P-notaprovisional\033[1;31mDIR')"
+  mkdir -p "$repo/docs/specs/sdlc/$esc"
+  run_specreconcile_in "$repo"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the offending dir is still named" 'DIR' "$ERR"
+  assert_eq "no control byte reaches the terminal" "0" \
+    "$(printf '%s' "$ERR" | LC_ALL=C grep -c '[[:cntrl:]]')"
+}
+
 # AC: a pending dir with no spec.md to corroborate its identity is skipped with
 # a warning rather than trusted on the directory name alone.
 case_specreconcile_missing_spec_md_warns() {
