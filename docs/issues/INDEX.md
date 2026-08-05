@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 97
+- Open: 99
 - Closed: 137
 
 ## Issues
@@ -234,7 +234,9 @@
 - `20260805-pin-the-lift-s-five-unpinned-batch-guards-and-its-arm-asymmetry` — Pin the lift's five unpinned batch guards and its arm asymmetry · status: open · num: 225 · priority: medium · created: 2026-08-05T01:53:43Z · labels: [id-coordination, registry, test] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-pin-the-lift-s-reserved-ordinal-refusal-on-its-source-side` — Pin the lift's reserved-ordinal refusal on its source side · status: open · num: 226 · priority: high · created: 2026-08-05T02:19:11Z · labels: [000-blueprint, verify, test] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260805-pin-the-locale-at-the-three-locale-sensitive-test-sites` — Pin the locale at the three locale-sensitive test sites · status: open · num: 227 · priority: high · created: 2026-08-05T02:19:10Z · labels: [000-blueprint, verify, test] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260805-read-the-spent-set-the-lift-already-fills` — Read the spent set the lift already fills · status: open · num: P-20260805-read-the-spent-set-the-lift-already-fills · priority: medium · created: 2026-08-05T09:50:23Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260728-id-coordination-issue-grouping.md
 - `20260805-reconcile-the-partition-protocol-s-999-cap-with-the-widened-ordi` — Reconcile the partition protocol's 999 cap with the widened ordinal bound · status: open · num: 228 · priority: high · created: 2026-08-05T01:53:41Z · labels: [id-coordination, partition, scripts] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-refuse-a-renamed-away-group-in-catch-up-instead-of-reallocating-` — Refuse a renamed-away group in catch-up instead of reallocating it · status: open · num: P-20260805-refuse-a-renamed-away-group-in-catch-up-instead-of-reallocating- · priority: high · created: 2026-08-05T09:50:22Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260728-id-coordination-issue-grouping.md
 - `20260805-refuse-a-vacated-ordinal-in-catch-up-instead-of-silently-reissui` — Refuse a vacated ordinal in catch-up instead of silently reissuing it · status: open · num: 229 · priority: critical · created: 2026-08-05T01:53:40Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header` — Restore alloc_group_has_records's locals and correct its header · status: open · num: 230 · priority: medium · created: 2026-08-05T01:53:47Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-retire-the-four-stale-doc-sites-the-emission-cluster-left-behind` — Retire the four stale doc sites the emission cluster left behind · status: open · num: 231 · priority: medium · created: 2026-08-05T01:53:46Z · labels: [docs, workflow] · origin: docs/notes/20260805-b-prime-review.md
