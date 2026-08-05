@@ -252,6 +252,10 @@ Binding Jim to the host application's architecture requires knowledge of the hos
 
 **`merge <src>... into <target>`** — the N→1 counterpart: absorption into an existing group or fusion into a fresh one. An interview always precedes the approval gate, covering the fused blueprint draft plus each detected judgment item — colliding invariant ids, provides-name homonyms, edge dispositions. Edges internal to the merged set dissolve; third-party edges re-point to the target. Absorbed specs renumber-append so no previously-vacated id is ever reused.
 
+**What makes a moved id still resolve.** All three operations propose ids at their gate and *bind* them at the close, through a single emission verb: `partition-batch` writes the rename records that let a citation frozen before a move still dereference, and it refuses rather than resolves a contradiction — a destination already claimed, or an ordinal an earlier rename vacated, is named and the batch writes nothing. That refusal is the mechanism behind "never re-minted" above: the ordinal is not merely avoided by convention, it is closed to arrivals.
+
+Moves that predate this machinery left no such record, so a citation from before them dead-ends. `lift` is the repair: it reads the ledger's own identity-pair events — the durable old→new bridge each operation writes — and records those pairs in the registry, corroborating every one against what the registry already establishes and refusing any it cannot. It repairs an absence; it never adjudicates a conflict.
+
 ### Identity migration mode
 
 You can control what happens to spec identity when a spec migrates, by setting one of the `spec_migration` config key values:

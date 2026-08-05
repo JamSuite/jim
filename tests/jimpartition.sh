@@ -1731,6 +1731,63 @@ case_jimpartition_pending_provisional_list_truncation_is_noted() {
   assert_match "the cut is disclosed" 'list truncated' "$OUT"
 }
 
+# The other half, which the positive case above cannot see: a list that FITS
+# must not claim it was cut. A note that fires either way carries no information.
+case_jimpartition_pending_provisional_short_list_is_not_noted() {
+  local dir
+  dir="$(rename_repo pfshort)"
+  mkdir -p "$dir/docs/specs/cart/P-20260801-one" "$dir/docs/specs/cart/P-20260801-two"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no truncation claimed" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'truncated')"
+  assert_match "both identities named" 'P-20260801-one' "$OUT"
+}
+
+# The false positive the comparison had to be written around. A basename is not
+# token-gated on the way in, so a control byte makes the SANITIZED string differ
+# from the raw one — comparing those two would report a truncation on a list
+# that is complete, and the operator would go looking for identities that are
+# all already there.
+case_jimpartition_pending_provisional_control_byte_is_not_a_truncation() {
+  local dir esc
+  dir="$(rename_repo pfctl)"
+  esc="$(printf 'P-20260801-evil\033mark')"
+  mkdir -p "$dir/docs/specs/cart/$esc"
+  run_jimpartition_in "$dir" rename-preflight BLUEPRINT.md docs/specs cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_eq "a stripped byte is not a cut" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'truncated')"
+  # The fact grammar is tab-separated, so tabs are expected; ESC is what must
+  # not survive into a terminal.
+  assert_eq "the escape byte is stripped" "0" \
+    "$(printf '%s' "$OUT" | LC_ALL=C grep -c $'\033')"
+}
+
+# The funnel every CHECK detail crosses. Disclosing the cut here rather than at
+# each caller is what makes it impossible for a caller to forget — and it is
+# reachable, since a caller-supplied path is a detail with no length gate of
+# its own.
+case_jimpartition_check_detail_truncation_is_disclosed() {
+  local dir long
+  dir="$(rename_repo pfemit)"
+  long="$(printf 'aaaaaaaaaa/%.0s' $(seq 1 60))map.md"
+  run_jimpartition_in "$dir" rename-preflight "$long" docs/specs cart checkout
+  assert_exit  "rc" 1 "$RC"
+  assert_match "the fact says it was cut" 'map not found: a.* … .truncated.' "$OUT"
+}
+
+# The other half: a detail that fits is not annotated. Without this, the note
+# above could fire unconditionally and still pass.
+case_jimpartition_check_detail_short_is_not_annotated() {
+  local dir
+  dir="$(rename_repo pfemitshort)"
+  run_jimpartition_in "$dir" rename-preflight nosuchmap.md docs/specs cart checkout
+  assert_exit "rc" 1 "$RC"
+  assert_match "the short detail is verbatim" 'map not found: nosuchmap.md' "$OUT"
+  assert_eq "nothing claims a cut" "0" "$(printf '%s\n' "$OUT" | grep -c 'truncated')"
+}
+
 # The registry-boundary rule: a dynamic path component is slug-validated before
 # ANY filesystem lookup. merge-preflight passed its effective source set to the
 # provisional probe ungated — the one probe in its function that did not follow

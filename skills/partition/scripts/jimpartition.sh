@@ -905,8 +905,18 @@ old_group_territories() {
 }
 
 # emit_check <name> <pass|fail> <detail>
+#   Every CHECK fact's detail crosses san_field here, which is also where it can
+#   be silently CUT: a detail longer than the cap arrives at the gate looking
+#   whole. This is the funnel for that, so the disclosure lives here rather than
+#   at each of the callers — a caller that forgets is the failure mode, and a
+#   caller cannot forget a thing it does not do. The comparison is against the
+#   length cut alone, not against the raw string: control bytes are stripped from
+#   almost every real path too, and a note that fired on those would say
+#   "truncated" about a detail that is complete.
 emit_check() {
-  printf 'CHECK\t%s\t%s\t%s\n' "$1" "$2" "$(san_field "$3")"
+  local detail; detail="$(san_field "$3")"
+  [[ "${#detail}" -eq 512 && "${#3}" -gt 512 ]] && detail="$detail … (truncated)"
+  printf 'CHECK\t%s\t%s\t%s\n' "$1" "$2" "$detail"
 }
 
 # pending_provisionals <specs-dir> <group> — print the basename of every spec
@@ -953,8 +963,13 @@ check_pending_provisionals() {
       # cut must say so — a capped list with no note reads as the whole list
       # (the sweep's truncation discipline). Capped below the emit_check field
       # limit so the note itself survives the fact's own sanitizer.
+      #
+      # Compared against the CUT, not against the raw list. A basename is not
+      # token-gated on the way in, so a single control byte anywhere in it makes
+      # sanitized differ from raw — and the note would then claim a truncation
+      # that did not happen, on a list that is in fact complete.
       shown="$(san_field "$pend" | cut -c1-256)"
-      [[ "$shown" != "$pend" ]] && shown="$shown … (list truncated)"
+      [[ "${#shown}" -eq 256 ]] && shown="$shown … (list truncated)"
       emit_check pending-provisionals fail "$g: $shown"
       echo "error: pending provisional spec(s) in $(san_field "$g"): $shown" \
            "— realize them first (/jim:spec reconcile), then re-run" >&2

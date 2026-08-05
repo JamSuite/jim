@@ -59,12 +59,13 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:meta-agent` | Build a jim plugin agent from spec |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite |
 
-Two registry-integrity verbs are hand-run scripts rather than skills (see [Registry integrity](#registry-integrity--jimallocsh-sweep--catch-up)):
+Three registry-integrity verbs are hand-run scripts rather than skills (see [Registry integrity](#registry-integrity--jimallocsh-sweep--catch-up--lift)):
 
 | Command | What it does |
 |---------|-------------|
 | `jimalloc.sh sweep` | Read-only: report tree-vs-registry drift under named classes, and everything the check did not cover; exits `0` clean, `3` drift, `4` could-not-check |
 | `jimalloc.sh catch-up [--apply]` | Preview (or apply) the records a non-empty registry is missing, under the same compare-and-swap and erosion guard as an allocation |
+| `jimalloc.sh lift [--apply]` | Preview (or record) the rename records a move made before the registry could witness it, so a citation frozen beforehand still resolves |
 
 ## Agents
 
