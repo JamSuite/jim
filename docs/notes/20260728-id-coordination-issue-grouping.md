@@ -1601,7 +1601,8 @@ and left unapplied at siblings nobody enumerated, `catch-up` that sibling three
 times — plus six fixture claims overturned by mutation testing the build never
 ran. Fifteen filed as #220–#234. See *What B′ changed* and *Grouping* → B′.
 
-**7. B″ — finish B′, and land #188 first.** The fifteen (#220–#234) plus the
+**7. ~~B″ — finish B′, and land #188 first.~~ DONE — built and shipped
+2026-08-05.** The fifteen (#220–#234) plus the
 three foldable leftovers (#208, #215, #216). It rides B's slot by the same rule
 B′ did, and the build shape holds the same way: every security-adjacent fix is
 a narrowing, and the blueprint writes go through their own surfaces.
@@ -1715,6 +1716,37 @@ the guard to see uncomma'd spellings closes it at zero runtime cost; routing
 `:1566` through a `jimfile.sh` predicate instead would put a subprocess fork in a
 per-directory scan loop, in the same pass that is fixing a fork-amplification DoS
 (#233).
+
+**B″ SHIPPED 2026-08-05** — `a9feede..da3ff7b`, 20 commits, suite 1148 → 1182.
+All nineteen items closed (#208, #211, #215, #216, #220–#234), both pre-code
+forks settled on evidence before any code, and the build stayed a build.
+
+**Practice 10 applied to B″ itself**, since this is the pass that filed its gate.
+Twelve findings, twelve dispositions, no remainder:
+
+| Disposition | Count | What |
+| :--- | ---: | :--- |
+| **filed + fixed** | 2 | the never-reissue rule's two unnamed doors — `catch-up` × group, and the lift's unread spent set |
+| **filed, open** | 2 | practice 10's own gate; 95 artifact citations in script comments |
+| **fixed inline** | 6 | `UNREADABLE` undocumented in the row grammar · `scripts/` unswept for the locale export · the stray sweep blind to nested paths · the width sweep rooted at one production root · a leaked `read` target in `render.sh` · a stage list re-spelled instead of named |
+| **folded** | 3 | `script-preamble`, `ordinal-single-source`, `tests-under-tests` — text overstating its mechanism |
+| **map** | 1 | two test files no group's territory claimed |
+
+**Three findings came from the verify judges, not from the issues** — and all
+three were gaps in sweeps this same session wrote *and mutation-tested*. That is
+the sharpest lesson of the pass and it refines practice 7: mutation testing
+proves an assertion **discriminates**; it cannot tell you the **corpus was too
+small**. A sweep that is green because it looked in too few places is
+indistinguishable, from the inside, from one that is green because the corpus is
+clean. Only a reader who does not share the author's map of where to look can
+tell those apart — which is the concrete argument #188 was making in the abstract.
+
+**The pre-code forks paid for themselves.** #229's two proposed actions were
+*both* wrong — one would have wedged `catch-up` on every registry that has ever
+renamed, the other repaired silently at rc 0 — and the real defect was an
+intersection nobody had named. #228 undercounted its gates by two, and the pair
+it missed would have turned an omission bug into a corruption bug. Neither would
+have been caught by implementing the issue as written.
 
 **Then sequence by the rule's doors, not the issue's** — the review's own
 lesson. Draw the door matrix first (emitters / catch-up / lift × spec / group /
