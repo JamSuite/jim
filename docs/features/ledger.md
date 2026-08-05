@@ -1,8 +1,8 @@
-# The Pipeline Ledger
+# Ledger
 
-The ledger is jim's flight recorder: an append-only, committed event log that captures how the SDLC actually ran — when each stage started and finished, what the build's code boundary was, how each review's verdict moved, and what every blueprint, verification, and partition operation concluded. It is the durable record behind every "how did this go?" question the pipeline can answer, and the trusted data channel those answers are read through.
+The ledger is Jim's flight recorder: an append-only, committed event log that captures how the SDLC actually ran — when each stage started and finished, what the build's code boundary was, how each review's verdict moved, and what every blueprint, verification, and partition operation concluded. It is the durable record behind every "how did this go?" question the pipeline can answer, and the trusted data channel those answers are read through.
 
-Git alone can't tell this story: research leaves no commits, an interrupted stage leaves no trace, and causality isn't in the diff. The ledger captures the process realities — interruptions, re-runs, durations, outcomes — as they happen, in a form that is grep-parseable now and mineable across specs later.
+Git alone can't tell this story: research leaves no commits, an interrupted stage leaves no trace, and causality isn't in the diff. The ledger captures the process realities — interruptions, re-runs, durations, outcomes — in a structured format, providing historical metrics.
 
 ## What it looks like
 
@@ -12,7 +12,7 @@ Each ledger is a plain `ledger.md` of TAB-separated lines:
 <epoch>  <iso8601>  <stage>  <event>  [k=v;k=v…]
 ```
 
-A real spec's ledger, mid-pipeline:
+A spec's ledger, mid-pipeline:
 
 ```
 1784767634  2026-07-23T00:47:14Z  build   started   base_sha=29ff5068…
@@ -34,9 +34,9 @@ Append-only is the design, not an implementation detail — it captures the hard
 
 **The spec ledger** — `docs/specs/<group>/<NNN>-<slug>/ledger.md`, beside `spec.md`. Every instrumented stage (`spec`, `research`, `plan`, `sec`, `build`, `review`) records its own start/finish. `/jim:build` additionally records the build's boundary — the baseline SHA at start and head SHA at finish — which is what lets [the review](review.md) scope "what this build changed" exactly, even when several specs share one feature branch. `/jim:review` appends its alignment verdict and findings count on completion, so re-running a review overwrites the `review.md` snapshot but the verdict *trajectory* (`major-drift → aligned`) survives here.
 
-**The group blueprint ledger** — `docs/specs/<group>/000-blueprint/ledger.md`. Blueprint update runs record their guard outcomes (`violations=`/`folded=`/`fixed=`), `/jim:verify` runs record per-invariant outcome counts, and the cadence signal counts `blueprint finished` events against the blueprint's `last_full_generate` watermark to report targeted updates since the last full regeneration.
+**The blueprint ledger** — `docs/specs/<group>/000-blueprint/ledger.md`. Blueprint update runs record their guard outcomes (`violations=`/`folded=`/`fixed=`), `/jim:verify` runs record per-invariant outcome counts, and the cadence signal counts `blueprint finished` events against the blueprint's `last_full_generate` watermark to report targeted updates since the last full regeneration.
 
-**The specs-root ledger** — `docs/specs/ledger.md`, carrying project-tier events tagged `tier=project`: map-tier blueprint writes, the reconcile pass (`op=reconcile`, with its fifteen finding/health/face counters), cross-group contract and retirement verification runs, and the partition operations (`op=rename` / `op=split` / `op=merge` / `op=health`). On a partition move this ledger is the durable old→new **bridge**: the event records the identity mapping (and on split/merge the complete per-spec remap), which is what keeps a frozen or re-homed archive traceable — git history is unrewritable, so the ledger event is the alias every migration mode leans on.
+**The project ledger** — `docs/specs/ledger.md`, carrying project-tier events tagged `tier=project`: map-tier blueprint writes, the reconcile pass (`op=reconcile`, with its finding/health/face counters), cross-group contract and retirement verification runs, and the partition operations (`op=rename` / `op=split` / `op=merge` / `op=health`). On a partition move this ledger is the durable old→new **bridge**: the event records the identity mapping (and on split/merge the complete per-spec remap), which is what keeps a frozen or re-homed archive traceable — Jim doesn't rewrite git history, so ledger events are the record every migration mode leans on.
 
 ## Design features
 
