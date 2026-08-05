@@ -4,7 +4,7 @@
 # Blueprint — jim
 
 *Axis: vertical · Territory: declared-paths*
-*Last updated: 2026-08-02 (via /jim:blueprint)*
+*Last updated: 2026-08-05 (via /jim:blueprint)*
 
 *The project-tier context map: the declared partition of this project into
 spec groups, each a deliberate context boundary. Current state only — the
@@ -82,13 +82,13 @@ re-declared here.*
 - **Relations:** requires `issue` (validator-lockstep, dev-time), `sdlc`
   (personas the meta-test scaffold dispatches); provider to `sdlc`,
   `blueprint`, `issue` (the CLIs and test framework).
-- **Territory:** skills/conf, skills/file, skills/ledger, skills/meta-test, tests/jimconf.sh, tests/jimfile.sh, tests/jimalloc.sh, tests/jimledger.sh, tests/metatest.sh, tests/scripthygiene.sh
+- **Territory:** skills/conf, skills/file, skills/ledger, skills/meta-test, tests/jimconf.sh, tests/jimfile.sh, tests/jimalloc.sh, tests/jimledger.sh, tests/metatest.sh, tests/scripthygiene.sh, tests/docsurfaces.sh, tests/fanoutdisclosure.sh
 - **Blueprint:** docs/specs/platform/000-blueprint/
 
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-08-04T21:07:10Z
+on every blueprint write; do not edit. Last reconciled: 2026-08-05T12:48:18Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |
