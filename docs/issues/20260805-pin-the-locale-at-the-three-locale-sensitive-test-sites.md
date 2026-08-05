@@ -1,6 +1,6 @@
 ---
 id: 20260805-pin-the-locale-at-the-three-locale-sensitive-test-sites
-num: P-20260805-pin-the-locale-at-the-three-locale-sensitive-test-sites
+num: 227
 title: "Pin the locale at the three locale-sensitive test sites"
 status: open
 priority: high

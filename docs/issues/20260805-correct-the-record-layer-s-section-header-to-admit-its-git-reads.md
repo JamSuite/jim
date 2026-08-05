@@ -1,6 +1,6 @@
 ---
 id: 20260805-correct-the-record-layer-s-section-header-to-admit-its-git-reads
-num: P-20260805-correct-the-record-layer-s-section-header-to-admit-its-git-reads
+num: 220
 title: "Correct the record layer's section header to admit its git reads"
 status: open
 priority: medium

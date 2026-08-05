@@ -1,6 +1,6 @@
 ---
 id: 20260805-gate-the-issue-side-ordinal-mint-against-the-width-ceiling
-num: P-20260805-gate-the-issue-side-ordinal-mint-against-the-width-ceiling
+num: 223
 title: "Gate the issue-side ordinal mint against the width ceiling"
 status: open
 priority: medium

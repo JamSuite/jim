@@ -1,6 +1,6 @@
 ---
 id: 20260805-pin-the-lift-s-reserved-ordinal-refusal-on-its-source-side
-num: P-20260805-pin-the-lift-s-reserved-ordinal-refusal-on-its-source-side
+num: 226
 title: "Pin the lift's reserved-ordinal refusal on its source side"
 status: open
 priority: high

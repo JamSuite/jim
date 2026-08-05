@@ -1,6 +1,6 @@
 ---
 id: 20260805-refuse-a-vacated-ordinal-in-catch-up-instead-of-silently-reissui
-num: P-20260805-refuse-a-vacated-ordinal-in-catch-up-instead-of-silently-reissui
+num: 229
 title: "Refuse a vacated ordinal in catch-up instead of silently reissuing it"
 status: open
 priority: critical

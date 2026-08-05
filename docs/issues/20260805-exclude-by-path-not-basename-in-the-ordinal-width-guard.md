@@ -1,6 +1,6 @@
 ---
 id: 20260805-exclude-by-path-not-basename-in-the-ordinal-width-guard
-num: P-20260805-exclude-by-path-not-basename-in-the-ordinal-width-guard
+num: 222
 title: "Exclude by path, not basename, in the ordinal width guard"
 status: open
 priority: medium

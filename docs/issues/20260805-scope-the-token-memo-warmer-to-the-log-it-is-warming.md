@@ -1,6 +1,6 @@
 ---
 id: 20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming
-num: P-20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming
+num: 233
 title: "Scope the token memo warmer to the log it is warming"
 status: open
 priority: high

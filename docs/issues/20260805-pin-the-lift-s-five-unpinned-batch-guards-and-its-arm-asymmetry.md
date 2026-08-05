@@ -1,6 +1,6 @@
 ---
 id: 20260805-pin-the-lift-s-five-unpinned-batch-guards-and-its-arm-asymmetry
-num: P-20260805-pin-the-lift-s-five-unpinned-batch-guards-and-its-arm-asymmetry
+num: 225
 title: "Pin the lift's five unpinned batch guards and its arm asymmetry"
 status: open
 priority: medium

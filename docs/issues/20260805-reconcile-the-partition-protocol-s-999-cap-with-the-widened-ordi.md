@@ -1,6 +1,6 @@
 ---
 id: 20260805-reconcile-the-partition-protocol-s-999-cap-with-the-widened-ordi
-num: P-20260805-reconcile-the-partition-protocol-s-999-cap-with-the-widened-ordi
+num: 228
 title: "Reconcile the partition protocol's 999 cap with the widened ordinal bound"
 status: open
 priority: high

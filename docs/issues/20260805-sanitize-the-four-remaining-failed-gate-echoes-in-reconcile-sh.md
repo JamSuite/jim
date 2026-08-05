@@ -1,6 +1,6 @@
 ---
 id: 20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh
-num: P-20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh
+num: 232
 title: "Sanitize the four remaining failed-gate echoes in reconcile.sh"
 status: open
 priority: medium

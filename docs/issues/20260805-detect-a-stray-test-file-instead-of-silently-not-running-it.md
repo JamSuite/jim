@@ -1,6 +1,6 @@
 ---
 id: 20260805-detect-a-stray-test-file-instead-of-silently-not-running-it
-num: P-20260805-detect-a-stray-test-file-instead-of-silently-not-running-it
+num: 221
 title: "Detect a stray test file instead of silently not running it"
 status: open
 priority: medium

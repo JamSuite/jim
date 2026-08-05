@@ -1,6 +1,6 @@
 ---
 id: 20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header
-num: P-20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header
+num: 230
 title: "Restore alloc_group_has_records's locals and correct its header"
 status: open
 priority: medium

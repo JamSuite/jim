@@ -1,6 +1,6 @@
 ---
 id: 20260805-warm-the-id-boundary-memo-in-catch-up-and-lift
-num: P-20260805-warm-the-id-boundary-memo-in-catch-up-and-lift
+num: 234
 title: "Warm the id-boundary memo in catch-up and lift"
 status: open
 priority: medium
