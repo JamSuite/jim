@@ -1,6 +1,6 @@
 ---
 id: 20260805-stop-partition-batch-spec-emitting-the-duplicate-ordinal-drift-i
-num: P-20260805-stop-partition-batch-spec-emitting-the-duplicate-ordinal-drift-i
+num: 251
 title: "Stop partition-batch spec emitting the duplicate-ordinal drift its own classifier calls unrepairable"
 status: open
 priority: critical

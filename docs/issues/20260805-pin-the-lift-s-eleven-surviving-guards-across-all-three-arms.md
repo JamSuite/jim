@@ -1,6 +1,6 @@
 ---
 id: 20260805-pin-the-lift-s-eleven-surviving-guards-across-all-three-arms
-num: P-20260805-pin-the-lift-s-eleven-surviving-guards-across-all-three-arms
+num: 241
 title: "Pin the lift's eleven surviving guards across all three arms"
 status: open
 priority: high

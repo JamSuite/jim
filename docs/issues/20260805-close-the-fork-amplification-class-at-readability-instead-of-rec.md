@@ -1,6 +1,6 @@
 ---
 id: 20260805-close-the-fork-amplification-class-at-readability-instead-of-rec
-num: P-20260805-close-the-fork-amplification-class-at-readability-instead-of-rec
+num: 235
 title: "Close the fork-amplification class at readability instead of record kind"
 status: open
 priority: high

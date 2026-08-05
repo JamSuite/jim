@@ -1,6 +1,6 @@
 ---
 id: 20260805-sum-ledger-stage-durations-instead-of-reporting-the-span-between
-num: P-20260805-sum-ledger-stage-durations-instead-of-reporting-the-span-between
+num: 252
 title: "Sum ledger stage durations instead of reporting the span between first and last"
 status: open
 priority: medium

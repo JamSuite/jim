@@ -1,6 +1,6 @@
 ---
 id: 20260805-route-the-twelve-proven-unsanitized-sites-and-sweep-the-class-co
-num: P-20260805-route-the-twelve-proven-unsanitized-sites-and-sweep-the-class-co
+num: 250
 title: "Route the twelve proven unsanitized sites and sweep the class corpus-wide"
 status: open
 priority: high

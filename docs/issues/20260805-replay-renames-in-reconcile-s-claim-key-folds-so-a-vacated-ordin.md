@@ -1,6 +1,6 @@
 ---
 id: 20260805-replay-renames-in-reconcile-s-claim-key-folds-so-a-vacated-ordin
-num: P-20260805-replay-renames-in-reconcile-s-claim-key-folds-so-a-vacated-ordin
+num: 248
 title: "Replay renames in reconcile's claim-key folds so a vacated ordinal is never returned as have"
 status: open
 priority: high

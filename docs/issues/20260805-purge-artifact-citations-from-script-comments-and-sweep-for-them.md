@@ -1,6 +1,6 @@
 ---
 id: 20260805-purge-artifact-citations-from-script-comments-and-sweep-for-them
-num: P-20260805-purge-artifact-citations-from-script-comments-and-sweep-for-them
+num: 243
 title: "Purge artifact citations from script comments and sweep for them"
 status: open
 priority: medium

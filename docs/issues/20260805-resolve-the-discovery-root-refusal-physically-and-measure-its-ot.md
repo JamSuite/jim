@@ -1,6 +1,6 @@
 ---
 id: 20260805-resolve-the-discovery-root-refusal-physically-and-measure-its-ot
-num: P-20260805-resolve-the-discovery-root-refusal-physically-and-measure-its-ot
+num: 249
 title: "Resolve the discovery-root refusal physically and measure its other three cells"
 status: open
 priority: high

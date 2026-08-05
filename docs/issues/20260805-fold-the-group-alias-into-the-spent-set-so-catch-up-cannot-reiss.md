@@ -1,6 +1,6 @@
 ---
 id: 20260805-fold-the-group-alias-into-the-spent-set-so-catch-up-cannot-reiss
-num: P-20260805-fold-the-group-alias-into-the-spent-set-so-catch-up-cannot-reiss
+num: 238
 title: "Fold the group alias into the spent set so catch-up cannot reissue a vacated ordinal"
 status: open
 priority: critical

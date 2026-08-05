@@ -1,6 +1,6 @@
 ---
 id: 20260805-disclose-what-catch-up-withheld-instead-of-claiming-every-identi
-num: P-20260805-disclose-what-catch-up-withheld-instead-of-claiming-every-identi
+num: 237
 title: "Disclose what catch-up withheld instead of claiming every identity has a record"
 status: open
 priority: high

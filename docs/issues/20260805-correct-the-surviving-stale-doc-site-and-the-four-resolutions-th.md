@@ -1,6 +1,6 @@
 ---
 id: 20260805-correct-the-surviving-stale-doc-site-and-the-four-resolutions-th
-num: P-20260805-correct-the-surviving-stale-doc-site-and-the-four-resolutions-th
+num: 236
 title: "Correct the surviving stale doc site and the four resolutions that outran their measurement"
 status: open
 priority: medium

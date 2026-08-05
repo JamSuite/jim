@@ -1,6 +1,6 @@
 ---
 id: 20260805-widen-the-doc-sweep-s-corpus-and-derive-its-registry-verb-list-f
-num: P-20260805-widen-the-doc-sweep-s-corpus-and-derive-its-registry-verb-list-f
+num: 254
 title: "Widen the doc sweep's corpus and derive its registry verb list from the dispatch table"
 status: open
 priority: high

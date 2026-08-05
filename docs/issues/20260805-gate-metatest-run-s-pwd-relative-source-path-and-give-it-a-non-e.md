@@ -1,6 +1,6 @@
 ---
 id: 20260805-gate-metatest-run-s-pwd-relative-source-path-and-give-it-a-non-e
-num: P-20260805-gate-metatest-run-s-pwd-relative-source-path-and-give-it-a-non-e
+num: 239
 title: "Gate metatest run's PWD-relative source path and give it a non-empty corpus floor"
 status: open
 priority: medium

@@ -1,6 +1,6 @@
 ---
 id: 20260805-teach-both-single-source-guards-in-jimfile-tests-the-spellings-a
-num: P-20260805-teach-both-single-source-guards-in-jimfile-tests-the-spellings-a
+num: 253
 title: "Teach both single-source guards in jimfile tests the spellings and copies they miss"
 status: open
 priority: medium

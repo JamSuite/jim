@@ -1,6 +1,6 @@
 ---
 id: 20260805-refuse-a-renamed-away-group-in-catch-up-instead-of-reallocating-
-num: P-20260805-refuse-a-renamed-away-group-in-catch-up-instead-of-reallocating-
+num: 247
 title: "Refuse a renamed-away group in catch-up instead of reallocating it"
 status: closed
 priority: high

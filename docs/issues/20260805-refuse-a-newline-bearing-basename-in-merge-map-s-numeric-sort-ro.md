@@ -1,6 +1,6 @@
 ---
 id: 20260805-refuse-a-newline-bearing-basename-in-merge-map-s-numeric-sort-ro
-num: P-20260805-refuse-a-newline-bearing-basename-in-merge-map-s-numeric-sort-ro
+num: 246
 title: "Refuse a newline-bearing basename in merge-map's numeric sort round-trip"
 status: open
 priority: critical

@@ -1,6 +1,6 @@
 ---
 id: 20260805-make-the-hygiene-sweeps-depth-unlimited-root-enforced-and-occurr
-num: P-20260805-make-the-hygiene-sweeps-depth-unlimited-root-enforced-and-occurr
+num: 240
 title: "Make the hygiene sweeps depth-unlimited, root-enforced, and occurrence-counting"
 status: open
 priority: medium

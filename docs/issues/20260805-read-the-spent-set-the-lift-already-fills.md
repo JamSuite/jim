@@ -1,6 +1,6 @@
 ---
 id: 20260805-read-the-spent-set-the-lift-already-fills
-num: P-20260805-read-the-spent-set-the-lift-already-fills
+num: 244
 title: "Read the spent set the lift already fills"
 status: closed
 priority: medium

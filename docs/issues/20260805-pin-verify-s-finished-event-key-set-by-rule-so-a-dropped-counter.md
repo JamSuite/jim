@@ -1,6 +1,6 @@
 ---
 id: 20260805-pin-verify-s-finished-event-key-set-by-rule-so-a-dropped-counter
-num: P-20260805-pin-verify-s-finished-event-key-set-by-rule-so-a-dropped-counter
+num: 242
 title: "Pin verify's finished-event key set by rule so a dropped counter cannot pass"
 status: open
 priority: high

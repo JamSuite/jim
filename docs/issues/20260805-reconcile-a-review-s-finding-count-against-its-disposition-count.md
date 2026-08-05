@@ -1,6 +1,6 @@
 ---
 id: 20260805-reconcile-a-review-s-finding-count-against-its-disposition-count
-num: P-20260805-reconcile-a-review-s-finding-count-against-its-disposition-count
+num: 245
 title: "Reconcile a review's finding count against its disposition count"
 status: open
 priority: high
