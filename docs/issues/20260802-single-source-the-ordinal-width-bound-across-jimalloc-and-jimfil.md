@@ -2,7 +2,7 @@
 id: 20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil
 num: 212
 title: "Single-source the ordinal width bound across jimalloc, jimfile and jimledger"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, sync-discipline]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T20:57:29Z
-updated: 2026-08-03T08:34:53Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/plan.md
 ---
 
@@ -157,3 +157,29 @@ should say so — construction, not convention.
 Two clauses of the current folded text must also disappear on close: the
 eight-inlined-literals / three-accepted-widths admission, and the
 tree-derived `next-num` carve-out on the issue kind if that is folded in too.
+
+## Resolution (2026-08-05)
+
+The bound's shape was settled rather than encoded twice: ordinal legality is one
+predicate, `alloc_valid_ord`, around one named constant. Seven inline
+comparisons folded in; the constant is compared in exactly one function and the
+allocator spells no width literal of its own (both counts re-measured). The tree
+and ledger sides carry the bound as two documented rules sharing that ceiling —
+the canonical `{3,15}` spelling and the numeric `{1,15}` acceptance, the latter
+confirmed load-bearing rather than drift: a `{3,15}` occupancy gate would read
+`18-foo` as free space and land a second directory on ordinal 18.
+`move-spec-dir`'s exactly-3 gates are widened and a 4-digit spec now moves
+cross-parent end to end. The cross-file fixture extracts each site's value and
+binds it to the constant, proven genuinely value-binding by mutating the
+constant alone and watching four assertions fail.
+
+Scope correction, third in this cluster: the count is **eleven runtime gates
+across four files**, not the nine this issue recorded or the ten the handoff
+revised it to — plus six more in `jimpartition.sh` that no count has included.
+
+Residual, tracked separately: the tree-wide guard excludes by basename (so
+`skills/issue/scripts/reconcile.sh` is silently exempt) and matches only
+comma-form ranges, missing exactly-N literals, awk `length()` and `${#x}`
+comparisons; it also never scans `tests/` or repo-root `scripts/`. And the
+partition layer's own gates did not follow the widening, which is where the
+`>999` dead end still lives.

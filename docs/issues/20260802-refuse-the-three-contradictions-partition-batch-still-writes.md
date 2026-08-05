@@ -2,7 +2,7 @@
 id: 20260802-refuse-the-three-contradictions-partition-batch-still-writes
 num: 209
 title: "Refuse the three contradictions partition-batch still writes"
-status: open
+status: closed
 priority: high
 labels: [id-coordination, registry, partition]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:11Z
-updated: 2026-08-03T08:35:15Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -146,3 +146,24 @@ paths … protected by arithmetic rather than by a gate" admission.
 The sibling fold on `ordinal-single-source` carries the same obligation under
 [[20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil]];
 both were weakened in one pass and both must come back.
+
+## Resolution (2026-08-05)
+
+All three contradictions are refused, each with the conflict named: a spent
+destination (the claim set now carries the replay's `SRC` rows), the reserved
+zero ordinal, and a redirected destination group in group mode. Group mode also
+refuses landing a live claim on a spent name — the same invariant through the
+sibling door, which this issue did not name — and the lift gained its own
+reserved-ordinal gate, previously safe only by the `destination-not-established`
+side effect.
+
+Verified against real git registries with before/after ref comparison: each
+contradiction refused with the registry byte-identical afterwards, and adjacent
+legitimate cases still succeeding, so the refusals are not over-broad. All five
+gates are mutation-discriminating — neutering any one turns its fixture red. The
+lift's reserved gate was shown independently load-bearing by constructing the
+case where the side effect does not fire.
+
+Residual, tracked separately: `catch-up` is a third registry write door with
+neither the spent-destination nor the redirected-group refusal, and reissues a
+vacated ordinal end to end. The lift declares the spent set and never reads it.

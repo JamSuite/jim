@@ -2,7 +2,7 @@
 id: 20260802-replace-the-vacuously-green-vacated-max-test-and-close-the-fixtu
 num: 210
 title: "Replace the vacuously-green vacated-max test and close the fixture gaps"
-status: open
+status: closed
 priority: medium
 labels: [test-integrity, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:13Z
-updated: 2026-08-02T21:35:13Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -70,3 +70,19 @@ above. The first is the highest value: it is the only one guarding a fix that
 already shipped.
 
 Surfaced by the post-build review of blueprint/025 (findings 14, 20c).
+
+## Resolution (2026-08-05)
+
+The vacuous `vacated-max` case and both orphaned headers are deleted, and the
+surviving retirement case's header now states what its body asserts (proven
+non-vacuous by re-adding a `vacated-max` dispatch arm and watching it go red).
+Five fixtures added: the group-arm and issue-arm provenance discriminators,
+issue self-rename survival, the lift's `group` kind end to end, `pair-events`'
+three row kinds plus its fail-closed gates, and `move-spec-dir`'s refusal of a
+malformed provisional source.
+
+Every one was mutation-tested independently: **13 of 13 mutations red**. The
+fail-closed gate fixture asserts the safe outcome — rc 0 *and empty stdout*, no
+row leaving the parser — rather than merely that an error appeared, and each of
+its three gates was shown individually load-bearing by a separate leak mutation.
+No fixture in this set is vacuous.

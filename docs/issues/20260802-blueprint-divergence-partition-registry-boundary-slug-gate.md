@@ -2,7 +2,7 @@
 id: 20260802-blueprint-divergence-partition-registry-boundary-slug-gate
 num: 205
 title: "Blueprint divergence: partition registry boundary slug gate"
-status: open
+status: closed
 priority: critical
 labels: [000-blueprint, drift]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:50:25Z
-updated: 2026-08-02T21:50:25Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission
 ---
 
@@ -88,3 +88,25 @@ preflight cases all pass well-formed slugs.
 
 Surfaced by the living-intent sensor on the post-build review of blueprint/025,
 and independently by the review's own output-hygiene investigation.
+
+## Resolution (2026-08-05)
+
+`check_pending_provisionals` slug-gates each group through the file's existing
+`valid_slug` before the `P-*/` glob. Rename and split are byte-identical — both
+were already gated at entry, and the entry gate calls the same function, so the
+two cannot disagree on any input. Merge no longer reports a traversal component
+as a clean pass.
+
+Verified by execution on both revisions: a 20-payload attack matrix (traversal,
+absolute, empty, glob metacharacters, command substitution, control bytes) all
+refused with the fact `invalid group slug` and the glob never reached; a
+54-comparison byte-identity diff across 27 payloads x 2 verbs confirming rename
+and split are unchanged; and a 29-payload comparison showing the gate reuses the
+canonical slug rule rather than introducing a second one.
+
+Correction to the record: the pre-fix defect was worse than this issue's
+reproduction block showed. That block demonstrated a directory-existence oracle.
+With a directory actually present at the traversal target, the pre-fix code
+enumerated and reflected basenames from arbitrary paths inside *and outside* the
+repo, on stdout and stderr. The prose severity was accurate; the repro
+understated it.

@@ -2,7 +2,7 @@
 id: 20260802-fix-the-lift-s-cross-run-idempotency-hole-and-one-sided-batch-gu
 num: 207
 title: "Fix the lift's cross-run idempotency hole and one-sided batch guard"
-status: open
+status: closed
 priority: critical
 labels: [id-coordination, registry, lift]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:10Z
-updated: 2026-08-02T21:35:10Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -73,3 +73,25 @@ that the same commit published, and `cmd_lift` returns 1 on a run that wrote it.
 Neither shape has a test; `refused:duplicate-in-batch` is untested entirely.
 
 Surfaced by the post-build review of blueprint/025 (findings 1 and 2).
+
+## Resolution (2026-08-05)
+
+The batch decision moved into `alloc_lift_states`, where the whole row set is
+visible. Both sides are claims, recorded renames index both their sides, and the
+decision is anchored in the log rather than in the publish builder's memory.
+`alloc_lift_publish_builder` now appends `emit` rows as-is, so preview, payload
+and published records are one computation.
+
+Verified by execution against a real registry on both revisions. The cross-run
+hole reproduces on `a000a70^` (second `--apply` writes the record the first
+refused, two renames on one destination, exit 0) and is closed at HEAD (second
+and third runs both refuse; one record ever; the orphaned source resolves to "not
+allocated"). A reorder attack — ledger rows swapped between runs — is also
+refused, because the decision is log-anchored rather than order-dependent. The
+awk relabel is gone: the published row now reports `emit`. Preview and `--apply`
+payloads are byte-identical across six ledger shapes.
+
+The three shapes this issue named as untested are now pinned, including
+`refused:duplicate-in-batch` (asserted at three sites). Residual fixture
+coverage — five guards that survive deletion with the suite green, including the
+cross-run *source* closure this issue's wording covers — is tracked separately.

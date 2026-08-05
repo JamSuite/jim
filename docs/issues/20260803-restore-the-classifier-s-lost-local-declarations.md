@@ -2,7 +2,7 @@
 id: 20260803-restore-the-classifier-s-lost-local-declarations
 num: 217
 title: "Restore the classifier's lost local declarations"
-status: open
+status: closed
 priority: low
 labels: [id-coordination, hygiene]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-03T05:50:27Z
-updated: 2026-08-03T05:50:27Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -43,3 +43,21 @@ Add `c4` and `canon` to the function's `local` list, drop the dead `g`.
 Post-build review of the rename/redirect emission spec
 (`docs/specs/blueprint/025-rename-redirect-record-emission/review.md`,
 Finding 18). Not filed alongside that review's other follow-ons.
+
+## Resolution (2026-08-05)
+
+`local c4 canon` restored in `alloc_classify_spec`, dead `g` dropped. A
+mechanical scope audit over the whole file — tracking plain assignment, `+=`,
+subscripted assignment, `read`, `mapfile`, both `for` forms and `printf -v` —
+reproduces the reported leak at `d36deed^` and finds it gone at HEAD, with every
+variable the function assigns now declared. The only remaining file-wide hits are
+`alloc_rename_index`'s `rn` and `alloc_live_claim_set`'s `live`/`spent`, both
+documented out-params.
+
+The leak check discriminates per name, not merely in aggregate: dropping `c4`
+alone, `canon` alone, or both each turns it red.
+
+Scope note for future work: the check is name-pinned (`declare -p c4 canon`) and
+covers one function, so it would not have caught the missing declarations found
+elsewhere in this same range. A file-wide version would need an allowlist for the
+three deliberate out-params above.

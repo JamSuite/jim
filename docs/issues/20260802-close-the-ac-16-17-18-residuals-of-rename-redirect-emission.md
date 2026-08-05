@@ -2,7 +2,7 @@
 id: 20260802-close-the-ac-16-17-18-residuals-of-rename-redirect-emission
 num: 206
 title: "Close the AC 16 17 18 residuals of rename redirect emission"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, registry]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:14Z
-updated: 2026-08-02T21:35:14Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -76,3 +76,22 @@ discipline every other field on this path already follows".
   lift's kind `case`.
 
 Surfaced by the post-build review of blueprint/025 (findings 8, 9, 12).
+
+## Resolution (2026-08-05)
+
+All three bullets shipped. The source-side refusal carries the `group renamed`
+marker and names the redirect; the destination redirect names its own remedy
+(rewrite the `<new-id>` column). Both remedies were followed through to `rc=0`
+and a verified registry state, and the destination case's counterfactual — a
+plain re-run — was confirmed to keep failing, so the two remedies are not
+swapped. The ledger parser's 3-digit floor is recorded as the deliberate
+canonical-spelling rule at `jimledger.sh:693-696` and fixtured.
+`reconcile.sh` gained `display_field` and uses it on the unusable-group halt;
+the lift's kind `case` gained its `*)` arm, which sanitizes every echoed token
+across all four positions (verified with `od -c` against terminal escapes,
+command substitution and control bytes).
+
+Residual, out of this issue's scope and tracked separately: `display_field` is
+applied at one of five sites in its own file that match its stated contract, and
+the `group renamed` marker has no consumer — `skills/partition/SKILL.md:392-394`
+still instructs that refusals are "reported by name rather than retried".

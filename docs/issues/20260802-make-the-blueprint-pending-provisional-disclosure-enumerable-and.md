@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:13Z
-updated: 2026-08-02T21:35:13Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -76,3 +76,47 @@ should assert an exact count or enumerate sites.
 
 Surfaced by the post-build review of blueprint/025 (findings 10, 11) and its
 living-intent sensor (`present-tense`, high, in-change).
+
+## Partially delivered (2026-08-05)
+
+Two of the four proposed bullets shipped; two did not. Staying open for the
+remainder.
+
+**Delivered.** Bullet 1 — `skills/blueprint/SKILL.md:63` now points at
+`jimfile.sh glob specs <group>`, and it fires: `cmd_glob` globs `*/` rather than
+`[0-9]*`, so `P-` directories are returned. The prior instruction globbed
+numbered directories and could never have surfaced a provisional. Bullet 3 — the
+Validation Checklist line exists at `:518`, at the presentation boundary,
+restating the cap verbatim.
+
+**Not delivered.** Bullet 2 asked to route the identities "through a sanitizing
+boundary **and** present them delimited". Delimiting shipped (backticks); no
+sanitizer is named anywhere in the skill, and `glob specs` returns raw — a
+directory named ``P-20260804-tick-`x`-end`` breaks the code span the instruction
+relies on for containment. Bullet 4 asked for the truncation note on `san_field`'s
+**consumers**, plural; exactly one got it.
+
+**And the note that shipped is weaker than the model it cites.**
+`jimpartition.sh:952-955` credits "the sweep's truncation discipline", but the
+sweep it names (`jimalloc.sh:2983-2986`) emits `%d\t%s … (list truncated)` — a
+count beside the cut list, with its own comment explaining why: "rather than
+letting a count and a shorter list silently disagree." The new site copied the
+note and dropped the count. Its cut is also **character-based, not item-based**
+(`cut -c1-256`), so it fires identically at 9, 10, 11 and 50 provisionals and can
+split a basename mid-identity.
+
+**A false-positive disclosure, reproduced.** `shown="$(san_field "$pend" | cut
+-c1-256)"` is compared against the raw `"$pend"`, so *any* sanitization trips the
+note. One basename containing a tab produces `… (list truncated)` with nothing
+truncated — on precisely the attacker-influenceable path this issue was written
+about. Fail-safe in direction, but the fact now misreports its own completeness.
+
+The two halves also disagree on the cut: the skill specifies ten items with a
+counted tail, the script does 256 characters with an uncounted one.
+
+Existing fixture (`tests/jimpartition.sh:1723`) asserts only that the note *can*
+appear. Nothing pins the negative case, any count, the 255/256/257 boundary, the
+control-character false positive, or the mid-name split.
+
+Source: post-build review of the B-prime cluster,
+`docs/notes/20260805-b-prime-review.md` (Finding 10).

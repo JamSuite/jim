@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:12Z
-updated: 2026-08-03T09:16:43Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -169,3 +169,41 @@ skill no longer runs. Separate updates to that file are landing on their own
 branch first; this correction rides them rather than racing them.
 
 This issue stays open on that one site.
+
+## Disposition corrected (2026-08-05)
+
+The recorded disposition — every site retired except `docs/features/blueprints.md`,
+held for `feat/blueprints` — is **false**. Three more sites survive, and two are
+missed siblings of sites that *were* fixed.
+
+| site | state |
+| :--- | :--- |
+| `ARCHITECTURE.md:395` | **named here and claimed fixed.** The remediation commit edited this very line — appending a retirement marker — and left the stale `merge-map … <start> taken verbatim from next-id` clause on it. `jimfile.sh next-id spec platform` exits 2, "answers for issues only". |
+| `README.md:62` | "Two registry-integrity verbs", over a 2-row table with no `lift` row. Missed sibling of site 15, fixed at `:199-215`. |
+| `ARCHITECTURE.md:393` | present-tense `vacated-max`, the only unmarked one in the file; filed here under "verified correct, needing no change". |
+| `docs/features/blueprints.md` | the declared survivor. Also carries a second stale claim at `:152`. |
+
+**A fix here introduced a defect.** The commit that renamed the heading to
+`### Registry integrity — jimalloc.sh sweep / catch-up / lift` (`:199`) left
+`README.md:62`'s in-page anchor pointing at the old slug. The link is dead.
+
+**Beyond this issue's list.** `WORKFLOW.md` contains **zero** occurrences of
+`lift` — the registry-integrity table at `:89-92` lists only `sweep` and
+`catch-up`. This issue cleared `WORKFLOW.md` with "carries no occurrence of any
+retired symbol", a check structurally incapable of noticing a *missing new* verb.
+Retirement and introduction need separate checks.
+
+`ARCHITECTURE.md` was not regenerated in the range at all (header still reads
+`Last updated: 2026-08-03`), so `:282` and `:395` document a `renumber-map`
+invocation that now fails at arity, and `:390` still asserts the exact sentence
+issue #212 was filed to falsify. A `/jim:arch` run is the closure for those.
+
+Also unlisted: `skills/spec/SKILL.md:411` and `skills/spec/assets/spec-template.md:5`
+still describe a spec id as "a 3-digit zero-padded ordinal", which the widened
+ordinal bound falsified.
+
+This issue stays open for `docs/features/blueprints.md`, as scoped. The newly
+found sites are tracked separately.
+
+Source: post-build review of the B-prime cluster,
+`docs/notes/20260805-b-prime-review.md` (Finding 9).

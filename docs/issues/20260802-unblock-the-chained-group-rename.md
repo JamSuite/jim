@@ -2,7 +2,7 @@
 id: 20260802-unblock-the-chained-group-rename
 num: 213
 title: "Unblock the chained group rename"
-status: open
+status: closed
 priority: high
 labels: [id-coordination, registry, partition]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:11Z
-updated: 2026-08-02T21:35:11Z
+updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -61,3 +61,23 @@ group it holds — but it also widens what "covered" means for the sweep's
 None of the four group-mode tests renames twice in sequence.
 
 Surfaced by the post-build review of blueprint/025 (finding 3).
+
+## Resolution (2026-08-05)
+
+`alloc_group_has_records` counts a group-rename destination as coverage, so a
+group renamed once can be renamed again. Pinned on both surfaces — the emitter's
+source gate and the sweep's `uncovered-groups` report.
+
+Verified by reproducing the defect on a true `a21f55d^` checkout and then again
+under single-hunk isolation, so the unblock is attributable to this hunk alone
+rather than to a later commit in the same range. The chain is correct, not merely
+unblocked: records form a real chain and a spec issued under the original name
+resolves through it. Depth is unbounded — `a→b→c→d→e` all succeed — not merely
+depth 2. The widening does not make the source gate vacuous (a never-seen name
+still refuses) and does not open a new blindness class: a mid-chain waypoint was
+already silent through the group-allocate arm, so the change makes coverage
+consistent rather than looser. Both fixtures shown red without the fix.
+
+Residual, tracked separately: the same commit widened the function's `read`
+without extending its `local` list, and left the header describing two coverage
+arms where the body now has four.
