@@ -90,7 +90,12 @@ case_scripthygiene_every_script_sets_pipefail() {
 case_scripthygiene_production_scripts_export_lc_all() {
   local f rel
   assert_eq "skills/*/scripts enumerated" "yes" "$(yn "$(matches "$REPO_ROOT"/skills/*/scripts/*.sh)")"
-  for f in "$REPO_ROOT"/skills/*/scripts/*.sh; do
+  assert_eq "top-level scripts enumerated" "yes" "$(yn "$(matches "$REPO_ROOT"/scripts/*.sh)")"
+  # Both production roots, not just the skill one. The sibling locale case says
+  # these roots need no per-command pin BECAUSE they export once at the top —
+  # a claim that was true of scripts/ only by convention while this sweep
+  # reached skills/*/scripts/ alone.
+  for f in "$REPO_ROOT"/skills/*/scripts/*.sh "$REPO_ROOT"/scripts/*.sh; do
     [[ -e "$f" ]] || continue
     rel="${f#"$REPO_ROOT"/}"
     case "$rel" in
@@ -173,7 +178,11 @@ case_scripthygiene_read_targets_are_declared_local() {
 # inside a Claude Code discovery root.
 case_scripthygiene_no_test_file_outside_tests() {
   local f rel n=0 strays=""
-  for f in "$REPO_ROOT"/skills/*/scripts/*.sh "$REPO_ROOT"/skills/*/*.sh "$REPO_ROOT"/scripts/*.sh; do
+  # Enumerated by find at ANY depth under both discovery roots, not by a fixed
+  # set of globs. A depth-limited sweep cannot see `skills/<x>/tests/<name>.sh`
+  # — which is precisely the path a scaffold run from inside a skill directory
+  # would create, and therefore the one this case most needs to catch.
+  while IFS= read -r f; do
     [[ -e "$f" ]] || continue
     n=$((n + 1))
     rel="${f#"$REPO_ROOT"/}"
@@ -181,7 +190,8 @@ case_scripthygiene_no_test_file_outside_tests() {
       skills/meta-test/scripts/testlib.sh|skills/meta-test/scripts/run.sh|skills/meta-test/scripts/metatest.sh) continue ;;
     esac
     grep -qE '^case_[a-zA-Z0-9_]+\(\)|/testlib\.sh"?$' "$f" && strays="$strays$rel "
-  done
+  done < <(find "$REPO_ROOT/skills" "$REPO_ROOT/agents" "$REPO_ROOT/scripts" \
+                -type f -name '*.sh' 2>/dev/null)
   assert_eq "no test-shaped file outside tests/" "" "${strays% }"
   assert_eq "the sweep enumerated a corpus (>= 10, got $n)" "yes" \
     "$([[ "$n" -ge 10 ]] && echo yes || echo no)"

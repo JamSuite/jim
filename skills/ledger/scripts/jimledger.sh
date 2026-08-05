@@ -990,7 +990,7 @@ cmd_metrics() {
     printf 'deletions=%s\n' "$del"
   fi
 
-  # Per-stage process metrics (spec/research/plan/sec/build/review/blueprint) plus the
+  # Per-stage process metrics over every stage in LEDGER_STAGES, plus the
   # latest review verdict — ledger-only, so they survive an un-instrumented
   # build. Iterates a fixed allowlist (LEDGER_STAGES); key names are literals,
   # never derived from ledger text.

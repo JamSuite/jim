@@ -1587,8 +1587,17 @@ case_jimfile_ordinal_width_bound_single_sourced() {
   # A spelling is ORDINAL when its bounds name the floor 3 or the ceiling 15. A
   # date's {8} and a timestamp's {2}/{4} name neither, so the corpus's many
   # non-ordinal widths stay out of scope without being enumerated.
+  #
+  # ROOTS: both production roots, skills/ and scripts/ — a top-level adapter is
+  # as able to spell its own bound as a skill script is. tests/ is deliberately
+  # NOT swept, and the reason is a real distinction rather than convenience:
+  # there a bounded digit class is usually pattern-as-DATA, not a gate. The
+  # provenance detector matches three-digit spec citations in prose, so it spells
+  # `[0-9]{3}` four times while enforcing no ordinal bound at all. Sweeping there
+  # would flag a detector for resembling the thing it detects.
   local spellings n
-  spellings="$(grep -rhoE '\[0-9\]\{[0-9]+(,[0-9]+)?\}' --include='*.sh' "$REPO_ROOT/skills" \
+  spellings="$(grep -rhoE '\[0-9\]\{[0-9]+(,[0-9]+)?\}' --include='*.sh' \
+                 "$REPO_ROOT/skills" "$REPO_ROOT/scripts" \
                | grep -E "\{(3|$max)[,}]|,(3|$max)\}" | LC_ALL=C sort -u)"
   n="$(printf '%s\n' "$spellings" | grep -c .)"
   # Fail closed: an extraction matching nothing would make the next assertion
@@ -1602,7 +1611,8 @@ case_jimfile_ordinal_width_bound_single_sourced() {
   # and would exempt any future file that happened to take one of these names.
   local accounted='/skills/(file/scripts/jimfile|ledger/scripts/jimledger|spec/scripts/reconcile|partition/scripts/jimpartition)\.sh$'
   assert_eq "no ordinal-width regex outside the accounted files" "0" \
-    "$(grep -rloE "\[0-9\]\{(3|1),$max\}|\[0-9\]\{3\}" --include='*.sh' "$REPO_ROOT/skills" \
+    "$(grep -rloE "\[0-9\]\{(3|1),$max\}|\[0-9\]\{3\}" --include='*.sh' \
+         "$REPO_ROOT/skills" "$REPO_ROOT/scripts" \
        | grep -vE "$accounted" | grep -c .)"
   # Regex is not the only spelling. The corpus also states this bound as an awk
   # length() comparison and as a bash ${#x} comparison, and neither is visible to

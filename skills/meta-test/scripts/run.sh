@@ -51,11 +51,21 @@ source "$HERE/testlib.sh"
 
 FILTER="${1:-}"
 
-# PWD-relative, and deliberately so — do NOT anchor this at REPO_ROOT. This
-# runner is itself under test: tests/metatest.sh has cases that invoke it from a
-# sandbox directory, and the PWD-relative glob is what makes those runs find no
-# test files and return. Anchored at the project root, each of them would load
-# tests/metatest.sh and invoke the runner again, without bound.
+# PWD-relative, and deliberately so — do NOT anchor this at REPO_ROOT. Two
+# independent reasons, either one sufficient:
+#
+#   1. REPO_ROOT is the PLUGIN's root, resolved BASH_SOURCE-relative. Installed
+#      as a plugin, an anchored glob would discover and run jim's own tests
+#      instead of the tests of the project the developer is standing in. The
+#      test corpus is the consuming project's content, not the plugin's.
+#   2. This runner is itself under test. tests/metatest.sh has cases that invoke
+#      it from a sandbox directory, and the PWD-relative glob is what makes
+#      those runs find no test files and return. Anchored, each would load
+#      tests/metatest.sh and invoke the runner again, without bound.
+#
+# The distinction that resolves this against the BASH_SOURCE rule: that rule
+# governs the plugin locating its OWN parts, which every sibling resolution here
+# does. Where a path names the consuming project's content, PWD is correct.
 #
 # The placement rule this leaves unenforced — a test file authored outside
 # tests/ is silently not run — is detected by tests/scripthygiene.sh instead,

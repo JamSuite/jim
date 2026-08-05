@@ -110,3 +110,39 @@ when a new width literal appears in any script", which is now much closer to tru
 but is a blueprint sentence, and blueprint text is written through
 `/jim:blueprint` rather than by hand. It rides the docs pass with the other
 blueprint corrections this cluster owes.
+
+## Fold record (2026-08-05)
+
+The blueprint sentence this issue said to correct was folded rather than made
+true, so the pre-fold text is recorded here verbatim and the restoration target
+with it.
+
+**Pre-fold**, `docs/specs/platform/000-blueprint/spec.md`, the
+`ordinal-single-source` row:
+
+> …with a fixture that extracts every site's value, binds each to the constant,
+> and fails when a new width literal appears in any script…
+
+**Post-fold**: the same clause, scoped to the production roots (`skills/`,
+`scripts/`), naming the three spellings it sees and the code-or-comment reach,
+and saying that `tests/` is outside it by design.
+
+**What changed in the mechanism first, so the fold is smaller than it looks.**
+The guard now excludes by path rather than basename, sees the awk `length()` and
+bash `${#x}` spellings as well as the regex one, counts only non-comment lines
+per file, and sweeps **both** production roots — the last of those closed by the
+verify judge, which proved a top-level production script could carry its own
+width literal unseen.
+
+**The restoration target, and why it is not simply "sweep `tests/` too".** A
+bounded digit class under `tests/` is as often a pattern being matched as a bound
+being enforced: `tests/provenance.sh` spells `[0-9]{3}` four times to detect
+three-digit spec citations in prose, enforcing no ordinal bound at all. Restoring
+"any script" honestly therefore needs a way to tell a gate from a detector — not
+an exemption list, which would re-introduce exactly the by-name blindness this
+issue was filed about. Until that exists, the narrower sentence is the true one.
+
+**What should not come back:** the "any script" phrasing itself, even if the
+sweep later reaches every root. It was false when written, and the fixture's
+reach is the kind of claim that should be stated as what it covers rather than
+as a universal.
