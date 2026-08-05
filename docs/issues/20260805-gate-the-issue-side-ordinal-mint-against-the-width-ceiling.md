@@ -2,7 +2,7 @@
 id: 20260805-gate-the-issue-side-ordinal-mint-against-the-width-ceiling
 num: 223
 title: "Gate the issue-side ordinal mint against the width ceiling"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, registry, alloc]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:47Z
-updated: 2026-08-05T01:53:47Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -82,3 +82,21 @@ Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 10). Recorded as a non-defect
 judge observation in the prior handoff's § 5; this review re-measured it and found
 both the consequence and the reachability understated.
+
+## Resolution (2026-08-05)
+
+Fixed as proposed. `alloc_next_num_issue` refuses with "issue ordinals
+exhausted" rather than returning a 16-digit ordinal, mirroring
+`alloc_next_id_spec`'s "group exhausted". `alloc_reconcile_realize` blocks the
+identity per-identity — a `-` ordinal and the claimants on stderr — mirroring the
+duplicate-durable-id refusal directly beside it, so the rest of the batch still
+realizes.
+
+The issue's re-measurement of the reachability was the load-bearing part and it
+holds: the seed admits a 15-digit ordinal from ordinary issue frontmatter, so the
+ceiling is reachable through the supported bootstrap and not only by a crafted
+record. The consequence was worse than "no ordinal left" — the record was
+write-only, invisible to the very fold that computes the next mint, so every
+later allocation returned that same ordinal forever with no error on any run.
+
+Both fixtures mutation-tested: deleting either recheck turns its case red.

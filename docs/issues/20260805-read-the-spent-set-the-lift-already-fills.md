@@ -2,7 +2,7 @@
 id: 20260805-read-the-spent-set-the-lift-already-fills
 num: P-20260805-read-the-spent-set-the-lift-already-fills
 title: "Read the spent set the lift already fills"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, registry, alloc]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T09:50:23Z
-updated: 2026-08-05T09:50:23Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260728-id-coordination-issue-grouping.md
 ---
 
@@ -58,3 +58,20 @@ The evidence pass that settled B″'s two pre-code forks
 (`docs/notes/20260728-id-coordination-issue-grouping.md`, Sequence step 7).
 Surfaced by enumerating the never-reissue rule's doors rather than the filed
 issue's — the first of two cells the vacated-ordinal issue does not name.
+
+## Resolution (2026-08-05)
+
+Fixed as proposed, including the distinct state. `alloc_lift_state`'s spec and
+realize arms now consult `spent` directly and refuse with
+`refused:destination-vacated`, so the never-reissue rule is enforced where it
+applies instead of inherited from the destination-established gate next to it.
+
+The group arm deliberately has no such check, and the code now says why rather
+than leaving the omission to be rediscovered: the next gate refuses any source
+group still holding a live claim, so a lifted group rename never carries an
+ordinal to a destination name and has none to land on a vacated one.
+
+The fixture is written so the distinction is what it measures — it asserts both
+that the vacancy refusal fires and that the refusal is *not* attributed to the
+neighbouring gate. Mutation-tested by deleting the spent check: the case goes
+red rather than falling through to `destination-not-established`.

@@ -2,7 +2,7 @@
 id: 20260805-refuse-a-vacated-ordinal-in-catch-up-instead-of-silently-reissui
 num: 229
 title: "Refuse a vacated ordinal in catch-up instead of silently reissuing it"
-status: open
+status: closed
 priority: critical
 labels: [id-coordination, registry, alloc]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:40Z
-updated: 2026-08-05T01:53:40Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -80,3 +80,51 @@ redirected destination today.
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 1). Surfaced by the omission
 sweep and independently reproduced by the #209 investigator.
+
+## Resolution (2026-08-05)
+
+Fixed — but not by either action this issue proposed, because both are wrong.
+
+**The mechanism was an intersection nobody named.** With the directory still
+sitting on the vacated ordinal, `alloc_classify_spec` emits **both**
+`RENAME-SRC` (keyed on the vacancy) and `MISSING` (keyed on the id having no
+live claim) for the same id — and it is `MISSING` that catch-up harvests. So:
+
+- Adding `RENAME-SRC` to `CU_BLOCKED` would wedge `catch-up` on **every**
+  registry that has ever had a rename. The class fires for the healthy
+  post-rename state, which is exactly why the sweep excludes it from
+  `drift_rows`.
+- Filtering `want_spec` by it repairs the corruption *silently*, at rc 0 — a
+  repair verb that quietly skips what it could not fix, which is the shape the
+  cluster's own practice 6 exists to forbid.
+
+The drift is the intersection: a tree artifact occupying a spent ordinal. It is
+now its own class, `SPENT-TREE` (`tree-on-vacated-ordinal`), on both the spec
+and issue sides, and it is the **only drift class whose repair is not a record**
+— the registry is internally consistent and correct, and the artifact must move
+to the id `resolve` names or renumber above the group's peek. It joins
+`drift_rows` (sweep rc 3) and both `CU_BLOCKED` patterns (catch-up rc 3, nothing
+appended). `RENAME-SRC` keeps its counted-only, non-drift meaning for the
+settled case, with the suppression guard mirroring the tree loop's branch
+conditions exactly so an unreadable id skipped there is not lost by both.
+
+**The #200 consultation this fork required resolves the other way than assumed:
+this is not a #200-class problem, and refusing leaves nothing standing.** Those
+classes — `duplicate-ordinal`, `duplicate-id`, `reserved-slot`,
+`unreadable-record`, plus the duplicate realize key and the realize `CONFLICT` —
+are all registry-*internal*: two records contradict, an operator must pick a
+winner, and repairing one needs a corrective-write primitive the grammar does
+not have (seven encoders, zero tombstone / precedence / revoke). This is
+tree-vs-registry drift where the registry is right. Refusing routes to an
+instrument that already exists rather than deferring to one that does not, so
+#200's scope is untouched.
+
+**Three more doors of the same rule closed with it**, per the review's lesson
+that a contract names a site and a site is not a class: `catch-up` × issue,
+`catch-up` × group (filed separately, and it needed the specs under the retired
+group withheld too, not merely reported), and the `lift`, which declared and
+filled the spent set without reading it (also filed separately).
+
+Fifteen mutations, all red, each aimed at one assertion — including the two that
+pin the classes apart in both directions: `SPENT-TREE` must not swallow a plain
+missing record, and a vacancy whose tree moved must stay settled.

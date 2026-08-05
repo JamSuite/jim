@@ -2,7 +2,7 @@
 id: 20260805-refuse-a-renamed-away-group-in-catch-up-instead-of-reallocating-
 num: P-20260805-refuse-a-renamed-away-group-in-catch-up-instead-of-reallocating-
 title: "Refuse a renamed-away group in catch-up instead of reallocating it"
-status: open
+status: closed
 priority: high
 labels: [id-coordination, registry, alloc]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T09:50:22Z
-updated: 2026-08-05T09:50:22Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260728-id-coordination-issue-grouping.md
 ---
 
@@ -61,3 +61,29 @@ The evidence pass that settled B″'s two pre-code forks
 (`docs/notes/20260728-id-coordination-issue-grouping.md`, Sequence step 7).
 Surfaced by enumerating the never-reissue rule's doors rather than the filed
 issue's — the second of two cells the vacated-ordinal issue does not name.
+
+## Resolution (2026-08-05)
+
+Fixed, and it needed more than the proposed redirect check.
+
+The detection moved into the detector rather than the verb. `alloc_classify_spec`
+now folds the group alias map once and emits `GROUP-RETIRED`
+(`tree-group-renamed-away`) for any tree group the registry has renamed away,
+naming where the group now answers. It joins `drift_rows` and the spec-side
+`CU_BLOCKED`, so the sweep reports it and catch-up refuses — the two agreeing by
+construction rather than by a check bolted onto one of them.
+
+**Reporting it is not sufficient on its own.** A spec under the retired name that
+the registry has never seen classifies as an ordinary `MISSING` record, so
+catch-up would have named the retired group in its blocked list and appended the
+claim under it anyway. Specs whose group is retired are now dropped from the
+append set as well; the fixture asserts both the refusal and that nothing at all
+was written.
+
+Group *absence* is still deliberately unclassified — a group whose allocate
+record is missing while its specs are present raises nothing, matching the
+append rule. A group *contradiction* is a different thing, and the header now
+says so.
+
+Three mutations red: the emit removed, the class dropped from the refuse set,
+and the withholding removed.
