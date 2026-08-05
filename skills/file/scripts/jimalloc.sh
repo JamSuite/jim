@@ -1029,10 +1029,22 @@ alloc_next_id_spec() {
 # alloc_next_num_issue  (log on stdin)
 #   The next issue display ordinal: the high-water + 1, unpadded (issue ordinals
 #   render as #N). Empty registry → 1. See alloc_fold_max_issue for what counts.
+#   rc 1, "issue ordinals exhausted" — the next ordinal would be wider than the
+#   id boundary admits, so the fold could not read back what this would mint.
 alloc_next_num_issue() {
-  local max
+  local max next
   max="$(alloc_fold_max_issue)" || return 1
-  printf '%s\n' $((max + 1))
+  next=$((max + 1))
+  # The same recheck the spec side makes, for the same reason: the fold skips a
+  # candidate the id boundary rejects, so minting one past the ceiling writes a
+  # record the next fold cannot see — and every allocation after it mints that
+  # identical ordinal, silently, forever. Refusing loudly is the only outcome an
+  # operator can act on.
+  if ! alloc_valid_ord "$next"; then
+    echo "error: issue ordinals exhausted — no ordinal left that the registry could be rebuilt from" >&2
+    return 1
+  fi
+  printf '%s\n' "$next"
 }
 
 # alloc_durable_issue_id <subject> [num]  (issues log on stdin)
@@ -1160,6 +1172,13 @@ alloc_reconcile_realize() {
       printf '%s\t-\tblocked\n' "$pend"
     elif [[ -n "${existing[$pend]:-}" ]]; then
       printf '%s\t%s\thave\n' "$pend" "${existing[$pend]}"
+    elif ! alloc_valid_ord "$next"; then
+      # Past the ceiling the realize would mint an ordinal the fold cannot read
+      # back, so every later identity would realize onto the same one. Blocked
+      # per-identity, like the duplicate above — the rest of the batch is still
+      # answerable.
+      echo "error: issue ordinals exhausted — no ordinal left that the registry could be rebuilt from; refusing to realize '$pend'" >&2
+      printf '%s\t-\tblocked\n' "$pend"
     else
       ord=$next; next=$((next + 1))
       printf '%s\t%s\tnew\n' "$pend" "$ord"
@@ -1537,8 +1556,11 @@ alloc_seed_derive_issues() {
 #   DUP-ORD       <kind> <identity> <detail>   one ordinal claimed twice, live
 #   DUP-ID        issue  <full-id>  <detail>   one durable id claimed twice
 #   RESERVED      spec   <identity> <detail>   a record for the reserved slot
+#   UNREADABLE    <kind> <identity> <detail>   claim with a field the boundary rejects
 #   INFO-NO-TREE  <kind> <identity> <detail>   record with no tree counterpart
 #   RENAME-SRC    <kind> <identity> <detail>   id known only as a rename source
+#   SPENT-TREE    <kind> <identity> <detail>   tree artifact on a vacated ordinal
+#   GROUP-RETIRED group  <group>    <detail>   tree group the registry renamed
 #   CHECKED       <kind> <tree-n>   <record-n> coverage denominators
 #
 # A record with no tree counterpart is INFORMATIONAL, not drift: another clone
@@ -1546,9 +1568,21 @@ alloc_seed_derive_issues() {
 # legitimate, and calling them drift would leave every multi-clone project
 # permanently dirty.
 #
-# Group records are not classified. A group whose `group allocate` record is
+# RENAME-SRC and SPENT-TREE split one condition by whether the tree moved with
+# the rename. A vacated ordinal whose artifact left is settled — RENAME-SRC,
+# counted as non-coverage, raising nothing. A vacated ordinal the tree still sits
+# on is drift, and the only drift class whose repair is not a record: the
+# registry is internally consistent and correct, and the artifact must move to
+# the id `resolve` names or renumber above the group's peek. Classifying it
+# MISSING is what let an append-only repair verb reissue a spent ordinal, so the
+# tree loops below hand this shape to SPENT-TREE before MISSING can claim it.
+#
+# Group ABSENCE is not classified. A group whose `group allocate` record is
 # absent while its spec records are present raises no finding, matching the
 # catch-up rule that appends a group record only alongside a spec record for it.
+# A group CONTRADICTION is a different thing and is classified: when the tree
+# uses a name the registry has renamed away, appending under it would resurrect
+# a retired group, so GROUP-RETIRED reports it and the append verb refuses.
 
 # alloc_classify_emit <class> <kind> <identity> <detail> — one finding row.
 alloc_classify_emit() {
@@ -1695,7 +1729,10 @@ alloc_classify_spec() {
     # An identity whose record is unreadable is already reported under that
     # class; comparing an unusable slug against the tree's would only add noise.
     [[ -n "${unreadable[$id]:-}" ]] && continue
-    if [[ -z "${live_at[$id]:-}" ]]; then
+    if [[ -n "${src_only[$id]:-}" && -z "${live_at[$id]:-}" ]]; then
+      alloc_classify_emit SPENT-TREE spec "$id" \
+        "tree ${tree_slug[$id]}; move it to the id resolve names, or renumber above peek"
+    elif [[ -z "${live_at[$id]:-}" ]]; then
       alloc_classify_emit MISSING spec "$id" "${tree_slug[$id]}"
     elif [[ "${live_slug[$id]}" != "${tree_slug[$id]}" ]]; then
       alloc_classify_emit MISMATCH spec "$id" "tree ${tree_slug[$id]}, registry ${live_slug[$id]}"
@@ -1711,7 +1748,24 @@ alloc_classify_spec() {
   done
   for id in $(printf '%s\n' "${!src_only[@]}" | LC_ALL=C sort); do
     [[ -n "${live_at[$id]:-}" ]] && continue
+    # The tree loop above already reported this one as SPENT-TREE; the guard
+    # mirrors its condition exactly, so an unreadable id it skipped still lands
+    # here rather than going unreported by both.
+    [[ -n "${tree_slug[$id]:-}" && -z "${unreadable[$id]:-}" ]] && continue
     alloc_classify_emit RENAME-SRC spec "$id" "vacated by a rename"
+  done
+  # A tree group whose name the registry retired. The alias map is folded once
+  # here rather than per record, since the whole log is already in hand.
+  local -A group_alias=()
+  local gk gv
+  while IFS=$'\t' read -r gk gv; do
+    [[ -n "$gk" ]] && group_alias["$gk"]="$gv"
+  done < <(printf '%s\n' ${lines[@]+"${lines[@]}"} | alloc_group_alias_map)
+  local g
+  for g in $(printf '%s\n' "${!tree_groups[@]}" | LC_ALL=C sort); do
+    [[ -n "${group_alias[$g]:-}" ]] || continue
+    alloc_classify_emit GROUP-RETIRED group "$g" \
+      "the registry answers '${group_alias[$g]}'; move the tree group under that name"
   done
   alloc_classify_emit CHECKED spec "${#tree_slug[@]}" "${#live_at[@]}"
   alloc_classify_emit CHECKED group "${#tree_groups[@]}" "${#reg_groups[@]}"
@@ -1797,6 +1851,13 @@ alloc_classify_issue() {
     elif [[ -n "${id_ord[${tree_id[$ord]}]:-}" ]]; then
       alloc_classify_emit MISMATCH issue "${tree_id[$ord]}" \
         "tree ordinal $ord, registry ordinal ${id_ord[${tree_id[$ord]}]}"
+    elif [[ -n "${src_only[$ord]:-}" ]]; then
+      # Ordered after the durable-id comparison deliberately: when the file that
+      # vacated this ordinal is the one still sitting on it, MISMATCH names both
+      # ordinals, which is the more useful report. SPENT-TREE is for the other
+      # shape — some other file has come to occupy a spent ordinal.
+      alloc_classify_emit SPENT-TREE issue "$ord" \
+        "tree ${tree_id[$ord]}; move it to the ordinal resolve names, or renumber above peek"
     else
       alloc_classify_emit MISSING issue "$ord" "${tree_id[$ord]}"
     fi
@@ -1807,6 +1868,11 @@ alloc_classify_issue() {
   done
   for ord in $(printf '%s\n' "${!src_only[@]}" | LC_ALL=C sort -n); do
     [[ -n "${live_at[$ord]:-}" ]] && continue
+    # Mirrors the tree loop's branch conditions, so an ordinal already reported
+    # as SPENT-TREE or MISMATCH is not also counted as settled non-coverage.
+    if [[ -n "${tree_id[$ord]:-}" && -z "${unreadable[$ord]:-}" ]]; then
+      [[ -n "${id_ord[${tree_id[$ord]}]:-}" ]] || continue
+    fi
     alloc_classify_emit RENAME-SRC issue "$ord" "vacated by a rename"
   done
   alloc_classify_emit CHECKED issue "${#tree_id[@]}" "${#live_at[@]}"
@@ -2815,6 +2881,9 @@ alloc_class_label() {
     RESERVED)     printf 'reserved-slot' ;;
     UNREADABLE)   printf 'unreadable-record' ;;
     INFO-NO-TREE) printf 'record-without-tree' ;;
+    RENAME-SRC)   printf 'vacated-ordinal' ;;
+    SPENT-TREE)   printf 'tree-on-vacated-ordinal' ;;
+    GROUP-RETIRED) printf 'tree-group-renamed-away' ;;
     *)            printf 'unclassified' ;;
   esac
 }
@@ -2913,7 +2982,7 @@ cmd_sweep() {
     "${s_reg:-0}" "${s_tree:-0}" "${g_reg:-0}" "${g_tree:-0}"
   printf '  issues: %d records vs %d files checked\n' "${i_reg:-0}" "${i_tree:-0}"
   local drift_rows info_rows
-  drift_rows="$(printf '%s\n' "$all_rows" | grep -E '^(MISSING|MISMATCH|DUP-ORD|DUP-ID|RESERVED|UNREADABLE)	' || true)"
+  drift_rows="$(printf '%s\n' "$all_rows" | grep -E '^(MISSING|MISMATCH|DUP-ORD|DUP-ID|RESERVED|UNREADABLE|SPENT-TREE|GROUP-RETIRED)	' || true)"
   info_rows="$(printf '%s\n' "$all_rows" | grep '^INFO-NO-TREE	' || true)"
   if [[ -n "$drift_rows" ]]; then
     printf '  drift:\n'
@@ -2923,6 +2992,8 @@ cmd_sweep() {
     alloc_sweep_list DUP-ID   "$(printf '%s\n' "$drift_rows" | grep '^DUP-ID	'   || true)"
     alloc_sweep_list RESERVED "$(printf '%s\n' "$drift_rows" | grep '^RESERVED	' || true)"
     alloc_sweep_list UNREADABLE "$(printf '%s\n' "$drift_rows" | grep '^UNREADABLE	' || true)"
+    alloc_sweep_list SPENT-TREE "$(printf '%s\n' "$drift_rows" | grep '^SPENT-TREE	' || true)"
+    alloc_sweep_list GROUP-RETIRED "$(printf '%s\n' "$drift_rows" | grep '^GROUP-RETIRED	' || true)"
   fi
   if [[ -n "$info_rows" ]]; then
     printf '  info:\n'
@@ -3030,19 +3101,36 @@ alloc_catchup_compute() {
   CU_SPEC=""; CU_ISSUE=""; CU_BLOCKED=""
   local -A want_spec=() want_issue=() want_group=()
   rows="$(printf '%s\n' "$spec_log" | alloc_classify_spec <(printf '%s\n' "$spec_rec"))"
+  local -A retired_group=()
   while IFS=$'\t' read -r c1 c2 c3 _; do
     [[ "$c1" == MISSING && "$c2" == spec ]] && want_spec["$c3"]=1
+    [[ "$c1" == GROUP-RETIRED ]] && retired_group["$c3"]=1
   done <<< "$rows"
+  # Reporting the retired group is not enough on its own: a spec under that name
+  # reads as an ordinary missing record, and appending its claim would establish
+  # an identity under a name the registry has already answered away — with the
+  # group record hoisted beside it resurrecting the name outright.
+  for id in "${!want_spec[@]}"; do
+    [[ -n "${retired_group[${id%/*}]:-}" ]] && unset 'want_spec[$id]'
+  done
   # Everything this verb cannot repair, not the mismatch class alone: a registry
   # that contradicts itself is a finding the operator must see, and an exit 0
   # after a sweep exited 3 reads as "done" when nothing was resolved.
-  CU_BLOCKED="$(printf '%s\n' "$rows" | grep -E '^(MISMATCH|DUP-ORD|DUP-ID|RESERVED|UNREADABLE)	' || true)"
+  #
+  # SPENT-TREE and GROUP-RETIRED are here for a different reason than the rest.
+  # The registry is not contradicting itself in either — it is right, and the
+  # tree has not caught up. An append is the wrong instrument for both: writing
+  # a claim over a vacated ordinal changes what every frozen citation to it
+  # dereferences to, and writing one under a retired group resurrects a name the
+  # registry answered away. Their repair is a tree move, so this verb reports
+  # them and does nothing.
+  CU_BLOCKED="$(printf '%s\n' "$rows" | grep -E '^(MISMATCH|DUP-ORD|DUP-ID|RESERVED|UNREADABLE|SPENT-TREE|GROUP-RETIRED)	' || true)"
   rows="$(printf '%s\n' "$issue_log" | alloc_classify_issue <(printf '%s\n' "$issue_rec"))"
   while IFS=$'\t' read -r c1 c2 c3 _; do
     [[ "$c1" == MISSING && "$c2" == issue ]] && want_issue["$c3"]=1
   done <<< "$rows"
   local blocked_issue
-  blocked_issue="$(printf '%s\n' "$rows" | grep -E '^(MISMATCH|DUP-ORD|DUP-ID|UNREADABLE)	' || true)"
+  blocked_issue="$(printf '%s\n' "$rows" | grep -E '^(MISMATCH|DUP-ORD|DUP-ID|UNREADABLE|SPENT-TREE)	' || true)"
   [[ -n "$blocked_issue" ]] && CU_BLOCKED="${CU_BLOCKED:+$CU_BLOCKED$'\n'}$blocked_issue"
   # Spec side: the derivation's own ordering within each kind, with the group
   # records this batch needs hoisted ahead of the spec records. Group records
@@ -3586,10 +3674,10 @@ cmd_resolve() {
 ALLOC_LIFT_MARKER="jim-lift"
 
 # alloc_lift_state <kind> <src> <dst>   — decide one row against the caller's
-#   corroboration state (`live`, `have_rn`, `rn_src`, `rn_dst`, `rz_real`,
-#   `rz_conflict`, `rz_dst`, `log`, all supplied by alloc_lift_states through
-#   dynamic scope, the same way an alloc_publish builder reaches its caller's
-#   locals). Prints one of:
+#   corroboration state (`live`, `spent`, `have_rn`, `rn_src`, `rn_dst`,
+#   `rz_real`, `rz_conflict`, `rz_dst`, `log`, all supplied by alloc_lift_states
+#   through dynamic scope, the same way an alloc_publish builder reaches its
+#   caller's locals). Prints one of:
 #     emit | have | refused:<reason>
 #
 #   CORROBORATION, stated once here because both the preview and the publish
@@ -3602,6 +3690,12 @@ ALLOC_LIFT_MARKER="jim-lift"
 #   citation at a destination of the writer's choosing. Requiring the
 #   destination to be independently established is what makes the ledger a
 #   witness rather than an instruction.
+#
+#   The never-reissue rule is enforced here by name, not inherited. A vacated
+#   ordinal happens to carry no live claim, so the destination-established gate
+#   would refuse it anyway — but that is a different rule, and a refusal that
+#   holds only while its neighbour stays put is not enforcement. `spent` is
+#   consulted directly, and its own state distinguishes the two causes.
 alloc_lift_state() {
   local kind="$1" src="$2" dst="$3" key
   case "$kind" in
@@ -3619,6 +3713,9 @@ alloc_lift_state() {
       if [[ -n "${rz_dst[$dst]:-}" ]]; then
         printf 'refused:destination-conflict\n'; return 0
       fi
+      if [[ -n "${spent[$dst]:-}" ]]; then
+        printf 'refused:destination-vacated\n'; return 0
+      fi
       [[ -n "${live[$dst]:-}" ]] || { printf 'refused:destination-not-established\n'; return 0; }
       ;;
     spec)
@@ -3633,6 +3730,9 @@ alloc_lift_state() {
       fi
       if [[ -n "${rn_dst[spec	$dst]:-}" ]]; then
         printf 'refused:destination-conflict\n'; return 0
+      fi
+      if [[ -n "${spent[$dst]:-}" ]]; then
+        printf 'refused:destination-vacated\n'; return 0
       fi
       [[ -n "${live[$dst]:-}" ]] || { printf 'refused:destination-not-established\n'; return 0; }
       [[ -z "${live[$src]:-}" ]] || { printf 'refused:source-claimed\n'; return 0; }
@@ -3650,6 +3750,11 @@ alloc_lift_state() {
       fi
       printf '%s\n' "$log" | alloc_group_has_records "$dst" \
         || { printf 'refused:destination-not-established\n'; return 0; }
+      # No spent check here, and none is reachable: the next gate refuses any
+      # source group still holding a live claim, so a lifted group rename never
+      # carries an ordinal to a destination name and has none to land on a
+      # vacated one. The spec and realize arms above enforce the rule where it
+      # can be reached.
       for key in "${!live[@]}"; do
         [[ "$key" == "$src"/* ]] || continue
         printf 'refused:source-claimed\n'; return 0

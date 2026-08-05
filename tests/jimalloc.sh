@@ -571,6 +571,34 @@ case_jimalloc_next_num_issue_counts_rename_source() {
   assert_eq "vacated ordinal is not reclaimed" "10" "$out"
 }
 
+
+# AC: the issue side gets the spec side's ceiling recheck. Past the ceiling the
+# fold skips what the mint would write, so the record is write-only and every
+# later allocation returns the same ordinal — silently, with no error on any run.
+# The seed admits a 15-digit ordinal from ordinary frontmatter, so the ceiling is
+# reachable through the supported bootstrap rather than only by a crafted record.
+case_jimalloc_next_num_issue_refuses_past_the_ceiling() {
+  local log out rc err
+  log=$(printf '%s\n' 'issue allocate 999999999999999 20260726-a 20260726 x')
+  err="$(mktemp)"
+  out="$(source "$SCRIPT_jimalloc"; alloc_next_num_issue <<< "$log" 2>"$err")"; rc=$?
+  assert_eq "refuses rather than minting a 16-digit ordinal" "1" "$rc"
+  assert_eq "mints nothing" "" "$out"
+  assert_match "names the exhaustion" 'issue ordinals exhausted' "$(cat "$err")"
+  rm -f "$err"
+}
+
+# The same ceiling on the realize path, which mints its own ordinals from the
+# same high-water. Blocked per-identity, like the duplicate-id refusal beside it
+# — the rest of the batch is still answerable.
+case_jimalloc_reconcile_realize_blocks_past_the_ceiling() {
+  local log
+  log=$(printf '%s\n' 'issue allocate 999999999999999 20260726-a 20260726 x')
+  run_realize "$log" 20260801-newthing
+  assert_match "blocked with no ordinal" '^20260801-newthing	-	blocked$' "$OUT"
+  assert_match "names the exhaustion" 'issue ordinals exhausted' "$ERR"
+}
+
 case_jimalloc_next_num_issue_skips_over_wide_ordinal() {
   local log out
   log=$(printf '%s\n' 'issue allocate 1234567890123456 20260726-wide 20260726 x' \
@@ -2631,13 +2659,71 @@ case_jimalloc_classify_issue_record_without_tree() {
 case_jimalloc_sweep_counts_rename_sources() {
   local repo
   repo="$(sweep_repo sweep_renamesrc)"
+  mv "$repo/docs/specs/core/002-beta" "$repo/docs/specs/core/044-beta"
   alloc_append_record "$repo" specs.log 'spec rename core/002 core/044 20260802 jane'
   run_jimalloc_in "$repo" sweep
+  assert_exit  "settled, not drift" 0 "$RC"
   assert_match "counted" '^    rename-source-ids	1$' "$OUT"
+  assert_eq "raises no finding of its own" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'tree-on-vacated-ordinal')"
+}
+
+# AC 2: the same vacancy with the tree still sitting on it is drift, and its own
+# class rather than missing-record. The distinction is load-bearing: an append
+# verb repairs a missing record, and appending here would reissue a spent ordinal
+# — so what the ordinal is called decides whether the repair verb touches it.
+case_jimalloc_sweep_tree_on_a_vacated_ordinal_is_drift() {
+  local repo
+  repo="$(sweep_repo sweep_spenttree)"
+  alloc_append_record "$repo" specs.log 'spec rename core/002 core/044 20260802 jane'
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "drift rc" 3 "$RC"
+  assert_match "names the class and identity" \
+    '^    tree-on-vacated-ordinal	spec	core/002	' "$OUT"
+  assert_eq "never called missing" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^    missing-record	spec	core/002	')"
+  assert_match "not counted as settled" '^    rename-source-ids	0$' "$OUT"
+}
+
+# AC 2: a tree group whose name the registry renamed away is a contradiction,
+# not an absence. Appending under it would resurrect a retired name, so the
+# sweep reports it and names where the registry says the group now answers.
+case_jimalloc_sweep_names_a_retired_tree_group() {
+  local repo
+  repo="$(sweep_repo sweep_retiredgroup)"
+  alloc_append_record "$repo" specs.log 'group rename ui parts 20260802 jane'
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "drift rc" 3 "$RC"
+  assert_match "names the class and the redirect" \
+    '^    tree-group-renamed-away	group	ui	the registry answers .parts.' "$OUT"
 }
 
 # AC 2: two records claiming one issue ordinal are the same contradiction from
 # the other direction.
+case_jimalloc_class_label_covers_every_emitted_class() {
+  local emitted labels grammar c n missing=""
+  emitted="$(grep -o 'alloc_classify_emit [A-Z][A-Z-]*' "$SCRIPT_jimalloc" \
+             | awk '{print $2}' | grep -v '^CHECKED$' | sort -u)"
+  n="$(printf '%s\n' "$emitted" | grep -c .)"
+  # Fail closed: an extraction that silently matches nothing would make both
+  # assertions below vacuously true, which is the shape this file exists to catch.
+  assert_eq "the emit sites were read (>= 8 classes, got $n)" "yes" \
+    "$([[ "$n" -ge 8 ]] && echo yes || echo no)"
+  labels="$(sed -n '/^alloc_class_label()/,/^}/p' "$SCRIPT_jimalloc" \
+            | sed -n 's/^ *\([A-Z][A-Z-]*\)).*/\1/p' | sort -u)"
+  for c in $emitted; do
+    printf '%s\n' "$labels" | grep -qx "$c" || missing+="$c "
+  done
+  assert_eq "every emitted class has a label arm" "" "${missing% }"
+  grammar="$(sed -n '/^# Row grammar (TAB-separated)/,/^#$/p' "$SCRIPT_jimalloc" \
+             | sed -n 's/^#   \([A-Z][A-Z-]*\) .*/\1/p' | sort -u)"
+  missing=""
+  for c in $emitted; do
+    printf '%s\n' "$grammar" | grep -qx "$c" || missing+="$c "
+  done
+  assert_eq "every emitted class is in the documented grammar" "" "${missing% }"
+}
+
 case_jimalloc_classify_issue_duplicate_ordinal() {
   run_classify alloc_classify_issue "" \
     "$(printf '%s\n' 'issue allocate 5 20260726-alpha 20260726 jane' \
@@ -3160,6 +3246,40 @@ case_jimalloc_catchup_apply_refuses_an_eroded_registry() {
 # AC 9: every drift class catch-up cannot repair is named and drives the exit
 # code — not the mismatch class alone. An operator running catch-up to clear a
 # sweep failure must not read exit 0 as "done" while a contradiction stands.
+case_jimalloc_catchup_refuses_a_vacated_ordinal() {
+  local repo before
+  repo="$(sweep_repo catchup_vacated)"
+  alloc_append_record "$repo" specs.log 'spec rename core/002 core/044 20260802 jane'
+  before="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit  "refuses" 3 "$RC"
+  assert_match "names the class" 'tree-on-vacated-ordinal	spec	core/002' "$OUT"
+  assert_eq "appends nothing" "$before" \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  run_jimalloc_in "$repo" resolve spec core/002
+  assert_match "the frozen citation still follows the rename" 'core/044' "$OUT"
+}
+
+# AC 7: the vacancy's group-level twin, reached through the same verb. A tree
+# group the registry renamed away must not take a fresh claim, and reporting it
+# is not enough on its own — the specs under it read as ordinary missing records,
+# so they are withheld too.
+case_jimalloc_catchup_refuses_a_retired_group() {
+  local repo before
+  repo="$(sweep_repo catchup_retiredgroup)"
+  mkdir -p "$repo/docs/specs/ui/007-legacy"
+  alloc_append_record "$repo" specs.log 'group rename ui parts 20260802 jane'
+  before="$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit  "refuses" 3 "$RC"
+  assert_match "names the retired group" 'tree-group-renamed-away	group	ui' "$OUT"
+  assert_eq "no claim minted under the retired name" "0" \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log \
+       | grep -c '^spec allocate ui/007')"
+  assert_eq "appends nothing" "$before" \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/registry:specs.log)"
+}
+
 case_jimalloc_catchup_names_every_unrepairable_class() {
   local repo
   repo="$(sweep_repo catchup_unrepairable)"
@@ -3784,6 +3904,20 @@ case_jimalloc_lift_refuses_reserved_ordinal() {
 # the lift consumes the same duplicate-realize rule the resolver does and
 # refuses every row naming that token — including a recorded pair — rather
 # than reporting the contradiction as held.
+case_jimalloc_lift_refuses_a_vacated_destination() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate core/001 alpha 20260726 kai' \
+                      'spec allocate core/002 beta 20260726 kai' \
+                      'spec rename core/002 core/044 20260802 jane')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'spec\tcore/009\tcore/002\t20260725')" \
+                      "$(printf 'realize\tcore/P-20260725-a\tcore/002\t20260725')" <<< "$log")"
+  assert_eq "both arms refuse by the vacancy rule" "2" \
+    "$(printf '%s\n' "$out" | grep -c 'refused:destination-vacated$')"
+  assert_eq "not attributed to the neighbouring gate" "0" \
+    "$(printf '%s\n' "$out" | grep -c 'refused:destination-not-established$')"
+}
+
 case_jimalloc_lift_conflicted_realization_refused_not_have() {
   local log out
   log=$(printf '%s\n' 'spec allocate core/007 alpha 20260802 jane' \
