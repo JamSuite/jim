@@ -2,7 +2,7 @@
 id: 20260805-retire-the-four-stale-doc-sites-the-emission-cluster-left-behind
 num: 231
 title: "Retire the four stale doc sites the emission cluster left behind"
-status: open
+status: closed
 priority: medium
 labels: [docs, workflow]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:46Z
-updated: 2026-08-05T01:53:46Z
+updated: 2026-08-05T12:55:00Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -71,3 +71,35 @@ separate checks.
 
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 9).
+
+## Resolution (2026-08-05)
+
+Audited every site before editing, because this issue was filed against an older
+tree. **Three of its claims had already been fixed** and were left alone: the
+`vacated-max` mentions all carry a retirement marker or stand in past tense, and
+`docs/features/blueprints.md`'s "renumber-append past a floored maximum" lost its
+floor clause in an earlier restructure. Correcting a corrected thing is its own
+kind of drift.
+
+**What was genuinely still stale, and is fixed:** `README.md`'s "Two
+registry-integrity verbs" over a two-row table, its dead in-page anchor (the very
+commit that renamed the heading to include `lift` left the link pointing at the
+old target), `WORKFLOW.md`'s complete absence of `lift` — zero occurrences, in
+both the table and the prose, which framed `catch-up` as *the* repair half —
+and `blueprints.md` explaining what a partition does to ids while naming neither
+verb that makes a moved id still resolve.
+
+`ARCHITECTURE.md` was regenerated through `/jim:arch`. Its stalest claim was one
+this cluster made false rather than one it inherited: the ordinal section named
+the width seam as "the one place a divergence would not be caught structurally",
+which stopped being true when the guard gained a test — and that test then caught
+a real escape during the same session's verification run.
+
+**The durable half is `tests/docsurfaces.sh`**, which mechanises this issue's own
+closing note. Retirement and introduction are separate sweeps because they fail
+in opposite directions: a "carries no occurrence of any retired symbol" check —
+the one that ran here — is structurally incapable of noticing a **missing new**
+verb, which is exactly how `lift` shipped and stayed absent from an operator
+surface while every retirement check passed. A third sweep resolves in-page
+anchors, since a link broken by a heading rename is how the earlier fix created
+this defect. Six mutations, all red.

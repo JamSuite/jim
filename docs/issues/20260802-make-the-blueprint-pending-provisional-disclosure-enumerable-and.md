@@ -2,7 +2,7 @@
 id: 20260802-make-the-blueprint-pending-provisional-disclosure-enumerable-and
 num: 208
 title: "Make the blueprint pending-provisional disclosure enumerable and bounded"
-status: open
+status: closed
 priority: medium
 labels: [blueprint, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:13Z
-updated: 2026-08-05T02:25:13Z
+updated: 2026-08-05T12:55:00Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -120,3 +120,28 @@ control-character false positive, or the mid-name split.
 
 Source: post-build review of the B-prime cluster,
 `docs/notes/20260805-b-prime-review.md` (Finding 10).
+
+## Delivered in full (2026-08-05)
+
+The two remaining bullets landed.
+
+**Bullet 2 — sanitizing boundary and delimited presentation.** The identities now
+go in an `<untrusted-spec-basenames>` block, the same delimited form the skill
+already uses for scanned code and face content, rather than inline backticks. The
+reasoning matters more than the tag: a backtick is not a boundary, because a
+basename may contain one, and this summary reaches a gate that under
+`auto_blueprint` is unattended. No new grant or sanitizing verb was needed — the
+skill's own canonical form was already the right answer, and the Validation
+Checklist line was updated to match.
+
+**Bullet 4 — the truncation note.** Moved to `emit_check`, the funnel every CHECK
+detail crosses, rather than added caller by caller: a caller cannot forget a
+thing it does not do. It is reachable there, since a caller-supplied path has no
+length gate of its own.
+
+The one caller that already had a note carried a false-positive: it compared
+sanitized against raw, so **any** stripped control byte claimed a truncation that
+had not happened — on a list that was complete. Both notes now compare against
+the length cut alone. Four mutations red, and the fixtures gained the negative
+cases the original had none of: a short list is not annotated, and a control byte
+is not a cut.

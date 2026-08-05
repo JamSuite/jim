@@ -2,7 +2,7 @@
 id: 20260802-retire-the-stale-documentation-the-emission-build-left-behind
 num: 211
 title: "Retire the stale documentation the emission build left behind"
-status: open
+status: closed
 priority: medium
 labels: [docs, id-coordination]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-02T21:35:12Z
-updated: 2026-08-05T02:25:13Z
+updated: 2026-08-05T12:55:00Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -207,3 +207,23 @@ found sites are tracked separately.
 
 Source: post-build review of the B-prime cluster,
 `docs/notes/20260805-b-prime-review.md` (Finding 9).
+
+## Resolution (2026-08-05)
+
+All eleven sites verified against the current tree and **all eleven are already
+fixed** — the split step no longer names either retired mechanism, the three
+methodology Close passages all carry `partition-batch`, the stderr→repair table
+has its untracked cross-parent row, and the four script-contract docstrings match
+their code. Closing on verification rather than on assertion, which is what this
+issue's own disposition failed to do the first time.
+
+The one thing the audit found still open is not on this list and is filed
+separately: this issue's root-cause note says a retirement's real risk is the
+omission class, and that class is exactly where the rule about artifact citations
+in script comments sits — **95 violations across nine scripts**, concentrated in
+one file. The earlier pass fixed the single citation it was pointed at and never
+swept the rule, which is the shape this issue describes, happening to this issue.
+
+The root cause itself is now mechanised: `tests/docsurfaces.sh` sweeps the doc
+corpus for retired symbols, so a retirement pass no longer verifies itself with
+per-script suites that cannot see the omission class.
