@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 94
+- Open: 106
 - Closed: 125
 
 ## Issues
@@ -226,6 +226,18 @@
 - `20260803-restore-the-classifier-s-lost-local-declarations` — Restore the classifier's lost local declarations · status: open · num: 217 · priority: low · created: 2026-08-03T05:50:27Z · labels: [id-coordination, hygiene] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` — Restore the id-boundary memo's cross-pass warmth in the sweep · status: open · num: 218 · priority: medium · created: 2026-08-03T05:50:29Z · labels: [id-coordination, performance] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 - `20260803-stop-double-counting-a-group-realize-across-two-non-coverage-cou` — Stop double-counting a group realize across two non-coverage counters · status: open · num: 219 · priority: low · created: 2026-08-03T05:50:28Z · labels: [id-coordination, registry] · origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
+- `20260805-correct-the-record-layer-s-section-header-to-admit-its-git-reads` — Correct the record layer's section header to admit its git reads · status: open · num: P-20260805-correct-the-record-layer-s-section-header-to-admit-its-git-reads · priority: medium · created: 2026-08-05T01:53:48Z · labels: [id-coordination, scripts] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-exclude-by-path-not-basename-in-the-ordinal-width-guard` — Exclude by path, not basename, in the ordinal width guard · status: open · num: P-20260805-exclude-by-path-not-basename-in-the-ordinal-width-guard · priority: medium · created: 2026-08-05T01:53:44Z · labels: [id-coordination, test] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-gate-the-issue-side-ordinal-mint-against-the-width-ceiling` — Gate the issue-side ordinal mint against the width ceiling · status: open · num: P-20260805-gate-the-issue-side-ordinal-mint-against-the-width-ceiling · priority: medium · created: 2026-08-05T01:53:47Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-pin-each-prov-prefix-constant-individually-not-as-a-deduplicated` — Pin each PROV_PREFIX constant individually, not as a deduplicated set · status: open · num: P-20260805-pin-each-prov-prefix-constant-individually-not-as-a-deduplicated · priority: medium · created: 2026-08-05T01:53:45Z · labels: [id-coordination, test] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-pin-the-lift-s-five-unpinned-batch-guards-and-its-arm-asymmetry` — Pin the lift's five unpinned batch guards and its arm asymmetry · status: open · num: P-20260805-pin-the-lift-s-five-unpinned-batch-guards-and-its-arm-asymmetry · priority: medium · created: 2026-08-05T01:53:43Z · labels: [id-coordination, registry, test] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-reconcile-the-partition-protocol-s-999-cap-with-the-widened-ordi` — Reconcile the partition protocol's 999 cap with the widened ordinal bound · status: open · num: P-20260805-reconcile-the-partition-protocol-s-999-cap-with-the-widened-ordi · priority: high · created: 2026-08-05T01:53:41Z · labels: [id-coordination, partition, scripts] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-refuse-a-vacated-ordinal-in-catch-up-instead-of-silently-reissui` — Refuse a vacated ordinal in catch-up instead of silently reissuing it · status: open · num: P-20260805-refuse-a-vacated-ordinal-in-catch-up-instead-of-silently-reissui · priority: critical · created: 2026-08-05T01:53:40Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header` — Restore alloc_group_has_records's locals and correct its header · status: open · num: P-20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header · priority: medium · created: 2026-08-05T01:53:47Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-retire-the-four-stale-doc-sites-the-emission-cluster-left-behind` — Retire the four stale doc sites the emission cluster left behind · status: open · num: P-20260805-retire-the-four-stale-doc-sites-the-emission-cluster-left-behind · priority: medium · created: 2026-08-05T01:53:46Z · labels: [docs, workflow] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh` — Sanitize the four remaining failed-gate echoes in reconcile.sh · status: open · num: P-20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh · priority: medium · created: 2026-08-05T01:53:42Z · labels: [id-coordination, security, scripts] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming` — Scope the token memo warmer to the log it is warming · status: open · num: P-20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming · priority: high · created: 2026-08-05T01:53:42Z · labels: [id-coordination, registry, security] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-warm-the-id-boundary-memo-in-catch-up-and-lift` — Warm the id-boundary memo in catch-up and lift · status: open · num: P-20260805-warm-the-id-boundary-memo-in-catch-up-and-lift · priority: medium · created: 2026-08-05T01:53:44Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 
 ## Graph
 
