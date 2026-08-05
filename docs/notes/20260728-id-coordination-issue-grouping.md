@@ -1,11 +1,22 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-03 (twelfth revision) — **the
-documentation pass, and what running the engine over it found.** #211's "fifteen
-sites" was a claim; re-derived from the build's own diff it is **twenty**, and
-the miss that matters is `README.md` — the front page described two hand-run
-repair verbs when there are three, because the build gate regenerates
-`ARCHITECTURE.md` and nothing else. All twenty are corrected.
+**Created:** 2026-07-28 · **Revised:** 2026-08-05 (thirteenth revision) — **B′
+shipped and was reviewed.** Sixteen items built, eleven contracts fully
+satisfied, verdict **minor-drift**. The review's finding is a build that
+under-reaches: nine contracts were satisfied at the site their issue named and
+left unapplied at a sibling nobody enumerated, and `catch-up` is that sibling
+three times over — including a reachable path where it reissues a vacated
+ordinal and the registry then reports clean. Six fixture claims fell to mutation
+testing the build did not run. Eleven issues closed, four held open, fifteen
+filed. See *What B′ changed* and `docs/notes/20260805-b-prime-review.md`.
+
+**Twelfth revision (2026-08-03)** — **the documentation pass, and what running
+the engine over it found.** #211's "fifteen sites" was a claim; re-derived from
+the build's own diff it is **twenty**, and the miss that matters is `README.md` —
+the front page described two hand-run repair verbs when there are three, because
+the build gate regenerates `ARCHITECTURE.md` and nothing else. All twenty are
+corrected. *(The review disproved that last sentence: three sites survive, one of
+them named here and claimed fixed.)*
 
 Grounding the blueprint half ran nine judges over `platform`: **six hold, four
 violated**. Two were folded with restoration obligations recorded, two were
@@ -77,7 +88,7 @@ without minting a spec per issue.
 
 Working note — not a spec. Delete or fold into a roadmap once the groupings are
 acted on. Seven groupings (A, C, C′, C′-fix, E, the pre-B build, and B) have now
-been acted on; B′ is the eighth and is not yet started.
+been acted on; B′ is the eighth and has shipped.
 
 Line/function anchors in this note are as of the revision date.
 `skills/file/scripts/jimalloc.sh` moves under consolidation — treat anchors as
@@ -762,6 +773,51 @@ Cheap work that produced three findings worth more than the cleanup.
    The residual hazard is real but narrower than three judges made it look, and
    it is the same shape as #153.
 
+## What B′ changed
+
+Sixteen items, all built, `175047c..HEAD` — 34 commits, +1654/−147 over 18 files,
+suite 1099 → 1137. Reviewed **minor-drift**: judged against each issue's own
+*Proposed action*, eleven of the sixteen are fully satisfied and the code is
+correct wherever it was measured.
+
+**The rule layer, decided once each.** `alloc_realize_fold` holds the duplicate-realize
+decision and all three former readers consume it (`rz_of` is gone). Ordinal
+legality is one predicate around one constant compared in exactly one function.
+`alloc_group_has_records` counts a rename destination, so chained group renames
+work at unbounded depth. The lift's batch decision moved out of the publish
+builder's memory into `alloc_lift_states`, closing the cross-run idempotency hole
+and repelling a reorder attack because the decision is log-anchored. Three
+contradictions refused at the partition emitters, plus a sibling the issue never
+named. The id-boundary memo warms once per token: 826 → 291 forks, 1.54×.
+
+**What the review found is a build that under-reaches.** Nine of the sixteen
+contracts were satisfied at the site the issue named and left unapplied at a
+sibling nobody enumerated. `catch-up` alone appears three times — missing #209's
+refusals, missing #218's warm, and absent from every door matrix drawn. It is
+also the most serious finding in the cluster: `catch-up --apply` reissues an
+ordinal a rename vacated, silently changing what a frozen citation dereferences
+to, and the registry then reports clean. The classifier computes the fact and the
+verb discards it. Pre-existing, and legible only because B′'s own new invariant
+named the rule.
+
+**And a second pattern, in the fixtures.** Six fixture claims from this cluster
+were overturned by mutation testing the build did not run, and in every case the
+tested half worked while the untested half was blind: the `PROV_PREFIX` pin was
+mutation-tested on its shims and not its constants; the lift's reserved gate is
+asserted "on either ordinal side" and exercised only on destinations; five of the
+lift's nine guards survive deletion with all 1137 tests green, including the
+cross-run source closure #207's own wording covers. `refused:destination-conflict`
+is emitted from three sites and asserted nowhere.
+
+The mechanical form of both lessons: **a contract names a site, and a site is not
+a class.** Two of the review's four cross-cutting sweeps found what thirteen
+contract-scoped investigators could not, by enumerating the rule's doors instead
+of the issue's.
+
+Eleven issues closed on this evidence; four stay open because their proposed
+action is genuinely short. Fifteen new issues filed — one critical, three high.
+Full record: `docs/notes/20260805-b-prime-review.md`.
+
 ## The grouping question, restated
 
 The original question was "which of 29 issues deserve a spec". That question is
@@ -793,8 +849,8 @@ nothing else in the grouping grows.
 
 ## Grouping: 2 remaining specs + 2 builds + 1 refactor + open items
 
-A, C, C′, C′-fix, E, the pre-B build and B are done. **D and F remain as
-specs**; two builds remain — B′ below, then the grouped hardening build.
+A, C, C′, C′-fix, E, the pre-B build, B and B′ are done. **D and F remain as
+specs**; one build remains — the grouped hardening build.
 
 ### ~~Spec A — Rename-path correctness gates~~ · SHIPPED as `platform/011`
 Ran as a spec rather than a build, and the fork was worth resolving that way: the
@@ -969,7 +1025,7 @@ ship-with-emitter-vs-one-time-repair decision, and A's consumer obligations
 (redirect refusal is retryable, exhaustion is terminal, the returned group is
 authoritative).
 
-### B′ — finish `blueprint/025` · a build, not a spec · #205–#219 + #138
+### ~~B′ — finish `blueprint/025` · a build, not a spec~~ · SHIPPED · #205–#219 + #138 · reviewed **minor-drift**
 New at the eleventh revision. Sixteen items: the nine B's review filed, the six
 that rode nothing (above), and #138 pulled out of the hardening bucket because
 it and #212 are one decision at two scopes. Two of the sixteen shrank at the
@@ -1003,6 +1059,20 @@ that was previously retired cannot densify from `001`. If that turns out to
 reshape `/jim:partition split` rather than just gate the emitter, B′ becomes a
 spec. Decide this **first**, before writing anything.
 
+**Resolved without escalation.** `renumber-map` now takes `<child>=<start>` per
+fresh child, fed verbatim from `peek spec <child>` — the merge-map precedent
+applied to split. Required rather than defaulted, so a forgotten peek fails at
+map time instead of at Close. A never-seen name still peeks to `001`; a retired
+name resumes above its high-water. The protocol was not reshaped, so B′ stayed a
+build. Proven load-bearing by counterfactual: on a registry where `checkout/001..012`
+were retired, a hard-coded `001` map is refused as "vacated by an earlier rename"
+where the peek-fed `013` succeeds.
+
+One thing this fork did not anticipate, found by the review: the start gate is
+still `^[0-9]{3}$`, so a group past 999 peeks to `cart/1000` and `renumber-map`
+refuses the value the skill instructs an operator to copy verbatim. B′'s own
+width widening and its split fix disagree above 999. Tracked.
+
 **Sequence inside B′ — correctness first, because these write unrecoverable
 contradictions to a shared append-only branch through the documented Close:**
 
@@ -1028,6 +1098,12 @@ contradictions to a shared append-only branch through the documented Close:**
    Last because it is the cheapest and the least coupled. *(#211 left this step
    at the twelfth revision: 19 of its 20 sites are corrected, and the survivor —
    `docs/features/blueprints.md` — is held for its own branch rather than B′.)*
+   *(That 19-of-20 count is wrong, and the review disproved it: `ARCHITECTURE.md:395`
+   was claimed fixed but the remediation commit edited that line and left the
+   stale clause on it, and `README.md:62` and `ARCHITECTURE.md:393` are missed
+   siblings of sites that were fixed. `WORKFLOW.md` has no occurrence of `lift`
+   at all — the clearing check was "carries no occurrence of any retired symbol",
+   which cannot see a missing new verb.)*
 
 **Two invariants are folded open, and closing them is part of B′'s definition of
 done.** The twelfth revision weakened `ordinal-single-source` and
@@ -1040,11 +1116,35 @@ pre-fold text contains a clause that must not survive (one confesses
 agreement-by-convention; the other names the retired `next-id` mechanism). **B′
 is not done while either invariant still reads as folded.**
 
+**Both restored** through `/jim:blueprint`, both stronger than pre-fold on the
+clause that mattered, and both pre-fold confessions retired. The obligation is
+discharged. The review qualified the result in two ways worth carrying:
+`ordinal-single-source` now *overstates* — it claims the fixture "fails when a
+new width literal appears in any script", and the guard is range-literal-only,
+blind to exactly-N literals, awk `length()`, `${#x}` comparisons, and any file
+whose basename collides with its exclusion list. The fold understated the code;
+the restoration overshoots it. And `blueprint-slot-reserved` gates two of the
+four write paths the fold explicitly named, dropping the disclosure of the other
+two. Both are tracked as fixes rather than re-folds — folding correct rules down
+to match incomplete code is the cycle this note keeps paying for.
+
 **One task carried in that is not an issue: run the contract-edge phase.** The
 grounding run skipped it, and its existence conditions held — the map has a
 contract graph, it names `platform` as provider to all three other groups, and
 the change touched provides-side code in all three CLIs. It is the one rung that
 would have surfaced cross-group impact, and nothing else in B′ covers it.
+
+**It ran, and it was worth running.** 14 edges, 310 `CROSS-REF` facts, every fact
+landing on a declared edge, coverage 4/4, ten judged sides all holding, zero
+violations — recorded project-tier with `skipped=18` naming the unexamined
+remainder. The post-build review then ran it again change-scoped and it earned
+its keep the second time: three of four affected edges came back **breaking** on
+their consumer side. The 999 collision above is one of them, and the sharpest
+finding in the cluster came from it — B′'s widening of `move-spec-dir` *removed
+the loud refusal that was masking* `jimpartition.sh:1566`'s narrower gate, so a
+representable spec is now dropped from a merge map silently, at rc 0. That
+failure mode is introduced by the change, not merely exposed by it, and no
+single-group rung could have seen it.
 
 **Run the review deliberately**, and land **#188** before the build phase — it
 guards exactly the machinery B′ will lean on, and it has been "whenever, ideally
@@ -1053,6 +1153,13 @@ argument: its judge fan-out was suppressed by a standing session directive, ran
 only after an explicit authorization, and nothing in the engine's own output
 would have distinguished the suppressed run from a clean one. Second recorded
 instance, and both were caught by a person rather than by a mechanism.
+
+**#188 did not land, and there is now a third instance.** B′'s own build ran 17
+subagents unsuppressed on Fable 5; the review that followed ran on Opus 5, the
+model the directive targets, and its fan-out happened only because the operator
+authorized it explicitly and unprompted. Three for three caught by a person. The
+review needed 17 investigators against a `review_fanout_cap` of 10 — so the cap
+was also raised by hand, and `jimconf.toml` still reads 10.
 
 ### ~~Spec C — Spec-ID allocator consumer~~ · SHIPPED as `sdlc/017`
 `#112` + `#135` closed; `#123` narrowed, not retired. Spec creation now binds through
@@ -1772,26 +1879,32 @@ highest-criticality open set in the collection.)*
 Not cluster issues: they did not exist when the cluster was enumerated, and they
 belong to the emitter's edges rather than to the coordination problem. The
 fifteen are B′'s; #204 is a single blueprint run and rides nothing. Priorities as
-filed. (B′ holds **sixteen** items — these fifteen plus #138, pulled up from the
-hardening bucket to join #212.)
+filed. (B′ was scoped at **sixteen** items — these fifteen plus #138, pulled up
+from the hardening bucket to join #212. In the event #138 had already been
+delivered and closed by the emission spec, so B′ ran the fifteen; #212's pass
+covered the ground #138 named regardless.)
+
+Disposition as of the post-build review, 2026-08-05. **Closed** means the issue's
+own *Proposed action* is delivered and verified; **open** means that action is
+itself short, not that the tracker lagged.
 
 | # | Pri | Disposition |
 |---|---|---|
-| 205 | crit | B′ — merge-preflight probes the filesystem with an unvalidated group (invariant criticality; review severity `low`) |
-| 206 | med  | B′ — AC 16/17/18 residuals: retryable refusal in terminal language, width floor, one ungated echo |
-| 207 | crit | B′ step 1 — the lift's batch guard leaves no trace and is destination-only; a re-run writes what the first run refused |
-| 208 | med  | B′ — the blueprint pending-provisional disclosure cannot fire, and truncates unbounded |
-| 209 | high | B′ step 1 — three contradictions `partition-batch` accepts, and the chain into `lift`; **carries a fold-restoration obligation** |
-| 210 | med  | B′ step 4 — a vacuously-green test survived the retirement, plus four fixture gaps |
-| 211 | med  | **19 of 20 done 2026-08-03** — twenty sites, not the fifteen claimed; only `docs/features/blueprints.md` remains, held for its own branch |
-| 212 | med  | B′ step 2 — the ordinal width bound at **nine** sites in three incompatible widths, no test that any two agree; **carries a fold-restoration obligation** |
-| 213 | high | B′ step 1 — a group renamed once cannot be renamed again |
-| 214 | med  | B′ step 1 — the duplicate-realize rule decided three different ways by three readers |
-| 215 | med  | B′ step 3 — the provisional-grammar byte fixture stops short of the shims and constants |
-| 216 | low  | B′ step 3 — the record layer calls the reporting layer's sanitizer |
-| 217 | low  | B′ step 3 — `alloc_classify_spec`'s lost `local` declarations |
-| 218 | med  | B′ step 3 — the id-boundary memo no longer warms across passes |
-| 219 | low  | B′ step 3 — a `group realize` counted in two non-coverage counters |
+| 205 | crit | **closed** — slug-gated before the glob; 20-payload attack matrix, rename/split byte-identical. The pre-fix leak was worse than this issue's repro showed: with a directory at the traversal target it reflected basenames from outside the repo |
+| 206 | med  | **closed** — all three bullets; both remedies followed through to `rc=0` and the counterfactual confirmed failing. Four sibling echoes and the marker's missing consumer tracked on |
+| 207 | crit | **closed** — cross-run hole reproduced on `a000a70^` and closed at HEAD; reorder attack repelled; preview == payload == published across six shapes. Residual fixture coverage tracked on |
+| 208 | med  | **open** — the enumeration step and checklist line shipped; the sanitizing boundary did not, and "consumers" plural got one consumer. The cut discloses *that* it cut, never how many, and misreports a cut that did not happen |
+| 209 | high | **closed** — three contradictions plus the sibling door; all five gates mutation-discriminating; fold-restoration discharged. `catch-up` is the third write door and is tracked on |
+| 210 | med  | **closed** — vacuous case and both orphaned headers gone, five fixtures added, **13 of 13 mutations red**. The strongest fixture result in the cluster |
+| 211 | med  | **open** — the 19-of-20 count is disproven: `ARCHITECTURE.md:395` was claimed fixed and is not, and `README.md:62` / `ARCHITECTURE.md:393` are missed siblings. Stays open for `docs/features/blueprints.md` as scoped |
+| 212 | med  | **closed** — one predicate, one constant compared in exactly one function, `>999` closed at the primitives; fold-restoration discharged. Scope was **eleven** gates across four files, not nine or ten — third mis-statement in this cluster. The guard's blind spots and the partition layer tracked on |
+| 213 | high | **closed** — reproduced on a true pre-fix checkout *and* under single-hunk isolation; chain depth unbounded, both surfaces pinned |
+| 214 | med  | **closed** — one decision site proven by exhaustive enumeration, `rz_of` gone, fold mutation-proven. The realize *writer* never consults it — tracked on |
+| 215 | med  | **open** — shims pinned verbatim and mutation-tested; the three `PROV_PREFIX` values are a `sort -u` set-compare blind to both deletion and re-quoting. The measured half works; the unmeasured half is the blind one |
+| 216 | low  | **open** — the sanitizer moved and is a genuine record-layer primitive; `jimalloc.sh:76` still declares the section "pure … no git" while `alloc_read_log` forks git inside it |
+| 217 | low  | **closed** — locals restored, dead `g` dropped, leak check discriminates per name. It is name-pinned to one function and would not have caught the misses found elsewhere in this range |
+| 218 | med  | **closed** — 826 → 291 forks, each distinct token once; 1.54× reproduced across 8 interleaved pairs, outputs byte-identical. Cross-kind over-coverage and the un-warmed siblings tracked on |
+| 219 | low  | **closed** — exhaustive 7×3 known + 6 unknown matrix; the pre/post diff is exactly one row. `group allocate` lands in zero counters — pre-existing, tracked on |
 | 204 | low  | one `/jim:blueprint sdlc` run — declare `platform.jimalloc` in the Requires face |
 
 *(#214–#219 are the six the review found and the filing pass lost; see* What did
@@ -1825,16 +1938,18 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 ## Net
 
 83 issues → **2 assigned to the 2 remaining specs** (D: #127 · F: #126), **11
-to the grouped hardening build**, **1 to B′** (#138, joining #212), **1 optional
-refactor** (#122), **1 doc item + 2 decisions + 1 deferred + 1 process item**
-(#118 · #139, #200 · #137 · #188), **63 closed**.
+to the grouped hardening build**, **1 optional refactor** (#122), **1 doc item +
+2 decisions + 1 deferred + 1 process item** (#118 · #139, #200 · #137 · #188),
+**64 closed**.
 
-The closed 63 are: the 49 the tenth revision's own accounting reached, the pre-B
-build's four (#197, #198, #199, #203), #149 and the map pass's #189 — and **B's
+The closed 64 are: the 49 the tenth revision's own accounting reached, the pre-B
+build's four (#197, #198, #199, #203), #149 and the map pass's #189 — **B's
 eight**, closed 2026-08-03 rather than 2026-08-02: #113, #143, #152, #154 and
 #202 delivered outright; #84 and #123 dead structurally with the tree-scan
-retirement rather than patched; #155 delivered by the fork it was parked on.
-2 + 11 + 1 + 1 + 5 + 63 = 83. The enumeration still closes.
+retirement rather than patched; #155 delivered by the fork it was parked on —
+and **#138**, which this note assigned to B′ but which the emission spec had
+already delivered and closed, so it never rode B′ at all.
+2 + 11 + 1 + 5 + 64 = 83. The enumeration still closes.
 
 **B's residue is new work, not reopened work — and it is sixteen, not nine.**
 The review, the sensor and the six findings the filing pass lost became
