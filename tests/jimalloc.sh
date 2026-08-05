@@ -2928,10 +2928,12 @@ case_jimalloc_sweep_names_non_coverage() {
 # without the warm every pass re-pays one jimfile subprocess per token —
 # measured at 826 forks per sweep on live logs, 535 of them repeats. Pinned by
 # counting boundary crossings through a wrapper: no token may cross twice.
-case_jimalloc_sweep_validates_each_token_once() {
-  local repo probe
-  repo="$(sweep_repo sweep_memo)"
-  probe="$TMP_BASE/memo_probe"
+
+# fork_probe <name> — an allocator tree whose jimfile.sh is a counting shim, so
+# a case can measure boundary crossings per token. Prints the probe dir; every
+# crossing appends "<verb> <token>" to <dir>/forks.log.
+fork_probe() {
+  local probe="$TMP_BASE/$1"
   mkdir -p "$probe/skills/conf" "$probe/skills/ledger"
   cp -r "$REPO_ROOT/skills/file"           "$probe/skills/file"
   cp -r "$REPO_ROOT/skills/conf/scripts"   "$probe/skills/conf/scripts"
@@ -2940,7 +2942,58 @@ case_jimalloc_sweep_validates_each_token_once() {
   printf '#!/usr/bin/env bash\nprintf "%%s %%s\\n" "${1:-}" "${2:-}" >> "%s/forks.log"\nexec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/jimfile-real.sh" "$@"\n' \
     "$probe" > "$probe/skills/file/scripts/jimfile.sh"
   : > "$probe/forks.log"
+  printf '%s' "$probe"
+}
+
+case_jimalloc_sweep_validates_each_token_once() {
+  local repo probe
+  repo="$(sweep_repo sweep_memo)"
+  probe="$(fork_probe memo_probe)"
   ( cd "$repo" && bash "$probe/skills/file/scripts/jimalloc.sh" sweep > /dev/null 2>&1 )
+  assert_nonempty "the boundary was consulted at all" "$(cat "$probe/forks.log")"
+  assert_eq "no token crosses the boundary twice" "" \
+    "$(grep '^valid-id ' "$probe/forks.log" | sort | uniq -d)"
+}
+
+# The warmer's case list is scoped to the log it warms. A record whose kind
+# cannot live in the log it sits in is read by no consumer, so crossing it spends
+# one subprocess per distinct token for nothing — on a branch anyone who can push
+# can lengthen at will. Over-coverage is the exploitable direction here;
+# under-coverage only ever costs speed.
+case_jimalloc_sweep_does_not_cross_a_wrong_kind_record() {
+  local repo probe
+  repo="$(sweep_repo sweep_wrongkind)"
+  alloc_append_record "$repo" specs.log 'issue allocate 7 wrongkindissue 20260802 mallory'
+  alloc_append_record "$repo" issues.log 'spec allocate wrongkindgroup/003 wrongkindslug 20260802 mallory'
+  probe="$(fork_probe memo_wrongkind)"
+  ( cd "$repo" && bash "$probe/skills/file/scripts/jimalloc.sh" sweep > /dev/null 2>&1 )
+  assert_nonempty "the boundary was consulted at all" "$(cat "$probe/forks.log")"
+  assert_eq "an issue record sitting in specs.log is not crossed" "0" \
+    "$(grep -c 'wrongkindissue' "$probe/forks.log")"
+  assert_eq "a spec record sitting in issues.log is not crossed" "0" \
+    "$(grep -c 'wrongkindgroup\|wrongkindslug' "$probe/forks.log")"
+}
+
+# The warm belongs to the rule, not to the verb it was first written for.
+# catch-up re-runs the sweep's own classifiers over the same logs, so un-warmed
+# it pays the entire cost the sweep no longer does — it was slower than the
+# sweep it exists to repair.
+case_jimalloc_catchup_validates_each_token_once() {
+  local repo probe
+  repo="$(sweep_repo catchup_memo)"
+  probe="$(fork_probe memo_catchup)"
+  ( cd "$repo" && bash "$probe/skills/file/scripts/jimalloc.sh" catch-up > /dev/null 2>&1 )
+  assert_nonempty "the boundary was consulted at all" "$(cat "$probe/forks.log")"
+  assert_eq "no token crosses the boundary twice" "" \
+    "$(grep '^valid-id ' "$probe/forks.log" | sort | uniq -d)"
+}
+
+case_jimalloc_lift_validates_each_token_once() {
+  local repo probe
+  repo="$(sweep_repo lift_memo)"
+  lift_ledger "$repo" "$(lift_split_event 2026-07-25T08:05:20Z 'core/001:core/044')"
+  probe="$(fork_probe memo_lift)"
+  ( cd "$repo" && bash "$probe/skills/file/scripts/jimalloc.sh" lift > /dev/null 2>&1 )
   assert_nonempty "the boundary was consulted at all" "$(cat "$probe/forks.log")"
   assert_eq "no token crosses the boundary twice" "" \
     "$(grep '^valid-id ' "$probe/forks.log" | sort | uniq -d)"

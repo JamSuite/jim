@@ -180,30 +180,43 @@ alloc_valid_token() {
   [[ "${ALLOC_TOKEN_OK[$tok]}" == y ]]
 }
 
-# alloc_warm_token_memo   (log on stdin)
+# alloc_warm_token_memo <log>   (log on stdin)
 #   Validate, IN THE CALLER'S SHELL, every token this log can send through the
 #   id boundary, so the memo is warm before any capture subshell forks — a
-#   subshell inherits the cache but cannot write back. Purely advisory: it
-#   duplicates the grammar's token positions, but a missed field only costs
-#   speed (the consumer validates it cold, correctly) and never correctness,
-#   so this list may lag the grammar without breaking anything.
+#   subshell inherits the cache but cannot write back. <log> is `specs` or
+#   `issues`, and the case list is scoped to it because alloc_log_file pins
+#   which kinds can live in which log: a record whose kind cannot belong to the
+#   log it sits in is read by no consumer at all.
+#
+#   The two coverage directions are NOT symmetric, which is why the scope is an
+#   argument rather than a comment. UNDER-coverage is advisory — a field this
+#   list misses costs speed only, since the consumer validates it cold and
+#   correctly. OVER-coverage is a liability: crossing a token no consumer will
+#   ever read spends one subprocess per distinct token, on a log anyone who can
+#   push the coordination branch can lengthen at will, which turns a read-only
+#   integrity verb into an availability target. Widen this list only within the
+#   named log's own kinds.
 alloc_warm_token_memo() {
-  local c1 c2 c3 c4 _rest tok
+  local scope="${1:-}" c1 c2 c3 c4 _rest tok
+  case "$scope" in
+    specs|issues) ;;
+    *) return 1 ;;
+  esac
   while read -r c1 c2 c3 c4 _rest; do
-    case "$c1 $c2" in
-      'spec allocate')  alloc_valid_token "${c3%%/*}" || true
-                        alloc_valid_token "${c4:-}"   || true ;;
-      'group allocate') alloc_valid_token "${c3:-}"   || true ;;
-      'issue allocate') alloc_valid_token "${c4:-}"   || true ;;
-      'spec rename')    alloc_valid_token "${c3%%/*}" || true
-                        alloc_valid_token "${c4%%/*}" || true ;;
-      'group rename')   alloc_valid_token "${c3:-}"   || true
-                        alloc_valid_token "${c4:-}"   || true ;;
-      'spec realize')   alloc_valid_token "${c3%%/*}" || true
-                        alloc_valid_token "${c4%%/*}" || true
-                        tok="${c3##*/}"
-                        [[ "$tok" == "$PROV_PREFIX"* ]] \
-                          && { alloc_valid_token "${tok#"$PROV_PREFIX"}" || true; } ;;
+    case "$scope $c1 $c2" in
+      'specs spec allocate')   alloc_valid_token "${c3%%/*}" || true
+                               alloc_valid_token "${c4:-}"   || true ;;
+      'specs group allocate')  alloc_valid_token "${c3:-}"   || true ;;
+      'specs spec rename')     alloc_valid_token "${c3%%/*}" || true
+                               alloc_valid_token "${c4%%/*}" || true ;;
+      'specs group rename')    alloc_valid_token "${c3:-}"   || true
+                               alloc_valid_token "${c4:-}"   || true ;;
+      'specs spec realize')    alloc_valid_token "${c3%%/*}" || true
+                               alloc_valid_token "${c4%%/*}" || true
+                               tok="${c3##*/}"
+                               [[ "$tok" == "$PROV_PREFIX"* ]] \
+                                 && { alloc_valid_token "${tok#"$PROV_PREFIX"}" || true; } ;;
+      'issues issue allocate') alloc_valid_token "${c4:-}"   || true ;;
     esac
   done
   return 0
@@ -2956,8 +2969,8 @@ cmd_sweep() {
   # subprocess every time it recurs.
   local spec_log issue_log
   spec_log="$(alloc_read_log spec)"; issue_log="$(alloc_read_log issue)"
-  alloc_warm_token_memo <<< "$spec_log"
-  alloc_warm_token_memo <<< "$issue_log"
+  alloc_warm_token_memo specs  <<< "$spec_log"
+  alloc_warm_token_memo issues <<< "$issue_log"
   local spec_rec issue_rec
   spec_rec="$(alloc_seed_derive_specs "$specs_root")" || return 4
   issue_rec="$(alloc_seed_derive_issues "$issues_dir")" || return 4
@@ -3265,6 +3278,14 @@ cmd_catchup() {
     echo "error: no coordination branch '$branch' to catch up to — bootstrap it with 'seed --apply' first" >&2
     return 1
   fi
+  # Warm the id-boundary memo HERE, before anything below forks. This verb runs
+  # the sweep's own classifiers over the same logs, so un-warmed it pays the
+  # entire cost the sweep no longer does — every derivation and every classify
+  # runs inside a command substitution, which inherits the memo and cannot write
+  # it back. Fed by here-string, never a pipe: a pipe would run the warmer in a
+  # subshell and make it a silent no-op.
+  alloc_warm_token_memo specs  <<< "$(alloc_read_log spec)"
+  alloc_warm_token_memo issues <<< "$(alloc_read_log issue)"
   local spec_rec issue_rec
   spec_rec="$(alloc_seed_derive_specs "$specs_root" "$ALLOC_CATCHUP_MARKER")"   || return 1
   issue_rec="$(alloc_seed_derive_issues "$issues_dir" "$ALLOC_CATCHUP_MARKER")" || return 1
@@ -3943,6 +3964,10 @@ cmd_lift() {
     echo "lift: no identity-pair events in ${specs_root%/}/ledger.md — nothing to record"
     return 0
   fi
+  # Same reason as catch-up's, and the waste ratio here is worse: the decision
+  # table re-derives a small set of distinct tokens many times over. Both
+  # branches below capture into a subshell, so the memo has to be warm first.
+  alloc_warm_token_memo specs <<< "$(alloc_read_log spec)"
   local table
   if (( apply )); then
     alloc_preflight || return 1
