@@ -131,6 +131,25 @@ case_metatest_scaffold_rejects_bad_name_path_traversal() {
   assert_nonempty "stderr non-empty" "$ERR"
 }
 
+# The wrong base the name gate cannot see. `widget` is a perfectly valid name;
+# what makes it wrong is standing inside a skill directory, where the resulting
+# skills/<x>/tests/widget.sh is loaded as plugin content and never run as a test.
+# Both write verbs refuse, and neither leaves a file behind.
+case_metatest_write_verbs_refuse_a_discovery_root() {
+  local sb
+  sb=$(metatest_sandbox "discovery-root")
+  mkdir -p "$sb/skills/demo"
+  run_metatest_in "$sb/skills/demo" scaffold widget
+  assert_exit     "scaffold refuses"  1 "$RC"
+  assert_nonempty "and says why"        "$ERR"
+  assert_eq "no test file written" "0" \
+    "$([[ -e "$sb/skills/demo/tests/widget.sh" ]] && echo 1 || echo 0)"
+  mkdir -p "$sb/agents/demo"
+  run_metatest_in "$sb/agents/demo" add widget smoke
+  assert_exit     "add refuses too"   1 "$RC"
+  assert_nonempty "and says why"        "$ERR"
+}
+
 # AC: scaffolded file is executable (chmod +x applied).
 case_metatest_scaffold_makes_file_executable() {
   local sb; sb=$(metatest_sandbox "executable")

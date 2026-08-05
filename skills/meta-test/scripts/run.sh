@@ -51,6 +51,15 @@ source "$HERE/testlib.sh"
 
 FILTER="${1:-}"
 
+# PWD-relative, and deliberately so — do NOT anchor this at REPO_ROOT. This
+# runner is itself under test: tests/metatest.sh has cases that invoke it from a
+# sandbox directory, and the PWD-relative glob is what makes those runs find no
+# test files and return. Anchored at the project root, each of them would load
+# tests/metatest.sh and invoke the runner again, without bound.
+#
+# The placement rule this leaves unenforced — a test file authored outside
+# tests/ is silently not run — is detected by tests/scripthygiene.sh instead,
+# which sweeps for test-shaped files under the discovery roots.
 for tf in tests/*.sh; do
   [[ -e "$tf" ]] || continue
   source "$tf"
