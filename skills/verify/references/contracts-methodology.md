@@ -153,7 +153,11 @@ content is displayed or persisted — minimize to "secret-looking value at
    appetite, dispatch one `Agent(judge)` (highest criticality first, bounded by
    `verify_fanout_cap`, cap remainder named). Judge input: the entry + guarantee
    text in a delimited untrusted block, the side, and that side's territory
-   scope.
+   scope. **An edge side whose judge was never dispatched is `failed` with
+   reason `undelegated`, never `holds`** — the skill's Step 7 rule, applied to
+   the edge grammar: appetite and the cap are the only two whole-run reasons a
+   side goes unjudged, and reading the two faces yourself here is not the
+   independent check the outcome claims.
 6. **C6 — report, offer, record.** Emit the report / VERIFY-OUTCOME edge records
    (per the skill's edge-record grammar), offer violations as issues on-demand
    (suppressed under a trigger — the caller routes), and record the run's
@@ -183,7 +187,8 @@ File the <v> violations as issues? [file all] [skip all] · per-row: f / e / s
 Close by naming every degradation: coverage, any `UNSCOPED-GROUP`, any
 `CROSS-REF-CAPPED` pair (name the consumer→provider whose leak evidence was
 truncated at the floor's per-path cap), the appetite in force and any config
-fallback, and any capped judge remainder.
+fallback, any capped judge remainder, and any **undelegated judge rung** (the
+edge sides it cost, and that their judgment is not independent).
 
 ## Durable counters
 
@@ -192,11 +197,13 @@ not a single group's), self-committed:
 
 ```
 verify started  tier=project op=contracts
-verify finished tier=project op=contracts edges=<n> holds=<n> violated=<n> failed=<n> skipped=<n> leaks=<n> breaking=<n> dead=<n>
+verify finished tier=project op=contracts edges=<n> holds=<n> violated=<n> failed=<n> skipped=<n> undelegated=<n> leaks=<n> breaking=<n> dead=<n>
 ```
 
 `leaks`/`breaking`/`dead` count the spec-034 finding classes; `edges` counts
-edges checked. No verdict artifact is persisted — the report is the run's surface
+edges checked; `undelegated` counts the edge sides whose judge was never
+dispatched, recorded always so a `0` distinguishes a whole run from a record
+that predates the counter. No verdict artifact is persisted — the report is the run's surface
 (the spec 034 AC #3 / 035 AC #11 doctrine). A caller-scoped `--entries` trigger
 records nothing itself and returns its records to the caller, which owns
 durability (the spec 036 suppression rule).

@@ -511,6 +511,44 @@ Not every change needs the full lifecycle:
 
 ---
 
+## Operating Notes
+
+### Authorizing the agent fan-outs
+
+Several jim phases do their real work by delegation: `/jim:review` fans out
+`investigator` subagents, `/jim:verify` fans out `judge` subagents,
+`/jim:partition` fans out `gatherer` subagents, and `/jim:issue insights` runs
+entirely inside the `issue-analyst`. These are not an optimization — they are the
+independence the phase's output claims. A review of a commit range by its own
+author is a materially weaker instrument than a fan-out over the same range.
+
+Some Claude Code builds inject a system-prompt directive that withholds the Agent
+tool unless the user asked for it, on some models and not others. It is not
+visible in `CLAUDE.md` or `settings.json`, because it does not come from your
+project — from inside a session it is indistinguishable from something you
+configured.
+
+**The directive is self-limiting: an explicit request satisfies it.** If you want
+the fan-outs, say so once per session:
+
+> invoking a jim skill authorizes the agents that skill prescribes
+
+**What jim does when the fan-out does not run.** Each phase names the gap rather
+than passing its own unaided reading off as the delegated one:
+
+| Phase | Behavior when its fan-out cannot be dispatched |
+|-------|-----------------------------------------------|
+| `/jim:verify` | Affected invariants are `failed` (reason `undelegated`), never `holds`; the report says so and the ledger event carries `undelegated=<n>` |
+| `/jim:review` | `review.md` names the undelegated coverage and what rests on spine-level reading only; the ledger event carries `undelegated=<n>` |
+| `/jim:partition` | No gatherer-marked invariant is recorded, and the run does not carry ungathered evidence to its human gate |
+| `/jim:issue insights` | Refuses and stops — reading issue bodies in the main context is the specific thing the analyst boundary exists to prevent |
+
+A clean report from a phase whose fan-out never ran is the one output these
+skills are built not to produce. If you see the degradation named, re-run with
+the authorization above rather than trusting the result.
+
+---
+
 ## Rules of Engagement
 
 1. **Human-in-the-Loop:** Agents STOP after each phase gate or atomic task. No autonomous multi-phase execution.

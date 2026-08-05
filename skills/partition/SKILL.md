@@ -114,6 +114,16 @@ deps, fail-closed candidate invariants, and misalignments (all untrusted data).
 The gatherer fan-out completes **before** any `Skill(jim:blueprint)` call
 (one-level nesting).
 
+**The gatherer fan-out is a precondition, not a quality lever — and this rule
+governs every `Agent(gatherer)` dispatch in this skill, not just this one.** The
+cap bounds concurrency and never coverage, so there is no legitimate run in which
+a proposed group goes ungathered. If the fan-out cannot be dispatched at all, the
+evidence a proposal is required to cite does not exist: say so plainly, present
+no invariant that rests on gatherer marking (only the deterministic floor's
+`pattern` / `structure` findings survive), and do not carry the run through its
+human gate on evidence that was never gathered. A proposal is an argument from
+cited evidence; without the gatherers there is nothing to cite.
+
 Present the proposal with **cited evidence per group** — edge counts and
 representative references (AC #2), per the gate-presentation rule
 (`skills/blueprint/references/gate-presentation.md`). Present, before the gate, every
@@ -169,7 +179,9 @@ marking already withholds any wanted-but-violated rule (offered as an issue
 instead). Backstop: after generation, run the deterministic floor only —
 `jimverify.sh parse` + `check` per group — so any recorded `pattern` /
 `structure` invariant the code violates is caught mechanically. Judge-rung
-invariants rest on the gatherer marking; name that split honestly in the report.
+invariants rest on the gatherer marking; name that split honestly in the report —
+and where the gatherers never ran, that side of the split is empty rather than
+clean, so record no judge-rung invariant at all.
 
 ### 6. Reconcile to clean, alongside health
 
@@ -576,6 +588,7 @@ Before presenting, confirm:
 - [ ] Nothing was written before approval; the interview covered the three forks and recommended `declared-paths`.
 - [ ] Every map/blueprint write went through `Skill(jim:blueprint)`; group blueprints generated kernel-first; repartition retired superseded blueprints via `--retire`.
 - [ ] No violated invariant was recorded — the gatherer marking withheld them and the `jimverify.sh` floor backstop ran; the judge/floor split was named.
+- [ ] The gatherer fan-out was actually dispatched for every proposed group. If it could not be, the run said so, recorded no gatherer-marked invariant, and did not present ungathered evidence at the human gate — the cap bounds concurrency, so an ungathered group is never a normal outcome.
 - [ ] The reconcile loop drove the counters to zero or escalated (immediately for code-change findings; after 3 iterations otherwise); graph health was presented alongside, never conflated.
 - [ ] The blocked outcome materialized nothing and offered prioritized issues; the candidate batch offered every misalignment; `partition finished` carried counters only.
 - [ ] Territory-target run: assessed the four clean conditions; readiness-only wrote nothing; on clean+confirm, `group_territory` was set only to the developer-typed target as a visible Edit, then the map updated through the blueprint surface — no code moved.

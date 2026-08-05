@@ -59,7 +59,7 @@ This appends to `<spec-dir>/ledger.md`; you do not commit it — the developer c
 
 Check for `research.md` in the same directory as the spec.
 
-**Missing:** Auto-spawn `@jim:researcher` via the Agent tool, passing the spec path. Wait for research to complete, then read the resulting research.md and continue.
+**Missing:** Auto-spawn `@jim:researcher` via the Agent tool, passing the spec path. Wait for research to complete, then read the resulting research.md and continue. If the researcher agent is not available, tell the user to run `/jim:research` instead and stop — never plan over research that was neither gathered nor declared missing.
 
 **Exists — check for staleness:** Compare the `date:` field in research.md frontmatter to the spec. If the spec has been updated since research was gathered, tell the user: "Research may be stale — the spec was modified after research was completed. Re-research now, or proceed with existing findings?" Wait for the user's decision before continuing.
 

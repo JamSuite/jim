@@ -85,6 +85,9 @@ assessed over the working tree."}
 - Depth: {lean | thorough}{; review_model: <tier> when non-default}.
 - {Full high-stakes set investigated. | Fan-out capped at {N} — these regions
   were NOT deep-investigated: {list}. | Instrumentation gap: {what}.}
+- investigators: {N dispatched. | NONE DISPATCHED — the fan-out did not run;
+  these regions and ACs rest on spine-level reading only: {list}. The verdict
+  above was assigned over that evidence, not over independent investigation.}
 
 ## Living intent
 
@@ -111,7 +114,7 @@ assessed over the working tree."}
 <!-- Honest coverage: name every degradation so a clean section is trustworthy. -->
 - appetite in force: {level}{; per-group / per-run override when set}.
 - {Whole-group floor ran. | UNSCOPED — no territory declared; floor ran repo-wide.}
-- judges: {change-selected, all within cap. | capped at {N} — un-judged remainder: {list}.}
+- judges: {change-selected, all within cap. | capped at {N} — un-judged remainder: {list}. | NONE DISPATCHED — the judge rung did not run; these invariants are `failed` (undelegated), not `holds`: {list}.}
 - skipped by scope: {n — the change did not touch them} · skipped by appetite: {n}.
 - {registry: {k} configured. | legacy prose-method blueprint — judge fallback. | engine failure contained: {what} — reported, review not aborted.}
 

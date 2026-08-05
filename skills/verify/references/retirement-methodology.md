@@ -121,8 +121,11 @@ still justified", never "not looked at" (the spec 035 AC #1 doctrine):
 - **flagged** — the judge confirmed `stale` with a complete per-source evidence
   block (→ offered as an issue).
 - **inconclusive** — a hint fired but the judge could not confirm, rested on an
-  `unavailable` source, or was appetite-skipped / fan-out-capped (named, never
-  silently dropped).
+  `unavailable` source, or was appetite-skipped / fan-out-capped / never
+  dispatched at all (named, never silently dropped). A candidate whose judge was
+  never dispatched is `inconclusive` with reason `undelegated` — never
+  `still-justified` and never `flagged`, since both of those are claims this run
+  did not independently establish.
 - **still-justified** — a source demonstrably backs the entry (populated scope,
   a supporting cross-reference, or the judge finding intent/usage).
 - **skipped** — a judge-only candidate below the appetite threshold (named).
@@ -184,7 +187,10 @@ value from scanned content is displayed or persisted — minimize to
 4. **R4 — appetite-gate and judge.** Dispatch one `Agent(judge)` per candidate
    in appetite, highest criticality first, bounded run-global by
    `verify_fanout_cap`. Hand the entry, hint, bounded spec-corpus paths, graph
-   edges, and scope-census fact; the judge greps only the handed set.
+   edges, and scope-census fact; the judge greps only the handed set. **If the
+   fan-out was never dispatched** — for any reason other than appetite or the
+   cap — every candidate it would have covered is `inconclusive` with reason
+   `undelegated`, named in the report and counted in the durable counters.
 5. **R5 — classify verdicts.** Map `justified`→still-justified,
    `stale`(+complete evidence)→flagged, otherwise→inconclusive. A
    `critical`/`high` flag is always presented — and filed — with the
@@ -222,8 +228,9 @@ File the <v> flags as issues? [file all] [skip all] · per-row: f / e / s
 ```
 
 Close by naming every degradation: coverage, any `unswept` group, any `na`
-(non-git) scope, the appetite in force and any config fallback, and any capped
-judge remainder.
+(non-git) scope, the appetite in force and any config fallback, any capped
+judge remainder, and any **undelegated judge rung** (the candidates it cost,
+and that their disposition rests on no independent confirmation).
 
 ## Durable counters
 
@@ -232,8 +239,11 @@ self-committed via `commit-verify <specs-root>` — no `jimledger.sh` change:
 
 ```
 verify started  tier=project op=retirement
-verify finished tier=project op=retirement groups=<n> swept=<n> invariants=<n> requires=<n> candidates=<n> flagged=<n> inconclusive=<n> justified=<n> skipped=<n> dead=<n>
+verify finished tier=project op=retirement groups=<n> swept=<n> invariants=<n> requires=<n> candidates=<n> flagged=<n> inconclusive=<n> justified=<n> skipped=<n> undelegated=<n> dead=<n>
 ```
+
+`undelegated` counts the candidates whose judge was never dispatched — always
+recorded, so a `0` distinguishes a whole run from a record predating the counter.
 
 Content-free numbers only — scope paths, entry names, and cycle membership live
 in the report, never the ledger (the 026 metrics-channel doctrine). No verdict

@@ -292,6 +292,28 @@ Invariant verification (`/jim:verify`, spec 035) fans out read-only `judge` suba
 
 Partition migration (`/jim:partition`, spec 038) fans out read-only `gatherer` subagents that read **your project's own source** to gather per-group evidence for the proposed context map. Like the reviewer's investigators, each gatherer's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The gatherers are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when you configure a `deps_command_<name>` extractor (see Configuration), `/jim:partition` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a scanned artifact can never mint that command, only your own config activates one.
 
+## Authorizing the fan-outs
+
+Separate from permissions: some Claude Code builds inject a system-prompt
+directive that withholds the Agent tool unless the user asked for it, on some
+models and not others. It is not a permission you can grant in
+`.claude/settings.json` — and because it arrives in the system prompt, from
+inside a session it is indistinguishable from something you configured.
+
+The directive is self-limiting, so an explicit request satisfies it. Say this
+once per session to get the fan-outs described above:
+
+> invoking a jim skill authorizes the agents that skill prescribes
+
+When a fan-out cannot be dispatched, the phase **names the gap** instead of
+presenting its own unaided reading as the delegated one: `/jim:verify` marks the
+affected invariants `failed` rather than `holds`, `/jim:review` records the
+undelegated coverage in `review.md`, `/jim:partition` records no gatherer-marked
+invariant, and `/jim:issue insights` refuses outright. Both `/jim:verify` and
+`/jim:review` carry an `undelegated=<n>` counter on their ledger events, so a
+degraded run stays legible afterwards. See [`WORKFLOW.md`](./WORKFLOW.md) →
+Operating Notes.
+
 ## How to develop for Jim
 
 See [`WORKFLOW.md`](./WORKFLOW.md) for the full SDLC process.
