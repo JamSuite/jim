@@ -2,7 +2,7 @@
 id: 20260805-pin-the-locale-at-the-three-locale-sensitive-test-sites
 num: 227
 title: "Pin the locale at the three locale-sensitive test sites"
-status: open
+status: closed
 priority: high
 labels: [000-blueprint, verify, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T02:19:10Z
-updated: 2026-08-05T02:19:10Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/specs/platform/000-blueprint/spec.md
 ---
 
@@ -69,3 +69,27 @@ says "project-wide" and the check covers one third of the corpus.
 `/jim:verify --since 175047c platform` — `script-preamble` (high), judged
 `violated`, `channel=in-change`. Resolved **fix** at the blueprint update's
 violation fork.
+
+## Resolution (2026-08-05)
+
+Per-command pins at every named site — `LC_ALL=C sort -u`, `LC_ALL=C tr`,
+`LC_ALL=C grep` — plus the sites this cluster's own work added, which had
+inherited the same gap. No top-level export was added to any file the runner
+sources; the issue was right that the literal remedy would be the regression the
+framework exemption exists to prevent.
+
+**The second question is answered by extending the mechanism, narrowly.**
+`scripthygiene.sh` now sweeps `tests/` for `sort -u` without a locale pin. It is
+scoped to that one construct on purpose: `sort -u` is where a locale difference
+silently changes a *result* — merging lines that collate equal but differ
+bytewise, turning a genuine mismatch into a passing assertion — rather than
+changing what a pattern matches. Files under `skills/*/scripts/` and `scripts/`
+are not swept because they export the locale once at the top, which the existing
+case already requires. The sweeping file excludes itself, the way the provenance
+detector does, since a textual sweep cannot both spell a pattern and be blind to
+its own copy.
+
+**Deliberately still open:** the `script-preamble` invariant's own text says
+"project-wide" while the mechanism now covers two of three roots plus one
+construct in the third. Correcting that sentence is a `/jim:blueprint` write, not
+a hand edit, so it rides the docs pass.

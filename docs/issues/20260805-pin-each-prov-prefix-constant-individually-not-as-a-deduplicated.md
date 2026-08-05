@@ -2,7 +2,7 @@
 id: 20260805-pin-each-prov-prefix-constant-individually-not-as-a-deduplicated
 num: 224
 title: "Pin each PROV_PREFIX constant individually, not as a deduplicated set"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:45Z
-updated: 2026-08-05T01:53:45Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -70,3 +70,16 @@ before comparing.
 
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 8).
+
+## Resolution (2026-08-05)
+
+Fixed as proposed. Each constant is asserted individually and **by path**, so a
+deleted copy is a missing assertion rather than a smaller set. The pattern is
+quote-agnostic and anchored on the assignment, so a re-spelling is *read* and
+compared rather than skipped — the point being that a line the pattern misses
+must not be able to look clean.
+
+All six drifts the issue mutation-confirmed as passing now fail: delete or
+re-quote, at any of the three sites.
+
+The shim half needed nothing; the issue's assessment of it was right.

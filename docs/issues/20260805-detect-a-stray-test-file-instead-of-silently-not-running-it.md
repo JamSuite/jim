@@ -2,7 +2,7 @@
 id: 20260805-detect-a-stray-test-file-instead-of-silently-not-running-it
 num: 221
 title: "Detect a stray test file instead of silently not running it"
-status: open
+status: closed
 priority: medium
 labels: [000-blueprint, verify, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T02:19:12Z
-updated: 2026-08-05T02:19:12Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/specs/platform/000-blueprint/spec.md
 ---
 
@@ -70,3 +70,29 @@ wrong directory.
 `/jim:verify --since 175047c platform` — `tests-under-tests` (medium), judged
 `violated` on the enforcement conjunct, `channel=in-change`. Resolved **fix** at
 the blueprint update's violation fork.
+
+## Resolution (2026-08-05)
+
+The primary proposed action landed: `tests/scripthygiene.sh` sweeps `skills/` and
+`agents/` for test-shaped files — a `case_*` definition or a `testlib.sh` source
+— and fails if any exist, fail-closed on an empty corpus. That is the detection
+the invariant claimed and did not have.
+
+**The second half was tried both ways, and the anchoring option is wrong.**
+Anchoring the runner's glob and the scaffold's target at `REPO_ROOT` looks
+strictly safer and breaks the harness: this dispatcher is itself under test, and
+those cases scaffold into a temp tree and invoke the runner from it. PWD-relative
+resolution is what makes those runs find no test files and return — anchored,
+each one loads `tests/metatest.sh` and invokes the runner again, without bound.
+Both were reverted, and both now carry the reason at the site, since the next
+reader will otherwise make the same correction.
+
+So the cwd risk is closed at the point it actually bites instead: both write
+verbs **refuse outright** when the cwd is inside a Claude Code discovery root.
+That is the one wrong base the name gate cannot see — the name is valid and only
+the base is wrong — and refusing costs the harness nothing, because its sandboxes
+are not under `skills/` or `agents/`.
+
+**Deliberately still open:** the `tests-under-tests` invariant's text still says
+the runner enforces the boundary, where it contains and the sweep now detects.
+That sentence is a `/jim:blueprint` write; it rides the docs pass.

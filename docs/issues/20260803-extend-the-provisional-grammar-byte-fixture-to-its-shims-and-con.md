@@ -2,7 +2,7 @@
 id: 20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con
 num: 215
 title: "Extend the provisional-grammar byte fixture to its shims and constants"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, test-integrity, sync-discipline]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-03T05:50:30Z
-updated: 2026-08-05T02:25:13Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 ---
 
@@ -92,3 +92,13 @@ one line; the locale half is tracked separately.
 
 Source: post-build review of the B-prime cluster,
 `docs/notes/20260805-b-prime-review.md` (Finding 8).
+
+## Delivered in full (2026-08-05)
+
+The constants half landed, so this closes with its follow-on. Each `PROV_PREFIX`
+is now pinned per site and by path, quote-agnostically, and the six drifts that
+passed the set-compare all fail. Details on the follow-on item.
+
+The locale weakness noted in the same line is fixed too: that `sort -u` is gone,
+and the `sort -u` sites that remain in the test corpus are locale-pinned per
+command, with a sweep that keeps them that way.

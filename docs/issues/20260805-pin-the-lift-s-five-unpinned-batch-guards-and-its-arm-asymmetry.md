@@ -2,7 +2,7 @@
 id: 20260805-pin-the-lift-s-five-unpinned-batch-guards-and-its-arm-asymmetry
 num: 225
 title: "Pin the lift's five unpinned batch guards and its arm asymmetry"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, registry, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:43Z
-updated: 2026-08-05T01:53:43Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -72,3 +72,31 @@ separately because both belong to the same arm-symmetry pass.
 
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 5).
+
+## Resolution (2026-08-05)
+
+Every guard the mutation audit found surviving now has a case, and the audit was
+re-run to confirm each one discriminates.
+
+- `refused:destination-conflict` was emitted from three arms and asserted from
+  none. One case covers all three; a second covers the group arm's **other**
+  direction, because the two halves of that check (a destination another rename
+  arrived at, versus one that itself renamed away) each leave the other's case
+  green when deleted.
+- The cross-run **source** closure — the half of issue 207's contract that was
+  never pinned — has its own case.
+- The realize destination closure has its own case.
+- **The ordering contract is pinned by outcome, not by count.** The case asserts
+  *which* row of a duplicate pair is emitted and which is marked, so inverting
+  first-recordable-wins fails rather than passing on "one of them was refused".
+
+**The arm asymmetry resolved differently than the issue proposed.** Adding
+`rn_src[spec\t$dst]` to the spec arm would be dead code: `spent` holds every SRC
+row the replay produces, so it is a strict superset of the spec renames `rn_src`
+indexes — and it also covers ordinals a *group* rename moved, which
+`rn_src[spec…]` never sees. The rule is enforced, by the broader predicate. The
+group arm reaches for `rn_src` only because it has no spent set keyed by group
+name. That reasoning is now recorded at the site, so the redundant check is not
+added back.
+
+Seven mutations, all red.

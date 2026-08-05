@@ -2,7 +2,7 @@
 id: 20260805-exclude-by-path-not-basename-in-the-ordinal-width-guard
 num: 222
 title: "Exclude by path, not basename, in the ordinal width guard"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:44Z
-updated: 2026-08-05T01:53:44Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -78,3 +78,35 @@ implies are covered and are not.
 
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 7).
+
+## Resolution (2026-08-05)
+
+Fixed as proposed, and the guard now catches every blind spot the issue
+measured.
+
+**Excluded by path, not basename.** The two `reconcile.sh` under `skills/` were
+the live case; a future file taking any of the four names was the latent one.
+
+**Widened beyond comma-form ranges.** It sees exactly-N literals (`[0-9]{3}` —
+the spelling that let six gates in `jimpartition.sh` keep a 999 ceiling after the
+bound moved), awk `length()` comparisons, and bash `${#x}` comparisons. The
+discriminator is the **ceiling**: an ordinal spelling names 15, while an
+unrelated length check that happens to name a floor of 3 does not. That keeps
+`index.sh`'s `length(line) >= 3` out of scope without an exemption list.
+
+**Counts only non-comment lines**, which closes the sixth mutation — a gate
+losing its bound while a comment nearby gains the literal used to preserve the
+per-file count. No counted site sits in a comment today, so the numbers did not
+move; only the way one could move unseen.
+
+Fail-closed on the comparison sweep, so its zero cannot mean "the pattern
+stopped matching".
+
+Five of the six reported-blind mutations now fail, and the sixth with them.
+
+**Deliberately still open, and it belongs to a different surface:**
+`docs/specs/platform/000-blueprint/spec.md:171` still asserts the fixture "fails
+when a new width literal appears in any script", which is now much closer to true
+but is a blueprint sentence, and blueprint text is written through
+`/jim:blueprint` rather than by hand. It rides the docs pass with the other
+blueprint corrections this cluster owes.

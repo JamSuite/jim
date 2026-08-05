@@ -2,7 +2,7 @@
 id: 20260805-pin-the-lift-s-reserved-ordinal-refusal-on-its-source-side
 num: 226
 title: "Pin the lift's reserved-ordinal refusal on its source side"
-status: open
+status: closed
 priority: high
 labels: [000-blueprint, verify, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T02:19:11Z
-updated: 2026-08-05T02:19:11Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/specs/platform/000-blueprint/spec.md
 ---
 
@@ -67,3 +67,14 @@ but the two are one afternoon's work in the same file.
 predicate at every consultation site; high-water arithmetic that cannot yield
 zero; all nine registry write paths gated as worded) hold. Resolved **fix** at the
 blueprint update's violation fork.
+
+## Resolution (2026-08-05)
+
+Fixed as proposed. A case exercises the reserved ordinal on the lift's spec
+**source** side and asserts both the refusal and that nothing is emitted.
+Verified by deleting the source half of the disjunction, exactly as the issue
+asked: the case goes red.
+
+The adjacent gap the issue mentioned rode the same pass —
+`refused:destination-conflict` now has cases on all three arms, and on both
+directions of the group arm's check.

@@ -2,7 +2,7 @@
 id: 20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header
 num: 230
 title: "Restore alloc_group_has_records's locals and correct its header"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, registry, alloc]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:47Z
-updated: 2026-08-05T01:53:47Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -87,3 +87,21 @@ Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 10). Found by the adversarial
 omission sweep's mechanical scope checker over all 27 functions the change
 touched; `alloc_group_has_records` was the only genuine miss.
+
+## Resolution (2026-08-05)
+
+Both defects fixed, and the class behind them is now swept.
+
+`rdst rdok` added to the declaration. The header no longer enumerates a stale
+subset — it states the rule the body actually implements, that the registry
+*knows* the name, and names all four ways a record establishes it.
+
+**The class is mechanised rather than left to the next reviewer.**
+`tests/scripthygiene.sh` reads every function's `local` declarations and every
+name its `read` calls assign into, and fails on any that is not declared. That
+replaces a name-pinned leak check covering one function's variables, which by
+construction could not see this. It found a second genuine instance immediately —
+`format_row`'s `IFS=',' read -ra _cols` in `render.sh`, which uses a here-string
+rather than a pipeline and therefore leaks for real, not latently.
+
+Both instances mutation-confirmed: restoring either turns the sweep red.
