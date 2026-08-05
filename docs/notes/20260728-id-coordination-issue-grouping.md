@@ -1,6 +1,21 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-05 (thirteenth revision) — **B′
+**Created:** 2026-07-28 · **Revised:** 2026-08-05 (fourteenth revision) — **B″
+shipped and was reviewed; the verdict is major-drift.** Nineteen items built and
+closed, seventeen of twenty-one contracts fully satisfied, and the declined
+proposed actions are the best work in the pass — every one records its reason in
+the issue *and* at the site a future editor would re-add the code. Two things a
+per-contract reading cannot see outweigh that. **#229, the flagship critical
+item, is not closed**: the high-water fold applies the group alias and the spent
+set does not, so one group rename later `catch-up` reissues the vacated ordinal,
+the sweep reads clean, and the append manufactures the duplicate realize key the
+issue's Resolution claimed it had avoided. And the width widening **introduced a
+new silent-corruption path** — `merge-map` now fabricates map rows for specs that
+do not exist. Twenty-five findings, sixteen filed as #235–#254. See
+`docs/notes/20260805-b-double-prime-review.md`. Step 7 is closed and its
+arithmetic corrected below; step 8 is unchanged and now genuinely next.
+
+**Thirteenth revision (2026-08-05)** — **B′
 shipped and was reviewed.** Sixteen items built, eleven contracts fully
 satisfied, verdict **minor-drift**. The review's finding is a build that
 under-reaches: nine contracts were satisfied at the site their issue named and
@@ -1717,12 +1732,30 @@ the guard to see uncomma'd spellings closes it at zero runtime cost; routing
 per-directory scan loop, in the same pass that is fixing a fork-amplification DoS
 (#233).
 
-**B″ SHIPPED 2026-08-05** — `a9feede..da3ff7b`, 20 commits, suite 1148 → 1182.
-All nineteen items closed (#208, #211, #215, #216, #220–#234), both pre-code
-forks settled on evidence before any code, and the build stayed a build.
+**B″ SHIPPED 2026-08-05** — `a9feede..da3ff7b`, **19 commits**, suite **1140 →
+1182**. All nineteen items closed (#208, #211, #215, #216, #220–#234), both
+pre-code forks settled on evidence before any code, and the build stayed a build.
 
-**Practice 10 applied to B″ itself**, since this is the pass that filed its gate.
-Twelve findings, twelve dispositions, no remainder:
+*(Both numbers are corrections the review recounted. This paragraph said 20
+commits — `git rev-list --count a9feede..da3ff7b` is 19 — and "1148 → 1182",
+where 1148 is the case count **after** B″'s own first fix commit rather than
+before it. The true growth is +42, not +34, and the eight lost are the ones
+`80c6964` added. The B′ claim one section up recounts exactly, so this was B″'s
+own slippage rather than a house pattern.)*
+
+**Practice 10 applied to B″ itself**, since this is the pass that filed its gate —
+**and B″ failed it.** The table below was published under the sentence "Twelve
+findings, twelve dispositions, no remainder". Its Count column sums to **14**, and
+three findings occupy six rows: the three `folded` invariants are the
+blueprint-text half of three defects also counted under `fixed inline`
+(`script-preamble` ↔ `scripts/` unswept, `ordinal-single-source` ↔ the width
+sweep's root, `tests-under-tests` ↔ the stray sweep's depth). So the honest count
+is **11 findings, 14 dispositions**, and no decomposition yields twelve. The gate
+issue's own rule is "each finding carries exactly one disposition"; the first row
+is titled *filed + fixed*, and at least five of the eleven carry two. The
+paragraph written to demonstrate the new arithmetic gate is the one that fails it,
+which is the sharpest available argument for having the gate. Table kept as
+published, with its real totals stated:
 
 | Disposition | Count | What |
 | :--- | ---: | :--- |
@@ -1740,6 +1773,17 @@ small**. A sweep that is green because it looked in too few places is
 indistinguishable, from the inside, from one that is green because the corpus is
 clean. Only a reader who does not share the author's map of where to look can
 tell those apart — which is the concrete argument #188 was making in the abstract.
+
+*(The review confirmed this paragraph and found where it hides. All three fixes
+landed in `0620603`, typed `docs(arch)` — so a reader reconciling the ledger sees
+the only verify run start at 12:29:13, every code commit predating it, and
+concludes the judges cannot have driven any fix. They did; the response is just
+invisible under a documentation type. Two other commits carry the same defect:
+`d8e8a4e` (`docs`) changes `jimpartition.sh` behaviour, and `2beee89` (`test`)
+adds a load-bearing arm to `alloc_group_has_records` and fixes a real variable
+clobber in `render.sh`. **A behavioural change never ships under a `docs` or
+`test` type** — left as a practice rather than an issue, since the commits have
+landed and correcting them means rewriting history rather than amending.)*
 
 **The pre-code forks paid for themselves.** #229's two proposed actions were
 *both* wrong — one would have wedged `catch-up` on every registry that has ever
@@ -1775,12 +1819,101 @@ issue) and check every cell:
 Run the review deliberately at the end, method-not-artifact as B′'s was — with
 #188's degradation-naming in place, which is the point of landing it first.
 
+**The review ran 2026-08-05 and returned major-drift.** Sixteen investigators
+over the twenty-one closed contracts and seven cross-cutting sweeps, cap raised
+from 10 under explicit authorization, four in isolated worktrees so they could
+mutation-test and plant violations. No un-investigated remainder. Full record in
+`docs/notes/20260805-b-double-prime-review.md`; twenty-five findings, sixteen
+filed as #235–#254, nine left recorded in the note.
+
+**#188 paid off on its first outing.** `undelegated=0` rode the verify event and
+was corroborated rather than trusted — the judges genuinely ran, and their three
+findings were real. But the same record **dropped `edges_checked=`/`edge_violations=`**
+though every existence condition for the contract-edge phase held, and it carries
+an unexplained `failed=1` — one invariant that could not be checked, mentioned in
+neither this note nor the exit handoff, with no recoverable reason because verify
+persists no artifact and the ledger grammar has no reason field. Nothing
+mechanically holds a real event to those keys: `tests/fanoutdisclosure.sh` sweeps
+doc-surface *recitations of the command*, never a `ledger.md` line. #242.
+
+**Two findings drive the verdict, and both are invisible per-contract.**
+
+- **#229 is not closed (#238).** `alloc_fold_max_spec:958` applies
+  `alias[$g]`; `alloc_spec_replay:1669-1671` re-spells only *live* claims into
+  `src_only`, so an ordinal spent by an earlier **spec** rename keeps its retired
+  spelling. After `spec rename ui/001 ui/044` then `group rename ui parts`, a tree
+  directory at `parts/001` classifies `MISSING`, `catch-up --apply` mints over it
+  at rc 0, and the following `sweep` returns 0 while `resolve` has two answers and
+  `realize` is wedged on a duplicate realize key. `/jim:partition` issues exactly
+  that verb sequence. The same skew defeats `partition-batch`'s by-name refusal on
+  both doors and demotes the lift's new check to its neighbour's gate — the
+  condition the lift's own comment calls insufficient.
+- **The widening introduced silent corruption (#246).** `2690614` replaced a
+  per-directory `basename` with a line-oriented sort round-trip, so a newline in a
+  basename splits into extra `MAP` rows: two directories on disk produce three
+  rows, two naming specs that do not exist, at rc 0 — into the arithmetic this
+  verb's own docstring says the gate presents verbatim, binding through
+  `partition-batch spec` into an append-only registry.
+
+**Two pre-existing registry paths were made legible and are worse than the
+cluster assumed.** `partition-batch spec` emits `allocate` + `rename` onto one
+destination, which the replay calls `DUP` — so every renumber leaves
+`duplicate-ordinal` drift that `catch-up` declares unrepairable and no primitive
+can fix, permanently failing `registry-tree-consistency` (#251). And both
+`reconcile` verbs fold claim keys without replaying renames, so they hand back
+vacated ordinals as `have` (#248). Neither cell was in the door matrix, because
+the matrix crossed **verb × entity** and these live in **verb × rule**.
+
+**The corpus lesson recurred inside every guard written to answer it.** The
+sanitizer sweep reads one file of sixteen while twelve live injection sites sit in
+six others (#250); the width guard misses `(( ${#1} > 15 ))` — the house spelling,
+used by `alloc_valid_ord` itself, and the exact mutation #222's Resolution says
+now fails — plus `999` and `${bn:0:3}`, the two gates this pass called "the
+dangerous ones" (#253); the stray detector cannot see `tests/`, the directory in
+its own name (#240); the new doc sweep omits every agent body and hard-codes the
+verb list its own comment says is derived (#254); the lift's audit covered one arm
+of six, leaving 11 of 28 guards unpinned (#241). In each case a correct pattern
+sat in the same file — `ledger_verbs()` derives from the dispatch table eight
+lines from the hard-coded `registry_verbs` — and was not generalized. **The
+practice this earns is not "check the corpus": it is name the set a guard must
+cover before writing the enumeration, and make the enumeration derive from that
+name.**
+
+**One Resolution class to watch.** Four Resolutions assert fixes or mechanisms
+that did not exist when written (#236). Two are the sharp ones: #221's and #227's
+were written at 12:00:42 claiming sweeps that only became true at 12:58:09 — and
+**two of the three judge-found defects are exactly the two those Resolutions had
+already declared closed.** The closing sentence outran the measurement, and the
+fan-out is what noticed. Related: the blueprint text was folded at 12:47 to
+describe a mechanism the code gained at 12:58, and no verify has run since — so
+neither those three fixes nor the folded text asserting them has been through a
+judge.
+
 **8. The sdlc pass — outside the cluster, scheduled here so it stops losing.**
 #161–#167 (three critical, four high) have been open since 2026-07-31 and
 untouched through five builds; with the pre-cluster #52 and #53 they are the
 highest-criticality open work in the whole collection, and every B-cycle
 generates enough residue to defer them another round. Take them after B″ and
 before D, with #204's one-line `/jim:blueprint sdlc` run riding along.
+
+**Status after B″'s review: unchanged, and the prediction held for a seventh
+time.** B″ generated twenty more issues, three of them critical. But the sdlc
+items are *still* the highest-criticality open work and are now untouched through
+seven builds, so the scheduling argument that put them here is stronger, not
+weaker.
+
+**One qualification the review adds, and it is narrow.** #238 and #246 should
+land **before** step 8, not with it — not because they outrank #161–#167, but
+because both are in the machinery every later step drives. #238 means the cluster's
+stated property does not hold; #246 means a `/jim:partition` run can silently
+corrupt the map. Both are small: #238 is an alias lookup, #246 is NUL-delimited
+iteration plus a refusal. **#251 should join them if D is next**, since D adds
+another batch writer over the claim structure and practice 9 says *does the new
+reader agree with the old one* belongs at plan time — and today the emitter and
+the integrity report disagree about what "already claimed" means.
+
+Everything else the review filed (#235, #237, #239–#242, #248–#250, #252–#254) is
+follow-on work with no ordering claim on step 8.
 
 **Free-floating:** D, F, the hardening build, #118, #139, #200's repair-path
 half, and the #122 refactor — any time, any order. Two qualifications the
@@ -2069,7 +2202,7 @@ anyway at the eleventh revision: **all seven are still open, three critical and
 four high**, untouched through four builds. Correctly excluded, and now the
 highest-criticality open set in the collection.)*
 
-## Outside the 83 — B's residue (15) + B′'s residue (15) + #204
+## Outside the 83 — B's residue (15) + B′'s residue (15) + B″'s residue (20) + #204
 
 Not cluster issues: they did not exist when the cluster was enumerated, and they
 belong to the emitter's edges rather than to the coordination problem. The
@@ -2114,6 +2247,44 @@ one critical (#229), four high (#226, #227, #228, #233), ten medium. Together
 with the four items above that stayed open (#208, #211, #215, #216) they are
 **B″'s charter**; the sequencing and the two pre-code forks live at *Sequence*
 step 7.
+
+**B″'s residue is twenty (#235–#254), reconciled 2026-08-05** — and the count
+grew rather than shrank for the third generation running. Four are B″'s own:
+#243 and #245 filed and left open (the artifact-citation purge, and practice 10's
+gate — the one B″ then failed), #244 and #247 filed and fixed in the same pass so
+the accounting stays stated in issue numbers. The other sixteen are the review's,
+of twenty-five findings; the nine not filed are corrections to the process record
+and one practice, recorded in the review note rather than tracked, since filing
+them would repeat the accounting inflation #245 is about.
+
+| # | Pri | What |
+|---|---|---|
+| 238 | crit | the spent set is not alias-folded — **#229's rule still fails** one group rename out |
+| 246 | crit | `merge-map` fabricates map rows from a newline-bearing basename — **introduced by this build** |
+| 251 | crit | `partition-batch spec` emits the `duplicate-ordinal` drift its own classifier calls unrepairable |
+| 235 | high | the fork-amplification class survives the memo scoping — 30× on HEAD, measured |
+| 237 | high | `catch-up` claims every identity has a record while withholding some |
+| 241 | high | the lift's eleven surviving guards — every refusal class pinned on the spec arm and no other |
+| 242 | high | verify's finished event dropped the contract-edge counters, and nothing guards them |
+| 248 | high | both `reconcile` verbs hand back vacated ordinals as `have` |
+| 249 | high | a symlinked cwd defeats the discovery-root refusal; its test measures one of four cells |
+| 250 | high | the sanitizer corpus was one file of sixteen — twelve live sites proven elsewhere |
+| 254 | high | the doc sweep omits every agent body and hard-codes a list its comment says is derived |
+| 236 | med | one stale doc site survived, and four Resolutions outran their measurement |
+| 239 | med | `metatest run` sources PWD-relative files under its own tool grant, ungated |
+| 240 | med | the hygiene sweeps are depth-1, root-unenforced, and count lines not occurrences |
+| 252 | med | ledger stage durations report a span, not a sum — 135× on the blueprint ledger |
+| 253 | med | both single-source guards in `tests/jimfile.sh` miss spellings and copies |
+| 243 | med | 95 artifact citations in script comments — filed by B″, still open |
+| 245 | med | practice 10's gate — filed by B″, still open, and B″ failed it |
+| 244 | — | the lift's unread spent set — filed and fixed by B″ |
+| 247 | — | a renamed-away group in `catch-up` — filed and fixed by B″ |
+
+*(The generational count is now 16 → 15 → 20. That is not a regression in care —
+B″'s review was the widest yet run here, sixteen investigators against B′'s
+seventeen over a smaller range, and roughly half of what it found is
+**pre-existing** mechanism the build merely made legible. But the trend is the
+thing step 8 exists to interrupt, and it has now been deferred seven times.)*
 
 *(#201–#203 came from `platform/012`'s review. **All three are adjacent
 observations, not defects in shipped mechanism** — the two criticals that review
@@ -2177,6 +2348,18 @@ gravity was C and E, not A. C's lesson was that **the constraint is no longer
 which specs to write, it is whether a spec finishes** — one spec shipped green,
 complete, and ledger-closed while three critical defects and two security
 regressions rode along inside it.
+
+**B″'s lesson moves it once more: the constraint is now whether a *fix* finishes.**
+The cluster's 83 are still 83 and still 65 closed — the enumeration has been
+stable for three generations while 50 issues accumulated outside it. Every
+generation shipped what its issues asked and generated a larger residue than the
+last (16 → 15 → 20), because what the issues ask for is the *site*, and what the
+rule needs is the *door*. B″ was the first pass to say that out loud and sequence
+by doors rather than issues — and it still under-reached, because it drew the door
+matrix as verb × entity when the surviving defects live in verb × rule. The
+counter-move is not another matrix. It is the derive-from-the-name rule at
+*Sequence* step 7: a guard's corpus must be computed from the set it claims to
+cover, so that a missing door fails the guard instead of escaping it.
 
 C′ tested that lesson and returned an uncomfortable result. Every practice the
 third revision adopted was applied: the fan-out ran, the sensor ran, the plan's
