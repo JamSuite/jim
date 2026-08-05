@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 98
-- Closed: 136
+- Open: 97
+- Closed: 137
 
 ## Issues
 
@@ -203,7 +203,7 @@
 - `20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer` — Refuse the reserved slot in the generic spec path composer · status: open · num: 187 · priority: low · created: 2026-08-01T00:22:47Z · labels: [platform, file, scripts, 000-blueprint] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-rewrite-the-realized-spec-s-own-h1-identity-token` — Rewrite the realized spec's own H1 identity token · status: closed · num: 199 · priority: medium · created: 2026-08-01T21:23:36Z · labels: [sdlc, spec, scripts, id-coordination] · origin: conversation
 - `20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions` — Spec skill's realize-failure guidance is stale in two directions · status: closed · num: 194 · priority: high · created: 2026-08-01T06:36:06Z · labels: [spec, docs, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
-- `20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation` — Surface a suppressed agent fan-out as a named degradation · status: open · num: 188 · priority: high · created: 2026-08-01T00:22:55Z · labels: [sdlc, blueprint, review, verify] · origin: conversation
+- `20260801-surface-a-suppressed-agent-fan-out-as-a-named-degradation` — Surface a suppressed agent fan-out as a named degradation · status: closed · num: 188 · priority: high · created: 2026-08-01T00:22:55Z · labels: [sdlc, blueprint, review, verify] · origin: conversation
 - `20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization` — Sweep and reconcile disagree on worktree-top normalization · status: closed · num: 195 · priority: medium · created: 2026-08-01T06:36:05Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-two-test-files-are-claimed-by-no-group-s-territory` — Two test files are claimed by no group's territory · status: closed · num: 189 · priority: medium · created: 2026-08-01T00:28:40Z · labels: [blueprint, 000-blueprint, partition] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage` — Uncommitted-sweep containment guard lost its only coverage · status: closed · num: 196 · priority: medium · created: 2026-08-01T06:36:08Z · labels: [test, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md

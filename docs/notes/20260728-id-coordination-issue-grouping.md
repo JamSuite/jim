@@ -1615,6 +1615,31 @@ review needed 17 investigators against the default 10) and files practice 10's
 gate as an issue — the findings-vs-dispositions arithmetic is the countable
 practice the thirteenth revision argued should be adopted next.
 
+**#188 landed 2026-08-05, on its fifth time of asking.** Each delegating surface
+now names an undispatched fan-out in its own existing degradation vocabulary, and
+both `/jim:verify` and `/jim:review` carry `undelegated=<n>` on their finished
+events. The item the issue merely asked jim to *consider* — refusing to report a
+clean result — turned out to be the cheapest part, because verify's outcome
+vocabulary already had the right home: `failed` means *could not check*, so an
+undispatched judge is `failed` with reason `undelegated` and can never read
+`holds`. No new outcome, no new knob, no `jimledger.sh` change.
+
+Two doors the issue's own list did not name, found by enumerating the rule's
+doors rather than the issue's: **`/jim:issue insights`**, where a suppressed
+dispatch does not thin the verb but *violates* the `issue` blueprint's declared
+`insights-capability-boundary` (`high`) — it now refuses and stops rather than
+reading bodies in a `Write`-capable context; and **`/jim:partition`**, whose "the
+cap bounds concurrency, never coverage" left it with no concept of reduced
+coverage at all. That is B′'s review lesson applied on its first outing, and it
+paid on the first try.
+
+Pinned by `tests/fanoutdisclosure.sh` (3 cases, 9/9 mutations red) rather than by
+convention — and the counter case sweeps **by rule, not by site**: a *new*
+recitation of a finished event that omits the counter fails, which pinning the
+known sites would not have caught. The remaining two items of this bullet —
+`review_fanout_cap` and practice 10's gate — did not ride it. The cap is a cost
+lever that is the operator's call, not a defect.
+
 **Two forks to settle before code**, the same way the #209 fork was:
 
 - **#229's refuse semantics** — when `catch-up` meets a tree directory whose
@@ -1926,7 +1951,7 @@ the build:**
 | 185 | med  | **closed** — `platform/012`; the advertised tip crosses the boundary in its single reader |
 | 186 | med  | hardening (commit verbs omit the rename verbs' literal-pathspec semantics) |
 | 187 | low  | hardening (generic path composer accepts the reserved slot) |
-| 188 | high | **process** — a suppressed agent fan-out leaves no trace in its own artifact |
+| 188 | high | **closed** — 2026-08-05; every delegating surface names an undispatched fan-out, `undelegated=` on both finished events, an undispatched judge is `failed` not `holds`; insights refuses, partition withholds |
 | 189 | med  | **closed** — map pass 2026-08-02; both files declared, `scripthygiene` decided to platform, reconcile clean |
 | 190 | high | **closed** — sweep fails on a dropped root; mutation-tested |
 | 191 | high | **closed** — installer guarded in all three sites; mutation-tested |
@@ -2022,17 +2047,18 @@ reason the filed bodies separated confirmed-in-source from reasoned-from-code.)*
 
 83 issues → **2 assigned to the 2 remaining specs** (D: #127 · F: #126), **11
 to the grouped hardening build**, **1 optional refactor** (#122), **1 doc item +
-2 decisions + 1 deferred + 1 process item** (#118 · #139, #200 · #137 · #188),
-**64 closed**.
+2 decisions + 1 deferred** (#118 · #139, #200 · #137), **65 closed**.
 
-The closed 64 are: the 49 the tenth revision's own accounting reached, the pre-B
+The closed 65 are: the 49 the tenth revision's own accounting reached, the pre-B
 build's four (#197, #198, #199, #203), #149 and the map pass's #189 — **B's
 eight**, closed 2026-08-03 rather than 2026-08-02: #113, #143, #152, #154 and
 #202 delivered outright; #84 and #123 dead structurally with the tree-scan
 retirement rather than patched; #155 delivered by the fork it was parked on —
 and **#138**, which this note assigned to B′ but which the emission spec had
-already delivered and closed, so it never rode B′ at all.
-2 + 11 + 1 + 5 + 64 = 83. The enumeration still closes.
+already delivered and closed, so it never rode B′ at all — and **#188**, the
+process item, closed 2026-08-05 ahead of B″ as the thirteenth revision's Sequence
+sequenced it.
+2 + 11 + 1 + 4 + 65 = 83. The enumeration still closes.
 
 **B's residue is new work, not reopened work — and it is sixteen, not nine.**
 The review, the sensor and the six findings the filing pass lost became
