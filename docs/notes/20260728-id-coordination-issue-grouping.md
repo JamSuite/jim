@@ -9,6 +9,9 @@ three times over — including a reachable path where it reissues a vacated
 ordinal and the registry then reports clean. Six fixture claims fell to mutation
 testing the build did not run. Eleven issues closed, four held open, fifteen
 filed. See *What B′ changed* and `docs/notes/20260805-b-prime-review.md`.
+The Sequence is extended in the same pass: step 6 closed, step 7 (B″ — #188
+landing first, then the residue sequenced by the rule's doors) and step 8 (the
+sdlc pass) added, and D's wait moves from B′ to B″.
 
 **Twelfth revision (2026-08-03)** — **the documentation pass, and what running
 the engine over it found.** #211's "fifteen sites" was a claim; re-derived from
@@ -815,7 +818,10 @@ contract-scoped investigators could not, by enumerating the rule's doors instead
 of the issue's.
 
 Eleven issues closed on this evidence; four stay open because their proposed
-action is genuinely short. Fifteen new issues filed — one critical, three high.
+action is genuinely short. Fifteen new issues filed — one critical, four high.
+*(An earlier statement here said three high; re-counted from the realized
+priorities it is four — #226, #227, #228, #233. Practice 7, once more, on the
+sentence announcing the practice's own findings.)*
 Full record: `docs/notes/20260805-b-prime-review.md`.
 
 ## The grouping question, restated
@@ -850,7 +856,8 @@ nothing else in the grouping grows.
 ## Grouping: 2 remaining specs + 2 builds + 1 refactor + open items
 
 A, C, C′, C′-fix, E, the pre-B build, B and B′ are done. **D and F remain as
-specs**; one build remains — the grouped hardening build.
+specs**; two builds remain — **B″** (B′'s residue plus its foldable leftovers,
+detailed at *Sequence* step 7) and the grouped hardening build.
 
 ### ~~Spec A — Rename-path correctness gates~~ · SHIPPED as `platform/011`
 Ran as a spec rather than a build, and the fork was worth resolving that way: the
@@ -1584,12 +1591,76 @@ contiguous ordinals, index and sweep clean, suite 1097/1097. Not build work —
 but it is what makes the sequence below trustworthy, since every step of it is
 stated in issue numbers.
 
-**6. B′ — finish B.** Next, and for the same reason C′ followed C: the emitters
-can write contradictions to a shared append-only branch, two of them
-unrecoverable, through the Close that `/jim:partition` documents. Settle #209's
-re-mint fork first — it is the one that decides whether B′ stays a build. Then
-the correctness set (#207, #209, #213, #214) as one surface, the width bound
-(#212 + #138) as another, then the rest. See *Grouping* → B′.
+**6. ~~B′ — finish B.~~ DONE — built 2026-08-04, reviewed 2026-08-05,
+minor-drift.** All sixteen items shipped (`175047c..68c2bdb`, 34 commits, suite
+1099 → 1137); the #209 re-mint fork resolved without reshaping the split
+protocol, so it stayed a build. Eleven contracts fully satisfied and closed;
+#208, #211, #215 and #216 stay open on their own short remainders. The review's
+finding is systematic under-reach — nine contracts satisfied at the named site
+and left unapplied at siblings nobody enumerated, `catch-up` that sibling three
+times — plus six fixture claims overturned by mutation testing the build never
+ran. Fifteen filed as #220–#234. See *What B′ changed* and *Grouping* → B′.
+
+**7. B″ — finish B′, and land #188 first.** The fifteen (#220–#234) plus the
+three foldable leftovers (#208, #215, #216). It rides B's slot by the same rule
+B′ did, and the build shape holds the same way: every security-adjacent fix is
+a narrowing, and the blueprint writes go through their own surfaces.
+
+**#188 goes first, actually landing this time.** It has been "whenever, ideally
+before the build phase" since the ninth revision; there are now three recorded
+suppression instances, all caught by a person, and it guards exactly the
+fan-out machinery every step below leans on. The same pass sets
+`review_fanout_cap` explicitly in `jimconf.toml` (the key is unset today; B′'s
+review needed 17 investigators against the default 10) and files practice 10's
+gate as an issue — the findings-vs-dispositions arithmetic is the countable
+practice the thirteenth revision argued should be adopted next.
+
+**Two forks to settle before code**, the same way the #209 fork was:
+
+- **#229's refuse semantics** — when `catch-up` meets a tree directory whose
+  ordinal is a rename source, is that a blocked drift class demanding manual
+  repair, or something catch-up may act on? Refusing leaves the repair
+  question standing, so consult #200's class list in the same conversation —
+  B′ refused the contradictions at the emitters and settled no repair path.
+- **#228's above-999 story at the partition layer** — the canonical bound is
+  already decided as `{3,15}`, so this is likely widening `jimpartition.sh`'s
+  start gate and making `merge-map` refuse loudly instead of silently dropping
+  a representable spec at rc 0. If it reshapes the split protocol instead,
+  that is the escalation trigger that makes B″ a spec.
+
+**Then sequence by the rule's doors, not the issue's** — the review's own
+lesson. Draw the door matrix first (emitters / catch-up / lift × spec / group /
+issue) and check every cell:
+
+1. **The vacate/claim rule's remaining doors** — #229 (the critical: catch-up
+   reissues a vacated ordinal and the registry then reports clean) and #223
+   (the issue-side mint's missing ceiling recheck — the mint rule's sibling
+   door).
+2. **The width bound's partition doors** — #228.
+3. **The memo rule's doors** — #233 (scope the warmer's case list to the log
+   it warms, which closes the fork-amplification DoS) with #234 (warm catch-up
+   and lift) in the same pass over the same function family.
+4. **Sanitizer and header truth** — #232, #220 + #216.
+5. **The fixture-blindness batch, mutation-tested per assertion** — #224 +
+   #215, #225, #226, #222, #227, #221, #230. Six fixture claims fell in the
+   review precisely because this step did not run; per-assertion mutation is
+   the definition of done here, not a follow-up.
+6. **Docs** — #231, #208's remainder, and `ARCHITECTURE.md` regenerated
+   through `/jim:arch` (still stamped 2026-08-03, still documenting the
+   retired `renumber-map` arity). #211's survivor is now unblocked:
+   `feat/blueprint` merged into this branch on 2026-08-05, and
+   `docs/features/blueprints.md` still carries zero occurrences of
+   `partition-batch` or `lift`.
+
+Run the review deliberately at the end, method-not-artifact as B′'s was — with
+#188's degradation-naming in place, which is the point of landing it first.
+
+**8. The sdlc pass — outside the cluster, scheduled here so it stops losing.**
+#161–#167 (three critical, four high) have been open since 2026-07-31 and
+untouched through five builds; with the pre-cluster #52 and #53 they are the
+highest-criticality open work in the whole collection, and every B-cycle
+generates enough residue to defer them another round. Take them after B″ and
+before D, with #204's one-line `/jim:blueprint sdlc` run riding along.
 
 **Free-floating:** D, F, the hardening build, #118, #139, #200's repair-path
 half, and the #122 refactor — any time, any order. Two qualifications the
@@ -1600,6 +1671,10 @@ B′ rather than after), and **D should follow B′** — not because it is bloc
 but because D adds another batch writer over the claim structure, and practice 9
 says the question *does the new reader agree with the old one* belongs at plan
 time. Let D inherit one settled rule instead of a contradicted one.
+*(Thirteenth revision: both qualifications move forward one step. B′ settled no
+repair path, so #200 is consulted inside B″'s #229 fork; and the claim rule
+stays contradicted at `catch-up` until #229 lands, so **D's wait moves to
+B″**.)*
 
 **What A and C bought, and what they did not.** A bought correct arithmetic over
 the records present and closed the rename window. C bought a door: nothing can
@@ -1874,7 +1949,7 @@ anyway at the eleventh revision: **all seven are still open, three critical and
 four high**, untouched through four builds. Correctly excluded, and now the
 highest-criticality open set in the collection.)*
 
-## Outside the 83 — B's residue (15) + #204
+## Outside the 83 — B's residue (15) + B′'s residue (15) + #204
 
 Not cluster issues: they did not exist when the cluster was enumerated, and they
 belong to the emitter's edges rather than to the coordination problem. The
@@ -1911,6 +1986,14 @@ itself short, not that the tracker lagged.
 not close with B*. #204 is not review residue — it was surfaced during B's
 scoping, parked in a handoff note, and filed durably; it appeared in no prior
 revision of this note.)*
+
+**B′'s residue repeats the pattern one generation on: fifteen more (#220–#234),
+realized 2026-08-05.** Twelve from the post-build review and three divergences
+the accompanying verify run filed against the platform blueprint's invariants:
+one critical (#229), four high (#226, #227, #228, #233), ten medium. Together
+with the four items above that stayed open (#208, #211, #215, #216) they are
+**B″'s charter**; the sequencing and the two pre-code forks live at *Sequence*
+step 7.
 
 *(#201–#203 came from `platform/012`'s review. **All three are adjacent
 observations, not defects in shipped mechanism** — the two criticals that review
