@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 94
-- Closed: 142
+- Open: 92
+- Closed: 144
 
 ## Issues
 
@@ -241,8 +241,8 @@
 - `20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header` — Restore alloc_group_has_records's locals and correct its header · status: open · num: 230 · priority: medium · created: 2026-08-05T01:53:47Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-retire-the-four-stale-doc-sites-the-emission-cluster-left-behind` — Retire the four stale doc sites the emission cluster left behind · status: open · num: 231 · priority: medium · created: 2026-08-05T01:53:46Z · labels: [docs, workflow] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh` — Sanitize the four remaining failed-gate echoes in reconcile.sh · status: open · num: 232 · priority: medium · created: 2026-08-05T01:53:42Z · labels: [id-coordination, security, scripts] · origin: docs/notes/20260805-b-prime-review.md
-- `20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming` — Scope the token memo warmer to the log it is warming · status: open · num: 233 · priority: high · created: 2026-08-05T01:53:42Z · labels: [id-coordination, registry, security] · origin: docs/notes/20260805-b-prime-review.md
-- `20260805-warm-the-id-boundary-memo-in-catch-up-and-lift` — Warm the id-boundary memo in catch-up and lift · status: open · num: 234 · priority: medium · created: 2026-08-05T01:53:44Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming` — Scope the token memo warmer to the log it is warming · status: closed · num: 233 · priority: high · created: 2026-08-05T01:53:42Z · labels: [id-coordination, registry, security] · origin: docs/notes/20260805-b-prime-review.md
+- `20260805-warm-the-id-boundary-memo-in-catch-up-and-lift` — Warm the id-boundary memo in catch-up and lift · status: closed · num: 234 · priority: medium · created: 2026-08-05T01:53:44Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 
 ## Graph
 

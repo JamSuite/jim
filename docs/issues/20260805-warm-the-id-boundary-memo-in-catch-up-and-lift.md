@@ -2,7 +2,7 @@
 id: 20260805-warm-the-id-boundary-memo-in-catch-up-and-lift
 num: 234
 title: "Warm the id-boundary memo in catch-up and lift"
-status: open
+status: closed
 priority: medium
 labels: [id-coordination, registry, alloc]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:44Z
-updated: 2026-08-05T01:53:44Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -63,3 +63,18 @@ entry point that forgets to warm is visible.
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 6). Third appearance of
 `catch-up` as the door an id-coordination fix skipped.
+
+## Resolution (2026-08-05)
+
+Fixed as proposed, after the fork-amplification fix this issue said to land
+first. Both `cmd_catchup` and `cmd_lift` warm the memo in their own shell before
+anything below them captures into a subshell, and both feed the warmer by
+here-string — the pipe form this issue warned about is now pinned by a mutation
+that turns the case red.
+
+The fork-probe harness the sweep's crossing-count case carried inline is now a
+shared helper, and the "no token crosses the boundary twice" invariant is
+asserted for all three verbs rather than only the one it was written for. That
+is the point of the issue restated as a test: an entry point that forgets to warm
+is visible, instead of being outside the letter of the item that introduced the
+memo.

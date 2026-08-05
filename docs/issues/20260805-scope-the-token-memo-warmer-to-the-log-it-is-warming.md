@@ -2,7 +2,7 @@
 id: 20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming
 num: 233
 title: "Scope the token memo warmer to the log it is warming"
-status: open
+status: closed
 priority: high
 labels: [id-coordination, registry, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T01:53:42Z
-updated: 2026-08-05T01:53:42Z
+updated: 2026-08-05T10:21:33Z
 origin: docs/notes/20260805-b-prime-review.md
 ---
 
@@ -70,3 +70,25 @@ wrong-kind record and assert the warmer does not cross it.
 Post-build review of the B-prime hardening cluster
 (`docs/notes/20260805-b-prime-review.md`, Finding 3). Surfaced by the security
 regression sweep; introduced by `0167f7d`.
+
+## Resolution (2026-08-05)
+
+Fixed as proposed. The log being warmed is now an argument (`specs` | `issues`)
+rather than an assumption, and the case list is keyed on it, so a record whose
+kind cannot live in the log it sits in is never crossed. An unrecognised scope
+warms nothing and returns non-zero, so a mis-wired call site fails loudly rather
+than quietly going cold.
+
+The docstring's converse is stated where the docstring was: **the two coverage
+directions are not symmetric.** Under-coverage stays advisory — a missed field
+costs speed only, since the consumer validates it cold and correctly.
+Over-coverage is the liability, because it spends a subprocess per distinct token
+on a branch anyone who can push can lengthen. The note now says to widen the list
+only within the named log's own kinds.
+
+The fixture measures the property mechanically rather than by timing: a
+wrong-kind record is planted in each log and the boundary-crossing probe asserts
+**zero** crossings for its tokens. Un-scoping the warmer turns it red.
+
+Its sibling item rode the same pass, in the order this issue asked for — the
+amplification was narrowed before any new call site was warmed.
