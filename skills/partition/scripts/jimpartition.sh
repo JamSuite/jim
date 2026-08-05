@@ -1419,8 +1419,10 @@ cmd_renumber_map() {
     valid_slug "$t" || { echo "jimpartition renumber-map: invalid target slug: $t" >&2; return 2; }
   done
 
-  # Per-fresh-child starts: <child>=<NNN>, child a fresh target, NNN a 3-digit
-  # nonzero id. Required for every fresh child, refused for the continuing one.
+  # Per-fresh-child starts: <child>=<NNN>, child a fresh target, NNN a nonzero
+  # ordinal inside the registry's width bound — the value `peek spec <child>`
+  # prints, copied verbatim, whatever its width. Required for every fresh child,
+  # refused for the continuing one.
   local -A start_of=()
   local arg schild snnn
   for arg in "$@"; do
@@ -1436,8 +1438,8 @@ cmd_renumber_map() {
     if [[ "$schild" == "$old" ]]; then
       echo "jimpartition renumber-map: the continuing child keeps its numbers — no start for: $schild" >&2; return 2
     fi
-    if [[ ! "$snnn" =~ ^[0-9]{3}$ ]] || (( 10#$snnn < 1 )); then
-      echo "jimpartition renumber-map: start must be a 3-digit id 001-999: $arg" >&2; return 2
+    if [[ ! "$snnn" =~ ^[0-9]{3,15}$ ]] || (( 10#$snnn < 1 )); then
+      echo "jimpartition renumber-map: start must be a 3-15 digit id, 001 or higher: $arg" >&2; return 2
     fi
     if [[ -n "${start_of[$schild]:-}" ]]; then
       echo "jimpartition renumber-map: duplicate start for: $schild" >&2; return 2
@@ -1464,7 +1466,7 @@ cmd_renumber_map() {
     if [[ -z "${src:-}" || -z "${child:-}" || -n "${rest:-}" ]]; then
       echo "jimpartition renumber-map: malformed assign line: $line" >&2; rc=1; break
     fi
-    if [[ ! "$src" =~ ^[0-9]{3}(-wip)?$ ]]; then
+    if [[ ! "$src" =~ ^[0-9]{3,15}(-wip)?$ ]]; then
       echo "jimpartition renumber-map: bad source shape: $src" >&2; rc=1; break
     fi
     ok=0
@@ -1500,8 +1502,8 @@ cmd_renumber_map() {
       if [[ "$ch" == "$old" ]]; then
         newtok="$srctok"                       # continuing child keeps its number
       else
-        if (( seq > 999 )); then
-          echo "jimpartition renumber-map: id space exhausted for $ch (would exceed 999)" >&2
+        if (( ${#seq} > 15 )); then
+          echo "jimpartition renumber-map: id space exhausted for $ch (would exceed 15 digits)" >&2
           rm -f "$rowsfile" "$sorted"; return 1
         fi
         newtok="$(printf '%03d' "$seq")$suffix" # fresh child: dense from its start
@@ -1528,8 +1530,13 @@ cmd_renumber_map() {
 #   each source's specs ascending by original id (the LC_ALL=C dir glob is
 #   pre-sorted); a source equal to <target> (the absorption target) emits no
 #   rows; the 000-blueprint is never a moved spec; an in-flight `-wip` dir rides
-#   in sequence with its suffix preserved. rc 0 · 1 (an assignment would exceed
-#   999; no partial output) · 2 usage / bad start.
+#   in sequence with its suffix preserved. Sources are read in NUMERIC ordinal
+#   order, not the glob's lexical order, which stop agreeing once two ordinals
+#   differ in width. A spec dir outside the ordinal width bound is refused
+#   loudly, never omitted — a map that silently drops a representable spec is
+#   the one outcome the gate's operator cannot act on. rc 0 · 1 (an assignment
+#   would exceed the width bound, or a spec dir falls outside it; no partial
+#   output) · 2 usage / bad start.
 cmd_merge_map() {
   local specs_dir="${1:-}" target="${2:-}" start="${3:-}"
   if [[ -z "$specs_dir" || -z "$target" || -z "$start" ]]; then
@@ -1545,8 +1552,8 @@ cmd_merge_map() {
   if ! valid_slug "$target"; then
     echo "jimpartition merge-map: invalid target slug: $target" >&2; return 2
   fi
-  if [[ ! "$start" =~ ^[0-9]{3}$ ]] || (( 10#$start < 1 )); then
-    echo "jimpartition merge-map: start must be a 3-digit id 001-999: $start" >&2; return 2
+  if [[ ! "$start" =~ ^[0-9]{3,15}$ ]] || (( 10#$start < 1 )); then
+    echo "jimpartition merge-map: start must be a 3-15 digit id, 001 or higher: $start" >&2; return 2
   fi
   local -a srcs=("$@")
   local src
@@ -1554,25 +1561,43 @@ cmd_merge_map() {
     valid_slug "$src" || { echo "jimpartition merge-map: invalid source slug: $src" >&2; return 2; }
   done
 
-  # Buffer rows so a >999 overflow returns rc 1 with no partial output.
+  # Buffer rows so an overflow returns rc 1 with no partial output.
   local seq=$((10#$start))
   local -a rows=()
   local d bn onum srctok suffix r
   for src in "${srcs[@]}"; do
     [[ "$src" == "$target" ]] && continue        # absorption target keeps its numbers
+    local -a bns=()
     for d in "$specs_dir/$src"/*/; do
       [[ -d "$d" ]] || continue
-      bn="$(basename "$d")"
-      [[ "$bn" =~ ^[0-9]{3}(-.*)?$ ]] || continue
-      onum="${bn:0:3}"
-      [[ "$onum" == "000" ]] && continue         # the blueprint is not a moved spec
+      bn="${d%/}"; bns+=("${bn##*/}")
+    done
+    (( ${#bns[@]} )) || continue
+    # Numerically by ordinal. A bare LC_ALL=C glob is lexical, which stops
+    # agreeing with numeric order the moment two ordinals differ in width —
+    # 1000 sorts ahead of 999. renumber-map sorts numerically for this reason.
+    while IFS= read -r bn; do
+      [[ -n "$bn" ]] || continue
+      if [[ ! "$bn" =~ ^[0-9]{3,15}(-.*)?$ ]]; then
+        # A directory that is not ordinal-shaped at all is not a spec, and not
+        # this verb's business. One that leads with digits but falls outside the
+        # width bound IS a spec the registry can represent, and dropping it
+        # would hand the gate a map that looks complete and is not.
+        if [[ "$bn" =~ ^[0-9] ]]; then
+          echo "jimpartition merge-map: spec dir outside the ordinal width bound: $src/$bn" >&2
+          return 1
+        fi
+        continue
+      fi
+      onum="${bn%%-*}"
+      [[ "$((10#$onum))" -eq 0 ]] && continue    # the blueprint is not a moved spec
       if [[ "$bn" == *-wip ]]; then srctok="$onum-wip"; suffix="-wip"; else srctok="$onum"; suffix=""; fi
-      if (( seq > 999 )); then
-        echo "jimpartition merge-map: id space exhausted for $target (would exceed 999)" >&2; return 1
+      if (( ${#seq} > 15 )); then
+        echo "jimpartition merge-map: id space exhausted for $target (would exceed 15 digits)" >&2; return 1
       fi
       rows+=("$(printf 'MAP\t%s/%s\t%s/%03d%s' "$src" "$srctok" "$target" "$seq" "$suffix")")
       seq=$(( seq + 1 ))
-    done
+    done < <(printf '%s\n' "${bns[@]}" | sort -t- -k1,1n)
   done
   for r in "${rows[@]}"; do printf '%s\n' "$r"; done
   return 0
@@ -1917,7 +1942,7 @@ cmd_rewrite_identity() {
 #   per-occurrence remap TABLE — and that table IS the whitelist: only a
 #   `<og>/<onum>` present in the remap is ever touched, so a reference to an
 #   unmoved spec is unrewritable by construction. Each remap line
-#   is `<og>/<onum>\t<ng>/<nnum>`, slug-and-3-digit gated in bash; a malformed
+#   is `<og>/<onum>\t<ng>/<nnum>`, slug-and-ordinal gated in bash; a malformed
 #   line → rc 2 before any edit. The match is whole-token:
 #   the char before <og> is not [a-z0-9-] and the char after <onum> is not
 #   [a-z0-9] — a dash or any other delimiter after the number is permitted, so a
@@ -1959,7 +1984,7 @@ cmd_rewrite_refs() {
     og="${og_on%%/*}"; onum="${og_on#*/}"
     ng="${ng_nn%%/*}"; nnum="${ng_nn#*/}"
     if ! valid_slug "$og" || ! valid_slug "$ng" \
-       || [[ ! "$onum" =~ ^[0-9]{3}$ || ! "$nnum" =~ ^[0-9]{3}$ ]]; then
+       || [[ ! "$onum" =~ ^[0-9]{3,15}$ || ! "$nnum" =~ ^[0-9]{3,15}$ ]]; then
       echo "jimpartition rewrite-refs: malformed remap line: $line" >&2; rm -f "$parsed"; return 2
     fi
     printf '%s\t%s\t%s\t%s\n' "$og" "$onum" "$ng" "$nnum" >> "$parsed"

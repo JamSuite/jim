@@ -1521,7 +1521,10 @@ case_jimfile_valid_relpath_rejects_unsafe() {
 # form — tree basenames, mv-spec-id, the path composer, the ledger parser and
 # move gates) and NUMERIC ACCEPTANCE {1,15} (occupancy, which reads '18' and
 # '018' as one ordinal, the same leniency the registry's canon input has). The
-# partition maps' exactly-3 starts are a protocol cap (≤999), not this bound.
+# partition maps share the bound rather than capping themselves at 999: their
+# starts are pasted from `peek spec`, whose producer and whose downstream binder
+# both admit 15 digits, so a cap in between refuses a value the protocol itself
+# hands the operator.
 case_jimfile_ordinal_width_bound_single_sourced() {
   local alloc="$REPO_ROOT/skills/file/scripts/jimalloc.sh"
   local ledger="$REPO_ROOT/skills/ledger/scripts/jimledger.sh"
@@ -1550,11 +1553,34 @@ case_jimfile_ordinal_width_bound_single_sourced() {
     "$(grep -cE "\[0-9\]\{3,$max\}" "$reconcile")"
   assert_eq "reconcile carries no other width spelling" "2" \
     "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$reconcile" | wc -l | tr -d ' ')"
-  # The omission class: a NEW script gaining its own width literal is the one
-  # divergence none of the per-file counts above would see.
-  assert_eq "no width spelling in any other script" "0" \
-    "$(grep -rloE '\[0-9\]\{[0-9]+,[0-9]+\}' --include='*.sh' "$REPO_ROOT/skills" \
-       | grep -vE '(jimfile|jimledger|reconcile)\.sh$' | grep -c .)"
+  local partition="$REPO_ROOT/skills/partition/scripts/jimpartition.sh"
+  assert_eq "jimpartition canonical-spelling sites (2 starts, source shape, scan, remap)" "5" \
+    "$(grep -cE "\[0-9\]\{3,$max\}" "$partition")"
+  assert_eq "jimpartition carries no other width spelling" "6" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$partition" | wc -l | tr -d ' ')"
+  assert_eq "jimpartition's two mint caps compare digits against the same ceiling" "2" \
+    "$(grep -cF "\${#seq} > $max" "$partition")"
+  # The omission class, and the reason it needed widening. The sweep here used to
+  # require a COMMA, so a fixed repetition — [0-9]{3} — matched nothing and the
+  # file carrying it was never exempted from this guard: it was invisible to it.
+  # That is how six gates kept a 999 ceiling after the bound moved to 15.
+  #
+  # A spelling is ORDINAL when its bounds name the floor 3 or the ceiling 15. A
+  # date's {8} and a timestamp's {2}/{4} name neither, so the corpus's many
+  # non-ordinal widths stay out of scope without being enumerated.
+  local spellings n
+  spellings="$(grep -rhoE '\[0-9\]\{[0-9]+(,[0-9]+)?\}' --include='*.sh' "$REPO_ROOT/skills" \
+               | grep -E "\{(3|$max)[,}]|,(3|$max)\}" | sort -u)"
+  n="$(printf '%s\n' "$spellings" | grep -c .)"
+  # Fail closed: an extraction matching nothing would make the next assertion
+  # pass vacuously, which is the failure this whole case exists to prevent.
+  assert_eq "ordinal spellings were actually extracted (got $n)" "yes" \
+    "$([[ "$n" -ge 2 ]] && echo yes || echo no)"
+  assert_eq "every ordinal-width spelling in the corpus is one of the two rules" \
+    "[0-9]{1,$max} [0-9]{3,$max}" "$(printf '%s ' $spellings | sed 's/ $//')"
+  assert_eq "no ordinal-width spelling outside the accounted files" "0" \
+    "$(grep -rloE "\[0-9\]\{(3|1),$max\}|\[0-9\]\{3\}" --include='*.sh' "$REPO_ROOT/skills" \
+       | grep -vE '(jimfile|jimledger|reconcile|jimpartition)\.sh$' | grep -c .)"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

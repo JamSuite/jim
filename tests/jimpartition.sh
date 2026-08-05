@@ -1943,14 +1943,38 @@ case_jimpartition_renumber_map_bad_start_rc2() {
   assert_exit "rc" 2 "$RC"
 }
 
-# rc 1: an assignment that would pass 999 exhausts the child's id space — no
-# partial output, mirroring merge-map's overflow contract.
+# rc 1: an assignment that would pass the ordinal width bound exhausts the
+# child's id space — no partial output, mirroring merge-map's overflow contract.
+# Written AT the bound so the case pins its value, not merely that a cap exists.
 case_jimpartition_renumber_map_start_overflow_rc1() {
   local assign
   assign=$(fixture rm-over.txt $'006\tcheckout\n007\tcheckout\n008\tcheckout')
-  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=998
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=999999999999999
   assert_exit "rc" 1 "$RC"
   assert_eq   "no partial output" "" "$OUT"
+}
+
+# The start comes from `peek spec`, which answers past 999 for a group that has
+# got that far — so a 4-digit start is a value the skill instructs an operator to
+# paste in, and this verb must take it.
+case_jimpartition_renumber_map_start_past_999_is_accepted() {
+  local assign
+  assign=$(fixture rm-wide.txt $'006\tcheckout\n007\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=1000
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "dense from the 4-digit start" \
+    "$(printf 'MAP\tcart/006\tcheckout/1000\nMAP\tcart/007\tcheckout/1001')" "$OUT"
+}
+
+# The source-token gate spans the same bound, probed on both edges.
+case_jimpartition_renumber_map_source_width_bounds() {
+  local assign
+  assign=$(fixture rm-wsrc.txt $'1000\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001
+  assert_exit "a 4-digit source is representable" 0 "$RC"
+  assign=$(fixture rm-osrc.txt $'1000000000000000\tcheckout')
+  run_jimpartition renumber-map cart cart,checkout "$assign" checkout=001
+  assert_exit "past the bound is refused" 1 "$RC"
 }
 
 # rc 1: an assignment to a child not in the target set.
@@ -2070,6 +2094,21 @@ case_jimpartition_rewrite_refs_malformed_remap_rc2() {
   run_jimpartition_in "$dir" rewrite-refs remap.tsv doc.md
   assert_exit "rc" 2 "$RC"
   assert_eq "target untouched" "see cart/006" "$(cat "$dir/doc.md")"
+}
+
+# The remap gate spans the same width bound as the map verbs that produce it, on
+# both halves of the line — otherwise a map this tool emitted would be a map it
+# refuses to apply. The whole-token rule still holds at the wider width: a
+# reference to cart/006 inside cart/0060 is not a match, since the char after
+# the ordinal is [a-z0-9].
+case_jimpartition_rewrite_refs_wide_ordinals() {
+  local dir; dir="$(git_init rr_wide)"
+  repo_add "$dir" doc.md 'see cart/1000 and cart/10000 and cart/006'
+  printf 'cart/1000\tcheckout/2000\n' > "$dir/remap.tsv"
+  run_jimpartition_in "$dir" rewrite-refs remap.tsv doc.md
+  assert_exit "rc" 0 "$RC"
+  assert_eq "wide ordinal rewritten, its longer sibling untouched" \
+    "see checkout/2000 and cart/10000 and cart/006" "$(cat "$dir/doc.md")"
 }
 
 # rc 2: a target symlinked OUT of the worktree is refused by the containment guard.
@@ -2512,21 +2551,67 @@ case_jimpartition_merge_map_floored_start() {
   assert_match "floored start honored" $'MAP\twishlist/001\tcart/010' "$OUT"
 }
 
-# AC 9: a renumber that would exceed 999 is refused rc 1 with no MAP output.
+# AC 9: a renumber that would pass the ordinal width bound is refused rc 1 with
+# no MAP output. The bound is the registry's, so the case is written AT it —
+# starting one below the 15-digit ceiling — rather than at a value that merely
+# happens to be refused today.
 case_jimpartition_merge_map_exhaustion_rc1() {
-  local root; root="$(mm_specs mm_999 cart/001-a wishlist/001-p wishlist/002-q)"
-  run_jimpartition_in "$root" merge-map specs cart 999 wishlist
+  local root; root="$(mm_specs mm_wide cart/001-a wishlist/001-p wishlist/002-q)"
+  run_jimpartition_in "$root" merge-map specs cart 999999999999999 wishlist
   assert_exit "rc" 1 "$RC"
   assert_eq "no partial MAP output" "" "$OUT"
 }
 
-# rc 2 on a non-numeric or wrong-width start (usage / bad start).
+# The bound is shared with the registry, not a protocol cap of this file's own:
+# a 4-digit start is a value `peek spec` can print, so the verb the skill tells
+# an operator to paste it into must accept it.
+case_jimpartition_merge_map_start_past_999_is_accepted() {
+  local root; root="$(mm_specs mm_wide_ok cart/001-a wishlist/001-p)"
+  run_jimpartition_in "$root" merge-map specs cart 1000 wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_eq "maps at the 4-digit start" "MAP	wishlist/001	cart/1000" "$OUT"
+}
+
+# rc 2 on a non-numeric or out-of-bound start (usage / bad start), probed on
+# BOTH edges — under-width and over-width.
 case_jimpartition_merge_map_bad_start_rc2() {
   local root; root="$(mm_specs mm_badstart cart/001-a wishlist/001-p)"
   run_jimpartition_in "$root" merge-map specs cart abc wishlist
   assert_exit "non-numeric start rc" 2 "$RC"
   run_jimpartition_in "$root" merge-map specs cart 5 wishlist
-  assert_exit "wrong-width start rc" 2 "$RC"
+  assert_exit "under-width start rc" 2 "$RC"
+  run_jimpartition_in "$root" merge-map specs cart 1000000000000000 wishlist
+  assert_exit "over-width start rc" 2 "$RC"
+}
+
+# The silent drop: a spec dir the registry can represent must never be omitted
+# from the map at rc 0. A dir that is not ordinal-shaped at all is not a spec
+# and stays silently skipped — the two cases are distinguished by leading digits.
+case_jimpartition_merge_map_refuses_an_out_of_bound_spec_dir() {
+  local root; root="$(mm_specs mm_wide_dir cart/001-a wishlist/001-p)"
+  mkdir -p "$root/specs/wishlist/1000000000000000-huge"
+  run_jimpartition_in "$root" merge-map specs cart 003 wishlist
+  assert_exit "refuses rather than omitting" 1 "$RC"
+  assert_eq   "no partial MAP output" "" "$OUT"
+  assert_match "names the offender" 'outside the ordinal width bound' "$ERR"
+}
+
+case_jimpartition_merge_map_ignores_a_non_spec_dir() {
+  local root; root="$(mm_specs mm_nonspec cart/001-a wishlist/001-p)"
+  mkdir -p "$root/specs/wishlist/notes"
+  run_jimpartition_in "$root" merge-map specs cart 003 wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_eq "only the spec is mapped" "MAP	wishlist/001	cart/003" "$OUT"
+}
+
+# The glob is lexical; ordinal order is numeric. Once two ordinals differ in
+# width the two disagree, and merge-map's output order IS its id assignment.
+case_jimpartition_merge_map_orders_numerically_not_lexically() {
+  local root; root="$(mm_specs mm_order cart/001-a wishlist/999-late wishlist/1000-later)"
+  run_jimpartition_in "$root" merge-map specs cart 003 wishlist
+  assert_exit "rc" 0 "$RC"
+  assert_eq "999 is assigned before 1000" \
+    "$(printf 'MAP\twishlist/999\tcart/003\nMAP\twishlist/1000\tcart/004')" "$OUT"
 }
 
 # rc 2 on usage (no sources after the trio).

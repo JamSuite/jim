@@ -377,8 +377,11 @@ the specs-root ledger.
    <child>=<start>...`: the remainder keeps its numbers, each fresh child
    densifies from its start, wip rides in sequence. Every fresh child's start
    is the ordinal part of `jimalloc.sh peek spec <child>` stdout, copied
-   verbatim — a fresh name peeks to `001`; a previously retired name resumes
-   above its high-water, since the registry never reissues a vacated id. The
+   verbatim **whatever its width** — a fresh name peeks to `001`; a previously
+   retired name resumes above its high-water, since the registry never reissues
+   a vacated id, and a group that has got past `999` peeks four digits wide. The
+   map verbs share the registry's ordinal bound, so any value `peek` can print
+   is a value they accept. The
    map is a **proposal**; the ids bind at the Close, where
    `partition-batch spec` publishes them and names any it refuses.
 4. **The single gate (spec 040)** — one presentation of the whole change-set per the
@@ -441,8 +444,8 @@ ledger.
 4. **Renumber** — `merge-map <specs-dir> <target> <start> <src>...`: the target
    keeps its numbers; sources renumber-append in CLI order, ascending, from
    `<start>` — the ordinal part of `jimalloc.sh peek spec <target>` stdout,
-   which is **advisory** (the batch at Close is what binds). `peek` refuses two
-   ways and they are not the same: `group renamed` is **retryable** — it names
+   copied verbatim whatever its width, and **advisory** (the batch at Close is
+   what binds). `peek` refuses two ways and they are not the same: `group renamed` is **retryable** — it names
    the group `<target>` now answers to, and the run continues under the name the
    allocator returns, which is authoritative — while `group exhausted` is
    **terminal**, so report it and stop rather than retrying. The registry never
