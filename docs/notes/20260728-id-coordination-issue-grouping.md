@@ -1653,6 +1653,69 @@ lever that is the operator's call, not a defect.
   a representable spec at rc 0. If it reshapes the split protocol instead,
   that is the escalation trigger that makes B″ a spec.
 
+**Both forks settled 2026-08-05, before code, over a four-investigator evidence
+pass. B″ stays a build** — #228 does not reshape the split protocol.
+
+**#229 — refuse; and the issue's own two proposed actions are both wrong.** The
+mechanism is an intersection nobody named. With the directory still sitting on
+the vacated ordinal, `alloc_classify_spec` emits **both** `MISSING` (`:1698`,
+keyed on the id having no live claim) and `RENAME-SRC` (`:1714`) for the same id
+— and it is `MISSING` that catch-up harvests. `RENAME-SRC` alone is the *healthy*
+post-rename state, which is exactly why the sweep excludes it from `drift_rows`
+at `:2916`. So adding it to `CU_BLOCKED` would wedge `catch-up` on every registry
+that has ever had a rename, and filtering `want_spec` by it repairs silently at
+rc 0 — the shape practice 6 forbids. The drift is the *intersection*, a tree
+directory occupying a spent ordinal, and it needs its own class.
+
+**The #200 consultation resolves the other way than the fork assumed: this is not
+a #200-class problem, and refusing leaves nothing standing.** #200's classes —
+`duplicate-ordinal`, `duplicate-id`, `reserved-slot`, `unreadable-record`, plus
+the duplicate realize key and the realize `CONFLICT` — are all registry-*internal*:
+two records contradict, an operator must pick a winner, and repairing one needs a
+corrective-write primitive the grammar does not have (seven encoders, zero
+tombstone / precedence / revoke). A directory on a vacated ordinal is
+tree-vs-registry drift where the registry is internally consistent and *right*.
+Its repair is a filesystem action — move the directory to the rename destination,
+or renumber it above the group's peek — and `resolve` already follows rename
+chains to name that destination. Refusing therefore routes to an instrument that
+already exists rather than deferring to one that does not, and #200's scope is
+untouched.
+
+**Scope: the rule's four doors, not the issue's one.** `catch-up` × spec, ×
+issue (byte-identical at `:3041`–`:3045`), × group (`alloc_group_present:2015`
+matches only a literal `group allocate` record, consulting neither the alias map
+nor `alloc_group_has_records`, so a renamed-away name takes a fresh claim), and
+`lift`, which declares and fills `spent` at `:3673`–`:3674` and never reads it —
+safe today only as a side effect of `destination-not-established`. That is
+`catch-up`'s third consecutive appearance as the door an id-coordination fix
+skipped.
+
+**#228 — share the `{3,15}` bound.** Widening is purely a validator change: the
+verb sequence, the tab-delimited `MAP` grammar and the human gate are all
+width-agnostic, `%03d` is a minimum field width rather than a cap,
+`renumber-map` already sorts numerically at `:1488`, and the pipeline's producer
+(`peek`) and its consumer (`partition-batch spec`, via `alloc_valid_ord`) both
+accept 15 digits already. The 999 cap is a third, undocumented refusal mode
+sitting between a wider producer and a wider consumer — which is why the
+composition failure was invisible from either side.
+
+**Eight gates, not six**, and the two the issue missed are the dangerous ones.
+`jimpartition.sh:1567` is a fixed three-character slice (`onum="${bn:0:3}"`), so
+widening `:1566` alone would truncate `1000-foo` to `100` and emit a *wrong* MAP
+row — silent corruption, strictly worse than the silent drop being fixed. And
+`merge-map`'s scan at `:1563` is a bare `LC_ALL=C` glob credited as pre-sorted,
+which holds only while every basename is three digits.
+
+**The re-divergence fix is the fixture, not a shared verb.** `tests/jimfile.sh:1556`
+greps a comma-bounded `\{[0-9]+,[0-9]+\}`; `jimpartition.sh` spells `{3}` without
+a comma, so the file was never *exempted* from the width guard — it is invisible
+to it. `ARCHITECTURE.md:390` already names this seam as the one place in the
+ordinal machinery where a divergence would not be caught structurally. Teaching
+the guard to see uncomma'd spellings closes it at zero runtime cost; routing
+`:1566` through a `jimfile.sh` predicate instead would put a subprocess fork in a
+per-directory scan loop, in the same pass that is fixing a fork-amplification DoS
+(#233).
+
 **Then sequence by the rule's doors, not the issue's** — the review's own
 lesson. Draw the door matrix first (emitters / catch-up / lift × spec / group /
 issue) and check every cell:
