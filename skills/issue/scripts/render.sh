@@ -276,7 +276,7 @@ cmd_stats() {
   if (( ${#blocks_out[@]} == 0 )); then
     printf '  _No blocking edges._\n\n'
   else
-    local s
+    local s count src
     for s in "${!blocks_out[@]}"; do
       printf '%d\t%s\n' "${blocks_out[$s]}" "$s"
     done | sort -k1,1nr -k2,2 | head -n "$BLOCKING_TOP_N" | while IFS=$'\t' read -r count src; do
@@ -306,6 +306,7 @@ cmd_stats() {
 format_row() {
   local cols="$1" slug="$2" num="$3" status="$4" prio="$5" created="$6" labels="$7" title="$8"
   local out="" c pad
+  local -a _cols=()
   IFS=',' read -ra _cols <<< "$cols"
   for c in "${_cols[@]}"; do
     case "$c" in

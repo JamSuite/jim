@@ -100,6 +100,93 @@ case_scripthygiene_production_scripts_export_lc_all() {
   done
 }
 
+# The locale rule's third root. The two above cannot apply here — run.sh sources
+# every test file into one shell, so a top-level export in any of them would
+# impose a collation on every other fixture, which is the regression the
+# framework exemption exists to prevent. So the pin has to be per command, and
+# this sweeps the one construct where a locale difference silently changes a
+# RESULT rather than a match: `sort -u` merges lines that collate equal but
+# differ bytewise, turning a genuine mismatch into a passing assertion. Files
+# under skills/*/scripts/ and scripts/ are not swept because they export the
+# locale once at the top, which the case above already requires.
+case_scripthygiene_test_sorts_pin_the_locale() {
+  local f rel n=0 unpinned
+  for f in "$REPO_ROOT"/tests/*.sh; do
+    [[ -e "$f" ]] || continue
+    n=$((n + 1))
+    rel="${f#"$REPO_ROOT"/}"
+    # This file names the construct in order to sweep for it, so it matches
+    # itself. Excluded the way provenance.sh excludes its own detector tokens —
+    # a textual sweep cannot both spell a pattern and be blind to its own copy.
+    [[ "$rel" == "tests/scripthygiene.sh" ]] && continue
+    unpinned="$(grep -c 'sort -u' "$f" 2>/dev/null)"
+    unpinned=$(( unpinned - $(grep -c 'LC_ALL=C sort -u' "$f" 2>/dev/null) ))
+    assert_eq "$rel pins the locale on every 'sort -u'" "0" "$unpinned"
+  done
+  assert_eq "tests enumerated" "yes" "$(yn "$n")"
+}
+
+# Every name a `read` assigns into must be declared local in its function. An
+# undeclared one is a global: harmless while the call sits in a pipeline (a
+# subshell cannot write back), and a live clobber the moment a caller switches to
+# a here-string — which is how the same variable name held by a caller mid-loop
+# gets overwritten by its callee. The existing leak check is name-pinned to one
+# function's variables, so it cannot see the class; this reads the declarations
+# and the reads out of every function and compares them.
+case_scripthygiene_read_targets_are_declared_local() {
+  local f rel n=0 undeclared
+  for f in "$REPO_ROOT"/skills/*/scripts/*.sh "$REPO_ROOT"/scripts/*.sh; do
+    [[ -e "$f" ]] || continue
+    n=$((n + 1))
+    rel="${f#"$REPO_ROOT"/}"
+    undeclared="$(awk '
+      /^[a-zA-Z_][a-zA-Z0-9_]*\(\)[ \t]*\{/ { fn=$0; sub(/\(\).*/,"",fn); next }
+      /^\}/ { fn=""; next }
+      fn=="" { next }
+      /[ \t]local[ \t]/ {
+        line=$0; sub(/^.*[ \t]local[ \t]+/,"",line); sub(/[ \t]#.*/,"",line)
+        k=split(line, p, /[ \t]+/)
+        for (j=1;j<=k;j++) { v=p[j]; sub(/=.*/,"",v)
+          if (v ~ /^[A-Za-z_][A-Za-z0-9_]*$/) decl[fn "|" v]=1 }
+      }
+      /read -r[a-zA-Z]*[ \t]/ {
+        line=$0; sub(/^.*read -r[a-zA-Z]*[ \t]+/,"",line)
+        sub(/<<.*/,"",line); sub(/;.*/,"",line)
+        k=split(line, p, /[ \t]+/)
+        for (j=1;j<=k;j++) { v=p[j]
+          if (v == "_" || v == "") continue
+          if (v !~ /^[A-Za-z_][A-Za-z0-9_]*$/) continue
+          use[fn "|" v]=1 }
+      }
+      END { for (u in use) if (!(u in decl)) { split(u,a,"|"); printf "%s:%s ", a[1], a[2] } }
+    ' "$f")"
+    assert_eq "$rel declares every read target local" "" "${undeclared% }"
+  done
+  assert_eq "the sweep enumerated a corpus (>= 10, got $n)" "yes" \
+    "$([[ "$n" -ge 10 ]] && echo yes || echo no)"
+}
+
+# A test file outside tests/ is silently NOT RUN: the runner's glob contains it
+# out rather than reporting it, and the scaffold's own refusal only guards the
+# create path. Nothing detected a file arriving by any other route — a hand
+# authored one, or a scaffold invoked from the wrong directory, which lands it
+# inside a Claude Code discovery root.
+case_scripthygiene_no_test_file_outside_tests() {
+  local f rel n=0 strays=""
+  for f in "$REPO_ROOT"/skills/*/scripts/*.sh "$REPO_ROOT"/skills/*/*.sh "$REPO_ROOT"/scripts/*.sh; do
+    [[ -e "$f" ]] || continue
+    n=$((n + 1))
+    rel="${f#"$REPO_ROOT"/}"
+    case "$rel" in
+      skills/meta-test/scripts/testlib.sh|skills/meta-test/scripts/run.sh|skills/meta-test/scripts/metatest.sh) continue ;;
+    esac
+    grep -qE '^case_[a-zA-Z0-9_]+\(\)|/testlib\.sh"?$' "$f" && strays="$strays$rel "
+  done
+  assert_eq "no test-shaped file outside tests/" "" "${strays% }"
+  assert_eq "the sweep enumerated a corpus (>= 10, got $n)" "yes" \
+    "$([[ "$n" -ge 10 ]] && echo yes || echo no)"
+}
+
 # AC: the two exempt framework files do NOT export a locale, so a test's own
 # fixtures are matched under the developer's locale rather than one the harness
 # imposed. Pinned as its own case: silently gaining the export is the exact

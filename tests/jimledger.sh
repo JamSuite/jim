@@ -193,7 +193,7 @@ case_jimledger_metrics_clean_channel() {
   run_jimledger finish "$sd"
   run_jimledger metrics "$sd"
   assert_eq "no injected key" "0" "$(echo "$OUT" | grep -c '^alignment=')"
-  assert_eq "all lines safe"  "0" "$(echo "$OUT" | grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
+  assert_eq "all lines safe"  "0" "$(echo "$OUT" | LC_ALL=C grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
 }
 
 # AC: metrics reports an interruption when a started has no matching finished (Task 4)
@@ -299,7 +299,7 @@ case_jimledger_metrics_ignores_unknown_stage() {
   } > "$sd/ledger.md"
   run_jimledger metrics "$sd"
   assert_eq "no evil key"    "0" "$(echo "$OUT" | grep -c '^evil')"
-  assert_eq "all lines safe" "0" "$(echo "$OUT" | grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
+  assert_eq "all lines safe" "0" "$(echo "$OUT" | LC_ALL=C grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
 }
 
 # AC: metrics with no ledger.md at all exits 2 so the reviewer degrades. The
@@ -1093,7 +1093,7 @@ case_jimledger_metrics_verify_channel_clean() {
   } > "$sd/ledger.md"
   run_jimledger metrics "$sd"
   assert_eq "no injected key" "0" "$(echo "$OUT" | grep -c '^evil')"
-  assert_eq "all lines safe"  "0" "$(echo "$OUT" | grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
+  assert_eq "all lines safe"  "0" "$(echo "$OUT" | LC_ALL=C grep -cvE '^[a-z_]+=[A-Za-z0-9._-]*$')"
 }
 
 # AC: commit-verify commits ledger.md alone with the fixed subject and leaves an

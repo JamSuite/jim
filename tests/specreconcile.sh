@@ -1030,7 +1030,7 @@ case_specreconcile_sweep_prefix_overlap_all_realized() {
   assert_nonempty "suffixed sibling rewritten whole" "$dash_ord"
   assert_nonempty "letter-extended rewritten whole"  "$letter_ord"
   assert_eq "all three took distinct ordinals" "3" \
-    "$(printf '%s\n%s\n%s\n' "$short_ord" "$dash_ord" "$letter_ord" | sort -u | grep -c .)"
+    "$(printf '%s\n%s\n%s\n' "$short_ord" "$dash_ord" "$letter_ord" | LC_ALL=C sort -u | grep -c .)"
   assert_eq "no half-rewritten remnant" "0" \
     "$(printf '%s\n' "$body" | grep -c 'P-20260728')"
 }

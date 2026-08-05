@@ -2726,20 +2726,20 @@ case_jimalloc_sanitizer_stays_a_record_layer_primitive() {
 case_jimalloc_class_label_covers_every_emitted_class() {
   local emitted labels grammar c n missing=""
   emitted="$(grep -o 'alloc_classify_emit [A-Z][A-Z-]*' "$SCRIPT_jimalloc" \
-             | awk '{print $2}' | grep -v '^CHECKED$' | sort -u)"
+             | awk '{print $2}' | grep -v '^CHECKED$' | LC_ALL=C sort -u)"
   n="$(printf '%s\n' "$emitted" | grep -c .)"
   # Fail closed: an extraction that silently matches nothing would make both
   # assertions below vacuously true, which is the shape this file exists to catch.
   assert_eq "the emit sites were read (>= 8 classes, got $n)" "yes" \
     "$([[ "$n" -ge 8 ]] && echo yes || echo no)"
   labels="$(sed -n '/^alloc_class_label()/,/^}/p' "$SCRIPT_jimalloc" \
-            | sed -n 's/^ *\([A-Z][A-Z-]*\)).*/\1/p' | sort -u)"
+            | sed -n 's/^ *\([A-Z][A-Z-]*\)).*/\1/p' | LC_ALL=C sort -u)"
   for c in $emitted; do
     printf '%s\n' "$labels" | grep -qx "$c" || missing+="$c "
   done
   assert_eq "every emitted class has a label arm" "" "${missing% }"
   grammar="$(sed -n '/^# Row grammar (TAB-separated)/,/^#$/p' "$SCRIPT_jimalloc" \
-             | sed -n 's/^#   \([A-Z][A-Z-]*\) .*/\1/p' | sort -u)"
+             | sed -n 's/^#   \([A-Z][A-Z-]*\) .*/\1/p' | LC_ALL=C sort -u)"
   missing=""
   for c in $emitted; do
     printf '%s\n' "$grammar" | grep -qx "$c" || missing+="$c "
@@ -3980,6 +3980,102 @@ case_jimalloc_lift_refuses_reserved_ordinal() {
 # the lift consumes the same duplicate-realize rule the resolver does and
 # refuses every row naming that token — including a recorded pair — rather
 # than reporting the contradiction as held.
+# The reserved-ordinal gate's comment claims "any ordinal side", and the fixture
+# below it exercised only destinations. The spec SOURCE branch is load-bearing:
+# over a log holding zed/001, the row zed/000 -> zed/001 has an established
+# destination and an unclaimed source, so without this half it falls through to
+# emit and a rename record naming the blueprint slot is appended.
+case_jimalloc_lift_refuses_a_reserved_source() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate zed/001 alpha 20260726 kai')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'spec\tzed/000\tzed/001\t20260725')" <<< "$log")"
+  assert_eq "the source side is refused too" "1" \
+    "$(printf '%s\n' "$out" | grep -c 'refused:reserved-ordinal$')"
+  assert_eq "nothing is emitted" "0" "$(printf '%s\n' "$out" | grep -c '	emit$')"
+}
+
+# refused:destination-conflict is emitted from three arms and was asserted from
+# none, so all three could be deleted with the suite green. One case per arm.
+case_jimalloc_lift_refuses_a_conflicted_destination_on_every_arm() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate core/001 alpha 20260726 kai' \
+                      'spec allocate core/005 epsilon 20260726 kai' \
+                      'group allocate core 20260726 kai' \
+                      'group allocate ui 20260726 kai' \
+                      'spec rename core/009 core/005 20260802 jane' \
+                      'spec realize core/P-20260725-b core/001 20260802 jane' \
+                      'group rename ui parts 20260802 jane')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'spec\tcore/004\tcore/005\t20260725')" \
+                      "$(printf 'realize\tcore/P-20260725-a\tcore/001\t20260725')" \
+                      "$(printf 'group\tcore\tparts\t20260725')" <<< "$log")"
+  assert_eq "all three arms refuse a conflicted destination" "3" \
+    "$(printf '%s\n' "$out" | grep -c 'refused:destination-conflict$')"
+}
+
+# The group arm's destination check spans two directions and each needs its own
+# case: a name another rename ARRIVED at gains two histories, a name that itself
+# renamed AWAY leaves the resolver answering through a third. Deleting either
+# half leaves the other direction's case green, so one case cannot pin both.
+case_jimalloc_lift_refuses_a_redirected_group_destination() {
+  local log out
+  log=$(printf '%s\n' 'group allocate core 20260726 kai' \
+                      'group allocate ui 20260726 kai' \
+                      'spec allocate ui/001 widget 20260726 kai' \
+                      'group rename ui parts 20260802 jane')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'group\tcore\tui\t20260725')" <<< "$log")"
+  assert_match "a destination that renamed away is refused" \
+    'refused:destination-conflict$' "$out"
+  assert_eq "never emitted" "0" "$(printf '%s\n' "$out" | grep -c '	emit$')"
+}
+
+# The cross-run SOURCE closure. Issue 207's contract asked for both sides on
+# every run; the destination half was pinned and the source half was not.
+case_jimalloc_lift_refuses_a_recorded_source_cross_run() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate core/001 alpha 20260726 kai' \
+                      'spec allocate core/009 iota 20260726 kai' \
+                      'spec rename core/002 core/001 20260802 jane')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'spec\tcore/002\tcore/009\t20260725')" <<< "$log")"
+  assert_eq "a source an earlier record already vacated is refused" "1" \
+    "$(printf '%s\n' "$out" | grep -c 'refused:source-conflict$')"
+}
+
+# A destination that itself renamed away, on the spec arm — the rule the group
+# arm states and checks. Distinguished from the vacancy refusal beside it, so
+# neither can stand in for the other.
+case_jimalloc_lift_refuses_a_redirected_spec_destination() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate core/001 alpha 20260726 kai' \
+                      'spec allocate core/002 beta 20260726 kai' \
+                      'spec rename core/002 core/044 20260802 jane')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'spec\tcore/007\tcore/002\t20260725')" <<< "$log")"
+  assert_eq "refused as a conflict, not merely as unestablished" "1" \
+    "$(printf '%s\n' "$out" | grep -cE 'refused:(destination-conflict|destination-vacated)$')"
+  assert_eq "never emitted" "0" "$(printf '%s\n' "$out" | grep -c '	emit$')"
+}
+
+# First-recordable-wins is an ORDERING contract, and asserting only that one row
+# of a duplicate pair is refused cannot see it reversed. This pins WHICH row is
+# published: invert the scan and the build records the wrong one with every
+# existing lift fixture still green.
+case_jimalloc_lift_first_recordable_row_wins() {
+  local log out
+  log=$(printf '%s\n' 'spec allocate core/001 alpha 20260726 kai' \
+                      'spec allocate core/002 beta 20260726 kai')
+  out="$(source "$SCRIPT_jimalloc"
+    alloc_lift_states "$(printf 'spec\tcore/007\tcore/001\t20260725')" \
+                      "$(printf 'spec\tcore/008\tcore/001\t20260726')" <<< "$log")"
+  assert_match "the FIRST row is the one emitted" \
+    '^spec	core/007	core/001	20260725	emit$' "$out"
+  assert_match "the second is the one marked" \
+    '^spec	core/008	core/001	20260726	refused:duplicate-in-batch$' "$out"
+}
+
 case_jimalloc_lift_refuses_a_vacated_destination() {
   local log out
   log=$(printf '%s\n' 'spec allocate core/001 alpha 20260726 kai' \
@@ -4182,7 +4278,7 @@ case_jimalloc_sanitize_disclosure_echoes_only_gated_tokens() {
   assert_exit "rc" 0 "$RC"
   assert_match "note names the canonical query" 'note: core/003 ' "$ERR"
   assert_eq   "no control byte in the note" "0" \
-    "$(printf '%s' "$ERR" | tr -d 'A-Za-z0-9 ()/:.,_@-' | wc -c | tr -d ' ')"
+    "$(printf '%s' "$ERR" | LC_ALL=C tr -d 'A-Za-z0-9 ()/:.,_@-' | wc -c | tr -d ' ')"
 }
 
 # ─── Section: partition-batch — emission (real git) ──────────────────────────

@@ -736,13 +736,24 @@ case_jimfile_prov_boundary_shims_and_prefixes_pinned() {
   assert_eq "reconcile shim routes through jf valid-id" \
     'prov_id_boundary() { jf valid-id "$1" >/dev/null 2>&1; }' \
     "$(grep -E '^prov_id_boundary\(\)' "$REPO_ROOT/skills/spec/scripts/reconcile.sh")"
-  local p
-  p="$(grep -h 'PROV_PREFIX="' \
-       "$REPO_ROOT/skills/file/scripts/jimfile.sh" \
-       "$REPO_ROOT/skills/file/scripts/jimalloc.sh" \
-       "$REPO_ROOT/skills/spec/scripts/reconcile.sh" \
-       | sed 's/^readonly //' | sort -u)"
-  assert_eq "one prefix value across the three copies" 'PROV_PREFIX="P-"' "$p"
+  # Each constant is asserted individually, BY PATH. A set-compare over the three
+  # files answers "the distinct values I managed to find agree" — which a deleted
+  # copy satisfies (fewer matches, survivors still reduce to one line) and a
+  # re-quoted copy satisfies too (a quote-literal pattern does not match it, so
+  # it is not among the values compared). Both drifts pass a set-compare with the
+  # constant genuinely changed; neither passes this.
+  local f rel got
+  for f in "$REPO_ROOT/skills/file/scripts/jimfile.sh" \
+           "$REPO_ROOT/skills/file/scripts/jimalloc.sh" \
+           "$REPO_ROOT/skills/spec/scripts/reconcile.sh"; do
+    rel="${f#"$REPO_ROOT"/}"
+    # Quote-agnostic and assignment-anchored, so a re-spelling is READ rather
+    # than skipped — the whole point is that a missed line must not look clean.
+    got="$(grep -hE '^(readonly )?PROV_PREFIX=' "$f" | sed "s/^readonly //; s/[\"']//g")"
+    assert_eq "$rel declares PROV_PREFIX exactly once" "1" \
+      "$(printf '%s\n' "$got" | grep -c .)"
+    assert_eq "$rel pins the prefix value" 'PROV_PREFIX=P-' "$got"
+  done
 }
 
 # AC 15: the shared rule carries the slug through the id boundary too, so a
@@ -1525,6 +1536,14 @@ case_jimfile_valid_relpath_rejects_unsafe() {
 # starts are pasted from `peek spec`, whose producer and whose downstream binder
 # both admit 15 digits, so a cap in between refuses a value the protocol itself
 # hands the operator.
+
+# code_widths <file> <pattern> — count matches on NON-COMMENT lines only. A gate
+# that loses its bound while a nearby comment gains the literal keeps a whole-file
+# count intact, so the per-file assertions below would stay green through exactly
+# the drift they exist to catch. No counted site sits in a comment today, so this
+# changes no number — it removes a way for one to change unseen.
+code_widths() { grep -vE '^[[:space:]]*#' "$1" | grep -cE "$2"; }
+
 case_jimfile_ordinal_width_bound_single_sourced() {
   local alloc="$REPO_ROOT/skills/file/scripts/jimalloc.sh"
   local ledger="$REPO_ROOT/skills/ledger/scripts/jimledger.sh"
@@ -1536,13 +1555,13 @@ case_jimfile_ordinal_width_bound_single_sourced() {
   assert_eq "jimalloc spells no width literal of its own" "0" \
     "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$alloc" | wc -l | tr -d ' ')"
   assert_eq "jimfile canonical-spelling sites (3 gates + 2 messages)" "5" \
-    "$(grep -cE "\[0-9\]\{3,$max\}" "$SCRIPT_JIMFILE")"
+    "$(code_widths "$SCRIPT_JIMFILE" "\[0-9\]\{3,$max\}")"
   assert_eq "jimfile numeric-acceptance sites (occupancy pair)" "2" \
-    "$(grep -cE "\[0-9\]\{1,$max\}" "$SCRIPT_JIMFILE")"
+    "$(code_widths "$SCRIPT_JIMFILE" "\[0-9\]\{1,$max\}")"
   assert_eq "jimfile carries no other width spelling" "7" \
     "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$SCRIPT_JIMFILE" | wc -l | tr -d ' ')"
   assert_eq "jimledger canonical-spelling sites (the two move gates)" "2" \
-    "$(grep -cE "\[0-9\]\{3,$max\}" "$ledger")"
+    "$(code_widths "$ledger" "\[0-9\]\{3,$max\}")"
   assert_eq "jimledger carries no other width spelling" "2" \
     "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$ledger" | wc -l | tr -d ' ')"
   assert_match "isord: canonical floor and the shared ceiling, in awk" \
@@ -1550,12 +1569,12 @@ case_jimfile_ordinal_width_bound_single_sourced() {
     "$(grep 'function isord' "$ledger")"
   local reconcile="$REPO_ROOT/skills/spec/scripts/reconcile.sh"
   assert_eq "reconcile canonical-spelling sites" "2" \
-    "$(grep -cE "\[0-9\]\{3,$max\}" "$reconcile")"
+    "$(code_widths "$reconcile" "\[0-9\]\{3,$max\}")"
   assert_eq "reconcile carries no other width spelling" "2" \
     "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$reconcile" | wc -l | tr -d ' ')"
   local partition="$REPO_ROOT/skills/partition/scripts/jimpartition.sh"
   assert_eq "jimpartition canonical-spelling sites (2 starts, source shape, scan, remap)" "5" \
-    "$(grep -cE "\[0-9\]\{3,$max\}" "$partition")"
+    "$(code_widths "$partition" "\[0-9\]\{3,$max\}")"
   assert_eq "jimpartition carries no other width spelling" "6" \
     "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$partition" | wc -l | tr -d ' ')"
   assert_eq "jimpartition's two mint caps compare digits against the same ceiling" "2" \
@@ -1570,7 +1589,7 @@ case_jimfile_ordinal_width_bound_single_sourced() {
   # non-ordinal widths stay out of scope without being enumerated.
   local spellings n
   spellings="$(grep -rhoE '\[0-9\]\{[0-9]+(,[0-9]+)?\}' --include='*.sh' "$REPO_ROOT/skills" \
-               | grep -E "\{(3|$max)[,}]|,(3|$max)\}" | sort -u)"
+               | grep -E "\{(3|$max)[,}]|,(3|$max)\}" | LC_ALL=C sort -u)"
   n="$(printf '%s\n' "$spellings" | grep -c .)"
   # Fail closed: an extraction matching nothing would make the next assertion
   # pass vacuously, which is the failure this whole case exists to prevent.
@@ -1578,9 +1597,27 @@ case_jimfile_ordinal_width_bound_single_sourced() {
     "$([[ "$n" -ge 2 ]] && echo yes || echo no)"
   assert_eq "every ordinal-width spelling in the corpus is one of the two rules" \
     "[0-9]{1,$max} [0-9]{3,$max}" "$(printf '%s ' $spellings | sed 's/ $//')"
-  assert_eq "no ordinal-width spelling outside the accounted files" "0" \
+  # Excluded BY PATH, not basename. Two files under skills/ are named
+  # reconcile.sh, so a basename exclusion silently exempted the issue-side one —
+  # and would exempt any future file that happened to take one of these names.
+  local accounted='/skills/(file/scripts/jimfile|ledger/scripts/jimledger|spec/scripts/reconcile|partition/scripts/jimpartition)\.sh$'
+  assert_eq "no ordinal-width regex outside the accounted files" "0" \
     "$(grep -rloE "\[0-9\]\{(3|1),$max\}|\[0-9\]\{3\}" --include='*.sh' "$REPO_ROOT/skills" \
-       | grep -vE '(jimfile|jimledger|reconcile|jimpartition)\.sh$' | grep -c .)"
+       | grep -vE "$accounted" | grep -c .)"
+  # Regex is not the only spelling. The corpus also states this bound as an awk
+  # length() comparison and as a bash ${#x} comparison, and neither is visible to
+  # a character-class pattern. The CEILING is what identifies them as ordinal
+  # work — a floor of 3 alone appears in unrelated length checks — so the sweep
+  # keys on it rather than trying to judge each site's subject.
+  assert_eq "no ordinal-width comparison outside the accounted files" "0" \
+    "$(grep -rlE "length\([a-z_]+\) *[<>]=? *$max|\\\$\{#[a-z_]+\} *[<>]=? *$max" \
+       --include='*.sh' "$REPO_ROOT/skills" "$REPO_ROOT/scripts" \
+       | grep -vE "$accounted" | grep -c .)"
+  # Fail closed: the comparison sweep must be finding the sites it accounts for,
+  # or its zero above means only that the pattern stopped matching.
+  assert_eq "the comparison spellings were found where they are accounted" "2" \
+    "$(grep -rlE "length\([a-z_]+\) *[<>]=? *$max|\\\$\{#[a-z_]+\} *[<>]=? *$max" \
+       --include='*.sh' "$REPO_ROOT/skills" | grep -cE "$accounted")"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

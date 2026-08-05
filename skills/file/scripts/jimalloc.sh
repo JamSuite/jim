@@ -2788,12 +2788,15 @@ alloc_display_field() {
 }
 
 # alloc_group_has_records <group>   (specs log on stdin) — exit 0 iff the
-# registry holds any valid record for <group>: its group-allocate record, or a
-# spec-allocate record under it. A group with neither is invisible to a
-# tree-vs-registry comparison, which is what makes it non-coverage rather than
-# clean.
+# registry KNOWS this name, by any of the four ways a record can establish it:
+# a group-allocate record, a spec-allocate record under it, a spec-rename whose
+# source was under it (a retired group's records amount to nothing else once
+# every id has moved away), or a group-rename that landed ON it (which moves
+# every claim under the name while writing no allocate of its own). A group none
+# of those reach is invisible to a tree-vs-registry comparison, which is what
+# makes it non-coverage rather than clean.
 alloc_group_has_records() {
-  local group="$1" i c1 c2 c3 rk rsrc rsok
+  local group="$1" i c1 c2 c3 rk rsrc rsok rdst rdok
   local -a lines=(); mapfile -t lines
   local n=${#lines[@]}
   for ((i=0; i<n; i++)); do
@@ -3767,6 +3770,12 @@ alloc_lift_state() {
       if [[ -n "${rn_dst[spec	$dst]:-}" ]]; then
         printf 'refused:destination-conflict\n'; return 0
       fi
+      # The other direction — a destination that itself renamed AWAY — needs no
+      # rn_src check here, and adding one would be dead code: `spent` holds every
+      # SRC row the replay produced, so it is a strict superset of the spec
+      # renames rn_src indexes, and it also covers the ordinals a GROUP rename
+      # moved, which rn_src[spec…] never sees. The group arm reaches for rn_src
+      # because it has no spent set keyed by group name.
       if [[ -n "${spent[$dst]:-}" ]]; then
         printf 'refused:destination-vacated\n'; return 0
       fi
