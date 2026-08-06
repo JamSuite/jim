@@ -3428,10 +3428,10 @@ alloc_group_redirect() {
 #   a corroborating writer can refuse a destination that would give a frozen
 #   citation a second referent.
 alloc_live_claim_set() {
-  local tag ra
-  while IFS=$'\t' read -r tag ra _; do
+  local tag ra rc
+  while IFS=$'\t' read -r tag ra _ rc; do
     case "$tag" in
-      LIVE) live["$ra"]=1 ;;
+      LIVE) live["$ra"]=1; live_slug["$ra"]="$rc" ;;
       SRC)  spent["$ra"]=1 ;;
     esac
   done < <(alloc_spec_replay)
@@ -3452,7 +3452,7 @@ alloc_live_claim_set() {
 alloc_partition_spec_publish_builder() {
   local cur_specs="$1" who="$3"; shift 3
   local date="$1"; shift
-  local -A live=() spent=()
+  local -A live=() spent=() live_slug=()
   alloc_live_claim_set < <(printf '%s\n' "$cur_specs")
   local pair old new slug oldc newc grp newrecs="" payload=""
   local -A seen_new=() seen_old=() claimed=()
@@ -3494,6 +3494,16 @@ alloc_partition_spec_publish_builder() {
       echo "error: partition-batch refuses '$newc' — vacated by an earlier rename; the registry never reissues an ordinal (the group's ordinals resume at peek)" >&2
       return 1
     fi
+    # After the destination gates, so a pair that is wrong in two ways reports
+    # the contradiction about the registry before the one about its own fields.
+    # The rename carries the source's recorded slug to the destination, so a
+    # pair naming a different one is asking for something the record it produces
+    # cannot say — refused here rather than left to surface as tree-vs-registry
+    # MISMATCH drift after the ordinal has bound.
+    if [[ "${live_slug[$oldc]:-}" != "$slug" ]]; then
+      echo "error: partition-batch refuses '$oldc → $newc' — the rename carries the source's slug '$(alloc_display_field "${live_slug[$oldc]:-}")', not '$(alloc_display_field "$slug")'; a renumber moves an ordinal, never a slug" >&2
+      return 1
+    fi
     if [[ -n "${seen_old[$oldc]:-}" || -n "${seen_new[$newc]:-}" ]]; then
       echo "error: partition-batch refuses the pair set — '$oldc → $newc' repeats an identity named earlier in the same batch" >&2
       return 1
@@ -3511,7 +3521,11 @@ alloc_partition_spec_publish_builder() {
         || newrecs+="$(alloc_encode_allocate_group "$grp" "$date" "$who")"$'\n'
       claimed["$grp"]=1
     fi
-    newrecs+="$(alloc_encode_allocate_spec "$newc" "$slug" "$date" "$who")"$'\n'
+    # The rename ALONE, because the source is live: the replay moves that claim
+    # onto the destination, so a paired allocate would be a second claim on an
+    # id the rename is about to take — which the same replay reports as a
+    # duplicate, and no encoder can withdraw. What establishes the destination
+    # and what the integrity report calls established are one decision.
     newrecs+="$(alloc_encode_rename_spec "$oldc" "$newc" "$date" "$who")"$'\n'
     payload+="${oldc}"$'\t'"${newc}"$'\n'
   done
@@ -3556,7 +3570,7 @@ alloc_partition_group_publish_builder() {
     echo "error: partition-batch refuses '$old' — the registry holds no record for it" >&2
     return 1
   fi
-  local -A live=() spent=()
+  local -A live=() spent=() live_slug=()
   alloc_live_claim_set < <(printf '%s\n' "$cur_specs")
   local key
   for key in "${!live[@]}"; do
@@ -3830,7 +3844,7 @@ alloc_lift_state() {
 alloc_lift_states() {
   local -a lines=(); mapfile -t lines
   local log=""; (( ${#lines[@]} )) && log="$(printf '%s\n' "${lines[@]}")"
-  local -A live=() spent=() have_rn=() rn_src=() rn_dst=() rz_real=() rz_conflict=() rz_dst=()
+  local -A live=() spent=() live_slug=() have_rn=() rn_src=() rn_dst=() rz_real=() rz_conflict=() rz_dst=()
   alloc_live_claim_set < <(printf '%s\n' "$log")
   local rk rsrc rsok rdst rdok ztag zp za zb
   while IFS=$'\t' read -r rk rsrc rsok rdst rdok _ _ _; do

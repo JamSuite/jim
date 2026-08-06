@@ -33,10 +33,14 @@
 #   listing, empty-log refusal, partial-repair exit, at-the-tip recomputation,
 #   and its inherited erosion refusal.
 #
-#   Two more (39 total): the group-alias fold of the spent set, neutered two
+#   Six more (43 total): the group-alias fold of the spent set, neutered two
 #   ways — the re-spell loop deleted (pre-fix, the ordinal reads as an ordinary
 #   absence one group rename later) and downgraded from union to replace (the
-#   vacated spelling stops refusing arrivals once its group name is reused).
+#   vacated spelling stops refusing arrivals once its group name is reused);
+#   the renumber's record shape, with the retired paired allocate restored;
+#   the slug-carry check, neutered directly and starved by never filling
+#   live_slug; and the destination gates' precedence over it, mutated by moving
+#   the slug check back ahead of them.
 #
 #   SCOPE, stated because a coverage claim is only as good as its bounds: the
 #   first pass of this audit claimed "every classifier class" while measuring
@@ -4379,9 +4383,18 @@ run_batch_in() {
 # batch_pairs <old> <new> <slug> [...] — TAB-separated renumber rows on stdin.
 batch_pairs() { printf '%s\t%s\t%s\n' "$@"; }
 
-# AC 3/4: a renumber pair set publishes as allocate + rename per pair, so every
-# destination is established by a record of its own and the vacated source
-# resolves forward.
+# AC 3/4: a renumber pair set publishes ONE record per pair — the rename — plus
+# a group record for a destination group the registry does not hold.
+#
+# This case previously asserted a paired `spec allocate <dst>`, on the reasoning
+# that every destination should be established by a record of its own. That
+# reasoning was wrong, not merely superseded: the source is live, so the replay
+# moves ITS claim onto the destination, and a paired allocate is a second claim
+# on the same id. The same replay reports that as a duplicate, which the sweep
+# calls drift and catch-up calls unrepairable — and the grammar has no tombstone
+# or precedence encoder to withdraw either side. So the old shape made every
+# renumber permanently fail registry-tree-consistency. What establishes a
+# destination and what the integrity report calls established are one decision.
 case_jimalloc_partition_batch_spec_emits_pairs() {
   local bare A specs
   bare="$(alloc_new_bare pbatch_bare)"; A="$(alloc_new_clone "$bare" pbatch_A)"
@@ -4391,12 +4404,71 @@ case_jimalloc_partition_batch_spec_emits_pairs() {
     partition-batch spec 20260802
   assert_exit "rc" 0 "$RC"
   specs="$(alloc_bare_specs "$bare")"
-  assert_match "destination allocated" '^spec allocate platform/001 alpha 20260802 ' "$specs"
-  assert_match "source vacated"        '^spec rename jim/001 platform/001 20260802 ' "$specs"
-  assert_match "second pair too"       '^spec rename jim/002 platform/002 20260802 ' "$specs"
-  assert_match "new group claimed"     '^group allocate platform ' "$specs"
+  assert_match "source vacated onto the destination" \
+    '^spec rename jim/001 platform/001 20260802 ' "$specs"
+  assert_match "second pair too" '^spec rename jim/002 platform/002 20260802 ' "$specs"
+  assert_match "new group claimed" '^group allocate platform ' "$specs"
+  assert_eq "no second claim on the destination" "0" \
+    "$(printf '%s\n' "$specs" | grep -c '^spec allocate platform/')"
   run_jimalloc_in "$A" resolve spec jim/001
   assert_eq "citation dereferences" "platform/001" "$OUT"
+  run_jimalloc_in "$A" resolve spec platform/001
+  assert_eq "the destination names itself" "platform/001" "$OUT"
+  run_jimalloc_in "$A" peek spec platform
+  assert_eq "the rename destination counts toward the high-water" "platform/003" "$OUT"
+}
+
+# The property this shape exists to restore, asserted end to end rather than
+# per record: after a renumber the registry contradicts neither itself nor the
+# tree, so the invariant that reads the sweep's exit code holds.
+case_jimalloc_partition_batch_renumber_leaves_no_drift() {
+  local bare A
+  bare="$(alloc_new_bare pbatch_clean_bare)"; A="$(alloc_new_clone "$bare" pbatch_clean_A)"
+  mkdir -p "$A/docs/specs/jim/001-alpha" "$A/docs/specs/jim/002-beta" "$A/docs/issues"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_jimalloc_in "$A" allocate spec jim "beta"
+  run_batch_in "$A" "$(batch_pairs jim/001 platform/001 alpha)" partition-batch spec 20260802
+  assert_exit "batch rc" 0 "$RC"
+  mkdir -p "$A/docs/specs/platform"
+  mv "$A/docs/specs/jim/001-alpha" "$A/docs/specs/platform/001-alpha"
+  run_jimalloc_in "$A" sweep
+  assert_exit "the sweep finds no drift" 0 "$RC"
+  assert_eq "no duplicate reported" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'duplicate-ordinal')"
+  run_jimalloc_in "$A" catch-up --apply
+  assert_exit "and the repair verb has nothing to say" 0 "$RC"
+}
+
+# The rename record carries the source's slug forward; it has no field of its
+# own for one. A pair naming a different slug is therefore asking for a record
+# the grammar cannot write, and saying so here is what keeps it from surfacing
+# later as tree-vs-registry MISMATCH over an ordinal that has already bound.
+case_jimalloc_partition_batch_refuses_a_slug_change() {
+  local bare A before
+  bare="$(alloc_new_bare pbatch_slug_bare)"; A="$(alloc_new_clone "$bare" pbatch_slug_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  before="$(alloc_bare_specs "$bare")"
+  run_batch_in "$A" "$(batch_pairs jim/001 platform/001 renamed-alpha)" \
+    partition-batch spec 20260802
+  assert_exit  "refuses" 1 "$RC"
+  assert_match "names both slugs" "not 'renamed-alpha'" "$ERR"
+  assert_eq "publishes nothing" "$before" "$(alloc_bare_specs "$bare")"
+  run_batch_in "$A" "$(batch_pairs jim/001 platform/001 alpha)" partition-batch spec 20260802
+  assert_exit "and the matching slug lands" 0 "$RC"
+}
+
+# Ordering: a pair wrong about the registry AND about its own slug reports the
+# registry contradiction first — the one the operator cannot fix by editing the
+# pair set.
+case_jimalloc_partition_batch_destination_gate_precedes_the_slug_gate() {
+  local bare A
+  bare="$(alloc_new_bare pbatch_order_bare)"; A="$(alloc_new_clone "$bare" pbatch_order_A)"
+  run_jimalloc_in "$A" allocate spec jim "alpha"
+  run_jimalloc_in "$A" allocate spec jim "beta"
+  run_batch_in "$A" "$(batch_pairs jim/001 jim/002 wrong-slug)" partition-batch spec 20260802
+  assert_exit  "refuses" 1 "$RC"
+  assert_match "the destination conflict is what it names" 'already claimed' "$ERR"
+  assert_eq "not the slug" "0" "$(printf '%s\n' "$ERR" | grep -c 'never a slug')"
 }
 
 # AC 4: the whole pair set is one commit — all-or-none, so no clone ever sees

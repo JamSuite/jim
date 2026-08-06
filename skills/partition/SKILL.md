@@ -402,11 +402,15 @@ the specs-root ledger.
    (`edges-diff` with old == new = pure multiset diff); reconcile-to-clean with health
    alongside, never conflated; name any un-runnable check verification-owed (AC 16).
 7. **Close** — first `jimalloc.sh partition-batch spec <date>` with the renumber
-   map on stdin as `<old-id>\t<new-id>\t<slug>` rows, so every destination is
-   established by a record of its own and every vacated source keeps resolving
-   forward. One commit, all-or-none: a refusal (occupied destination, a source
-   with no live claim, a self-rename) publishes nothing and is reported by name
-   rather than retried. Then `partition finished … op=split … identity=<mode>
+   map on stdin as `<old-id>\t<new-id>\t<slug>` rows, so every vacated source
+   keeps resolving forward onto the destination its rename establishes. The
+   `<slug>` is the source's own recorded slug — a renumber moves an ordinal and
+   never a slug — so a row naming a different one is refused, and that refusal
+   means the tree and the registry already disagree about that spec's slug:
+   settle it with `jimalloc.sh sweep` before re-running. One commit,
+   all-or-none: a refusal (occupied destination, a destination an earlier rename
+   vacated, a source with no live claim, a self-rename, a slug that does not
+   match) publishes nothing and is reported by name rather than retried. Then `partition finished … op=split … identity=<mode>
    frozen=<count> outcome=<split|blocked|declined> moved=<og/onum:ng/nnum>[,...]`
    on the specs-root ledger (the `moved=` remap chunked ≤256 bytes — the durable
    bridge), then `commit-map`; offer the frozen mentions as one tracked
@@ -469,8 +473,9 @@ ledger.
 7. **Verify + close** — the graph check (`merge-edges-diff <before> <after>
    <target> <src>...`, rc 0 = done); reconcile-to-clean with health alongside,
    never conflated; then `jimalloc.sh partition-batch spec <date>` with the
-   `merge-map` remap on stdin (`<old-id>\t<new-id>\t<slug>` rows) — one
-   all-or-none commit, refusals named and never retried — and then
+   `merge-map` remap on stdin (`<old-id>\t<new-id>\t<slug>` rows, each `<slug>`
+   the source's own recorded slug — a renumber moves an ordinal and never a
+   slug) — one all-or-none commit, refusals named and never retried — and then
    `partition finished … op=merge old=<effective sources>
    new=<target> [moved=<og/onum:ng/nnum>[,...]] identity=<mode> frozen=<count>
    outcome=<merged|blocked|declined>` — values only from preflight args + the
