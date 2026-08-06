@@ -252,3 +252,5 @@ issue allocate 251 20260805-stop-partition-batch-spec-emitting-the-duplicate-ord
 issue allocate 252 20260805-sum-ledger-stage-durations-instead-of-reporting-the-span-between 20260805 jrko
 issue allocate 253 20260805-teach-both-single-source-guards-in-jimfile-tests-the-spellings-a 20260805 jrko
 issue allocate 254 20260805-widen-the-doc-sweep-s-corpus-and-derive-its-registry-verb-list-f 20260805 jrko
+issue allocate 255 20260806-document-the-id-coordination-key-family-in-jimconf-toml-example 20260806 jrko
+issue allocate 256 20260806-fixture-the-invalid-id-coordination-branch-refusal-in-tests-jima 20260806 jrko
