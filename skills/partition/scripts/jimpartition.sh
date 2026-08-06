@@ -1585,12 +1585,24 @@ cmd_merge_map() {
     local -a bns=()
     for d in "$specs_dir/$src"/*/; do
       [[ -d "$d" ]] || continue
-      bn="${d%/}"; bns+=("${bn##*/}")
+      bn="${d%/}"; bn="${bn##*/}"
+      # The sort below is line-oriented, so a newline inside a basename would
+      # come back as two names and put rows in the map for specs that do not
+      # exist. Refused, not skipped: the ids here bind through partition-batch
+      # into an append-only registry, and a directory whose name cannot survive
+      # the map grammar is drift the operator has to see. The name is never
+      # echoed — its own bytes are what made it unprintable.
+      if [[ "$bn" == *$'\n'* ]]; then
+        echo "jimpartition merge-map: a spec dir name in $src contains a newline; rename it before mapping" >&2
+        return 1
+      fi
+      bns+=("$bn")
     done
     (( ${#bns[@]} )) || continue
-    # Numerically by ordinal. A bare LC_ALL=C glob is lexical, which stops
-    # agreeing with numeric order the moment two ordinals differ in width —
-    # 1000 sorts ahead of 999. renumber-map sorts numerically for this reason.
+    # Numerically by ordinal, safely: every basename is newline-free by the gate
+    # above, so one name is one line. A bare LC_ALL=C glob is lexical, which
+    # stops agreeing with numeric order the moment two ordinals differ in width
+    # — 1000 sorts ahead of 999. renumber-map sorts numerically for this reason.
     while IFS= read -r bn; do
       [[ -n "$bn" ]] || continue
       if [[ ! "$bn" =~ ^[0-9]{3,15}(-.*)?$ ]]; then

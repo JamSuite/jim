@@ -4,6 +4,16 @@
 #
 # Conventions: see skills/meta-test/scripts/testlib.sh header (canonical).
 #
+# MUTATION AUDIT
+#   SCOPE, stated first because a coverage claim is only as good as its bounds:
+#   exactly one guard in this file has been mutation-audited — merge-map's
+#   newline refusal. Nothing else here has been shown to discriminate; absence
+#   from this list is absence of evidence, not a passing grade.
+#
+#   Audited (2 mutations, both discriminating): the refusal downgraded to a
+#   `continue` (the silent-skip shape), and the gate deleted outright. Both turn
+#   the two newline cases red.
+#
 # HOW TO RUN
 #   bash tests/jimpartition.sh                  # every case in this file
 #   bash skills/meta-test/scripts/run.sh    # this file alongside every other tests/*.sh
@@ -2651,6 +2661,35 @@ case_jimpartition_merge_map_refuses_an_out_of_bound_spec_dir() {
   assert_exit "refuses rather than omitting" 1 "$RC"
   assert_eq   "no partial MAP output" "" "$OUT"
   assert_match "names the offender" 'outside the ordinal width bound' "$ERR"
+}
+
+# The sort that puts the map in numeric order is line-oriented, so a newline in
+# a basename would split one directory into several map rows — ids for specs
+# that do not exist, at rc 0, inside arithmetic the gate presents verbatim and
+# partition-batch binds into an append-only registry. Refused, and the offending
+# name never reaches stderr.
+case_jimpartition_merge_map_refuses_a_newline_basename() {
+  local root; root="$(mm_specs mm_nlbase cart/001-a wishlist/001-p)"
+  mkdir -p "$root/specs/wishlist/$(printf 'notes\n004-fabricated-a\n005-fabricated-b')"
+  run_jimpartition_in "$root" merge-map specs cart 003 wishlist
+  assert_exit  "refuses"           1  "$RC"
+  assert_eq    "no partial MAP output" "" "$OUT"
+  assert_match "names the class"   'contains a newline' "$ERR"
+  assert_eq "no row for a spec that does not exist" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c 'fabricated')"
+  assert_eq "the unprintable name is never echoed" "1" \
+    "$(printf '%s\n' "$ERR" | grep -c .)"
+}
+
+# The refusal is the whole directory's, not one row's: a real spec sharing the
+# scan with a newline-bearing sibling is withheld too, so the operator never
+# sees a map that looks complete over a tree the verb could not read.
+case_jimpartition_merge_map_newline_withholds_the_whole_map() {
+  local root; root="$(mm_specs mm_nlwhole cart/001-a wishlist/001-p wishlist/002-q)"
+  mkdir -p "$root/specs/wishlist/$(printf 'x\n003-y')"
+  run_jimpartition_in "$root" merge-map specs cart 003 wishlist
+  assert_exit "refuses" 1 "$RC"
+  assert_eq   "the representable specs are withheld too" "" "$OUT"
 }
 
 case_jimpartition_merge_map_ignores_a_non_spec_dir() {
