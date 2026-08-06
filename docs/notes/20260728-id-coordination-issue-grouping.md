@@ -1,6 +1,21 @@
 # ID-coordination issue cluster — spec grouping analysis
 
-**Created:** 2026-07-28 · **Revised:** 2026-08-05 (fourteenth revision) — **B″
+**Created:** 2026-07-28 · **Revised:** 2026-08-06 (fifteenth revision) — **the
+three criticals are closed, and two of the three issues were wrong about their
+own fix.** #238, #246 and #251 shipped as three commits with nine fixtures and
+an eleven-mutation audit; suite 1182 → 1191, and that arithmetic reconciles.
+#229's never-reissue rule now holds one group rename out, `merge-map` refuses
+the newline-bearing basename it had been fabricating rows from, and
+`partition-batch spec` stops writing the `duplicate-ordinal` drift its own
+classifier calls unrepairable — **Shape 1 retired for the spec arm**, the first
+charter shape this cluster has withdrawn rather than extended. The pass's own
+lesson is the one B″ earned and did not get to spend: **#238's Proposed action,
+implemented literally, does not fix #238**, and #251's named the wrong precedent.
+Both were caught by testing the proposal before adopting it. Step 8 is now
+genuinely unblocked — the qualification the fourteenth revision put in front of
+it is discharged.
+
+**Fourteenth revision (2026-08-05)** — **B″
 shipped and was reviewed; the verdict is major-drift.** Nineteen items built and
 closed, seventeen of twenty-one contracts fully satisfied, and the declined
 proposed actions are the best work in the pass — every one records its reason in
@@ -838,6 +853,94 @@ action is genuinely short. Fifteen new issues filed — one critical, four high.
 priorities it is four — #226, #227, #228, #233. Practice 7, once more, on the
 sentence announcing the practice's own findings.)*
 Full record: `docs/notes/20260805-b-prime-review.md`.
+
+## What the criticals pass changed
+
+Three commits, no spec — `673c1e4`, `4d739f7`, `9b2f777`, plus the closures.
+Nine fixtures, eleven mutations all red, suite 1182 → 1191 (the count
+reconciles: 4 + 3 + 2, with one existing case rewritten rather than added).
+Each commit was verified green *on its own*, not just at the end.
+
+1. **Two of the three issues were wrong about their own fix, and testing the
+   proposal is what found it.** B″ earned this lesson on #229 and #228 and this
+   pass is the first to apply it before writing anything.
+
+   **#238's Proposed action does not work.** It says to apply the alias map
+   "when filling `src_only` in the group-rename arm" — but the entries that arm
+   *fills* are the live claims it is moving, whose destination spelling is live,
+   not spent. Implemented literally, the replay emits one id as **both**:
+
+   ```
+   LIVE	h/001	3	alpha
+   SRC	h/001
+   ```
+
+   `alloc_live_claim_set` would fill `live[h/001]` and `spent[h/001]` together,
+   and `alloc_lift_state` consults `spent` *before* `live` — so legitimate
+   destinations under a renamed group would be refused `destination-vacated`,
+   while the reported bug stayed unfixed. The entries needing the alias are the
+   ones already in the set when the rename arrives, not the ones the arm writes.
+
+   **#251 named the wrong precedent.** Its proposed action offers "the rename
+   alone, which is what `lift` does". The lift is not that precedent: this
+   registry holds **52** destinations carrying both an allocate and a rename and
+   **zero** `DUP` rows, because the lift's rename sources are not live claims —
+   its renames are pure redirects over destinations the seed had already
+   established, so they never reach the claim-moving branch. The real argument
+   is narrower and stronger: the rename already carries the claim *from a live
+   source*, which is exactly the condition `partition-batch` enforces and the
+   lift forbids. Adopting the stated reason would have left the fix resting on a
+   false analogy.
+
+2. **A refusal that rests on its neighbour is the recurring shape, and it
+   decided the one real fork.** #238 could re-spell the spent ordinal in place
+   or keep both spellings. Replace is leaner and every door refuses the retired
+   spelling *today* — through each door's own retired-group check, not through
+   the spent gate. That is verbatim the condition `alloc_lift_state`'s header
+   calls **"a refusal that holds only while its neighbour stays put is not
+   enforcement"**, written eleven lines above one of the consumers replace would
+   weaken. Union was taken and then *demonstrated* load-bearing: with `core/002`
+   vacated, `core` renamed to `parts`, and the freed name later taken over,
+   `partition-batch` refuses a renumber onto `core/002` **on the spent gate by
+   name**, and `resolve core/002` shows why — it already answers `parts/044`.
+   Reaching that needs a hand-appended record, which is the crafted-record
+   threat model `alloc_fold_max_spec`'s contract is explicitly written against.
+   Pinned by a mutation that downgrades union to replace.
+
+3. **Shape 1 is withdrawn for the spec arm, and it was pinned by exactly one
+   assertion.** `tests/jimalloc.sh:4311` was the only place in the tree
+   asserting the paired allocate — none of the 182 partition-side cases, which
+   drive `partition-batch` through the real Close, said anything about it. The
+   case was **rewritten rather than adjusted**, with its header now recording
+   that its stated reasoning ("every destination is established by a record of
+   its own") *was the defect* rather than merely superseded. Worth noting
+   against the note's own habit of celebrating "zero pre-existing fixtures
+   modified": that metric is a proxy, and here the right move was to modify one.
+
+4. **The `<slug>` column stopped being decorative.** A rename record has no slug
+   field, so the destination inherits the source's; the pair's slug is now
+   *checked* rather than written, and a mismatch is refused. It sits **after**
+   the destination gates — found by testing, not design: an early probe hit the
+   slug error and masked the gate it was aiming at, so a pair wrong in two ways
+   was reporting the fixable problem instead of the registry contradiction.
+   Both the ordering and the check are mutation-pinned.
+
+5. **The door sweep came back clean for once, and that is reportable too.**
+   `merge-map`'s scan is the *only* line-oriented round-trip over filesystem
+   basenames: `renumber-map` reads a validated line grammar, and
+   `pending_provisionals` space-joins into a refusal where splitting fails safe.
+   The issue-side classifier has no group dimension, so #238 has no twin. Three
+   generations of this cluster have been caught by an unenumerated sibling; the
+   enumeration is cheap and this time it found nothing, which is the outcome
+   worth recording rather than assuming.
+
+6. **The `run.sh` zero-discovery hazard fired for real, on this pass.** A
+   full-suite run launched from the wrong working directory wrote "No such file
+   or directory" into its log and reported success, because the reported exit
+   code came from a trailing `grep`. Caught by eye, not by mechanism. This is
+   #153's shape and the same mechanism three judges converged on during the doc
+   pass — recorded because it has now moved from "residual hazard, narrower than
+   it looks" to "observed in the loop that verifies this cluster's own work".
 
 ## The grouping question, restated
 
@@ -1912,6 +2015,18 @@ another batch writer over the claim structure and practice 9 says *does the new
 reader agree with the old one* belongs at plan time — and today the emitter and
 the integrity report disagree about what "already claimed" means.
 
+**Discharged 2026-08-06 — and all three were taken, not just the two.** #251
+rode along rather than waiting on whether D is next, because its cost was one
+fixture (Shape 1 was pinned in exactly one assertion tree-wide) and its absence
+permanently failed a `high` blueprint invariant on any project that runs
+`/jim:partition`. So D now inherits one settled rule instead of a contradicted
+one, which is what practice 9 asked for. Two of the three fixes differ from
+their issue's Proposed action — #246 is the only one implemented as filed, and
+even there the NUL-delimiting the issue offered was dropped: `sort -z` is not
+POSIX, so refusing the newline before the sort is what makes the line-oriented
+read provably sound rather than conventionally sound. See *What the criticals
+pass changed*. **Step 8 is now unblocked with nothing in front of it.**
+
 Everything else the review filed (#235, #237, #239–#242, #248–#250, #252–#254) is
 follow-on work with no ordering claim on step 8.
 
@@ -2259,9 +2374,9 @@ them would repeat the accounting inflation #245 is about.
 
 | # | Pri | What |
 |---|---|---|
-| 238 | crit | the spent set is not alias-folded — **#229's rule still fails** one group rename out |
-| 246 | crit | `merge-map` fabricates map rows from a newline-bearing basename — **introduced by this build** |
-| 251 | crit | `partition-batch spec` emits the `duplicate-ordinal` drift its own classifier calls unrepairable |
+| 238 | crit | **closed** 2026-08-06 — the spent set carries an already-spent ordinal into its group's new spelling, keeping both; the issue's own Proposed action was measured not to work |
+| 246 | crit | **closed** 2026-08-06 — `merge-map` refuses a newline-bearing basename before the sort and withholds the whole map; the only line-oriented round-trip over basenames in the script |
+| 251 | crit | **closed** 2026-08-06 — the renumber emits the rename alone and checks the pair's slug against the source's; **Shape 1 retired for the spec arm** |
 | 235 | high | the fork-amplification class survives the memo scoping — 30× on HEAD, measured |
 | 237 | high | `catch-up` claims every identity has a record while withholding some |
 | 241 | high | the lift's eleven surviving guards — every refusal class pinned on the spec arm and no other |
@@ -2279,6 +2394,12 @@ them would repeat the accounting inflation #245 is about.
 | 245 | med | practice 10's gate — filed by B″, still open, and B″ failed it |
 | 244 | — | the lift's unread spent set — filed and fixed by B″ |
 | 247 | — | a renamed-away group in `catch-up` — filed and fixed by B″ |
+
+**Three of the twenty are closed** (2026-08-06): #238, #246 and #251, the three
+criticals, taken as a build with no spec — no security regression to gate, the
+two genuine forks settled in conversation before code, and the one doc surface
+that needed rewriting (`ARCHITECTURE.md`) went through `/jim:arch`. Seventeen
+remain, none critical. See *What the criticals pass changed*.
 
 *(The generational count is now 16 → 15 → 20. That is not a regression in care —
 B″'s review was the widest yet run here, sixteen investigators against B′'s
@@ -2360,6 +2481,22 @@ matrix as verb × entity when the surviving defects live in verb × rule. The
 counter-move is not another matrix. It is the derive-from-the-name rule at
 *Sequence* step 7: a guard's corpus must be computed from the set it claims to
 cover, so that a missing door fails the guard instead of escaping it.
+
+**The criticals pass adds the missing half of that, and it is cheap.** Three
+generations were spent learning that an issue names a *site* while a rule needs
+its *doors*. This pass found something one layer earlier: **an issue is also a
+claim about its own fix, and that claim is testable before any code is
+written.** #238's Proposed action was implemented literally and shown to leave
+the bug in place while breaking the lift; #251's named `lift` as its precedent,
+and the registry itself disproves the analogy — 52 paired destinations, zero
+`DUP` rows, because the lift's sources are not live claims. Neither needed
+judgment to catch. Both took one probe. B″ paid for this lesson on #229 and
+#228 and recorded it as *the pre-code forks paid for themselves*; what it did
+not say is that the check is mechanical, which is the property practice 10 was
+chosen for. The generalization worth carrying: **before implementing a proposed
+action, run it and confirm it fails without the fix and passes with it** — a
+proposal that cannot be told apart from the status quo has not been specified,
+and one that changes the wrong thing is visible in a single replay.
 
 C′ tested that lesson and returned an uncomfortable result. Every practice the
 third revision adopted was applied: the fan-out ran, the sensor ran, the plan's
