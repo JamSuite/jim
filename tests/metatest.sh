@@ -203,6 +203,23 @@ case_metatest_run_no_args_invokes_aggregate_runner() {
   assert_match "ran header" 'Ran [0-9]+ tests' "$OUT"
 }
 
+# AC: the aggregate runner refuses a directory with no tests/ at all. The glob is
+# PWD-relative by design, so a run from the wrong directory discovers nothing —
+# and a "Ran 0 tests" summary at rc 0 is indistinguishable from a suite that ran
+# everything and passed. Directory presence is the signal, not case count: an
+# EMPTY tests/ stays a legitimate rc 0 (the case above depends on it).
+case_metatest_run_refuses_a_dir_without_tests() {
+  local sb; sb=$(empty_dir "metatest-no-tests-dir")
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$sb" && bash "$REPO_ROOT/skills/meta-test/scripts/run.sh" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+  assert_exit   "setup-error rc"        2  "$RC"
+  assert_match  "names the cause"       'no tests/ directory' "$ERR"
+  assert_eq     "reports no pass total" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^Ran ')"
+}
+
 # AC: run with a name dispatches to the standalone path when the file exists.
 # Sandbox: scaffold widget, run widget. The scaffolded smoke case is a
 # placeholder assertion that passes — proves the standalone path executed.

@@ -70,6 +70,19 @@ FILTER="${1:-}"
 # The placement rule this leaves unenforced — a test file authored outside
 # tests/ is silently not run — is detected by tests/scripthygiene.sh instead,
 # which sweeps for test-shaped files under the discovery roots.
+# The floor under that PWD-relativity: an ABSENT tests/ means this runner is not
+# standing in a project that has a corpus at all — in practice a wrong working
+# directory — and discovering nothing there must not report as a passing suite,
+# because a green summary over zero executed cases is indistinguishable from a
+# green summary over all of them. An EMPTY tests/ is a different thing and stays
+# legal at rc 0: it is the shape this runner's own sandbox self-test relies on,
+# and a project may simply have no tests yet. Directory presence is the signal;
+# case count is not, precisely because zero cases is legitimate.
+if [[ ! -d tests ]]; then
+  echo "meta-test run.sh: no tests/ directory under $PWD — run from the project root" >&2
+  exit 2
+fi
+
 for tf in tests/*.sh; do
   [[ -e "$tf" ]] || continue
   source "$tf"
