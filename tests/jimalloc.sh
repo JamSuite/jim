@@ -33,12 +33,19 @@
 #   listing, empty-log refusal, partial-repair exit, at-the-tip recomputation,
 #   and its inherited erosion refusal.
 #
+#   Two more (39 total): the group-alias fold of the spent set, neutered two
+#   ways — the re-spell loop deleted (pre-fix, the ordinal reads as an ordinary
+#   absence one group rename later) and downgraded from union to replace (the
+#   vacated spelling stops refusing arrivals once its group name is reused).
+#
 #   SCOPE, stated because a coverage claim is only as good as its bounds: the
 #   first pass of this audit claimed "every classifier class" while measuring
 #   per class rather than per kind×class, and three issue-side emit sites had
 #   no discriminating fixture as a result. They do now. The audit measures the
 #   guards named above and nothing else — a detection not in that list has not
-#   been shown to be tested.
+#   been shown to be tested. Mutation proves an assertion DISCRIMINATES; it
+#   cannot show the corpus it ran over was large enough, so a guard that is
+#   green because it looked in too few places is invisible from here.
 #
 # HOW TO RUN
 #   bash tests/jimalloc.sh                  # every case in this file
@@ -2683,6 +2690,82 @@ case_jimalloc_sweep_tree_on_a_vacated_ordinal_is_drift() {
   assert_eq "never called missing" "0" \
     "$(printf '%s\n' "$OUT" | grep -c '^    missing-record	spec	core/002	')"
   assert_match "not counted as settled" '^    rename-source-ids	0$' "$OUT"
+}
+
+# AC 2: the vacancy survives its group being renamed. The high-water folds
+# through the group alias, so the spent set must be readable in the same
+# namespace — otherwise the ordinal reads as an ordinary absence one partition
+# step later and the append verb mints over it. Ordering matters here: the
+# ordinal is spent BEFORE the group moves, which is the arm that had no alias.
+case_jimalloc_sweep_vacated_ordinal_survives_a_group_rename() {
+  local repo
+  repo="$(sweep_repo sweep_spent_grouprename)"
+  alloc_append_record "$repo" specs.log 'spec rename core/002 core/044 20260802 jane'
+  alloc_append_record "$repo" specs.log 'group rename core parts 20260803 jane'
+  mv "$repo/docs/specs/core" "$repo/docs/specs/parts"
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "drift rc" 3 "$RC"
+  assert_match "vacated under the name the group now answers to" \
+    '^    tree-on-vacated-ordinal	spec	parts/002	' "$OUT"
+  assert_eq "never called missing" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^    missing-record	spec	parts/002	')"
+  run_jimalloc_in "$repo" peek spec parts
+  assert_eq "the high-water reads the same namespace" "parts/045" "$OUT"
+}
+
+# The other ordering — group first, then the spec rename — was never skewed,
+# and is fixtured so the pair pins the rule rather than the one arm that broke.
+case_jimalloc_sweep_vacated_ordinal_group_renamed_first() {
+  local repo
+  repo="$(sweep_repo sweep_spent_groupfirst)"
+  alloc_append_record "$repo" specs.log 'group rename core parts 20260802 jane'
+  mv "$repo/docs/specs/core" "$repo/docs/specs/parts"
+  alloc_append_record "$repo" specs.log 'spec rename parts/002 parts/044 20260803 jane'
+  run_jimalloc_in "$repo" sweep
+  assert_exit  "drift rc" 3 "$RC"
+  assert_match "same class, same spelling" \
+    '^    tree-on-vacated-ordinal	spec	parts/002	' "$OUT"
+}
+
+# The repair verb's side of the same rule: the append is what makes the drift
+# unrecoverable, so it must refuse and leave the log byte-identical.
+case_jimalloc_catchup_refuses_a_vacated_ordinal_across_a_group_rename() {
+  local repo before
+  repo="$(sweep_repo catchup_spent_grouprename)"
+  alloc_append_record "$repo" specs.log 'spec rename core/002 core/044 20260802 jane'
+  alloc_append_record "$repo" specs.log 'group rename core parts 20260803 jane'
+  mv "$repo/docs/specs/core" "$repo/docs/specs/parts"
+  before="$(alloc_specs_log "$repo")"
+  run_jimalloc_in "$repo" catch-up --apply
+  assert_exit  "refuses" 3 "$RC"
+  assert_match "names the class" 'tree-on-vacated-ordinal	spec	parts/002' "$OUT"
+  assert_eq "appends nothing" "$before" "$(alloc_specs_log "$repo")"
+  assert_eq "no claim minted over the spent ordinal" "0" \
+    "$(alloc_specs_log "$repo" | grep -c '^spec allocate parts/002 ')"
+  run_jimalloc_in "$repo" resolve spec core/002
+  assert_eq "the frozen citation still names one referent" "parts/044" "$OUT"
+}
+
+# The spelling a rename vacated stays closed to arrivals even after its group
+# name is taken over by another group — the case where the two spellings name
+# different groups and dropping either one reissues an ordinal a live citation
+# already dereferences.
+case_jimalloc_partition_batch_refuses_a_retired_spelling_after_reuse() {
+  local repo
+  repo="$(alloc_new_repo pbatch_reuse)"
+  alloc_append_record "$repo" specs.log 'group allocate core 20260801 who'
+  alloc_append_record "$repo" specs.log 'spec allocate core/001 alpha 20260801 who'
+  alloc_append_record "$repo" specs.log 'spec allocate core/002 beta 20260801 who'
+  alloc_append_record "$repo" specs.log 'spec rename core/002 core/044 20260801 who'
+  alloc_append_record "$repo" specs.log 'group rename core parts 20260802 who'
+  alloc_append_record "$repo" specs.log 'group allocate other 20260803 who'
+  alloc_append_record "$repo" specs.log 'spec allocate other/001 gamma 20260803 who'
+  alloc_append_record "$repo" specs.log 'group rename other core 20260804 who'
+  run_jimalloc_in "$repo" resolve spec core/002
+  assert_eq "the retired spelling has a referent" "parts/044" "$OUT"
+  run_batch_in "$repo" "$(batch_pairs core/001 core/002 gamma)" partition-batch spec 20260805
+  assert_exit  "refuses" 1 "$RC"
+  assert_match "on the spent gate, by name" 'vacated by an earlier rename' "$ERR"
 }
 
 # AC 2: a tree group whose name the registry renamed away is a contradiction,

@@ -1666,6 +1666,16 @@ alloc_spec_replay() {
         fi
         unset 'live_at[$rsrc]' 'live_slug[$rsrc]'
       else
+        # An ordinal this group already spent stays spent under the name the
+        # group now answers to — the namespace the tree and the alias-folded
+        # high-water both speak — and keeps the spelling it was vacated under,
+        # because both are closed to arrivals. Read BEFORE the live loop below
+        # adds this record's own sources, so an ordinal arriving at <rdst> is
+        # never mistaken for one <rdst> had already spent.
+        for key in "${!src_only[@]}"; do
+          [[ "$key" == "$rsrc"/* ]] || continue
+          src_only["$rdst/${key##*/}"]=1
+        done
         for key in "${!live_at[@]}"; do
           [[ "$key" == "$rsrc"/* ]] || continue
           src_only["$key"]=1
