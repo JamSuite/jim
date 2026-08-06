@@ -121,3 +121,5 @@ spec rename jim/008 platform/002 20260725 jim-lift
 spec rename jim/009 platform/003 20260725 jim-lift
 spec realize platform/P-20260801-registry-integrity-and-drift platform/012 20260801 jim-lift
 spec realize blueprint/P-20260802-rename-redirect-record-emission blueprint/025 20260802 jim-lift
+spec allocate issue/011 issue-placement 20260806 jrko
+spec realize issue/P-20260806-issue-placement issue/011 20260806 jrko
