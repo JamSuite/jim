@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T22:20:34Z
-updated: 2026-08-05T22:20:34Z
+updated: 2026-08-06T08:05:57Z
 origin: docs/notes/20260805-b-double-prime-review.md
 ---
 
@@ -70,3 +70,47 @@ this checkout before sourcing.
 
 Add a non-empty-corpus floor so `run` over zero discovered files exits non-zero
 rather than reporting a pass.
+
+## Partial (2026-08-06) — the corpus floor landed, the source gate did not
+
+**Stays open.** Only the second of this issue's two reproductions is closed.
+
+Landed as `67fceb3`: `run.sh` refuses a working directory with no `tests/`
+subdirectory at rc 2 — the code `testlib.sh` already reserves for a setup error —
+naming the cause on stderr. The `cd skills/demo && metatest.sh run` vacuous green
+in the Description no longer occurs.
+
+The floor keys on **directory presence, not case count**, and that distinction is
+load-bearing rather than incidental. An empty `tests/` is legitimate: it is the
+shape this runner's own sandbox self-test depends on, and a project may simply
+have no tests yet. Keying on case count would have forced
+`tests/metatest.sh:199-204` to be un-taught — and that assertion turns out to be
+protecting the legitimate empty-corpus case, not the defect. Pinned by
+`case_metatest_run_refuses_a_dir_without_tests`, mutation-tested: with the floor
+removed it fails, and the empty-`tests/` sandbox case keeps passing.
+
+**The primary subject of this issue — the ungated `source` — is untouched, and
+the floor does not even narrow it.** The Description's payload reproduction was
+re-run at `67fceb3` and fires exactly as written, because it creates
+`untrusted-repo/tests/` before invoking: the directory exists, so the floor
+passes and `run.sh:75` sources the payload.
+
+```
+cd untrusted-repo && bash skills/meta-test/scripts/run.sh
+  -> *** code execution: uid=1000 cwd=.../untrusted-repo ***
+     Ran 0 tests: 0 passed, 0 failed
+  -> PWNED created
+```
+
+None of the Proposed action's three options has been taken: the cwd requirement
+is still unstated in `SKILL.md` (still zero occurrences of "project root" — only
+`run.sh`'s new error message says it), `run` still does not refuse a cwd that is
+not the expected checkout, and nothing verifies the discovered corpus belongs to
+this checkout before sourcing. The trust boundary this issue asks to have decided
+remains undecided.
+
+Rediscovered independently before this note was written: a `/jim:verify platform`
+judge, reading only code, reached the same vacuous-green finding from
+`run.sh:73-76` + `testlib.sh:207-213` with no knowledge of this issue. That is
+corroboration the finding is real and reachable, and also the reason a duplicate
+was briefly filed and deleted — the collection was not consulted first.
