@@ -169,6 +169,229 @@ place_substitute() {
   done
 }
 
+# ─── Section: Engine ─────────────────────────────────────────────────────────
+
+PLACE_WORK=""    # this run's temp root, removed by the cleanup trap
+PLACE_COLL=""    # the materialized collection inside it — the `{}` substitution
+PLACE_INDEX=""   # scratch git index used to build the destination tree
+PLACE_TOKEN=""   # this run's token
+
+# place_cleanup — discard the run's temp root. Registered on EXIT, INT and TERM
+# so an interrupted run leaves no materialized collection behind.
+place_cleanup() {
+  if [[ -n "$PLACE_WORK" && -d "$PLACE_WORK" ]]; then
+    rm -rf -- "$PLACE_WORK"
+  fi
+  return 0
+}
+
+# place_open_work — create the run's temp root and derive this run's token from
+# its basename, which mktemp already made unique and unguessable.
+place_open_work() {
+  PLACE_WORK="$(mktemp -d 2>/dev/null)" || {
+    echo "place.sh: could not create a working directory" >&2
+    return 1
+  }
+  trap place_cleanup EXIT INT TERM
+  PLACE_COLL="$PLACE_WORK/collection"
+  PLACE_INDEX="$PLACE_WORK/index"
+  PLACE_TOKEN="${PLACE_WORK##*/}"
+  mkdir -p -- "$PLACE_COLL"
+}
+
+# place_prefix — the collection's path inside the destination branch's tree.
+# It mirrors the project's configured layout so a checkout of that branch is
+# self-describing rather than a black box.
+place_prefix() {
+  local dir
+  dir="$(place_issues_dir)" || return 2
+  dir="${dir#./}"
+  dir="${dir%/}"
+  if ! bash "$JIMFILE" valid-relpath "$dir" >/dev/null 2>&1; then
+    echo "place.sh: the configured issues directory is not a safe repo-relative" \
+         "path, so it cannot be mirrored onto a destination branch" >&2
+    return 2
+  fi
+  case "$dir" in -*) echo "place.sh: the configured issues directory may not begin with '-'" >&2; return 2 ;; esac
+  printf '%s\n' "$dir"
+}
+
+# place_shown <text> — <text> with control characters removed, for messages that
+# quote a name taken from branch content. The name is data, and a terminal is
+# not obliged to interpret whatever escape sequence it carries.
+place_shown() { printf '%s' "$1" | tr -d '[:cntrl:]'; }
+
+# place_bookmark_ref <branch> — the local ref recording the last destination tip
+# this clone acted on. It lives outside refs/heads so it is never pushed,
+# fetched, or mistaken for a branch.
+place_bookmark_ref() {
+  local ref="refs/jim/issue-placement/$1"
+  git check-ref-format "$ref" >/dev/null 2>&1 || return 1
+  printf '%s\n' "$ref"
+}
+
+# place_materialize <tip> <prefix> <dest>
+#   Extract the collection at <prefix> in commit <tip> into <dest>, one entry at
+#   a time. Branch content is untrusted — a tree can carry an entry name that
+#   escapes the directory it is listed under, and no fetch validates that — so
+#   every entry clears three gates before a single byte is written: it must be a
+#   regular file, it must be a plain name inside the collection (the collection
+#   is one flat directory of files, which is all any issue script reads or
+#   writes), and its resolved destination must land under <dest>. Blobs are read
+#   by object name, never by tree path, so a crafted name never reaches a git
+#   argument at all. The first violation aborts the whole extraction, so a
+#   refused run leaves no partial collection and never runs the wrapped command.
+place_materialize() {
+  local tip="$1" prefix="$2" dest="$3"
+  [[ -n "$tip" ]] || return 0
+  local subtree
+  subtree="$(git rev-parse --verify --quiet --end-of-options "$tip:$prefix" 2>/dev/null)" || return 0
+  [[ -n "$subtree" ]] || return 0
+  local dest_real
+  dest_real="$(realpath -m -- "$dest" 2>/dev/null)" || return 1
+  local rec meta mode type sha name shown resolved
+  while IFS= read -r -d '' rec; do
+    name="${rec#*$'\t'}"
+    meta="${rec%%$'\t'*}"
+    read -r mode type sha <<< "$meta"
+    shown="$(place_shown "$name")"
+    case "$mode" in
+      100644|100755) ;;
+      *)
+        echo "place.sh: refusing '$shown' from branch '$prefix' — the collection" \
+             "holds regular files only" >&2
+        return 2 ;;
+    esac
+    if [[ "$name" == */* || "$name" == "." || "$name" == ".." ]]; then
+      echo "place.sh: refusing '$shown' from branch '$prefix' — a collection entry" \
+           "must be a plain file name" >&2
+      return 2
+    fi
+    case "$name" in -*)
+      echo "place.sh: refusing '$shown' from branch '$prefix' — a collection entry" \
+           "may not begin with '-'" >&2
+      return 2 ;;
+    esac
+    if ! bash "$JIMFILE" valid-relpath "$name" >/dev/null 2>&1; then
+      echo "place.sh: refusing '$shown' from branch '$prefix' — not a safe" \
+           "relative path" >&2
+      return 2
+    fi
+    if ! resolved="$(realpath -m -- "$dest/$name" 2>/dev/null)" \
+       || [[ "$resolved" != "$dest_real"/* ]]; then
+      echo "place.sh: refusing '$shown' from branch '$prefix' — it resolves" \
+           "outside the collection directory" >&2
+      return 2
+    fi
+    if ! git cat-file blob "$sha" > "$dest/$name" 2>/dev/null; then
+      echo "place.sh: could not read collection content from branch '$prefix'" >&2
+      return 1
+    fi
+  done < <(git ls-tree -r -z "$subtree")
+  return 0
+}
+
+# place_snapshot <dir> <assoc-array-name>
+#   Fill the named associative array with name → blob sha for every file in the
+#   collection. Comparing two snapshots is what yields the changed set, and it
+#   yields deletions as naturally as additions — a mutation that removes a file
+#   (a rename is a remove plus a create) must remove it at the destination too,
+#   or the old name comes back the moment the write is replayed.
+#   The nameref locals carry a reserved prefix throughout this script: a
+#   nameref whose own name matches the array it points at resolves to itself,
+#   and bash yields an empty array rather than an error.
+place_snapshot() {
+  local dir="$1"
+  local -n _ps_snap="$2"
+  _ps_snap=()
+  local entry name sha
+  while IFS= read -r -d '' entry; do
+    name="${entry##*/}"
+    if [[ ! -f "$entry" || -L "$entry" ]]; then
+      echo "place.sh: the collection may hold regular files only; found '$name'" >&2
+      return 1
+    fi
+    # -w stores the blob: the destination tree is built from these object names,
+    # so a sha that was only computed names nothing the tree can reference.
+    sha="$(git hash-object -w -- "$entry")" || return 1
+    _ps_snap["$name"]="$sha"
+  done < <(find "$dir" -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
+  return 0
+}
+
+# place_commit_tree <tree> <message> [<parent>]
+#   Build the commit object. A parentless commit is the destination branch's
+#   birth: a branch that does not exist yet is created carrying the collection
+#   alone, rather than forking the whole working branch into every later
+#   materialization. The committer identity is git's own unless the clone has
+#   none configured, in which case a fixed one stands in.
+place_commit_tree() {
+  local tree="$1" msg="$2" parent="${3:-}"
+  local -a ident=() parent_arg=()
+  if [[ -z "$(git config user.email 2>/dev/null)" ]]; then
+    ident=(-c "user.name=jim-placement" -c "user.email=jim-placement@localhost")
+  fi
+  [[ -n "$parent" ]] && parent_arg=(-p "$parent")
+  git "${ident[@]}" commit-tree "$tree" "${parent_arg[@]}" -m "$msg"
+}
+
+# place_publish <branch> <tip> <prefix> <before-array> <after-array> <message>
+#   Land the changed set on <branch> with git plumbing: replay the changes into
+#   a scratch index seeded from <tip>, write the tree, commit it, and move the
+#   ref with an old-value compare-and-swap so a concurrent session that advanced
+#   the branch is detected rather than overwritten. Prints the new commit.
+#   rc 3 means the compare-and-swap was rejected.
+place_publish() {
+  local branch="$1" tip="$2" prefix="$3" msg="$6"
+  local -n _pp_before="$4"
+  local -n _pp_after="$5"
+  local name tree commit rc
+  (
+    export GIT_INDEX_FILE="$PLACE_INDEX"
+    rm -f -- "$PLACE_INDEX"
+    if [[ -n "$tip" ]]; then
+      git read-tree "$tip" || exit 1
+    else
+      git read-tree --empty || exit 1
+    fi
+    for name in "${!_pp_after[@]}"; do
+      [[ "${_pp_before[$name]:-}" == "${_pp_after[$name]}" ]] && continue
+      git update-index --add --cacheinfo 100644 "${_pp_after[$name]}" "$prefix/$name" || exit 1
+    done
+    for name in "${!_pp_before[@]}"; do
+      [[ -n "${_pp_after[$name]:-}" ]] && continue
+      git update-index --force-remove -- "$prefix/$name" || exit 1
+    done
+    git write-tree
+  ) > "$PLACE_WORK/tree" 2>/dev/null
+  rc=$?
+  (( rc == 0 )) || { echo "place.sh: could not build the destination tree" >&2; return 1; }
+  tree="$(cat "$PLACE_WORK/tree")"
+  [[ -n "$tree" ]] || { echo "place.sh: could not build the destination tree" >&2; return 1; }
+  commit="$(place_commit_tree "$tree" "$msg" "$tip")" || {
+    echo "place.sh: could not build the destination commit" >&2
+    return 1
+  }
+  # An empty old-value requires the ref to be absent, which is what makes the
+  # orphan bootstrap a compare-and-swap too rather than a blind create.
+  if ! git update-ref "refs/heads/$branch" "$commit" "$tip" 2>/dev/null; then
+    return 3
+  fi
+  printf '%s\n' "$commit"
+}
+
+# place_message <verb> <id> — the commit subject, composed from the trusted verb
+# enum plus an id that has already cleared the issue-id boundary. No caller text
+# reaches a commit message.
+place_message() {
+  local verb="$1" id="${2:-}"
+  if [[ -n "$id" ]]; then
+    printf 'docs(issues): %s %s\n' "$verb" "$id"
+  else
+    printf 'docs(issues): %s\n' "$verb"
+  fi
+}
+
 # ─── Section: Verbs ──────────────────────────────────────────────────────────
 
 # cmd_mode [--place-token <tok>] — the self-routing decision, and the only place
@@ -205,12 +428,10 @@ cmd_mode() {
 #   command is exec'd, so its exit status is the caller's and no git work
 #   happens at all — the script is usable outside a repository.
 cmd_run() {
-  local verb="" id=""
+  local verb="" id="" read_only=0
   while (( $# )); do
     case "$1" in
-      # A read-only run publishes nothing either way, so under the default
-      # placement the flag selects the same behavior as a write.
-      --read) shift ;;
+      --read) read_only=1; shift ;;
       --verb) verb="${2-}"; shift 2 || break ;;
       --id)   id="${2-}";   shift 2 || break ;;
       --)     shift; break ;;
@@ -229,13 +450,62 @@ cmd_run() {
   local dest
   dest="$(place_destination)" || return 2
   if [[ "$dest" == "branch" ]]; then
+    # Passthrough: no git choreography at all, and the wrapped command's own
+    # exit status is the caller's. A read-only run publishes nothing either
+    # way, so the flag selects the same behavior here as a write.
     local dir
     dir="$(place_issues_dir)" || return 2
     place_substitute "$dir" "" "$@"
     exec "${PLACE_CMD[@]}"
   fi
-  echo "place.sh run: the placement engine is not available in this build" >&2
-  return 1
+  local prefix
+  prefix="$(place_prefix)" || return 2
+  place_open_work || return 1
+  local tip
+  tip="$(git rev-parse --verify --quiet --end-of-options "refs/heads/$dest" 2>/dev/null || true)"
+  place_materialize "$tip" "$prefix" "$PLACE_COLL" || return $?
+  local -A before=() after=()
+  place_snapshot "$PLACE_COLL" before || return 1
+  place_substitute "$PLACE_COLL" "$PLACE_TOKEN" "$@"
+  local rc=0
+  JIM_PLACE_TOKEN="$PLACE_TOKEN" "${PLACE_CMD[@]}" || rc=$?
+  (( rc == 0 )) || return "$rc"
+  (( read_only == 0 )) || return 0
+  place_snapshot "$PLACE_COLL" after || return 1
+  place_commit_changes "$dest" "$tip" "$prefix" before after "$verb" "$id"
+}
+
+# place_commit_changes <branch> <tip> <prefix> <before> <after> <verb> <id>
+#   Publish the changed set, or report honestly that there was nothing to
+#   publish. A mutation that changed nothing leaves no empty commit behind.
+place_commit_changes() {
+  local dest="$1" tip="$2" prefix="$3" verb="$6" id="$7"
+  local -n _pc_before="$4"
+  local -n _pc_after="$5"
+  local name changed=0
+  for name in "${!_pc_after[@]}"; do
+    [[ "${_pc_before[$name]:-}" == "${_pc_after[$name]}" ]] || { changed=1; break; }
+  done
+  if (( changed == 0 )); then
+    for name in "${!_pc_before[@]}"; do
+      [[ -n "${_pc_after[$name]:-}" ]] || { changed=1; break; }
+    done
+  fi
+  (( changed )) || return 0
+  local commit rc=0
+  commit="$(place_publish "$dest" "$tip" "$prefix" "$4" "$5" "$(place_message "$verb" "$id")")" || rc=$?
+  if (( rc != 0 )); then
+    if (( rc == 3 )); then
+      echo "place.sh: '$dest' moved while this mutation was being prepared;" \
+           "re-run to apply it to the current state" >&2
+    fi
+    return "$rc"
+  fi
+  local bref
+  if bref="$(place_bookmark_ref "$dest")"; then
+    git update-ref "$bref" "$commit" 2>/dev/null || true
+  fi
+  return 0
 }
 
 usage() {
