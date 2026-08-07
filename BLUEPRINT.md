@@ -4,7 +4,7 @@
 # Blueprint — jim
 
 *Axis: vertical · Territory: declared-paths*
-*Last updated: 2026-08-05 (via /jim:blueprint)*
+*Last updated: 2026-08-07 (via /jim:blueprint)*
 
 *The project-tier context map: the declared partition of this project into
 spec groups, each a deliberate context boundary. Current state only — the
@@ -88,7 +88,7 @@ re-declared here.*
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-08-06T07:55:59Z
+on every blueprint write; do not edit. Last reconciled: 2026-08-07T11:39:30Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |
