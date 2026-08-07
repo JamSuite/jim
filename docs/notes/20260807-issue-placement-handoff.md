@@ -16,10 +16,9 @@ here is committed; the working tree is clean.*
 | Follow-ons | 16 issues filed (#262–#277); 9 open, 7 closed |
 | Build base | `f024b9e` (also in `.git/jim-build-base-011`) |
 
-**The plan is still not marked complete on purpose.** The four data defects are
-fixed, but **AC #13 remains violated** (#262) and that is a design question
-someone has to answer before a re-review can clear the verdict — see *Next
-steps*.
+**The plan is not marked complete only because the re-review has not run.** All
+thirteen ACs now have an implementation behind them; nothing is known to be
+outstanding that a reviewer would call drift.
 
 ## The defect-fix pass
 
@@ -34,6 +33,7 @@ checked non-vacuous by neutering the thing it guards and watching it fail.
 | **#264** | `begin --read` in direct mode returns `direct-read`, which `commit` refuses; the write arm re-asserts HEAD and refuses the `branch` sentinel. |
 | **#276** | The freshness `touch` is gone; the index is regenerated in the materialized copy, after the base snapshot so a write publishes the correction. |
 | **#272** | The vacuous cleanup case, the two "tip unmoved" cases that could not move either way, the dangling-origin case that created its own origin, the unchecked fixture, and the bare `rev-parse` baselines. Adds the direct-token branch, the `issues_path` refusal, `--id` validation, and the local-tier retry. |
+| **#262** | AC #13's scrub moment moved from prose to the emitter. `new.sh --auto` declares a batch unreviewed and exits 4, having written nothing, when it would publish to an unacknowledged placement; the nine auto-filing skills pass the flag and fall back to the interactive batch on that code. |
 
 `ARCHITECTURE.md` was refreshed through `/jim:arch` for the behavior these
 changed. `review.md` is **not** updated — it is the record of the review that
@@ -81,9 +81,9 @@ Full detail in `docs/specs/issue/011-issue-placement/review.md`. The four that
 matter, each **reproduced at a shell**, not argued from the code. All are
 placement-only — the default path is clean.
 
-*All four are fixed; each now has a test that reproduces it. Kept here because
-the reproductions are what a re-reviewer should re-run, and because the last
-subsection — AC #13 — is still open.*
+*All four are fixed, and so is everything under "Also worth knowing" except the
+`issue-analyst` gap (#266). Kept here because the reproductions are what a
+re-reviewer should re-run.*
 
 ### 1. Placeholder substitution corrupts the durable id — *critical*
 
@@ -146,19 +146,23 @@ same repo, making the real case unrepresentable.
 
 ### Also worth knowing
 
-- **AC #13 is violated, and it is a plan defect.** The auto-file scrub degrade
-  is stated in `skills/issue/SKILL.md` §7a and executed by **none** of the nine
-  surfacing skills — each has its own local `IF auto_issue_file == "true"` branch,
-  and §7a is not loaded when e.g. `/jim:build` runs. A pointer inherits a rule to
-  consult, not a branch to take. DD 9's "one edit, eight inheritors" reasoning
-  does not hold for behavior.
+- **AC #13 was violated, and it was a plan defect** *(fixed — #262)*. The
+  auto-file scrub degrade was stated in `skills/issue/SKILL.md` §7a and executed
+  by **none** of the nine surfacing skills — each has its own local
+  `IF auto_issue_file == "true"` branch, and §7a is not loaded when e.g.
+  `/jim:build` runs. A pointer inherits a rule to consult, not a branch to take.
+  DD 9's "one edit, eight inheritors" reasoning does not hold for behavior. The
+  lesson generalizes past this AC: single-sourcing a *rule* into §7a works,
+  single-sourcing a *branch* does not, and the fix was to move the decision
+  somewhere mechanical rather than to write the rule in more places.
 - **`agents/issue-analyst.md` was never updated** — it still reads
   `docs/issues/*.md` literally, so under placement it takes its roster from the
   destination and its bodies from the branch-local collection.
-- **One invariant regression**: `staleness-gated-reads`. `place_materialize`
-  `touch`es the index so the mtime gate always reports fresh, which is sound only
-  while every write goes through the emitter. Resolved **fix-code** at the
-  blueprint fork — the invariant's wording stands, the code changes.
+- **One invariant regression**: `staleness-gated-reads` *(fixed — #276)*.
+  `place_materialize` `touch`ed the index so the mtime gate always reported
+  fresh, which is sound only while every write goes through the emitter.
+  Resolved **fix-code** at the blueprint fork — the invariant's wording stands,
+  the code changed.
 
 ## Corrections made to my own work during the cycle
 
@@ -176,17 +180,18 @@ Recorded so a resuming agent does not re-derive them:
   deletes a destination file. I built the fixture — **the victim survived**; the
   claim is refuted. Residual is a spurious rc 3, not data loss.
 
-## Next steps, in order
+## Next steps
 
-1. **Decide AC #13's enforcement point** — **#262**. A design question, not a
-   bug fix, and the one thing standing between here and a clean re-review: the
-   AC is *violated*, so re-running the review before it is settled spends a
-   large fan-out to be told so again. The issue lays out three shapes. The
-   trade-off that matters is grant cost — a `place.sh` verb keeps the rule in
-   one place but needs a new `allowed-tools` clause in each of the nine
-   surfacing skills, while restating the guard locally needs none, because they
-   already hold the `jimconf.sh` grant they read `auto_issue_file` with.
-2. **Re-run `/jim:review`**, then mark the plan `complete`.
+**Re-run `/jim:review`**, then mark the plan `complete`. That is the whole of
+what is left.
+
+AC #13 was settled by choosing the emitter (#262). The alternative shapes the
+issue listed both put the decision in the nine skills — either as a `place.sh`
+verb they consult or as a local `IF` guard — and both leave it as prose an agent
+may or may not execute, which is the failure this AC already had once. The
+emitter is the single write door, so it is the only participant that sees every
+batch; deciding there also cost no new tool grants, since every one of those
+skills already invokes `new.sh`.
 
 Not blocking, in rough priority: **#266** (insights analyst reads the
 branch-local collection), **#274** (push failures reported as contention),
