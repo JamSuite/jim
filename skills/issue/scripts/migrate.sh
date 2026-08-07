@@ -371,7 +371,43 @@ usage() {
     '  issues_dir default: jimconf.sh get issues'
 }
 
+# route_placement <place-token> <args...>
+#   Re-exec through place.sh when the project keeps its collection on a
+#   designated branch, so renames land there as one commit. An explicit
+#   directory argument opts out, which is also what stops the re-exec
+#   recursing; a preview routes read-only, since previewing mutates nothing.
+route_placement() {
+  local token="$1"; shift
+  local place="$HERE/place.sh" mode arg dir="" apply=0 skip_next=0
+  [[ -r "$place" ]] || return 0
+  for arg in "$@"; do
+    if (( skip_next )); then skip_next=0; continue; fi
+    case "$arg" in
+      --apply)          apply=1 ;;
+      --expect|-c)      skip_next=1 ;;
+      prefix|rewrite|-*) ;;
+      *)                dir="$arg" ;;
+    esac
+  done
+  [[ -z "$dir" ]] || return 0
+  mode="$(bash "$place" mode --place-token "$token")" || exit $?
+  [[ "$mode" == "route" ]] || return 0
+  local -a run=(run)
+  if (( apply )); then run+=(--verb migrate); else run+=(--read); fi
+  exec bash "$place" "${run[@]}" -- \
+    bash "${BASH_SOURCE[0]}" --place-token '{token}' "$@" '{}'
+}
+
 main() {
+  local place_token=""
+  if [[ "${1:-}" == "--place-token" ]]; then
+    place_token="${2:-}"
+    shift 2
+  fi
+  case "${1:-}" in
+    ""|-h|--help|help) ;;
+    *) route_placement "$place_token" "$@" ;;
+  esac
   if [[ "${1:-}" == "-c" ]]; then
     [[ -n "${2:-}" ]] || { echo "error: -c requires a path argument" >&2; return 2; }
     CFG="$2"; shift 2

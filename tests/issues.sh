@@ -2921,6 +2921,148 @@ case_issues_placement_insights_graph_routes() {
   assert_nonempty "output" "$OUT"
 }
 
+# run_in <repo> <script> <args...> — run any issue script from inside <repo>.
+run_in() {
+  local repo="$1" script="$2"; shift 2
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && bash "$script" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: realizing a provisional ordinal under placement rewrites num: at the
+# destination and reindexes there, leaving the working branch alone
+# (spec AC #3).
+case_issues_placement_realize_lands_at_the_destination() {
+  local repo body before
+  repo="$(placement_repo issues_place_realize jim/issues)"
+  body="$(fixture issues_place_realize_body.md 'body')"
+  run_new_in "$repo" --slug 20260101-a --num "P-20260101-a" \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  assert_match "provisional at the destination" '^num: P-20260101-a$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_RECONCILE" --apply
+  assert_exit "realize rc" 0 "$RC"
+  assert_match "num realized at the destination" '^num: 1$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  assert_match "index refreshed there" 'num: 1' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+  assert_eq "one further commit" "1" \
+    "$(git -C "$repo" rev-list --count "$before..refs/heads/jim/issues")"
+  assert_eq "working tree untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: a preview publishes nothing. reconcile and migrate both preview by
+# default, and a preview that committed would make "read-only" a lie.
+case_issues_placement_preview_publishes_nothing() {
+  local repo body before
+  repo="$(placement_repo issues_place_preview jim/issues)"
+  body="$(fixture issues_place_preview_body.md 'body')"
+  run_new_in "$repo" --slug 20260101-a --num "P-20260101-a" \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_RECONCILE"
+  assert_exit "preview rc" 0 "$RC"
+  run_in "$repo" "$SCRIPT_MIGRATE" prefix
+  assert_exit "migrate preview rc" 0 "$RC"
+  assert_eq "tip unmoved" "$before" \
+    "$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+}
+
+# AC: backfill routes too — a display-ordinal backfill lands at the destination
+# rather than on the working branch (spec AC #3).
+case_issues_placement_backfill_lands_at_the_destination() {
+  local repo body
+  repo="$(placement_repo issues_place_backfill jim/issues)"
+  body="$(fixture issues_place_backfill_body.md 'body')"
+  run_new_in "$repo" --slug 20260101-a --num 7 --created 2026-01-01 \
+    --updated 2026-01-01 --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  assert_match "date-only to begin with" '^created: 2026-01-01$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  run_in "$repo" "$SCRIPT_BACKFILL" timestamp
+  assert_exit "backfill rc" 0 "$RC"
+  assert_match "normalized at the destination" '^created: 2026-01-01T00:00:00Z$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  assert_eq "working tree untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: migrate's rename flow lands the renames and the regenerated index as one
+# commit on the destination (spec AC #3, AC #4).
+case_issues_placement_migrate_lands_renames_as_one_commit() {
+  local repo body before paths
+  repo="$(placement_repo issues_place_migrate jim/issues)"
+  printf 'issue_placement = "jim/issues"\nissue_id_prefix = "sequential"\n' \
+    > "$repo/jimconf.toml"
+  git -C "$repo" commit -q -am conf
+  body="$(fixture issues_place_migrate_body.md 'body')"
+  run_new_in "$repo" --slug 20260101-alpha --num 3 \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_MIGRATE" prefix --apply
+  assert_exit "migrate rc" 0 "$RC"
+  paths="$(dest_paths "$repo" jim/issues)"
+  assert_match "renamed at the destination" 'docs/issues/0003-alpha\.md' "$paths"
+  assert_eq "old name gone" "no" \
+    "$(printf '%s\n' "$paths" | grep -q '20260101-alpha\.md' && echo yes || echo no)"
+  assert_eq "one commit for the whole rename" "1" \
+    "$(git -C "$repo" rev-list --count "$before..refs/heads/jim/issues")"
+}
+
+# AC: a rename that loses a push race grafts as a delete plus a create. Carrying
+# only the create would leave one issue under two filenames and an index holding
+# two entries for it — at rc 0 (security Finding 8).
+case_issues_placement_rename_race_grafts_as_delete_and_create() {
+  local bare mine theirs body teammate paths index
+  bare="$(empty_dir issues_race_bare)"; git init -q --bare "$bare/r.git"
+  mine="$(empty_dir issues_race_mine)"
+  git clone -q "$bare/r.git" "$mine"
+  git -C "$mine" config user.name mine && git -C "$mine" config user.email m@e
+  theirs="$(empty_dir issues_race_them)"
+  git clone -q "$bare/r.git" "$theirs"
+  git -C "$theirs" config user.name them && git -C "$theirs" config user.email t@e
+  printf 'issue_placement = "jim/issues"\nissue_id_prefix = "sequential"\n' \
+    > "$mine/jimconf.toml"
+  printf 'issue_placement = "jim/issues"\n' > "$theirs/jimconf.toml"
+  body="$(fixture issues_race_body.md 'body')"
+  run_new_in "$mine" --slug 20260101-alpha --num 3 \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  teammate="$TMP_BASE/issues-race-teammate.sh"
+  cat > "$teammate" <<TEAMMATE
+cd "$theirs" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" run --verb file -- \\
+  sh -c 'printf "theirs\\n" > "\$1/20260101-other.md"' _ '{}'
+TEAMMATE
+  # The rename runs, then the teammate publishes, then this mutation tries to
+  # land — so the graft has to replay both halves of the rename.
+  OUT="$(cd "$mine" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" \
+    run --verb migrate -- sh -c \
+    'bash "$1" prefix "$2" --apply >/dev/null; sh "$3" >/dev/null 2>&1' \
+    _ "$SCRIPT_MIGRATE" '{}' "$teammate" 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_exit "rc" 0 "$RC"
+  paths="$(git -C "$bare/r.git" ls-tree -r --name-only refs/heads/jim/issues)"
+  assert_match "renamed"           'docs/issues/0003-alpha\.md'   "$paths"
+  assert_match "teammate survived" 'docs/issues/20260101-other\.md' "$paths"
+  assert_eq "old name did not come back" "no" \
+    "$(printf '%s\n' "$paths" | grep -q '20260101-alpha\.md' && echo yes || echo no)"
+  index="$(git -C "$bare/r.git" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+  assert_eq "index holds one entry for the renamed issue" "1" \
+    "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

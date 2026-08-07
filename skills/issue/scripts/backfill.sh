@@ -215,7 +215,38 @@ usage() {
     '  issues_dir default: jimconf.sh get issues'
 }
 
+# route_placement <place-token> <args...>
+#   Re-exec through place.sh when the project keeps its collection on a
+#   designated branch, so a backfill rewrites the issues there rather than on
+#   whatever branch the developer is standing on. An explicit directory argument
+#   opts out, which is also what stops the re-exec recursing. Both subcommands
+#   write, so there is no preview form to route read-only.
+route_placement() {
+  local token="$1"; shift
+  local place="$HERE/place.sh" mode arg dir=""
+  [[ -r "$place" ]] || return 0
+  for arg in "$@"; do
+    case "$arg" in
+      num|timestamp|-*) ;;
+      *)                dir="$arg" ;;
+    esac
+  done
+  [[ -z "$dir" ]] || return 0
+  mode="$(bash "$place" mode --place-token "$token")" || exit $?
+  [[ "$mode" == "route" ]] || return 0
+  exec bash "$place" run --verb backfill -- \
+    bash "${BASH_SOURCE[0]}" --place-token '{token}' "$@" '{}'
+}
+
 main() {
+  local place_token=""
+  if [[ "${1:-}" == "--place-token" ]]; then
+    place_token="${2:-}"
+    shift 2
+  fi
+  case "${1:-}" in
+    num|timestamp) route_placement "$place_token" "$@" ;;
+  esac
   case "${1:-}" in
     num)               shift; cmd_assign_numbers "$@" ;;
     timestamp)         shift; cmd_timestamp "$@" ;;
