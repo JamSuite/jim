@@ -273,8 +273,27 @@ resolve_dir() {
   printf '%s\n' "$dir"
 }
 
+# route_placement <arg> <place-token>
+#   Re-exec this script through place.sh when the project keeps its collection
+#   on a designated branch, so a reindex lands there rather than on whatever
+#   branch the developer is standing on. An explicit directory argument opts
+#   out — it is both what a caller naming a directory means and what stops the
+#   re-exec from recursing.
+route_placement() {
+  local arg="$1" token="$2" place="$HERE/place.sh" mode
+  [[ -z "$arg" && -r "$place" ]] || return 0
+  mode="$(bash "$place" mode --place-token "$token")" || exit $?
+  [[ "$mode" == "route" ]] || return 0
+  exec bash "$place" run --verb reindex -- \
+    bash "${BASH_SOURCE[0]}" '{}' --place-token '{token}'
+}
+
 main() {
-  local arg="${1:-}"
+  local arg="${1:-}" place_token=""
+  if [[ "${2:-}" == "--place-token" ]]; then
+    place_token="${3:-}"
+  fi
+  route_placement "$arg" "$place_token"
   local dir
   dir="$(resolve_dir "$arg")" || return $?
   mkdir -p "$dir" || { echo "error: cannot mkdir '$dir'" >&2; return 1; }

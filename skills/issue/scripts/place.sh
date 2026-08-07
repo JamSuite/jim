@@ -339,9 +339,10 @@ place_direct() {
   PLACE_TOKEN="$(place_new_token)" || return 1
   place_substitute "$prefix" "$PLACE_TOKEN" "$@"
   local rc=0
-  JIM_PLACE_TOKEN="$PLACE_TOKEN" "${PLACE_CMD[@]}" || rc=$?
+  JIM_PLACE_TOKEN="$PLACE_TOKEN" JIM_PLACE_PREFIX="$prefix" "${PLACE_CMD[@]}" || rc=$?
   (( rc == 0 )) || return "$rc"
   (( read_only == 0 )) || return 0
+  place_reindex "$prefix" || return 1
   local st
   st="$(git --literal-pathspecs status --porcelain -- "$prefix" 2>/dev/null)"
   [[ -n "$st" ]] || return 0
@@ -579,6 +580,20 @@ place_land() {
   return 0
 }
 
+# place_reindex <dir> — regenerate the collection index in <dir>.
+#   Every write regenerates it, so what lands at the destination is one commit
+#   holding both the change and an index that describes it. That is also what
+#   lets the read path stay cheap: the destination's index is always current, so
+#   a read never has to regenerate one — and a read that regenerated would be a
+#   read that commits.
+place_reindex() {
+  if ! bash "$INDEX_SCRIPT" "$1" >/dev/null 2>&1; then
+    echo "place.sh: could not regenerate the collection index" >&2
+    return 1
+  fi
+  return 0
+}
+
 # place_regraft <tip> <prefix> <before> <after> <upstream-out> <merged-out>
 #   Reapply this mutation onto a destination that moved. The collection at the
 #   new <tip> is materialized fresh, and every path the mutation touched is
@@ -626,11 +641,7 @@ place_regraft() {
       rm -f -- "$merge/$name" || return 1
     fi
   done
-  if ! bash "$INDEX_SCRIPT" "$merge" >/dev/null 2>&1; then
-    echo "place.sh: could not regenerate the collection index over the merged" \
-         "collection" >&2
-    return 1
-  fi
+  place_reindex "$merge" || return 1
   place_snapshot "$merge" "$6" || return 1
   return 0
 }
@@ -752,9 +763,13 @@ cmd_run() {
   place_snapshot "$PLACE_COLL" before || return 1
   place_substitute "$PLACE_COLL" "$PLACE_TOKEN" "$@"
   local rc=0
-  JIM_PLACE_TOKEN="$PLACE_TOKEN" "${PLACE_CMD[@]}" || rc=$?
+  # The prefix travels with the token so a wrapped command can report where its
+  # work will actually live, rather than the temp directory it composed it in.
+  # It names a location only — routing turns on the token pair alone.
+  JIM_PLACE_TOKEN="$PLACE_TOKEN" JIM_PLACE_PREFIX="$prefix" "${PLACE_CMD[@]}" || rc=$?
   (( rc == 0 )) || return "$rc"
   (( read_only == 0 )) || return 0
+  place_reindex "$PLACE_COLL" || return 1
   place_snapshot "$PLACE_COLL" after || return 1
   place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
                        "$remote" "$tier" "$tip" || return $?

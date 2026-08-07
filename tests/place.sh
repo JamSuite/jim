@@ -321,8 +321,8 @@ case_place_orphan_bootstrap_carries_only_the_collection() {
   run_place_in "$repo" run --verb file -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
-  assert_eq "collection alone" "docs/issues/20260101-x.md" \
-    "$(place_dest_paths "$repo" jim/issues)"
+  assert_eq "collection alone" "docs/issues/20260101-x.md
+docs/issues/INDEX.md" "$(place_dest_paths "$repo" jim/issues)"
   assert_eq "parentless" "0" \
     "$(git -C "$repo" cat-file -p refs/heads/jim/issues | grep -c '^parent ')"
 }
@@ -424,8 +424,10 @@ case_place_carries_deletions() {
   run_place_in "$repo" run --verb close -- \
     sh -c 'rm "$1/20260101-a.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
-  assert_eq "only the survivor remains" "docs/issues/20260101-b.md" \
-    "$(place_dest_paths "$repo" jim/issues)"
+  local paths; paths="$(place_dest_paths "$repo" jim/issues)"
+  assert_match "survivor remains" 'docs/issues/20260101-b\.md' "$paths"
+  assert_eq "deleted file is gone" "no" \
+    "$(printf '%s\n' "$paths" | grep -q '20260101-a\.md' && echo yes || echo no)"
 }
 
 # AC: a mutation that changes nothing publishes nothing — no empty commit is
@@ -433,7 +435,11 @@ case_place_carries_deletions() {
 case_place_no_change_makes_no_commit() {
   local repo before
   repo="$(place_repo place_nochange 'issue_placement = "jim/issues"')"
-  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=alpha'
+  # Seeded through a real write, so the published index is already current —
+  # otherwise the first run would legitimately have an index to add.
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "alpha\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
   before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
   run_place_in "$repo" run --verb reindex -- sh -c 'true'
   assert_exit "rc" 0 "$RC"
@@ -462,8 +468,8 @@ case_place_honors_configured_issues_path() {
   run_place_in "$repo" run --verb file -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
-  assert_eq "at the configured path" "notes/findings/20260101-x.md" \
-    "$(place_dest_paths "$repo" jim/issues)"
+  assert_eq "at the configured path" "notes/findings/20260101-x.md
+notes/findings/INDEX.md" "$(place_dest_paths "$repo" jim/issues)"
 }
 
 # AC: the run token reaches the wrapped command both ways — exported in the
@@ -844,7 +850,8 @@ case_place_direct_mode_commits_path_scoped() {
   assert_eq "committed in the working tree" "hello" \
     "$(git -C "$repo" show "HEAD:docs/issues/20260101-x.md" 2>/dev/null)"
   files="$(git -C "$repo" show --name-only --format= HEAD)"
-  assert_eq "only the collection path" "docs/issues/20260101-x.md" "$files"
+  assert_eq "only collection paths" "docs/issues/20260101-x.md
+docs/issues/INDEX.md" "$files"
   assert_eq "unrelated edit still uncommitted" "edited" "$(cat "$repo/README.md")"
   # The index and working tree must agree with the new HEAD. A plumbing ref
   # update under a checked-out branch would leave the collection looking

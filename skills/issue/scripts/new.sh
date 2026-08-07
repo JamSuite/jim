@@ -51,7 +51,11 @@ JIMALLOC="$(dirname "$JIMFILE")/jimalloc.sh"
 # ─── Parse flags ─────────────────────────────────────────────────────────────
 
 title="" priority="" labels="" origin="" body_file=""
-status="open" slug="" num="" created="" updated="" dir=""
+status="open" slug="" num="" created="" updated="" dir="" place_token=""
+
+# Kept whole for the placement re-exec below, which has to hand this script its
+# own invocation back.
+original_argv=( "$@" )
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -66,9 +70,34 @@ while [[ $# -gt 0 ]]; do
     --created)   created="${2-}";   shift 2 || break ;;
     --updated)   updated="${2-}";   shift 2 || break ;;
     --dir)       dir="${2-}";       shift 2 || break ;;
+    --place-token) place_token="${2-}"; shift 2 || break ;;
     *) echo "error: unknown flag '$1'" >&2; exit 2 ;;
   esac
 done
+
+# ─── Placement routing ───────────────────────────────────────────────────────
+
+# When the project keeps its issue collection on a designated branch, this
+# script re-execs itself through place.sh, which materializes that branch's
+# collection, runs this same invocation against it, and publishes the result.
+# Routing lives behind the emitter rather than in each calling skill because the
+# emitter is the single write door: every candidate batch in every group already
+# comes through here, so they inherit placement without a line of change.
+#
+# An explicit --dir opts out. A caller that named a directory means that
+# directory, and it is also what stops the re-exec from recursing.
+#
+# The appended --place-token is what place.sh matches against the value it
+# exports; the trailing position makes it win over any stale copy already in
+# the forwarded arguments.
+PLACE="$HERE/place.sh"
+if [[ -z "$dir" && -r "$PLACE" ]]; then
+  place_mode="$(bash "$PLACE" mode --place-token "$place_token")" || exit $?
+  if [[ "$place_mode" == "route" ]]; then
+    exec bash "$PLACE" run --verb file -- \
+      bash "${BASH_SOURCE[0]}" "${original_argv[@]}" --dir '{}' --place-token '{token}'
+  fi
+fi
 
 # ─── Validate required inputs ────────────────────────────────────────────────
 
@@ -210,4 +239,13 @@ trap 'rm -f "$tmpfile"' EXIT INT TERM
 mv "$tmpfile" "$path" || { echo "error: atomic rename failed" >&2; exit 1; }
 trap - EXIT INT TERM
 
-printf '%s\t%s\n' "$slug" "$path"
+# Inside a placement run the file was composed in a temp directory that will not
+# exist a moment from now, so report where it actually lives on the destination
+# branch. The prefix is trusted only when this invocation's token matches the
+# one place.sh exported — the same pairing that governs routing.
+out_path="$path"
+if [[ -n "$place_token" && "$place_token" == "${JIM_PLACE_TOKEN:-}" \
+      && -n "${JIM_PLACE_PREFIX:-}" ]]; then
+  out_path="${JIM_PLACE_PREFIX%/}/$slug.md"
+fi
+printf '%s\t%s\n' "$slug" "$out_path"

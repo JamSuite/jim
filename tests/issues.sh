@@ -2734,6 +2734,116 @@ created: 2026-01-01T00:00:00Z"
   assert_eq "preview mutates nothing" "$before" "$after"
 }
 
+# ─── issue/011: placement routing through the entry scripts ──────────────────
+
+# placement_repo <name> <destination-branch>
+#   A repo whose issue collection is configured to live on <destination-branch>
+#   rather than on whatever branch the developer is standing on.
+placement_repo() {
+  local repo; repo="$(new_repo "$1")"
+  printf 'issue_placement = "%s"\n' "$2" > "$repo/jimconf.toml"
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md jimconf.toml
+  git -C "$repo" commit -q -m base
+  printf '%s' "$repo"
+}
+
+# dest_paths <repo> <branch> — every path on <branch>.
+dest_paths() { git -C "$1" ls-tree -r --name-only "refs/heads/$2" 2>/dev/null; }
+
+# AC: filing under a branch placement lands the issue and its regenerated index
+# on the destination as one commit, and leaves the working branch untouched.
+# The emitter is the single write door, so making the door placement-aware is
+# what carries every surfacing skill's candidate batch with it (spec AC #3, #4).
+case_issues_placement_filing_lands_on_destination() {
+  local repo body slug paths
+  repo="$(placement_repo issues_place_file jim/issues)"
+  body="$(fixture issues_place_file_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_nonempty "slug" "$slug"
+  paths="$(dest_paths "$repo" jim/issues)"
+  assert_match "issue on the destination" "docs/issues/${slug}\.md" "$paths"
+  assert_match "index on the destination" 'docs/issues/INDEX\.md'   "$paths"
+  assert_eq "one commit" "1" \
+    "$(git -C "$repo" rev-list --count refs/heads/jim/issues)"
+  assert_eq "working tree untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  assert_eq "working branch clean" "" "$(git -C "$repo" status --porcelain)"
+}
+
+# AC: the stdout contract stays useful under placement — the path a caller is
+# told about is where the issue actually lives on the destination branch, not
+# the temp directory it was composed in.
+case_issues_placement_stdout_names_the_destination_path() {
+  local repo body slug path
+  repo="$(placement_repo issues_place_stdout jim/issues)"
+  body="$(fixture issues_place_stdout_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  path="${OUT##*$'\t'}"
+  assert_eq "repo-relative destination path" "docs/issues/${slug}.md" "$path"
+}
+
+# AC: an origin: that names an artifact living only on the filing branch is
+# still valid at the destination — the reference is informational, and its
+# absence is not an error (spec AC #11).
+case_issues_placement_tolerates_a_branch_only_origin() {
+  local repo body slug
+  repo="$(placement_repo issues_place_origin jim/issues)"
+  body="$(fixture issues_place_origin_body.md 'body')"
+  printf 'note\n' > "$repo/docs-only-here.md"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin "docs-only-here.md" --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_match "origin recorded verbatim" '^origin: docs-only-here\.md$' \
+    "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
+  assert_match "index still built" 'docs/issues/INDEX\.md' \
+    "$(dest_paths "$repo" jim/issues)"
+}
+
+# AC: an explicit directory argument opts out of routing — a caller that named
+# a directory means that directory, which is also what keeps the placement
+# re-exec from recursing.
+case_issues_placement_explicit_dir_opts_out() {
+  local repo body dir
+  repo="$(placement_repo issues_place_optout jim/issues)"
+  body="$(fixture issues_place_optout_body.md 'body')"
+  dir="$repo/elsewhere"
+  mkdir -p "$dir"
+  run_new_in "$repo" --dir "$dir" --title "Alpha bug" --priority medium \
+    --labels x --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "wrote where told" "1" "$(find "$dir" -name '*.md' | wc -l | tr -d ' ')"
+  assert_eq "no destination branch" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# AC: index.sh routes too, so a standalone reindex lands at the destination
+# rather than on the working branch (spec AC #3).
+case_issues_placement_index_routes_to_destination() {
+  local repo body
+  repo="$(placement_repo issues_place_index jim/issues)"
+  body="$(fixture issues_place_index_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  OUT="$(cd "$repo" && bash "$SCRIPT_INDEX" 2>&1)"
+  RC=$?
+  assert_exit "reindex rc" 0 "$RC"
+  assert_eq "working tree still untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  # The index the filing already published is current, so a bare reindex has
+  # nothing to add — no empty second commit.
+  assert_eq "no redundant commit" "1" \
+    "$(git -C "$repo" rev-list --count refs/heads/jim/issues)"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
