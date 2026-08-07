@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 93
+- Open: 96
 - Closed: 161
 
 ## Issues
@@ -261,6 +261,9 @@
 - `20260805-teach-both-single-source-guards-in-jimfile-tests-the-spellings-a` — Teach both single-source guards in jimfile tests the spellings and copies they miss · status: open · num: 253 · priority: medium · created: 2026-08-05T22:20:29Z · labels: [test-coverage, test, scripts] · origin: docs/notes/20260805-b-double-prime-review.md
 - `20260805-warm-the-id-boundary-memo-in-catch-up-and-lift` — Warm the id-boundary memo in catch-up and lift · status: closed · num: 234 · priority: medium · created: 2026-08-05T01:53:44Z · labels: [id-coordination, registry, alloc] · origin: docs/notes/20260805-b-prime-review.md
 - `20260805-widen-the-doc-sweep-s-corpus-and-derive-its-registry-verb-list-f` — Widen the doc sweep's corpus and derive its registry verb list from the dispatch table · status: open · num: 254 · priority: high · created: 2026-08-05T22:20:27Z · labels: [docs, test-coverage, test] · origin: docs/notes/20260805-b-double-prime-review.md
+- `20260806-document-the-id-coordination-key-family-in-jimconf-toml-example` — Document the id_coordination_* key family in jimconf.toml.example · status: open · num: 255 · priority: medium · created: 2026-08-06T20:20:05Z · labels: [config, docs] · origin: docs/specs/issue/011-issue-placement/research.md
+- `20260806-extract-a-shared-valid-branch-verb-into-jimfile-sh` — Extract a shared valid-branch verb into jimfile.sh · status: open · num: 257 · priority: low · created: 2026-08-06T21:48:56Z · labels: [platform, jimfile, refactor] · origin: docs/specs/issue/011-issue-placement/plan.md
+- `20260806-fixture-the-invalid-id-coordination-branch-refusal-in-tests-jima` — Fixture the invalid id_coordination_branch refusal in tests/jimalloc.sh · status: open · num: 256 · priority: medium · created: 2026-08-06T20:20:17Z · labels: [tests, jimalloc] · origin: docs/specs/issue/011-issue-placement/research.md
 
 ## Graph
 
@@ -378,6 +381,8 @@
 - `20260803-extend-the-provisional-grammar-byte-fixture-to-its-shims-and-con` --related-to--> `20260730-single-source-the-provisional-identity-grammar`
 - `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` --related-to--> `20260730-memoize-the-id-validation-boundary-in-the-allocator-read-path`
 - `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` --related-to--> `20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays`
+- `20260806-document-the-id-coordination-key-family-in-jimconf-toml-example` --related-to--> `spec-issue-placement-config-for-issue-content-location`
+- `20260806-extract-a-shared-valid-branch-verb-into-jimfile-sh` --related-to--> `fixture-the-invalid-id-coordination-branch-refusal-in-tests-jima`
 
 ## Integrity Warnings
 
