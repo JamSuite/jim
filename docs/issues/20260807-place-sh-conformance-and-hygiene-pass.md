@@ -1,0 +1,94 @@
+---
+id: 20260807-place-sh-conformance-and-hygiene-pass
+num: P-20260807-place-sh-conformance-and-hygiene-pass
+title: "place.sh conformance and hygiene pass"
+status: open
+priority: low
+labels: [issue, placement, refactor]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-08-07T11:43:58Z
+updated: 2026-08-07T11:43:58Z
+origin: docs/specs/issue/011-issue-placement/review.md
+---
+
+## Description
+
+## Description
+
+A bundle of small conformance and hygiene gaps in `place.sh`, each individually
+minor. Grouped because they are one pass over one file.
+
+**Header inaccuracies.** The header claims the commit is built with `mktree`;
+the code uses a scratch `GIT_INDEX_FILE` + `update-index` + `write-tree`, and
+`mktree` appears nowhere (`ARCHITECTURE.md` describes it correctly, so the
+header is the copy that drifted). The `CLI SUMMARY` documents only `mode` and
+`run`, omitting `begin`/`commit`/`abort` — the three verbs the skill body
+actually calls and the only ones with `allowed-tools` clauses. `cmd_mode`'s
+comment calls itself "the only place the config gate is evaluated" when three
+other functions call `place_destination`. "Parses with grep/sed only" omits
+`awk`, `tr`, and `read`. The `run` synopsis implies `--verb` is always required;
+it is optional on a read-only run, which three callers rely on.
+
+**`place_shown` diverges from the house sanitizer.** The established form is
+`tr -d '\000-\037\177' | cut -c1-512` (four scripts). `place_shown` uses
+`tr -d '[:cntrl:]'` and drops the length cap, so an uncapped branch-supplied
+filename can flood a terminal. It is also applied at only one of three sites
+that print a tree-supplied name — the graft conflict message and the snapshot
+refusal print raw.
+
+**New portability floor, undocumented.** `place.sh` is the first script in the
+corpus to use namerefs (`local -n`), raising the bash floor from 4.0 to 4.3, and
+introduces three new non-POSIX constructs (`grep -m1`, `find -mindepth`,
+`find -print0`). Each is GNU+BSD and the floor was already above stock macOS
+bash 3.2 via `declare -A`, so the marginal cost is small — but nothing records
+the new floor.
+
+**Third spelling of a constant.** `jim/registry` now has three production
+spellings: jimconf's `default_for` (authoritative) plus dead-code fallbacks in
+`jimalloc.sh` and now `place.sh`. Changing the default takes three edits.
+
+**Inline charset regex where a verb exists.** `place_handle_dir` inlines
+`^[A-Za-z0-9][A-Za-z0-9._-]*$` — the id boundary's charset, minus its length cap
+and `..` rejection — for a caller-supplied value that composes a filesystem
+path. `place.sh` already calls `jimfile.sh valid-id` twice, and the tokens it
+mints pass it unchanged, so the swap is behavior-preserving. As written it is a
+fourth spelling of a boundary the triplicate-identical fixture cannot see.
+
+**Deliberate duplicates without the house marker.** `place_valid_branch` is
+byte-identical to `alloc_valid_branch`, and `place_handle_root`'s containment
+check is a near-copy of `alloc_write_contained` (place's is tighter). Extracting
+a shared verb was deliberately deferred, but the precedent's *other* half was not
+adopted: `is_valid_id` and `is_prov_token` each carry a `SYNC:` comment naming
+every copy plus a byte-agreement fixture. Neither of these pairs has either.
+
+**Missing `--end-of-options`.** Four git calls interpolate a derived argument
+without it: `merge-base --is-ancestor`, `ls-tree -r -z`, `read-tree`, and
+`update-ref`. Each is safe by construction today (the values are git's own hex
+output or already gated), but the stated discipline is "every git call taking a
+derived argument".
+
+**`place_prefix` normalization.** `issues_path = "./"` yields prefix `.`, making
+the repo root the collection — it fails closed, but on a message about entry
+names rather than about the config. `"././docs/issues"` strips only one `./`, so
+reads work and writes fail with the opaque "could not build the destination
+tree". A loop, or rejecting any `.` segment at the gate, closes both with an
+accurate message.
+
+**`place_conf` fails open.** It discards jimconf's exit status, so an unreachable
+resolver yields empty and `place_destination` falls through to `branch` — a
+fail-*open* on the infrastructure path, three lines below a comment promising no
+silent fallback. Requires a broken plugin tree, so it is an integrity concern
+rather than an attacker path.
+
+## Proposed action
+
+One pass: correct the header, adopt the house sanitizer with its cap and apply
+it at all three sites, delegate the token check to `jimfile.sh valid-id`, add
+`SYNC:` comments plus a byte-agreement fixture for the two duplicated functions,
+add the four missing `--end-of-options`, tighten `place_prefix`'s normalization,
+and check `place_conf`'s rc. Record the bash 4.3 floor wherever the corpus
+records its portability assumptions.
