@@ -13,7 +13,7 @@ is clean.*
 | Build | shipped, 1262 tests green (7m36s) |
 | Review | **`major-drift`**, 25 findings, `review.md` committed |
 | Blueprint | `issue` group refreshed; contract graph reconciled (23 edges, 19 faces, no findings) |
-| Follow-ons | 16 issues filed, 1 closed — **all carry provisional ordinals** |
+| Follow-ons | 16 issues filed (#262–#277), 15 open, #275 closed |
 | Build base | `f024b9e` (also in `.git/jim-build-base-011`) |
 | Session range | `f024b9e..c4b5940`, 24 commits |
 
@@ -150,37 +150,32 @@ Recorded so a resuming agent does not re-derive them:
 
 ## Next steps, in order
 
-1. **Reconcile the provisional ordinals.** All 16 filed issues carry `P-`
-   markers because the coordination remote is unreachable from this VM. From a
-   host where it is reachable:
-   ```
-   bash skills/issue/scripts/reconcile.sh            # preview
-   bash skills/issue/scripts/reconcile.sh --apply
-   ```
-2. **Fix the four criticals**, in this order (1 and 2 are independent; 3 shares
-   a function with 2):
-   - `placeholder-substitution-corrupts-issue-titles-and-durable-ids`
-   - `deferred-placement-mutation-is-discarded-on-reconnect`
-   - `cmd-commit-direct-arm-publishes-without-re-verification`
-   - `offline-placed-read-serves-an-empty-collection`
-3. **Fix the invariant regression** —
-   `regenerate-the-index-on-placed-reads-instead-of-touching-it`. The blueprint
-   fork already committed to this resolution, so leaving it undone leaves a
-   knowingly-violated invariant.
-4. **Fix the test suite's own defects before adding tests** —
-   `placement-tests-one-vacuous-case-and-untested-direct-mode`. One case passes
-   even if `place.sh` is deleted; three more pass for reasons other than what
-   they name. A test that cannot fail is worse than no test because it reports
-   coverage.
-5. **Decide AC #13's enforcement point** —
-   `auto-file-scrub-degrade-is-inherited-by-no-surfacing-skill`. This is a design
-   question, not a bug fix: the issue lays out three shapes. My preference is a
-   `place.sh` verb the skills consult, since the config gate already lives there.
-6. **Re-run `/jim:review`** once 2–4 land, then mark the plan `complete`.
+1. **Fix the four criticals.** The first two are independent; the third shares a
+   function with the second, so pair them.
+   - **#270** placeholder substitution corrupts titles and durable ids
+   - **#265** deferred placement mutation discarded on reconnect
+   - **#264** `cmd_commit` direct arm publishes without re-verification
+   - **#267** offline placed read serves an empty collection
+2. **Fix the invariant regression** — **#276**, regenerate the index on placed
+   reads instead of touching it. The blueprint fork already committed to this
+   resolution, so leaving it undone leaves a knowingly-violated invariant.
+3. **Fix the test suite's own defects before adding tests** — **#272**. One case
+   passes even if `place.sh` is deleted; three more pass for reasons other than
+   what they name. A test that cannot fail is worse than no test because it
+   reports coverage.
+4. **Decide AC #13's enforcement point** — **#262**. This is a design question,
+   not a bug fix: the issue lays out three shapes. My preference is a `place.sh`
+   verb the skills consult, since the config gate already lives there.
+5. **Re-run `/jim:review`** once 1–3 land, then mark the plan `complete`.
 
-The remaining issues (push-failure diagnostics, bookmark false alarms, routing
-argument classification, the worktree containment gate, origin-lint churn, the
-hygiene pass) are real but not blocking.
+Not blocking, in rough priority: **#266** (insights analyst reads the
+branch-local collection), **#274** (push failures reported as contention),
+**#271** (bookmark false rewrite alarms), **#277** (routing argument
+classification), **#268** (missing worktree containment gate), **#273**
+(origin-lint cross-branch churn), **#269** (`place.sh` hygiene pass).
+
+Closed: **#275**, the permission-conventions record — resolved in the same pass
+that filed it.
 
 ## Gotchas for whoever resumes
 
@@ -206,5 +201,9 @@ hygiene pass) are real but not blocking.
   list). Any config-key addition forces them. Task 13's additions-only evidence
   holds over `tests/issues.sh`, `tests/place.sh` and `tests/docsurfaces.sh`.
 - **`ARCHITECTURE.md` goes through `/jim:arch`**, never a hand edit.
-- The four build-time issues (255–257 plus the batch) were reconciled by the
-  developer mid-session; the 16 review issues have not been.
+- **Filing here yields provisional ordinals.** The coordination remote is
+  unreachable from this VM, so `new.sh` falls back to a `P-` marker and the
+  developer realizes them from the host with
+  `bash skills/issue/scripts/reconcile.sh --apply`. Both this session's batches
+  (#255–#261 from the build, #262–#277 from the review) were reconciled that way.
+  Expect the same on any issue filed in this environment.
