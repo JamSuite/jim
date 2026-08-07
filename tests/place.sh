@@ -490,6 +490,111 @@ case_place_cleans_up_its_temp_directory() {
   assert_eq "temp dir removed" "" "$leftovers"
 }
 
+# ─── Section: Remote sync ────────────────────────────────────────────────────
+
+# place_bare <name> — an empty bare repository standing in for the shared remote.
+place_bare() {
+  local d; d="$(empty_dir "$1")"
+  git init -q --bare "$d/r.git"
+  printf '%s' "$d/r.git"
+}
+
+# place_clone <bare> <name> [config-lines] — a working clone with an identity.
+place_clone() {
+  local bare="$1" name="$2"; shift 2
+  local dir; dir="$(empty_dir "$name")"
+  git clone -q "$bare" "$dir"
+  git -C "$dir" config user.name  "$name"
+  git -C "$dir" config user.email "$name@example.com"
+  if (( $# > 0 )); then printf '%s\n' "$@" > "$dir/jimconf.toml"; fi
+  printf '%s' "$dir"
+}
+
+# AC: a write propagates to the remote, so a teammate's clone can see the
+# discovery without waiting for a branch to merge (spec AC #7).
+case_place_publishes_to_the_remote() {
+  local bare clone
+  bare="$(place_bare place_pub_bare)"
+  clone="$(place_clone "$bare" place_pub_clone 'issue_placement = "jim/issues"')"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "on the remote" "hello" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-x.md 2>/dev/null)"
+}
+
+# AC: an unreachable remote does not block a write. The local commit stands,
+# propagation is deferred, and the degradation is disclosed — no mutation is
+# ever silently dropped (spec AC #7).
+case_place_defers_push_when_remote_unreachable() {
+  local repo
+  repo="$(place_repo place_defer 'issue_placement = "jim/issues"')"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit  "rc"        0          "$RC"
+  assert_match "discloses" 'defer'    "$ERR"
+  assert_eq "local commit stands" "hello" \
+    "$(place_dest_file "$repo" jim/issues docs/issues/20260101-x.md)"
+}
+
+# AC: when the remote is unreachable a read serves the last-seen state and says
+# so, rather than failing or pretending to be current (spec AC #6).
+case_place_read_degrades_when_remote_unreachable() {
+  local repo
+  repo="$(place_repo place_read_degrade 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=alpha'
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$repo" run --read --verb reindex -- \
+    sh -c 'cat "$1/20260101-a.md"' _ '{}'
+  assert_exit  "rc"          0            "$RC"
+  assert_eq    "still serves" "alpha"     "$OUT"
+  assert_match "discloses"    'last-seen' "$ERR"
+}
+
+# AC: a write rejected because the remote moved is reapplied to the winner's
+# state and retried, not lost — two teammates filing at once both end up
+# published (spec AC #7).
+case_place_retries_after_the_remote_advances() {
+  local bare mine theirs teammate
+  bare="$(place_bare place_race_bare)"
+  mine="$(place_clone "$bare" place_race_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_race_them 'issue_placement = "jim/issues"')"
+  # The teammate publishes from inside the wrapped command, so `mine` has
+  # already materialized and snapshotted against the older tip by the time it
+  # tries to publish — a genuine lost race, not a sequential write. It lives in
+  # a file because a literal {} in the outer argv would be substituted away.
+  teammate="$TMP_BASE/place-race-teammate.sh"
+  cat > "$teammate" <<TEAMMATE
+cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
+  sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
+TEAMMATE
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "mine\n" > "$1/20260101-a.md"; sh "$2" >/dev/null 2>&1' \
+    _ '{}' "$teammate"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "mine landed"   "mine" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
+  assert_eq "theirs survived" "theirs" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-b.md 2>/dev/null)"
+}
+
+# AC: a read consults the remote before serving, so a collection published by a
+# teammate is visible without any manual fetch (spec AC #6).
+case_place_read_fetches_before_serving() {
+  local bare mine theirs
+  bare="$(place_bare place_fresh_bare)"
+  theirs="$(place_clone "$bare" place_fresh_them 'issue_placement = "jim/issues"')"
+  mine="$(place_clone "$bare" place_fresh_mine   'issue_placement = "jim/issues"')"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "published\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  run_place_in "$mine" run --read --verb reindex -- \
+    sh -c 'cat "$1/20260101-a.md"' _ '{}'
+  assert_exit "rc"            0           "$RC"
+  assert_eq   "sees the fresh state" "published" "$OUT"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

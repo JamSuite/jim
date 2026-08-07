@@ -60,6 +60,10 @@
 
 set -uo pipefail
 export LC_ALL=C
+# Placement touches the network on the developer's behalf, never at their
+# prompt: an unreachable or credential-hungry remote must degrade loudly rather
+# than stall a filing behind an invisible password prompt.
+export GIT_TERMINAL_PROMPT=0
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
@@ -230,6 +234,62 @@ place_bookmark_ref() {
   printf '%s\n' "$ref"
 }
 
+# ─── Section: Remote tier ────────────────────────────────────────────────────
+
+readonly PLACE_ATTEMPTS=5
+
+# place_remote — a usable remote for the destination branch: origin when it
+# exists, otherwise the first configured one. Empty output selects the local
+# tier, where the ref update is the compare-and-swap.
+place_remote() {
+  local r
+  if git remote 2>/dev/null | grep -qx origin; then
+    r=origin
+  else
+    r="$(git remote 2>/dev/null | head -n1)"
+  fi
+  [[ -n "$r" ]] && printf '%s\n' "$r"
+  return 0
+}
+
+# place_valid_sha <text> — exit 0 iff <text> is a plain object name. Whatever a
+# remote advertises is remote-supplied text that later becomes a commit parent
+# and a compare-and-swap old-value, so it crosses this boundary on arrival.
+place_valid_sha() { [[ "${1:-}" =~ ^[0-9a-f]{40,64}$ ]]; }
+
+# place_backoff <attempt> — a short, rising, jittered pause between attempts so
+# racing sessions de-synchronize instead of colliding in lockstep.
+place_backoff() {
+  local ms=$(( $1 * 40 + RANDOM % 50 ))
+  sleep "0.$(printf '%03d' "$ms")" 2>/dev/null || true
+}
+
+# place_remote_tip <remote> <branch>
+#   The destination branch's tip on <remote>, with its objects fetched locally
+#   so a commit can be built atop it. Empty output means the branch does not
+#   exist there yet. rc 1 means the remote could not be reached — the caller
+#   degrades rather than failing, but it must know the difference.
+place_remote_tip() {
+  local remote="$1" branch="$2" line tip
+  if ! line="$(git ls-remote --heads --end-of-options "$remote" "$branch" 2>/dev/null)"; then
+    return 1
+  fi
+  tip="$(printf '%s' "$line" | awk 'NR==1{print $1}')"
+  if [[ -n "$tip" ]]; then
+    if ! place_valid_sha "$tip"; then
+      echo "place.sh: remote '$remote' advertised an unusable tip for '$branch'" >&2
+      return 1
+    fi
+    git fetch --quiet --end-of-options "$remote" "$branch" 2>/dev/null || return 1
+  fi
+  printf '%s\n' "$tip"
+}
+
+# place_local_tip <branch> — the destination branch's tip in this clone.
+place_local_tip() {
+  git rev-parse --verify --quiet --end-of-options "refs/heads/$1" 2>/dev/null || true
+}
+
 # place_materialize <tip> <prefix> <dest>
 #   Extract the collection at <prefix> in commit <tip> into <dest>, one entry at
 #   a time. Branch content is untrusted — a tree can carry an entry name that
@@ -335,16 +395,18 @@ place_commit_tree() {
   git "${ident[@]}" commit-tree "$tree" "${parent_arg[@]}" -m "$msg"
 }
 
-# place_publish <branch> <tip> <prefix> <before-array> <after-array> <message>
-#   Land the changed set on <branch> with git plumbing: replay the changes into
-#   a scratch index seeded from <tip>, write the tree, commit it, and move the
-#   ref with an old-value compare-and-swap so a concurrent session that advanced
-#   the branch is detected rather than overwritten. Prints the new commit.
-#   rc 3 means the compare-and-swap was rejected.
-place_publish() {
-  local branch="$1" tip="$2" prefix="$3" msg="$6"
-  local -n _pp_before="$4"
-  local -n _pp_after="$5"
+# place_build_commit <tip> <prefix> <before-array> <after-array> <message>
+#   Replay the changed set into a scratch index seeded from <tip>, write the
+#   tree, and commit it. Print the new commit. The scratch index is a file in
+#   this run's temp root, so the developer's own index is never touched.
+#
+#   Rebuilding from <tip> is also what makes a retry correct: a rejected publish
+#   re-reads the branch and calls this again, so the mutation is reapplied onto
+#   the winner's state instead of a stale tree being pushed a second time.
+place_build_commit() {
+  local tip="$1" prefix="$2" msg="$5"
+  local -n _pp_before="$3"
+  local -n _pp_after="$4"
   local name tree commit rc
   (
     export GIT_INDEX_FILE="$PLACE_INDEX"
@@ -372,12 +434,31 @@ place_publish() {
     echo "place.sh: could not build the destination commit" >&2
     return 1
   }
-  # An empty old-value requires the ref to be absent, which is what makes the
-  # orphan bootstrap a compare-and-swap too rather than a blind create.
-  if ! git update-ref "refs/heads/$branch" "$commit" "$tip" 2>/dev/null; then
+  printf '%s\n' "$commit"
+}
+
+# place_land <remote> <tier> <branch> <tip> <commit>
+#   Move the destination branch to <commit>, compare-and-swap against <tip>.
+#   rc 3 means the branch moved underneath this attempt — the caller re-reads
+#   and reapplies rather than overwriting whoever won.
+#
+#   On the origin tier the push itself is the compare-and-swap: git's default
+#   non-fast-forward rejection is exactly the check, so there is no window
+#   between testing the remote's state and updating it. On the local tier the
+#   old-value argument does the same job, and an empty one requires the ref to
+#   be absent — which makes the orphan bootstrap a compare-and-swap too, rather
+#   than a blind create.
+place_land() {
+  local remote="$1" tier="$2" branch="$3" tip="$4" commit="$5"
+  if [[ "$tier" == "origin" ]]; then
+    if git push --quiet --end-of-options "$remote" "$commit:refs/heads/$branch" 2>/dev/null; then
+      git update-ref "refs/heads/$branch" "$commit" 2>/dev/null || true
+      return 0
+    fi
     return 3
   fi
-  printf '%s\n' "$commit"
+  git update-ref "refs/heads/$branch" "$commit" "$tip" 2>/dev/null || return 3
+  return 0
 }
 
 # place_message <verb> <id> — the commit subject, composed from the trusted verb
@@ -461,8 +542,26 @@ cmd_run() {
   local prefix
   prefix="$(place_prefix)" || return 2
   place_open_work || return 1
-  local tip
-  tip="$(git rev-parse --verify --quiet --end-of-options "refs/heads/$dest" 2>/dev/null || true)"
+
+  # Resolve the freshest state of the destination this clone can reach. A
+  # configured remote is authoritative; when it cannot be reached the run falls
+  # back to the last-seen local state and says so, rather than failing (a
+  # discovery is not worth losing to a dropped network) or pretending to be
+  # current.
+  local remote tier tip unreachable=0
+  remote="$(place_remote)"
+  if [[ -n "$remote" ]] && tip="$(place_remote_tip "$remote" "$dest")"; then
+    tier="origin"
+  else
+    tier="local"
+    tip="$(place_local_tip "$dest")"
+    [[ -n "$remote" ]] && unreachable=1
+  fi
+  if (( unreachable )) && (( read_only )); then
+    echo "place.sh: remote '$remote' is unreachable; serving the last-seen state" \
+         "of '$dest'" >&2
+  fi
+
   place_materialize "$tip" "$prefix" "$PLACE_COLL" || return $?
   local -A before=() after=()
   place_snapshot "$PLACE_COLL" before || return 1
@@ -472,40 +571,73 @@ cmd_run() {
   (( rc == 0 )) || return "$rc"
   (( read_only == 0 )) || return 0
   place_snapshot "$PLACE_COLL" after || return 1
-  place_commit_changes "$dest" "$tip" "$prefix" before after "$verb" "$id"
-}
-
-# place_commit_changes <branch> <tip> <prefix> <before> <after> <verb> <id>
-#   Publish the changed set, or report honestly that there was nothing to
-#   publish. A mutation that changed nothing leaves no empty commit behind.
-place_commit_changes() {
-  local dest="$1" tip="$2" prefix="$3" verb="$6" id="$7"
-  local -n _pc_before="$4"
-  local -n _pc_after="$5"
-  local name changed=0
-  for name in "${!_pc_after[@]}"; do
-    [[ "${_pc_before[$name]:-}" == "${_pc_after[$name]}" ]] || { changed=1; break; }
-  done
-  if (( changed == 0 )); then
-    for name in "${!_pc_before[@]}"; do
-      [[ -n "${_pc_after[$name]:-}" ]] || { changed=1; break; }
-    done
-  fi
-  (( changed )) || return 0
-  local commit rc=0
-  commit="$(place_publish "$dest" "$tip" "$prefix" "$4" "$5" "$(place_message "$verb" "$id")")" || rc=$?
-  if (( rc != 0 )); then
-    if (( rc == 3 )); then
-      echo "place.sh: '$dest' moved while this mutation was being prepared;" \
-           "re-run to apply it to the current state" >&2
-    fi
-    return "$rc"
-  fi
-  local bref
-  if bref="$(place_bookmark_ref "$dest")"; then
-    git update-ref "$bref" "$commit" 2>/dev/null || true
+  place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
+                       "$remote" "$tier" "$tip" || return $?
+  if (( unreachable )); then
+    echo "place.sh: remote '$remote' is unreachable; the mutation is committed" \
+         "locally on '$dest' and publication is deferred until the next" \
+         "reachable run" >&2
   fi
   return 0
+}
+
+# place_changed <before> <after> — exit 0 iff the collection changed at all.
+place_changed() {
+  local -n _ch_before="$1"
+  local -n _ch_after="$2"
+  local name
+  for name in "${!_ch_after[@]}"; do
+    [[ "${_ch_before[$name]:-}" == "${_ch_after[$name]}" ]] || return 0
+  done
+  for name in "${!_ch_before[@]}"; do
+    [[ -n "${_ch_after[$name]:-}" ]] || return 0
+  done
+  return 1
+}
+
+# place_commit_changes <branch> <prefix> <before> <after> <verb> <id>
+#                      <remote> <tier> <tip>
+#   Publish the changed set, retrying against a moved destination. Each attempt
+#   re-reads the branch and rebuilds the commit on what it finds, so a lost race
+#   reapplies the mutation instead of re-pushing a tree that no longer reflects
+#   the branch. The wrapped command is never re-run — re-running a filing would
+#   burn a second coordinated ordinal on every lost race.
+#
+#   A mutation that changed nothing publishes nothing: no empty commit is left
+#   behind on the destination branch.
+place_commit_changes() {
+  local dest="$1" prefix="$2" verb="$5" id="$6"
+  local remote="$7" tier="$8" tip="$9"
+  place_changed "$3" "$4" || return 0
+  local msg commit attempt rc
+  msg="$(place_message "$verb" "$id")"
+  for (( attempt=1; attempt<=PLACE_ATTEMPTS; attempt++ )); do
+    commit="$(place_build_commit "$tip" "$prefix" "$3" "$4" "$msg")" || return 1
+    place_land "$remote" "$tier" "$dest" "$tip" "$commit"
+    rc=$?
+    if (( rc == 0 )); then
+      local bref
+      if bref="$(place_bookmark_ref "$dest")"; then
+        git update-ref "$bref" "$commit" 2>/dev/null || true
+      fi
+      return 0
+    fi
+    (( rc == 3 )) || return "$rc"
+    (( attempt < PLACE_ATTEMPTS )) && place_backoff "$attempt"
+    # Re-read whatever won the race. A remote that dropped out mid-retry
+    # degrades to the local tier rather than spinning against it.
+    if [[ "$tier" == "origin" ]]; then
+      if ! tip="$(place_remote_tip "$remote" "$dest")"; then
+        tier="local"
+        tip="$(place_local_tip "$dest")"
+      fi
+    else
+      tip="$(place_local_tip "$dest")"
+    fi
+  done
+  echo "place.sh: '$dest' kept moving; the mutation was not published after" \
+       "$PLACE_ATTEMPTS attempts. It is unpublished, not lost — re-run to apply it." >&2
+  return 3
 }
 
 usage() {
