@@ -207,6 +207,37 @@ security_adhoc_path       = "docs/security"
 # is a no-op. Uncomment to enable.
 # auto_issue_file = "false"
 
+# --- Issue placement (spec issue/011) --------------------------------------
+
+# Which branch the issue collection lives on. The default sentinel "branch"
+# means the branch the developer is standing on — today's behavior, and the
+# right one for a solo project. Any other value names a destination branch:
+# every read and every write goes there, whatever branch the work happens on,
+# so a discovery filed from a feature branch is visible to the team before that
+# branch merges and an issue closed once is closed everywhere.
+#
+#   branch       : the current working branch (default)
+#   main         : the default branch, if the team can push to it
+#   jim/issues   : a dedicated branch — the option for a protected main
+#
+# A branch that does not exist yet is created on first write as an orphan
+# carrying only the collection, the way the ID-coordination registry branch is.
+# A value that is not a valid git branch name, or that names the configured
+# id_coordination_branch, is refused — placement never silently falls back,
+# because a silent fallback scatters a team's collection across feature
+# branches. Changing this on an existing project moves where issues live but
+# does not move the issues; see skills/issue/SKILL.md for the one-time manual
+# move.
+# issue_placement = "branch"
+
+# Acknowledge that auto-filed batches publish immediately. Under a branch
+# placement, auto_issue_file = "true" would push candidate text to a shared
+# branch as it is accumulated, with no review — and unpublishing it means
+# rewriting a shared branch. So auto-filing degrades to the interactive batch
+# with a one-line disclosure unless this is "true". No effect under the default
+# placement, where auto-filing is already a local, amendable act.
+# issue_placement_ack = "false"
+
 # --- Issue list view (spec 019) -------------------------------------------
 
 # Default view for `/jim:issue list`. An explicit filter argument

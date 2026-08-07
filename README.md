@@ -148,9 +148,11 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `require_security_loop` | `"false"` | `/jim:sec` — when `"true"`, repeat the review-and-routing cycle until the severity threshold clears or the iteration limit is reached |
 | `require_security_loop_sev` | `"critical"` | `/jim:sec` — severity threshold for the loop's exit condition (`"critical"` / `"notable"` / `"advisory"`) |
 | `auto_security_loop_limit` | `"5"` | `/jim:sec` — maximum iterations of the gated review-and-routing loop |
-| `issues_path` | `./docs/issues/` | `/jim:issue`  — issue collection location |
+| `issues_path` | `./docs/issues/` | `/jim:issue`  — issue collection location within a branch |
+| `issue_placement` | `"branch"` | `/jim:issue` — which branch the collection lives on; `"branch"` is the current working branch, any other value names a destination branch (e.g. `"main"`, `"jim/issues"`) so a team shares one collection |
+| `issue_placement_ack` | `"false"` | `/jim:issue` — when `"true"`, auto-filed batches may publish to the destination branch without the interactive scrub moment |
 | `issue_capture` | `"true"` | surface potential issues at the end of each development phase; `"false"` disables surfacing |
-| `auto_issue_file` | `"false"` | automatically file issues without prompting |
+| `auto_issue_file` | `"false"` | automatically file issues without prompting; under a branch placement this degrades to the interactive batch unless `issue_placement_ack` is `"true"` |
 | `issue_list_group` | `"status"` | `/jim:issue list` — default grouping (`status` / `priority` / `origin` / `none`) |
 | `issue_list_sort` | `"date"` | `/jim:issue list` — default sort within groups (`date` / `priority` / `num`) |
 | `issue_list_cols` | `"num,date,priority,title"` | `/jim:issue list` — default columns (any of `num,date,priority,status,slug,labels,title`) |
