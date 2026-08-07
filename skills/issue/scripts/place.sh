@@ -68,8 +68,10 @@ export GIT_TERMINAL_PROMPT=0
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
+INDEX_SCRIPT="$HERE/index.sh"
 
 readonly PLACE_VERBS=(file edit close rename realize reindex backfill migrate)
+readonly PLACE_INDEX_FILE="INDEX.md"
 
 # Built by place_substitute; the wrapped command with its placeholders resolved.
 PLACE_CMD=()
@@ -177,7 +179,7 @@ place_substitute() {
 
 PLACE_WORK=""    # this run's temp root, removed by the cleanup trap
 PLACE_COLL=""    # the materialized collection inside it — the `{}` substitution
-PLACE_INDEX=""   # scratch git index used to build the destination tree
+PLACE_GIT_INDEX=""   # scratch git index used to build the destination tree
 PLACE_TOKEN=""   # this run's token
 
 # place_cleanup — discard the run's temp root. Registered on EXIT, INT and TERM
@@ -198,7 +200,7 @@ place_open_work() {
   }
   trap place_cleanup EXIT INT TERM
   PLACE_COLL="$PLACE_WORK/collection"
-  PLACE_INDEX="$PLACE_WORK/index"
+  PLACE_GIT_INDEX="$PLACE_WORK/index"
   PLACE_TOKEN="${PLACE_WORK##*/}"
   mkdir -p -- "$PLACE_COLL"
 }
@@ -409,8 +411,8 @@ place_build_commit() {
   local -n _pp_after="$4"
   local name tree commit rc
   (
-    export GIT_INDEX_FILE="$PLACE_INDEX"
-    rm -f -- "$PLACE_INDEX"
+    export GIT_INDEX_FILE="$PLACE_GIT_INDEX"
+    rm -f -- "$PLACE_GIT_INDEX"
     if [[ -n "$tip" ]]; then
       git read-tree "$tip" || exit 1
     else
@@ -458,6 +460,62 @@ place_land() {
     return 3
   fi
   git update-ref "refs/heads/$branch" "$commit" "$tip" 2>/dev/null || return 3
+  return 0
+}
+
+# place_regraft <tip> <prefix> <before> <after> <upstream-out> <merged-out>
+#   Reapply this mutation onto a destination that moved. The collection at the
+#   new <tip> is materialized fresh, and every path the mutation touched is
+#   replayed onto it under one rule: if the destination's copy is unchanged
+#   since the base this mutation was prepared against, ours wins; if it changed
+#   too, the run refuses (rc 3, path named) rather than erasing a concurrent
+#   edit at rc 0. Deletions replay as deletions — a rename is a remove plus a
+#   create, and replaying only the create resurrects the old filename.
+#
+#   The index is the one path never grafted. It is derived, so either side's
+#   copy describes only that side's collection; it is regenerated over the
+#   merged result instead, which is the only view that matches what lands.
+place_regraft() {
+  local tip="$1" prefix="$2"
+  local -n _rg_before="$3"
+  local -n _rg_after="$4"
+  local -n _rg_upstream="$5"
+  local merge="$PLACE_WORK/merge"
+  rm -rf -- "$merge" || return 1
+  mkdir -p -- "$merge" || return 1
+  place_materialize "$tip" "$prefix" "$merge" || return $?
+  place_snapshot "$merge" "$5" || return 1
+  local -A touched=()
+  local name base ours theirs
+  for name in "${!_rg_after[@]}"; do
+    [[ "${_rg_before[$name]:-}" == "${_rg_after[$name]}" ]] || touched["$name"]=1
+  done
+  for name in "${!_rg_before[@]}"; do
+    [[ -n "${_rg_after[$name]:-}" ]] || touched["$name"]=1
+  done
+  for name in "${!touched[@]}"; do
+    [[ "$name" == "$PLACE_INDEX_FILE" ]] && continue
+    base="${_rg_before[$name]:-}"
+    ours="${_rg_after[$name]:-}"
+    theirs="${_rg_upstream[$name]:-}"
+    if [[ "$theirs" != "$base" ]]; then
+      echo "place.sh: '$name' also changed at the destination while this mutation" \
+           "was being prepared; refusing to overwrite it. Nothing is lost —" \
+           "re-run to reapply on the current state." >&2
+      return 3
+    fi
+    if [[ -n "$ours" ]]; then
+      git cat-file blob "$ours" > "$merge/$name" || return 1
+    else
+      rm -f -- "$merge/$name" || return 1
+    fi
+  done
+  if ! bash "$INDEX_SCRIPT" "$merge" >/dev/null 2>&1; then
+    echo "place.sh: could not regenerate the collection index over the merged" \
+         "collection" >&2
+    return 1
+  fi
+  place_snapshot "$merge" "$6" || return 1
   return 0
 }
 
@@ -610,9 +668,18 @@ place_commit_changes() {
   local remote="$7" tier="$8" tip="$9"
   place_changed "$3" "$4" || return 0
   local msg commit attempt rc
+  local -A upstream=() merged=()
   msg="$(place_message "$verb" "$id")"
   for (( attempt=1; attempt<=PLACE_ATTEMPTS; attempt++ )); do
-    commit="$(place_build_commit "$tip" "$prefix" "$3" "$4" "$msg")" || return 1
+    if (( attempt == 1 )); then
+      commit="$(place_build_commit "$tip" "$prefix" "$3" "$4" "$msg")" || return 1
+    else
+      place_regraft "$tip" "$prefix" "$3" "$4" upstream merged || return $?
+      # The mutation may already be present at the destination — someone
+      # applied the same change while this run was retrying.
+      place_changed upstream merged || return 0
+      commit="$(place_build_commit "$tip" "$prefix" upstream merged "$msg")" || return 1
+    fi
     place_land "$remote" "$tier" "$dest" "$tip" "$commit"
     rc=$?
     if (( rc == 0 )); then

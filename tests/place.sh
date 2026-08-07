@@ -595,6 +595,133 @@ case_place_read_fetches_before_serving() {
   assert_eq   "sees the fresh state" "published" "$OUT"
 }
 
+# ─── Section: Graft retry and conflict refusal ───────────────────────────────
+
+# place_issue_writer <file> <slug> <title>
+#   Write a shell script that files one issue into its placement collection and
+#   regenerates the index there — the shape every real mutation has. It lives in
+#   a file so its literal {} survives the outer argument substitution.
+place_issue_writer() {
+  local out="$1" slug="$2" title="$3"
+  cat > "$out" <<WRITER
+set -e
+d="\$1"
+{
+  printf -- '---\n'
+  printf 'id: %s\n' '$slug'
+  printf 'title: "%s"\n' '$title'
+  printf 'status: open\nnum: 1\npriority: medium\n'
+  printf 'created: 2026-01-01T00:00:00Z\n'
+  printf -- '---\n'
+} > "\$d/$slug.md"
+bash "$REPO_ROOT/skills/issue/scripts/index.sh" "\$d" >/dev/null
+WRITER
+}
+
+# AC: two teammates filing at once both survive, and the index that lands
+# describes the merged collection rather than either side's partial view
+# (spec AC #7).
+case_place_grafts_disjoint_concurrent_mutations() {
+  local bare mine theirs mine_w theirs_w teammate index
+  bare="$(place_bare place_graft_bare)"
+  mine="$(place_clone "$bare" place_graft_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_graft_them 'issue_placement = "jim/issues"')"
+  mine_w="$TMP_BASE/place-graft-mine.sh";   place_issue_writer "$mine_w"   20260101-a Alpha
+  theirs_w="$TMP_BASE/place-graft-them.sh"; place_issue_writer "$theirs_w" 20260101-b Beta
+  teammate="$TMP_BASE/place-graft-teammate.sh"
+  cat > "$teammate" <<TEAMMATE
+cd "$theirs" && bash "$SCRIPT_place" run --verb file -- sh "$theirs_w" '{}'
+TEAMMATE
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'sh "$1" "$2"; sh "$3" >/dev/null 2>&1' _ "$mine_w" '{}' "$teammate"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "mine survived"   "yes" \
+    "$(git -C "$bare" cat-file -e refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null && echo yes || echo no)"
+  assert_eq "theirs survived" "yes" \
+    "$(git -C "$bare" cat-file -e refs/heads/jim/issues:docs/issues/20260101-b.md 2>/dev/null && echo yes || echo no)"
+  index="$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md 2>/dev/null)"
+  assert_match "index knows mine"   '20260101-a' "$index"
+  assert_match "index knows theirs" '20260101-b' "$index"
+}
+
+# AC: when both sides changed the same file the mutation is refused with the
+# path named, rather than one edit silently erasing the other. A refusal is not
+# a loss — the local state survives for a re-run (spec AC #7).
+case_place_refuses_same_file_concurrency() {
+  local bare mine theirs teammate
+  bare="$(place_bare place_conflict_bare)"
+  mine="$(place_clone "$bare" place_conflict_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_conflict_them 'issue_placement = "jim/issues"')"
+  # Seed a shared collection both clones start from.
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "base\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  teammate="$TMP_BASE/place-conflict-teammate.sh"
+  cat > "$teammate" <<TEAMMATE
+cd "$theirs" && bash "$SCRIPT_place" run --verb edit -- \\
+  sh -c 'printf "theirs\\n" > "\$1/20260101-a.md"' _ '{}'
+TEAMMATE
+  run_place_in "$mine" run --verb edit -- \
+    sh -c 'printf "mine\n" > "$1/20260101-a.md"; sh "$2" >/dev/null 2>&1' \
+    _ '{}' "$teammate"
+  assert_exit  "rc"        3              "$RC"
+  assert_match "names path" '20260101-a\.md' "$ERR"
+  assert_eq "their edit intact" "theirs" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
+}
+
+# AC: a deletion replays as a deletion. A rename is a remove plus a create, so a
+# graft that carried only the create would resurrect the old filename and leave
+# the collection holding one issue under two names (security Finding 8).
+case_place_graft_replays_a_deletion() {
+  local bare mine theirs teammate paths
+  bare="$(place_bare place_gdel_bare)"
+  mine="$(place_clone "$bare" place_gdel_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_gdel_them 'issue_placement = "jim/issues"')"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "old\n" > "$1/20260101-old.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  teammate="$TMP_BASE/place-gdel-teammate.sh"
+  cat > "$teammate" <<TEAMMATE
+cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
+  sh -c 'printf "other\\n" > "\$1/20260101-other.md"' _ '{}'
+TEAMMATE
+  # A rename: remove the old name, create the new one, while the branch moves.
+  run_place_in "$mine" run --verb rename -- \
+    sh -c 'git mv --help >/dev/null 2>&1; mv "$1/20260101-old.md" "$1/20260101-new.md"; sh "$2" >/dev/null 2>&1' \
+    _ '{}' "$teammate"
+  assert_exit "rc" 0 "$RC"
+  paths="$(git -C "$bare" ls-tree -r --name-only refs/heads/jim/issues 2>/dev/null)"
+  assert_match "new name present"  'docs/issues/20260101-new\.md'   "$paths"
+  assert_match "teammate survived" 'docs/issues/20260101-other\.md' "$paths"
+  assert_eq "old name gone" "no" \
+    "$(printf '%s\n' "$paths" | grep -q '20260101-old\.md' && echo yes || echo no)"
+}
+
+# AC: a lost race never re-runs the wrapped command, so a filing that races does
+# not burn a second coordinated ordinal — the registry records one allocation,
+# not one per attempt (spec AC #7).
+case_place_graft_does_not_reallocate_on_retry() {
+  local bare mine theirs body teammate log
+  bare="$(place_bare place_realloc_bare)"
+  mine="$(place_clone "$bare" place_realloc_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_realloc_them 'issue_placement = "jim/issues"')"
+  body="$(fixture place_realloc_body.md 'body')"
+  teammate="$TMP_BASE/place-realloc-teammate.sh"
+  cat > "$teammate" <<TEAMMATE
+cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
+  sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
+TEAMMATE
+  run_place_in "$mine" run --verb file -- sh -c \
+    'bash "$1" --dir "$2" --title "Alpha bug" --priority medium --labels x \
+       --origin conversation --body-file "$3" >/dev/null; sh "$4" >/dev/null 2>&1' \
+    _ "$REPO_ROOT/skills/issue/scripts/new.sh" '{}' "$body" "$teammate"
+  assert_exit "rc" 0 "$RC"
+  log="$(git -C "$mine" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null)"
+  assert_eq "exactly one allocation" "1" \
+    "$(printf '%s\n' "$log" | grep -c '^issue allocate ')"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
