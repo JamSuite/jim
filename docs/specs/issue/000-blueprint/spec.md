@@ -2,7 +2,7 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-07-28"
+updated: "2026-08-07"
 last_full_generate: "2026-07-25T07:51:34Z"
 ---
 
@@ -34,7 +34,9 @@ face after the platform CLIs.
   Identity — the display ordinal and durable id — is coordinator-issued via
   `platform.jimalloc` and durable-before-write; under an unreachable coordination
   point in `provisional` mode it yields a structurally-distinct provisional
-  ordinal that `reconcile.sh` later realizes.
+  ordinal that `reconcile.sh` later realizes. The file lands wherever
+  `issue_placement` directs — the working branch by default, or a designated
+  destination branch — and stdout names the path within that destination.
 - `index.sh` **index generation** — frontmatter scan → `INDEX.md`
   (summary, issues, relation graph, integrity warnings). Guarantee:
   line-oriented parse only; atomic write — a failed run leaves the previous
@@ -42,7 +44,8 @@ face after the platform CLIs.
 - `render.sh` **read views** — `stats`/`list`/`show`/`insights-graph`/`help`.
   Guarantee: staleness-gated index reuse (regenerates only when stale); ids
   resolve only against the indexed set, never composed into paths from raw
-  input; read-only toward issue content.
+  input; read-only toward issue content; reads serve the collection at the
+  configured placement rather than a branch-local copy.
 - **§ 7a candidate-batch contract** — the canonical definition of the fileable
   bar (resolution, actionability, pipeline-ownership) and the emitter call
   shape, defined once in this group's `SKILL.md`. Guarantee: surfacing skills
@@ -67,21 +70,30 @@ face after the platform CLIs.
 - `platform.jimalloc` — coordinated issue identity: the emitter reserves the
   display ordinal + durable id via `allocate issue` (durable-before-write), and
   `reconcile.sh` realizes pending provisional ordinals via `reconcile issue`.
-- `platform.jimconf-cli` — the `issue_list_*` and `issue_id_*` key contract,
-  from the skill flow and script-to-script (`index.sh`, `render.sh`,
-  `backfill.sh`, `migrate.sh`).
-- `platform.testlib` — `tests/issues.sh` runs under the shared framework.
+- `platform.jimconf-cli` — the `issue_list_*`, `issue_id_*` and
+  `issue_placement` / `issue_placement_ack` key contract, from the skill flow
+  and script-to-script (`index.sh`, `render.sh`, `backfill.sh`, `migrate.sh`,
+  `place.sh`). `place.sh` additionally reads `id_coordination_branch`, the one
+  key this group consumes that another group owns the meaning of — it is the
+  branch placement refuses to write the collection to.
+- `platform.testlib` — `tests/issues.sh` and `tests/place.sh` run under the
+  shared framework.
 
 ## Structure
 
 - `skills/issue/` — `SKILL.md` (subcommand routing, § 7a contract, § Step-7
-  wrapping discipline), `assets/issue-template.md`, and six scripts:
+  wrapping discipline), `assets/issue-template.md`, and seven scripts:
   `new.sh` (emitter), `index.sh` (index), `render.sh` (views), `backfill.sh` /
-  `migrate.sh` (migrations), and `reconcile.sh` (realize provisional ordinals).
+  `migrate.sh` (migrations), `reconcile.sh` (realize provisional ordinals), and
+  `place.sh` — the seam between an on-branch collection and one centralized on a
+  designated branch, which the other six route themselves through. It exposes no
+  face: no caller outside the group invokes it.
 - `agents/issue-analyst.md` — the read-only insights subagent.
-- `tests/issues.sh` — the group's test file.
+- `tests/issues.sh` and `tests/place.sh` — the group's test files.
 - **Data store** (owned, not territory): `docs/issues/` + `INDEX.md` — one
-  markdown file per issue, index regenerated on every write.
+  markdown file per issue, index regenerated on every write. The directory is
+  the collection's path within a branch; which branch holds it is
+  `issue_placement`'s answer.
 
 ## Invariants
 
@@ -92,4 +104,6 @@ face after the platform CLIs.
 | id-gate-before-path | Every id passes the validator before any path composition or file read; `show` resolves only against the indexed set | critical | judge |
 | atomic-index-write | `INDEX.md` and issue-file writes are tmp+mv atomic; a failed run leaves the previous file untouched | medium | judge |
 | staleness-gated-reads | Read verbs regenerate the index only when stale and never serve a stale view | medium | judge |
+| placement-gate-before-git | The destination branch name clears a validity gate and the coordination-branch refusal before it reaches any git argument; a value that fails refuses rather than falling back to the working branch | critical | judge |
+| materialization-contained | Every entry extracted from destination-branch content is a regular file with a plain name resolving inside the collection directory, and its bytes are read by object name, never by tree path; the first violation aborts the extraction before the wrapped command runs | critical | judge |
 | insights-capability-boundary | Insights synthesis happens only in the write-free issue-analyst subagent; the main agent reads no issue bodies during insights. The runtime enforcement rides the allowed-tools permission channel, which no mechanical check here models — judged from the prompt surface | high | judge |
