@@ -654,6 +654,7 @@ cmd_begin() {
       || { rm -rf -- "$handle"; return 1; }
   fi
   place_save_snapshot base "$handle/base" || { rm -rf -- "$handle"; return 1; }
+  place_reindex "$handle/collection" || { rm -rf -- "$handle"; return 1; }
   {
     printf 'dest=%s\n'   "$dest"
     printf 'prefix=%s\n' "$prefix"
@@ -877,11 +878,6 @@ place_materialize() {
       return 1
     fi
   done < <(git ls-tree -r -z "$subtree")
-  # Leave the index the newest entry in the directory, the way index.sh does.
-  # Every write publishes a current index, so a read that materializes one is
-  # already looking at the right answer — without this the fresh mtimes would
-  # read as stale and a read verb would rebuild what it was just handed.
-  [[ -e "$dest/$PLACE_INDEX_FILE" ]] && touch "$dest/$PLACE_INDEX_FILE"
   return 0
 }
 
@@ -1002,10 +998,12 @@ place_land() {
 
 # place_reindex <dir> — regenerate the collection index in <dir>.
 #   Every write regenerates it, so what lands at the destination is one commit
-#   holding both the change and an index that describes it. That is also what
-#   lets the read path stay cheap: the destination's index is always current, so
-#   a read never has to regenerate one — and a read that regenerated would be a
-#   read that commits.
+#   holding both the change and an index that describes it. A read regenerates
+#   too, inside the materialized copy it is about to throw away — so it is still
+#   a read that commits nothing. The destination's index is current for whatever
+#   the emitter published, but content arrives by other routes as well, and the
+#   alternative to regenerating is asserting freshness the collection may not
+#   have.
 place_reindex() {
   if ! bash "$INDEX_SCRIPT" "$1" >/dev/null 2>&1; then
     echo "place.sh: could not regenerate the collection index" >&2
@@ -1193,6 +1191,12 @@ cmd_run() {
   else
     place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$PLACE_WORK/base" before || return $?
   fi
+  # Only now, with the destination's own state recorded, bring the index up to
+  # date. Content reaches the destination by routes the emitter never sees — a
+  # hand commit, a merge — and the index that arrives with it can be stale;
+  # regenerating over a snapshot already taken means a read is served a current
+  # one and a write publishes the correction rather than hiding it.
+  place_reindex "$PLACE_COLL" || return 1
   place_substitute "$PLACE_COLL" "$PLACE_TOKEN" "$@"
   local rc=0
   # The prefix travels with the token so a wrapped command can report where its

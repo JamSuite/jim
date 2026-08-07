@@ -424,6 +424,45 @@ case_place_refuses_non_regular_tree_entry() {
   assert_match "explains"  'link\.md' "$ERR"
 }
 
+# place_issue_file <slug> <status> — an issue file's content, the shape index.sh
+# parses.
+place_issue_file() {
+  printf -- '---\nid: %s\ntitle: "Alpha"\nstatus: %s\nnum: 1\npriority: medium\ncreated: 2026-01-01T00:00:00Z\n---\n' \
+    "$1" "$2"
+}
+
+# AC: what a read is served carries an index describing it. Content reaches the
+# destination branch by routes the emitter never sees — a hand commit, a merge,
+# a bulk import — and asserting the materialized index was fresh defeated the
+# reader's own staleness gate, hiding such an issue until some later write
+# happened to regenerate (the group blueprint's staleness-gated-reads).
+case_place_read_serves_a_current_index() {
+  local repo
+  repo="$(place_repo place_stale_index 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues \
+    "20260101-a.md=$(place_issue_file 20260101-a open)" \
+    'INDEX.md=# Issues Index'
+  run_place_in "$repo" run --read --verb reindex -- \
+    sh -c 'cat "$1/INDEX.md"' _ '{}'
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the issue is in the served index" '20260101-a' "$OUT"
+}
+
+# AC: and a write publishes that correction, so the next reader is not made to
+# repeat it.
+case_place_write_publishes_a_corrected_index() {
+  local repo
+  repo="$(place_repo place_stale_index_write 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues \
+    "20260101-a.md=$(place_issue_file 20260101-a open)" \
+    'INDEX.md=# Issues Index'
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'true' _ '{}'
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the published index knows the issue" '20260101-a' \
+    "$(place_dest_file "$repo" jim/issues docs/issues/INDEX.md)"
+}
+
 # AC: a read-only run publishes nothing — the destination tip is exactly where
 # it was, even when the wrapped command writes (spec AC #5: reads serve, they
 # do not commit).
