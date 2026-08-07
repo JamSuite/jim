@@ -2,7 +2,7 @@
 id: 20260807-record-the-arbitrary-executor-exception-in-permission-convention
 num: P-20260807-record-the-arbitrary-executor-exception-in-permission-convention
 title: "Record the arbitrary-executor exception in permission conventions"
-status: open
+status: closed
 priority: low
 labels: [docs, architecture, permissions]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:59Z
-updated: 2026-08-07T11:43:59Z
+updated: 2026-08-07T11:45:28Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 116
-- Closed: 161
+- Open: 115
+- Closed: 162
 
 ## Issues
 
@@ -280,7 +280,7 @@
 - `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn` — Placement turns the origin lint into cross-branch index churn · status: open · num: P-20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn · priority: medium · created: 2026-08-07T11:43:57Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-push-failures-are-reported-as-contention` — Push failures are reported as contention · status: open · num: P-20260807-push-failures-are-reported-as-contention · priority: medium · created: 2026-08-07T11:43:53Z · labels: [issue, placement, diagnostics] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-read-collection-blobs-in-one-batch-instead-of-one-process-per-en` — Read collection blobs in one batch instead of one process per entry · status: open · num: 260 · priority: medium · created: 2026-08-07T10:59:34Z · labels: [issue, performance, placement] · origin: docs/specs/issue/011-issue-placement/plan.md
-- `20260807-record-the-arbitrary-executor-exception-in-permission-convention` — Record the arbitrary-executor exception in permission conventions · status: open · num: P-20260807-record-the-arbitrary-executor-exception-in-permission-convention · priority: low · created: 2026-08-07T11:43:59Z · labels: [docs, architecture, permissions] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260807-record-the-arbitrary-executor-exception-in-permission-convention` — Record the arbitrary-executor exception in permission conventions · status: closed · num: P-20260807-record-the-arbitrary-executor-exception-in-permission-convention · priority: low · created: 2026-08-07T11:43:59Z · labels: [docs, architecture, permissions] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-regenerate-the-index-on-placed-reads-instead-of-touching-it` — Regenerate the index on placed reads instead of touching it · status: open · num: P-20260807-regenerate-the-index-on-placed-reads-instead-of-touching-it · priority: high · created: 2026-08-07T11:43:26Z · labels: [issue, placement, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-routing-argument-classification-defects-in-the-entry-scripts` — Routing argument classification defects in the entry scripts · status: open · num: P-20260807-routing-argument-classification-defects-in-the-entry-scripts · priority: medium · created: 2026-08-07T11:43:55Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-test-suite-wall-clock-exceeds-a-single-foreground-run` — Test suite wall-clock exceeds a single foreground run · status: open · num: 261 · priority: low · created: 2026-08-07T10:59:37Z · labels: [testing, performance] · origin: docs/specs/issue/011-issue-placement/plan.md
