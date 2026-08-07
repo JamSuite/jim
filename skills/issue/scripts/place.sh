@@ -296,9 +296,33 @@ place_remote_tip() {
   printf '%s\n' "$tip"
 }
 
-# place_local_tip <branch> — the destination branch's tip in this clone.
-place_local_tip() {
+# place_head_tip <branch> — this clone's own copy of the destination branch.
+# It is the compare-and-swap old value for every local update of that ref, and
+# an empty one is a value too: it requires the ref to still be absent, which is
+# what makes the orphan bootstrap a compare-and-swap rather than a blind create.
+place_head_tip() {
   git rev-parse --verify --quiet --end-of-options "refs/heads/$1" 2>/dev/null || true
+}
+
+# place_local_tip <branch> — the freshest destination state this clone can reach
+# without the network.
+#
+# Usually that is its own copy of the branch, but a clone that has only ever
+# read the collection has none: `git clone` creates no local head for the
+# destination, and a fetch writes FETCH_HEAD and the remote-tracking ref rather
+# than that head. The bookmark does record the tip such a clone last saw, and
+# because it is a ref, the objects it names are still here to be materialized.
+# Without it an unreachable remote would serve an empty collection while
+# announcing the last-seen state, and a write would build on nothing.
+place_local_tip() {
+  local tip bref
+  tip="$(place_head_tip "$1")"
+  if [[ -z "$tip" ]]; then
+    bref="$(place_bookmark_ref "$1")" || return 0
+    tip="$(git rev-parse --verify --quiet --end-of-options "$bref" 2>/dev/null || true)"
+  fi
+  [[ -n "$tip" ]] && printf '%s\n' "$tip"
+  return 0
 }
 
 # ─── Section: Direct mode ────────────────────────────────────────────────────
@@ -500,8 +524,9 @@ cmd_begin() {
     echo "place.sh: could not create a placement handle" >&2
     return 1
   }
-  local remote tier tip unreachable=0
+  local remote tier tip ref_old unreachable=0
   remote="$(place_remote)"
+  ref_old="$(place_head_tip "$dest")"
   if [[ -n "$remote" ]] && tip="$(place_remote_tip "$remote" "$dest")"; then
     tier="origin"
   else
@@ -529,6 +554,7 @@ cmd_begin() {
     printf 'tip=%s\n'    "$tip"
     printf 'tier=%s\n'   "$tier"
     printf 'remote=%s\n' "$remote"
+    printf 'ref=%s\n'    "$ref_old"
     printf 'read=%s\n'   "$read_only"
   } > "$handle/state" || { rm -rf -- "$handle"; return 1; }
   printf '%s\t%s\n' "${handle##*/}" "$handle/collection"
@@ -569,12 +595,13 @@ cmd_commit() {
          "publish; use abort to discard it" >&2
     return 2
   fi
-  local dest prefix tip tier remote
+  local dest prefix tip tier remote ref_old
   dest="$(place_state_get "$handle/state" dest)"
   prefix="$(place_state_get "$handle/state" prefix)"
   tip="$(place_state_get "$handle/state" tip)"
   tier="$(place_state_get "$handle/state" tier)"
   remote="$(place_state_get "$handle/state" remote)"
+  ref_old="$(place_state_get "$handle/state" ref)"
   PLACE_WORK="$handle"
   PLACE_COLL="$handle/collection"
   PLACE_GIT_INDEX="$handle/index"
@@ -584,7 +611,7 @@ cmd_commit() {
   place_snapshot "$PLACE_COLL" after || return 1
   local rc=0
   place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
-                       "$remote" "$tier" "$tip" || rc=$?
+                       "$remote" "$tier" "$tip" "$ref_old" || rc=$?
   # A refused publish keeps the handle: the edits in it are work, and losing
   # them to a conflict would make refusing worse than overwriting.
   (( rc == 0 )) || return "$rc"
@@ -804,27 +831,32 @@ place_build_commit() {
   printf '%s\n' "$commit"
 }
 
-# place_land <remote> <tier> <branch> <tip> <commit>
-#   Move the destination branch to <commit>, compare-and-swap against <tip>.
-#   rc 3 means the branch moved underneath this attempt — the caller re-reads
-#   and reapplies rather than overwriting whoever won.
+# place_land <remote> <tier> <branch> <ref-old> <commit>
+#   Move the destination branch to <commit>, compare-and-swap against <ref-old>
+#   — the value this clone's own copy of the branch held when the mutation was
+#   prepared. rc 3 means the branch moved underneath this attempt; the caller
+#   re-reads and reapplies rather than overwriting whoever won.
 #
 #   On the origin tier the push itself is the compare-and-swap: git's default
 #   non-fast-forward rejection is exactly the check, so there is no window
-#   between testing the remote's state and updating it. On the local tier the
-#   old-value argument does the same job, and an empty one requires the ref to
-#   be absent — which makes the orphan bootstrap a compare-and-swap too, rather
-#   than a blind create.
+#   between testing the remote's state and updating it, and the local update
+#   afterwards only records the result. On the local tier the old-value argument
+#   does the whole job.
+#
+#   <ref-old> is not always the commit's parent. A clone that has only ever read
+#   the collection prepares against the tip the bookmark remembers while its own
+#   copy of the branch does not exist yet, and it is the ref's state — absent —
+#   that the swap has to match.
 place_land() {
-  local remote="$1" tier="$2" branch="$3" tip="$4" commit="$5"
+  local remote="$1" tier="$2" branch="$3" ref_old="$4" commit="$5"
   if [[ "$tier" == "origin" ]]; then
     if git push --quiet --end-of-options "$remote" "$commit:refs/heads/$branch" 2>/dev/null; then
-      git update-ref "refs/heads/$branch" "$commit" 2>/dev/null || true
+      git update-ref "refs/heads/$branch" "$commit" "$ref_old" 2>/dev/null || true
       return 0
     fi
     return 3
   fi
-  git update-ref "refs/heads/$branch" "$commit" "$tip" 2>/dev/null || return 3
+  git update-ref "refs/heads/$branch" "$commit" "$ref_old" 2>/dev/null || return 3
   return 0
 }
 
@@ -993,8 +1025,9 @@ cmd_run() {
   # back to the last-seen local state and says so, rather than failing (a
   # discovery is not worth losing to a dropped network) or pretending to be
   # current.
-  local remote tier tip unreachable=0
+  local remote tier tip ref_old unreachable=0
   remote="$(place_remote)"
+  ref_old="$(place_head_tip "$dest")"
   if [[ -n "$remote" ]] && tip="$(place_remote_tip "$remote" "$dest")"; then
     tier="origin"
   else
@@ -1024,7 +1057,7 @@ cmd_run() {
   place_reindex "$PLACE_COLL" || return 1
   place_snapshot "$PLACE_COLL" after || return 1
   place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
-                       "$remote" "$tier" "$tip" || return $?
+                       "$remote" "$tier" "$tip" "$ref_old" || return $?
   if (( unreachable )); then
     echo "place.sh: remote '$remote' is unreachable; the mutation is committed" \
          "locally on '$dest' and publication is deferred until the next" \
@@ -1059,7 +1092,7 @@ place_changed() {
 #   behind on the destination branch.
 place_commit_changes() {
   local dest="$1" prefix="$2" verb="$5" id="$6"
-  local remote="$7" tier="$8" tip="$9"
+  local remote="$7" tier="$8" tip="$9" ref_old="${10}"
   place_changed "$3" "$4" || return 0
   local msg commit attempt rc
   local -A upstream=() merged=()
@@ -1074,7 +1107,7 @@ place_commit_changes() {
       place_changed upstream merged || return 0
       commit="$(place_build_commit "$tip" "$prefix" upstream merged "$msg")" || return 1
     fi
-    place_land "$remote" "$tier" "$dest" "$tip" "$commit"
+    place_land "$remote" "$tier" "$dest" "$ref_old" "$commit"
     rc=$?
     if (( rc == 0 )); then
       place_advance_bookmark "$dest" "$commit"
@@ -1083,14 +1116,19 @@ place_commit_changes() {
     (( rc == 3 )) || return "$rc"
     (( attempt < PLACE_ATTEMPTS )) && place_backoff "$attempt"
     # Re-read whatever won the race. A remote that dropped out mid-retry
-    # degrades to the local tier rather than spinning against it.
+    # degrades to the local tier rather than spinning against it. On that tier
+    # the ref update is the compare-and-swap, so its old value is re-read
+    # alongside the tip the next attempt builds on; otherwise a swap that lost
+    # once would keep testing against a value that is never coming back.
     if [[ "$tier" == "origin" ]]; then
       if ! tip="$(place_remote_tip "$remote" "$dest")"; then
         tier="local"
         tip="$(place_local_tip "$dest")"
+        ref_old="$(place_head_tip "$dest")"
       fi
     else
       tip="$(place_local_tip "$dest")"
+      ref_old="$(place_head_tip "$dest")"
     fi
   done
   echo "place.sh: '$dest' kept moving; the mutation was not published after" \

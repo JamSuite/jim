@@ -627,6 +627,59 @@ case_place_read_fetches_before_serving() {
   assert_eq   "sees the fresh state" "published" "$OUT"
 }
 
+# AC: a clone that has only ever *read* the destination still serves the
+# collection it last saw when the remote goes away. `git clone` creates no local
+# head for the destination and a fetch writes only the remote-tracking ref, so
+# the branch ref is not the record of what this clone saw — the bookmark is, and
+# an empty answer announced as "the last-seen state" would be a lie (spec AC #6).
+case_place_offline_read_serves_the_last_seen_collection() {
+  local bare theirs mine
+  bare="$(place_bare place_offline_read_bare)"
+  theirs="$(place_clone "$bare" place_offline_read_them 'issue_placement = "jim/issues"')"
+  mine="$(place_clone "$bare" place_offline_read_mine   'issue_placement = "jim/issues"')"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "published\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  # Read once while the remote is reachable, so this clone has seen it...
+  run_place_in "$mine" run --read --verb reindex -- \
+    sh -c 'cat "$1/20260101-a.md"' _ '{}'
+  assert_exit "online read rc"  0           "$RC"
+  assert_eq   "saw it online"   "published" "$OUT"
+  assert_eq   "still no local head" "" \
+    "$(git -C "$mine" rev-parse --verify --quiet refs/heads/jim/issues)"
+  # ...then take the remote away.
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --read --verb reindex -- \
+    sh -c 'cat "$1/20260101-a.md"' _ '{}'
+  assert_exit  "rc"        0           "$RC"
+  assert_match "discloses" 'last-seen' "$ERR"
+  assert_eq    "serves what it last saw" "published" "$OUT"
+}
+
+# AC: the same clone can still write offline, and the mutation is prepared
+# against that last-seen state rather than against nothing — a local commit that
+# orphaned the collection would drop every issue the clone had already seen
+# (spec AC #7).
+case_place_offline_write_builds_on_the_last_seen_state() {
+  local bare theirs mine paths
+  bare="$(place_bare place_offline_write_bare)"
+  theirs="$(place_clone "$bare" place_offline_write_them 'issue_placement = "jim/issues"')"
+  mine="$(place_clone "$bare" place_offline_write_mine   'issue_placement = "jim/issues"')"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "published\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "online read rc" 0 "$RC"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "mine\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit  "rc"        0       "$RC"
+  assert_match "discloses" 'defer' "$ERR"
+  paths="$(place_dest_paths "$mine" jim/issues)"
+  assert_match "mine committed locally"    'docs/issues/20260101-b\.md' "$paths"
+  assert_match "what it had seen survives" 'docs/issues/20260101-a\.md' "$paths"
+}
+
 # ─── Section: Graft retry and conflict refusal ───────────────────────────────
 
 # place_issue_writer <file> <slug> <title>
