@@ -1,8 +1,8 @@
 # Issue placement (`issue/011`) — handoff
 
-*Written 2026-08-07 at the end of the build + review cycle. Branch
-`feat/id-coordination`. Everything described here is committed; the working tree
-is clean.*
+*Written 2026-08-07 at the end of the build + review cycle; revised the same day
+after the defect-fix pass. Branch `feat/id-coordination`. Everything described
+here is committed; the working tree is clean.*
 
 ## Status at a glance
 
@@ -10,16 +10,40 @@ is clean.*
 | :--- | :--- |
 | Spec | `docs/specs/issue/011-issue-placement/` — `status: approved` |
 | Plan | 14/14 tasks `[x]`, `status: approved` — **deliberately not `complete`** |
-| Build | shipped, 1262 tests green (7m36s) |
-| Review | **`major-drift`**, 25 findings, `review.md` committed |
+| Build | shipped, then the defect-fix pass below; 1279 tests green |
+| Review | `review.md` records **`major-drift`** at 25 findings — the state before the fix pass; not yet re-run |
 | Blueprint | `issue` group refreshed; contract graph reconciled (23 edges, 19 faces, no findings) |
-| Follow-ons | 16 issues filed (#262–#277), 15 open, #275 closed |
+| Follow-ons | 16 issues filed (#262–#277); 9 open, 7 closed |
 | Build base | `f024b9e` (also in `.git/jim-build-base-011`) |
-| Session range | `f024b9e..c4b5940`, 24 commits |
 
-**The plan is not marked complete on purpose.** Four defects reproduced during
-review corrupt or lose user data on ordinary input. Recommendation: fix those
-four, re-review, then close.
+**The plan is still not marked complete on purpose.** The four data defects are
+fixed, but **AC #13 remains violated** (#262) and that is a design question
+someone has to answer before a re-review can clear the verdict — see *Next
+steps*.
+
+## The defect-fix pass
+
+Six issues closed. Each fix went red-first at a shell, and each new test was
+checked non-vacuous by neutering the thing it guards and watching it fail.
+
+| Issue | Fix |
+| :--- | :--- |
+| **#270** | `place_substitute` matches whole arguments only. A title containing `{}` no longer has the run's temp path substituted into it, or into the slug. |
+| **#267** | `place_local_tip` falls back to the bookmark when `refs/heads/<dest>` is absent, so a clone that has only ever read serves what it last saw instead of an empty collection. The ref a local swap must match is no longer the commit's parent, so the CAS old value travels separately. |
+| **#265** | Deferral is resumed. A reachable run builds on unpublished local commits when they fast-forward (push carries them, subjects intact) and folds their content in from the common ancestor when the destination moved too. The bookmark no longer advances for a commit the destination never saw, and `cmd_commit` discloses its own deferral. |
+| **#264** | `begin --read` in direct mode returns `direct-read`, which `commit` refuses; the write arm re-asserts HEAD and refuses the `branch` sentinel. |
+| **#276** | The freshness `touch` is gone; the index is regenerated in the materialized copy, after the base snapshot so a write publishes the correction. |
+| **#272** | The vacuous cleanup case, the two "tip unmoved" cases that could not move either way, the dangling-origin case that created its own origin, the unchecked fixture, and the bare `rev-parse` baselines. Adds the direct-token branch, the `issues_path` refusal, `--id` validation, and the local-tier retry. |
+
+`ARCHITECTURE.md` was refreshed through `/jim:arch` for the behavior these
+changed. `review.md` is **not** updated — it is the record of the review that
+found them, and the re-review has not been run.
+
+#272 was closed on its proposed action and its top-ranked holes. The tail it
+listed is still uncovered and was judged not worth its own issue: `place_commit_tree`'s
+fallback identity, `place_snapshot`'s non-regular-file refusal, `place_regraft`'s
+already-applied early return, the argument-shape refusals, and `place_shown`'s
+control-character scrubbing.
 
 ## What shipped
 
@@ -56,6 +80,10 @@ would reinstate the very finding the token pair exists for).
 Full detail in `docs/specs/issue/011-issue-placement/review.md`. The four that
 matter, each **reproduced at a shell**, not argued from the code. All are
 placement-only — the default path is clean.
+
+*All four are fixed; each now has a test that reproduces it. Kept here because
+the reproductions are what a re-reviewer should re-run, and because the last
+subsection — AC #13 — is still open.*
 
 ### 1. Placeholder substitution corrupts the durable id — *critical*
 
@@ -150,23 +178,15 @@ Recorded so a resuming agent does not re-derive them:
 
 ## Next steps, in order
 
-1. **Fix the four criticals.** The first two are independent; the third shares a
-   function with the second, so pair them.
-   - **#270** placeholder substitution corrupts titles and durable ids
-   - **#265** deferred placement mutation discarded on reconnect
-   - **#264** `cmd_commit` direct arm publishes without re-verification
-   - **#267** offline placed read serves an empty collection
-2. **Fix the invariant regression** — **#276**, regenerate the index on placed
-   reads instead of touching it. The blueprint fork already committed to this
-   resolution, so leaving it undone leaves a knowingly-violated invariant.
-3. **Fix the test suite's own defects before adding tests** — **#272**. One case
-   passes even if `place.sh` is deleted; three more pass for reasons other than
-   what they name. A test that cannot fail is worse than no test because it
-   reports coverage.
-4. **Decide AC #13's enforcement point** — **#262**. This is a design question,
-   not a bug fix: the issue lays out three shapes. My preference is a `place.sh`
-   verb the skills consult, since the config gate already lives there.
-5. **Re-run `/jim:review`** once 1–3 land, then mark the plan `complete`.
+1. **Decide AC #13's enforcement point** — **#262**. A design question, not a
+   bug fix, and the one thing standing between here and a clean re-review: the
+   AC is *violated*, so re-running the review before it is settled spends a
+   large fan-out to be told so again. The issue lays out three shapes. The
+   trade-off that matters is grant cost — a `place.sh` verb keeps the rule in
+   one place but needs a new `allowed-tools` clause in each of the nine
+   surfacing skills, while restating the guard locally needs none, because they
+   already hold the `jimconf.sh` grant they read `auto_issue_file` with.
+2. **Re-run `/jim:review`**, then mark the plan `complete`.
 
 Not blocking, in rough priority: **#266** (insights analyst reads the
 branch-local collection), **#274** (push failures reported as contention),
@@ -174,8 +194,13 @@ branch-local collection), **#274** (push failures reported as contention),
 classification), **#268** (missing worktree containment gate), **#273**
 (origin-lint cross-branch churn), **#269** (`place.sh` hygiene pass).
 
-Closed: **#275**, the permission-conventions record — resolved in the same pass
-that filed it.
+**#271 is now the most visible of those.** The fix pass narrowed it — an
+offline run no longer rewinds the bookmark — but the alarm itself still fires on
+the local tier, where no fetch happened and the "tip" is this clone's own ref.
+Making offline reads actually work (#267) means that path is reached more often
+than it was. It was left whole rather than half-fixed: closing it properly also
+means the `place_direct_publish` half, which advances the bookmark before the
+push and does not roll back on rejection.
 
 ## Gotchas for whoever resumes
 
