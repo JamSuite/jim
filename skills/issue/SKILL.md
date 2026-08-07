@@ -233,14 +233,18 @@ After the batch, regenerate the index **once**: `bash ${CLAUDE_PLUGIN_ROOT}/skil
 
 **Auto-filing keeps a scrub moment under a branch placement.** `auto_issue_file = "true"` files a batch with no interactive review. That is a considered trade on a feature branch, where a filed issue stays local until the branch merges and a mistake can be amended away. Under a branch placement it is a different bargain: the batch is pushed to a shared branch as it is filed, so candidate text drawn from tool output, fetched pages, or prior issue bodies is published to the team the moment it is accumulated, and unpublishing it means rewriting a shared branch.
 
-So when `issue_placement` names a destination branch, the auto-file path degrades to the interactive batch with a one-line disclosure — "issue placement publishes to `<branch>`; showing the batch for review before it is shared" — and the developer confirms as usual. A project that wants the quiet path anyway says so explicitly with `issue_placement_ack = "true"`, which restores auto-filing. Read both keys together:
+So when `issue_placement` names a destination branch, the auto-file path degrades to the interactive batch with a one-line disclosure — "issue placement publishes to `<branch>`; showing the batch for review before it is shared" — and the developer confirms as usual. A project that wants the quiet path anyway says so explicitly with `issue_placement_ack = "true"`, which restores auto-filing.
+
+**The decision is the emitter's, not yours.** Pass `--auto` on the auto-file path — it declares that no human has reviewed this candidate — and `new.sh` answers, because `new.sh` is the one place that can answer mechanically. It exits **4** when the batch would publish to an unacknowledged placement, having written nothing; on that code, abandon the auto-file path, emit the disclosure, and show the batch. Under the default placement `--auto` changes nothing.
+
+This is deliberately not a rule for each surfacing skill to remember. A skill can only carry it as prose the agent may or may not act on, and the failure is silent and unrecoverable — the batch is already on a shared branch. Reading the two keys yourself is neither necessary nor sufficient:
 
 ```
 bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get issue_placement
 bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get issue_placement_ack
 ```
 
-The degrade applies only to the confirmation gesture. Where the batch lands, and the emitter it goes through, are unchanged.
+A caller that omits `--auto` gets the interactive bargain rather than a silent publish, which is the safe direction to fail. The degrade applies only to the confirmation gesture; where the batch lands, and the emitter it goes through, are unchanged.
 
 ### 8. Insights (the `insights` verb)
 

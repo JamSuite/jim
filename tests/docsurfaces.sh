@@ -163,12 +163,11 @@ case_docsurfaces_internal_anchors_resolve() {
 }
 
 # INTRODUCTION, placement half. The scrub moment that survives auto-filing under
-# a branch placement is enforced by prose — no script can check that an agent
-# paused for confirmation — so the only mechanical guard available is that the
-# rule is still written where the eight surfacing skills are pointed. §7a is the
-# single canonical batch contract; if this rule is edited away from it, every
-# inheritor loses it silently, which is exactly the omission class this file
-# exists to catch.
+# a branch placement is decided by the emitter, so §7a's job is to say so and to
+# name the flag that reaches it. Asserting only that the rule is *stated* was the
+# original mistake here: it certified the property that did not matter while no
+# consumer executed the rule at all. The companion case below is the one that
+# checks the consumers.
 case_docsurfaces_placement_scrub_rule_is_stated() {
   local skill="$REPO_ROOT/skills/issue/SKILL.md" body
   assert_eq "the issue skill is present" "yes" \
@@ -180,6 +179,29 @@ case_docsurfaces_placement_scrub_rule_is_stated() {
   assert_match "names the placement key"      'issue_placement'     "$body"
   assert_match "names the acknowledgement"    'issue_placement_ack' "$body"
   assert_match "states the degrade"           'degrade'             "$body"
+  assert_match "names the flag that carries it" '\-\-auto'          "$body"
+  assert_match "names the code it answers with" 'exit'              "$body"
+}
+
+# The consumers half — the property that actually matters. The emitter can only
+# apply the gate when the caller passes `--auto`, so that flag is the whole
+# coupling, and a surfacing skill that auto-files without it publishes an
+# unreviewed batch to a shared branch silently. The consumer set is swept rather
+# than listed, so a skill added later inherits the check instead of missing it.
+case_docsurfaces_auto_file_consumers_pass_the_gate_flag() {
+  local f name n=0 missing="" unhandled=""
+  while IFS= read -r f; do
+    name="${f#"$REPO_ROOT"/skills/}"; name="${name%/SKILL.md}"
+    [[ "$name" == "issue" ]] && continue
+    n=$(( n + 1 ))
+    grep -q 'new\.sh \[\?--auto' "$f" || missing+="$name "
+    grep -q 'exit code 4'        "$f" || unhandled+="$name "
+  done < <(grep -rl 'auto_issue_file' "$REPO_ROOT"/skills/*/SKILL.md 2>/dev/null)
+  # Without this the sweep passes vacuously on a glob that matched nothing.
+  assert_eq "the consumer set was found (>= 8, got $n)" "yes" \
+    "$([[ "$n" -ge 8 ]] && echo yes || echo no)"
+  assert_eq "every auto-filing skill passes --auto"      "" "${missing% }"
+  assert_eq "every auto-filing skill handles the refusal" "" "${unhandled% }"
 }
 
 # The two-phase edit door has to stay documented where an agent editing an issue

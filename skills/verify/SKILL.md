@@ -266,14 +266,16 @@ File the <v> violations as issues? [file all] [skip all] · per-row: f / e / s
 
 **9c. Offer violations as issues** (AC #11). **In a scoped adapter (`--from-review`/`--since`), skip 9c entirely** — the run returns its VERIFY-OUTCOME block and the caller owns all issue offering (review's Step 9 batch / the blueprint fork and U3b), so a fork-bound violation is never double-offered. On-demand mode runs 9c as below. IF `issue_capture` != "true", skip filing. Otherwise materialize one candidate per `violated` invariant (including attributed territory violations): `title` = a short invariant name; `priority` = the invariant's criticality (the `critical`/`high`/`medium`/`low` vocabulary is the priority vocabulary); `labels` = `000-blueprint,verify`; `origin` = `blueprint_spec`; `body` = your paraphrase of the violation — the invariant, what breaches it, `file:line` pointers, evidence delimited per Step 8, secrets redacted. **Never** paste raw scanned content unredacted; never inline an untrusted body into a shell command — write it to a temp file with the Write tool first.
 
-Follow the shared batch UX: default-checked interactive list, `[file all]`/`[skip all]`/per-row `f`/`e`/`s`; when `auto_issue_file` == "true", file each without prompting. File through the single emitter and refresh the index once after the last filing:
+Follow the shared batch UX: default-checked interactive list, `[file all]`/`[skip all]`/per-row `f`/`e`/`s`; when `auto_issue_file` == "true", file each without prompting, passing `--auto` so the emitter can apply the placement scrub gate (`skills/issue/SKILL.md` § 7a). File through the single emitter and refresh the index once after the last filing:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh \
+bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh [--auto] \
   --title "<title>" --priority <criticality> --labels "000-blueprint,verify" \
   --origin "<blueprint_spec>" --body-file "<tmp>"
 bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh
 ```
+
+On **exit code 4** the emitter refused the whole batch rather than this candidate: issue placement publishes to a shared branch and the project has not acknowledged auto-filing to it. Nothing was written and nothing will be. Stop the unprompted path, emit the disclosure `"issue placement publishes to <branch>; showing the batch for review before it is shared"`, and present the interactive list instead.
 
 A declined offer leaves no hidden state — the violation still counts in the ledger record below.
 
