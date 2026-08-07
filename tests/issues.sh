@@ -2844,6 +2844,83 @@ case_issues_placement_index_routes_to_destination() {
     "$(git -C "$repo" rev-list --count refs/heads/jim/issues)"
 }
 
+# run_render_in <repo> <args...> — render from inside <repo>, the way a
+# developer runs it: config, and therefore placement, resolves from there.
+run_render_in() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && bash "$SCRIPT_RENDER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: the read verbs serve the destination branch's collection, from a checkout
+# whose own working tree holds no issues at all (spec AC #5).
+case_issues_placement_list_serves_the_destination() {
+  local repo body slug
+  repo="$(placement_repo issues_place_list jim/issues)"
+  body="$(fixture issues_place_list_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "nothing in the working tree" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  run_render_in "$repo" list
+  assert_exit  "list rc"          0            "$RC"
+  assert_match "lists the issue"  'Alpha bug'  "$OUT"
+  run_render_in "$repo" show "$slug"
+  assert_exit  "show rc"          0            "$RC"
+  assert_match "shows the issue"  'Alpha bug'  "$OUT"
+}
+
+# AC: a read never publishes. Reads under placement fetch and materialize, but
+# the destination tip is exactly where it was afterwards (spec AC #5).
+case_issues_placement_read_publishes_nothing() {
+  local repo body before
+  repo="$(placement_repo issues_place_readonly jim/issues)"
+  body="$(fixture issues_place_readonly_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  run_render_in "$repo" list;  assert_exit "list rc"  0 "$RC"
+  run_render_in "$repo" stats; assert_exit "stats rc" 0 "$RC"
+  assert_eq "tip unmoved" "$before" \
+    "$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  assert_eq "working tree still clean" "" "$(git -C "$repo" status --porcelain)"
+}
+
+# AC: when the remote is unreachable a read serves the last-seen state and says
+# so on stderr, without polluting the rendered view (spec AC #6).
+case_issues_placement_read_degrades_with_a_note() {
+  local repo body
+  repo="$(placement_repo issues_place_degrade jim/issues)"
+  body="$(fixture issues_place_degrade_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
+  run_render_in "$repo" list
+  assert_exit  "rc"            0           "$RC"
+  assert_match "still serves"  'Alpha bug' "$OUT"
+  assert_match "notes it"      'last-seen' "$ERR"
+}
+
+# AC: insights-graph routes too, so the read-only analyst persona is handed the
+# destination's collection rather than an empty working branch (spec AC #5).
+case_issues_placement_insights_graph_routes() {
+  local repo body
+  repo="$(placement_repo issues_place_graph jim/issues)"
+  body="$(fixture issues_place_graph_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_render_in "$repo" insights-graph
+  assert_exit     "rc"     0      "$RC"
+  assert_nonempty "output" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

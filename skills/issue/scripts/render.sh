@@ -625,9 +625,52 @@ cmd_insights_graph() {
 
 # ─── Section: Dispatch ───────────────────────────────────────────────────────
 
+# dir_given <sub> <args...>
+#   Exit 0 when the invocation already names a collection directory. Each verb
+#   spells its optional directory differently, so the shapes are read here
+#   rather than guessed: naming a directory opts out of placement routing, and
+#   it is also what keeps the placement re-exec from recursing.
+dir_given() {
+  local sub="$1"; shift
+  case "$sub" in
+    stats|insights-graph) (( $# >= 1 )) ;;
+    show)                 (( $# >= 2 )) ;;
+    list)
+      (( $# >= 2 )) && return 0
+      (( $# == 1 )) && ! is_filter_token "$1"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# route_placement <place-token> <sub> <args...>
+#   Re-exec through place.sh when the project keeps its collection on a
+#   designated branch, so the read verbs serve that branch rather than whatever
+#   the working tree happens to hold. The run is read-only: it materializes the
+#   destination and discards it, so a read never becomes a write.
+route_placement() {
+  local token="$1"; shift
+  local sub="$1"; shift
+  local place="$HERE/place.sh" mode
+  [[ -r "$place" ]] || return 0
+  dir_given "$sub" "$@" && return 0
+  mode="$(bash "$place" mode --place-token "$token")" || exit $?
+  [[ "$mode" == "route" ]] || return 0
+  exec bash "$place" run --read -- \
+    bash "${BASH_SOURCE[0]}" --place-token '{token}' "$sub" "$@" '{}'
+}
+
 main() {
+  local place_token=""
+  if [[ "${1:-}" == "--place-token" ]]; then
+    place_token="${2:-}"
+    shift 2
+  fi
   local sub="${1:-help}"
   [[ $# -gt 0 ]] && shift
+  case "$sub" in
+    stats|list|show|insights-graph) route_placement "$place_token" "$sub" "$@" ;;
+  esac
   case "$sub" in
     stats) cmd_stats "$@" ;;
     list)  cmd_list  "$@" ;;

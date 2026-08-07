@@ -285,14 +285,16 @@ route_placement() {
   mode="$(bash "$place" mode --place-token "$token")" || exit $?
   [[ "$mode" == "route" ]] || return 0
   exec bash "$place" run --verb reindex -- \
-    bash "${BASH_SOURCE[0]}" '{}' --place-token '{token}'
+    bash "${BASH_SOURCE[0]}" --place-token '{token}' '{}'
 }
 
 main() {
-  local arg="${1:-}" place_token=""
-  if [[ "${2:-}" == "--place-token" ]]; then
-    place_token="${3:-}"
+  local place_token=""
+  if [[ "${1:-}" == "--place-token" ]]; then
+    place_token="${2:-}"
+    shift 2
   fi
+  local arg="${1:-}"
   route_placement "$arg" "$place_token"
   local dir
   dir="$(resolve_dir "$arg")" || return $?

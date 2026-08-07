@@ -467,6 +467,11 @@ place_materialize() {
       return 1
     fi
   done < <(git ls-tree -r -z "$subtree")
+  # Leave the index the newest entry in the directory, the way index.sh does.
+  # Every write publishes a current index, so a read that materializes one is
+  # already looking at the right answer — without this the fresh mtimes would
+  # read as stale and a read verb would rebuild what it was just handed.
+  [[ -e "$dest/$PLACE_INDEX_FILE" ]] && touch "$dest/$PLACE_INDEX_FILE"
   return 0
 }
 
@@ -704,7 +709,11 @@ cmd_run() {
       *) echo "place.sh run: unknown option '$1'" >&2; return 2 ;;
     esac
   done
-  place_valid_verb "$verb" || return 2
+  # A read-only run publishes nothing, so it has no commit subject to compose
+  # and needs no verb. A write always does.
+  if (( read_only == 0 )) || [[ -n "$verb" ]]; then
+    place_valid_verb "$verb" || return 2
+  fi
   if [[ -n "$id" ]] && ! bash "$JIMFILE" valid-id "$id" >/dev/null 2>&1; then
     echo "place.sh run: --id is not a valid issue id" >&2
     return 2
