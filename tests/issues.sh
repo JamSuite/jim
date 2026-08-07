@@ -2875,6 +2875,73 @@ case_issues_placement_explicit_dir_opts_out() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
 }
 
+# ─── issue/011: the auto-file scrub gate ─────────────────────────────────────
+
+# AC: an auto-filed batch does not reach a shared branch with nobody having
+# looked at it. The decision lives in the emitter because the emitter is the
+# only place it can be made mechanically — a rule stated in a skill is a rule an
+# agent may or may not execute, and every candidate batch comes through here
+# (spec AC #13).
+case_issues_auto_file_refuses_an_unacknowledged_placement() {
+  local repo body
+  repo="$(placement_repo issues_auto_gate jim/issues)"
+  body="$(fixture issues_auto_gate_body.md 'body')"
+  run_new_in "$repo" --auto --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit     "refuses"  4 "$RC"
+  assert_nonempty "explains" "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+  assert_eq "nothing in the working tree either" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: the acknowledgement restores the quiet path for a project that has said it
+# understands the bargain (spec AC #13).
+case_issues_auto_file_proceeds_when_acknowledged() {
+  local repo body slug
+  repo="$(placement_repo issues_auto_ack jim/issues)"
+  printf 'issue_placement = "jim/issues"\nissue_placement_ack = "true"\n' \
+    > "$repo/jimconf.toml"
+  body="$(fixture issues_auto_ack_body.md 'body')"
+  run_new_in "$repo" --auto --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_match "landed on the destination" "docs/issues/${slug}\.md" \
+    "$(dest_paths "$repo" jim/issues)"
+}
+
+# AC: the gate is placement-only. Under the default placement a filed issue
+# stays on the developer's own branch until it merges, which is the bargain
+# auto-filing was already weighed against (spec AC #2, #13).
+case_issues_auto_file_is_a_no_op_by_default() {
+  local repo body slug
+  repo="$(new_repo issues_auto_default)"
+  body="$(fixture issues_auto_default_body.md 'body')"
+  run_new_in "$repo" --auto --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "written to the working tree" "yes" \
+    "$([[ -e "$repo/docs/issues/$slug.md" ]] && echo yes || echo no)"
+}
+
+# AC: the interactive path is untouched — the batch a developer has just
+# reviewed still files under an unacknowledged placement, because the review it
+# is missing is exactly what the gate is asking for (spec AC #13).
+case_issues_interactive_file_unaffected_by_the_gate() {
+  local repo body slug
+  repo="$(placement_repo issues_auto_interactive jim/issues)"
+  body="$(fixture issues_auto_interactive_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_match "landed on the destination" "docs/issues/${slug}\.md" \
+    "$(dest_paths "$repo" jim/issues)"
+}
+
 # AC: index.sh routes too, so a standalone reindex lands at the destination
 # rather than on the working branch (spec AC #3).
 case_issues_placement_index_routes_to_destination() {

@@ -24,7 +24,12 @@
 #   bash new.sh --title <s> --priority <low|medium|high|critical> \
 #               --labels <csv> --origin <s> --body-file <path> \
 #               [--status open] [--slug <id>] [--num <int>] \
-#               [--created <ts>] [--updated <ts>] [--dir <issues_dir>]
+#               [--created <ts>] [--updated <ts>] [--dir <issues_dir>] [--auto]
+#
+#   --auto declares that no human has reviewed this candidate — the quiet
+#   auto-file path. It changes nothing under the default placement; under a
+#   branch placement it is refused at rc 4 unless the project has acknowledged
+#   that auto-filed content publishes immediately (see the scrub gate below).
 #
 #   An unset slug/num is resolved as a coordinated pair via jimalloc.sh
 #   allocate issue (the durable id and display ordinal reserved together, one
@@ -38,6 +43,10 @@
 #   0  success
 #   1  validation or IO failure (bad priority, invalid id, unreadable body, write error)
 #   2  usage error (unknown/missing flag)
+#   3  placement conflict, forwarded from place.sh
+#   4  --auto refused: the batch would publish to an unacknowledged placement.
+#      The caller's remedy is to show the batch for review and file it without
+#      --auto, so this is a redirection rather than a failure.
 #
 # Conventions: set -uo pipefail; LC_ALL=C; BASH_SOURCE-relative jimfile/jimalloc paths.
 
@@ -47,11 +56,13 @@ export LC_ALL=C
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 JIMALLOC="$(dirname "$JIMFILE")/jimalloc.sh"
+JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 
 # ─── Parse flags ─────────────────────────────────────────────────────────────
 
 title="" priority="" labels="" origin="" body_file=""
 status="open" slug="" num="" created="" updated="" dir="" place_token=""
+auto=0
 
 # Kept whole for the placement re-exec below, which has to hand this script its
 # own invocation back.
@@ -71,6 +82,7 @@ while [[ $# -gt 0 ]]; do
     --updated)   updated="${2-}";   shift 2 || break ;;
     --dir)       dir="${2-}";       shift 2 || break ;;
     --place-token) place_token="${2-}"; shift 2 || break ;;
+    --auto)      auto=1;            shift ;;
     *) echo "error: unknown flag '$1'" >&2; exit 2 ;;
   esac
 done
@@ -94,6 +106,23 @@ PLACE="$HERE/place.sh"
 if [[ -z "$dir" && -r "$PLACE" ]]; then
   place_mode="$(bash "$PLACE" mode --place-token "$place_token")" || exit $?
   if [[ "$place_mode" == "route" ]]; then
+    # The scrub gate. `route` is exactly the condition that makes auto-filing a
+    # different bargain than the one it was weighed against: the batch is
+    # published to a branch the whole team reads, as it is filed, and candidate
+    # text drawn from tool output or a fetched page is shared the moment it is
+    # accumulated — unpublishing it means rewriting a shared branch.
+    #
+    # It is decided here rather than in the nine skills that auto-file because
+    # here it is mechanical. A skill can only carry the rule as prose for an
+    # agent to remember, and a caller that forgets --auto gets the interactive
+    # bargain rather than a silent publish, which is the safe direction to fail.
+    if (( auto )) && [[ "$(bash "$JIMCONF" get issue_placement_ack 2>/dev/null)" != "true" ]]; then
+      echo "error: auto-file refused — issue placement publishes to" \
+           "'$(bash "$JIMCONF" get issue_placement 2>/dev/null)', so this batch" \
+           "needs a look before it is shared. Show the batch for review, or set" \
+           "issue_placement_ack = \"true\" to accept auto-filing to that branch." >&2
+      exit 4
+    fi
     exec bash "$PLACE" run --verb file -- \
       bash "${BASH_SOURCE[0]}" "${original_argv[@]}" --dir '{}' --place-token '{token}'
   fi
