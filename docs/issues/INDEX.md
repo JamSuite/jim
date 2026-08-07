@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 109
-- Closed: 168
+- Open: 108
+- Closed: 169
 
 ## Issues
 
@@ -264,7 +264,7 @@
 - `20260806-document-the-id-coordination-key-family-in-jimconf-toml-example` — Document the id_coordination_* key family in jimconf.toml.example · status: open · num: 255 · priority: medium · created: 2026-08-06T20:20:05Z · labels: [config, docs] · origin: docs/specs/issue/011-issue-placement/research.md
 - `20260806-extract-a-shared-valid-branch-verb-into-jimfile-sh` — Extract a shared valid-branch verb into jimfile.sh · status: open · num: 257 · priority: low · created: 2026-08-06T21:48:56Z · labels: [platform, jimfile, refactor] · origin: docs/specs/issue/011-issue-placement/plan.md
 - `20260806-fixture-the-invalid-id-coordination-branch-refusal-in-tests-jima` — Fixture the invalid id_coordination_branch refusal in tests/jimalloc.sh · status: open · num: 256 · priority: medium · created: 2026-08-06T20:20:17Z · labels: [tests, jimalloc] · origin: docs/specs/issue/011-issue-placement/research.md
-- `20260807-auto-file-scrub-degrade-is-inherited-by-no-surfacing-skill` — Auto-file scrub degrade is inherited by no surfacing skill · status: open · num: 262 · priority: high · created: 2026-08-07T11:43:24Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260807-auto-file-scrub-degrade-is-inherited-by-no-surfacing-skill` — Auto-file scrub degrade is inherited by no surfacing skill · status: closed · num: 262 · priority: high · created: 2026-08-07T11:43:24Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-c-config-override-bypasses-placement-resolution` — -c config override bypasses placement resolution · status: open · num: 258 · priority: low · created: 2026-08-07T10:59:36Z · labels: [issue, config, placement] · origin: docs/specs/issue/011-issue-placement/plan.md
 - `20260807-cmd-begin-swallows-the-containment-gate-refusal` — cmd_begin swallows the containment gate refusal · status: open · num: 263 · priority: high · created: 2026-08-07T11:43:23Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-cmd-commit-direct-arm-publishes-without-re-verification` — cmd_commit direct arm publishes without re-verification · status: closed · num: 264 · priority: critical · created: 2026-08-07T11:43:22Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md

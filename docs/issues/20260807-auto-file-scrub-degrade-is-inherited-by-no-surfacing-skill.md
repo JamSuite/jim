@@ -2,7 +2,7 @@
 id: 20260807-auto-file-scrub-degrade-is-inherited-by-no-surfacing-skill
 num: 262
 title: "Auto-file scrub degrade is inherited by no surfacing skill"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:24Z
-updated: 2026-08-07T11:43:24Z
+updated: 2026-08-07T21:28:09Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
