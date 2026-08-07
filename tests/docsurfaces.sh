@@ -162,6 +162,39 @@ case_docsurfaces_internal_anchors_resolve() {
   assert_eq "every in-page anchor resolves to a heading" "" "${broken% }"
 }
 
+# INTRODUCTION, placement half. The scrub moment that survives auto-filing under
+# a branch placement is enforced by prose — no script can check that an agent
+# paused for confirmation — so the only mechanical guard available is that the
+# rule is still written where the eight surfacing skills are pointed. §7a is the
+# single canonical batch contract; if this rule is edited away from it, every
+# inheritor loses it silently, which is exactly the omission class this file
+# exists to catch.
+case_docsurfaces_placement_scrub_rule_is_stated() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" body
+  assert_eq "the issue skill is present" "yes" \
+    "$([[ -r "$skill" ]] && echo yes || echo no)"
+  body="$(sed -n '/^### 7a\./,/^### 8\./p' "$skill")"
+  assert_eq "the candidate-batch section was located" "yes" \
+    "$([[ -n "$body" ]] && echo yes || echo no)"
+  assert_match "names the auto-file key"      'auto_issue_file'     "$body"
+  assert_match "names the placement key"      'issue_placement'     "$body"
+  assert_match "names the acknowledgement"    'issue_placement_ack' "$body"
+  assert_match "states the degrade"           'degrade'             "$body"
+}
+
+# The two-phase edit door has to stay documented where an agent editing an issue
+# will look, or a placement-configured project silently edits a file that is not
+# the collection.
+case_docsurfaces_placement_edit_flow_is_stated() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" body
+  body="$(sed -n '/^### 6a\./,/^### 7\./p' "$skill")"
+  assert_eq "the edit-convention section was located" "yes" \
+    "$([[ -n "$body" ]] && echo yes || echo no)"
+  assert_match "names begin"  'place\.sh begin'  "$body"
+  assert_match "names commit" 'place\.sh commit' "$body"
+  assert_match "names abort"  'place\.sh abort'  "$body"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
