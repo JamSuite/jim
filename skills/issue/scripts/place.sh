@@ -507,6 +507,11 @@ place_direct_publish() {
 
 readonly PLACE_TOKEN_NONE="none"     # no placement — the real collection dir
 readonly PLACE_TOKEN_DIRECT="direct" # destination is the checked-out branch
+# A read handle in direct mode has no state of its own to carry a read flag, so
+# the flag is the token. Handing back the same literal a write handle uses would
+# make the read-only insights flow a publish capability over whatever is sitting
+# in the collection at the time.
+readonly PLACE_TOKEN_DIRECT_READ="direct-read"
 
 # place_handle_root — the directory holding this clone's live handles, verified
 # to resolve inside the git dir so a symlinked path cannot redirect the writes.
@@ -603,7 +608,11 @@ cmd_begin() {
   if [[ -n "$current" && "$current" == "$dest" ]]; then
     # The edits land in the working tree, so the guard has to run before them,
     # not at commit time when they are indistinguishable from the mutation.
-    (( read_only )) || place_dirty_guard "$prefix" || return 2
+    if (( read_only )); then
+      printf '%s\t%s\n' "$PLACE_TOKEN_DIRECT_READ" "$prefix"
+      return 0
+    fi
+    place_dirty_guard "$prefix" || return 2
     printf '%s\t%s\n' "$PLACE_TOKEN_DIRECT" "$prefix"
     return 0
   fi
@@ -678,10 +687,30 @@ cmd_commit() {
       # No placement: the collection is the working tree and committing it is
       # the developer's own git flow, exactly as before.
       return 0 ;;
+    "$PLACE_TOKEN_DIRECT_READ")
+      echo "place.sh commit: this handle was opened read-only and may not" \
+           "publish; use abort to discard it" >&2
+      return 2 ;;
     "$PLACE_TOKEN_DIRECT")
-      local dest prefix
+      # This arm re-resolves configuration instead of reading recorded state,
+      # and the token is a fixed literal rather than an unguessable handle, so
+      # everything `begin` established has to be proved again here — there is no
+      # evidence in the token that a `begin` ever happened at all.
+      local dest prefix current where
       dest="$(place_destination)" || return 2
+      if [[ "$dest" == "branch" ]]; then
+        echo "place.sh commit: issue placement no longer names a destination" \
+             "branch, so there is nothing for this handle to publish" >&2
+        return 2
+      fi
       prefix="$(place_prefix)" || return 2
+      current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+      where="${current:-a detached HEAD}"
+      if [[ "$current" != "$dest" ]]; then
+        echo "place.sh commit: this handle was opened with '$dest' checked out," \
+             "but HEAD is now $where; refusing to commit the collection onto it" >&2
+        return 2
+      fi
       place_direct_publish "$dest" "$prefix" "$verb" "$id"
       return $? ;;
   esac
@@ -728,7 +757,8 @@ cmd_commit() {
 cmd_abort() {
   local token="${1:-}"
   case "$token" in
-    "$PLACE_TOKEN_NONE"|"$PLACE_TOKEN_DIRECT") return 0 ;;
+    "$PLACE_TOKEN_NONE"|"$PLACE_TOKEN_DIRECT"|"$PLACE_TOKEN_DIRECT_READ")
+      return 0 ;;
   esac
   local handle
   handle="$(place_handle_dir "$token")" || return $?

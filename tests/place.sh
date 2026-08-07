@@ -1078,6 +1078,92 @@ case_place_direct_mode_discloses_push_divergence() {
     "$(git -C "$mine" show "HEAD:docs/issues/20260101-x.md" 2>/dev/null)"
 }
 
+# place_here_seeded <name> — a direct-mode repo with one committed issue, the
+# starting point for every two-phase case below.
+place_here_seeded() {
+  local repo; repo="$(place_here "$1")"
+  mkdir -p "$repo/docs/issues"
+  printf 'open\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  printf '%s' "$repo"
+}
+
+# AC: the two-phase flow works in direct mode too — it hands back the working
+# tree's own collection and publishes the edits made there (spec AC #3, #4).
+case_place_direct_begin_commit_publishes_an_edit() {
+  local repo token dir
+  repo="$(place_here_seeded place_direct_begin)"
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  assert_eq "the working tree collection" "docs/issues" "$dir"
+  printf 'closed\n' > "$repo/docs/issues/20260101-a.md"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit "commit rc" 0 "$RC"
+  assert_eq "published" "closed" \
+    "$(git -C "$repo" show HEAD:docs/issues/20260101-a.md 2>/dev/null)"
+  assert_eq "subject" "docs(issues): close 20260101-a" \
+    "$(git -C "$repo" log -1 --format=%s)"
+}
+
+# AC: a read handle cannot publish in direct mode either. The insights flow
+# opens one on every run, so a read token that published would make that flow a
+# capability to commit whatever half-finished edits happen to be sitting in the
+# collection (spec AC #5).
+case_place_direct_read_handle_cannot_commit() {
+  local repo token head_before
+  repo="$(place_here_seeded place_direct_read_handle)"
+  printf 'HALF-FINISHED PRIVATE NOTE\n' > "$repo/docs/issues/20260101-a.md"
+  head_before="$(git -C "$repo" rev-parse --verify HEAD)"
+  run_place_in "$repo" begin --read
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit     "refuses"  2 "$RC"
+  assert_nonempty "explains" "$ERR"
+  assert_eq "nothing published" "$head_before" \
+    "$(git -C "$repo" rev-parse --verify HEAD)"
+  assert_eq "the note is still the developer's own" "HALF-FINISHED PRIVATE NOTE" \
+    "$(cat "$repo/docs/issues/20260101-a.md")"
+  run_place_in "$repo" abort "$token"
+  assert_exit "abort is a no-op" 0 "$RC"
+}
+
+# AC: `direct` is a fixed literal rather than an unguessable handle, so `commit`
+# proves for itself that the destination is still the checked-out branch. A
+# branch switch between the two steps would otherwise commit the collection onto
+# the feature branch and push that whole branch to the shared one (spec AC #3).
+case_place_direct_commit_refuses_after_a_branch_switch() {
+  local repo token head_before
+  repo="$(place_here_seeded place_direct_switch)"
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"
+  git -C "$repo" checkout -q -b feature
+  head_before="$(git -C "$repo" rev-parse --verify HEAD)"
+  printf 'closed\n' > "$repo/docs/issues/20260101-a.md"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit  "refuses"       2         "$RC"
+  assert_match "names where HEAD is now" 'feature' "$ERR"
+  assert_eq "nothing committed on the feature branch" "$head_before" \
+    "$(git -C "$repo" rev-parse --verify HEAD)"
+}
+
+# AC: the same arm re-resolves configuration, so it refuses the reserved
+# sentinel rather than taking `branch` for a branch name and pushing to a remote
+# branch literally called that (spec AC #1).
+case_place_direct_commit_refuses_the_branch_sentinel() {
+  local repo token
+  repo="$(place_here_seeded place_direct_sentinel)"
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"
+  printf 'issue_placement = "branch"\n' > "$repo/jimconf.toml"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit     "refuses"  2 "$RC"
+  assert_nonempty "explains" "$ERR"
+}
+
 # ─── Section: Two-phase begin / commit / abort ───────────────────────────────
 
 # AC: an agent-interactive mutation with no single wrapped command — editing an
