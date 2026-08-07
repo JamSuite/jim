@@ -680,6 +680,84 @@ case_place_offline_write_builds_on_the_last_seen_state() {
   assert_match "what it had seen survives" 'docs/issues/20260101-a\.md' "$paths"
 }
 
+# AC: a mutation the remote was unreachable for is published by the next run
+# that can reach it — that is what "propagation completes later" means, and no
+# mutation is ever silently dropped (spec AC #7).
+case_place_deferred_mutation_publishes_on_reconnect() {
+  local bare mine
+  bare="$(place_bare place_defer_pub_bare)"
+  mine="$(place_clone "$bare" place_defer_pub_mine 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb close --id 20260101-a -- \
+    sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit  "offline rc" 0       "$RC"
+  assert_match "discloses"  'defer' "$ERR"
+  # Reconnect. A read first, because a read is what used to consume the only
+  # signal that anything was outstanding.
+  git -C "$mine" remote set-url origin "$bare"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "read rc" 0 "$RC"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "later\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit "later write rc" 0 "$RC"
+  assert_eq "the deferred close reached the remote" "closed" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
+  assert_eq "and is still closed here" "closed" \
+    "$(place_dest_file "$mine" jim/issues docs/issues/20260101-a.md)"
+}
+
+# AC: the same holds when the destination moved on in the meantime. There is
+# nothing to fast-forward then, so the unpublished work is reapplied on top of
+# what is there now — without disturbing the teammate's own commit (spec AC #7).
+case_place_deferred_mutation_survives_a_moved_destination() {
+  local bare mine theirs
+  bare="$(place_bare place_defer_div_bare)"
+  mine="$(place_clone "$bare" place_defer_div_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_defer_div_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb close --id 20260101-a -- \
+    sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "offline rc" 0 "$RC"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "theirs\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$bare"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "mine\n" > "$1/20260101-c.md"' _ '{}'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the deferred close reached the remote" "closed" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
+  assert_eq "the teammate's issue survived" "theirs" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-b.md 2>/dev/null)"
+  assert_eq "and so did this run's" "mine" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-c.md 2>/dev/null)"
+}
+
+# AC: the two-phase flow discloses a deferral too. It is the edit path with no
+# allocator ahead of it to fail first, so silence there is the whole exposure
+# (spec AC #7).
+case_place_begin_commit_discloses_a_deferral() {
+  local repo token dir
+  repo="$(place_repo place_defer_handle 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=open'
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  printf 'closed\n' > "$dir/20260101-a.md"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit  "commit rc" 0       "$RC"
+  assert_match "discloses"  'defer' "$ERR"
+  assert_eq "local commit stands" "closed" \
+    "$(place_dest_file "$repo" jim/issues docs/issues/20260101-a.md)"
+}
+
 # ─── Section: Graft retry and conflict refusal ───────────────────────────────
 
 # place_issue_writer <file> <slug> <title>

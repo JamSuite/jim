@@ -325,6 +325,95 @@ place_local_tip() {
   return 0
 }
 
+# ─── Section: Unpublished local state ────────────────────────────────────────
+
+# Set together by place_resolve_tips. A mutation is prepared against three
+# commits, which are the same one in the ordinary case:
+PLACE_ONTO_TIP=""    # what the new commit is built on, and swapped against
+PLACE_WORK_TIP=""    # what the wrapped command or the agent sees
+PLACE_BASE_TIP=""    # what the changed set is measured from
+PLACE_TIP_STATE=""   # current | ahead | diverged
+
+# place_resolve_tips <dest> <tier> <tip>
+#   Work out those three commits for a run that reached the destination's owner.
+#
+#   They diverge only when this clone is carrying destination commits the remote
+#   has never seen: a mutation made while the remote was unreachable, whose
+#   publication was deferred to the next reachable run. This is that run, and
+#   nothing else will do it — every push sends a commit built on the remote's own
+#   tip, so a deferred commit not picked up here is what the local ref update
+#   afterwards discards.
+#
+#   `ahead` — the unpublished commits fast-forward from the remote's tip, so they
+#   are simply what this mutation builds on and the push carries them along with
+#   their own subjects intact.
+#
+#   `diverged` — the destination moved too, so there is nothing to fast-forward.
+#   The commit is built on the remote's tip and the unpublished content travels
+#   inside this run's changed set instead. That set has to be measured from the
+#   two sides' common ancestor: measuring it from the remote's tip would read the
+#   teammate's own commit as a file this mutation deleted.
+place_resolve_tips() {
+  local dest="$1" tier="$2" tip="$3" head
+  PLACE_ONTO_TIP="$tip"
+  PLACE_WORK_TIP="$tip"
+  PLACE_BASE_TIP="$tip"
+  PLACE_TIP_STATE="current"
+  [[ "$tier" == "origin" ]] || return 0
+  head="$(place_head_tip "$dest")"
+  [[ -n "$head" && "$head" != "$tip" ]] || return 0
+  # Contained in what the remote already has: the remote is simply ahead.
+  if [[ -n "$tip" ]] && git merge-base --is-ancestor "$head" "$tip" 2>/dev/null; then
+    return 0
+  fi
+  if [[ -z "$tip" ]] || git merge-base --is-ancestor "$tip" "$head" 2>/dev/null; then
+    PLACE_ONTO_TIP="$head"
+    PLACE_WORK_TIP="$head"
+    PLACE_BASE_TIP="$head"
+    PLACE_TIP_STATE="ahead"
+    return 0
+  fi
+  PLACE_WORK_TIP="$head"
+  # No common ancestor leaves the base empty, which reads every local file as
+  # this mutation's own — a union rather than a deletion of the other side.
+  PLACE_BASE_TIP="$(git merge-base "$head" "$tip" 2>/dev/null || true)"
+  PLACE_TIP_STATE="diverged"
+  return 0
+}
+
+# place_disclose_unpublished <dest> — say what is becoming of mutations an
+# earlier run left unpublished. Silent when there are none, which is the norm.
+place_disclose_unpublished() {
+  case "$PLACE_TIP_STATE" in
+    ahead)
+      echo "place.sh: publishing mutations on '$1' that an earlier run left" \
+           "unpublished" >&2 ;;
+    diverged)
+      echo "place.sh: '$1' moved on while this clone held unpublished mutations;" \
+           "they are being reapplied on top of it" >&2 ;;
+  esac
+  return 0
+}
+
+# place_base_snapshot <tip> <prefix> <scratch-dir> <assoc-array-name>
+#   Snapshot the collection at <tip> without handing it to anybody: it is the
+#   state the changed set is measured from, not the state being worked on. Only
+#   the diverged case needs the two to differ.
+place_base_snapshot() {
+  local tip="$1" prefix="$2" dir="$3" rc=0
+  rm -rf -- "$dir" || return 1
+  mkdir -p -- "$dir" || return 1
+  place_materialize "$tip" "$prefix" "$dir"
+  rc=$?
+  if (( rc != 0 )); then
+    rm -rf -- "$dir"
+    return "$rc"
+  fi
+  place_snapshot "$dir" "$4" || { rm -rf -- "$dir"; return 1; }
+  rm -rf -- "$dir"
+  return 0
+}
+
 # ─── Section: Direct mode ────────────────────────────────────────────────────
 
 # place_new_token — a unique token for a run that has no temp directory to take
@@ -539,14 +628,22 @@ cmd_begin() {
          "state of '$dest'" >&2
   fi
   place_check_rewrite "$dest" "$tip" "$(( unreachable == 0 ? 1 : 0 ))"
+  place_resolve_tips "$dest" "$tier" "$tip"
+  tip="$PLACE_ONTO_TIP"
+  (( read_only )) || place_disclose_unpublished "$dest"
   mkdir -p -- "$handle/collection" || { rm -rf -- "$handle"; return 1; }
-  if ! place_materialize "$tip" "$prefix" "$handle/collection"; then
+  if ! place_materialize "$PLACE_WORK_TIP" "$prefix" "$handle/collection"; then
     local mrc=$?
     rm -rf -- "$handle"
     return "$mrc"
   fi
   local -A base=()
-  place_snapshot "$handle/collection" base || { rm -rf -- "$handle"; return 1; }
+  if [[ "$PLACE_BASE_TIP" == "$PLACE_WORK_TIP" ]]; then
+    place_snapshot "$handle/collection" base || { rm -rf -- "$handle"; return 1; }
+  else
+    place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$handle/base.d" base \
+      || { rm -rf -- "$handle"; return 1; }
+  fi
   place_save_snapshot base "$handle/base" || { rm -rf -- "$handle"; return 1; }
   {
     printf 'dest=%s\n'   "$dest"
@@ -615,6 +712,14 @@ cmd_commit() {
   # A refused publish keeps the handle: the edits in it are work, and losing
   # them to a conflict would make refusing worse than overwriting.
   (( rc == 0 )) || return "$rc"
+  # `begin` could not reach the remote, so this landed locally only. Say so —
+  # this is the edit path, with no allocator ahead of it to fail first, so
+  # silence here is the whole exposure.
+  if [[ "$tier" == "local" && -n "$remote" ]]; then
+    echo "place.sh: remote '$remote' was unreachable when this handle was opened;" \
+         "the mutation is committed locally on '$dest' and publication is deferred" \
+         "until the next reachable run" >&2
+  fi
   rm -rf -- "$handle"
   return 0
 }
@@ -660,7 +765,7 @@ place_check_rewrite() {
   bref="$(place_bookmark_ref "$branch")" || return 0
   seen="$(git rev-parse --verify --quiet --end-of-options "$bref" 2>/dev/null || true)"
   if [[ -z "$seen" ]]; then
-    place_advance_bookmark "$branch" "$tip"
+    (( authoritative )) && place_advance_bookmark "$branch" "$tip"
     return 0
   fi
   if [[ -z "$tip" ]]; then
@@ -675,7 +780,12 @@ place_check_rewrite() {
          "clone last saw ($seen) is not an ancestor of its current tip ($tip)." \
          "Mutations published before the rewrite may no longer be there." >&2
   fi
-  place_advance_bookmark "$branch" "$tip"
+  # Only a run that reached the destination's owner learned anything about it.
+  # A tip read off this clone's own branch while the remote was unreachable is
+  # this clone's state, not the destination's, and recording it as seen would
+  # make the next reachable run compare against a commit the destination never
+  # had — and call an ordinary tip a rewrite.
+  (( authoritative )) && place_advance_bookmark "$branch" "$tip"
   return 0
 }
 
@@ -1042,10 +1152,17 @@ cmd_run() {
   # Authoritative means this run actually reached whoever owns the branch, so
   # an absent destination is really absent rather than merely unreachable.
   place_check_rewrite "$dest" "$tip" "$(( unreachable == 0 ? 1 : 0 ))"
+  place_resolve_tips "$dest" "$tier" "$tip"
+  tip="$PLACE_ONTO_TIP"
+  (( read_only )) || place_disclose_unpublished "$dest"
 
-  place_materialize "$tip" "$prefix" "$PLACE_COLL" || return $?
+  place_materialize "$PLACE_WORK_TIP" "$prefix" "$PLACE_COLL" || return $?
   local -A before=() after=()
-  place_snapshot "$PLACE_COLL" before || return 1
+  if [[ "$PLACE_BASE_TIP" == "$PLACE_WORK_TIP" ]]; then
+    place_snapshot "$PLACE_COLL" before || return 1
+  else
+    place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$PLACE_WORK/base" before || return $?
+  fi
   place_substitute "$PLACE_COLL" "$PLACE_TOKEN" "$@"
   local rc=0
   # The prefix travels with the token so a wrapped command can report where its
@@ -1110,7 +1227,12 @@ place_commit_changes() {
     place_land "$remote" "$tier" "$dest" "$ref_old" "$commit"
     rc=$?
     if (( rc == 0 )); then
-      place_advance_bookmark "$dest" "$commit"
+      # A commit that only reached this clone was never seen at the destination,
+      # so it is not what the bookmark records. With no remote configured at all
+      # the local ref *is* the destination, and it is.
+      if [[ "$tier" == "origin" || -z "$remote" ]]; then
+        place_advance_bookmark "$dest" "$commit"
+      fi
       return 0
     fi
     (( rc == 3 )) || return "$rc"
