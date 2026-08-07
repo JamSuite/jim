@@ -292,6 +292,74 @@ place_local_tip() {
   git rev-parse --verify --quiet --end-of-options "refs/heads/$1" 2>/dev/null || true
 }
 
+# ─── Section: Direct mode ────────────────────────────────────────────────────
+
+# place_new_token — a unique token for a run that has no temp directory to take
+# its name from. mktemp -u only proposes a name; nothing is created, which is
+# all this needs, since the token is only ever compared against the copy this
+# same process passes to the command it runs.
+place_new_token() {
+  local t
+  t="$(mktemp -u 2>/dev/null)" || return 1
+  printf '%s\n' "${t##*/}"
+}
+
+# place_dirty_guard <prefix>
+#   Refuse when the collection already carries uncommitted changes. Direct mode
+#   commits by path, so a developer's half-finished manual edit inside the
+#   collection would otherwise be swept into the mutation's commit and published
+#   — a decision that is theirs, not this script's.
+#
+#   Paths reach git literally: a shape-valid path does not neutralize pathspec
+#   magic, so a configured collection path is never interpreted as a pattern.
+place_dirty_guard() {
+  local prefix="$1" st
+  st="$(git --literal-pathspecs status --porcelain -- "$prefix" 2>/dev/null)"
+  [[ -n "$st" ]] || return 0
+  echo "place.sh: the collection at '$prefix' has uncommitted changes; commit or" \
+       "stash them first so this mutation does not publish them:" >&2
+  printf '%s\n' "$st" >&2
+  return 2
+}
+
+# place_direct <dest> <prefix> <verb> <id> <read-only> <cmd>...
+#   Run the mutation against the working tree, because the destination is the
+#   branch that is checked out. Moving the ref by plumbing here would leave the
+#   index and working tree behind, so the collection would read as deleted; the
+#   mutation is staged and committed by path instead.
+#
+#   A rejected push is disclosed rather than resolved. Rebasing a developer's
+#   own checkout underneath them to publish an issue is far more invasive than
+#   the problem warrants, and the local commit already means nothing is lost.
+place_direct() {
+  local dest="$1" prefix="$2" verb="$3" id="$4" read_only="$5"; shift 5
+  if (( read_only == 0 )); then
+    place_dirty_guard "$prefix" || return 2
+  fi
+  PLACE_TOKEN="$(place_new_token)" || return 1
+  place_substitute "$prefix" "$PLACE_TOKEN" "$@"
+  local rc=0
+  JIM_PLACE_TOKEN="$PLACE_TOKEN" "${PLACE_CMD[@]}" || rc=$?
+  (( rc == 0 )) || return "$rc"
+  (( read_only == 0 )) || return 0
+  local st
+  st="$(git --literal-pathspecs status --porcelain -- "$prefix" 2>/dev/null)"
+  [[ -n "$st" ]] || return 0
+  git --literal-pathspecs add -- "$prefix" || return 1
+  git --literal-pathspecs commit -q -m "$(place_message "$verb" "$id")" -- "$prefix" || return 1
+  local commit remote
+  commit="$(git rev-parse --verify --quiet HEAD 2>/dev/null || true)"
+  place_advance_bookmark "$dest" "$commit"
+  remote="$(place_remote)"
+  [[ -n "$remote" ]] || return 0
+  if ! git push --quiet --end-of-options "$remote" "HEAD:refs/heads/$dest" 2>/dev/null; then
+    echo "place.sh: '$dest' has diverged from '$remote', so the mutation is" \
+         "committed here but not published. Pull and push again to share it —" \
+         "your checkout is left exactly as it is." >&2
+  fi
+  return 0
+}
+
 # place_advance_bookmark <branch> <sha> — record <sha> as the destination state
 # this clone has now seen.
 place_advance_bookmark() {
@@ -647,6 +715,14 @@ cmd_run() {
   fi
   local prefix
   prefix="$(place_prefix)" || return 2
+
+  local current
+  current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [[ -n "$current" && "$current" == "$dest" ]]; then
+    place_direct "$dest" "$prefix" "$verb" "$id" "$read_only" "$@"
+    return $?
+  fi
+
   place_open_work || return 1
 
   # Resolve the freshest state of the destination this clone can reach. A

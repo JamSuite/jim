@@ -810,6 +810,110 @@ case_place_fast_forward_is_not_a_rewrite() {
   assert_eq   "silent on a fast-forward" "" "$ERR"
 }
 
+# ─── Section: Direct mode (destination is the checked-out branch) ────────────
+
+# place_here <name> [extra-config-lines]
+#   A repo with one commit whose issue_placement names the branch it is sitting
+#   on — filing from `main` with the collection on `main` is an ordinary setup,
+#   and plumbing a ref update under a checked-out branch would desync its tree.
+place_here() {
+  local repo branch; repo="$(empty_dir "$1")"; shift
+  git -C "$repo" init -q
+  git -C "$repo" config user.name  "Test User"
+  git -C "$repo" config user.email "test@example.com"
+  printf 'unrelated\n' > "$repo/README.md"
+  git -C "$repo" add README.md && git -C "$repo" commit -q -m base
+  branch="$(git -C "$repo" symbolic-ref --short HEAD)"
+  { printf 'issue_placement = "%s"\n' "$branch"; (( $# > 0 )) && printf '%s\n' "$@"; } \
+    > "$repo/jimconf.toml"
+  # Committed, so `status` in the cases below reports only what a case dirties.
+  git -C "$repo" add jimconf.toml && git -C "$repo" commit -q -m conf
+  printf '%s' "$repo"
+}
+
+# AC: a write to the checked-out branch lands in the working tree as one
+# path-scoped commit, and an unrelated uncommitted edit is neither committed
+# nor disturbed (spec AC #3, AC #4; security Finding 9's other half).
+case_place_direct_mode_commits_path_scoped() {
+  local repo files
+  repo="$(place_here place_direct_scoped)"
+  printf 'edited\n' > "$repo/README.md"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'mkdir -p "$1" && printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "committed in the working tree" "hello" \
+    "$(git -C "$repo" show "HEAD:docs/issues/20260101-x.md" 2>/dev/null)"
+  files="$(git -C "$repo" show --name-only --format= HEAD)"
+  assert_eq "only the collection path" "docs/issues/20260101-x.md" "$files"
+  assert_eq "unrelated edit still uncommitted" "edited" "$(cat "$repo/README.md")"
+  # The index and working tree must agree with the new HEAD. A plumbing ref
+  # update under a checked-out branch would leave the collection looking
+  # deleted, so the only thing status may report is the unrelated edit.
+  assert_eq "status shows only the unrelated edit" " M README.md" \
+    "$(git -C "$repo" status --porcelain)"
+  assert_eq "collection present in the working tree" "hello" \
+    "$(cat "$repo/docs/issues/20260101-x.md" 2>/dev/null)"
+}
+
+# AC: a pre-existing uncommitted edit inside the collection refuses the run
+# rather than being absorbed into the mutation's commit and published — the
+# developer's half-finished work is not this script's to publish (security
+# Finding 9).
+case_place_direct_mode_refuses_dirty_collection() {
+  local repo
+  repo="$(place_here place_direct_dirty)"
+  mkdir -p "$repo/docs/issues"
+  printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  printf 'half-finished\n' > "$repo/docs/issues/20260101-a.md"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit  "rc"         2                "$RC"
+  assert_match "names path" '20260101-a\.md' "$ERR"
+  assert_eq "the edit is still uncommitted" "half-finished" \
+    "$(cat "$repo/docs/issues/20260101-a.md")"
+  assert_eq "nothing new committed" "committed" \
+    "$(git -C "$repo" show "HEAD:docs/issues/20260101-a.md" 2>/dev/null)"
+}
+
+# AC: a read in direct mode serves the working tree — the checked-out branch is
+# the destination, so its checkout is the destination's state (spec AC #5).
+case_place_direct_mode_read_serves_the_working_tree() {
+  local repo
+  repo="$(place_here place_direct_read)"
+  mkdir -p "$repo/docs/issues"
+  printf 'alpha\n' > "$repo/docs/issues/20260101-a.md"
+  run_place_in "$repo" run --read --verb reindex -- \
+    sh -c 'cat "$1/20260101-a.md"' _ '{}'
+  assert_exit "rc"     0       "$RC"
+  assert_eq   "serves" "alpha" "$OUT"
+}
+
+# AC: when the remote has moved, the local commit stands and the divergence is
+# disclosed with resolution guidance — the developer's checkout is never
+# rebased underneath them (spec AC #7).
+case_place_direct_mode_discloses_push_divergence() {
+  local bare theirs mine branch
+  bare="$(place_bare place_direct_div_bare)"
+  theirs="$(place_clone "$bare" place_direct_div_them)"
+  printf 'base\n' > "$theirs/README.md"
+  git -C "$theirs" add README.md && git -C "$theirs" commit -q -m base
+  branch="$(git -C "$theirs" symbolic-ref --short HEAD)"
+  git -C "$theirs" push -q origin "HEAD:refs/heads/$branch"
+  mine="$(place_clone "$bare" place_direct_div_mine)"
+  printf 'issue_placement = "%s"\n' "$branch" > "$mine/jimconf.toml"
+  printf 'moved\n' > "$theirs/README.md"
+  git -C "$theirs" commit -q -am moved
+  git -C "$theirs" push -q origin "HEAD:refs/heads/$branch"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'mkdir -p "$1" && printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit  "rc"          0          "$RC"
+  assert_match "discloses"   'diverged' "$ERR"
+  assert_match "says how"    '[Pp]ull'  "$ERR"
+  assert_eq "local commit stands" "hello" \
+    "$(git -C "$mine" show "HEAD:docs/issues/20260101-x.md" 2>/dev/null)"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
