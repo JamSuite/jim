@@ -1,6 +1,6 @@
 ---
 id: 20260807-read-collection-blobs-in-one-batch-instead-of-one-process-per-en
-num: P-20260807-read-collection-blobs-in-one-batch-instead-of-one-process-per-en
+num: 260
 title: "Read collection blobs in one batch instead of one process per entry"
 status: open
 priority: medium

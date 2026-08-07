@@ -1,6 +1,6 @@
 ---
 id: 20260807-pin-the-nameref-prefix-convention-with-a-textual-invariant
-num: P-20260807-pin-the-nameref-prefix-convention-with-a-textual-invariant
+num: 259
 title: "Pin the nameref-prefix convention with a textual invariant"
 status: open
 priority: medium

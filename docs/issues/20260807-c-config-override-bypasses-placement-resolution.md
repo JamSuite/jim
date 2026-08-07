@@ -1,6 +1,6 @@
 ---
 id: 20260807-c-config-override-bypasses-placement-resolution
-num: P-20260807-c-config-override-bypasses-placement-resolution
+num: 258
 title: "-c config override bypasses placement resolution"
 status: open
 priority: low

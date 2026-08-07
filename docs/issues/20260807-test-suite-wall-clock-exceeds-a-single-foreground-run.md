@@ -1,6 +1,6 @@
 ---
 id: 20260807-test-suite-wall-clock-exceeds-a-single-foreground-run
-num: P-20260807-test-suite-wall-clock-exceeds-a-single-foreground-run
+num: 261
 title: "Test suite wall-clock exceeds a single foreground run"
 status: open
 priority: low
