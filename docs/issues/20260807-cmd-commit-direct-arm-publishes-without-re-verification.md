@@ -2,7 +2,7 @@
 id: 20260807-cmd-commit-direct-arm-publishes-without-re-verification
 num: 264
 title: "cmd_commit direct arm publishes without re-verification"
-status: open
+status: closed
 priority: critical
 labels: [issue, placement, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:22Z
-updated: 2026-08-07T11:43:22Z
+updated: 2026-08-07T20:27:17Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

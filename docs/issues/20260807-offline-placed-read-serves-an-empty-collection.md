@@ -2,7 +2,7 @@
 id: 20260807-offline-placed-read-serves-an-empty-collection
 num: 267
 title: "Offline placed read serves an empty collection"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, correctness]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:22Z
-updated: 2026-08-07T11:43:22Z
+updated: 2026-08-07T20:27:17Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

@@ -2,7 +2,7 @@
 id: 20260807-deferred-placement-mutation-is-discarded-on-reconnect
 num: 265
 title: "Deferred placement mutation is discarded on reconnect"
-status: open
+status: closed
 priority: critical
 labels: [issue, placement, data-loss]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:21Z
-updated: 2026-08-07T11:43:21Z
+updated: 2026-08-07T20:27:17Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

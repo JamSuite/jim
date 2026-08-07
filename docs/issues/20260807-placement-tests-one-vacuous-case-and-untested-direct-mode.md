@@ -2,7 +2,7 @@
 id: 20260807-placement-tests-one-vacuous-case-and-untested-direct-mode
 num: 272
 title: "Placement tests: one vacuous case and untested direct mode"
-status: open
+status: closed
 priority: medium
 labels: [testing, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:58Z
-updated: 2026-08-07T11:43:58Z
+updated: 2026-08-07T20:27:17Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

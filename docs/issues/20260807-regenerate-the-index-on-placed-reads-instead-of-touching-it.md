@@ -2,7 +2,7 @@
 id: 20260807-regenerate-the-index-on-placed-reads-instead-of-touching-it
 num: 276
 title: "Regenerate the index on placed reads instead of touching it"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, invariant]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:26Z
-updated: 2026-08-07T11:43:26Z
+updated: 2026-08-07T20:27:17Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
