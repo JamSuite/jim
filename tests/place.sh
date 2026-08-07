@@ -921,6 +921,121 @@ case_place_direct_mode_discloses_push_divergence() {
     "$(git -C "$mine" show "HEAD:docs/issues/20260101-x.md" 2>/dev/null)"
 }
 
+# ─── Section: Two-phase begin / commit / abort ───────────────────────────────
+
+# AC: an agent-interactive mutation with no single wrapped command — editing an
+# issue's status in place — gets a placement door too: materialize, edit, then
+# publish through the same engine (spec AC #3).
+case_place_begin_commit_publishes_an_edit() {
+  local repo handle token dir
+  repo="$(place_repo place_begin_edit 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=open'
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  assert_nonempty "token" "$token"
+  assert_eq "materialized for editing" "open" "$(cat "$dir/20260101-a.md")"
+  printf 'closed\n' > "$dir/20260101-a.md"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit "commit rc" 0 "$RC"
+  assert_eq "published" "closed" \
+    "$(place_dest_file "$repo" jim/issues docs/issues/20260101-a.md)"
+  assert_eq "subject" "docs(issues): close 20260101-a" \
+    "$(git -C "$repo" log -1 --format=%s refs/heads/jim/issues)"
+  assert_eq "handle cleaned up" "no" "$([[ -d "$dir" ]] && echo yes || echo no)"
+}
+
+# AC: a concurrent edit to the same file refuses and keeps the work. The temp
+# state survives so the developer can re-run rather than retype (spec AC #7).
+case_place_begin_commit_conflict_preserves_state() {
+  local bare mine theirs token dir
+  bare="$(place_bare place_begin_conf_bare)"
+  mine="$(place_clone "$bare" place_begin_conf_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_begin_conf_them 'issue_placement = "jim/issues"')"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "base\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  run_place_in "$mine" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  printf 'mine\n' > "$dir/20260101-a.md"
+  run_place_in "$theirs" run --verb edit -- \
+    sh -c 'printf "theirs\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "their edit landed" 0 "$RC"
+  run_place_in "$mine" commit "$token" --verb edit --id 20260101-a
+  assert_exit  "refuses"    3                "$RC"
+  assert_match "names path" '20260101-a\.md' "$ERR"
+  assert_eq "handle preserved" "yes" "$([[ -d "$dir" ]] && echo yes || echo no)"
+  assert_eq "edit preserved"   "mine" "$(cat "$dir/20260101-a.md")"
+  assert_eq "their edit intact" "theirs" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
+}
+
+# AC: abort discards the materialized collection and publishes nothing.
+case_place_abort_leaves_nothing() {
+  local repo token dir before
+  repo="$(place_repo place_abort 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=open'
+  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  printf 'discarded\n' > "$dir/20260101-a.md"
+  run_place_in "$repo" abort "$token"
+  assert_exit "abort rc" 0 "$RC"
+  assert_eq "handle gone" "no" "$([[ -d "$dir" ]] && echo yes || echo no)"
+  assert_eq "tip unmoved" "$before" \
+    "$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+}
+
+# AC: the insights persona is handed a materialized collection through the same
+# door, read-only — and a read handle may not publish (spec AC #5).
+case_place_begin_read_handle_cannot_commit() {
+  local repo token dir
+  repo="$(place_repo place_begin_read 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=alpha'
+  run_place_in "$repo" begin --read
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  assert_eq "materialized to read" "alpha" "$(cat "$dir/20260101-a.md")"
+  printf 'sneak\n' > "$dir/20260101-a.md"
+  run_place_in "$repo" commit "$token" --verb edit
+  assert_exit     "refuses"  2      "$RC"
+  assert_nonempty "explains" "$ERR"
+  run_place_in "$repo" abort "$token"
+  assert_exit "abort rc" 0 "$RC"
+}
+
+# AC: under the default placement the two-phase flow still works — it hands back
+# the real collection directory and publishes nothing, so today's edit-in-place
+# convention is unchanged (spec AC #2).
+case_place_begin_is_transparent_under_default_placement() {
+  local repo token dir
+  repo="$(place_repo place_begin_default)"
+  run_place_in "$repo" begin
+  assert_exit "begin rc"    0                "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  assert_eq   "no handle"   "none"           "$token"
+  assert_eq   "the real dir" "./docs/issues" "$dir"
+  run_place_in "$repo" commit "$token" --verb close
+  assert_exit "commit is a no-op" 0 "$RC"
+  run_place_in "$repo" abort "$token"
+  assert_exit "abort is a no-op"  0 "$RC"
+}
+
+# AC: a token that names no live handle refuses rather than guessing — which is
+# how a crash between begin and commit is surfaced.
+case_place_commit_unknown_token_refuses() {
+  local repo
+  repo="$(place_repo place_bad_token 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" commit "handle.deadbeef" --verb close
+  assert_exit     "rc"       2      "$RC"
+  assert_nonempty "explains" "$ERR"
+  run_place_in "$repo" commit "../../escape" --verb close
+  assert_exit     "traversal refused" 2 "$RC"
+  assert_nonempty "explains"          "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

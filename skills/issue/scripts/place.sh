@@ -342,6 +342,15 @@ place_direct() {
   JIM_PLACE_TOKEN="$PLACE_TOKEN" JIM_PLACE_PREFIX="$prefix" "${PLACE_CMD[@]}" || rc=$?
   (( rc == 0 )) || return "$rc"
   (( read_only == 0 )) || return 0
+  place_direct_publish "$dest" "$prefix" "$verb" "$id"
+}
+
+# place_direct_publish <dest> <prefix> <verb> <id>
+#   Stage and commit the collection in the working tree, then publish. Shared by
+#   the wrapped-command path and the two-phase one, which differ only in how the
+#   edits got there.
+place_direct_publish() {
+  local dest="$1" prefix="$2" verb="$3" id="$4"
   place_reindex "$prefix" || return 1
   local st
   st="$(git --literal-pathspecs status --porcelain -- "$prefix" 2>/dev/null)"
@@ -358,6 +367,231 @@ place_direct() {
          "committed here but not published. Pull and push again to share it —" \
          "your checkout is left exactly as it is." >&2
   fi
+  return 0
+}
+
+# ─── Section: Two-phase handles ──────────────────────────────────────────────
+#
+# Some mutations have no single command to wrap — "close issue #5" is the agent
+# editing a file it just read. Those get the same placement door in two steps:
+# `begin` materializes the destination and hands back a directory, the edits
+# happen there, and `commit` publishes them through the same engine.
+#
+# A handle outlives its process, so unlike a wrapped run its state cannot sit in
+# shell variables or a directory only that process can find. It lives under the
+# git dir: local to the clone, on no branch, never fetched or pushed, and
+# findable by the token `begin` printed. A crash between the two steps strands
+# one directory there, which `commit` reports and `abort` removes.
+
+readonly PLACE_TOKEN_NONE="none"     # no placement — the real collection dir
+readonly PLACE_TOKEN_DIRECT="direct" # destination is the checked-out branch
+
+# place_handle_root — the directory holding this clone's live handles, verified
+# to resolve inside the git dir so a symlinked path cannot redirect the writes.
+# Absolute: git reports a relative git dir from the project root, and a handle
+# path is handed to a caller who will use it from wherever they happen to be.
+place_handle_root() {
+  local gd gd_real root_real
+  gd="$(git rev-parse --git-dir 2>/dev/null)" || {
+    echo "place.sh: not inside a git repository" >&2
+    return 1
+  }
+  gd_real="$(realpath -m -- "$gd" 2>/dev/null)" || return 1
+  root_real="$(realpath -m -- "$gd/jim-place" 2>/dev/null)" || return 1
+  if [[ "$root_real" != "$gd_real"/* ]]; then
+    echo "place.sh: refusing to write placement handles outside the git dir" >&2
+    return 1
+  fi
+  mkdir -p -- "$root_real" || return 1
+  printf '%s\n' "$root_real"
+}
+
+# place_handle_dir <token> — the live handle's directory. The token is caller
+# input that composes a path, so it is charset-gated to a plain name first: no
+# separators, no leading dash, nothing that could climb out of the root.
+place_handle_dir() {
+  local tok="${1:-}" root dir
+  if [[ ! "$tok" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    echo "place.sh: malformed handle token" >&2
+    return 2
+  fi
+  root="$(place_handle_root)" || return 1
+  dir="$root/$tok"
+  if [[ ! -d "$dir" ]]; then
+    echo "place.sh: no live placement handle '$tok' — it was aborted, already" \
+         "committed, or never created" >&2
+    return 2
+  fi
+  printf '%s\n' "$dir"
+}
+
+# place_state_get <file> <key> — one recorded value. Read with grep/sed; the
+# file is never sourced, because sourcing state is executing it.
+place_state_get() {
+  grep -m1 "^$2=" "$1" 2>/dev/null | sed "s/^$2=//"
+}
+
+# place_save_snapshot <array-name> <file> / place_load_snapshot <file> <array-name>
+#   Persist the base snapshot across the two steps. Tab-separated so a name with
+#   spaces survives the round trip.
+place_save_snapshot() {
+  local -n _sv_snap="$1"
+  local name
+  : > "$2" || return 1
+  for name in "${!_sv_snap[@]}"; do
+    printf '%s\t%s\n' "${_sv_snap[$name]}" "$name" >> "$2" || return 1
+  done
+  return 0
+}
+
+place_load_snapshot() {
+  local -n _ld_snap="$2"
+  _ld_snap=()
+  local line sha name
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    sha="${line%%$'\t'*}"
+    name="${line#*$'\t'}"
+    _ld_snap["$name"]="$sha"
+  done < "$1"
+  return 0
+}
+
+# cmd_begin [--read] — materialize the destination and print "<token>\t<dir>".
+cmd_begin() {
+  local read_only=0
+  while (( $# )); do
+    case "$1" in
+      --read) read_only=1; shift ;;
+      *) echo "place.sh begin: unknown option '$1'" >&2; return 2 ;;
+    esac
+  done
+  local dest
+  dest="$(place_destination)" || return 2
+  if [[ "$dest" == "branch" ]]; then
+    local dir
+    dir="$(place_issues_dir)" || return 2
+    printf '%s\t%s\n' "$PLACE_TOKEN_NONE" "$dir"
+    return 0
+  fi
+  local prefix
+  prefix="$(place_prefix)" || return 2
+  local current
+  current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [[ -n "$current" && "$current" == "$dest" ]]; then
+    # The edits land in the working tree, so the guard has to run before them,
+    # not at commit time when they are indistinguishable from the mutation.
+    (( read_only )) || place_dirty_guard "$prefix" || return 2
+    printf '%s\t%s\n' "$PLACE_TOKEN_DIRECT" "$prefix"
+    return 0
+  fi
+  local root handle
+  root="$(place_handle_root)" || return 1
+  handle="$(mktemp -d "$root/handle.XXXXXXXX" 2>/dev/null)" || {
+    echo "place.sh: could not create a placement handle" >&2
+    return 1
+  }
+  local remote tier tip unreachable=0
+  remote="$(place_remote)"
+  if [[ -n "$remote" ]] && tip="$(place_remote_tip "$remote" "$dest")"; then
+    tier="origin"
+  else
+    tier="local"
+    tip="$(place_local_tip "$dest")"
+    [[ -n "$remote" ]] && unreachable=1
+  fi
+  if (( unreachable )); then
+    echo "place.sh: remote '$remote' is unreachable; working from the last-seen" \
+         "state of '$dest'" >&2
+  fi
+  place_check_rewrite "$dest" "$tip" "$(( unreachable == 0 ? 1 : 0 ))"
+  mkdir -p -- "$handle/collection" || { rm -rf -- "$handle"; return 1; }
+  if ! place_materialize "$tip" "$prefix" "$handle/collection"; then
+    local mrc=$?
+    rm -rf -- "$handle"
+    return "$mrc"
+  fi
+  local -A base=()
+  place_snapshot "$handle/collection" base || { rm -rf -- "$handle"; return 1; }
+  place_save_snapshot base "$handle/base" || { rm -rf -- "$handle"; return 1; }
+  {
+    printf 'dest=%s\n'   "$dest"
+    printf 'prefix=%s\n' "$prefix"
+    printf 'tip=%s\n'    "$tip"
+    printf 'tier=%s\n'   "$tier"
+    printf 'remote=%s\n' "$remote"
+    printf 'read=%s\n'   "$read_only"
+  } > "$handle/state" || { rm -rf -- "$handle"; return 1; }
+  printf '%s\t%s\n' "${handle##*/}" "$handle/collection"
+}
+
+# cmd_commit <token> --verb <enum> [--id <slug>] — publish a handle's edits.
+cmd_commit() {
+  local token="${1:-}"; shift || true
+  local verb="" id=""
+  while (( $# )); do
+    case "$1" in
+      --verb) verb="${2-}"; shift 2 || break ;;
+      --id)   id="${2-}";   shift 2 || break ;;
+      *) echo "place.sh commit: unknown option '$1'" >&2; return 2 ;;
+    esac
+  done
+  place_valid_verb "$verb" || return 2
+  if [[ -n "$id" ]] && ! bash "$JIMFILE" valid-id "$id" >/dev/null 2>&1; then
+    echo "place.sh commit: --id is not a valid issue id" >&2
+    return 2
+  fi
+  case "$token" in
+    "$PLACE_TOKEN_NONE")
+      # No placement: the collection is the working tree and committing it is
+      # the developer's own git flow, exactly as before.
+      return 0 ;;
+    "$PLACE_TOKEN_DIRECT")
+      local dest prefix
+      dest="$(place_destination)" || return 2
+      prefix="$(place_prefix)" || return 2
+      place_direct_publish "$dest" "$prefix" "$verb" "$id"
+      return $? ;;
+  esac
+  local handle
+  handle="$(place_handle_dir "$token")" || return $?
+  if [[ "$(place_state_get "$handle/state" read)" == "1" ]]; then
+    echo "place.sh commit: handle '$token' was opened read-only and may not" \
+         "publish; use abort to discard it" >&2
+    return 2
+  fi
+  local dest prefix tip tier remote
+  dest="$(place_state_get "$handle/state" dest)"
+  prefix="$(place_state_get "$handle/state" prefix)"
+  tip="$(place_state_get "$handle/state" tip)"
+  tier="$(place_state_get "$handle/state" tier)"
+  remote="$(place_state_get "$handle/state" remote)"
+  PLACE_WORK="$handle"
+  PLACE_COLL="$handle/collection"
+  PLACE_GIT_INDEX="$handle/index"
+  local -A before=() after=()
+  place_load_snapshot "$handle/base" before || return 1
+  place_reindex "$PLACE_COLL" || return 1
+  place_snapshot "$PLACE_COLL" after || return 1
+  local rc=0
+  place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
+                       "$remote" "$tier" "$tip" || rc=$?
+  # A refused publish keeps the handle: the edits in it are work, and losing
+  # them to a conflict would make refusing worse than overwriting.
+  (( rc == 0 )) || return "$rc"
+  rm -rf -- "$handle"
+  return 0
+}
+
+# cmd_abort <token> — discard a handle and everything materialized in it.
+cmd_abort() {
+  local token="${1:-}"
+  case "$token" in
+    "$PLACE_TOKEN_NONE"|"$PLACE_TOKEN_DIRECT") return 0 ;;
+  esac
+  local handle
+  handle="$(place_handle_dir "$token")" || return $?
+  rm -rf -- "$handle"
   return 0
 }
 
@@ -860,6 +1094,9 @@ usage() {
 Usage:
   place.sh mode [--place-token <tok>]        print `direct` or `route`
   place.sh run [--read] --verb <enum> [--id <slug>] -- CMD [ARGS...]
+  place.sh begin [--read]                    print "<token><TAB><dir>"
+  place.sh commit <token> --verb <enum> [--id <slug>]
+  place.sh abort <token>
 
   verbs: file edit close rename realize reindex backfill migrate
   `{}` in ARGS becomes the collection directory, `{token}` the run token.
@@ -874,8 +1111,11 @@ main() {
   fi
   shift
   case "$subcmd" in
-    mode) cmd_mode "$@" ;;
-    run)  cmd_run  "$@" ;;
+    mode)   cmd_mode   "$@" ;;
+    run)    cmd_run    "$@" ;;
+    begin)  cmd_begin  "$@" ;;
+    commit) cmd_commit "$@" ;;
+    abort)  cmd_abort  "$@" ;;
     help|--help|-h) usage; return 0 ;;
     *)
       echo "place.sh: unknown subcommand '$subcmd'" >&2
