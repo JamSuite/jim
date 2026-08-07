@@ -292,6 +292,54 @@ place_local_tip() {
   git rev-parse --verify --quiet --end-of-options "refs/heads/$1" 2>/dev/null || true
 }
 
+# place_advance_bookmark <branch> <sha> — record <sha> as the destination state
+# this clone has now seen.
+place_advance_bookmark() {
+  local bref
+  [[ -n "${2:-}" ]] || return 0
+  bref="$(place_bookmark_ref "$1")" || return 0
+  git update-ref "$bref" "$2" 2>/dev/null || true
+  return 0
+}
+
+# place_check_rewrite <branch> <tip> <authoritative>
+#   Compare the destination's current tip against the state this clone last
+#   acted on, and disclose loudly when the branch moved non-fast-forward.
+#
+#   A collection branch has no self-evident tamper tell. An append-only log
+#   screams when it is truncated, because its content may only grow; issue
+#   content is legitimately edited and deleted, so a force-push there looks
+#   exactly like ordinary work. The tip this clone last saw is the only honest
+#   freshness fact available, which is why it is recorded on every read as well
+#   as every publish.
+#
+#   Detection discloses; it never blocks. Whether a rewritten destination is
+#   sabotage or a teammate cleaning up history is not something this script can
+#   know, and refusing to file an issue is a poor answer to either.
+place_check_rewrite() {
+  local branch="$1" tip="$2" authoritative="$3" bref seen
+  bref="$(place_bookmark_ref "$branch")" || return 0
+  seen="$(git rev-parse --verify --quiet --end-of-options "$bref" 2>/dev/null || true)"
+  if [[ -z "$seen" ]]; then
+    place_advance_bookmark "$branch" "$tip"
+    return 0
+  fi
+  if [[ -z "$tip" ]]; then
+    if (( authoritative )); then
+      echo "place.sh: destination branch '$branch' no longer exists; the" \
+           "collection this clone last saw at $seen is gone from it" >&2
+    fi
+    return 0
+  fi
+  if [[ "$seen" != "$tip" ]] && ! git merge-base --is-ancestor "$seen" "$tip" 2>/dev/null; then
+    echo "place.sh: destination branch '$branch' was rewritten — the state this" \
+         "clone last saw ($seen) is not an ancestor of its current tip ($tip)." \
+         "Mutations published before the rewrite may no longer be there." >&2
+  fi
+  place_advance_bookmark "$branch" "$tip"
+  return 0
+}
+
 # place_materialize <tip> <prefix> <dest>
 #   Extract the collection at <prefix> in commit <tip> into <dest>, one entry at
 #   a time. Branch content is untrusted — a tree can carry an entry name that
@@ -619,6 +667,9 @@ cmd_run() {
     echo "place.sh: remote '$remote' is unreachable; serving the last-seen state" \
          "of '$dest'" >&2
   fi
+  # Authoritative means this run actually reached whoever owns the branch, so
+  # an absent destination is really absent rather than merely unreachable.
+  place_check_rewrite "$dest" "$tip" "$(( unreachable == 0 ? 1 : 0 ))"
 
   place_materialize "$tip" "$prefix" "$PLACE_COLL" || return $?
   local -A before=() after=()
@@ -683,10 +734,7 @@ place_commit_changes() {
     place_land "$remote" "$tier" "$dest" "$tip" "$commit"
     rc=$?
     if (( rc == 0 )); then
-      local bref
-      if bref="$(place_bookmark_ref "$dest")"; then
-        git update-ref "$bref" "$commit" 2>/dev/null || true
-      fi
+      place_advance_bookmark "$dest" "$commit"
       return 0
     fi
     (( rc == 3 )) || return "$rc"

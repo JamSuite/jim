@@ -722,6 +722,94 @@ TEAMMATE
     "$(printf '%s\n' "$log" | grep -c '^issue allocate ')"
 }
 
+# ─── Section: Rewrite detection ──────────────────────────────────────────────
+
+# place_force_unrelated <bare> <branch>
+#   Replace <branch> on the bare remote with an unrelated history, the way a
+#   force-push does. Issue content is legitimately edited, so unlike an
+#   append-only log a placement branch has no self-evident tamper tell — the
+#   only honest signal is the tip this clone last saw.
+place_force_unrelated() {
+  local bare="$1" branch="$2" blob tree commit
+  blob="$(printf 'rewritten\n' | git -C "$bare" hash-object -w --stdin)"
+  tree="$(printf '100644 blob %s\tother.md' "$blob" | git -C "$bare" mktree)"
+  commit="$(git -C "$bare" commit-tree "$tree" -m rewritten)"
+  git -C "$bare" update-ref "refs/heads/$branch" "$commit"
+  printf '%s' "$commit"
+}
+
+# AC: a destination whose tip moved non-fast-forward is detected and disclosed
+# by the read verbs, naming what was last seen and what is there now — a
+# rewritten collection is never served silently as current (spec AC #12).
+case_place_read_discloses_a_rewritten_destination() {
+  local bare clone seen
+  bare="$(place_bare place_rw_read_bare)"
+  clone="$(place_clone "$bare" place_rw_read 'issue_placement = "jim/issues"')"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  seen="$(git -C "$clone" rev-parse refs/heads/jim/issues)"
+  place_force_unrelated "$bare" jim/issues >/dev/null
+  run_place_in "$clone" run --read --verb reindex -- sh -c 'true'
+  assert_exit  "rc"              0            "$RC"
+  assert_match "discloses rewrite" 'rewritten' "$ERR"
+  assert_match "names last seen"   "$seen"     "$ERR"
+}
+
+# AC: the same detection applies before a write, so a mutation is never
+# published onto a rewritten collection without the developer being told
+# (spec AC #12).
+case_place_write_discloses_a_rewritten_destination() {
+  local bare clone seen
+  bare="$(place_bare place_rw_write_bare)"
+  clone="$(place_clone "$bare" place_rw_write 'issue_placement = "jim/issues"')"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  seen="$(git -C "$clone" rev-parse refs/heads/jim/issues)"
+  place_force_unrelated "$bare" jim/issues >/dev/null
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "second\n" > "$1/20260101-y.md"' _ '{}'
+  assert_exit  "rc"              0            "$RC"
+  assert_match "discloses rewrite" 'rewritten' "$ERR"
+  assert_match "names last seen"   "$seen"     "$ERR"
+}
+
+# AC: detection discloses, it does not block — the run advances past a
+# rewritten destination and the mutation still lands (spec AC #12).
+case_place_rewrite_does_not_block_the_mutation() {
+  local bare clone
+  bare="$(place_bare place_rw_nonblock_bare)"
+  clone="$(place_clone "$bare" place_rw_nonblock 'issue_placement = "jim/issues"')"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  place_force_unrelated "$bare" jim/issues >/dev/null
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "second\n" > "$1/20260101-y.md"' _ '{}'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "mutation landed" "second" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-y.md 2>/dev/null)"
+}
+
+# AC: an ordinary fast-forward is not a rewrite and says nothing — the
+# disclosure has to stay rare enough to mean something.
+case_place_fast_forward_is_not_a_rewrite() {
+  local bare mine theirs
+  bare="$(place_bare place_ff_bare)"
+  mine="$(place_clone "$bare" place_ff_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_ff_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "b\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "silent on a fast-forward" "" "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
