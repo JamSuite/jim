@@ -1,6 +1,6 @@
 ---
 id: 20260807-placement-tests-one-vacuous-case-and-untested-direct-mode
-num: P-20260807-placement-tests-one-vacuous-case-and-untested-direct-mode
+num: 272
 title: "Placement tests: one vacuous case and untested direct mode"
 status: open
 priority: medium

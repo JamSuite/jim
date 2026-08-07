@@ -1,6 +1,6 @@
 ---
 id: 20260807-placement-bookmark-produces-false-rewrite-alarms
-num: P-20260807-placement-bookmark-produces-false-rewrite-alarms
+num: 271
 title: "Placement bookmark produces false rewrite alarms"
 status: open
 priority: medium

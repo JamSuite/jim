@@ -1,6 +1,6 @@
 ---
 id: 20260807-insights-analyst-reads-the-branch-local-collection-under-placeme
-num: P-20260807-insights-analyst-reads-the-branch-local-collection-under-placeme
+num: 266
 title: "Insights analyst reads the branch-local collection under placement"
 status: open
 priority: high

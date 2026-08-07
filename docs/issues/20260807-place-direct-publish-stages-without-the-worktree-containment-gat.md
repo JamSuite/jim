@@ -1,6 +1,6 @@
 ---
 id: 20260807-place-direct-publish-stages-without-the-worktree-containment-gat
-num: P-20260807-place-direct-publish-stages-without-the-worktree-containment-gat
+num: 268
 title: "place_direct_publish stages without the worktree containment gate"
 status: open
 priority: medium

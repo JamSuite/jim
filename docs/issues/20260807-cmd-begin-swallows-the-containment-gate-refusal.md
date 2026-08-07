@@ -1,6 +1,6 @@
 ---
 id: 20260807-cmd-begin-swallows-the-containment-gate-refusal
-num: P-20260807-cmd-begin-swallows-the-containment-gate-refusal
+num: 263
 title: "cmd_begin swallows the containment gate refusal"
 status: open
 priority: high

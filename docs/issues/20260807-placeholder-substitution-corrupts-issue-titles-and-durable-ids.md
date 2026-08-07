@@ -1,6 +1,6 @@
 ---
 id: 20260807-placeholder-substitution-corrupts-issue-titles-and-durable-ids
-num: P-20260807-placeholder-substitution-corrupts-issue-titles-and-durable-ids
+num: 270
 title: "Placeholder substitution corrupts issue titles and durable ids"
 status: open
 priority: critical

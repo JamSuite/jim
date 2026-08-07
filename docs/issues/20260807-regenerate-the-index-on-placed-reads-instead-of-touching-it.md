@@ -1,6 +1,6 @@
 ---
 id: 20260807-regenerate-the-index-on-placed-reads-instead-of-touching-it
-num: P-20260807-regenerate-the-index-on-placed-reads-instead-of-touching-it
+num: 276
 title: "Regenerate the index on placed reads instead of touching it"
 status: open
 priority: high

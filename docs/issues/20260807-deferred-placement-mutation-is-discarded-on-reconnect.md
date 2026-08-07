@@ -1,6 +1,6 @@
 ---
 id: 20260807-deferred-placement-mutation-is-discarded-on-reconnect
-num: P-20260807-deferred-placement-mutation-is-discarded-on-reconnect
+num: 265
 title: "Deferred placement mutation is discarded on reconnect"
 status: open
 priority: critical

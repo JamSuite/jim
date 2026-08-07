@@ -1,6 +1,6 @@
 ---
 id: 20260807-cmd-commit-direct-arm-publishes-without-re-verification
-num: P-20260807-cmd-commit-direct-arm-publishes-without-re-verification
+num: 264
 title: "cmd_commit direct arm publishes without re-verification"
 status: open
 priority: critical

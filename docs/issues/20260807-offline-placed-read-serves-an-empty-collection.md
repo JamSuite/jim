@@ -1,6 +1,6 @@
 ---
 id: 20260807-offline-placed-read-serves-an-empty-collection
-num: P-20260807-offline-placed-read-serves-an-empty-collection
+num: 267
 title: "Offline placed read serves an empty collection"
 status: open
 priority: high

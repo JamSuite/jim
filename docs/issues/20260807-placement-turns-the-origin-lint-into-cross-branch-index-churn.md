@@ -1,6 +1,6 @@
 ---
 id: 20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn
-num: P-20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn
+num: 273
 title: "Placement turns the origin lint into cross-branch index churn"
 status: open
 priority: medium
