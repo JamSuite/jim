@@ -38,9 +38,10 @@
 #     Print `direct` (run against the working tree, today's behavior) or
 #     `route` (re-exec through `run`). The config gate lives here.
 #   bash place.sh run [--read] --verb <enum> [--id <slug>] -- CMD [ARGS...]
-#     Run CMD against the collection. `{}` in ARGS becomes the collection
-#     directory, `{token}` becomes this run's token. --read discards the result
-#     instead of publishing it.
+#     Run CMD against the collection. An ARG that is exactly `{}` becomes the
+#     collection directory and one that is exactly `{token}` becomes this run's
+#     token; every other argument is forwarded untouched, because ARGS carry
+#     free-form user text. --read discards the result instead of publishing it.
 #
 #   verb enum: file | edit | close | rename | realize | reindex | backfill |
 #   migrate. Commit subjects are composed from the enum plus an optional
@@ -162,15 +163,23 @@ place_valid_verb() {
 }
 
 # place_substitute <dir> <token> <arg>... — fill PLACE_CMD with the wrapped
-# command, replacing every `{}` with <dir> and every `{token}` with <token>.
-# Substitution is per-argument, so a directory containing spaces stays one word.
+# command, replacing an argument that is exactly `{}` with <dir> and one that is
+# exactly `{token}` with <token>. Substitution is whole-argument, so a directory
+# containing spaces stays one word — and so an argument that merely *contains*
+# braces is left alone. That second property is the load-bearing one: the
+# wrapped command carries free-form user text, and `{}` is ordinary in a
+# developer-tool issue title (`interface{}`, an empty JSON literal). Rewriting
+# it would put this run's temp path into the title, and from there into the
+# slug, which is the durable id an append-only registry has already recorded.
 place_substitute() {
   local dir="$1" token="$2"; shift 2
   PLACE_CMD=()
   local a
   for a in "$@"; do
-    a="${a//\{\}/$dir}"
-    a="${a//\{token\}/$token}"
+    case "$a" in
+      '{}')      a="$dir" ;;
+      '{token}') a="$token" ;;
+    esac
     PLACE_CMD+=( "$a" )
   done
 }
@@ -1099,7 +1108,7 @@ Usage:
   place.sh abort <token>
 
   verbs: file edit close rename realize reindex backfill migrate
-  `{}` in ARGS becomes the collection directory, `{token}` the run token.
+  an ARG of exactly `{}` becomes the collection directory, `{token}` the token.
 USAGE
 }
 

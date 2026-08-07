@@ -230,6 +230,32 @@ case_place_passthrough_honors_configured_issues_path() {
   assert_eq   "configured dir" "notes/findings" "$OUT"
 }
 
+# ─── Section: Placeholder substitution ───────────────────────────────────────
+
+# AC: only an argument that is exactly `{}` or `{token}` is a placeholder.
+# Braces are ordinary text in a developer-tool issue title — `interface{}`, an
+# empty JSON literal — and a substring rewrite would put this run's temp path
+# into the title, and from there into the slug, which is the durable id
+# (spec AC #3).
+case_place_substitutes_whole_arguments_only() {
+  local repo
+  repo="$(place_repo place_subst_whole 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --read --verb reindex -- \
+    printf '%s|%s' 'Fix the {} placeholder' 'a{token}b'
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "both left verbatim" 'Fix the {} placeholder|a{token}b' "$OUT"
+}
+
+# AC: the same rule holds on the passthrough path, where the substitution would
+# be the configured issues directory rather than a temp one.
+case_place_passthrough_substitutes_whole_arguments_only() {
+  local dir
+  dir="$(empty_dir place_subst_passthrough)"
+  run_place_in "$dir" run --verb file -- printf '%s' 'map[string]interface{}'
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "left verbatim" 'map[string]interface{}' "$OUT"
+}
+
 # ─── Section: Run-scoped token (security Finding 10) ─────────────────────────
 
 # AC: an inherited or hand-exported JIM_PLACE_TOKEN cannot switch centralization

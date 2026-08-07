@@ -2789,6 +2789,25 @@ case_issues_placement_stdout_names_the_destination_path() {
   assert_eq "repo-relative destination path" "docs/issues/${slug}.md" "$path"
 }
 
+# AC: free-form user text survives the routing re-exec verbatim. A title
+# containing `{}` is ordinary in a developer tool, and the placeholder the
+# re-exec uses to pass the collection directory must not rewrite it — the slug
+# derived from the title is the durable id, and the registry that records it
+# only ever grows (spec AC #2, #3).
+case_issues_placement_preserves_braces_in_a_title() {
+  local repo body slug
+  repo="$(placement_repo issues_place_braces jim/issues)"
+  body="$(fixture issues_place_braces_body.md 'body')"
+  run_new_in "$repo" --title "Fix the {} placeholder in output" \
+    --priority medium --labels x --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_match "slug derives from the title alone" \
+    '^[0-9]{8}-fix-the-placeholder-in-output$' "$slug"
+  assert_match "title stored verbatim" 'title: "Fix the \{\} placeholder in output"' \
+    "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
+}
+
 # AC: an origin: that names an artifact living only on the filing branch is
 # still valid at the destination — the reference is informational, and its
 # absence is not an error (spec AC #11).
