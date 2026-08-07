@@ -2751,6 +2751,37 @@ placement_repo() {
 # dest_paths <repo> <branch> — every path on <branch>.
 dest_paths() { git -C "$1" ls-tree -r --name-only "refs/heads/$2" 2>/dev/null; }
 
+# stale_dest_index <repo> <branch> <prefix>
+#   Hollow out <branch>'s INDEX.md by plumbing, leaving the issues beside it
+#   alone — the shape a hand commit, a merge, or a bulk import leaves behind.
+#
+#   This is what gives the read-only cases below something to discriminate on. A
+#   read verb writes no issue file, so a destination whose index already
+#   describes it cannot move whether the run routed read-only or not. Against a
+#   stale one it can: placement regenerates the index in what it materializes,
+#   so a run that published would publish that correction.
+stale_dest_index() {
+  local repo="$1" branch="$2" prefix="$3"
+  local entries="" mode type sha name blob tree commit seg rest
+  blob="$(printf '# Issues Index\n' | git -C "$repo" hash-object -w --stdin)" || return 1
+  while read -r mode type sha name; do
+    [[ -n "$name" ]] || continue
+    [[ "$name" == "INDEX.md" ]] && sha="$blob"
+    entries+="$(printf '%s %s %s\t%s' "$mode" "$type" "$sha" "$name")"$'\n'
+  done < <(git -C "$repo" ls-tree "refs/heads/$branch:$prefix")
+  [[ -n "$entries" ]] || return 1
+  tree="$(printf '%s' "$entries" | git -C "$repo" mktree)" || return 1
+  rest="$prefix"
+  while [[ "$rest" == */* ]]; do
+    seg="${rest##*/}"; rest="${rest%/*}"
+    tree="$(printf '040000 tree %s\t%s' "$tree" "$seg" | git -C "$repo" mktree)" || return 1
+  done
+  tree="$(printf '040000 tree %s\t%s' "$tree" "$rest" | git -C "$repo" mktree)" || return 1
+  commit="$(git -C "$repo" commit-tree "$tree" -p "refs/heads/$branch" -m stale)" || return 1
+  git -C "$repo" update-ref "refs/heads/$branch" "$commit" || return 1
+  return 0
+}
+
 # AC: filing under a branch placement lands the issue and its regenerated index
 # on the destination as one commit, and leaves the working branch untouched.
 # The emitter is the single write door, so making the door placement-aware is
@@ -2815,7 +2846,8 @@ case_issues_placement_tolerates_a_branch_only_origin() {
   local repo body slug
   repo="$(placement_repo issues_place_origin jim/issues)"
   body="$(fixture issues_place_origin_body.md 'body')"
-  printf 'note\n' > "$repo/docs-only-here.md"
+  # Deliberately not created: the origin has to be genuinely absent at the
+  # destination for this to be the dangling case the AC is about.
   run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
     --origin "docs-only-here.md" --body-file "$body"
   assert_exit "rc" 0 "$RC"
@@ -2893,8 +2925,9 @@ case_issues_placement_list_serves_the_destination() {
   assert_match "shows the issue"  'Alpha bug'  "$OUT"
 }
 
-# AC: a read never publishes. Reads under placement fetch and materialize, but
-# the destination tip is exactly where it was afterwards (spec AC #5).
+# AC: a read serves the destination's collection as it actually stands and
+# publishes nothing — even when serving it means regenerating an index the
+# destination carries stale, which a write would have committed (spec AC #5).
 case_issues_placement_read_publishes_nothing() {
   local repo body before
   repo="$(placement_repo issues_place_readonly jim/issues)"
@@ -2902,11 +2935,17 @@ case_issues_placement_read_publishes_nothing() {
   run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
-  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
-  run_render_in "$repo" list;  assert_exit "list rc"  0 "$RC"
+  stale_dest_index "$repo" jim/issues docs/issues
+  assert_exit "fixture" 0 "$?"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_render_in "$repo" list
+  assert_exit  "list rc"               0           "$RC"
+  assert_match "serves a current view" 'Alpha bug' "$OUT"
   run_render_in "$repo" stats; assert_exit "stats rc" 0 "$RC"
   assert_eq "tip unmoved" "$before" \
-    "$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "the published index is left as it was" "# Issues Index" \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
   assert_eq "working tree still clean" "" "$(git -C "$repo" status --porcelain)"
 }
 
@@ -2985,13 +3024,17 @@ case_issues_placement_preview_publishes_nothing() {
     --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
-  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  stale_dest_index "$repo" jim/issues docs/issues
+  assert_exit "fixture" 0 "$?"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
   run_in "$repo" "$SCRIPT_RECONCILE"
   assert_exit "preview rc" 0 "$RC"
   run_in "$repo" "$SCRIPT_MIGRATE" prefix
   assert_exit "migrate preview rc" 0 "$RC"
   assert_eq "tip unmoved" "$before" \
-    "$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "the published index is left as it was" "# Issues Index" \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
 }
 
 # AC: backfill routes too — a display-ordinal backfill lands at the destination

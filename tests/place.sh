@@ -57,25 +57,28 @@ place_raw_sha() { printf '%b' "$(printf '%s' "$1" | sed 's/../\\x&/g')"; }
 # place_seed_collection <repo> <branch> <prefix> <name=content>...
 #   Commit a collection onto <branch> under <prefix> by plumbing, without
 #   checking the branch out — the same way a teammate's push would leave it.
+#   Every step checks its own status: a fixture that failed silently would leave
+#   the cases built on it comparing two empty strings and passing.
 place_seed_collection() {
   local repo="$1" branch="$2" prefix="$3"; shift 3
   local entries="" pair name content blob tree commit
   for pair in "$@"; do
     name="${pair%%=*}"; content="${pair#*=}"
-    blob="$(printf '%s\n' "$content" | git -C "$repo" hash-object -w --stdin)"
+    blob="$(printf '%s\n' "$content" | git -C "$repo" hash-object -w --stdin)" || return 1
     entries+="$(printf '100644 blob %s\t%s' "$blob" "$name")"$'\n'
   done
-  tree="$(printf '%s' "$entries" | git -C "$repo" mktree)"
+  tree="$(printf '%s' "$entries" | git -C "$repo" mktree)" || return 1
   local seg rest="$prefix"
   # Wrap the collection tree back up through each prefix segment, innermost
   # first, so the branch mirrors the repository's own layout.
   while [[ "$rest" == */* ]]; do
     seg="${rest##*/}"; rest="${rest%/*}"
-    tree="$(printf '040000 tree %s\t%s' "$tree" "$seg" | git -C "$repo" mktree)"
+    tree="$(printf '040000 tree %s\t%s' "$tree" "$seg" | git -C "$repo" mktree)" || return 1
   done
-  tree="$(printf '040000 tree %s\t%s' "$tree" "$rest" | git -C "$repo" mktree)"
-  commit="$(git -C "$repo" commit-tree "$tree" -m seeded)"
-  git -C "$repo" update-ref "refs/heads/$branch" "$commit"
+  tree="$(printf '040000 tree %s\t%s' "$tree" "$rest" | git -C "$repo" mktree)" || return 1
+  commit="$(git -C "$repo" commit-tree "$tree" -m seeded)" || return 1
+  git -C "$repo" update-ref "refs/heads/$branch" "$commit" || return 1
+  return 0
 }
 
 # place_seed_traversal <repo> <branch> <prefix>
@@ -165,6 +168,34 @@ case_place_refuses_unknown_verb() {
   run_place_in "$repo" run --verb "bogus; rm -rf /" -- true
   assert_exit     "rc"       2      "$RC"
   assert_nonempty "explains" "$ERR"
+}
+
+# AC: an issues_path that is not a safe repo-relative path refuses before it can
+# be mirrored onto a destination branch — it becomes a tree prefix and a
+# pathspec, so it clears the boundary first (spec AC #10).
+case_place_refuses_an_unsafe_issues_path() {
+  local repo
+  repo="$(place_repo place_unsafe_prefix \
+    'issue_placement = "jim/issues"' 'issues_path = "../outside"')"
+  run_place_in "$repo" run --verb file -- sh -c 'true'
+  assert_exit     "rc"       2      "$RC"
+  assert_nonempty "explains" "$ERR"
+  assert_eq "no branch created" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# AC: an --id that is not a real issue id refuses at both call sites. The verb
+# half of "no free text reaches a commit message" is what the enum covers; the
+# id half is this.
+case_place_refuses_a_malformed_id() {
+  local repo
+  repo="$(place_repo place_bad_id 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --verb close --id 'not; an id' -- sh -c 'true'
+  assert_exit     "run rc"   2      "$RC"
+  assert_nonempty "explains" "$ERR"
+  run_place_in "$repo" commit none --verb close --id 'not; an id'
+  assert_exit     "commit rc" 2     "$RC"
+  assert_nonempty "explains"  "$ERR"
 }
 
 # ─── Section: Passthrough (default placement) ────────────────────────────────
@@ -366,6 +397,10 @@ case_place_leaves_the_working_tree_untouched() {
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   after="$(git -C "$repo" status --porcelain)"
+  # Asserted alongside the absences, so a run that wrote nothing anywhere cannot
+  # pass this by leaving the working tree undisturbed.
+  assert_eq "the mutation landed at the destination" "hello" \
+    "$(place_dest_file "$repo" jim/issues docs/issues/20260101-x.md)"
   assert_eq "status unchanged"    "$before" "$after"
   assert_eq "edit survives"       "edited"  "$(cat "$repo/README.md")"
   assert_eq "no collection in tree" "no" \
@@ -470,12 +505,12 @@ case_place_read_run_publishes_nothing() {
   local repo before
   repo="$(place_repo place_read_only 'issue_placement = "jim/issues"')"
   place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=alpha'
-  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
   run_place_in "$repo" run --read --verb reindex -- \
     sh -c 'printf "sneak\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "tip unmoved" "$before" \
-    "$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
 }
 
 # AC: the changed set carries deletions, not only additions and edits — a
@@ -505,11 +540,11 @@ case_place_no_change_makes_no_commit() {
   run_place_in "$repo" run --verb file -- \
     sh -c 'printf "alpha\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
-  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
   run_place_in "$repo" run --verb reindex -- sh -c 'true'
   assert_exit "rc" 0 "$RC"
   assert_eq "tip unmoved" "$before" \
-    "$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
 }
 
 # AC: a failing wrapped command publishes nothing and its status is forwarded —
@@ -550,13 +585,18 @@ case_place_exports_a_matching_run_token() {
 }
 
 # AC: the temp directory the collection is materialized into does not outlive
-# the run.
+# the run. The landing assertion is what keeps this honest — an absent temp dir
+# is also what a script that never ran leaves behind.
 case_place_cleans_up_its_temp_directory() {
-  local repo leftovers
+  local repo leftovers rc
   repo="$(place_repo place_cleanup 'issue_placement = "jim/issues"')"
   mkdir -p "$repo/tmproot"
   ( cd "$repo" && TMPDIR="$repo/tmproot" bash "$SCRIPT_place" run --verb file -- \
       sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}' >/dev/null 2>&1 )
+  rc=$?
+  assert_exit "rc" 0 "$rc"
+  assert_eq "the mutation landed" "hello" \
+    "$(place_dest_file "$repo" jim/issues docs/issues/20260101-x.md)"
   leftovers="$(find "$repo/tmproot" -mindepth 1 -print -quit 2>/dev/null)"
   assert_eq "temp dir removed" "" "$leftovers"
 }
@@ -924,6 +964,34 @@ TEAMMATE
     "$(printf '%s\n' "$log" | grep -c '^issue allocate ')"
 }
 
+# AC: the retry path works on the local tier too, where the ref update is itself
+# the compare-and-swap rather than the push. Every other race case drives the
+# origin tier, so a regression dropping the local old-value would otherwise be
+# invisible — it would clobber the winner at rc 0 instead of regrafting
+# (spec AC #7).
+case_place_local_tier_retries_after_the_branch_moves() {
+  local repo racer paths
+  repo="$(place_repo place_local_race 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "base\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  # No remote at all, so both runs land by ref update. The second publishes from
+  # inside the first's wrapped command, which makes the loss deterministic.
+  racer="$TMP_BASE/place-local-race.sh"
+  cat > "$racer" <<RACER
+cd "$repo" && bash "$SCRIPT_place" run --verb file -- \\
+  sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
+RACER
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "mine\n" > "$1/20260101-c.md"; sh "$2" >/dev/null 2>&1' \
+    _ '{}' "$racer"
+  assert_exit "rc" 0 "$RC"
+  paths="$(place_dest_paths "$repo" jim/issues)"
+  assert_match "mine landed"      'docs/issues/20260101-c\.md' "$paths"
+  assert_match "the racer survived" 'docs/issues/20260101-b\.md' "$paths"
+  assert_match "the base survived"  'docs/issues/20260101-a\.md' "$paths"
+}
+
 # ─── Section: Rewrite detection ──────────────────────────────────────────────
 
 # place_force_unrelated <bare> <branch>
@@ -950,7 +1018,7 @@ case_place_read_discloses_a_rewritten_destination() {
   run_place_in "$clone" run --verb file -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
-  seen="$(git -C "$clone" rev-parse refs/heads/jim/issues)"
+  seen="$(git -C "$clone" rev-parse --verify refs/heads/jim/issues)"
   place_force_unrelated "$bare" jim/issues >/dev/null
   run_place_in "$clone" run --read --verb reindex -- sh -c 'true'
   assert_exit  "rc"              0            "$RC"
@@ -968,7 +1036,7 @@ case_place_write_discloses_a_rewritten_destination() {
   run_place_in "$clone" run --verb file -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
-  seen="$(git -C "$clone" rev-parse refs/heads/jim/issues)"
+  seen="$(git -C "$clone" rev-parse --verify refs/heads/jim/issues)"
   place_force_unrelated "$bare" jim/issues >/dev/null
   run_place_in "$clone" run --verb file -- \
     sh -c 'printf "second\n" > "$1/20260101-y.md"' _ '{}'
@@ -1258,7 +1326,7 @@ case_place_abort_leaves_nothing() {
   local repo token dir before
   repo="$(place_repo place_abort 'issue_placement = "jim/issues"')"
   place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=open'
-  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
   run_place_in "$repo" begin
   assert_exit "begin rc" 0 "$RC"
   token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
@@ -1267,7 +1335,7 @@ case_place_abort_leaves_nothing() {
   assert_exit "abort rc" 0 "$RC"
   assert_eq "handle gone" "no" "$([[ -d "$dir" ]] && echo yes || echo no)"
   assert_eq "tip unmoved" "$before" \
-    "$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
 }
 
 # AC: the insights persona is handed a materialized collection through the same
