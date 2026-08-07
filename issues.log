@@ -255,3 +255,7 @@ issue allocate 254 20260805-widen-the-doc-sweep-s-corpus-and-derive-its-registry
 issue allocate 255 20260806-document-the-id-coordination-key-family-in-jimconf-toml-example 20260806 jrko
 issue allocate 256 20260806-fixture-the-invalid-id-coordination-branch-refusal-in-tests-jima 20260806 jrko
 issue allocate 257 20260806-extract-a-shared-valid-branch-verb-into-jimfile-sh 20260806 jrko
+issue allocate 258 20260807-c-config-override-bypasses-placement-resolution 20260807 jrko
+issue allocate 259 20260807-pin-the-nameref-prefix-convention-with-a-textual-invariant 20260807 jrko
+issue allocate 260 20260807-read-collection-blobs-in-one-batch-instead-of-one-process-per-en 20260807 jrko
+issue allocate 261 20260807-test-suite-wall-clock-exceeds-a-single-foreground-run 20260807 jrko
