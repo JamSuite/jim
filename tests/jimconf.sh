@@ -281,7 +281,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "53" "$line_count"
+  assert_eq    "list line count"                  "55" "$line_count"
   assert_match "blueprint_regen_threshold line"    '^blueprint_regen_threshold=0$'          "$OUT"
   assert_match "blueprint line"                    '^blueprint=BLUEPRINT\.md$'              "$OUT"
   assert_match "group_axis line"                   '^group_axis=vertical$'                  "$OUT"
@@ -340,7 +340,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs\nspec_migration\nid_coordination_mechanism\nid_coordination_branch\nid_coordination_unreachable')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nissue_placement\nissue_placement_ack\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs\nspec_migration\nid_coordination_mechanism\nid_coordination_branch\nid_coordination_unreachable')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -378,7 +378,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "53" "$line_count"
+  assert_eq "list still emits all keys" "55" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -1086,6 +1086,53 @@ id_coordination_unreachable = "provisional"')
   assert_eq   "branch configured"      "refs/jim/reg" "$OUT"
   run -c "$cfg" get id_coordination_unreachable
   assert_eq   "unreachable configured" "provisional"  "$OUT"
+}
+
+# ─── issue/011: issue-placement config family ────────────────────────────────
+
+# AC: issue_placement defaults to the reserved sentinel "branch" and
+# issue_placement_ack to "false"; both resolve from config. Bare-name knobs —
+# issue_placement names a git branch, never a path, so the resolver must not
+# reach for a `_path`-suffixed TOML key.
+case_jimconf_issue_placement_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_placement_default)
+  run -c "$dir/absent.toml" get issue_placement
+  assert_exit "placement default rc" 0        "$RC"
+  assert_eq   "placement default"    "branch" "$OUT"
+  run -c "$dir/absent.toml" get issue_placement_ack
+  assert_exit "ack default rc"       0        "$RC"
+  assert_eq   "ack default"          "false"  "$OUT"
+  cfg=$(fixture jc-placement.toml 'issue_placement = "jim/issues"
+issue_placement_ack = "true"')
+  run -c "$cfg" get issue_placement
+  assert_eq   "placement configured" "jim/issues" "$OUT"
+  run -c "$cfg" get issue_placement_ack
+  assert_eq   "ack configured"       "true"       "$OUT"
+}
+
+# AC: issue_placement reads the bare TOML key, never issue_placement_path.
+# A config carrying only the _path spelling must leave the key at its default —
+# the suffix arm would otherwise silently misroute a branch name through a
+# path-shaped key, and a project setting the bare name would see no effect.
+case_jimconf_issue_placement_ignores_path_suffix_key() {
+  local cfg
+  cfg=$(fixture jc-placement-suffix.toml 'issue_placement_path = "docs/decoy"
+issue_placement_ack_path = "true"')
+  run -c "$cfg" get issue_placement
+  assert_exit "suffix-key rc"          0        "$RC"
+  assert_eq   "suffix key not read"    "branch" "$OUT"
+  run -c "$cfg" get issue_placement_ack
+  assert_eq   "ack suffix key not read" "false" "$OUT"
+}
+
+# AC: both keys appear in `list` output at their defaults
+case_jimconf_issue_placement_in_list() {
+  local dir
+  dir=$(empty_dir jc_placement_list)
+  OUT=$(cd "$dir" && bash "$SCRIPT" list)
+  assert_match "issue_placement line"     '^issue_placement=branch$'     "$OUT"
+  assert_match "issue_placement_ack line" '^issue_placement_ack=false$'  "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
