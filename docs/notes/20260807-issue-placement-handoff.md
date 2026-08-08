@@ -11,14 +11,15 @@ here is committed; the working tree is clean.*
 | Spec | `docs/specs/issue/011-issue-placement/` — `status: approved` |
 | Plan | 14/14 tasks `[x]`, `status: approved` — **deliberately not `complete`** |
 | Build | shipped, then the defect-fix pass below; 1279 tests green |
-| Review | `review.md` records **`major-drift`** at 25 findings — the state before the fix pass; not yet re-run |
+| Review | re-run 2026-08-08 over `f024b9e..HEAD`: **`major-drift`**, 28 findings, 5 of 8 invariants violated, 2 provider-side contract gaps |
 | Blueprint | `issue` group refreshed; contract graph reconciled (23 edges, 19 faces, no findings) |
-| Follow-ons | 16 issues filed (#262–#277); 9 open, 7 closed |
+| Follow-ons | 16 from the first review (7 closed); 19 more from the second, all open with provisional ordinals |
 | Build base | `f024b9e` (also in `.git/jim-build-base-011`) |
 
-**The plan is not marked complete only because the re-review has not run.** All
-thirteen ACs now have an implementation behind them; nothing is known to be
-outstanding that a reviewer would call drift.
+**The plan is still not complete, and the second review is why.** The fix pass
+closed the four original defects but introduced one critical and two high of the
+same class. Do not read the first review's "four defects" framing as the current
+state — `review.md` was overwritten and is authoritative.
 
 ## The defect-fix pass
 
@@ -180,18 +181,48 @@ Recorded so a resuming agent does not re-derive them:
   deletes a destination file. I built the fixture — **the victim survived**; the
   claim is refuted. Residual is a spurious rc 3, not data loss.
 
-## Next steps
+## Next steps, in order
 
-**Re-run `/jim:review`**, then mark the plan `complete`. That is the whole of
-what is left.
+1. **Realize the provisional ordinals** — 19 issues from the second review carry
+   `P-` markers. From the host: `bash skills/issue/scripts/reconcile.sh --apply`.
+2. **Fix the three the fix pass introduced**, in this order — they share a
+   function and are cheaper together than apart:
+   - the `ahead` deferral losing its commit on a lost race (critical)
+   - the `diverged` arm skipping the graft conflict rule on attempt 1 (high)
+   - the local-tier retry's inverted read order (medium)
+   The first two have one shape between them: re-resolve the base inside the
+   retry loop, and route the diverged case through `place_regraft` from attempt
+   1. That also fixes the diverged index gap for free.
+3. **Correct the fail-direction prose** in `new.sh`, `SKILL.md` §7a and
+   `ARCHITECTURE.md` (high, security). Unconditional and cheap — the text
+   currently claims a property the code inverts. Deciding whether to *change* the
+   polarity is a separate design fork recorded in that issue.
+4. **Fix `cmd_begin`'s two refusal-reporting defects together** (#263 plus the
+   rc-2→rc-1 flattening). Both are on the same path, both were edited around.
+5. **Re-run `/jim:review`**, then mark the plan `complete`.
 
-AC #13 was settled by choosing the emitter (#262). The alternative shapes the
-issue listed both put the decision in the nine skills — either as a `place.sh`
-verb they consult or as a local `IF` guard — and both leave it as prose an agent
-may or may not execute, which is the failure this AC already had once. The
-emitter is the single write door, so it is the only participant that sees every
-batch; deciding there also cost no new tool grants, since every one of those
-skills already invokes `new.sh`.
+**The blueprint fork was deliberately declined.** Five invariants went from
+holding to violated because of the fix pass; amending them to match the new code
+would record the regression as the spec. Every in-change violation was routed to
+an issue instead, so the no-drop guarantee is intact.
+
+Two items were held back from that routing on purpose, because they are
+decisions about invariant *text* rather than defects, and they should be taken in
+a blueprint pass once the code is fixed:
+
+- `staleness-gated-reads` says "regenerate the index only when stale". In a
+  freshly materialized directory staleness is **unknowable** by mtime —
+  `place_materialize` writes entries in `ls-tree` order, so relative mtimes
+  encode filename order, not edit history. The clause needs to acknowledge that
+  arm; the "never serve a stale view" half stands.
+- `untrusted-body-never-shell` names `--origin` alongside title and labels, but
+  `new.sh` has never encoded origin and its own comment says so deliberately.
+  Either encode it or narrow the invariant — but it is not a new regression.
+
+AC #13's enforcement point was settled by choosing the emitter (#262). The
+alternatives both put the decision back in the nine skills, which is the failure
+this AC already had once. That choice stands; what the second review found is
+that its *default* is fail-open and its canonical snippet omits the flag.
 
 Not blocking, in rough priority: **#266** (insights analyst reads the
 branch-local collection), **#274** (push failures reported as contention),
