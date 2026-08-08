@@ -1,6 +1,6 @@
 ---
 id: 20260808-placement-test-gaps-after-the-repair-pass
-num: P-20260808-placement-test-gaps-after-the-repair-pass
+num: 293
 title: "Placement test gaps after the repair pass"
 status: open
 priority: medium

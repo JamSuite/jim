@@ -1,6 +1,6 @@
 ---
 id: 20260808-deferred-mutation-lost-when-the-resuming-push-loses-a-race
-num: P-20260808-deferred-mutation-lost-when-the-resuming-push-loses-a-race
+num: 282
 title: "Deferred mutation lost when the resuming push loses a race"
 status: open
 priority: critical

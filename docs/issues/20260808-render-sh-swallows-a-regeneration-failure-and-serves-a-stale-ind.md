@@ -1,6 +1,6 @@
 ---
 id: 20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind
-num: P-20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind
+num: 294
 title: "render.sh swallows a regeneration failure and serves a stale index"
 status: open
 priority: medium

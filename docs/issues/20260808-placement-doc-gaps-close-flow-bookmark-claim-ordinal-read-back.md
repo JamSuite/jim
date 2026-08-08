@@ -1,6 +1,6 @@
 ---
 id: 20260808-placement-doc-gaps-close-flow-bookmark-claim-ordinal-read-back
-num: P-20260808-placement-doc-gaps-close-flow-bookmark-claim-ordinal-read-back
+num: 292
 title: "Placement doc gaps: close-flow, bookmark claim, ordinal read-back"
 status: open
 priority: medium

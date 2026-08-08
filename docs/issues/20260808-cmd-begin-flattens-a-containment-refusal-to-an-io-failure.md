@@ -1,6 +1,6 @@
 ---
 id: 20260808-cmd-begin-flattens-a-containment-refusal-to-an-io-failure
-num: P-20260808-cmd-begin-flattens-a-containment-refusal-to-an-io-failure
+num: 280
 title: "cmd_begin flattens a containment refusal to an IO failure"
 status: open
 priority: low

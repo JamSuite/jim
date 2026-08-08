@@ -1,6 +1,6 @@
 ---
 id: 20260808-local-tier-retry-reopens-a-compare-and-swap-clobber-window
-num: P-20260808-local-tier-retry-reopens-a-compare-and-swap-clobber-window
+num: 287
 title: "Local-tier retry reopens a compare-and-swap clobber window"
 status: open
 priority: medium

@@ -1,6 +1,6 @@
 ---
 id: 20260808-neither-the-canonical-snippet-nor-the-sweep-binds-the-scrub-gate
-num: P-20260808-neither-the-canonical-snippet-nor-the-sweep-binds-the-scrub-gate
+num: 289
 title: "Neither the canonical snippet nor the sweep binds the scrub gate"
 status: open
 priority: medium

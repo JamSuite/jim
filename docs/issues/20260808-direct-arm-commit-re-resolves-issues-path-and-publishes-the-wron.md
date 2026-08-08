@@ -1,6 +1,6 @@
 ---
 id: 20260808-direct-arm-commit-re-resolves-issues-path-and-publishes-the-wron
-num: P-20260808-direct-arm-commit-re-resolves-issues-path-and-publishes-the-wron
+num: 283
 title: "Direct-arm commit re-resolves issues path and publishes the wrong collection"
 status: open
 priority: medium

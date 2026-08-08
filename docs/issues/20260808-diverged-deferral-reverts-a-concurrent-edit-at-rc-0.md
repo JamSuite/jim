@@ -1,6 +1,6 @@
 ---
 id: 20260808-diverged-deferral-reverts-a-concurrent-edit-at-rc-0
-num: P-20260808-diverged-deferral-reverts-a-concurrent-edit-at-rc-0
+num: 285
 title: "Diverged deferral reverts a concurrent edit at rc 0"
 status: open
 priority: high

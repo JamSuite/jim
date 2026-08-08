@@ -1,6 +1,6 @@
 ---
 id: 20260808-tests-place-sh-sits-outside-every-declared-territory
-num: P-20260808-tests-place-sh-sits-outside-every-declared-territory
+num: 296
 title: "tests/place.sh sits outside every declared territory"
 status: open
 priority: medium

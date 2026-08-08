@@ -1,6 +1,6 @@
 ---
 id: 20260808-diverged-deferral-publishes-an-index-omitting-the-other-side
-num: P-20260808-diverged-deferral-publishes-an-index-omitting-the-other-side
+num: 284
 title: "Diverged deferral publishes an index omitting the other side"
 status: open
 priority: medium

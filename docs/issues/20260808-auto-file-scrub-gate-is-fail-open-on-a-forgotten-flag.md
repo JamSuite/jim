@@ -1,6 +1,6 @@
 ---
 id: 20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag
-num: P-20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag
+num: 278
 title: "Auto-file scrub gate is fail-open on a forgotten flag"
 status: open
 priority: high

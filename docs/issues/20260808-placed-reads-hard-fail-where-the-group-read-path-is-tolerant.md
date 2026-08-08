@@ -1,6 +1,6 @@
 ---
 id: 20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant
-num: P-20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant
+num: 291
 title: "Placed reads hard-fail where the group read path is tolerant"
 status: open
 priority: medium

@@ -1,6 +1,6 @@
 ---
 id: 20260808-migrate-commit-phase-is-not-transactional-and-tmp-files-are-publ
-num: P-20260808-migrate-commit-phase-is-not-transactional-and-tmp-files-are-publ
+num: 288
 title: "migrate commit phase is not transactional and tmp files are publishable"
 status: open
 priority: medium

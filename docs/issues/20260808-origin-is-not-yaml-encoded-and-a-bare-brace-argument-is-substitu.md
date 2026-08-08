@@ -1,6 +1,6 @@
 ---
 id: 20260808-origin-is-not-yaml-encoded-and-a-bare-brace-argument-is-substitu
-num: P-20260808-origin-is-not-yaml-encoded-and-a-bare-brace-argument-is-substitu
+num: 290
 title: "origin is not YAML-encoded and a bare brace argument is substituted"
 status: open
 priority: high

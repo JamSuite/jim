@@ -1,6 +1,6 @@
 ---
 id: 20260808-insights-empty-collection-short-circuit-has-no-granted-capabilit
-num: P-20260808-insights-empty-collection-short-circuit-has-no-granted-capabilit
+num: 286
 title: "Insights empty-collection short-circuit has no granted capability"
 status: open
 priority: low

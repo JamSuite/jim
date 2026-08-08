@@ -1,6 +1,6 @@
 ---
 id: 20260808-blueprint-emitter-face-omits-the-auto-flag-and-exit-code-4
-num: P-20260808-blueprint-emitter-face-omits-the-auto-flag-and-exit-code-4
+num: 279
 title: "Blueprint emitter face omits the auto flag and exit code 4"
 status: open
 priority: medium

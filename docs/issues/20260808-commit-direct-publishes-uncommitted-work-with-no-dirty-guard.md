@@ -1,6 +1,6 @@
 ---
 id: 20260808-commit-direct-publishes-uncommitted-work-with-no-dirty-guard
-num: P-20260808-commit-direct-publishes-uncommitted-work-with-no-dirty-guard
+num: 281
 title: "commit direct publishes uncommitted work with no dirty guard"
 status: open
 priority: medium
