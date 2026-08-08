@@ -13,7 +13,7 @@ here is committed; the working tree is clean.*
 | Build | shipped, then the defect-fix pass below; 1279 tests green |
 | Review | re-run 2026-08-08 over `f024b9e..HEAD`: **`major-drift`**, 28 findings, 5 of 8 invariants violated, 2 provider-side contract gaps |
 | Blueprint | `issue` group refreshed; contract graph reconciled (23 edges, 19 faces, no findings) |
-| Follow-ons | 16 from the first review (7 closed); 19 more from the second, all open with provisional ordinals |
+| Follow-ons | 16 from the first review (7 closed); 19 more from the second (#278–#296), all open |
 | Build base | `f024b9e` (also in `.git/jim-build-base-011`) |
 
 **The plan is still not complete, and the second review is why.** The fix pass
@@ -183,23 +183,25 @@ Recorded so a resuming agent does not re-derive them:
 
 ## Next steps, in order
 
-1. **Realize the provisional ordinals** — 19 issues from the second review carry
-   `P-` markers. From the host: `bash skills/issue/scripts/reconcile.sh --apply`.
-2. **Fix the three the fix pass introduced**, in this order — they share a
+1. **Fix the three the fix pass introduced**, in this order — they share a
    function and are cheaper together than apart:
-   - the `ahead` deferral losing its commit on a lost race (critical)
-   - the `diverged` arm skipping the graft conflict rule on attempt 1 (high)
-   - the local-tier retry's inverted read order (medium)
+   - **#282** the `ahead` deferral losing its commit on a lost race (critical)
+   - **#285** the `diverged` arm skipping the graft conflict rule on attempt 1 (high)
+   - **#287** the local-tier retry's inverted read order (medium)
    The first two have one shape between them: re-resolve the base inside the
    retry loop, and route the diverged case through `place_regraft` from attempt
-   1. That also fixes the diverged index gap for free.
-3. **Correct the fail-direction prose** in `new.sh`, `SKILL.md` §7a and
-   `ARCHITECTURE.md` (high, security). Unconditional and cheap — the text
-   currently claims a property the code inverts. Deciding whether to *change* the
-   polarity is a separate design fork recorded in that issue.
-4. **Fix `cmd_begin`'s two refusal-reporting defects together** (#263 plus the
-   rc-2→rc-1 flattening). Both are on the same path, both were edited around.
-5. **Re-run `/jim:review`**, then mark the plan `complete`.
+   1. That also closes **#284** (the diverged index gap) for free.
+2. **Correct the fail-direction prose** — **#278**, in `new.sh`, `SKILL.md` §7a
+   and `ARCHITECTURE.md` (high, security). Unconditional and cheap: the text
+   claims a property the code inverts. Deciding whether to *change* the polarity
+   is a separate design fork recorded in the same issue.
+3. **Fix `cmd_begin`'s two refusal-reporting defects together** — **#263** (rc 0
+   on a containment refusal) and **#280** (rc 2 flattened to rc 1). Same path,
+   same function, both edited around during the fix pass.
+4. **Re-run `/jim:review`**, then mark the plan `complete`.
+
+Everything else from the second review is tracked and not blocking: **#279**,
+**#281**, **#283**, **#286**, **#288**–**#296**.
 
 **The blueprint fork was deliberately declined.** Five invariants went from
 holding to violated because of the fix pass; amending them to match the new code
