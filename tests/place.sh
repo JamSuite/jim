@@ -89,21 +89,30 @@ place_seed_collection() {
 place_seed_traversal() {
   local repo="$1" branch="$2" prefix="$3"
   local blob inner mid tree seg rest commit
-  blob="$(printf 'PWNED\n' | git -C "$repo" hash-object -w --stdin)"
+  blob="$(printf 'PWNED\n' | git -C "$repo" hash-object -w --stdin)" || return 1
   inner="$( { printf '100644 evil\0'; place_raw_sha "$blob"; } \
-    | git -C "$repo" hash-object -t tree -w --stdin --literally )"
+    | git -C "$repo" hash-object -t tree -w --stdin --literally )" || return 1
   mid="$( { printf '40000 ..\0'; place_raw_sha "$inner"; } \
-    | git -C "$repo" hash-object -t tree -w --stdin --literally )"
+    | git -C "$repo" hash-object -t tree -w --stdin --literally )" || return 1
   tree="$( { printf '40000 ..\0'; place_raw_sha "$mid"; } \
-    | git -C "$repo" hash-object -t tree -w --stdin --literally )"
+    | git -C "$repo" hash-object -t tree -w --stdin --literally )" || return 1
   rest="$prefix"
   while [[ "$rest" == */* ]]; do
     seg="${rest##*/}"; rest="${rest%/*}"
-    tree="$(printf '040000 tree %s\t%s' "$tree" "$seg" | git -C "$repo" mktree)"
+    tree="$(printf '040000 tree %s\t%s' "$tree" "$seg" | git -C "$repo" mktree)" || return 1
   done
-  tree="$(printf '040000 tree %s\t%s' "$tree" "$rest" | git -C "$repo" mktree)"
-  commit="$(git -C "$repo" commit-tree "$tree" -m crafted)"
-  git -C "$repo" update-ref "refs/heads/$branch" "$commit"
+  tree="$(printf '040000 tree %s\t%s' "$tree" "$rest" | git -C "$repo" mktree)" || return 1
+  commit="$(git -C "$repo" commit-tree "$tree" -m crafted)" || return 1
+  git -C "$repo" update-ref "refs/heads/$branch" "$commit" || return 1
+  return 0
+}
+
+# place_bookmark <repo> <branch> — the tip this clone last recorded as seen at
+# the destination. Reading it is how a case pins what the bookmark means; no
+# assertion touched it before, so neither of its guarding conditions was held
+# in place by anything.
+place_bookmark() {
+  git -C "$1" rev-parse --verify --quiet "refs/jim/issue-placement/$2" 2>/dev/null
 }
 
 # place_dest_file <repo> <branch> <path> — the content of <path> on <branch>.
@@ -782,6 +791,9 @@ case_place_deferred_mutation_publishes_on_reconnect() {
   run_place_in "$mine" run --verb file -- \
     sh -c 'printf "later\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "later write rc" 0 "$RC"
+  # The resuming run says which of the two things it is doing with the backlog.
+  assert_match "discloses that it is publishing the backlog" \
+    'left unpublished' "$ERR"
   assert_eq "the deferred close reached the remote" "closed" \
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
   assert_eq "and is still closed here" "closed" \
@@ -810,6 +822,9 @@ case_place_deferred_mutation_survives_a_moved_destination() {
   run_place_in "$mine" run --verb file -- \
     sh -c 'printf "mine\n" > "$1/20260101-c.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
+  # The other arm of the same disclosure: there was nothing to fast-forward, so
+  # the backlog is being reapplied rather than carried.
+  assert_match "discloses that the destination moved on" 'moved on' "$ERR"
   assert_eq "the deferred close reached the remote" "closed" \
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
   assert_eq "the teammate's issue survived" "theirs" \
@@ -1080,6 +1095,63 @@ case_place_fast_forward_is_not_a_rewrite() {
   assert_eq   "silent on a fast-forward" "" "$ERR"
 }
 
+# AC: rewrite detection rests entirely on the bookmark meaning what it claims —
+# the tip this clone last saw *at the destination*. Both conditions that keep it
+# honest are asserted here, because a bookmark that records something else turns
+# the disclosure into noise and, worse, lets a rewrite built on the recorded
+# commit pass the ancestry check silently (spec AC #12).
+
+# A commit that only ever reached this clone is not something the destination
+# was seen holding, so a deferred write must leave the bookmark where it was.
+case_place_offline_write_does_not_advance_the_bookmark() {
+  local bare clone published
+  bare="$(place_bare place_bm_write_bare)"
+  clone="$(place_clone "$bare" place_bm_write 'issue_placement = "jim/issues"')"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  published="$(git -C "$bare" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "the bookmark records what was published" \
+    "$published" "$(place_bookmark "$clone" jim/issues)"
+  git -C "$clone" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "b\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit "offline rc" 0 "$RC"
+  assert_eq "the local branch moved" "no" \
+    "$([[ "$(git -C "$clone" rev-parse --verify refs/heads/jim/issues)" == "$published" ]] \
+      && echo yes || echo no)"
+  assert_eq "but the bookmark did not" \
+    "$published" "$(place_bookmark "$clone" jim/issues)"
+}
+
+# A run that could not reach the destination's owner learned nothing about it,
+# so it may not rewind the bookmark to its own state either. Rewinding is worse
+# than noisy: a force-push built on the rewound commit is then an ordinary
+# fast-forward, and the detector says nothing at all.
+case_place_offline_read_does_not_rewind_the_bookmark() {
+  local bare mine theirs seen
+  bare="$(place_bare place_bm_read_bare)"
+  mine="$(place_clone "$bare" place_bm_read_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_bm_read_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "b\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  # An online read advances the bookmark past this clone's own branch ref, which
+  # a publish is the only thing that moves — so the two now disagree.
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "online read rc" 0 "$RC"
+  seen="$(place_bookmark "$mine" jim/issues)"
+  assert_eq "the bookmark followed the destination" \
+    "$(git -C "$bare" rev-parse --verify refs/heads/jim/issues)" "$seen"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "offline read rc" 0 "$RC"
+  assert_eq "an offline read leaves it alone" "$seen" "$(place_bookmark "$mine" jim/issues)"
+}
+
 # ─── Section: Direct mode (destination is the checked-out branch) ────────────
 
 # place_here <name> [extra-config-lines]
@@ -1195,6 +1267,40 @@ place_here_seeded() {
   printf '%s' "$repo"
 }
 
+# AC: the two-phase door runs the dirty guard as well, and it has to run at
+# `begin` — by `commit` time the handle's own edits are the dirty state and the
+# guard can no longer tell them from a developer's half-finished one. The
+# wrapped-command arm is covered above; this is the arm where the edits arrive
+# from outside the script entirely (security Finding 9).
+case_place_direct_begin_refuses_a_dirty_collection() {
+  local repo
+  repo="$(place_here place_direct_begin_dirty)"
+  mkdir -p "$repo/docs/issues"
+  printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  printf 'half-finished\n' > "$repo/docs/issues/20260101-a.md"
+  run_place_in "$repo" begin
+  assert_exit  "refuses"    2                "$RC"
+  assert_match "names path" '20260101-a\.md' "$ERR"
+  assert_eq    "hands back no handle" "" "$OUT"
+  assert_eq "the edit is still the developer's own" "half-finished" \
+    "$(cat "$repo/docs/issues/20260101-a.md")"
+}
+
+# AC: a read handle takes the arm that has no edits to protect, so the guard is
+# deliberately not in its way — a dirty collection must still be readable.
+case_place_direct_begin_read_allows_a_dirty_collection() {
+  local repo
+  repo="$(place_here place_direct_begin_read_dirty)"
+  mkdir -p "$repo/docs/issues"
+  printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  printf 'half-finished\n' > "$repo/docs/issues/20260101-a.md"
+  run_place_in "$repo" begin --read
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "hands back the read token" "direct-read" "${OUT%%$'\t'*}"
+}
+
 # AC: the two-phase flow works in direct mode too — it hands back the working
 # tree's own collection and publishes the edits made there (spec AC #3, #4).
 case_place_direct_begin_commit_publishes_an_edit() {
@@ -1267,8 +1373,12 @@ case_place_direct_commit_refuses_the_branch_sentinel() {
   token="${OUT%%$'\t'*}"
   printf 'issue_placement = "branch"\n' > "$repo/jimconf.toml"
   run_place_in "$repo" commit "$token" --verb close --id 20260101-a
-  assert_exit     "refuses"  2 "$RC"
-  assert_nonempty "explains" "$ERR"
+  assert_exit  "refuses" 2 "$RC"
+  # Pin the sentinel refusal's own words. Without the guard, control falls to the
+  # HEAD check immediately below it, which returns the same status with a message
+  # of its own — so rc and non-emptiness alone cannot tell this case from its
+  # neighbour, and neither can they tell the guard is present.
+  assert_match "names the sentinel refusal" 'no longer names a destination' "$ERR"
 }
 
 # ─── Section: Two-phase begin / commit / abort ───────────────────────────────

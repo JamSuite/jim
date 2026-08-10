@@ -2847,12 +2847,15 @@ case_issues_placement_tolerates_a_branch_only_origin() {
   repo="$(placement_repo issues_place_origin jim/issues)"
   body="$(fixture issues_place_origin_body.md 'body')"
   # Deliberately not created: the origin has to be genuinely absent at the
-  # destination for this to be the dangling case the AC is about.
+  # destination for this to be the dangling case the AC is about. It is also
+  # path-shaped, which is what makes the lint look at it at all — a bare token
+  # carries no `/` and is exempted before its existence is ever checked, so the
+  # AC's case would go unexercised whether the file was there or not.
   run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
-    --origin "docs-only-here.md" --body-file "$body"
+    --origin "docs/brainstorms/only-here.md" --body-file "$body"
   assert_exit "rc" 0 "$RC"
   slug="${OUT%%$'\t'*}"
-  assert_match "origin recorded verbatim" '^origin: docs-only-here\.md$' \
+  assert_match "origin recorded verbatim" '^origin: docs/brainstorms/only-here\.md$' \
     "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
   assert_match "index still built" 'docs/issues/INDEX\.md' \
     "$(dest_paths "$repo" jim/issues)"
@@ -2925,6 +2928,27 @@ case_issues_auto_file_is_a_no_op_by_default() {
   slug="${OUT%%$'\t'*}"
   assert_eq "written to the working tree" "yes" \
     "$([[ -e "$repo/docs/issues/$slug.md" ]] && echo yes || echo no)"
+}
+
+# AC: an explicit directory means that directory, so it opts out of routing —
+# and the gate rides on routing, since it is publication to a shared branch that
+# makes the auto-file bargain a different one. A caller that named a directory
+# is publishing nothing, so `--auto` is inert there even under a placement the
+# project has not acknowledged (spec AC #13).
+case_issues_auto_file_is_inert_under_an_explicit_dir() {
+  local repo body slug
+  repo="$(placement_repo issues_auto_dir jim/issues)"
+  body="$(fixture issues_auto_dir_body.md 'body')"
+  mkdir -p "$repo/elsewhere"
+  run_new_in "$repo" --auto --dir "$repo/elsewhere" \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "written where the caller said" "yes" \
+    "$([[ -e "$repo/elsewhere/$slug.md" ]] && echo yes || echo no)"
+  assert_eq "and nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
 }
 
 # AC: the interactive path is untouched — the batch a developer has just
@@ -3068,7 +3092,7 @@ case_issues_placement_realize_lands_at_the_destination() {
   assert_exit "filing landed" 0 "$RC"
   assert_match "provisional at the destination" '^num: P-20260101-a$' \
     "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
-  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
   run_in "$repo" "$SCRIPT_RECONCILE" --apply
   assert_exit "realize rc" 0 "$RC"
   assert_match "num realized at the destination" '^num: 1$' \
@@ -3096,6 +3120,12 @@ case_issues_placement_preview_publishes_nothing() {
   before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
   run_in "$repo" "$SCRIPT_RECONCILE"
   assert_exit "preview rc" 0 "$RC"
+  # The preview has to have *seen* the destination's collection, not merely
+  # exited cleanly: run against a working tree that holds no collection at all,
+  # reconcile reports nothing pending and returns 0 too.
+  assert_match "the preview reports the destination's provisional" \
+    '20260101-a' "$OUT"
+  assert_match "and counts it" '1 pending' "$OUT"
   run_in "$repo" "$SCRIPT_MIGRATE" prefix
   assert_exit "migrate preview rc" 0 "$RC"
   assert_eq "tip unmoved" "$before" \
@@ -3137,7 +3167,7 @@ case_issues_placement_migrate_lands_renames_as_one_commit() {
     --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
-  before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
   run_in "$repo" "$SCRIPT_MIGRATE" prefix --apply
   assert_exit "migrate rc" 0 "$RC"
   paths="$(dest_paths "$repo" jim/issues)"
