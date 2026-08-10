@@ -334,6 +334,29 @@ PLACE_WORK_TIP=""    # what the wrapped command or the agent sees
 PLACE_BASE_TIP=""    # what the changed set is measured from
 PLACE_TIP_STATE=""   # current | ahead | diverged
 
+# place_merge_base <work-tip> <onto-tip>
+#   The commit a mutation's changed set is measured from when it is applied onto
+#   <onto-tip>: the two sides' common ancestor.
+#
+#   Measuring from <onto-tip> would read a teammate's own commit as a file this
+#   mutation deleted. Measuring from <work-tip> would read this clone's own
+#   unpublished commits as part of the destination's state rather than as
+#   changes still to be carried, so a run that stopped building on them would
+#   drop them with nothing in the changed set to replay.
+#
+#   Empty output — no common ancestor, or no destination yet — reads every local
+#   file as this mutation's own: a union rather than a deletion of the other
+#   side.
+place_merge_base() {
+  local work="${1:-}" onto="${2:-}"
+  [[ -n "$work" && -n "$onto" ]] || return 0
+  if [[ "$work" == "$onto" ]]; then
+    printf '%s\n' "$work"
+    return 0
+  fi
+  git merge-base "$work" "$onto" 2>/dev/null || true
+}
+
 # place_resolve_tips <dest> <tier> <tip>
 #   Work out those three commits for a run that reached the destination's owner.
 #
@@ -374,9 +397,7 @@ place_resolve_tips() {
     return 0
   fi
   PLACE_WORK_TIP="$head"
-  # No common ancestor leaves the base empty, which reads every local file as
-  # this mutation's own — a union rather than a deletion of the other side.
-  PLACE_BASE_TIP="$(git merge-base "$head" "$tip" 2>/dev/null || true)"
+  PLACE_BASE_TIP="$(place_merge_base "$head" "$tip")"
   PLACE_TIP_STATE="diverged"
   return 0
 }
@@ -659,6 +680,7 @@ cmd_begin() {
     printf 'dest=%s\n'   "$dest"
     printf 'prefix=%s\n' "$prefix"
     printf 'tip=%s\n'    "$tip"
+    printf 'work=%s\n'   "$PLACE_WORK_TIP"
     printf 'tier=%s\n'   "$tier"
     printf 'remote=%s\n' "$remote"
     printf 'ref=%s\n'    "$ref_old"
@@ -722,10 +744,14 @@ cmd_commit() {
          "publish; use abort to discard it" >&2
     return 2
   fi
-  local dest prefix tip tier remote ref_old
+  local dest prefix tip work_tip tier remote ref_old
   dest="$(place_state_get "$handle/state" dest)"
   prefix="$(place_state_get "$handle/state" prefix)"
   tip="$(place_state_get "$handle/state" tip)"
+  # What the agent's edits were made against. It differs from the tip only when
+  # this clone was carrying unpublished commits when the handle was opened, and
+  # a publish that loses a race needs it to work out what is still to be carried.
+  work_tip="$(place_state_get "$handle/state" work)"
   tier="$(place_state_get "$handle/state" tier)"
   remote="$(place_state_get "$handle/state" remote)"
   ref_old="$(place_state_get "$handle/state" ref)"
@@ -738,7 +764,7 @@ cmd_commit() {
   place_snapshot "$PLACE_COLL" after || return 1
   local rc=0
   place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
-                       "$remote" "$tier" "$tip" "$ref_old" || rc=$?
+                       "$remote" "$tier" "$work_tip" "$tip" "$ref_old" || rc=$?
   # A refused publish keeps the handle: the edits in it are work, and losing
   # them to a conflict would make refusing worse than overwriting.
   (( rc == 0 )) || return "$rc"
@@ -1208,7 +1234,7 @@ cmd_run() {
   place_reindex "$PLACE_COLL" || return 1
   place_snapshot "$PLACE_COLL" after || return 1
   place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
-                       "$remote" "$tier" "$tip" "$ref_old" || return $?
+                       "$remote" "$tier" "$PLACE_WORK_TIP" "$tip" "$ref_old" || return $?
   if (( unreachable )); then
     echo "place.sh: remote '$remote' is unreachable; the mutation is committed" \
          "locally on '$dest' and publication is deferred until the next" \
@@ -1232,24 +1258,41 @@ place_changed() {
 }
 
 # place_commit_changes <branch> <prefix> <before> <after> <verb> <id>
-#                      <remote> <tier> <tip>
-#   Publish the changed set, retrying against a moved destination. Each attempt
-#   re-reads the branch and rebuilds the commit on what it finds, so a lost race
-#   reapplies the mutation instead of re-pushing a tree that no longer reflects
-#   the branch. The wrapped command is never re-run — re-running a filing would
-#   burn a second coordinated ordinal on every lost race.
+#                      <remote> <tier> <work-tip> <onto-tip> <ref-old>
+#   Publish the changed set, retrying against a moved destination.
+#
+#   Every attempt has the same shape, and that is what keeps the rare states
+#   honest. The changed set is measured from the common ancestor of what this
+#   clone was working on and what the mutation is being applied onto, and
+#   whenever those two are different commits the mutation is grafted rather than
+#   written straight over the destination's tree. Against an unmoved destination
+#   the ancestor *is* the tip, so the graft collapses into a plain build; every
+#   other case — a destination that moved on while this clone held unpublished
+#   commits, a lost race, both at once — takes that same path with a different
+#   ancestor. An attempt is not a state of its own.
+#
+#   The ancestor is recomputed whenever the tip moves, and the changed set is
+#   measured again from it. A mutation deferred while the remote was unreachable
+#   is the case that needs this: its content is the base on the first attempt,
+#   because the commit carrying it is what the run is building on — and the
+#   moment a lost race moves the run onto a tip that never had it, it stops
+#   being the base and becomes part of what has to be carried.
+#
+#   The wrapped command is never re-run — re-running a filing would burn a
+#   second coordinated ordinal on every lost race.
 #
 #   A mutation that changed nothing publishes nothing: no empty commit is left
 #   behind on the destination branch.
 place_commit_changes() {
   local dest="$1" prefix="$2" verb="$5" id="$6"
-  local remote="$7" tier="$8" tip="$9" ref_old="${10}"
+  local remote="$7" tier="$8" work_tip="$9" tip="${10}" ref_old="${11}"
   place_changed "$3" "$4" || return 0
-  local msg commit attempt rc
+  local msg commit attempt rc base prev_tip new_base
   local -A upstream=() merged=()
   msg="$(place_message "$verb" "$id")"
+  base="$(place_merge_base "$work_tip" "$tip")"
   for (( attempt=1; attempt<=PLACE_ATTEMPTS; attempt++ )); do
-    if (( attempt == 1 )); then
+    if [[ "$base" == "$tip" ]]; then
       commit="$(place_build_commit "$tip" "$prefix" "$3" "$4" "$msg")" || return 1
     else
       place_regraft "$tip" "$prefix" "$3" "$4" upstream merged || return $?
@@ -1271,20 +1314,45 @@ place_commit_changes() {
     fi
     (( rc == 3 )) || return "$rc"
     (( attempt < PLACE_ATTEMPTS )) && place_backoff "$attempt"
+    prev_tip="$tip"
     # Re-read whatever won the race. A remote that dropped out mid-retry
-    # degrades to the local tier rather than spinning against it. On that tier
-    # the ref update is the compare-and-swap, so its old value is re-read
-    # alongside the tip the next attempt builds on; otherwise a swap that lost
-    # once would keep testing against a value that is never coming back.
+    # degrades to the local tier rather than spinning against it. On either tier
+    # the ref's own value is read *before* the tip it is paired with: a racer
+    # landing between the two reads then makes the compare-and-swap fail rather
+    # than match, and a spurious refusal only costs a retry where a spurious
+    # match costs the racer's mutation.
     if [[ "$tier" == "origin" ]]; then
-      if ! tip="$(place_remote_tip "$remote" "$dest")"; then
+      if tip="$(place_remote_tip "$remote" "$dest")"; then
+        # The re-read is a fetch, so what it learned about the destination is
+        # worth checking: a rejection caused by a rewrite would otherwise be
+        # regrafted onto the rewritten tip and lose its own evidence.
+        place_check_rewrite "$dest" "$tip" 1
+      else
         tier="local"
-        tip="$(place_local_tip "$dest")"
+        echo "place.sh: lost contact with '$remote' while publishing to '$dest';" \
+             "the mutation is being committed locally instead and publication is" \
+             "deferred until the next reachable run" >&2
         ref_old="$(place_head_tip "$dest")"
+        tip="$(place_local_tip "$dest")"
       fi
     else
-      tip="$(place_local_tip "$dest")"
       ref_old="$(place_head_tip "$dest")"
+      tip="$(place_local_tip "$dest")"
+    fi
+    # A destination that did not move cannot have rejected this for contention,
+    # and every further attempt would fail the same way — the diagnosis has to
+    # name the cause it actually has.
+    if [[ "$tier" == "origin" && "$tip" == "$prev_tip" ]]; then
+      echo "place.sh: '$remote' rejected the publish to '$dest', which has not" \
+           "moved — so this is not contention and retrying cannot help. Check" \
+           "push rights, branch protection, or the connection. The mutation was" \
+           "not published." >&2
+      return 3
+    fi
+    new_base="$(place_merge_base "$work_tip" "$tip")"
+    if [[ "$new_base" != "$base" ]]; then
+      base="$new_base"
+      place_base_snapshot "$base" "$prefix" "$PLACE_WORK/retry.d" "$3" || return $?
     fi
   done
   echo "place.sh: '$dest' kept moving; the mutation was not published after" \

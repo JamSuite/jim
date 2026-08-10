@@ -699,6 +699,56 @@ TEAMMATE
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-b.md 2>/dev/null)"
 }
 
+# place_reject_pushes <bare> — a remote that refuses every push, the way a
+# protected branch or a missing push right does. The rejection is
+# indistinguishable from contention at the push itself, which is the point.
+place_reject_pushes() {
+  printf '#!/bin/sh\nexit 1\n' > "$1/hooks/pre-receive"
+  chmod +x "$1/hooks/pre-receive"
+}
+
+# AC: a rejection from a destination that has not moved is not contention, and
+# saying it is sends the developer to fix the wrong thing — and to fix it five
+# times, since every further attempt fails identically (spec AC #7's "the
+# degradation is reported").
+case_place_non_contention_rejection_is_named_as_such() {
+  local bare clone
+  bare="$(place_bare place_reject_bare)"
+  clone="$(place_clone "$bare" place_reject 'issue_placement = "jim/issues"')"
+  place_reject_pushes "$bare"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit  "rc"                       3                "$RC"
+  assert_match "says it is not contention" 'not contention' "$ERR"
+  assert_eq "and nothing reached the remote" "" \
+    "$(git -C "$bare" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# AC: a remote that drops out between attempts leaves the run on the local tier,
+# where the mutation still lands — but silently doing so is the deferral nobody
+# is told about, and the notices for that are fixed before the loop begins
+# (spec AC #7).
+case_place_mid_publish_degradation_is_disclosed() {
+  local bare clone breaker
+  bare="$(place_bare place_middrop_bare)"
+  clone="$(place_clone "$bare" place_middrop 'issue_placement = "jim/issues"')"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "seed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  # The remote goes away after this run read it and before it can publish.
+  breaker="$TMP_BASE/place-middrop-breaker.sh"
+  cat > "$breaker" <<BREAKER
+git -C "$clone" remote set-url origin "$TMP_BASE/no-such-remote.git"
+BREAKER
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "later\n" > "$1/20260101-b.md"; sh "$2"' _ '{}' "$breaker"
+  assert_exit  "rc"                    0               "$RC"
+  assert_match "discloses the drop"    'lost contact'  "$ERR"
+  assert_match "and that it is deferred" 'deferred'    "$ERR"
+  assert_eq "the mutation is on the local branch" "later" \
+    "$(place_dest_file "$clone" jim/issues docs/issues/20260101-b.md)"
+}
+
 # AC: a read consults the remote before serving, so a collection published by a
 # teammate is visible without any manual fetch (spec AC #6).
 case_place_read_fetches_before_serving() {
@@ -804,7 +854,7 @@ case_place_deferred_mutation_publishes_on_reconnect() {
 # nothing to fast-forward then, so the unpublished work is reapplied on top of
 # what is there now — without disturbing the teammate's own commit (spec AC #7).
 case_place_deferred_mutation_survives_a_moved_destination() {
-  local bare mine theirs
+  local bare mine theirs index
   bare="$(place_bare place_defer_div_bare)"
   mine="$(place_clone "$bare" place_defer_div_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_defer_div_them 'issue_placement = "jim/issues"')"
@@ -831,6 +881,89 @@ case_place_deferred_mutation_survives_a_moved_destination() {
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-b.md 2>/dev/null)"
   assert_eq "and so did this run's" "mine" \
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-c.md 2>/dev/null)"
+  # The index travels in the same commit as the content it describes. A
+  # collection regenerated from this clone's own head never saw the teammate's
+  # file, so publishing that index alongside their surviving file leaves the
+  # destination listing less than it holds — and every reader parses the index.
+  index="$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md 2>/dev/null)"
+  assert_match "the published index knows the teammate's" '20260101-b' "$index"
+  assert_match "and this run's"                           '20260101-c' "$index"
+}
+
+# AC: a deferred mutation survives the resuming run losing a push race. The
+# deferral arm builds on this clone's own head, so the changed set measured
+# against it does not contain the deferred paths — they are the base, not the
+# change. Re-parenting onto a winner that never saw them therefore drops them
+# with nothing in the changed set to replay, at rc 0 (spec AC #7: no mutation is
+# ever silently dropped).
+case_place_deferred_mutation_survives_a_lost_race() {
+  local bare mine theirs teammate
+  bare="$(place_bare place_defer_race_bare)"
+  mine="$(place_clone "$bare" place_defer_race_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_defer_race_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  # Close it while the remote is away, so the clone carries one unpublished
+  # commit the destination has never seen.
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb close --id 20260101-a -- \
+    sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "offline rc" 0 "$RC"
+  # Reconnect and write again — but lose the race for the push that would have
+  # carried the deferred commit along with it.
+  git -C "$mine" remote set-url origin "$bare"
+  teammate="$TMP_BASE/place-defer-race-teammate.sh"
+  cat > "$teammate" <<TEAMMATE
+cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
+  sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
+TEAMMATE
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "mine\n" > "$1/20260101-c.md"; sh "$2" >/dev/null 2>&1' \
+    _ '{}' "$teammate"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the deferred close survived the race" "closed" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
+  assert_eq "the winner's issue survived" "theirs" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-b.md 2>/dev/null)"
+  assert_eq "and so did this run's" "mine" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-c.md 2>/dev/null)"
+  # The local branch must not be advanced past a commit that never landed.
+  assert_eq "the local branch agrees with the remote" \
+    "$(git -C "$bare" rev-parse --verify refs/heads/jim/issues 2>/dev/null)" \
+    "$(git -C "$mine" rev-parse --verify refs/heads/jim/issues 2>/dev/null)"
+}
+
+# AC: a deferred edit to a file the destination has already changed refuses
+# rather than reverting it. The conflict rule exists, but a destination that
+# moved on while this clone was offline is already at the tip the first attempt
+# builds on — so the push fast-forwards and succeeds, and the teammate's
+# published content is reverted at rc 0 with no path named. The symmetric
+# ordinary race is refused at rc 3, and this asymmetry is the same rule seen one
+# state earlier (spec AC #7).
+case_place_deferred_edit_refuses_a_concurrent_edit() {
+  local bare mine theirs
+  bare="$(place_bare place_defer_conflict_bare)"
+  mine="$(place_clone "$bare" place_defer_conflict_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_defer_conflict_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb close --id 20260101-a -- \
+    sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "offline rc" 0 "$RC"
+  # The teammate edits the same file and publishes it while this clone is away.
+  run_place_in "$theirs" run --verb edit --id 20260101-a -- \
+    sh -c 'printf "theirs\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "their edit landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$bare"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "mine\n" > "$1/20260101-c.md"' _ '{}'
+  assert_exit  "refuses the concurrent edit" 3             "$RC"
+  assert_match "names the path"              '20260101-a'  "$ERR"
+  assert_eq "the teammate's content is intact" "theirs" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
 }
 
 # AC: the two-phase flow discloses a deferral too. It is the edit path with no
@@ -1075,6 +1208,35 @@ case_place_rewrite_does_not_block_the_mutation() {
   assert_exit "rc" 0 "$RC"
   assert_eq "mutation landed" "second" \
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-y.md 2>/dev/null)"
+}
+
+# AC: a rewrite that arrives *during* a publish is disclosed too. The run reads
+# the destination once before it starts, so a branch rewritten after that point
+# is only ever seen by the retry — and a retry that regrafts onto the rewritten
+# tip without looking erases the evidence that anything happened (spec AC #12).
+case_place_retry_discloses_a_rewrite_that_arrived_mid_publish() {
+  local bare clone seen rewriter
+  bare="$(place_bare place_rw_retry_bare)"
+  clone="$(place_clone "$bare" place_rw_retry 'issue_placement = "jim/issues"')"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  seen="$(git -C "$clone" rev-parse --verify refs/heads/jim/issues)"
+  # The rewrite lands from inside the wrapped command, so this run has already
+  # read the pre-rewrite tip and will only meet the new one when its push is
+  # rejected.
+  rewriter="$TMP_BASE/place-rw-retry-rewriter.sh"
+  cat > "$rewriter" <<REWRITER
+blob="\$(printf 'rewritten\\n' | git -C "$bare" hash-object -w --stdin)"
+tree="\$(printf '100644 blob %s\\tother.md' "\$blob" | git -C "$bare" mktree)"
+commit="\$(git -C "$bare" commit-tree "\$tree" -m rewritten)"
+git -C "$bare" update-ref refs/heads/jim/issues "\$commit"
+REWRITER
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "second\n" > "$1/20260101-y.md"; sh "$2"' _ '{}' "$rewriter"
+  assert_exit  "rc"                0            "$RC"
+  assert_match "discloses rewrite" 'rewritten'  "$ERR"
+  assert_match "names last seen"   "$seen"      "$ERR"
 }
 
 # AC: an ordinary fast-forward is not a rewrite and says nothing — the
