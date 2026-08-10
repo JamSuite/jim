@@ -210,7 +210,7 @@ This applies to `/jim:issue` itself (if the user references an existing issue in
 
 ### 7a. Candidate-batch contract (shared across surfacing skills)
 
-The eight surfacing skills (`/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:build`, `/jim:brainstorm`, `/jim:debug`, `/jim:sec`, `/jim:partition`) close each phase with an end-of-phase candidate batch. This subsection is the **single canonical definition** of the fileable bar they apply and the emitter they write through; each surfacing skill carries a brief restatement plus a pointer here rather than a verbatim copy (spec 025). When changing the bar or the emitter call, edit it **here**.
+The ten surfacing skills (`/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:build`, `/jim:brainstorm`, `/jim:debug`, `/jim:sec`, `/jim:review`, `/jim:verify`, `/jim:partition`) close each phase with an end-of-phase candidate batch. All ten are bound by the bar below; the nine with a quiet path — every one but `/jim:partition` — are also bound by the auto-file rule. This subsection is the **single canonical definition** of the fileable bar they apply and the emitter they write through; each surfacing skill carries a brief restatement plus a pointer here rather than a verbatim copy (spec 025). When changing the bar or the emitter call, edit it **here**.
 
 **The fileable bar — three filters.** A candidate is fileable only if it survives all three. This is the same "is this pending, actionable, human-owned work?" bar the *Actionability gate* above applies to interactive `/jim:issue add`; `add` references this bar and only adds an interactive remedy (recommend `cancel`; offer a point-of-encounter doc callout).
 
@@ -223,9 +223,9 @@ Empty batches are normal — an honest 0-candidate run is the right output when 
 **Writing a candidate — the emitter.** File each surviving candidate through the single issue-file emitter, `skills/issue/scripts/new.sh`, so the spec-017 template is materialized in exactly one place. For each candidate:
 
 1. Write the candidate **body** to a temp file with the **Write tool** — never inline untrusted body into a shell command (security 025 Finding 5).
-2. Call the emitter (it resolves slug/num/timestamps, validates the id, encodes the fields, writes atomically, and prints `<slug>\t<path>`):
+2. Call the emitter (it resolves slug/num/timestamps, validates the id, encodes the fields, writes atomically, and prints `<slug>\t<path>`). Add `--auto` when filing without a human having reviewed the batch — see the auto-file rule below, where omitting it is what publishes:
    ```
-   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh \
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh [--auto] \
      --title "<title>" --priority <p> --labels "<csv>" --origin "<origin>" --body-file "<tmp>"
    ```
 
@@ -244,7 +244,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get issue_placement
 bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get issue_placement_ack
 ```
 
-A caller that omits `--auto` gets the interactive bargain rather than a silent publish, which is the safe direction to fail. The degrade applies only to the confirmation gesture; where the batch lands, and the emitter it goes through, are unchanged.
+`--auto` is the whole coupling, and it is a declaration the emitter cannot check. Its absence says a human reviewed this batch, so a skill on the quiet path that omits it **publishes** instead of degrading — the flag is not optional on that path. The degrade applies only to the confirmation gesture; where the batch lands, and the emitter it goes through, are unchanged.
 
 ### 8. Insights (the `insights` verb)
 

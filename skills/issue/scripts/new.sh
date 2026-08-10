@@ -113,9 +113,15 @@ if [[ -z "$dir" && -r "$PLACE" ]]; then
     # accumulated — unpublishing it means rewriting a shared branch.
     #
     # It is decided here rather than in the nine skills that auto-file because
-    # here it is mechanical. A skill can only carry the rule as prose for an
-    # agent to remember, and a caller that forgets --auto gets the interactive
-    # bargain rather than a silent publish, which is the safe direction to fail.
+    # here it is mechanical: a skill can only carry the rule as prose for an
+    # agent to remember.
+    #
+    # What the emitter cannot do is observe whether a human looked. --auto is
+    # the caller's declaration that nobody did, and its absence is read as a
+    # reviewed batch — so a caller on the quiet path that omits the flag
+    # publishes rather than degrading. The flag is the whole coupling. Reading
+    # auto_issue_file here instead would refuse the legitimately degraded
+    # interactive filing, which is the batch that has already been reviewed.
     if (( auto )) && [[ "$(bash "$JIMCONF" get issue_placement_ack 2>/dev/null)" != "true" ]]; then
       echo "error: auto-file refused — issue placement publishes to" \
            "'$(bash "$JIMCONF" get issue_placement 2>/dev/null)', so this batch" \

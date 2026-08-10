@@ -188,20 +188,36 @@ case_docsurfaces_placement_scrub_rule_is_stated() {
 # coupling, and a surfacing skill that auto-files without it publishes an
 # unreviewed batch to a shared branch silently. The consumer set is swept rather
 # than listed, so a skill added later inherits the check instead of missing it.
+#
+# The sweep is scoped to each skill's auto-file branch rather than to its file.
+# A file-scoped grep is satisfied by a `--auto` sitting on the *interactive*
+# emitter call — the one path where the flag would be wrong — while the quiet
+# path omits it, which is the arrangement that publishes. Scoping needs the
+# branch to be findable, which is why all nine open it the same way.
 case_docsurfaces_auto_file_consumers_pass_the_gate_flag() {
-  local f name n=0 missing="" unhandled=""
+  local f name n=0 unscoped="" missing="" unhandled="" nofallback="" branch
   while IFS= read -r f; do
     name="${f#"$REPO_ROOT"/skills/}"; name="${name%/SKILL.md}"
     [[ "$name" == "issue" ]] && continue
     n=$(( n + 1 ))
-    grep -q 'new\.sh \[\?--auto' "$f" || missing+="$name "
-    grep -q 'exit code 4'        "$f" || unhandled+="$name "
+    branch="$(sed -n '/^ *IF auto_issue_file == "true" THEN/,/INTERACTIVE PATH/p' "$f")"
+    if [[ -z "$branch" ]]; then
+      unscoped+="$name "
+      continue
+    fi
+    grep -q 'new\.sh --auto' <<< "$branch" || missing+="$name "
+    grep -q 'exit code 4'    <<< "$branch" || unhandled+="$name "
+    # The refusal is a redirection, so the path it redirects to has to exist.
+    grep -q 'INTERACTIVE PATH' "$f" || nofallback+="$name "
   done < <(grep -rl 'auto_issue_file' "$REPO_ROOT"/skills/*/SKILL.md 2>/dev/null)
-  # Without this the sweep passes vacuously on a glob that matched nothing.
-  assert_eq "the consumer set was found (>= 8, got $n)" "yes" \
-    "$([[ "$n" -ge 8 ]] && echo yes || echo no)"
-  assert_eq "every auto-filing skill passes --auto"      "" "${missing% }"
-  assert_eq "every auto-filing skill handles the refusal" "" "${unhandled% }"
+  # Without this the sweep passes vacuously on a glob that matched nothing, and
+  # a floor below the real count lets one skill leave the set silently.
+  assert_eq "the consumer set was found (>= 9, got $n)" "yes" \
+    "$([[ "$n" -ge 9 ]] && echo yes || echo no)"
+  assert_eq "every auto-filing skill has a findable auto-file branch" "" "${unscoped% }"
+  assert_eq "every auto-file branch passes --auto"          "" "${missing% }"
+  assert_eq "every auto-file branch handles the refusal"    "" "${unhandled% }"
+  assert_eq "every refusal has an interactive path to fall to" "" "${nofallback% }"
 }
 
 # The two-phase edit door has to stay documented where an agent editing an issue
