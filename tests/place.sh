@@ -468,6 +468,24 @@ case_place_refuses_non_regular_tree_entry() {
   assert_match "explains"  'link\.md' "$ERR"
 }
 
+# AC: the containment gate refuses through the two-phase door too, and says so
+# with the same status. `begin`'s contract is "<token><TAB><dir>" on stdout, so a
+# refusal reported as success hands the caller an empty dir — an agent following
+# it edits relative paths in the project checkout instead of the collection
+# (security Finding 7; the same gate `run` clears at rc 2).
+case_place_begin_refuses_an_uncontained_tree_entry() {
+  local repo escaped
+  repo="$(place_repo place_begin_traversal 'issue_placement = "jim/issues"')"
+  place_seed_traversal "$repo" jim/issues docs/issues
+  assert_exit "fixture seeded" 0 "$?"
+  run_place_in "$repo" begin
+  assert_exit  "refuses as a validation error" 2      "$RC"
+  assert_eq    "hands back no handle"          ""     "$OUT"
+  assert_match "names the offending entry"     'evil' "$ERR"
+  escaped="$(find "$repo" -name evil -print -quit 2>/dev/null)"
+  assert_eq    "nothing escaped the collection dir" "" "$escaped"
+}
+
 # place_issue_file <slug> <status> — an issue file's content, the shape index.sh
 # parses.
 place_issue_file() {

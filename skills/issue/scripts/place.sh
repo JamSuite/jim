@@ -662,17 +662,26 @@ cmd_begin() {
   tip="$PLACE_ONTO_TIP"
   (( read_only )) || place_disclose_unpublished "$dest"
   mkdir -p -- "$handle/collection" || { rm -rf -- "$handle"; return 1; }
-  if ! place_materialize "$PLACE_WORK_TIP" "$prefix" "$handle/collection"; then
-    local mrc=$?
+  # Every refusal below reaches the caller with the status it was refused with.
+  # `begin`'s whole contract is the "<token><TAB><dir>" it prints, so a refusal
+  # reported as success hands back an empty dir that resolves to wherever the
+  # caller happens to be standing — and the containment gate is the one refusal
+  # that must never be reported as anything else.
+  local mrc=0
+  place_materialize "$PLACE_WORK_TIP" "$prefix" "$handle/collection" || {
+    mrc=$?
     rm -rf -- "$handle"
     return "$mrc"
-  fi
+  }
   local -A base=()
   if [[ "$PLACE_BASE_TIP" == "$PLACE_WORK_TIP" ]]; then
     place_snapshot "$handle/collection" base || { rm -rf -- "$handle"; return 1; }
   else
-    place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$handle/base.d" base \
-      || { rm -rf -- "$handle"; return 1; }
+    place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$handle/base.d" base || {
+      mrc=$?
+      rm -rf -- "$handle"
+      return "$mrc"
+    }
   fi
   place_save_snapshot base "$handle/base" || { rm -rf -- "$handle"; return 1; }
   place_reindex "$handle/collection" || { rm -rf -- "$handle"; return 1; }
