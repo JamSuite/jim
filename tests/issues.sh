@@ -2762,21 +2762,24 @@ dest_paths() { git -C "$1" ls-tree -r --name-only "refs/heads/$2" 2>/dev/null; }
 #   so a run that published would publish that correction.
 stale_dest_index() {
   local repo="$1" branch="$2" prefix="$3"
-  local entries="" mode type sha name blob tree commit seg rest
+  local blob tree commit idx rc=0
+  [[ -n "$(git -C "$repo" ls-tree "refs/heads/$branch:$prefix" 2>/dev/null)" ]] || return 1
   blob="$(printf '# Issues Index\n' | git -C "$repo" hash-object -w --stdin)" || return 1
-  while read -r mode type sha name; do
-    [[ -n "$name" ]] || continue
-    [[ "$name" == "INDEX.md" ]] && sha="$blob"
-    entries+="$(printf '%s %s %s\t%s' "$mode" "$type" "$sha" "$name")"$'\n'
-  done < <(git -C "$repo" ls-tree "refs/heads/$branch:$prefix")
-  [[ -n "$entries" ]] || return 1
-  tree="$(printf '%s' "$entries" | git -C "$repo" mktree)" || return 1
-  rest="$prefix"
-  while [[ "$rest" == */* ]]; do
-    seg="${rest##*/}"; rest="${rest%/*}"
-    tree="$(printf '040000 tree %s\t%s' "$tree" "$seg" | git -C "$repo" mktree)" || return 1
-  done
-  tree="$(printf '040000 tree %s\t%s' "$tree" "$rest" | git -C "$repo" mktree)" || return 1
+  # One path is replaced inside the existing tree rather than each level being
+  # rebuilt from its single known child. Rebuilding drops any sibling the level
+  # also holds — harmless while the destination is an orphan carrying the
+  # collection alone, and a fixture that silently discards the rest of the
+  # branch the moment a case points a placement at one that carries anything
+  # else.
+  idx="$TMP_BASE/.stale-index"
+  rm -f -- "$idx"
+  GIT_INDEX_FILE="$idx" git -C "$repo" read-tree "refs/heads/$branch" || rc=1
+  (( rc == 0 )) && { GIT_INDEX_FILE="$idx" git -C "$repo" update-index --add \
+    --cacheinfo 100644 "$blob" "$prefix/INDEX.md" || rc=1; }
+  (( rc == 0 )) && { tree="$(GIT_INDEX_FILE="$idx" git -C "$repo" write-tree)" || rc=1; }
+  rm -f -- "$idx"
+  (( rc == 0 )) || return 1
+  [[ -n "$tree" ]] || return 1
   commit="$(git -C "$repo" commit-tree "$tree" -p "refs/heads/$branch" -m stale)" || return 1
   git -C "$repo" update-ref "refs/heads/$branch" "$commit" || return 1
   return 0
