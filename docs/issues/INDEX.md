@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 115
-- Closed: 181
+- Open: 116
+- Closed: 180
 
 ## Issues
 
@@ -301,7 +301,7 @@
 - `20260808-placement-doc-gaps-close-flow-bookmark-claim-ordinal-read-back` — Placement doc gaps: close-flow, bookmark claim, ordinal read-back · status: closed · num: 292 · priority: medium · created: 2026-08-08T18:40:08Z · labels: [issue, placement, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-placement-test-gaps-after-the-repair-pass` — Placement test gaps after the repair pass · status: closed · num: 293 · priority: medium · created: 2026-08-08T18:40:10Z · labels: [testing, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` — render.sh swallows a regeneration failure and serves a stale index · status: open · num: 294 · priority: medium · created: 2026-08-08T18:49:43Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: closed · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: open · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-tests-place-sh-sits-outside-every-declared-territory` — tests/place.sh sits outside every declared territory · status: open · num: 296 · priority: medium · created: 2026-08-08T18:40:09Z · labels: [blueprint, territory] · origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Graph

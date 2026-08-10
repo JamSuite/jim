@@ -2,7 +2,7 @@
 id: 20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod
 num: 295
 title: "Rewrite detection absent from the retry loop and from direct mode"
-status: closed
+status: open
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:51Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-10T23:15:41Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

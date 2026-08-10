@@ -22,15 +22,21 @@ files, +1083/−141. Suite **1284 → 1298 green**.
 | :--- | :--- | :--- |
 | WP0 baseline | done | — |
 | WP1 fixtures | done | #293 |
-| WP2 publish state machine | done | #282, #285, #284, #287, #274, #295 |
+| WP2 publish state machine | done | #282, #285, #284, #287, #274; #295 **retry half only** |
 | WP3 `cmd_begin` reporting | done | #263, #280 |
 | WP4 scrub gate | done | #289; #278 **prose only** |
 | WP5 bookmark honesty | done | #271 |
 | WP6 documentation | done | #292 |
 | WP7 close out | **outstanding** | — |
 
-Twelve issues are closed in the collection. **#278 stays open**, narrowed to the
-polarity decision alone — its three false-prose sites are corrected.
+Eleven issues are closed in the collection. Two stay open, each narrowed to a
+half this bar did not cover:
+
+- **#278** — its three false-prose sites are corrected; the polarity decision is
+  deliberately not taken.
+- **#295** — the retry loop now checks for a rewrite; direct mode still does not.
+  That half was deferred with cluster 3 because it was sequenced behind the
+  bookmark discipline, which WP5 has now settled — so it is unblocked and small.
 
 Two things this plan predicted wrongly, corrected here so a resuming reader does
 not inherit them:
