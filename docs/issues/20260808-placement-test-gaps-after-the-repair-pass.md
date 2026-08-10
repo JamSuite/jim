@@ -2,7 +2,7 @@
 id: 20260808-placement-test-gaps-after-the-repair-pass
 num: 293
 title: "Placement test gaps after the repair pass"
-status: open
+status: closed
 priority: medium
 labels: [testing, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:40:10Z
-updated: 2026-08-08T18:40:10Z
+updated: 2026-08-10T23:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

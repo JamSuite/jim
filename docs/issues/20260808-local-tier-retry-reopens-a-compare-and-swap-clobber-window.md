@@ -2,7 +2,7 @@
 id: 20260808-local-tier-retry-reopens-a-compare-and-swap-clobber-window
 num: 287
 title: "Local-tier retry reopens a compare-and-swap clobber window"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement, concurrency]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:30Z
-updated: 2026-08-08T18:39:30Z
+updated: 2026-08-10T23:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

@@ -2,7 +2,7 @@
 id: 20260808-cmd-begin-flattens-a-containment-refusal-to-an-io-failure
 num: 280
 title: "cmd_begin flattens a containment refusal to an IO failure"
-status: open
+status: closed
 priority: low
 labels: [issue, invariant]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:49:45Z
-updated: 2026-08-08T18:49:45Z
+updated: 2026-08-10T23:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

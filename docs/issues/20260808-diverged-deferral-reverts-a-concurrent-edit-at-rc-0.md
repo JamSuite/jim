@@ -2,7 +2,7 @@
 id: 20260808-diverged-deferral-reverts-a-concurrent-edit-at-rc-0
 num: 285
 title: "Diverged deferral reverts a concurrent edit at rc 0"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, data-loss]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:29Z
-updated: 2026-08-08T18:39:29Z
+updated: 2026-08-10T23:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

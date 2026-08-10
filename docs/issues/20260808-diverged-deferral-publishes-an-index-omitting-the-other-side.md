@@ -2,7 +2,7 @@
 id: 20260808-diverged-deferral-publishes-an-index-omitting-the-other-side
 num: 284
 title: "Diverged deferral publishes an index omitting the other side"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:48Z
-updated: 2026-08-08T18:39:48Z
+updated: 2026-08-10T23:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

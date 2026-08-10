@@ -2,7 +2,7 @@
 id: 20260807-placement-bookmark-produces-false-rewrite-alarms
 num: 271
 title: "Placement bookmark produces false rewrite alarms"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement, correctness]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:54Z
-updated: 2026-08-07T11:43:54Z
+updated: 2026-08-10T23:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

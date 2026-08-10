@@ -2,7 +2,7 @@
 id: 20260807-cmd-begin-swallows-the-containment-gate-refusal
 num: 263
 title: "cmd_begin swallows the containment gate refusal"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:23Z
-updated: 2026-08-07T11:43:23Z
+updated: 2026-08-10T23:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
