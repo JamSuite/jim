@@ -2,7 +2,7 @@
 title: "Issue placement — remediation plan"
 spec: "docs/specs/issue/011-issue-placement/spec.md"
 type: remediation
-status: draft
+status: in-progress
 bar: regression
 base_sha: "ae4b877"
 ---
@@ -12,6 +12,41 @@ base_sha: "ae4b877"
 *Written 2026-08-10 against a clean tree at `ae4b877`, after two reviews and one
 defect-fix pass. This plan defines the bar for closing the spec, the work that
 meets it, and what is deliberately left tracked.*
+
+## Status
+
+**WP0–WP6 complete; WP7 outstanding.** Ten commits over `ae4b877..HEAD`, 23
+files, +1083/−141. Suite **1284 → 1298 green**.
+
+| WP | State | Closes |
+| :--- | :--- | :--- |
+| WP0 baseline | done | — |
+| WP1 fixtures | done | #293 |
+| WP2 publish state machine | done | #282, #285, #284, #287, #274, #295 |
+| WP3 `cmd_begin` reporting | done | #263, #280 |
+| WP4 scrub gate | done | #289; #278 **prose only** |
+| WP5 bookmark honesty | done | #271 |
+| WP6 documentation | done | #292 |
+| WP7 close out | **outstanding** | — |
+
+Twelve issues are closed in the collection. **#278 stays open**, narrowed to the
+polarity decision alone — its three false-prose sites are corrected.
+
+Two things this plan predicted wrongly, corrected here so a resuming reader does
+not inherit them:
+
+- **#284 does not fall out of the graft decision.** Reverting only that decision
+  leaves the lost-race case green. #282 is closed by the *base re-resolution*
+  and #285/#284 by the *graft-on-attempt-1* — two independent mechanisms, each
+  separately pinned.
+- **#271's false negative was not live.** The fix pass had already stopped the
+  bookmark rewinding, so only the false *alarm* was real. WP5 makes the guard
+  structural rather than scattered across each advance, and the rewind is now
+  pinned by a case that goes silent when it is reintroduced.
+
+WP7 needs `/jim:review` re-run, which fans out to investigator subagents — the
+developer's call to invoke. The completion gate after it is a human decision by
+construction.
 
 ## Context
 
