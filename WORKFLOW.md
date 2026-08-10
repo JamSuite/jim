@@ -124,7 +124,7 @@ deliberate choice as the issue-prefix migration:
 - **`show <id>`** — open one issue by its ordinal number, slug, or a slug prefix.
 - bare **`/jim:issue`** — print the subcommand help.
 
-Issues are also surfaced automatically at the end of each SDLC phase as a candidate batch (per spec 018), gated by `issue_capture`. Close an issue by editing its `status:` field directly.
+Issues are also surfaced automatically at the end of each SDLC phase as a candidate batch (per spec 018), gated by `issue_capture`. Close an issue by editing its `status:` field directly — unless the project keeps its collection on a designated branch (`issue_placement`), in which case the file is not in your working tree and the edit goes through the two-step door described in `skills/issue/SKILL.md` § 6a.
 
 **One-time migration (`backfill.sh`).** Spec 019 added the `num:` ordinal. Existing collections created before 019 are numbered once by running `bash skills/issue/scripts/backfill.sh` against the issues directory — it assigns ordinals in `created:`-date order, is idempotent, and writes each file atomically. Run it once, up-front, before creating new issues. New issues never need it.
 
@@ -212,7 +212,7 @@ jim/
 │   ├── brainstorm/              # → /jim:brainstorm
 │   │
 │   │  # ── Discovery ──
-│   ├── issue/                   # → /jim:issue       assets + scripts (index/new/render/backfill/migrate)
+│   ├── issue/                   # → /jim:issue       assets + scripts (index/new/render/backfill/migrate/reconcile/place)
 │   │
 │   │  # ── Introspection ──
 │   ├── conf/                    # → /jim:conf        scripts (jimconf.sh — the shared config resolver)

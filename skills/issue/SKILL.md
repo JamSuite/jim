@@ -14,7 +14,7 @@ A single command for actionable-discovery issues: capture one (`add`), or review
 
 **What an issue is.** An issue captures an *actionable discovery* — pending, unresolved work surfaced during the jim workflow (an out-of-scope idea, a deferred edge case, a gap noticed in research, a security concern flagged in passing). It is a *discovery artifact* in the VISION sense — surfaced and saved for later analysis, **not** a Jira-style team-coordination ticket — but it must represent work that still needs doing. A retrospective record of already-shipped work is **not** an issue: its home is the point of encounter (a README, a code comment, an error message, a doc). This actionability property governs both the `add` capture verb (the gate below) and the workflow candidate-accumulation surface (step 7).
 
-**Where the collection lives.** By default an issue lands on the branch the developer is standing on. A project that wants one source of truth instead sets `issue_placement` to a branch name — `main`, or a dedicated branch such as `jim/issues` — and every read and write then goes there, whatever branch the work is happening on. The scripts handle this themselves: `new.sh`, `index.sh`, `render.sh`, `reconcile.sh`, `backfill.sh` and `migrate.sh` all route through `place.sh` on their own, so the calls in this skill are unchanged either way. Only two places need to know: editing an issue in place (step 6a) and the auto-file path (step 7a).
+**Where the collection lives.** By default an issue lands on the branch the developer is standing on. A project that wants one source of truth instead sets `issue_placement` to a branch name — `main`, or a dedicated branch such as `jim/issues` — and every read and write then goes there, whatever branch the work is happening on. The scripts handle this themselves: `new.sh`, `index.sh`, `render.sh`, `reconcile.sh`, `backfill.sh` and `migrate.sh` all route through `place.sh` on their own, so the calls in this skill are unchanged either way. Four places need to know: editing an issue in place (step 6a), the auto-file path (step 7a), reporting a filed issue's ordinal (step 6), and materializing the collection for insights (step 8).
 
 **Changing `issue_placement` on an existing project** moves where issues live but does not move the issues. Do it once, by hand: check out the destination branch, copy the collection over from wherever it currently lives, commit, and switch the key. There is deliberately no automatic migration — a one-time move is a job for a person who can see both branches, and a tool that guessed would be guessing about a team's history.
 
@@ -160,6 +160,8 @@ On `file`:
    bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh
    ```
 4. Report briefly using the emitter's returned slug — e.g. "Filed as `<slug>`." Read the written file's `num:` frontmatter field back first if you need to state the ordinal precisely (e.g. "Filed as `#<num>` `<slug>`."), since it may differ from the step-4 preview. Then stop. Do not advance the SDLC workflow.
+
+   **Under a branch placement** the printed path is destination-relative and that file is not in the working tree, so there is nothing to read back. Report the slug alone, or take the ordinal from `/jim:issue list`, which serves the destination. Do **not** re-run the emitter to obtain it — that allocates a second coordinated ordinal — and do not compose the file by hand.
 
 On `edit`: apply inline edits, return to step 5.
 

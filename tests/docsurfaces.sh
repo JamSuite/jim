@@ -233,6 +233,21 @@ case_docsurfaces_placement_edit_flow_is_stated() {
   assert_match "names abort"  'place\.sh abort'  "$body"
 }
 
+# The same reasoning reaches past the skill. WORKFLOW.md is where a user is told
+# how to close an issue, and it said to edit the file directly — which under a
+# placement edits something that is not the collection. Sweeping only the skill
+# left the one sentence a user actually follows outside the guard.
+case_docsurfaces_workflow_close_flow_survives_a_placement() {
+  local wf="$REPO_ROOT/WORKFLOW.md" line
+  assert_eq "the workflow doc is present" "yes" \
+    "$([[ -r "$wf" ]] && echo yes || echo no)"
+  line="$(grep -n 'Close an issue' "$wf")"
+  assert_eq "the close instruction was located" "yes" \
+    "$([[ -n "$line" ]] && echo yes || echo no)"
+  assert_match "it qualifies the direct edit" 'issue_placement' "$line"
+  assert_match "and points at the flow that works" '6a'          "$line"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
