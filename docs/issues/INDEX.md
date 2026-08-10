@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 116
-- Closed: 180
+- Open: 112
+- Closed: 184
 
 ## Issues
 
@@ -272,7 +272,7 @@
 - `20260807-insights-analyst-reads-the-branch-local-collection-under-placeme` — Insights analyst reads the branch-local collection under placement · status: open · num: 266 · priority: high · created: 2026-08-07T11:43:25Z · labels: [issue, placement, insights] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-offline-placed-read-serves-an-empty-collection` — Offline placed read serves an empty collection · status: closed · num: 267 · priority: high · created: 2026-08-07T11:43:22Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-pin-the-nameref-prefix-convention-with-a-textual-invariant` — Pin the nameref-prefix convention with a textual invariant · status: open · num: 259 · priority: medium · created: 2026-08-07T10:59:35Z · labels: [testing, bash, refactor] · origin: docs/specs/issue/011-issue-placement/plan.md
-- `20260807-place-direct-publish-stages-without-the-worktree-containment-gat` — place_direct_publish stages without the worktree containment gate · status: open · num: 268 · priority: medium · created: 2026-08-07T11:43:56Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260807-place-direct-publish-stages-without-the-worktree-containment-gat` — place_direct_publish stages without the worktree containment gate · status: closed · num: 268 · priority: medium · created: 2026-08-07T11:43:56Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-place-sh-conformance-and-hygiene-pass` — place.sh conformance and hygiene pass · status: open · num: 269 · priority: low · created: 2026-08-07T11:43:58Z · labels: [issue, placement, refactor] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-placeholder-substitution-corrupts-issue-titles-and-durable-ids` — Placeholder substitution corrupts issue titles and durable ids · status: closed · num: 270 · priority: critical · created: 2026-08-07T11:43:20Z · labels: [issue, placement, data-integrity] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-placement-bookmark-produces-false-rewrite-alarms` — Placement bookmark produces false rewrite alarms · status: closed · num: 271 · priority: medium · created: 2026-08-07T11:43:54Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -287,9 +287,9 @@
 - `20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag` — Auto-file scrub gate is fail-open on a forgotten flag · status: open · num: 278 · priority: high · created: 2026-08-08T18:39:29Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-blueprint-emitter-face-omits-the-auto-flag-and-exit-code-4` — Blueprint emitter face omits the auto flag and exit code 4 · status: open · num: 279 · priority: medium · created: 2026-08-08T18:49:44Z · labels: [blueprint, contract] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-cmd-begin-flattens-a-containment-refusal-to-an-io-failure` — cmd_begin flattens a containment refusal to an IO failure · status: closed · num: 280 · priority: low · created: 2026-08-08T18:49:45Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-commit-direct-publishes-uncommitted-work-with-no-dirty-guard` — commit direct publishes uncommitted work with no dirty guard · status: open · num: 281 · priority: medium · created: 2026-08-08T18:39:49Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-commit-direct-publishes-uncommitted-work-with-no-dirty-guard` — commit direct publishes uncommitted work with no dirty guard · status: closed · num: 281 · priority: medium · created: 2026-08-08T18:39:49Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-deferred-mutation-lost-when-the-resuming-push-loses-a-race` — Deferred mutation lost when the resuming push loses a race · status: closed · num: 282 · priority: critical · created: 2026-08-08T18:39:28Z · labels: [issue, placement, data-loss] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-direct-arm-commit-re-resolves-issues-path-and-publishes-the-wron` — Direct-arm commit re-resolves issues path and publishes the wrong collection · status: open · num: 283 · priority: medium · created: 2026-08-08T18:39:49Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-direct-arm-commit-re-resolves-issues-path-and-publishes-the-wron` — Direct-arm commit re-resolves issues path and publishes the wrong collection · status: closed · num: 283 · priority: medium · created: 2026-08-08T18:39:49Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-diverged-deferral-publishes-an-index-omitting-the-other-side` — Diverged deferral publishes an index omitting the other side · status: closed · num: 284 · priority: medium · created: 2026-08-08T18:39:48Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-diverged-deferral-reverts-a-concurrent-edit-at-rc-0` — Diverged deferral reverts a concurrent edit at rc 0 · status: closed · num: 285 · priority: high · created: 2026-08-08T18:39:29Z · labels: [issue, placement, data-loss] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-insights-empty-collection-short-circuit-has-no-granted-capabilit` — Insights empty-collection short-circuit has no granted capability · status: open · num: 286 · priority: low · created: 2026-08-08T18:49:44Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -301,7 +301,7 @@
 - `20260808-placement-doc-gaps-close-flow-bookmark-claim-ordinal-read-back` — Placement doc gaps: close-flow, bookmark claim, ordinal read-back · status: closed · num: 292 · priority: medium · created: 2026-08-08T18:40:08Z · labels: [issue, placement, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-placement-test-gaps-after-the-repair-pass` — Placement test gaps after the repair pass · status: closed · num: 293 · priority: medium · created: 2026-08-08T18:40:10Z · labels: [testing, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` — render.sh swallows a regeneration failure and serves a stale index · status: open · num: 294 · priority: medium · created: 2026-08-08T18:49:43Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: open · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: closed · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-tests-place-sh-sits-outside-every-declared-territory` — tests/place.sh sits outside every declared territory · status: open · num: 296 · priority: medium · created: 2026-08-08T18:40:09Z · labels: [blueprint, territory] · origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Graph

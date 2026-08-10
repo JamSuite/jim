@@ -15,8 +15,8 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 complete; WP7 outstanding.** Ten commits over `ae4b877..HEAD`, 23
-files, +1083/−141. Suite **1284 → 1298 green**.
+**WP0–WP6 and WP8 complete; WP7 outstanding.** Fifteen commits over `ae4b877..HEAD`,
+23 files. Suite **1284 → 1302 green**.
 
 | WP | State | Closes |
 | :--- | :--- | :--- |
@@ -27,16 +27,17 @@ files, +1083/−141. Suite **1284 → 1298 green**.
 | WP4 scrub gate | done | #289; #278 **prose only** |
 | WP5 bookmark honesty | done | #271 |
 | WP6 documentation | done | #292 |
+| WP8 direct-mode arm | done | #281, #283, #268, #295 (both halves) |
 | WP7 close out | **outstanding** | — |
 
-Eleven issues are closed in the collection. Two stay open, each narrowed to a
-half this bar did not cover:
+Fifteen issues are closed in the collection. **#278** stays open, narrowed to
+the polarity decision alone — its three false-prose sites are corrected.
 
-- **#278** — its three false-prose sites are corrected; the polarity decision is
-  deliberately not taken.
-- **#295** — the retry loop now checks for a rewrite; direct mode still does not.
-  That half was deferred with cluster 3 because it was sequenced behind the
-  bookmark discipline, which WP5 has now settled — so it is unblocked and small.
+**WP8 was added after the bar was set**, on the developer's approval, once the
+scoreboard showed the direct-mode arm carrying four of the remaining defects in
+one file region and WP5 having unblocked the one they were sequenced behind. It
+flips **AC 12** and half of **AC 3**, and clears two of the three security
+regressions the second review listed.
 
 Two things this plan predicted wrongly, corrected here so a resuming reader does
 not inherit them:
@@ -397,6 +398,31 @@ change visible instead of silent.
 
 ---
 
+### WP8 — Harden the checked-out arm *(added mid-flight)*
+
+**Closes #281, #283, #268, #295's remaining half.** Not part of the original bar;
+taken once the post-WP6 scoreboard showed four of the remaining defects living in
+one file region, and WP5 having settled the bookmark discipline that #295's own
+text sequenced the direct half behind.
+
+The four turned out to share one root: **the arm had no handle.** Its write token
+was the fixed literal `direct`, so `commit` could not read what `begin`
+established and had to re-resolve it — which is why nothing proved the dirty
+guard ran (#281) and why a changed `issues` key published the wrong collection
+(#283). Issuing a real handle closes both; the handle carries state only, and the
+directory handed back stays the working tree's own collection.
+
+The other two are independent and small: resolve the staging target against the
+worktree top before the wrapped command *and* before `git add` (#268), and check
+HEAD against the bookmark on the read path (#295), which needs no fetch because
+on this arm HEAD **is** the destination's tip.
+
+One design consequence worth recording: adding that check broke WP5's bookmark
+pin, because `place_check_rewrite` both discloses and records. The two were split
+— `place_disclose_rewrite` compares, `place_check_rewrite` compares and records —
+so the direct arm can do the first without claiming the second. WP5's test caught
+this, which is the whole reason it exists.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
@@ -411,15 +437,13 @@ change visible instead of silent.
 ## Deferred
 
 Tracked, not dropped. Each is pre-existing substance surfaced by this spec's
-reviews rather than introduced by them.
+reviews rather than introduced by them. The direct-mode cluster that sat here
+was taken as WP8 and is gone from the list.
 
 | Issue | Why deferred |
 | :--- | :--- |
 | #266 (high) | Analyst reads branch-local bodies. Pre-existing; cross-group edit to `agents/issue-analyst.md`. Bites any project whose `issues` key is not `docs/issues`, placement or not. Leaves AC 5 partial. |
 | #290 (high) | `--origin` has never been YAML-encoded and the code's own comment records the narrower scope deliberately. A text-vs-code fork, not a fix. The `--title '{}'` residue rides with it. |
-| #281 (med/sec) | `commit direct` with no preceding `begin` runs no dirty guard — and it genuinely cannot be re-run, since at commit time the mutation's own edits *are* the dirty state. Needs a `begin`-issued marker: a design change, not a guard call. |
-| #283, #268 | Direct-arm `issues`-path drift and the missing worktree containment gate. Cluster with #281; do the direct arm as one pass. |
-| #295 *(direct half)* | Direct mode has no rewrite detection at all. Clusters with the above. |
 | #277 | Routing argument classification (`reconcile.sh -c`, `render.sh show`/`list`). Pre-existing. Leaves AC 3 partial. |
 | #291, #294 | The group has two read-failure postures and chose neither. One decision, not two fixes — see *Open decisions*. |
 | #273 | Origin lint → cross-branch published churn. Pre-existing; WP1's path-shaped-origin fixture makes it exercisable. |
