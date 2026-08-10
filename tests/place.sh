@@ -1483,6 +1483,85 @@ place_here_seeded() {
   printf '%s' "$repo"
 }
 
+# AC: a write handle is something `begin` issues. The bare literal is nobody's
+# handle, and honouring it publishes whatever uncommitted work is sitting in the
+# collection with nothing having run the dirty guard — which cannot be re-run at
+# commit time, because by then the mutation's own edits are the dirty state
+# (security Finding 9, the write half).
+case_place_direct_commit_refuses_the_bare_literal() {
+  local repo head_before
+  repo="$(place_here_seeded place_direct_literal)"
+  printf 'HALF-FINISHED PRIVATE NOTE\n' > "$repo/docs/issues/20260101-a.md"
+  head_before="$(git -C "$repo" rev-parse --verify HEAD)"
+  run_place_in "$repo" commit direct --verb close --id 20260101-a
+  assert_exit  "refuses"          2          "$RC"
+  assert_match "says what to do"  'begin'    "$ERR"
+  assert_eq "nothing was committed" "$head_before" \
+    "$(git -C "$repo" rev-parse --verify HEAD)"
+  assert_eq "the note is still the developer's own" "HALF-FINISHED PRIVATE NOTE" \
+    "$(cat "$repo/docs/issues/20260101-a.md")"
+}
+
+# AC: the collection path a handle was opened against is what it publishes. The
+# direct arm re-resolved it instead, so a changed `issues` key sent the publish
+# to a path `index.sh` then created — an empty collection onto the shared
+# branch at rc 0, while the agent's real edits stayed uncommitted (spec AC #3).
+case_place_direct_commit_refuses_a_moved_collection() {
+  local repo token head_before
+  repo="$(place_here_seeded place_direct_prefix_drift)"
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"
+  printf 'closed\n' > "$repo/docs/issues/20260101-a.md"
+  printf 'issue_placement = "%s"\nissues_path = "docs/tickets"\n' \
+    "$(git -C "$repo" symbolic-ref --short HEAD)" > "$repo/jimconf.toml"
+  head_before="$(git -C "$repo" rev-parse --verify HEAD)"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit  "refuses"                 2                  "$RC"
+  assert_match "names the moved collection" 'docs/tickets'  "$ERR"
+  assert_eq "nothing was committed" "$head_before" \
+    "$(git -C "$repo" rev-parse --verify HEAD)"
+  assert_eq "and no empty collection was created" "no" \
+    "$([[ -e "$repo/docs/tickets" ]] && echo yes || echo no)"
+}
+
+# AC: a destination that is checked out has its tip in hand, so a read verb can
+# say whether the branch the collection lives on was rewritten under it — a
+# rebase or reset of that branch is exactly the case AC #12 names, and this arm
+# performed no ancestry check at all.
+case_place_direct_read_discloses_a_rewritten_destination() {
+  local repo seen
+  repo="$(place_here_seeded place_direct_rewrite)"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "x\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  seen="$(git -C "$repo" rev-parse --verify HEAD)"
+  # Rewrite the branch the collection lives on, the way a rebase would.
+  git -C "$repo" reset -q --hard HEAD~1
+  printf 'other\n' > "$repo/README.md"
+  git -C "$repo" add README.md && git -C "$repo" commit -q -m rewritten
+  run_place_in "$repo" run --read --verb reindex -- sh -c 'true'
+  assert_exit  "rc"                0           "$RC"
+  assert_match "discloses rewrite" 'rewritten' "$ERR"
+  assert_match "names last seen"   "$seen"     "$ERR"
+}
+
+# AC: a collection path that resolves outside the worktree is not staged. Shape
+# validation is what the staging precedent describes as needing this second
+# gate, since a shape-valid path can still symlink out of the tree.
+case_place_direct_refuses_a_collection_outside_the_worktree() {
+  local repo outside
+  repo="$(place_here place_direct_escape)"
+  outside="$(empty_dir place_direct_escape_target)"
+  ln -s "$outside" "$repo/docs"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit  "refuses"            2           "$RC"
+  assert_match "says why"           'worktree'  "$ERR"
+  assert_eq "nothing was committed outside" "no" \
+    "$([[ -e "$outside/issues/INDEX.md" ]] && echo yes || echo no)"
+}
+
 # AC: direct mode records what the destination was seen holding on the same
 # terms as the plumbing path. A commit whose push was rejected reached nobody,
 # so a bookmark advanced before the attempt names a commit only this clone has —
@@ -1598,9 +1677,10 @@ case_place_direct_commit_refuses_after_a_branch_switch() {
     "$(git -C "$repo" rev-parse --verify HEAD)"
 }
 
-# AC: the same arm re-resolves configuration, so it refuses the reserved
-# sentinel rather than taking `branch` for a branch name and pushing to a remote
-# branch literally called that (spec AC #1).
+# AC: the destination a handle was opened for is what it may publish to. A
+# placement changed to the reserved sentinel between the two steps means the
+# collection no longer belongs on a branch at all, and taking `branch` for a
+# branch name would push to a remote branch literally called that (spec AC #1).
 case_place_direct_commit_refuses_the_branch_sentinel() {
   local repo token
   repo="$(place_here_seeded place_direct_sentinel)"
@@ -1610,11 +1690,10 @@ case_place_direct_commit_refuses_the_branch_sentinel() {
   printf 'issue_placement = "branch"\n' > "$repo/jimconf.toml"
   run_place_in "$repo" commit "$token" --verb close --id 20260101-a
   assert_exit  "refuses" 2 "$RC"
-  # Pin the sentinel refusal's own words. Without the guard, control falls to the
-  # HEAD check immediately below it, which returns the same status with a message
-  # of its own — so rc and non-emptiness alone cannot tell this case from its
-  # neighbour, and neither can they tell the guard is present.
-  assert_match "names the sentinel refusal" 'no longer names a destination' "$ERR"
+  # Pin this refusal's own words. Without the check, the prefix and HEAD guards
+  # below it both pass — the collection path has not moved and the branch is
+  # still checked out — and the mutation publishes at rc 0.
+  assert_match "names the placement change" 'issue placement now names' "$ERR"
 }
 
 # ─── Section: Two-phase begin / commit / abort ───────────────────────────────

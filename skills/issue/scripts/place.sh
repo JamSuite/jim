@@ -474,8 +474,37 @@ place_dirty_guard() {
 #   A rejected push is disclosed rather than resolved. Rebasing a developer's
 #   own checkout underneath them to publish an issue is far more invasive than
 #   the problem warrants, and the local commit already means nothing is lost.
+# place_worktree_contained <prefix>
+#   Refuse a collection path that resolves outside the worktree. `place_prefix`
+#   gates the path's *shape*, which is exactly the gate the staging precedent
+#   describes as needing a second one: a shape-valid path can still symlink out
+#   of the tree, and after that only git's own pathspec refusal stands between
+#   the config and an arbitrary staging target.
+#
+#   It runs before the wrapped command as well as before staging, so a refused
+#   run writes nothing anywhere — the discipline materialization already keeps.
+place_worktree_contained() {
+  local prefix="$1" top resolved
+  if ! top="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ -z "$top" ]]; then
+    echo "place.sh: not inside a git worktree" >&2
+    return 2
+  fi
+  if ! resolved="$(realpath -m -- "$prefix" 2>/dev/null)" \
+     || [[ "$resolved" != "$top"/* ]]; then
+    echo "place.sh: the collection at '$prefix' resolves outside the worktree," \
+         "so it will not be written or staged" >&2
+    return 2
+  fi
+  return 0
+}
+
 place_direct() {
   local dest="$1" prefix="$2" verb="$3" id="$4" read_only="$5"; shift 5
+  place_worktree_contained "$prefix" || return 2
+  # The destination is checked out, so its tip is HEAD and no fetch is needed to
+  # know it: a rebase, reset or amend of the branch the collection lives on is a
+  # rewrite of the destination, and this arm is where a read verb meets it.
+  place_disclose_rewrite "$dest" "$(place_head_commit)"
   if (( read_only == 0 )); then
     place_dirty_guard "$prefix" || return 2
   fi
@@ -494,6 +523,7 @@ place_direct() {
 #   edits got there.
 place_direct_publish() {
   local dest="$1" prefix="$2" verb="$3" id="$4"
+  place_worktree_contained "$prefix" || return 2
   place_reindex "$prefix" || return 1
   local st
   st="$(git --literal-pathspecs status --porcelain -- "$prefix" 2>/dev/null)"
@@ -535,12 +565,17 @@ place_direct_publish() {
 # one directory there, which `commit` reports and `abort` removes.
 
 readonly PLACE_TOKEN_NONE="none"     # no placement — the real collection dir
-readonly PLACE_TOKEN_DIRECT="direct" # destination is the checked-out branch
-# A read handle in direct mode has no state of its own to carry a read flag, so
-# the flag is the token. Handing back the same literal a write handle uses would
-# make the read-only insights flow a publish capability over whatever is sitting
-# in the collection at the time.
+# A read handle publishes nothing and so needs no state: the flag is the token.
+# It stays a literal in direct mode for that reason, and `commit` refuses it.
 readonly PLACE_TOKEN_DIRECT_READ="direct-read"
+# A *write* handle in direct mode is a real handle like any other. It was once a
+# fixed literal, which meant `commit` could be called having no evidence that
+# `begin` ever ran — and the dirty guard `begin` runs cannot be re-run at commit
+# time, because by then the mutation's own edits are the dirty state. An
+# unguessable token created only by `begin` is that evidence. What the handle
+# carries is state alone; the directory it hands back is the working tree's own
+# collection, since in direct mode that is where the edits belong.
+readonly PLACE_TOKEN_DIRECT="direct"
 
 # place_handle_root — the directory holding this clone's live handles, verified
 # to resolve inside the git dir so a symlinked path cannot redirect the writes.
@@ -613,6 +648,40 @@ place_load_snapshot() {
   return 0
 }
 
+# place_head_commit — the checked-out commit. In direct mode the destination
+# branch *is* HEAD, so this is the destination's own tip: what rewrite detection
+# compares the bookmark against, with no fetch to make and nothing to guess.
+place_head_commit() {
+  git rev-parse --verify --quiet --end-of-options HEAD 2>/dev/null || true
+}
+
+# place_direct_handle <dest> <prefix>
+#   Open a write handle for a destination that is already checked out, and print
+#   "<token>\t<prefix>". The handle carries state only — the directory handed
+#   back is the working tree's own collection, because that is where a direct
+#   mutation's edits belong.
+#
+#   What it records is what `commit` has to prove again and cannot otherwise
+#   know: the destination, and the collection path this handle was opened
+#   against. Re-resolving the path at commit time instead publishes wherever the
+#   configuration now points, which for a changed `issues` key is a fresh empty
+#   collection while the agent's real edits stay uncommitted.
+place_direct_handle() {
+  local dest="$1" prefix="$2" root handle
+  root="$(place_handle_root)" || return 1
+  handle="$(mktemp -d "$root/handle.XXXXXXXX" 2>/dev/null)" || {
+    echo "place.sh: could not create a placement handle" >&2
+    return 1
+  }
+  {
+    printf 'mode=direct\n'
+    printf 'dest=%s\n'   "$dest"
+    printf 'prefix=%s\n' "$prefix"
+    printf 'read=0\n'
+  } > "$handle/state" || { rm -rf -- "$handle"; return 1; }
+  printf '%s\t%s\n' "${handle##*/}" "$prefix"
+}
+
 # cmd_begin [--read] — materialize the destination and print "<token>\t<dir>".
 cmd_begin() {
   local read_only=0
@@ -635,15 +704,16 @@ cmd_begin() {
   local current
   current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
   if [[ -n "$current" && "$current" == "$dest" ]]; then
-    # The edits land in the working tree, so the guard has to run before them,
-    # not at commit time when they are indistinguishable from the mutation.
+    place_disclose_rewrite "$dest" "$(place_head_commit)"
     if (( read_only )); then
       printf '%s\t%s\n' "$PLACE_TOKEN_DIRECT_READ" "$prefix"
       return 0
     fi
+    # The edits land in the working tree, so the guard has to run before them,
+    # not at commit time when they are indistinguishable from the mutation.
     place_dirty_guard "$prefix" || return 2
-    printf '%s\t%s\n' "$PLACE_TOKEN_DIRECT" "$prefix"
-    return 0
+    place_direct_handle "$dest" "$prefix"
+    return $?
   fi
   local root handle
   root="$(place_handle_root)" || return 1
@@ -732,27 +802,12 @@ cmd_commit() {
            "publish; use abort to discard it" >&2
       return 2 ;;
     "$PLACE_TOKEN_DIRECT")
-      # This arm re-resolves configuration instead of reading recorded state,
-      # and the token is a fixed literal rather than an unguessable handle, so
-      # everything `begin` established has to be proved again here — there is no
-      # evidence in the token that a `begin` ever happened at all.
-      local dest prefix current where
-      dest="$(place_destination)" || return 2
-      if [[ "$dest" == "branch" ]]; then
-        echo "place.sh commit: issue placement no longer names a destination" \
-             "branch, so there is nothing for this handle to publish" >&2
-        return 2
-      fi
-      prefix="$(place_prefix)" || return 2
-      current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-      where="${current:-a detached HEAD}"
-      if [[ "$current" != "$dest" ]]; then
-        echo "place.sh commit: this handle was opened with '$dest' checked out," \
-             "but HEAD is now $where; refusing to commit the collection onto it" >&2
-        return 2
-      fi
-      place_direct_publish "$dest" "$prefix" "$verb" "$id"
-      return $? ;;
+      # A write handle is issued by `begin` and is unguessable. The bare literal
+      # is nobody's handle, and honouring it would publish whatever uncommitted
+      # work sits in the collection with nothing having run the dirty guard.
+      echo "place.sh commit: '$PLACE_TOKEN_DIRECT' is not a handle — run" \
+           "\`place.sh begin\` and commit the token it prints" >&2
+      return 2 ;;
   esac
   local handle
   handle="$(place_handle_dir "$token")" || return $?
@@ -764,6 +819,38 @@ cmd_commit() {
   local dest prefix tip work_tip tier remote ref_old
   dest="$(place_state_get "$handle/state" dest)"
   prefix="$(place_state_get "$handle/state" prefix)"
+  if [[ "$(place_state_get "$handle/state" mode)" == "direct" ]]; then
+    # A handle opened against a checked-out destination. Its edits are already
+    # in the working tree, so there is nothing to replay — but everything that
+    # made publishing them safe was established at `begin`, and each of those
+    # facts can have changed since.
+    local now_dest now_prefix current where
+    now_dest="$(place_destination)" || return 2
+    if [[ "$now_dest" != "$dest" ]]; then
+      echo "place.sh commit: this handle was opened for '$dest', but issue" \
+           "placement now names '$(place_shown "$now_dest")'" >&2
+      return 2
+    fi
+    now_prefix="$(place_prefix)" || return 2
+    if [[ "$now_prefix" != "$prefix" ]]; then
+      echo "place.sh commit: this handle was opened against '$prefix', but the" \
+           "configured collection is now '$(place_shown "$now_prefix")'; the" \
+           "edits it holds are not the ones that would be published" >&2
+      return 2
+    fi
+    current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    where="${current:-a detached HEAD}"
+    if [[ "$current" != "$dest" ]]; then
+      echo "place.sh commit: this handle was opened with '$dest' checked out," \
+           "but HEAD is now $where; refusing to commit the collection onto it" >&2
+      return 2
+    fi
+    local drc=0
+    place_direct_publish "$dest" "$prefix" "$verb" "$id" || drc=$?
+    (( drc == 0 )) || return "$drc"
+    rm -rf -- "$handle"
+    return 0
+  fi
   tip="$(place_state_get "$handle/state" tip)"
   # What the agent's edits were made against. It differs from the tip only when
   # this clone was carrying unpublished commits when the handle was opened, and
@@ -801,7 +888,10 @@ cmd_commit() {
 cmd_abort() {
   local token="${1:-}"
   case "$token" in
-    "$PLACE_TOKEN_NONE"|"$PLACE_TOKEN_DIRECT"|"$PLACE_TOKEN_DIRECT_READ")
+    "$PLACE_TOKEN_NONE"|"$PLACE_TOKEN_DIRECT_READ")
+      # Neither owns anything to discard: one is the working tree itself, the
+      # other a read that materialized nothing. A direct *write* handle is a
+      # real handle and falls through to be removed like any other.
       return 0 ;;
   esac
   local handle
@@ -834,8 +924,39 @@ place_advance_bookmark() {
 #   Detection discloses; it never blocks. Whether a rewritten destination is
 #   sabotage or a teammate cleaning up history is not something this script can
 #   know, and refusing to file an issue is a poor answer to either.
+#   Disclosing and recording answer different questions — what is at the
+#   destination now, and what this clone may claim to have seen published there
+#   — so they are separable, and direct mode needs the first without the second.
+place_disclose_rewrite() {
+  local branch="$1" tip="$2" bref seen rc
+  bref="$(place_bookmark_ref "$branch")" || return 0
+  seen="$(git rev-parse --verify --quiet --end-of-options "$bref" 2>/dev/null || true)"
+  [[ -n "$seen" ]] || return 0
+  if [[ -z "$tip" ]]; then
+    echo "place.sh: destination branch '$branch' no longer exists; the" \
+         "collection this clone last saw at $seen is gone from it" >&2
+    return 0
+  fi
+  [[ "$seen" != "$tip" ]] || return 0
+  git merge-base --is-ancestor "$seen" "$tip" 2>/dev/null
+  rc=$?
+  if (( rc == 1 )); then
+    echo "place.sh: destination branch '$branch' was rewritten — the state this" \
+         "clone last saw ($seen) is not an ancestor of its current tip ($tip)." \
+         "Mutations published before the rewrite may no longer be there." >&2
+  elif (( rc != 0 )); then
+    # A missing object, usually this clone having gc'd it. Reporting a rewrite
+    # here would be a guess; reporting nothing would be the fail-open this
+    # function exists to avoid.
+    echo "place.sh: cannot tell whether destination branch '$branch' was" \
+         "rewritten — the state this clone last saw ($seen) is no longer" \
+         "readable here." >&2
+  fi
+  return 0
+}
+
 place_check_rewrite() {
-  local branch="$1" tip="$2" authoritative="$3" bref seen rc
+  local branch="$1" tip="$2" authoritative="$3"
   # Only a run that reached the destination's owner learned anything about it,
   # and a run that learned nothing has nothing to compare and nothing to record.
   # The tip read off this clone's own branch while the remote was unreachable is
@@ -844,33 +965,7 @@ place_check_rewrite() {
   # commit the destination moved past — after which a force-push built on that
   # commit is an ordinary fast-forward and passes in silence.
   (( authoritative )) || return 0
-  bref="$(place_bookmark_ref "$branch")" || return 0
-  seen="$(git rev-parse --verify --quiet --end-of-options "$bref" 2>/dev/null || true)"
-  if [[ -z "$seen" ]]; then
-    place_advance_bookmark "$branch" "$tip"
-    return 0
-  fi
-  if [[ -z "$tip" ]]; then
-    echo "place.sh: destination branch '$branch' no longer exists; the" \
-         "collection this clone last saw at $seen is gone from it" >&2
-    return 0
-  fi
-  if [[ "$seen" != "$tip" ]]; then
-    git merge-base --is-ancestor "$seen" "$tip" 2>/dev/null
-    rc=$?
-    if (( rc == 1 )); then
-      echo "place.sh: destination branch '$branch' was rewritten — the state this" \
-           "clone last saw ($seen) is not an ancestor of its current tip ($tip)." \
-           "Mutations published before the rewrite may no longer be there." >&2
-    elif (( rc != 0 )); then
-      # A missing object, usually this clone having gc'd it. Reporting a rewrite
-      # here would be a guess; reporting nothing would be the fail-open the rest
-      # of this function exists to avoid.
-      echo "place.sh: cannot tell whether destination branch '$branch' was" \
-           "rewritten — the state this clone last saw ($seen) is no longer" \
-           "readable here." >&2
-    fi
-  fi
+  place_disclose_rewrite "$branch" "$tip"
   place_advance_bookmark "$branch" "$tip"
   return 0
 }
