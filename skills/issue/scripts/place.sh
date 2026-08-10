@@ -502,14 +502,22 @@ place_direct_publish() {
   git --literal-pathspecs commit -q -m "$(place_message "$verb" "$id")" -- "$prefix" || return 1
   local commit remote
   commit="$(git rev-parse --verify --quiet HEAD 2>/dev/null || true)"
-  place_advance_bookmark "$dest" "$commit"
   remote="$(place_remote)"
-  [[ -n "$remote" ]] || return 0
-  if ! git push --quiet --end-of-options "$remote" "HEAD:refs/heads/$dest" 2>/dev/null; then
-    echo "place.sh: '$dest' has diverged from '$remote', so the mutation is" \
-         "committed here but not published. Pull and push again to share it —" \
-         "your checkout is left exactly as it is." >&2
+  # The bookmark records what the destination was seen holding, so it follows a
+  # publish that reached it — not one that was merely attempted. With no remote
+  # configured the local branch *is* the destination, and committing to it is
+  # reaching it.
+  if [[ -z "$remote" ]]; then
+    place_advance_bookmark "$dest" "$commit"
+    return 0
   fi
+  if git push --quiet --end-of-options "$remote" "HEAD:refs/heads/$dest" 2>/dev/null; then
+    place_advance_bookmark "$dest" "$commit"
+    return 0
+  fi
+  echo "place.sh: '$dest' has diverged from '$remote', so the mutation is" \
+       "committed here but not published. Pull and push again to share it —" \
+       "your checkout is left exactly as it is." >&2
   return 0
 }
 
@@ -827,31 +835,43 @@ place_advance_bookmark() {
 #   sabotage or a teammate cleaning up history is not something this script can
 #   know, and refusing to file an issue is a poor answer to either.
 place_check_rewrite() {
-  local branch="$1" tip="$2" authoritative="$3" bref seen
+  local branch="$1" tip="$2" authoritative="$3" bref seen rc
+  # Only a run that reached the destination's owner learned anything about it,
+  # and a run that learned nothing has nothing to compare and nothing to record.
+  # The tip read off this clone's own branch while the remote was unreachable is
+  # this clone's state, not the destination's: comparing against it calls an
+  # ordinary teammate push a rewrite, and recording it rewinds the bookmark to a
+  # commit the destination moved past — after which a force-push built on that
+  # commit is an ordinary fast-forward and passes in silence.
+  (( authoritative )) || return 0
   bref="$(place_bookmark_ref "$branch")" || return 0
   seen="$(git rev-parse --verify --quiet --end-of-options "$bref" 2>/dev/null || true)"
   if [[ -z "$seen" ]]; then
-    (( authoritative )) && place_advance_bookmark "$branch" "$tip"
+    place_advance_bookmark "$branch" "$tip"
     return 0
   fi
   if [[ -z "$tip" ]]; then
-    if (( authoritative )); then
-      echo "place.sh: destination branch '$branch' no longer exists; the" \
-           "collection this clone last saw at $seen is gone from it" >&2
-    fi
+    echo "place.sh: destination branch '$branch' no longer exists; the" \
+         "collection this clone last saw at $seen is gone from it" >&2
     return 0
   fi
-  if [[ "$seen" != "$tip" ]] && ! git merge-base --is-ancestor "$seen" "$tip" 2>/dev/null; then
-    echo "place.sh: destination branch '$branch' was rewritten — the state this" \
-         "clone last saw ($seen) is not an ancestor of its current tip ($tip)." \
-         "Mutations published before the rewrite may no longer be there." >&2
+  if [[ "$seen" != "$tip" ]]; then
+    git merge-base --is-ancestor "$seen" "$tip" 2>/dev/null
+    rc=$?
+    if (( rc == 1 )); then
+      echo "place.sh: destination branch '$branch' was rewritten — the state this" \
+           "clone last saw ($seen) is not an ancestor of its current tip ($tip)." \
+           "Mutations published before the rewrite may no longer be there." >&2
+    elif (( rc != 0 )); then
+      # A missing object, usually this clone having gc'd it. Reporting a rewrite
+      # here would be a guess; reporting nothing would be the fail-open the rest
+      # of this function exists to avoid.
+      echo "place.sh: cannot tell whether destination branch '$branch' was" \
+           "rewritten — the state this clone last saw ($seen) is no longer" \
+           "readable here." >&2
+    fi
   fi
-  # Only a run that reached the destination's owner learned anything about it.
-  # A tip read off this clone's own branch while the remote was unreachable is
-  # this clone's state, not the destination's, and recording it as seen would
-  # make the next reachable run compare against a commit the destination never
-  # had — and call an ordinary tip a rewrite.
-  (( authoritative )) && place_advance_bookmark "$branch" "$tip"
+  place_advance_bookmark "$branch" "$tip"
   return 0
 }
 

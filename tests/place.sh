@@ -1330,6 +1330,42 @@ case_place_offline_read_does_not_rewind_the_bookmark() {
   run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
   assert_exit "offline read rc" 0 "$RC"
   assert_eq "an offline read leaves it alone" "$seen" "$(place_bookmark "$mine" jim/issues)"
+  # Nor may it raise the alarm. Comparing the bookmark against this clone's own
+  # branch ref, which only a publish advances, makes an ordinary teammate push
+  # look like a rewrite on a routine offline read.
+  assert_eq "and says nothing about a rewrite" "no" \
+    "$(grep -q 'rewritten' <<< "$ERR" && echo yes || echo no)"
+}
+
+# AC: the detector still fires after that sequence, which is the half that
+# matters. A bookmark rewound to an older commit makes a force-push built on
+# that commit an ordinary fast-forward — the disclosure goes quiet for exactly
+# the history rewrite it exists to catch (spec AC #12).
+case_place_rewrite_after_an_offline_read_is_still_detected() {
+  local bare mine theirs first forged
+  bare="$(place_bare place_bm_fn_bare)"
+  mine="$(place_clone "$bare" place_bm_fn_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_bm_fn_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  first="$(git -C "$bare" rev-parse --verify refs/heads/jim/issues)"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "b\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "online read rc" 0 "$RC"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "offline read rc" 0 "$RC"
+  git -C "$mine" remote set-url origin "$bare"
+  # A history rewrite that discards the teammate's commit while keeping the one
+  # before it — the shape that hides behind a rewound bookmark.
+  forged="$(git -C "$bare" commit-tree "$first^{tree}" -p "$first" -m forged)"
+  git -C "$bare" update-ref refs/heads/jim/issues "$forged"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit  "rc"                0            "$RC"
+  assert_match "discloses rewrite" 'rewritten'  "$ERR"
 }
 
 # ─── Section: Direct mode (destination is the checked-out branch) ────────────
@@ -1445,6 +1481,26 @@ place_here_seeded() {
   printf 'open\n' > "$repo/docs/issues/20260101-a.md"
   git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
   printf '%s' "$repo"
+}
+
+# AC: direct mode records what the destination was seen holding on the same
+# terms as the plumbing path. A commit whose push was rejected reached nobody,
+# so a bookmark advanced before the attempt names a commit only this clone has —
+# and every later read compares against it (spec AC #12).
+case_place_direct_rejected_push_does_not_advance_the_bookmark() {
+  local repo branch
+  repo="$(place_here place_direct_bm)"
+  branch="$(git -C "$repo" symbolic-ref --short HEAD)"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
+  mkdir -p "$repo/docs/issues"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit  "rc"                    0          "$RC"
+  assert_match "discloses the failure" 'not published' "$ERR"
+  assert_eq "the mutation is committed here" "hello" \
+    "$(git -C "$repo" show "HEAD:docs/issues/20260101-x.md" 2>/dev/null)"
+  assert_eq "but the bookmark records nothing seen" "" \
+    "$(place_bookmark "$repo" "$branch")"
 }
 
 # AC: the two-phase door runs the dirty guard as well, and it has to run at
