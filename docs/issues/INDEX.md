@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 111
-- Closed: 186
+- Open: 109
+- Closed: 188
 
 ## Issues
 
@@ -285,7 +285,7 @@
 - `20260807-routing-argument-classification-defects-in-the-entry-scripts` — Routing argument classification defects in the entry scripts · status: open · num: 277 · priority: medium · created: 2026-08-07T11:43:55Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-test-suite-wall-clock-exceeds-a-single-foreground-run` — Test suite wall-clock exceeds a single foreground run · status: open · num: 261 · priority: low · created: 2026-08-07T10:59:37Z · labels: [testing, performance] · origin: docs/specs/issue/011-issue-placement/plan.md
 - `20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag` — Auto-file scrub gate is fail-open on a forgotten flag · status: open · num: 278 · priority: high · created: 2026-08-08T18:39:29Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-blueprint-emitter-face-omits-the-auto-flag-and-exit-code-4` — Blueprint emitter face omits the auto flag and exit code 4 · status: open · num: 279 · priority: medium · created: 2026-08-08T18:49:44Z · labels: [blueprint, contract] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-blueprint-emitter-face-omits-the-auto-flag-and-exit-code-4` — Blueprint emitter face omits the auto flag and exit code 4 · status: closed · num: 279 · priority: medium · created: 2026-08-08T18:49:44Z · labels: [blueprint, contract] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-cmd-begin-flattens-a-containment-refusal-to-an-io-failure` — cmd_begin flattens a containment refusal to an IO failure · status: closed · num: 280 · priority: low · created: 2026-08-08T18:49:45Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-commit-direct-publishes-uncommitted-work-with-no-dirty-guard` — commit direct publishes uncommitted work with no dirty guard · status: closed · num: 281 · priority: medium · created: 2026-08-08T18:39:49Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-deferred-mutation-lost-when-the-resuming-push-loses-a-race` — Deferred mutation lost when the resuming push loses a race · status: closed · num: 282 · priority: critical · created: 2026-08-08T18:39:28Z · labels: [issue, placement, data-loss] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -302,7 +302,7 @@
 - `20260808-placement-test-gaps-after-the-repair-pass` — Placement test gaps after the repair pass · status: closed · num: 293 · priority: medium · created: 2026-08-08T18:40:10Z · labels: [testing, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` — render.sh swallows a regeneration failure and serves a stale index · status: open · num: 294 · priority: medium · created: 2026-08-08T18:49:43Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: closed · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-tests-place-sh-sits-outside-every-declared-territory` — tests/place.sh sits outside every declared territory · status: open · num: 296 · priority: medium · created: 2026-08-08T18:40:09Z · labels: [blueprint, territory] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-tests-place-sh-sits-outside-every-declared-territory` — tests/place.sh sits outside every declared territory · status: closed · num: 296 · priority: medium · created: 2026-08-08T18:40:09Z · labels: [blueprint, territory] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` — Compute checkout-dependent index warnings at read time · status: open · num: P-20260811-compute-checkout-dependent-index-warnings-at-read-time · priority: medium · created: 2026-08-11T01:31:36Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/remediation.md
 
 ## Graph

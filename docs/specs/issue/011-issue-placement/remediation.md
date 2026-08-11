@@ -15,7 +15,7 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8–WP10 complete; WP7 outstanding.** Twenty-two commits over
+**WP0–WP6 and WP8–WP11 complete; WP7 outstanding.** Twenty-five commits over
 `ae4b877..HEAD`. Suite **1284 → 1308 green**.
 
 | WP | State | Closes |
@@ -30,9 +30,10 @@ meets it, and what is deliberately left tracked.*
 | WP8 direct-mode arm | done | #281, #283, #268, #295 (both halves) |
 | WP9 analyst + routing | done | #266; #277 **items 1–3 only** |
 | WP10 origin lint | done | #273 |
+| WP11 declarations | done | #279, #296 |
 | WP7 close out | **outstanding** | — |
 
-Seventeen issues are closed in the collection. Two stay open, each narrowed to
+Nineteen issues are closed in the collection. Two stay open, each narrowed to
 the half that carries a decision:
 
 - **#278** — the three false-prose sites are corrected; the polarity is not
@@ -153,9 +154,9 @@ Strike it if you disagree; nothing else depends on it.
 - **Likely verdict:** `minor-drift` rather than `aligned`. That is the honest
   outcome of this bar and should not be argued away at review time.
 
-*This section describes the bar as set. WP8, WP9 and WP10 were taken after it on
-the developer's approval and moved AC 3, 5, 11 and 12 past what it promised — see
-**Status**.*
+*This section describes the bar as set. WP8–WP11 were taken after it on the
+developer's approval; they moved AC 3, 5, 11 and 12 past what it promised and
+cleared the remaining contract violation — see **Status**.*
 
 ## Work packages
 
@@ -493,6 +494,34 @@ read time — where a checkout-dependent fact belongs — is filed as a follow-o
 because it changes the stored artifact for projects with no placement at all,
 which no review finding asked for.
 
+### WP11 — The two declarations *(added mid-flight)*
+
+**Closes #279 and #296.** Both are declaration edits with no decision content,
+taken through the blueprint surface at its two tiers rather than by hand.
+
+**#279, group tier.** The `new.sh` emitter face closed with "the file lands
+wherever `issue_placement` directs" unqualified, while the emitter exits 4
+having written nothing when `--auto` meets an unacknowledged placement. The
+entry now records the flag, the code, and that the flag is a declaration the
+emitter cannot verify — so a consumer binding this entry alone is not told a
+guarantee the code does not give. Graded a **weakening of a Provides entry**:
+the declared guarantee narrows, the entry declares no criticality so it grades
+`critical`/`high`, and it was gated rather than written. Blast radius `sdlc` and
+`blueprint`, read from the graph's edge table since no `blast radius:`
+annotation exists to consume. **This clears the last contract violation.**
+
+**#296, project tier.** `tests/place.sh` — the group's largest test file — was
+in no group's declared territory, the only unclaimed test file of sixteen. Added
+to the `issue` territory; `tests/` no longer appears in `health`'s
+`UNCOVERED_DIR` output at all, which is the mechanical confirmation.
+
+Three faces were considered and left alone, each for a stated reason:
+`render.sh`'s "regenerates only when stale" is the carried
+`staleness-gated-reads` decision and amending it would settle a fork not taken;
+`index.sh`'s face describes parse discipline and atomicity, which the origin-lint
+gate does not falsify; and the `insights-capability-boundary` invariant was
+always the right rule — the code now honors it better.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
@@ -517,8 +546,6 @@ was taken as WP8 and is gone from the list.
 | #291, #294 | The group has two read-failure postures and chose neither. One decision, not two fixes — see *Open decisions*. |
 | #288 | `migrate.sh`'s non-transactional commit phase (deliberate and documented) plus `place_snapshot`'s tmp-namespace publishing. |
 | #286 (low) | Insights empty-collection step has no granted capability. |
-| #279 | Blueprint emitter face omits `--auto`/rc 4. Judged *not* breaking — a declaration-only consumer can never receive rc 4. Declaration edit; rides the next blueprint pass. |
-| #296 | `tests/place.sh` sits outside every declared territory — the only unclaimed test file in the repo. One `BLUEPRINT.md` line. |
 | #269 (low) | `place.sh` conformance and hygiene, incl. the unenforced nameref prefix convention. |
 
 ## Open decisions carried forward

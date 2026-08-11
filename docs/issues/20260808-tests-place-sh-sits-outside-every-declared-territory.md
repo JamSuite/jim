@@ -2,7 +2,7 @@
 id: 20260808-tests-place-sh-sits-outside-every-declared-territory
 num: 296
 title: "tests/place.sh sits outside every declared territory"
-status: open
+status: closed
 priority: medium
 labels: [blueprint, territory]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:40:09Z
-updated: 2026-08-08T18:40:09Z
+updated: 2026-08-11T06:41:59Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
