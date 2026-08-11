@@ -1238,6 +1238,27 @@ place_message() {
   fi
 }
 
+# place_release_held <file> <published>
+#   Hand back the stdout a wrapped write produced. When the publish landed it is
+#   the command's own output, byte for byte, on the stream it was written to.
+#
+#   When it did not, the same bytes go to stderr under a marker instead. They
+#   are not discarded: the emitter's line names an ordinal drawn from an
+#   append-only registry, which is spent whether or not the publish succeeded,
+#   so dropping the line would destroy the only record of which one was burned.
+#   Moving it to stderr keeps that record while taking it off the stream a
+#   caller parses for a path it can open.
+place_release_held() {
+  local file="$1" published="$2"
+  [[ -s "$file" ]] || return 0
+  if (( published )); then
+    cat -- "$file"
+  else
+    echo "place.sh: not published — the wrapped command reported:" >&2
+    cat -- "$file" >&2
+  fi
+}
+
 # ─── Section: Verbs ──────────────────────────────────────────────────────────
 
 # cmd_mode [--place-token <tok>] — the self-routing decision, and the only place
@@ -1375,13 +1396,33 @@ cmd_run() {
   # The prefix travels with the token so a wrapped command can report where its
   # work will actually live, rather than the temp directory it composed it in.
   # It names a location only — routing turns on the token pair alone.
-  JIM_PLACE_TOKEN="$PLACE_TOKEN" JIM_PLACE_PREFIX="$prefix" "${PLACE_CMD[@]}" || rc=$?
-  (( rc == 0 )) || return "$rc"
-  (( read_only == 0 )) || return "$stale"
-  place_reindex "$PLACE_COLL" || return 1
-  place_snapshot "$PLACE_COLL" after || return 1
-  place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
-                       "$remote" "$tier" "$PLACE_WORK_TIP" "$tip" "$ref_old" || return $?
+  #
+  # That is also why the output is held rather than passed straight through: it
+  # describes the destination, and on this arm the destination is not written
+  # until the publish below succeeds. The temp collection the command wrote into
+  # is discarded with the run, so a caller handed a path from a publish that
+  # failed holds one that exists nowhere.
+  JIM_PLACE_TOKEN="$PLACE_TOKEN" JIM_PLACE_PREFIX="$prefix" "${PLACE_CMD[@]}" \
+    > "$PLACE_WORK/held" || rc=$?
+  if (( rc != 0 )); then
+    place_release_held "$PLACE_WORK/held" 0
+    return "$rc"
+  fi
+  if (( read_only )); then
+    place_release_held "$PLACE_WORK/held" 1
+    return "$stale"
+  fi
+  local prc=0
+  if ! place_reindex "$PLACE_COLL"; then
+    prc=1
+  elif ! place_snapshot "$PLACE_COLL" after; then
+    prc=1
+  else
+    place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
+                         "$remote" "$tier" "$PLACE_WORK_TIP" "$tip" "$ref_old" || prc=$?
+  fi
+  place_release_held "$PLACE_WORK/held" "$(( prc == 0 ))"
+  (( prc == 0 )) || return "$prc"
   if (( unreachable )); then
     echo "place.sh: remote '$remote' is unreachable; the mutation is committed" \
          "locally on '$dest' and publication is deferred until the next" \

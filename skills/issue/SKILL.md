@@ -225,7 +225,7 @@ Empty batches are normal — an honest 0-candidate run is the right output when 
 **Writing a candidate — the emitter.** File each surviving candidate through the single issue-file emitter, `skills/issue/scripts/new.sh`, so the spec-017 template is materialized in exactly one place. For each candidate:
 
 1. Write the candidate **body** to a temp file with the **Write tool** — never inline untrusted body into a shell command (security 025 Finding 5).
-2. Call the emitter (it resolves slug/num/timestamps, validates the id, encodes the fields, writes atomically, and prints `<slug>\t<path>`). Add `--auto` when filing without a human having reviewed the batch — see the auto-file rule below, where omitting it is what publishes:
+2. Call the emitter (it resolves slug/num/timestamps, validates the id, encodes the fields, writes atomically, and prints `<slug>\t<path>`). A printed line means the file is at that path: under a branch placement the emitter writes into a staging copy and the line is held until the publish lands, so a publish that fails prints nothing on stdout and reports the line on stderr marked `not published`. Check the exit status — **3** is a placement conflict, and on it the ordinal is spent but nothing was filed. Add `--auto` when filing without a human having reviewed the batch — see the auto-file rule below, where omitting it is what publishes:
    ```
    bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh [--auto] \
      --title "<title>" --priority <p> --labels "<csv>" --origin "<origin>" --body-file "<tmp>"

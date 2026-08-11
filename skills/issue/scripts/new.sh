@@ -43,7 +43,11 @@
 #   0  success
 #   1  validation or IO failure (bad priority, invalid id, unreadable body, write error)
 #   2  usage error (unknown/missing flag)
-#   3  placement conflict, forwarded from place.sh
+#   3  placement conflict, forwarded from place.sh. Nothing was filed at the
+#      destination, and stdout carries no path — place.sh holds this script's
+#      output until the publish lands and reports it on stderr otherwise. The
+#      identity is spent either way: the allocator is append-only, so a re-run
+#      files under a new ordinal rather than reclaiming this one.
 #   4  --auto refused: the batch would publish to an unacknowledged placement.
 #      The caller's remedy is to show the batch for review and file it without
 #      --auto, so this is a redirection rather than a failure.

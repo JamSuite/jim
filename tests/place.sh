@@ -1003,6 +1003,71 @@ case_place_deferred_edit_refuses_a_concurrent_edit() {
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
 }
 
+# AC: a wrapped write's stdout is a statement about the destination — the
+# emitter prints the slug and destination-relative path an issue was filed at —
+# so it is withheld until the publish that makes it true has landed. On a
+# refusal it must not reach stdout, where a caller would read it as a file it
+# can go open (spec AC #3).
+case_place_write_withholds_stdout_from_a_refused_publish() {
+  local bare mine theirs
+  bare="$(place_bare place_stdout_refused_bare)"
+  mine="$(place_clone "$bare" place_stdout_refused_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_stdout_refused_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb close --id 20260101-a -- \
+    sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "offline rc" 0 "$RC"
+  run_place_in "$theirs" run --verb edit --id 20260101-a -- \
+    sh -c 'printf "theirs\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "their edit landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$bare"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "20260101-c\t%s/20260101-c.md\n" "$JIM_PLACE_PREFIX"
+           printf "mine\n" > "$1/20260101-c.md"' _ '{}'
+  assert_exit "the publish is refused" 3 "$RC"
+  if printf '%s\n' "$OUT" | grep -q '20260101-c'; then
+    CURRENT_FAILED=1
+    echo "    [a path nothing landed at must not reach stdout] [$OUT]"
+  fi
+  # Kept rather than dropped: the ordinal the line names was drawn from an
+  # append-only registry and is spent whether or not the publish landed, so
+  # discarding the line would lose the only record of which one was burned.
+  assert_match "the line is kept on stderr" '20260101-c\.md' "$ERR"
+  assert_match "and marked unpublished"     'not published'  "$ERR"
+}
+
+# AC: and it does reach stdout once the publish lands, unchanged. Without this
+# the case above passes against a run that discards every wrapped command's
+# output.
+case_place_write_emits_stdout_once_the_publish_lands() {
+  local repo
+  repo="$(place_repo place_stdout_landed 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues 'INDEX.md=# Issues Index'
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "20260101-a\t%s/20260101-a.md\n" "$JIM_PLACE_PREFIX"
+           printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit  "rc"                            0                            "$RC"
+  assert_match "the wrapped line reaches stdout" '20260101-a\.md'           "$OUT"
+  assert_match "naming the destination, not the temp dir" 'docs/issues/'    "$OUT"
+}
+
+# AC: a read publishes nothing, so there is nothing to withhold — its output is
+# handed back as the command produced it.
+case_place_read_emits_stdout_unheld() {
+  local repo
+  repo="$(place_repo place_stdout_read 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues \
+    "20260101-a.md=$(place_issue_file 20260101-a open)" \
+    'INDEX.md=# Issues Index'
+  run_place_in "$repo" run --read --verb reindex -- \
+    sh -c 'printf "read-side output\n"' _ '{}'
+  assert_exit  "rc"                    0                   "$RC"
+  assert_match "the read's own output" 'read-side output'  "$OUT"
+}
+
 # AC: the two-phase flow discloses a deferral too. It is the edit path with no
 # allocator ahead of it to fail first, so silence there is the whole exposure
 # (spec AC #7).
