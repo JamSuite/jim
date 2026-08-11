@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:29Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -65,3 +65,11 @@ lives, rather than the retry-only path.
 A case where the clone holds a deferred edit to a file the teammate has already
 edited and published. Expect rc 3 with the path named, and the teammate's content
 intact at the destination.
+
+## Resolution (2026-08-11)
+
+Fixed in `867ec04`. The conflict rule no longer lives on the retry path: every
+attempt grafts whenever the base and the tip being landed onto are different
+commits, which is true of the diverged case on its first attempt. Covered by
+`case_place_deferred_edit_refuses_a_concurrent_edit`, which expects rc 3 with the
+path named and the teammate's content intact.

@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:23Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -53,3 +53,12 @@ place_materialize "$tip" "$prefix" "$handle/collection" || {
 
 Add a `begin`-against-a-crafted-tree case; the traversal fixture already exists
 and is only driven through `run`.
+
+## Resolution (2026-08-11)
+
+Fixed in `8ffdc5b`. `place_materialize`'s status is captured with
+`|| { rc=$?; … }` rather than `if ! …; then $?`, which inside the negated
+pipeline is always 0 — so a Critical containment refusal reached `begin`'s
+caller as success with empty stdout. Covered by
+`case_place_begin_refuses_an_uncontained_tree_entry`, which drives the existing
+traversal fixture through `begin` instead of only through `run`.

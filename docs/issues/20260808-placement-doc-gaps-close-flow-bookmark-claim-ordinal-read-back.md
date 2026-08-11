@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:40:08Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -75,3 +75,15 @@ Fix 1 and 2 as straightforward edits (ARCHITECTURE.md via `/jim:arch`). For 3,
 either give §6 a `place.sh begin --read` arm or add `num` to the emitter's
 stdout — the latter removes the read-back entirely and is the smaller contract
 change than it looks, since the line is already `<slug>\t<path>`.
+
+## Resolution (2026-08-11)
+
+Fixed in `e354ae4`. WORKFLOW.md's close instruction is qualified for a placement
+and its skills tree lists all seven scripts; § 6 says what to do about an ordinal
+that cannot be read back under a placement, and why neither re-running the
+emitter nor hand-composing is the answer; the count of places that must know
+about placement is corrected from two to four. The ARCHITECTURE.md bookmark claim
+was corrected in the same pass, through `/jim:arch`.
+
+A docsurfaces case now guards WORKFLOW.md's close instruction, which the existing
+sweep did not reach.

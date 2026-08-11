@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:55Z
-updated: 2026-08-07T11:43:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -69,3 +69,20 @@ working-tree copy would be read instead, silently reporting the wrong ordinal.
 Fix 1-3 in the routing blocks; document rc 3 in `new.sh`'s header; and either
 defer the stdout line until after publication or state in §6/§7a that the path
 is provisional until the command's exit status is checked.
+
+## Progress (2026-08-11)
+
+**Items 1–3 fixed** in `b467b36`. Reconcile's routing loop skips a flag's value,
+so `-c <cfg>` is no longer mistaken for the collection; a `show` with no id is
+not routed, so the appended directory cannot land in the id slot; and a lone
+`list` argument is treated as a directory only if it is one — with the consumer
+refusing a token that is neither filter nor collection, since the stray directory
+was reachable with no placement configured too.
+
+**Item 4 remains open** and is the reason this issue is not closed. The emitter
+prints `<slug>\t<path>` from inside the wrapped command, before a publish that
+can still fail, so a caller can hold a line naming a destination path where
+nothing landed — with the ordinal already burned in the append-only registry.
+That is a contract-timing decision rather than a classification defect, and it is
+not a one-liner. `new.sh`'s EXIT CODES header also still documents only 0/1/2
+while the `exec` propagates rc 3.

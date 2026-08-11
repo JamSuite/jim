@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:51Z
-updated: 2026-08-10T23:45:41Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -59,3 +59,16 @@ developers actually work on (e.g. `main`).
 fast-forward true negative only. Nothing covers the retry path, direct mode, or
 the rewind shape (a force-push to an *ancestor* of the seen tip — the ancestry
 direction is correct in the code, but unexercised).
+
+## Resolution (2026-08-11)
+
+Fixed in two halves. The retry loop checks the re-read tip for a rewrite
+(`867ec04`), which it could previously graft onto and thereby erase the evidence
+of. Direct mode compares HEAD against the bookmark (`37df7c6`) — no fetch is
+needed, because on that arm HEAD *is* the destination's tip — using a
+disclose-only form split out of `place_check_rewrite`, so the check does not also
+advance a bookmark whose meaning is "seen published".
+
+The direct half was sequenced behind the bookmark discipline and was closed once
+that settled. This issue was briefly marked closed when only the retry half had
+landed; that was corrected.

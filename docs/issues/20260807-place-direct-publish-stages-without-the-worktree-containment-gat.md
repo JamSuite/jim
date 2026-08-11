@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:56Z
-updated: 2026-08-10T23:45:41Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -44,3 +44,11 @@ remaining stop.
 Three lines, mirroring `cmd_commit_map`: resolve the staging target with
 `realpath -m`, compare against `git rev-parse --show-toplevel`, refuse if it
 does not land inside.
+
+## Resolution (2026-08-11)
+
+Fixed in `37df7c6`. `place_worktree_contained` resolves the configured
+collection against `git rev-parse --show-toplevel` and refuses a path landing
+outside it — before the wrapped command as well as before `git add`, so a
+refused run writes nothing anywhere rather than only failing to stage. Covered
+by `case_place_direct_refuses_a_collection_outside_the_worktree`.

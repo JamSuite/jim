@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:29Z
-updated: 2026-08-08T18:39:29Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -77,3 +77,17 @@ Two parts, separable:
 
 The compensating control today is `tests/docsurfaces.sh:191-205`, whose binding
 is weaker than it looks (see the related issue on the sweep).
+
+## Progress (2026-08-11)
+
+**The prose half is fixed** in `457c8d6`. `new.sh`, `skills/issue/SKILL.md` and
+`ARCHITECTURE.md` no longer claim that a caller forgetting `--auto` "gets the
+interactive bargain rather than a silent publish, which is the safe direction to
+fail". All three now state that an absent flag reads as a reviewed batch, so
+omitting it on a quiet path publishes.
+
+**The polarity decision remains open** and is the reason this issue is not
+closed. The genuinely fail-closed shape is the inverse — treat every filing as
+unreviewed and have the interactive path opt out with `--reviewed` — so a
+forgotten flag refuses instead of publishing. The cost is that every interactive
+caller, including `/jim:issue add`, then carries a flag. Deliberately not taken.

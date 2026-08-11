@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:30Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -71,3 +71,10 @@ racer completes entirely inside the wrapped command, so both reads happen after
 it. A case that interleaves between the two reads is hard to write
 deterministically; asserting the read order structurally, or reading the ref
 once and deriving the tip from it, may be the more testable fix.
+
+## Resolution (2026-08-11)
+
+Fixed in `867ec04`. The compare-and-swap old value is read before the tip it is
+paired with at both retry sites, matching the initial capture sites, so a racer
+landing between the two reads makes the swap fail rather than match — a spurious
+refusal costs a retry where a spurious match costs the racer's mutation.

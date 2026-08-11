@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:25Z
-updated: 2026-08-11T00:32:51Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -49,3 +49,13 @@ Parameterize the analyst on the directory it is handed rather than the literal
 `docs/issues/*.md`, and confirm its capability grant reaches a path under the
 git dir. Add a case asserting the analyst's body reads resolve against the
 materialized directory.
+
+## Resolution (2026-08-11)
+
+Fixed in `b0547cd`. `agents/issue-analyst.md` composes body paths from the
+directory it is handed rather than from a literal `docs/issues/*.md`, and says
+why reading a collection path of its own would pair one collection's roster with
+another's bodies. The secondary capability question resolved by inspection: the
+analyst's `Read` grant is ungated and already reaches a path under the git dir,
+so nothing needed widening. Guarded by
+`case_docsurfaces_analyst_reads_the_directory_it_is_handed`.

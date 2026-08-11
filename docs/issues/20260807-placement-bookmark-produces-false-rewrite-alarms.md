@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:54Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -57,3 +57,16 @@ it after a non-fetch.
 Separately: `merge-base --is-ancestor` exits 128 on a missing object, which the
 code reads as "not an ancestor" and reports as a rewrite. Distinguishing it is
 one `rc=$?; (( rc == 1 ))` away.
+
+## Resolution (2026-08-11)
+
+Fixed in `c4e1c89`. A run that reached nobody now neither compares against the
+bookmark nor advances it — one early return rather than a guard on each advance,
+since the scattered form is what let the comparison keep running after the
+recording stopped. Direct mode advances after the push it succeeded at rather
+than before the attempt. An ancestry check that could not run (a missing object,
+exit 128) is distinguished from one that answered no.
+
+The rewind half was already closed before this change, so only the false alarm
+was live; the guard is now structural, and a case goes silent if the rewind is
+reintroduced.

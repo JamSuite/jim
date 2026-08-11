@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:49Z
-updated: 2026-08-10T23:45:41Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -61,3 +61,11 @@ of what `begin` established.
 
 No case covers `issues`-path drift across the two-phase boundary.
 `tests/place.sh:1262-1272` covers only the `branch` sentinel.
+
+## Resolution (2026-08-11)
+
+Fixed in `37df7c6`. Having a handle to read from is what lets the arm stop
+re-resolving configuration: the collection path is recorded at `begin` and
+`commit` refuses a mismatch, rather than publishing wherever the configuration
+now points. Covered by `case_place_direct_commit_refuses_a_moved_collection`,
+which also asserts no empty collection is created at the new path.

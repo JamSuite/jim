@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:49:45Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -69,3 +69,8 @@ status of the negated pipeline and is always 0.
 No case drives `begin` against a hostile tree at all. `place_seed_traversal`
 (`tests/place.sh:89-107`) is exercised only through `run`, which is why both
 defects are uncaught.
+
+## Resolution (2026-08-11)
+
+Fixed in `8ffdc5b`, alongside its sibling on the same path. Both guards in
+`cmd_begin` return the status they were refused with, matching `cmd_run`.

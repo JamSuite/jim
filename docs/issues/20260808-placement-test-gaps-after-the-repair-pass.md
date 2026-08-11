@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:40:10Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -91,3 +91,13 @@ in `tests/issues.sh` (`:3071`, `:3140`) still lack `--verify`.
 sibling paths at either level — harmless today because the destination is always
 an orphan carrying the collection alone, wrong the moment a case points
 `issue_placement` at a branch with other content.
+
+## Resolution (2026-08-11)
+
+Fixed in `e7568ca` and `35033e7`. The three cases that could not fail for the
+reason they named were repaired, bookmark-value assertions added — deleting
+either of the two conditions keeping the bookmark honest previously left the
+entire suite green — and the fixture hygiene items closed, including the
+stale-index fixture that rebuilt each tree level from its single known child.
+
+Each addition was checked by neutering what it guards and watching it go red.

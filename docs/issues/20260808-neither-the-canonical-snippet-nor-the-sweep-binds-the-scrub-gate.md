@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:40:07Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -79,3 +79,13 @@ guard still passes, and that skill leaves the sweep silently.
 `skills/meta-skill/SKILL.md:98` — the checklist a new candidate-batch skill is
 authored from — names the fileable bar and the emitter but says nothing about
 `--auto` or rc 4, so a future auto-filing skill is caught only after the fact.
+
+## Resolution (2026-08-11)
+
+Fixed in `457c8d6`. The canonical § 7a snippet carries `[--auto]`, and the
+docsurfaces sweep is scoped to each skill's auto-file branch rather than to its
+file — so a `--auto` sitting on the interactive call no longer satisfies it. The
+sweep also checks the fallback path it redirects to exists, and counts against
+the real consumer total rather than one below it. Verify's restatement was
+brought into the same shape as the other eight, which is what makes the branch
+mechanically findable.

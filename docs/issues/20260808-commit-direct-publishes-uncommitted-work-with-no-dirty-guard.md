@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:49Z
-updated: 2026-08-10T23:45:41Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -68,3 +68,13 @@ injected `commit direct` publishing work the developer never approved.
 
 The read half of this was fixed by the `direct-read` token; this is the
 remaining write half.
+
+## Resolution (2026-08-11)
+
+Fixed in `37df7c6`. A write handle on the checked-out arm is a real handle —
+unguessable and issued only by `begin` — and the bare literal `direct` is
+refused. The dirty guard genuinely cannot be re-run at commit time, since by then
+the mutation's own edits are the dirty state, so the handle's existence *is* the
+evidence that `begin` ran. Covered by
+`case_place_direct_commit_refuses_the_bare_literal`, which asserts a
+half-finished private note is neither committed nor published.

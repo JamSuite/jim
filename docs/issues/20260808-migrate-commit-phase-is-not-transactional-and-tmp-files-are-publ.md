@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:49:42Z
-updated: 2026-08-11T07:36:27Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -81,3 +81,21 @@ mid-flight tmp in direct mode.
   dependent on every emitter's cleanup being crash-proof.
 - `migrate.sh`: interleave the rename with the delete per file, or stage into a
   sibling directory and swap — plus a fault-injection case for the commit loop.
+
+## Resolution (2026-08-11)
+
+Fixed in `cfe4e5a`. Staged files are renamed into place before any old name is
+retired, so the worst a mid-commit failure can leave is an issue present under
+both names rather than under neither. Old names are retired in a second pass
+that skips any name another issue was just renamed onto — a chain or swap makes
+one file's old name another's new one, and the delete-first ordering existed to
+handle exactly that.
+
+Separately, the collection snapshot excludes the dotfile namespace its atomic
+writers stage through; it was the one enumerator admitting it and the one whose
+output becomes tree entries.
+
+The chain guard is defensive and unpinned: under the prefix migration a chain
+appears unreachable, since a re-derived target conforms by construction and the
+collision resolver discriminates instead. It is kept because the rename-first
+ordering depends on it for correctness under any map.

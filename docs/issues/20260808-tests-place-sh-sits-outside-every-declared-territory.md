@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:40:09Z
-updated: 2026-08-11T06:41:59Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -52,3 +52,10 @@ scaffolding.
 
 Add `tests/place.sh` to the `issue` group's territory in `BLUEPRINT.md`, through
 the blueprint surface rather than by hand.
+
+## Resolution (2026-08-11)
+
+Fixed in `a2e3490`. `tests/place.sh` is inside the `issue` group's declared
+territory in the project map, written through the blueprint surface. Confirmed
+mechanically: `tests/` no longer appears in the health verb's `UNCOVERED_DIR`
+output at all.

@@ -11,7 +11,7 @@ relations:
   related-to: [20260811-compute-checkout-dependent-index-warnings-at-read-time]
   duplicates: []
 created: 2026-08-07T11:43:57Z
-updated: 2026-08-11T01:32:24Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -57,3 +57,25 @@ collection is materialized (the invoking CWD is not the collection's branch, so
 the check has no ground truth), or resolve origins against the destination
 branch's tree rather than the caller's checkout. Then fix the test to use a
 genuinely dangling origin.
+
+## Resolution (2026-08-11)
+
+Fixed in `4151efe` by skipping the lint when the collection is placed on a
+branch, with the skip stated in the warnings block rather than left to be
+inferred from absence.
+
+Resolving origins against the destination's tree was rejected on the merits, not
+deferred: a dedicated issues branch is an orphan carrying only the collection, so
+every path-shaped origin fails to resolve there by construction — turning a
+flapping warning set into a permanently full one, and worst for the
+push-protected-`main` case the spec exists to serve. It would also put git inside
+`index.sh`, which is filesystem-only.
+
+The gate reads from configuration, not from whether the run materialized
+anything: a checked-out destination is linted from its own branch and an absent
+one from somebody else's, so keying on the arm would keep the flapping and only
+move the seam.
+
+This stops the wrong answer from being published; it does not restore the signal.
+Computing it per reader at read time, where a checkout-dependent fact belongs, is
+filed as [[20260811-compute-checkout-dependent-index-warnings-at-read-time]].

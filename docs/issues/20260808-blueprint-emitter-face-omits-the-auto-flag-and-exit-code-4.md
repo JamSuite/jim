@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:49:44Z
-updated: 2026-08-11T06:41:59Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -74,3 +74,16 @@ Through the blueprint surface, not by hand:
    the rc-4 no-write refusal. Declaration edit only; no code change implied.
 2. Consider an invariant for the gate, so the property has a verification route
    rather than only a doc-surface test.
+
+## Resolution (2026-08-11)
+
+Fixed in `540bdf4`. The `new.sh` emitter face records `--auto`, exit 4, and that
+the flag is a caller-supplied declaration the emitter cannot verify — so a
+consumer binding this entry alone is no longer told a guarantee the code does not
+give. The reason-codes clause is qualified for the refusal message, which names
+the configured destination.
+
+Graded a weakening of a Provides entry: the declared guarantee narrows, the entry
+declares no criticality so it grades critical/high, and it was gated rather than
+auto-written. Blast radius `sdlc` and `blueprint`. This cleared the last
+provider-side contract violation.

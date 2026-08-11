@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:28Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -78,3 +78,15 @@ commit loses a race drops the deferred content identically.
 No case drives `ahead` + a lost push race. The existing deferral cases
 (`tests/place.sh:765`, `:794`) cover reconnect and divergence but never a race
 during the resuming push.
+
+## Resolution (2026-08-11)
+
+Fixed in `867ec04`. The changed set is measured from the common ancestor of what
+this clone was working on and what the mutation is landing onto, recomputed
+whenever the tip moves — so deferred content stops being the base and becomes
+part of what is carried the moment a lost race re-parents the run onto a tip
+that never had it. Covered by `case_place_deferred_mutation_survives_a_lost_race`.
+
+Worth recording for anyone reading the sibling issues: routing the diverged case
+through `place_regraft` does **not** close this one. Reverting only that change
+leaves the lost-race case green. The base re-resolution is what closes it.

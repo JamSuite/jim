@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:48Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -60,3 +60,10 @@ the work-tip collection.
 `tests/place.sh:794` asserts the three issue files survive but never inspects
 the published `INDEX.md`. The assertion pattern at `:884-886` (index knows both
 sides) is what would have caught it.
+
+## Resolution (2026-08-11)
+
+Fixed in `867ec04`, as a consequence of the diverged case going through
+`place_regraft` on attempt 1 — which excludes `INDEX.md` from the graft and
+regenerates it over the merged result. Pinned by an index assertion added to
+`case_place_deferred_mutation_survives_a_moved_destination`.

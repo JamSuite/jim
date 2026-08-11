@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:53Z
-updated: 2026-08-10T23:00:55Z
+updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -52,3 +52,12 @@ the old tip: unchanged means the push failed for a reason that is not
 contention, which deserves a different message and no further retries. Capture
 git's stderr rather than discarding it, and give `place_commit_changes` a way to
 report a mid-loop tier degradation back to its caller.
+
+## Resolution (2026-08-11)
+
+Fixed in `867ec04`. A rejection from a destination that has not moved is named
+as something retrying cannot fix, and no further attempts are made against it. A
+remote lost mid-publish is disclosed rather than degrading to the local tier in
+silence — the deferral notices before the loop key on state fixed before it, so
+that path said nothing. Covered by a pre-receive-hook case and a mid-run
+remote-drop case.
