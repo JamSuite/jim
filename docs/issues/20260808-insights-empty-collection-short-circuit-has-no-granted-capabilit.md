@@ -2,7 +2,7 @@
 id: 20260808-insights-empty-collection-short-circuit-has-no-granted-capabilit
 num: 286
 title: "Insights empty-collection short-circuit has no granted capability"
-status: open
+status: closed
 priority: low
 labels: [issue, invariant]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:49:44Z
-updated: 2026-08-08T18:49:44Z
+updated: 2026-08-11T12:20:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -70,3 +70,21 @@ Cheapest options, in order:
 A separate open issue covers the analyst reading a literal `docs/issues/*.md`
 path under a placement (#266). This one is the main-agent side of the same
 invariant.
+
+## Resolution (2026-08-11)
+
+Taken as option 1 — the short-circuit is dropped. The step is gone from
+`skills/issue/SKILL.md` § 8, the remaining steps renumber, and the handle-abort
+instruction no longer points at it.
+
+The analyst covers the case: it returns a one-line note when the collection has
+no open issues. So the short-circuit bought nothing while asking the main agent
+to answer a question it has no granted way to answer — `Glob`/`LS`/`Bash(ls *)`
+are all ungranted, leaving a `Read` of `INDEX.md`, which the next step forbids
+and the checklist checks against.
+
+The reason for dropping rather than routing through `render.sh list` is recorded
+in the step itself: a check that can only be performed by the party the boundary
+already trusts belongs to that party, not to a granted substitute for it. This
+is the `insights-capability-boundary` invariant's instruction-enforced half, and
+removing the pressure is worth more than answering the question.

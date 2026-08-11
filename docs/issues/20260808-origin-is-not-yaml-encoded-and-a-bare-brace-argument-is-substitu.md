@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:49:41Z
-updated: 2026-08-08T18:49:41Z
+updated: 2026-08-11T12:20:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -83,3 +83,34 @@ not value alone. That removes the class rather than shrinking it again.
 
 `tests/place.sh:271-288` covers `'Fix the {} placeholder'`, `'a{token}b'` and
 `'map[string]interface{}'`. No case passes an argument that IS exactly `{}`.
+
+## Progress (2026-08-11)
+
+**Part 2 is fixed** in `00f84dc`. `place_substitute` now reads a placeholder by
+position as well as value: `{}` counts as one only as the operand of `--dir` or
+as the trailing argument, and `{token}` only after `--place-token` or trailing.
+Every entry script already builds its re-exec in one of those two shapes, so
+nothing travelling through the middle of an argv can reach a marker position —
+which removes the class rather than shrinking it a second time, as the proposed
+action asked.
+
+Reproduced before fixing, and it was worse than "low likelihood, permanent
+consequence" suggests: `new.sh --title '{}'` under a placement filed at **rc 0**
+with the slug `20260811-tmp-tmp-<rand>-collection` and wrote that row to the
+append-only registry, where no later run can reclaim it. It now refuses, because
+the title reaches slug derivation verbatim and `{}` yields an empty slug — the
+right outcome for a degenerate title, and it burns no ordinal.
+
+Pinned in `tests/place.sh` by that exact invocation, asserting the temp path
+reaches neither stdout nor the registry log. Nine fixtures that passed a
+placeholder mid-argv were moved to the trailing position, which is the shape the
+contract now describes.
+
+**Part 1 remains open** and is the reason this issue is not closed: whether to
+YAML-encode `--origin` or narrow `untrusted-body-never-shell` to the documented
+scope. One fact for whoever takes it, which this issue does not currently
+record: `new.sh` contradicts itself. Its file header says the encoding exists
+because `--title`/`--labels`/`--origin` are untrusted; the implementation
+comment at the emit site says origin is skill-controlled and outside that set. A
+comment changes whichever way the fork is resolved, so "the code deliberately
+recorded the narrower scope" is not settled intent to defer to.

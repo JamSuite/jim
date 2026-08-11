@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 105
-- Closed: 192
+- Open: 104
+- Closed: 193
 
 ## Issues
 
@@ -292,7 +292,7 @@
 - `20260808-direct-arm-commit-re-resolves-issues-path-and-publishes-the-wron` — Direct-arm commit re-resolves issues path and publishes the wrong collection · status: closed · num: 283 · priority: medium · created: 2026-08-08T18:39:49Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-diverged-deferral-publishes-an-index-omitting-the-other-side` — Diverged deferral publishes an index omitting the other side · status: closed · num: 284 · priority: medium · created: 2026-08-08T18:39:48Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-diverged-deferral-reverts-a-concurrent-edit-at-rc-0` — Diverged deferral reverts a concurrent edit at rc 0 · status: closed · num: 285 · priority: high · created: 2026-08-08T18:39:29Z · labels: [issue, placement, data-loss] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-insights-empty-collection-short-circuit-has-no-granted-capabilit` — Insights empty-collection short-circuit has no granted capability · status: open · num: 286 · priority: low · created: 2026-08-08T18:49:44Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-insights-empty-collection-short-circuit-has-no-granted-capabilit` — Insights empty-collection short-circuit has no granted capability · status: closed · num: 286 · priority: low · created: 2026-08-08T18:49:44Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-local-tier-retry-reopens-a-compare-and-swap-clobber-window` — Local-tier retry reopens a compare-and-swap clobber window · status: closed · num: 287 · priority: medium · created: 2026-08-08T18:39:30Z · labels: [issue, placement, concurrency] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-migrate-commit-phase-is-not-transactional-and-tmp-files-are-publ` — migrate commit phase is not transactional and tmp files are publishable · status: closed · num: 288 · priority: medium · created: 2026-08-08T18:49:42Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-neither-the-canonical-snippet-nor-the-sweep-binds-the-scrub-gate` — Neither the canonical snippet nor the sweep binds the scrub gate · status: closed · num: 289 · priority: medium · created: 2026-08-08T18:40:07Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
