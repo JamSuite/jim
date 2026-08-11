@@ -12,6 +12,13 @@
 #   Read-only with respect to issue content (AC-R3) — only index.sh's regen
 #   writes, and it writes INDEX.md, not issue files.
 #
+#   When the regeneration fails, the prior index is still served — a
+#   stale-but-valid view beats no answer on a read surface — but the run says
+#   so on stderr and exits non-zero. The group's rule is that a view known to
+#   be out of date is never reported as success: reconcile.sh carries the same
+#   failure the same way, and place.sh refuses outright on the write path,
+#   where the stale index would reach the shared branch.
+#
 #     render.sh stats [<dir>]            counts + clusters + blocking
 #     render.sh list  [<filter>] [<dir>] terse, grouped, configurable view
 #     render.sh show  <id> [<dir>]       one issue, cleaned-up
@@ -30,7 +37,9 @@
 #
 # EXIT CODES
 #   0  Success (rendering failures degrade to empty sections).
-#   1  Validation failure (unknown filter).
+#   1  Validation failure (unknown filter), or the view was served from an
+#      index that is stale and could not be regenerated — stdout still carries
+#      it, and stderr says which directory.
 #   2  Malformed invocation (unknown subcommand, missing show id).
 #
 
@@ -45,6 +54,10 @@ JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 
 readonly INDEX_FILENAME="INDEX.md"
 readonly BLOCKING_TOP_N=10
+# Set when a verb served a view it knew was out of date. It degrades the run's
+# exit status without suppressing the view, so a caller is told what a reader
+# cannot see for itself.
+STALE_VIEW=0
 readonly STATUS_TOKENS=(open closed)
 readonly PRIORITY_TOKENS=(critical high medium low)
 readonly COL_TOKENS=(num date priority status slug labels title)
@@ -81,17 +94,27 @@ index_is_stale() {
   return 1
 }
 
-# ensure_index <dir> — regen INDEX.md only when stale; tolerant of failure.
+# ensure_index <dir> — regen INDEX.md when stale, and disclose when it cannot.
 #   A fresh index is reused as-is, turning a read verb from a full directory
 #   rescan (one process per scalar field per issue) into a single stat-based
-#   staleness check. Regen still fires whenever an issue is added, removed, or
-#   edited, so reads never serve a stale view.
+#   staleness check. Regen fires whenever an issue is added, removed, or edited.
+#
+#   When it fires and fails, the prior index is still the best view available,
+#   so the read is served from it rather than refused. What does not happen is
+#   reporting success: staleness was established one line above, so serving
+#   quietly at rc 0 would state a currency the run knows it does not have. The
+#   note names the directory because a placement routes reads through a
+#   materialized copy, whose path is not the one the caller asked about.
 ensure_index() {
   local dir="$1"
   index_is_stale "$dir" "$dir/$INDEX_FILENAME" || return 0
   if [[ -x "$INDEX_SCRIPT" || -r "$INDEX_SCRIPT" ]]; then
-    bash "$INDEX_SCRIPT" "$dir" >/dev/null 2>&1 || true
+    bash "$INDEX_SCRIPT" "$dir" >/dev/null 2>&1 && return 0
   fi
+  echo "warning: the index for '$dir' is stale and could not be regenerated;" \
+       "serving the view it already held" >&2
+  STALE_VIEW=1
+  return 1
 }
 
 # in_list <needle> <haystack...> — 0 if needle is a member.
@@ -592,7 +615,10 @@ cmd_show() {
 # subagent (spec 020). Emits to stdout (LC_ALL=C stable ordering):
 #   ISOLATED <slug>          one per OPEN issue in no blocks/depends-on edge
 #   BLOCKING <count> <slug>  blocking out-degree per source, count desc then slug
-# Read-only; exit 0 always (degrades to empty output on an absent/empty index).
+# Read-only, and degrades to empty output on an absent or empty index. Exits
+# non-zero only when the facts were read from an index that could not be
+# refreshed — the analyst is the terminal reader and has no other way to learn
+# that the graph it is told to trust may be behind the collection.
 cmd_insights_graph() {
   local dir
   dir="$(resolve_dir "${1:-}")"
@@ -691,18 +717,24 @@ main() {
   case "$sub" in
     stats|list|show|insights-graph) route_placement "$place_token" "$sub" "$@" ;;
   esac
+  local rc=0
   case "$sub" in
-    stats) cmd_stats "$@" ;;
-    list)  cmd_list  "$@" ;;
-    show)  cmd_show  "$@" ;;
-    insights-graph) cmd_insights_graph "$@" ;;
-    help|-h|--help) cmd_help ;;
+    stats) cmd_stats "$@" || rc=$? ;;
+    list)  cmd_list  "$@" || rc=$? ;;
+    show)  cmd_show  "$@" || rc=$? ;;
+    insights-graph) cmd_insights_graph "$@" || rc=$? ;;
+    help|-h|--help) cmd_help || rc=$? ;;
     *)
       echo "error: unknown subcommand '$sub' (valid: stats list show insights-graph help)" >&2
       cmd_help >&2
       return 2
       ;;
   esac
+  # A verb that otherwise succeeded still fails the run when it served a view it
+  # could not refresh. A verb that already failed keeps its own status, which is
+  # the more specific of the two.
+  (( rc == 0 )) && (( STALE_VIEW )) && rc=1
+  return "$rc"
 }
 
 main "$@"

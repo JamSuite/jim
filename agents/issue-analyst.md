@@ -40,6 +40,12 @@ text view and return it. You write nothing.
    - `ISOLATED <slug>` — open issues with no blocking/dependency relations.
    - `BLOCKING <count> <slug>` — blocking out-degree per source, highest first.
    Trust these structural facts; do not recompute the graph yourself.
+
+   A **non-zero exit with facts on stdout** means the index behind them is stale
+   and could not be regenerated; stderr names the directory. The facts are still
+   the best available, so continue — but say in your report that the collection
+   may have moved since the index was built, because nothing downstream of you
+   can tell.
 2. **Metadata next.** Read `INDEX.md` in the directory for the issue roster
    (slug, num, status, priority, labels, origin) and the relation graph.
 3. **Bodies last, selectively.** Read individual issue bodies **from that same

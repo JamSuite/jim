@@ -899,6 +899,95 @@ status: open'
   assert_eq "issue files unchanged" "$before_hash" "$after_hash"
 }
 
+# stale_locked_collection <name> — a collection whose INDEX.md is stale and
+#   whose directory cannot be written, so index.sh's regeneration fails while a
+#   prior, serviceable index is still on disk. The printed directory is left
+#   unwritable: restore it with `chmod u+w` before the case returns, or the
+#   runner's cleanup cannot remove it.
+stale_locked_collection() {
+  local dir
+  dir=$(empty_dir "$1")
+  write_issue "$dir" "20260530-a" 'title: "A"
+num: 1
+status: open
+priority: high
+created: 2026-05-30'
+  bash "$SCRIPT_INDEX" "$dir" >/dev/null 2>&1
+  touch "$dir/20260530-a.md"
+  chmod a-w "$dir"
+  printf '%s\n' "$dir"
+}
+
+# AC: a read whose index cannot be refreshed still serves the prior view, says
+# so on stderr, and carries a non-zero status — the group serves a stale view
+# rather than failing, but never reports success over one.
+case_issues_render_list_serves_and_flags_an_unrefreshable_index() {
+  local dir
+  dir=$(stale_locked_collection render_stale_list)
+  run_render list "$dir"
+  chmod u+w "$dir"
+  assert_exit "carries the failure"      1        "$RC"
+  assert_match "still serves the view"   '#1'     "$OUT"
+  assert_match "discloses the staleness" 'stale'  "$ERR"
+}
+
+# AC: the same posture on `stats` — the summary is served and the status carries.
+case_issues_render_stats_serves_and_flags_an_unrefreshable_index() {
+  local dir
+  dir=$(stale_locked_collection render_stale_stats)
+  run_render stats "$dir"
+  chmod u+w "$dir"
+  assert_exit "carries the failure"      1          "$RC"
+  assert_match "still serves the view"   'Open: 1'  "$OUT"
+  assert_match "discloses the staleness" 'stale'    "$ERR"
+}
+
+# AC: the same posture on `show` — the issue is served and the status carries.
+case_issues_render_show_serves_and_flags_an_unrefreshable_index() {
+  local dir
+  dir=$(stale_locked_collection render_stale_show)
+  run_render show 1 "$dir"
+  chmod u+w "$dir"
+  assert_exit "carries the failure"      1               "$RC"
+  assert_match "still serves the view"   '20260530-a'    "$OUT"
+  assert_match "discloses the staleness" 'stale'         "$ERR"
+}
+
+# AC: the same posture on `insights-graph`. It is the analyst's input, so a
+# stale graph is exactly the case the analyst cannot detect for itself — the
+# facts are still emitted, and the status is what says they may be behind.
+case_issues_render_insights_graph_serves_and_flags_an_unrefreshable_index() {
+  local dir
+  dir=$(stale_locked_collection render_stale_graph)
+  run_render insights-graph "$dir"
+  chmod u+w "$dir"
+  assert_exit "carries the failure"      1                        "$RC"
+  assert_match "still serves the facts"  'ISOLATED 20260530-a'    "$OUT"
+  assert_match "discloses the staleness" 'stale'                  "$ERR"
+}
+
+# AC: the flag fires only on an actual failure — a collection whose index
+# regenerates cleanly still returns 0 and says nothing. Without this the four
+# cases above pass against a render that fails every read.
+case_issues_render_refreshable_index_stays_silent_and_zero() {
+  local dir
+  dir=$(empty_dir render_fresh_index)
+  write_issue "$dir" "20260530-a" 'title: "A"
+num: 1
+status: open
+priority: high
+created: 2026-05-30'
+  bash "$SCRIPT_INDEX" "$dir" >/dev/null 2>&1
+  touch "$dir/20260530-a.md"
+  run_render list "$dir"
+  assert_exit "clean read succeeds"  0    "$RC"
+  assert_match "view served"         '#1' "$OUT"
+  if printf '%s\n' "$ERR" | grep -q 'stale'; then
+    CURRENT_FAILED=1
+    echo "    [a refreshable index must not be reported stale] [$ERR]"
+  fi
+}
+
 # AC: origin-lint — path-shaped origin that resolves on disk produces no warning
 # (spec 018 OL-1). Resolution is PWD-relative: the script honors the invoking
 # CWD as project root. Test cds into a fake project root before invoking

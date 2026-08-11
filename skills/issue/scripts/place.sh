@@ -49,7 +49,9 @@
 #
 # EXIT CODES
 #   0  Success (stderr may carry degradation notes).
-#   1  IO or engine failure.
+#   1  IO or engine failure, or a read served from an index that could not be
+#      regenerated. A write refuses on that failure instead, since the stale
+#      index would be what reaches the destination.
 #   2  Config or validation refusal (junk branch name, coordination branch,
 #      unknown verb, malformed invocation).
 #   3  Concurrent-conflict refusal.
@@ -1356,7 +1358,18 @@ cmd_run() {
   # hand commit, a merge — and the index that arrives with it can be stale;
   # regenerating over a snapshot already taken means a read is served a current
   # one and a write publishes the correction rather than hiding it.
-  place_reindex "$PLACE_COLL" || return 1
+  #
+  # A write cannot proceed on a failure here: publishing a collection whose
+  # index was never brought up to date is how the destination acquires the
+  # stale one. A read can, because the materialized copy still carries the
+  # index the destination holds — so it degrades to what a reader in the
+  # working tree gets, disclosed and carried in the status rather than refused.
+  local stale=0
+  if ! place_reindex "$PLACE_COLL"; then
+    (( read_only )) || return 1
+    echo "place.sh: serving '$dest' from the index it already held" >&2
+    stale=1
+  fi
   place_substitute "$PLACE_COLL" "$PLACE_TOKEN" "$@"
   local rc=0
   # The prefix travels with the token so a wrapped command can report where its
@@ -1364,7 +1377,7 @@ cmd_run() {
   # It names a location only — routing turns on the token pair alone.
   JIM_PLACE_TOKEN="$PLACE_TOKEN" JIM_PLACE_PREFIX="$prefix" "${PLACE_CMD[@]}" || rc=$?
   (( rc == 0 )) || return "$rc"
-  (( read_only == 0 )) || return 0
+  (( read_only == 0 )) || return "$stale"
   place_reindex "$PLACE_COLL" || return 1
   place_snapshot "$PLACE_COLL" after || return 1
   place_commit_changes "$dest" "$prefix" before after "$verb" "$id" \
