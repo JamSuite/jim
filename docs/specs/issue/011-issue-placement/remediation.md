@@ -15,8 +15,8 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8 complete; WP7 outstanding.** Fifteen commits over `ae4b877..HEAD`,
-23 files. Suite **1284 → 1302 green**.
+**WP0–WP6, WP8 and WP9 complete; WP7 outstanding.** Eighteen commits over
+`ae4b877..HEAD`. Suite **1284 → 1307 green**.
 
 | WP | State | Closes |
 | :--- | :--- | :--- |
@@ -28,10 +28,19 @@ meets it, and what is deliberately left tracked.*
 | WP5 bookmark honesty | done | #271 |
 | WP6 documentation | done | #292 |
 | WP8 direct-mode arm | done | #281, #283, #268, #295 (both halves) |
+| WP9 analyst + routing | done | #266; #277 **items 1–3 only** |
 | WP7 close out | **outstanding** | — |
 
-Fifteen issues are closed in the collection. **#278** stays open, narrowed to
-the polarity decision alone — its three false-prose sites are corrected.
+Sixteen issues are closed in the collection. Two stay open, each narrowed to
+the half that carries a decision:
+
+- **#278** — the three false-prose sites are corrected; the polarity is not
+  taken.
+- **#277** — the three classification defects are fixed; item 4 remains, and it
+  is not a one-liner. The emitter prints `<slug>\t<path>` from inside the
+  wrapped command, before the publish that can still fail — so a caller can hold
+  a line naming a destination path where nothing landed, with the ordinal
+  already burned in the append-only registry.
 
 **WP8 was added after the bar was set**, on the developer's approval, once the
 scoreboard showed the direct-mode arm carrying four of the remaining defects in
@@ -142,6 +151,10 @@ Strike it if you disagree; nothing else depends on it.
   and #273.
 - **Likely verdict:** `minor-drift` rather than `aligned`. That is the honest
   outcome of this bar and should not be argued away at review time.
+
+*This section describes the bar as set. WP8 and WP9 were taken after it on the
+developer's approval and moved AC 3, 5 and 12 past what it promised — see
+**Status**.*
 
 ## Work packages
 
@@ -423,6 +436,32 @@ pin, because `place_check_rewrite` both discloses and records. The two were spli
 so the direct arm can do the first without claiming the second. WP5's test caught
 this, which is the whole reason it exists.
 
+### WP9 — The analyst's directory and routing classification *(added mid-flight)*
+
+**Closes #266 and #277 items 1–3.** The two remaining defects with no decision
+attached, taken together because both are about a path being taken for something
+it is not.
+
+**#266** — the skill was taught to materialize the destination and hand the
+analyst a directory; the analyst was not, and still named `docs/issues/*.md`. It
+is the collection's terminal reader, so pairing one collection's roster with
+another's bodies is unobservable downstream. Its `Read` grant is ungated and
+already reaches the materialized path under the git dir, so the capability
+question the finding left open wanted verifying, not changing.
+
+**#277 items 1–3** — three ways an invocation was read as naming a collection
+when it did not, each of which declines routing: a flag's *value* (`reconcile -c
+<cfg>`), an invocation missing its operand (`show` with no id, where the appended
+directory lands in the id slot), and a token that is not a directory (`list
+<typo>`, which then had one created for it by a read verb).
+
+The `list` fix needed two edits, not one, and the second is the load-bearing one:
+`dir_given` now requires the argument to *be* a directory, and `cmd_list` refuses
+a token that is neither filter nor collection. Without the second, the stray
+directory is still reachable with no placement configured at all.
+
+**Item 4 is deliberately not taken** — see *Deferred*.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
@@ -442,9 +481,8 @@ was taken as WP8 and is gone from the list.
 
 | Issue | Why deferred |
 | :--- | :--- |
-| #266 (high) | Analyst reads branch-local bodies. Pre-existing; cross-group edit to `agents/issue-analyst.md`. Bites any project whose `issues` key is not `docs/issues`, placement or not. Leaves AC 5 partial. |
 | #290 (high) | `--origin` has never been YAML-encoded and the code's own comment records the narrower scope deliberately. A text-vs-code fork, not a fix. The `--title '{}'` residue rides with it. |
-| #277 | Routing argument classification (`reconcile.sh -c`, `render.sh show`/`list`). Pre-existing. Leaves AC 3 partial. |
+| #277 *(item 4 only)* | The emitter prints its stdout contract before the publish that can fail, and the ordinal is already burned. A contract-timing decision, not a patch. Leaves AC 3 partial. |
 | #291, #294 | The group has two read-failure postures and chose neither. One decision, not two fixes — see *Open decisions*. |
 | #273 | Origin lint → cross-branch published churn. Pre-existing; WP1's path-shaped-origin fixture makes it exercisable. |
 | #288 | `migrate.sh`'s non-transactional commit phase (deliberate and documented) plus `place_snapshot`'s tmp-namespace publishing. |

@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 112
-- Closed: 184
+- Open: 111
+- Closed: 185
 
 ## Issues
 
@@ -269,7 +269,7 @@
 - `20260807-cmd-begin-swallows-the-containment-gate-refusal` — cmd_begin swallows the containment gate refusal · status: closed · num: 263 · priority: high · created: 2026-08-07T11:43:23Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-cmd-commit-direct-arm-publishes-without-re-verification` — cmd_commit direct arm publishes without re-verification · status: closed · num: 264 · priority: critical · created: 2026-08-07T11:43:22Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-deferred-placement-mutation-is-discarded-on-reconnect` — Deferred placement mutation is discarded on reconnect · status: closed · num: 265 · priority: critical · created: 2026-08-07T11:43:21Z · labels: [issue, placement, data-loss] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260807-insights-analyst-reads-the-branch-local-collection-under-placeme` — Insights analyst reads the branch-local collection under placement · status: open · num: 266 · priority: high · created: 2026-08-07T11:43:25Z · labels: [issue, placement, insights] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260807-insights-analyst-reads-the-branch-local-collection-under-placeme` — Insights analyst reads the branch-local collection under placement · status: closed · num: 266 · priority: high · created: 2026-08-07T11:43:25Z · labels: [issue, placement, insights] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-offline-placed-read-serves-an-empty-collection` — Offline placed read serves an empty collection · status: closed · num: 267 · priority: high · created: 2026-08-07T11:43:22Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-pin-the-nameref-prefix-convention-with-a-textual-invariant` — Pin the nameref-prefix convention with a textual invariant · status: open · num: 259 · priority: medium · created: 2026-08-07T10:59:35Z · labels: [testing, bash, refactor] · origin: docs/specs/issue/011-issue-placement/plan.md
 - `20260807-place-direct-publish-stages-without-the-worktree-containment-gat` — place_direct_publish stages without the worktree containment gate · status: closed · num: 268 · priority: medium · created: 2026-08-07T11:43:56Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md

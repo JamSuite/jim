@@ -2,7 +2,7 @@
 id: 20260807-insights-analyst-reads-the-branch-local-collection-under-placeme
 num: 266
 title: "Insights analyst reads the branch-local collection under placement"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, insights]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:25Z
-updated: 2026-08-07T11:43:25Z
+updated: 2026-08-11T00:32:51Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
