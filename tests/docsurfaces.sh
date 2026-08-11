@@ -233,6 +233,21 @@ case_docsurfaces_placement_edit_flow_is_stated() {
   assert_match "names abort"  'place\.sh abort'  "$body"
 }
 
+# The insights analyst is handed a directory and is the collection's terminal
+# reader, so a literal collection path in its method is not a stale mention —
+# it is a second collection. Under a placement the roster and graph come from
+# the materialized destination while `docs/issues/` in the working tree is a
+# different set of bodies, and nothing downstream can notice the pairing.
+case_docsurfaces_analyst_reads_the_directory_it_is_handed() {
+  local agent="$REPO_ROOT/agents/issue-analyst.md" body
+  assert_eq "the analyst is present" "yes" \
+    "$([[ -r "$agent" ]] && echo yes || echo no)"
+  body="$(cat "$agent")"
+  assert_match "composes body paths from the handed directory" '<dir>/' "$body"
+  assert_eq "and names no collection glob of its own" "no" \
+    "$(grep -q 'docs/issues/\*' "$agent" && echo yes || echo no)"
+}
+
 # The same reasoning reaches past the skill. WORKFLOW.md is where a user is told
 # how to close an issue, and it said to edit the file directly — which under a
 # placement edits something that is not the collection. Sweeping only the skill

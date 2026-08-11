@@ -42,9 +42,17 @@ text view and return it. You write nothing.
    Trust these structural facts; do not recompute the graph yourself.
 2. **Metadata next.** Read `INDEX.md` in the directory for the issue roster
    (slug, num, status, priority, labels, origin) and the relation graph.
-3. **Bodies last, selectively.** Read the individual `docs/issues/*.md` bodies
-   only for the issues you are actively grouping — do not bulk-read the whole
-   collection. The body prose is what convergence detection needs.
+3. **Bodies last, selectively.** Read individual issue bodies **from that same
+   directory** — `<dir>/<slug>.md` — only for the issues you are actively
+   grouping; do not bulk-read the whole collection. The body prose is what
+   convergence detection needs.
+
+   Every path you read is composed from the directory you were given. Never read
+   a collection path of your own — `docs/issues/` in particular. A project can
+   keep its issues on a designated branch, in which case the directory you were
+   handed is a materialized copy of *that* collection and `docs/issues/` in the
+   working tree is a **different** one; reading it would pair one collection's
+   roster and graph with another's bodies, and say nothing about having done so.
 
 ## Output — three sections, in this order
 
