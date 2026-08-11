@@ -15,8 +15,8 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8–WP12 complete; WP7 outstanding.** Twenty-eight commits over
-`ae4b877..HEAD`. Suite **1284 → 1310 green**.
+**WP0–WP6 and WP8–WP13 complete; WP7 outstanding.** Thirty-three commits over
+`ae4b877..HEAD`. Suite **1284 → 1318 green**.
 
 | WP | State | Closes |
 | :--- | :--- | :--- |
@@ -32,25 +32,21 @@ meets it, and what is deliberately left tracked.*
 | WP10 origin lint | done | #273 |
 | WP11 declarations | done | #279, #296 |
 | WP12 atomic writes | done | #288 |
+| WP13 read posture + emitter stdout | done | #291, #294, #277 (item 4) |
 | WP7 close out | **outstanding** | — |
 
-**Twenty issues closed by this remediation**, on top of the 8 the fix pass had
-closed — 28 of the 36 now filed against the spec, leaving **8 open**. Each closed
-issue carries a `## Resolution` section naming what shipped, the commit, and the
-case that pins it; the collection's convention is that a close without one is
-incomplete.
+**Twenty-three issues closed by this remediation**, on top of the 8 the fix pass
+had closed — 31 of the 36 now filed against the spec, leaving **5 open**. Each
+closed issue carries a `## Resolution` section naming what shipped, the commit,
+and the case that pins it; the collection's convention is that a close without
+one is incomplete.
 
-Two of the eight stay open having been narrowed rather than deferred whole, each
-to the half that carries a decision, and each carrying a `## Progress` section
-saying what is done and what is left:
+One of the five stays open having been narrowed rather than deferred whole, to
+the half that carries a decision, and carrying a `## Progress` section saying
+what is done and what is left:
 
 - **#278** — the three false-prose sites are corrected; the polarity is not
   taken.
-- **#277** — the three classification defects are fixed; item 4 remains, and it
-  is not a one-liner. The emitter prints `<slug>\t<path>` from inside the
-  wrapped command, before the publish that can still fail — so a caller can hold
-  a line naming a destination path where nothing landed, with the ordinal
-  already burned in the append-only registry.
 
 **WP8 was added after the bar was set**, on the developer's approval, once the
 scoreboard showed the direct-mode arm carrying four of the remaining defects in
@@ -165,9 +161,10 @@ by the later packages; what is left is listed under *Deferred* below.
 - **Likely verdict:** `minor-drift` rather than `aligned`. That is the honest
   outcome of this bar and should not be argued away at review time.
 
-*This section describes the bar as set. WP8–WP12 were taken after it on the
+*This section describes the bar as set. WP8–WP13 were taken after it on the
 developer's approval; they moved AC 3, 5, 11 and 12 past what it promised and
-cleared the remaining contract violation — see **Status**.*
+cleared the remaining contract violation — see **Status**. AC 3 is no longer
+partial.*
 
 ## Work packages
 
@@ -570,20 +567,75 @@ would be re-materialized every run, sit unchanged in both snapshots, and appear
 in no index. Excluding it makes the property self-enforcing rather than dependent
 on every writer's cleanup surviving a crash.
 
+### WP13 — One read posture, and a publish-conditional stdout *(added mid-flight)*
+
+**Closes #291, #294, and #277's item 4.** Three of the four decisions the plan
+carried, taken by the developer once the scoreboard showed the remaining work
+was deliberation rather than code.
+
+**The read-failure posture (#291, #294).** The group had two and had chosen
+neither: `render.sh` established staleness, failed to regenerate, and served the
+view at rc 0 with the failure discarded; `place.sh` refused the same failure
+outright, on the read path as well as the write one. The rule taken is **a view
+known to be stale is never reported as success, and never published** — which
+adopts `reconcile.sh`'s existing shape rather than inventing one. `render.sh`
+serves the index it already held, names the directory on stderr, and carries a
+non-zero status; `place.sh` keeps refusing on the write path and takes the same
+disclose-and-carry shape on the read path.
+
+The blast radius was checked before choosing rather than after: `render.sh`'s
+only consumers are `/jim:issue`, which presents stdout verbatim, and the
+`issue-analyst`. No script reads its exit status, so a non-zero rc breaks no
+automated path. The analyst is told what a non-zero status alongside facts
+means, since it is the terminal reader.
+
+Four cases pin it, one per read verb, plus a fifth that pins the other
+direction — a cleanly regenerating index stays silent at rc 0, so the four
+cannot pass against a render that fails every read. `place.sh`'s read
+relaxation is **not** pinned by a case: the directory it reindexes is one
+`place.sh` creates and owns, so the failure is unreachable without a production
+test hook, which this group avoids. It was verified by neutering instead.
+
+**The emitter's stdout (#277 item 4).** On the plumbing arm the printed
+`<slug>\t<path>` names the destination branch, which is not written until the
+publish that follows — so a failed publish left a caller holding a path that
+exists nowhere, the staging copy having been discarded with the run. The output
+is now held and released only once the publish lands. On a refusal it goes to
+stderr under a marker rather than being dropped: the ordinal it names is spent
+either way, so discarding the line would destroy the only record of which one
+was burned.
+
+Only the plumbing arm changed. The checked-out arm writes into the working tree,
+where the file is there for the caller whether or not the commit succeeds — its
+stdout was never a claim about something absent. One correction to the issue's
+own text, which this plan had repeated: `new.sh`'s `EXIT CODES` header already
+documented rc 3; only the wording about what it leaves behind was missing.
+
+**The blueprint followed the code.** `staleness-gated-reads` said "regenerate
+only when stale and never serve a stale view". Both halves were false — the
+placement arm rebuilds unconditionally, because a materialized collection's
+mtimes encode extraction order rather than edit history, and the failure path
+served a stale view before this change did so honestly. Amending it settles the
+carried wording decision; it records the posture chosen here, not a rewrite to
+match code this remediation left alone.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
 2. Re-run `/jim:review`, and assign the verdict over that run's own evidence. The
    `minor-drift` estimate under *What this bar does and does not buy* was made
-   against bar C alone, before five further packages moved AC 3, 5, 11 and 12 and
+   against bar C alone, before six further packages moved AC 3, 5, 11 and 12 and
    cleared both contract violations; it is stale as a prediction and is left
    standing only because a remediation should not revise its own forecast upward
-   over its own work. What genuinely remains against the ACs is **#277 item 4**
-   (AC 3) and the invariant set under *Deferred* — six issues, of which four are
-   decisions rather than defects.
-3. Blueprint: the `staleness-gated-reads` wording decision is carried forward, not
-   taken (see *Open decisions*). Do **not** amend invariants to match code that
-   this remediation did not change — that records a regression as the spec.
+   over its own work. AC 3 is now whole — #277's last item is closed. What
+   remains against the ACs is the set under *Deferred* — four issues, of which
+   two are decisions rather than defects.
+3. Blueprint: `staleness-gated-reads` is amended, and the amendment is WP13's,
+   not a convenience. The rule it replaced was already false before this
+   remediation — a failed regeneration served a stale view at rc 0 — so the new
+   wording records a posture that was chosen here rather than rewriting the spec
+   to match untouched code. That distinction is the standing rule: do **not**
+   amend an invariant to match code this remediation did not change.
 4. Take the completion gate: mark `plan.md` `status: complete` only on explicit
    human confirmation.
 
@@ -595,37 +647,39 @@ was taken as WP8 and is gone from the list.
 
 | Issue | Why deferred |
 | :--- | :--- |
-| #290 (high) | `--origin` has never been YAML-encoded and the code's own comment records the narrower scope deliberately. A text-vs-code fork, not a fix. The `--title '{}'` residue rides with it. |
-| #277 *(item 4 only)* | The emitter prints its stdout contract before the publish that can fail, and the ordinal is already burned. A contract-timing decision, not a patch. Leaves AC 3 partial. |
-| #291, #294 | The group has two read-failure postures and chose neither. One decision, not two fixes — see *Open decisions*. |
+| #290 (high) | Part 1 is a text-vs-code fork: encode `--origin` or narrow the invariant. Part 2 — an argument that is exactly `{}` is still substituted, burning a permanent registry slug — carries no decision and is a defect, not a fork; it is queued, not deferred. |
 | #286 (low) | Insights empty-collection step has no granted capability. |
 | #269 (low) | `place.sh` conformance and hygiene, incl. the unenforced nameref prefix convention. |
 | `20260811-compute-checkout-dependent-index-warnings-at-read-time` | Not surfaced by a review — filed *by* this remediation, as the successor to #273. Moving the origin check out of the stored index and into the reader's view restores a signal WP10 could only stop from lying, but it changes the stored artifact for projects with no placement at all. Provisional ordinal until the host reconciles. |
 
 ## Open decisions carried forward
 
-Five items are **decisions, not fixes** — cheap in code, expensive in
-deliberation. None shrinks by throwing effort at it, and none should be settled
-inside a work package.
+Two items remain **decisions, not fixes** — cheap in code, expensive in
+deliberation. Three of the original five were taken as WP13 and are recorded
+there: the group's read-failure posture, the emitter's stdout timing, and the
+`staleness-gated-reads` wording that followed from the first.
 
 1. **The `--auto` polarity** (#278 part 2). The genuinely fail-closed shape is the
    inverse: treat every filing as unreviewed, and have the interactive path opt out
    with `--reviewed`. Real cost — every interactive caller, including
-   `/jim:issue add`, then carries a flag. WP4 corrects the prose either way.
-2. **`--origin`: encode or narrow** (#290). Quote it the way `title` is quoted, or
-   narrow `untrusted-body-never-shell` to the deliberate documented scope
-   (title + labels). Do not resolve it by assuming the invariant was aspirational.
-3. **The group's read-failure posture** (#291, #294). `place.sh:1199` hard-fails;
-   `render.sh:89-95` swallows and serves a known-stale index at rc 0. Both are
-   defensible; the two now differ without anyone having chosen.
-4. **`staleness-gated-reads`' wording.** "Regenerate the index only when stale" is
-   literally untrue of the placement arm — in a freshly materialized directory
-   staleness is **unknowable** by mtime, because `place_materialize` writes entries
-   in `ls-tree` order, so relative mtimes encode filename order rather than edit
-   history. The "never serve a stale view" half stands. Amend the clause or accept
-   a standing letter-violation.
-5. **`issue.emitter`'s declared face** (#279). Whether rc 4 belongs in the emitter
-   entry as well as the sibling §7a entry.
+   `/jim:issue add`, then carries a flag. A third shape neither the issue nor this
+   plan originally listed: require an explicit declaration and refuse when neither
+   flag is given, scoped to the routing condition, which removes the fail-open
+   without installing a new silent default and changes nothing for a project with
+   no placement. Twelve call sites either way, ten of them prose. WP4 corrects the
+   prose whichever is chosen.
+2. **`--origin`: encode or narrow** (#290 part 1). Quote it the way `title` is
+   quoted, or narrow `untrusted-body-never-shell` to the documented scope
+   (title + labels). One fact the issue does not record and this plan previously
+   read one-sidedly: `new.sh` contradicts itself — its file header says the
+   encoding exists because `--title`/`--labels`/`--origin` are untrusted, while the
+   implementation comment says origin is skill-controlled and out of that set. A
+   comment changes whichever way this goes, so "the code deliberately meant the
+   narrower scope" is not settled authorial intent to defer to.
+
+**A sixth item listed here previously is already taken.** Whether rc 4 belongs in
+the emitter's declared face was settled by WP11: the entry records the flag, the
+code, and that the flag is a declaration the emitter cannot verify.
 
 ## Nameref hazard
 
