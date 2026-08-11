@@ -15,8 +15,8 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8–WP11 complete; WP7 outstanding.** Twenty-five commits over
-`ae4b877..HEAD`. Suite **1284 → 1308 green**.
+**WP0–WP6 and WP8–WP12 complete; WP7 outstanding.** Twenty-seven commits over
+`ae4b877..HEAD`. Suite **1284 → 1310 green**.
 
 | WP | State | Closes |
 | :--- | :--- | :--- |
@@ -31,9 +31,10 @@ meets it, and what is deliberately left tracked.*
 | WP9 analyst + routing | done | #266; #277 **items 1–3 only** |
 | WP10 origin lint | done | #273 |
 | WP11 declarations | done | #279, #296 |
+| WP12 atomic writes | done | #288 |
 | WP7 close out | **outstanding** | — |
 
-Nineteen issues are closed in the collection. Two stay open, each narrowed to
+Twenty issues are closed in the collection. Two stay open, each narrowed to
 the half that carries a decision:
 
 - **#278** — the three false-prose sites are corrected; the polarity is not
@@ -154,7 +155,7 @@ Strike it if you disagree; nothing else depends on it.
 - **Likely verdict:** `minor-drift` rather than `aligned`. That is the honest
   outcome of this bar and should not be argued away at review time.
 
-*This section describes the bar as set. WP8–WP11 were taken after it on the
+*This section describes the bar as set. WP8–WP12 were taken after it on the
 developer's approval; they moved AC 3, 5, 11 and 12 past what it promised and
 cleared the remaining contract violation — see **Status**.*
 
@@ -522,6 +523,37 @@ Three faces were considered and left alone, each for a stated reason:
 gate does not falsify; and the `insights-capability-boundary` invariant was
 always the right rule — the code now honors it better.
 
+### WP12 — The remaining atomic-write violation *(added mid-flight)*
+
+**Closes #288**, the last `atomic-index-write` violation and the last code item
+carrying no decision.
+
+**The migration's commit phase.** It retired every old name and only then renamed
+the staged files into position — two loops, in that order — so a failure part-way
+through the second left every issue past it under neither name, its only copy a
+tmp the return path did not remove. Reproduced by neutering: the second issue
+vanishes entirely and a re-run does not recover it.
+
+Renaming first inverts the failure to a duplicate rather than a hole. The
+delete-first ordering was not arbitrary, though: it is what makes a rename chain
+or swap safe, since one file's old name can be another's new one. So the old
+names are retired in a second pass that skips any name another issue was just
+renamed onto.
+
+That guard is **defensive and unpinned**. Under the prefix migration a chain
+appears unreachable — a re-derived target conforms by construction, so an
+existing file at that name is skip-conforming and the collision resolver
+discriminates instead. Testing it would mean forcing an internal map. It is kept
+because the rename-first ordering depends on it for correctness under any map,
+and it costs two lines.
+
+**The collection snapshot.** It was the one enumerator admitting the dotfile
+namespace the atomic writers stage through, and the one whose output becomes
+tree entries — so a stranded tmp was publishable to the shared branch, where it
+would be re-materialized every run, sit unchanged in both snapshots, and appear
+in no index. Excluding it makes the property self-enforcing rather than dependent
+on every writer's cleanup surviving a crash.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
@@ -544,7 +576,6 @@ was taken as WP8 and is gone from the list.
 | #290 (high) | `--origin` has never been YAML-encoded and the code's own comment records the narrower scope deliberately. A text-vs-code fork, not a fix. The `--title '{}'` residue rides with it. |
 | #277 *(item 4 only)* | The emitter prints its stdout contract before the publish that can fail, and the ordinal is already burned. A contract-timing decision, not a patch. Leaves AC 3 partial. |
 | #291, #294 | The group has two read-failure postures and chose neither. One decision, not two fixes — see *Open decisions*. |
-| #288 | `migrate.sh`'s non-transactional commit phase (deliberate and documented) plus `place_snapshot`'s tmp-namespace publishing. |
 | #286 (low) | Insights empty-collection step has no granted capability. |
 | #269 (low) | `place.sh` conformance and hygiene, incl. the unenforced nameref prefix convention. |
 

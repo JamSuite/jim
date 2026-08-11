@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 109
-- Closed: 188
+- Open: 108
+- Closed: 189
 
 ## Issues
 
@@ -294,7 +294,7 @@
 - `20260808-diverged-deferral-reverts-a-concurrent-edit-at-rc-0` — Diverged deferral reverts a concurrent edit at rc 0 · status: closed · num: 285 · priority: high · created: 2026-08-08T18:39:29Z · labels: [issue, placement, data-loss] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-insights-empty-collection-short-circuit-has-no-granted-capabilit` — Insights empty-collection short-circuit has no granted capability · status: open · num: 286 · priority: low · created: 2026-08-08T18:49:44Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-local-tier-retry-reopens-a-compare-and-swap-clobber-window` — Local-tier retry reopens a compare-and-swap clobber window · status: closed · num: 287 · priority: medium · created: 2026-08-08T18:39:30Z · labels: [issue, placement, concurrency] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-migrate-commit-phase-is-not-transactional-and-tmp-files-are-publ` — migrate commit phase is not transactional and tmp files are publishable · status: open · num: 288 · priority: medium · created: 2026-08-08T18:49:42Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-migrate-commit-phase-is-not-transactional-and-tmp-files-are-publ` — migrate commit phase is not transactional and tmp files are publishable · status: closed · num: 288 · priority: medium · created: 2026-08-08T18:49:42Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-neither-the-canonical-snippet-nor-the-sweep-binds-the-scrub-gate` — Neither the canonical snippet nor the sweep binds the scrub gate · status: closed · num: 289 · priority: medium · created: 2026-08-08T18:40:07Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-origin-is-not-yaml-encoded-and-a-bare-brace-argument-is-substitu` — origin is not YAML-encoded and a bare brace argument is substituted · status: open · num: 290 · priority: high · created: 2026-08-08T18:49:41Z · labels: [issue, security, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant` — Placed reads hard-fail where the group read path is tolerant · status: open · num: 291 · priority: medium · created: 2026-08-08T18:39:50Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
