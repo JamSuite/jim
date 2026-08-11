@@ -15,7 +15,7 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8–WP12 complete; WP7 outstanding.** Twenty-seven commits over
+**WP0–WP6 and WP8–WP12 complete; WP7 outstanding.** Twenty-eight commits over
 `ae4b877..HEAD`. Suite **1284 → 1310 green**.
 
 | WP | State | Closes |
@@ -34,8 +34,15 @@ meets it, and what is deliberately left tracked.*
 | WP12 atomic writes | done | #288 |
 | WP7 close out | **outstanding** | — |
 
-Twenty issues are closed in the collection. Two stay open, each narrowed to
-the half that carries a decision:
+**Twenty issues closed by this remediation**, on top of the 8 the fix pass had
+closed — 28 of the 36 now filed against the spec, leaving **8 open**. Each closed
+issue carries a `## Resolution` section naming what shipped, the commit, and the
+case that pins it; the collection's convention is that a close without one is
+incomplete.
+
+Two of the eight stay open having been narrowed rather than deferred whole, each
+to the half that carries a decision, and each carrying a `## Progress` section
+saying what is done and what is left:
 
 - **#278** — the three false-prose sites are corrected; the polarity is not
   taken.
@@ -78,9 +85,11 @@ lines). What blocks closure is not the feature but the repair history:
 - **Second review** — `major-drift`, 28 findings, 5 of 8 invariants violated,
   both provider-side contract edges violated (one `breaking`).
 
-35 follow-ons were filed against this spec (#262–#296); 8 are closed, **27 are
-open**. The plan sits at `status: approved` with 14/14 tasks checked, and was
-deliberately not marked `complete`.
+35 follow-ons were filed against this spec (#262–#296); 8 were closed by the fix
+pass and **27 stood open** when this plan was written. The plan sits at
+`status: approved` with 14/14 tasks checked, and was deliberately not marked
+`complete`. *(Current counts are under **Status**; this paragraph describes the
+starting position.)*
 
 The full record is `review.md` (authoritative — it was overwritten by the second
 pass) and `docs/notes/20260807-issue-placement-handoff.md`.
@@ -142,7 +151,8 @@ half degrades the force-push detector, and this spec's own #267 fix made that
 path reachable more often than it was — so it reads as a regression in effect.
 Strike it if you disagree; nothing else depends on it.
 
-**Out of scope: 13 issues**, listed under *Deferred* below.
+**Out of scope: 13 issues** as the bar was set. Seven of those were taken anyway
+by the later packages; what is left is listed under *Deferred* below.
 
 ### What this bar does and does not buy
 
@@ -172,6 +182,12 @@ Two standing rules for this remediation, both from the second review's findings:
 - **CLAUDE.md commit discipline holds.** 25 of 41 subjects in the reviewed range
   exceeded the 50-character limit (10 of 14 fix-pass commits). Subjects ≤50 chars,
   lowercase, imperative; IDs in `Issue: <num>/<id>` trailers only.
+- **A close is not finished without a `## Resolution` section.** The collection's
+  convention is a dated section naming what shipped, where, and what pins it —
+  and a status flip alone leaves the resolution discoverable only by grepping
+  commit trailers. The fix pass skipped it, and so did this remediation until the
+  developer asked; both had to be backfilled. An issue narrowed rather than
+  closed takes a `## Progress` section instead, naming the half that remains.
 
 ---
 
@@ -557,8 +573,14 @@ on every writer's cleanup surviving a crash.
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
-2. Re-run `/jim:review`. Expect `minor-drift`; the deferred set below is the
-   reason, and it is tracked rather than dropped.
+2. Re-run `/jim:review`, and assign the verdict over that run's own evidence. The
+   `minor-drift` estimate under *What this bar does and does not buy* was made
+   against bar C alone, before five further packages moved AC 3, 5, 11 and 12 and
+   cleared both contract violations; it is stale as a prediction and is left
+   standing only because a remediation should not revise its own forecast upward
+   over its own work. What genuinely remains against the ACs is **#277 item 4**
+   (AC 3) and the invariant set under *Deferred* — six issues, of which four are
+   decisions rather than defects.
 3. Blueprint: the `staleness-gated-reads` wording decision is carried forward, not
    taken (see *Open decisions*). Do **not** amend invariants to match code that
    this remediation did not change — that records a regression as the spec.
@@ -578,6 +600,7 @@ was taken as WP8 and is gone from the list.
 | #291, #294 | The group has two read-failure postures and chose neither. One decision, not two fixes — see *Open decisions*. |
 | #286 (low) | Insights empty-collection step has no granted capability. |
 | #269 (low) | `place.sh` conformance and hygiene, incl. the unenforced nameref prefix convention. |
+| `20260811-compute-checkout-dependent-index-warnings-at-read-time` | Not surfaced by a review — filed *by* this remediation, as the successor to #273. Moving the origin check out of the stored index and into the reader's view restores a signal WP10 could only stop from lying, but it changes the stored artifact for projects with no placement at all. Provisional ordinal until the host reconciles. |
 
 ## Open decisions carried forward
 
