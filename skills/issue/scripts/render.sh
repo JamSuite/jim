@@ -338,7 +338,18 @@ cmd_list() {
   if [[ $# -eq 2 ]]; then
     filter="$1"; dir="$2"
   elif [[ $# -eq 1 ]]; then
-    if is_filter_token "$1"; then filter="$1"; else dir="$1"; fi
+    if is_filter_token "$1"; then
+      filter="$1"
+    elif [[ -d "$1" ]]; then
+      dir="$1"
+    else
+      # Neither a filter nor a collection. Taking it for a directory anyway is
+      # how a mistyped filter got one created for it, by a read verb, in the
+      # developer's checkout.
+      echo "error: '$1' is neither a filter (${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]})" \
+           "nor an existing directory" >&2
+      return 1
+    fi
   fi
   if [[ -n "$filter" ]] && ! is_filter_token "$filter"; then
     echo "error: unknown filter '$filter' (valid: ${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]})" >&2
@@ -637,7 +648,11 @@ dir_given() {
     show)                 (( $# >= 2 )) ;;
     list)
       (( $# >= 2 )) && return 0
-      (( $# == 1 )) && ! is_filter_token "$1"
+      # A lone argument is a directory only if it is one. Reading any non-filter
+      # token as a directory means a typo opts the run out of placement and then
+      # gets a directory of that name created for it, in the developer's
+      # checkout, by a read verb.
+      (( $# == 1 )) && ! is_filter_token "$1" && [[ -d "$1" ]]
       ;;
     *) return 1 ;;
   esac
@@ -653,6 +668,11 @@ route_placement() {
   local sub="$1"; shift
   local place="$HERE/place.sh" mode
   [[ -r "$place" ]] || return 0
+  # The re-exec appends the collection directory as a trailing argument, so an
+  # invocation missing a required operand must not be routed: `show` with no id
+  # would take that directory *as* the id, turning a clean usage error into a
+  # lookup for the run's temp path.
+  [[ "$sub" == "show" && $# -eq 0 ]] && return 0
   dir_given "$sub" "$@" && return 0
   mode="$(bash "$place" mode --place-token "$token")" || exit $?
   [[ "$mode" == "route" ]] || return 0

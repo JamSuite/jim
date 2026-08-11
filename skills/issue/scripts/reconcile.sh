@@ -281,11 +281,16 @@ usage() {
 #   that published would make "mutates nothing" untrue.
 route_placement() {
   local token="$1"; shift
-  local place="$HERE/place.sh" mode arg dir="" apply=0
+  local place="$HERE/place.sh" mode arg dir="" apply=0 skip_next=0
   [[ -r "$place" ]] || return 0
   for arg in "$@"; do
+    # A flag's *value* is not a directory argument. Without skipping it, `-c
+    # <cfg>` reads as "the caller named a collection", routing is declined, and
+    # a realization rewrites the working tree instead of the destination.
+    if (( skip_next )); then skip_next=0; continue; fi
     case "$arg" in
       --apply) apply=1 ;;
+      -c)      skip_next=1 ;;
       -*)      ;;
       *)       dir="$arg" ;;
     esac

@@ -3137,6 +3137,74 @@ case_issues_placement_preview_publishes_nothing() {
     "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
 }
 
+# AC: a flag's value is not a collection directory. Reading `-c <cfg>` as one
+# declines routing, and the realization then rewrites the working tree instead
+# of the destination — the opt-out is for a caller who *named* a collection
+# (spec AC #3).
+case_issues_placement_reconcile_routes_with_a_config_flag() {
+  local repo body
+  repo="$(placement_repo issues_place_reconcile_cfg jim/issues)"
+  body="$(fixture issues_place_reconcile_cfg_body.md 'body')"
+  run_new_in "$repo" --slug 20260101-a --num "P-20260101-a" \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_RECONCILE" -c "$repo/jimconf.toml"
+  assert_exit "preview rc" 0 "$RC"
+  assert_match "the preview saw the destination's collection" '20260101-a' "$OUT"
+  assert_eq "and left the working tree alone" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: an invocation missing a required operand is not routed. The placement
+# re-exec appends the collection directory, so a `show` with no id would take
+# that directory as its id and answer about the run's temp path at rc 0 instead
+# of refusing (spec AC #5).
+case_issues_placement_show_without_an_id_still_refuses() {
+  local repo
+  repo="$(placement_repo issues_place_show_noid jim/issues)"
+  run_in "$repo" "$SCRIPT_RENDER" show
+  assert_exit  "refuses"          2       "$RC"
+  assert_match "asks for an id"   'requires an id' "$ERR"
+  assert_eq "no temp path leaked into the answer" "no" \
+    "$(grep -q 'collection' <<< "$OUT" && echo yes || echo no)"
+  assert_eq "and nothing was created in the checkout" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: a lone argument is a collection directory only if it is one. Reading any
+# non-filter token as a directory opts a mistyped filter out of placement and
+# then has a read verb create a directory of that name in the checkout
+# (spec AC #5).
+case_issues_placement_list_typo_does_not_litter() {
+  local repo body
+  repo="$(placement_repo issues_place_list_typo jim/issues)"
+  body="$(fixture issues_place_list_typo_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_RENDER" list opne
+  assert_eq "no directory was created for the typo" "no" \
+    "$([[ -e "$repo/opne" ]] && echo yes || echo no)"
+  # The typo is reported as what it is — a bad filter against the destination's
+  # collection. Classifying it as a directory instead declines routing, and the
+  # refusal then comes from the working tree having no such collection, which is
+  # a different answer to a different question.
+  assert_match "routed rather than read as a collection" 'unknown filter' "$ERR"
+}
+
+# AC: the same holds with no placement configured at all — the stray directory
+# is what a read verb must never create, whichever branch the collection is on.
+case_issues_list_typo_refuses_instead_of_creating_a_dir() {
+  local repo
+  repo="$(new_repo issues_list_typo_default)"
+  run_in "$repo" "$SCRIPT_RENDER" list opne
+  assert_exit "refuses" 1 "$RC"
+  assert_match "explains the two things it could have been" 'neither a filter' "$ERR"
+  assert_eq "no directory was created for the typo" "no" \
+    "$([[ -e "$repo/opne" ]] && echo yes || echo no)"
+}
+
 # AC: backfill routes too — a display-ordinal backfill lands at the destination
 # rather than on the working branch (spec AC #3).
 case_issues_placement_backfill_lands_at_the_destination() {
