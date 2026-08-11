@@ -2862,6 +2862,33 @@ case_issues_placement_tolerates_a_branch_only_origin() {
     "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
   assert_match "index still built" 'docs/issues/INDEX\.md' \
     "$(dest_paths "$repo" jim/issues)"
+  # The published index says the check was not run rather than reporting a
+  # result it has no ground for. Whether the origin resolves is a fact about the
+  # checkout that wrote last, and this index belongs to every reader.
+  local index
+  index="$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+  assert_match "the skip is disclosed"      'origin paths not checked' "$index"
+  assert_match "and names the destination"  'jim/issues'               "$index"
+  assert_eq "no per-issue origin verdict is published" "no" \
+    "$(grep -q 'origin path does not resolve' <<< "$index" && echo yes || echo no)"
+}
+
+# AC: the same origin, with no placement configured, is still linted — the check
+# has ground truth when the collection is on the branch the run is standing on,
+# and the dangling reference is informational rather than an error (spec AC #11).
+case_issues_origin_lint_still_runs_without_a_placement() {
+  local repo body index
+  repo="$(new_repo issues_origin_default)"
+  body="$(fixture issues_origin_default_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin "docs/brainstorms/only-here.md" --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  run_index "$repo/docs/issues"
+  assert_exit "index rc" 0 "$RC"
+  index="$(cat "$repo/docs/issues/INDEX.md")"
+  assert_match "the dangling origin is reported" 'origin path does not resolve' "$index"
+  assert_eq "and nothing claims the check was skipped" "no" \
+    "$(grep -q 'origin paths not checked' <<< "$index" && echo yes || echo no)"
 }
 
 # AC: an explicit directory argument opts out of routing — a caller that named

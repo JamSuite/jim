@@ -454,19 +454,41 @@ main() {
   # continue when the value is empty — issues without an `origin:` field
   # are common (early adoption, hand-authored fixtures) and the lint pass
   # must not crash on them. (Spec 018 security review Finding 9.)
-  local origin_value origin_created
-  for s in "${slugs_seen[@]}"; do
-    origin_value="${meta_origin[$s]-}"
-    [[ -z "$origin_value" ]] && continue
-    case "$origin_value" in
-      */*)
-        if [[ ! -e "$origin_value" ]]; then
-          origin_created="${meta_created[$s]-}"
-          warnings_section+="- \`$s\` origin path does not resolve: $origin_value (created $origin_created)\n"
-        fi
-        ;;
-    esac
-  done
+  #
+  # The pass is skipped when the collection lives on a designated branch. An
+  # origin resolves or not according to the checkout the run happens to be
+  # standing in, while the index being written belongs to every reader — so a
+  # warning set derived that way is a fact about one developer's tree published
+  # as a fact about the collection, flipping with whoever wrote last and making
+  # a real diff each time. The condition is read from configuration rather than
+  # from whether this run materialized anything, because a destination that is
+  # checked out is linted from its own branch and one that is not is linted from
+  # somebody else's; keying on the arm would keep the flapping and only move the
+  # seam. The skip is stated rather than silent: a check that cannot be grounded
+  # says so.
+  local placement placement_shown origin_value origin_created
+  placement="$(bash "$JIMCONF" get issue_placement 2>/dev/null)"
+  [[ -n "$placement" ]] || placement="branch"
+  if [[ "$placement" != "branch" ]]; then
+    # The name is config-supplied and this is the index every reader parses, so
+    # it is stripped of control characters and backticks before it is quoted
+    # into markdown — the same care the row writers take.
+    placement_shown="$(printf '%s' "$placement" | tr -d '[:cntrl:]`')"
+    warnings_section+="- origin paths not checked: the collection is placed on \`$placement_shown\`, so a path resolves against whichever checkout wrote last rather than against the collection.\n"
+  else
+    for s in "${slugs_seen[@]}"; do
+      origin_value="${meta_origin[$s]-}"
+      [[ -z "$origin_value" ]] && continue
+      case "$origin_value" in
+        */*)
+          if [[ ! -e "$origin_value" ]]; then
+            origin_created="${meta_created[$s]-}"
+            warnings_section+="- \`$s\` origin path does not resolve: $origin_value (created $origin_created)\n"
+          fi
+          ;;
+      esac
+    done
+  fi
 
   # Bidirectional integrity check (DD #7).
   # For each FRONTMATTER outgoing edge A --type--> B, if type has an inverse,
