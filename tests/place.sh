@@ -429,6 +429,25 @@ case_place_materializes_the_existing_collection() {
   assert_eq   "sees seeded" "alpha" "$OUT"
 }
 
+# AC: a tmp file stranded in the collection is not published. Atomic writers
+# stage through `.<name>.tmp.XXXXXX` beside the file they replace, and a crash
+# mid-write leaves one behind; this is the one enumerator whose output becomes
+# tree entries, so admitting it would put a half-written file on the shared
+# branch — where it is re-materialized every run, sits unchanged in both
+# snapshots, and appears in no index (the group's atomic-index-write rule).
+case_place_does_not_publish_a_stranded_tmp() {
+  local repo paths
+  repo="$(place_repo place_tmp_ns 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "real\n" > "$1/20260101-a.md"; printf "half\n" > "$1/.INDEX.md.tmp.abc123"' \
+    _ '{}'
+  assert_exit "rc" 0 "$RC"
+  paths="$(place_dest_paths "$repo" jim/issues)"
+  assert_match "the issue landed"     'docs/issues/20260101-a\.md' "$paths"
+  assert_eq "and the tmp did not" "no" \
+    "$(grep -q 'tmp\.abc123' <<< "$paths" && echo yes || echo no)"
+}
+
 # AC: a destination tree entry that escapes the collection directory is refused
 # before any blob is written — extraction is gated per entry, so a crafted tree
 # cannot turn a read verb into an arbitrary file write (security Finding 7).

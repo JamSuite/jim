@@ -2122,6 +2122,62 @@ issue_id_prefix = \"timestamp\"")
   assert_match "INDEX clean" '_None' "$(cat "$dir/INDEX.md")"
 }
 
+# AC: a failure part-way through the commit loses no issue. Every staged file is
+# put in place before any old name is retired, so the worst a mid-commit failure
+# can leave is an issue present under both names — never one present under
+# neither, with its only copy a tmp nothing removes.
+case_issues_migrate_commit_failure_loses_no_issue() {
+  local dir cfg f content
+  dir=$(empty_dir migrate_commit_fail)
+  write_issue "$dir" "20260613-aaa" 'title: "A"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T09:00:00Z'
+  write_issue "$dir" "20260613-bbb" 'title: "B"
+status: open
+num: 2
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z'
+  cfg=$(fixture migrate-commitfail.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  export MIGRATE_FAIL_COMMIT=1
+  run_migrate -c "$cfg" prefix --apply
+  unset MIGRATE_FAIL_COMMIT
+  assert_exit  "injected commit fails" 1 "$RC"
+  assert_match "says nothing was lost" 'none has been lost' "$ERR"
+
+  # Both issues are still readable under some name.
+  local a_found=no b_found=no
+  for f in "$dir"/*.md; do
+    content="$(cat "$f")"
+    [[ "$content" == *'title: "A"'* ]] && a_found=yes
+    [[ "$content" == *'title: "B"'* ]] && b_found=yes
+  done
+  assert_eq "A survived the failed commit" "yes" "$a_found"
+  assert_eq "B survived the failed commit" "yes" "$b_found"
+  # And no staged tmp is left behind for a later run to pick up.
+  assert_eq "no tmp stranded in the collection" "" \
+    "$(find "$dir" -name '.migrate.tmp.*' -print 2>/dev/null)"
+
+  # A re-run converges: both end up at their migrated names.
+  run_migrate -c "$cfg" prefix --apply
+  assert_exit "retry rc 0" 0 "$RC"
+  assert_eq "A at its migrated name" "yes" \
+    "$([[ -f "$dir/20260613T090000-aaa.md" ]] && echo yes || echo no)"
+  assert_eq "B at its migrated name" "yes" \
+    "$([[ -f "$dir/20260613T100000-bbb.md" ]] && echo yes || echo no)"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:

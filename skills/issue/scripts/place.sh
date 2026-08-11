@@ -1037,6 +1037,16 @@ place_materialize() {
 #   yields deletions as naturally as additions — a mutation that removes a file
 #   (a rename is a remove plus a create) must remove it at the destination too,
 #   or the old name comes back the moment the write is replayed.
+#   The dotfile namespace is excluded, as every other collection enumerator in
+#   the group excludes it. Atomic writers stage through `.<name>.tmp.XXXXXX`
+#   beside the file they are replacing, and this is the one enumerator whose
+#   output becomes tree entries — so without the exclusion a tmp stranded by a
+#   crash mid-write is publishable, after which it is re-materialized on every
+#   run, sits unchanged in both snapshots, and appears in no index. Excluding it
+#   makes the atomicity self-enforcing here rather than dependent on every
+#   writer's cleanup surviving a crash. A path absent from both snapshots is
+#   left alone in the destination tree, so nothing already there is disturbed.
+#
 #   The nameref locals carry a reserved prefix throughout this script: a
 #   nameref whose own name matches the array it points at resolves to itself,
 #   and bash yields an empty array rather than an error.
@@ -1055,7 +1065,7 @@ place_snapshot() {
     # so a sha that was only computed names nothing the tree can reference.
     sha="$(git hash-object -w -- "$entry")" || return 1
     _ps_snap["$name"]="$sha"
-  done < <(find "$dir" -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
+  done < <(find "$dir" -mindepth 1 -maxdepth 1 ! -name '.*' -print0 2>/dev/null)
   return 0
 }
 
