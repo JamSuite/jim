@@ -4,7 +4,7 @@
 # Blueprint — jim
 
 *Axis: vertical · Territory: declared-paths*
-*Last updated: 2026-08-07 (via /jim:blueprint)*
+*Last updated: 2026-08-11 (via /jim:blueprint)*
 
 *The project-tier context map: the declared partition of this project into
 spec groups, each a deliberate context boundary. Current state only — the
@@ -67,7 +67,7 @@ re-declared here.*
 - **Relations:** requires `platform` (path/id/config CLIs, test framework);
   provider to `sdlc`, `blueprint` (emitter + candidate-batch contract), and
   `platform` (validator-lockstep).
-- **Territory:** skills/issue, agents/issue-analyst.md, tests/issues.sh
+- **Territory:** skills/issue, agents/issue-analyst.md, tests/issues.sh, tests/place.sh
 - **Blueprint:** docs/specs/issue/000-blueprint/
 
 ### platform
@@ -88,7 +88,7 @@ re-declared here.*
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-08-07T11:39:30Z
+on every blueprint write; do not edit. Last reconciled: 2026-08-11T06:40:33Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |

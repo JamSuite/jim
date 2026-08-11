@@ -99,3 +99,7 @@
 1786046614	2026-08-06T20:03:34Z	spec	realized	moved=issue/P-20260806-issue-placement:issue/011
 1786102685	2026-08-07T11:38:05Z	blueprint	started	tier=project;op=reconcile
 1786102779	2026-08-07T11:39:39Z	blueprint	finished	tier=project;op=reconcile;edges=23;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=688;faces=19;faces_max=8;faces_max_group=blueprint;fanin_group=issue,platform
+1786430371	2026-08-11T06:39:31Z	blueprint	started	tier=project
+1786430380	2026-08-11T06:39:40Z	blueprint	started	tier=project;op=reconcile
+1786430439	2026-08-11T06:40:39Z	blueprint	finished	tier=project;op=reconcile;edges=23;leaks=0;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=725;faces=19;faces_max=8;faces_max_group=blueprint;fanin_group=issue,platform
+1786430440	2026-08-11T06:40:40Z	blueprint	finished	tier=project;additions=1;downgrades=0
