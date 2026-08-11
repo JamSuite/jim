@@ -296,6 +296,36 @@ case_place_passthrough_substitutes_whole_arguments_only() {
   assert_eq   "left verbatim" 'map[string]interface{}' "$OUT"
 }
 
+# AC: an argument that is exactly `{}` is a placeholder only where the caller
+# that built the invocation put one — after `--dir`/`--place-token`, or as the
+# trailing operand it appended. Whole-argument matching alone is not enough:
+# the emitter re-execs carrying its own caller's entire argv, so a title of
+# exactly `{}` occupies a marker's shape while being user text. Substituting it
+# puts this run's temp path into the title and from there into the slug — the
+# durable id an append-only registry has already recorded, which no later run
+# can reclaim (spec AC #3).
+case_place_user_text_matching_a_marker_is_not_substituted() {
+  local repo body out rc log err
+  repo="$(place_repo place_subst_user_marker 'issue_placement = "jim/issues"')"
+  body="$(fixture place_subst_marker_body.md 'body')"
+  err="$TMP_BASE/.subst-marker.err"
+  out="$(cd "$repo" && bash "$REPO_ROOT/skills/issue/scripts/new.sh" \
+           --title '{}' --priority medium --labels x \
+           --origin conversation --body-file "$body" 2>"$err")"
+  rc=$?
+  log="$(git -C "$repo" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null)"
+  # A slug built from the run's temp root is unmistakable, and permanent.
+  if printf '%s\n' "$out$log" | grep -q 'tmp'; then
+    CURRENT_FAILED=1
+    echo "    [the run's temp path reached the durable id] [$out] [$log]"
+  fi
+  # The title arrived verbatim, so slug derivation refuses it — the right
+  # outcome for a degenerate title, and it burns no ordinal.
+  assert_exit  "refuses rather than filing"   1      "$rc"
+  assert_match "the emitter saw the literal"  "'\\{\\}'" "$(cat "$err")"
+  assert_eq    "nothing was allocated"        ""     "$log"
+}
+
 # ─── Section: Run-scoped token (security Finding 10) ─────────────────────────
 
 # AC: an inherited or hand-exported JIM_PLACE_TOKEN cannot switch centralization
@@ -727,8 +757,8 @@ cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
 TEAMMATE
   run_place_in "$mine" run --verb file -- \
-    sh -c 'printf "mine\n" > "$1/20260101-a.md"; sh "$2" >/dev/null 2>&1' \
-    _ '{}' "$teammate"
+    sh -c 'printf "mine\n" > "$2/20260101-a.md"; sh "$1" >/dev/null 2>&1' \
+    _ "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "mine landed"   "mine" \
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
@@ -778,7 +808,7 @@ case_place_mid_publish_degradation_is_disclosed() {
 git -C "$clone" remote set-url origin "$TMP_BASE/no-such-remote.git"
 BREAKER
   run_place_in "$clone" run --verb file -- \
-    sh -c 'printf "later\n" > "$1/20260101-b.md"; sh "$2"' _ '{}' "$breaker"
+    sh -c 'printf "later\n" > "$2/20260101-b.md"; sh "$1"' _ "$breaker" '{}'
   assert_exit  "rc"                    0               "$RC"
   assert_match "discloses the drop"    'lost contact'  "$ERR"
   assert_match "and that it is deferred" 'deferred'    "$ERR"
@@ -956,8 +986,8 @@ cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
 TEAMMATE
   run_place_in "$mine" run --verb file -- \
-    sh -c 'printf "mine\n" > "$1/20260101-c.md"; sh "$2" >/dev/null 2>&1' \
-    _ '{}' "$teammate"
+    sh -c 'printf "mine\n" > "$2/20260101-c.md"; sh "$1" >/dev/null 2>&1' \
+    _ "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "the deferred close survived the race" "closed" \
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
@@ -1125,7 +1155,7 @@ case_place_grafts_disjoint_concurrent_mutations() {
 cd "$theirs" && bash "$SCRIPT_place" run --verb file -- sh "$theirs_w" '{}'
 TEAMMATE
   run_place_in "$mine" run --verb file -- \
-    sh -c 'sh "$1" "$2"; sh "$3" >/dev/null 2>&1' _ "$mine_w" '{}' "$teammate"
+    sh -c 'sh "$1" "$3"; sh "$2" >/dev/null 2>&1' _ "$mine_w" "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "mine survived"   "yes" \
     "$(git -C "$bare" cat-file -e refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null && echo yes || echo no)"
@@ -1154,8 +1184,8 @@ cd "$theirs" && bash "$SCRIPT_place" run --verb edit -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-a.md"' _ '{}'
 TEAMMATE
   run_place_in "$mine" run --verb edit -- \
-    sh -c 'printf "mine\n" > "$1/20260101-a.md"; sh "$2" >/dev/null 2>&1' \
-    _ '{}' "$teammate"
+    sh -c 'printf "mine\n" > "$2/20260101-a.md"; sh "$1" >/dev/null 2>&1' \
+    _ "$teammate" '{}'
   assert_exit  "rc"        3              "$RC"
   assert_match "names path" '20260101-a\.md' "$ERR"
   assert_eq "their edit intact" "theirs" \
@@ -1180,8 +1210,8 @@ cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
 TEAMMATE
   # A rename: remove the old name, create the new one, while the branch moves.
   run_place_in "$mine" run --verb rename -- \
-    sh -c 'git mv --help >/dev/null 2>&1; mv "$1/20260101-old.md" "$1/20260101-new.md"; sh "$2" >/dev/null 2>&1' \
-    _ '{}' "$teammate"
+    sh -c 'git mv --help >/dev/null 2>&1; mv "$2/20260101-old.md" "$2/20260101-new.md"; sh "$1" >/dev/null 2>&1' \
+    _ "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
   paths="$(git -C "$bare" ls-tree -r --name-only refs/heads/jim/issues 2>/dev/null)"
   assert_match "new name present"  'docs/issues/20260101-new\.md'   "$paths"
@@ -1205,9 +1235,9 @@ cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
 TEAMMATE
   run_place_in "$mine" run --verb file -- sh -c \
-    'bash "$1" --dir "$2" --title "Alpha bug" --priority medium --labels x \
-       --origin conversation --body-file "$3" >/dev/null; sh "$4" >/dev/null 2>&1' \
-    _ "$REPO_ROOT/skills/issue/scripts/new.sh" '{}' "$body" "$teammate"
+    'bash "$1" --dir "$4" --title "Alpha bug" --priority medium --labels x \
+       --origin conversation --body-file "$2" >/dev/null; sh "$3" >/dev/null 2>&1' \
+    _ "$REPO_ROOT/skills/issue/scripts/new.sh" "$body" "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
   log="$(git -C "$mine" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null)"
   assert_eq "exactly one allocation" "1" \
@@ -1233,8 +1263,8 @@ cd "$repo" && bash "$SCRIPT_place" run --verb file -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
 RACER
   run_place_in "$repo" run --verb file -- \
-    sh -c 'printf "mine\n" > "$1/20260101-c.md"; sh "$2" >/dev/null 2>&1' \
-    _ '{}' "$racer"
+    sh -c 'printf "mine\n" > "$2/20260101-c.md"; sh "$1" >/dev/null 2>&1' \
+    _ "$racer" '{}'
   assert_exit "rc" 0 "$RC"
   paths="$(place_dest_paths "$repo" jim/issues)"
   assert_match "mine landed"      'docs/issues/20260101-c\.md' "$paths"
@@ -1335,7 +1365,7 @@ commit="\$(git -C "$bare" commit-tree "\$tree" -m rewritten)"
 git -C "$bare" update-ref refs/heads/jim/issues "\$commit"
 REWRITER
   run_place_in "$clone" run --verb file -- \
-    sh -c 'printf "second\n" > "$1/20260101-y.md"; sh "$2"' _ '{}' "$rewriter"
+    sh -c 'printf "second\n" > "$2/20260101-y.md"; sh "$1"' _ "$rewriter" '{}'
   assert_exit  "rc"                0            "$RC"
   assert_match "discloses rewrite" 'rewritten'  "$ERR"
   assert_match "names last seen"   "$seen"      "$ERR"

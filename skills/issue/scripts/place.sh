@@ -40,8 +40,11 @@
 #   bash place.sh run [--read] --verb <enum> [--id <slug>] -- CMD [ARGS...]
 #     Run CMD against the collection. An ARG that is exactly `{}` becomes the
 #     collection directory and one that is exactly `{token}` becomes this run's
-#     token; every other argument is forwarded untouched, because ARGS carry
-#     free-form user text. --read discards the result instead of publishing it.
+#     token — but only where a caller building an invocation puts a placeholder:
+#     as the operand of `--dir` / `--place-token`, or as the trailing argument.
+#     Every other argument is forwarded untouched, because ARGS carry free-form
+#     user text that can look exactly like a placeholder. --read discards the
+#     result instead of publishing it.
 #
 #   verb enum: file | edit | close | rename | realize | reindex | backfill |
 #   migrate. Commit subjects are composed from the enum plus an optional
@@ -165,24 +168,43 @@ place_valid_verb() {
 }
 
 # place_substitute <dir> <token> <arg>... — fill PLACE_CMD with the wrapped
-# command, replacing an argument that is exactly `{}` with <dir> and one that is
-# exactly `{token}` with <token>. Substitution is whole-argument, so a directory
-# containing spaces stays one word — and so an argument that merely *contains*
-# braces is left alone. That second property is the load-bearing one: the
-# wrapped command carries free-form user text, and `{}` is ordinary in a
-# developer-tool issue title (`interface{}`, an empty JSON literal). Rewriting
-# it would put this run's temp path into the title, and from there into the
-# slug, which is the durable id an append-only registry has already recorded.
+# command, replacing the placeholders the caller put there: `{}` with <dir> and
+# `{token}` with <token>.
+#
+# A placeholder is recognized by position as well as value, because value alone
+# cannot tell a marker from user text that looks like one. Substitution is
+# whole-argument, so a directory containing spaces stays one word and an
+# argument that merely *contains* braces is left alone — `interface{}` is
+# ordinary in a developer-tool issue title. But an argument that *is* exactly
+# `{}` can be user text too: the emitter re-execs carrying its own caller's
+# entire argv, so `--title '{}'` arrives as a bare `{}` in a marker's shape.
+# Rewriting it puts this run's temp path into the title and from there into the
+# slug — the durable id an append-only registry has already recorded, which no
+# later run can reclaim.
+#
+# So a marker counts only where a caller building an invocation puts one: as the
+# operand of the flag that names it, or as the trailing argument appended after
+# everything being forwarded. Every entry script uses one of those two shapes,
+# and neither is reachable by text travelling through the middle of an argv.
 place_substitute() {
   local dir="$1" token="$2"; shift 2
+  local -a args=( "$@" )
+  local n=${#args[@]} i prev
   PLACE_CMD=()
-  local a
-  for a in "$@"; do
-    case "$a" in
-      '{}')      a="$dir" ;;
-      '{token}') a="$token" ;;
+  for (( i = 0; i < n; i++ )); do
+    prev=""
+    (( i > 0 )) && prev="${args[i-1]}"
+    case "${args[i]}" in
+      '{}')
+        if [[ "$prev" == "--dir" ]] || (( i == n - 1 )); then
+          PLACE_CMD+=( "$dir" ); continue
+        fi ;;
+      '{token}')
+        if [[ "$prev" == "--place-token" ]] || (( i == n - 1 )); then
+          PLACE_CMD+=( "$token" ); continue
+        fi ;;
     esac
-    PLACE_CMD+=( "$a" )
+    PLACE_CMD+=( "${args[i]}" )
   done
 }
 

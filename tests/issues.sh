@@ -3450,8 +3450,8 @@ TEAMMATE
   # land — so the graft has to replay both halves of the rename.
   OUT="$(cd "$mine" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" \
     run --verb migrate -- sh -c \
-    'bash "$1" prefix "$2" --apply >/dev/null; sh "$3" >/dev/null 2>&1' \
-    _ "$SCRIPT_MIGRATE" '{}' "$teammate" 2>"$TMP_BASE/.err")"
+    'bash "$1" prefix "$3" --apply >/dev/null; sh "$2" >/dev/null 2>&1' \
+    _ "$SCRIPT_MIGRATE" "$teammate" '{}' 2>"$TMP_BASE/.err")"
   RC=$?
   ERR="$(cat "$TMP_BASE/.err")"
   assert_exit "rc" 0 "$RC"
