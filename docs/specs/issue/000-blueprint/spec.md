@@ -2,8 +2,8 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-08-07"
-last_full_generate: "2026-07-25T07:51:34Z"
+updated: "2026-08-11"
+last_full_generate: "2026-08-11T06:39:06Z"
 ---
 
 # issue — blueprint
@@ -30,13 +30,20 @@ face after the platform CLIs.
   `--origin` are YAML-encoded; the body arrives only via `--body-file` and is
   copied file→file, never interpolated or sourced; every id passes the
   validator before path composition; writes are atomic (tmp+mv); stdout is
-  exactly `<slug>\t<path>`; failures are fixed reason codes, never raw content.
+  exactly `<slug>\t<path>`; failures are fixed reason codes carrying no issue
+  content — the placement refusal names the configured destination.
   Identity — the display ordinal and durable id — is coordinator-issued via
   `platform.jimalloc` and durable-before-write; under an unreachable coordination
   point in `provisional` mode it yields a structurally-distinct provisional
   ordinal that `reconcile.sh` later realizes. The file lands wherever
   `issue_placement` directs — the working branch by default, or a designated
-  destination branch — and stdout names the path within that destination.
+  destination branch — and stdout names the path within that destination. A
+  caller declares an unreviewed batch with `--auto`; under a placement the
+  project has not acknowledged with `issue_placement_ack`, the emitter then
+  exits **4** having written nothing — a redirection to the interactive path
+  rather than a failure. The flag is a declaration the emitter cannot verify:
+  absent, it reads as reviewed, so a caller that omits it on a quiet path
+  publishes rather than degrading.
 - `index.sh` **index generation** — frontmatter scan → `INDEX.md`
   (summary, issues, relation graph, integrity warnings). Guarantee:
   line-oriented parse only; atomic write — a failed run leaves the previous
