@@ -2,16 +2,16 @@
 id: 20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn
 num: 273
 title: "Placement turns the origin lint into cross-branch index churn"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement, index]
 relations:
   blocks: []
   depends-on: []
-  related-to: []
+  related-to: [20260811-compute-checkout-dependent-index-warnings-at-read-time]
   duplicates: []
 created: 2026-08-07T11:43:57Z
-updated: 2026-08-07T11:43:57Z
+updated: 2026-08-11T01:32:24Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 

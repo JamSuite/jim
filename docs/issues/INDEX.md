@@ -3,7 +3,7 @@
 ## Summary
 
 - Open: 111
-- Closed: 185
+- Closed: 186
 
 ## Issues
 
@@ -277,7 +277,7 @@
 - `20260807-placeholder-substitution-corrupts-issue-titles-and-durable-ids` — Placeholder substitution corrupts issue titles and durable ids · status: closed · num: 270 · priority: critical · created: 2026-08-07T11:43:20Z · labels: [issue, placement, data-integrity] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-placement-bookmark-produces-false-rewrite-alarms` — Placement bookmark produces false rewrite alarms · status: closed · num: 271 · priority: medium · created: 2026-08-07T11:43:54Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-placement-tests-one-vacuous-case-and-untested-direct-mode` — Placement tests: one vacuous case and untested direct mode · status: closed · num: 272 · priority: medium · created: 2026-08-07T11:43:58Z · labels: [testing, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn` — Placement turns the origin lint into cross-branch index churn · status: open · num: 273 · priority: medium · created: 2026-08-07T11:43:57Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn` — Placement turns the origin lint into cross-branch index churn · status: closed · num: 273 · priority: medium · created: 2026-08-07T11:43:57Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-push-failures-are-reported-as-contention` — Push failures are reported as contention · status: closed · num: 274 · priority: medium · created: 2026-08-07T11:43:53Z · labels: [issue, placement, diagnostics] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-read-collection-blobs-in-one-batch-instead-of-one-process-per-en` — Read collection blobs in one batch instead of one process per entry · status: open · num: 260 · priority: medium · created: 2026-08-07T10:59:34Z · labels: [issue, performance, placement] · origin: docs/specs/issue/011-issue-placement/plan.md
 - `20260807-record-the-arbitrary-executor-exception-in-permission-convention` — Record the arbitrary-executor exception in permission conventions · status: closed · num: 275 · priority: low · created: 2026-08-07T11:43:59Z · labels: [docs, architecture, permissions] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -303,6 +303,7 @@
 - `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` — render.sh swallows a regeneration failure and serves a stale index · status: open · num: 294 · priority: medium · created: 2026-08-08T18:49:43Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: closed · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-tests-place-sh-sits-outside-every-declared-territory` — tests/place.sh sits outside every declared territory · status: open · num: 296 · priority: medium · created: 2026-08-08T18:40:09Z · labels: [blueprint, territory] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260811-compute-checkout-dependent-index-warnings-at-read-time` — Compute checkout-dependent index warnings at read time · status: open · num: P-20260811-compute-checkout-dependent-index-warnings-at-read-time · priority: medium · created: 2026-08-11T01:31:36Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/remediation.md
 
 ## Graph
 
@@ -422,6 +423,8 @@
 - `20260803-restore-the-id-boundary-memo-s-cross-pass-warmth-in-the-sweep` --related-to--> `20260802-cut-the-per-file-frontmatter-cost-the-registry-sweep-pays`
 - `20260806-document-the-id-coordination-key-family-in-jimconf-toml-example` --related-to--> `spec-issue-placement-config-for-issue-content-location`
 - `20260806-extract-a-shared-valid-branch-verb-into-jimfile-sh` --related-to--> `fixture-the-invalid-id-coordination-branch-refusal-in-tests-jima`
+- `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn` --related-to--> `20260811-compute-checkout-dependent-index-warnings-at-read-time`
+- `20260811-compute-checkout-dependent-index-warnings-at-read-time` --related-to--> `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn`
 
 ## Integrity Warnings
 

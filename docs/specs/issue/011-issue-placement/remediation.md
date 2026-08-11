@@ -15,8 +15,8 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6, WP8 and WP9 complete; WP7 outstanding.** Eighteen commits over
-`ae4b877..HEAD`. Suite **1284 → 1307 green**.
+**WP0–WP6 and WP8–WP10 complete; WP7 outstanding.** Twenty-two commits over
+`ae4b877..HEAD`. Suite **1284 → 1308 green**.
 
 | WP | State | Closes |
 | :--- | :--- | :--- |
@@ -29,9 +29,10 @@ meets it, and what is deliberately left tracked.*
 | WP6 documentation | done | #292 |
 | WP8 direct-mode arm | done | #281, #283, #268, #295 (both halves) |
 | WP9 analyst + routing | done | #266; #277 **items 1–3 only** |
+| WP10 origin lint | done | #273 |
 | WP7 close out | **outstanding** | — |
 
-Sixteen issues are closed in the collection. Two stay open, each narrowed to
+Seventeen issues are closed in the collection. Two stay open, each narrowed to
 the half that carries a decision:
 
 - **#278** — the three false-prose sites are corrected; the polarity is not
@@ -152,8 +153,8 @@ Strike it if you disagree; nothing else depends on it.
 - **Likely verdict:** `minor-drift` rather than `aligned`. That is the honest
   outcome of this bar and should not be argued away at review time.
 
-*This section describes the bar as set. WP8 and WP9 were taken after it on the
-developer's approval and moved AC 3, 5 and 12 past what it promised — see
+*This section describes the bar as set. WP8, WP9 and WP10 were taken after it on
+the developer's approval and moved AC 3, 5, 11 and 12 past what it promised — see
 **Status**.*
 
 ## Work packages
@@ -462,6 +463,36 @@ directory is still reachable with no placement configured at all.
 
 **Item 4 is deliberately not taken** — see *Deferred*.
 
+### WP10 — The origin lint *(added mid-flight)*
+
+**Closes #273.** A decision, taken by the developer: skip the lint when the
+collection is placed on a branch, rather than resolving origins against the
+destination's tree.
+
+Resolving against the destination was rejected on the merits, not deferred. A
+dedicated issues branch is an orphan carrying only the collection (AC 8), so
+every path-shaped origin — `docs/brainstorms/…`, `docs/specs/…` — fails to
+resolve there *by construction*: the flapping warning set would become a
+permanently full one, and worst for the push-protected-`main` case the spec's
+third user story exists to serve. It would also put git inside `index.sh`, which
+is filesystem-only and usable outside a repository.
+
+Two implementation facts worth keeping:
+
+- **The gate keys on configuration, not on materialization.** In direct mode the
+  invoking CWD *is* the collection's branch, so the lint has ground truth there
+  and none on the plumbing path. Gating on the arm keeps the flapping and moves
+  the seam.
+- **The skip is stated, not silent.** A constant note in the warnings block, so
+  no churn, and a check that cannot be grounded says so rather than being
+  inferred from absence.
+
+The signal is not restored, only stopped from lying. Computing it per reader at
+read time — where a checkout-dependent fact belongs — is filed as a follow-on
+(`20260811-compute-checkout-dependent-index-warnings-at-read-time`), held back
+because it changes the stored artifact for projects with no placement at all,
+which no review finding asked for.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
@@ -484,7 +515,6 @@ was taken as WP8 and is gone from the list.
 | #290 (high) | `--origin` has never been YAML-encoded and the code's own comment records the narrower scope deliberately. A text-vs-code fork, not a fix. The `--title '{}'` residue rides with it. |
 | #277 *(item 4 only)* | The emitter prints its stdout contract before the publish that can fail, and the ordinal is already burned. A contract-timing decision, not a patch. Leaves AC 3 partial. |
 | #291, #294 | The group has two read-failure postures and chose neither. One decision, not two fixes — see *Open decisions*. |
-| #273 | Origin lint → cross-branch published churn. Pre-existing; WP1's path-shaped-origin fixture makes it exercisable. |
 | #288 | `migrate.sh`'s non-transactional commit phase (deliberate and documented) plus `place_snapshot`'s tmp-namespace publishing. |
 | #286 (low) | Insights empty-collection step has no granted capability. |
 | #279 | Blueprint emitter face omits `--auto`/rc 4. Judged *not* breaking — a declaration-only consumer can never receive rc 4. Declaration edit; rides the next blueprint pass. |
