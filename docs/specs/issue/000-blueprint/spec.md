@@ -3,7 +3,7 @@ title: "issue — blueprint"
 group: "issue"
 kind: blueprint
 updated: "2026-08-11"
-last_full_generate: "2026-08-11T06:39:06Z"
+last_full_generate: "2026-08-11T10:49:03Z"
 ---
 
 # issue — blueprint
@@ -37,7 +37,11 @@ face after the platform CLIs.
   point in `provisional` mode it yields a structurally-distinct provisional
   ordinal that `reconcile.sh` later realizes. The file lands wherever
   `issue_placement` directs — the working branch by default, or a designated
-  destination branch — and stdout names the path within that destination. A
+  destination branch — and stdout names the path within that destination,
+  emitted only once the write has reached it: a publish that fails prints
+  nothing on stdout and reports the line on stderr marked unpublished, so a
+  printed path is one a reader can open. The identity it names is spent either
+  way, since the allocator is append-only. A
   caller declares an unreviewed batch with `--auto`; under a placement the
   project has not acknowledged with `issue_placement_ack`, the emitter then
   exits **4** having written nothing — a redirection to the interactive path
@@ -49,10 +53,14 @@ face after the platform CLIs.
   line-oriented parse only; atomic write — a failed run leaves the previous
   index untouched.
 - `render.sh` **read views** — `stats`/`list`/`show`/`insights-graph`/`help`.
-  Guarantee: staleness-gated index reuse (regenerates only when stale); ids
-  resolve only against the indexed set, never composed into paths from raw
-  input; read-only toward issue content; reads serve the collection at the
-  configured placement rather than a branch-local copy.
+  Guarantee: staleness-gated index reuse in the working tree, where mtimes
+  answer the question, and an unconditional rebuild on a materialized copy,
+  where they cannot; ids resolve only against the indexed set, never composed
+  into paths from raw input; read-only toward issue content; reads serve the
+  collection at the configured placement rather than a branch-local copy. A
+  view served from an index that could not be rebuilt is named on stderr and
+  carries a non-zero status, so no reader is handed a stale view reported as a
+  current one.
 - **§ 7a candidate-batch contract** — the canonical definition of the fileable
   bar (resolution, actionability, pipeline-ownership) and the emitter call
   shape, defined once in this group's `SKILL.md`. Guarantee: surfacing skills
@@ -110,7 +118,7 @@ face after the platform CLIs.
 | untrusted-body-never-shell | Issue bodies travel only via `--body-file` temp files, copied file→file; title/label/origin scalars are YAML-encoded; no untrusted value is interpolated into shell or YAML | critical | judge |
 | id-gate-before-path | Every id passes the validator before any path composition or file read; `show` resolves only against the indexed set | critical | judge |
 | atomic-index-write | `INDEX.md` and issue-file writes are tmp+mv atomic; a failed run leaves the previous file untouched | medium | judge |
-| staleness-gated-reads | Read verbs regenerate the index only when stale and never serve a stale view | medium | judge |
+| staleness-gated-reads | A read builds a current index where it can — gated on staleness in the working tree, unconditionally on a materialized copy, whose mtimes encode extraction order rather than edit history. A view served from an index that could not be rebuilt is disclosed on stderr and carries a non-zero status; a write refuses instead, so a stale index never reaches the destination | medium | judge |
 | placement-gate-before-git | The destination branch name clears a validity gate and the coordination-branch refusal before it reaches any git argument; a value that fails refuses rather than falling back to the working branch | critical | judge |
 | materialization-contained | Every entry extracted from destination-branch content is a regular file with a plain name resolving inside the collection directory, and its bytes are read by object name, never by tree path; the first violation aborts the extraction before the wrapped command runs | critical | judge |
 | insights-capability-boundary | Insights synthesis happens only in the write-free issue-analyst subagent; the main agent reads no issue bodies during insights. The runtime enforcement rides the allowed-tools permission channel, which no mechanical check here models — judged from the prompt surface | high | judge |
