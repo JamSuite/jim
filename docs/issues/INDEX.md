@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 108
-- Closed: 189
+- Open: 105
+- Closed: 192
 
 ## Issues
 
@@ -282,7 +282,7 @@
 - `20260807-read-collection-blobs-in-one-batch-instead-of-one-process-per-en` — Read collection blobs in one batch instead of one process per entry · status: open · num: 260 · priority: medium · created: 2026-08-07T10:59:34Z · labels: [issue, performance, placement] · origin: docs/specs/issue/011-issue-placement/plan.md
 - `20260807-record-the-arbitrary-executor-exception-in-permission-convention` — Record the arbitrary-executor exception in permission conventions · status: closed · num: 275 · priority: low · created: 2026-08-07T11:43:59Z · labels: [docs, architecture, permissions] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-regenerate-the-index-on-placed-reads-instead-of-touching-it` — Regenerate the index on placed reads instead of touching it · status: closed · num: 276 · priority: high · created: 2026-08-07T11:43:26Z · labels: [issue, placement, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260807-routing-argument-classification-defects-in-the-entry-scripts` — Routing argument classification defects in the entry scripts · status: open · num: 277 · priority: medium · created: 2026-08-07T11:43:55Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260807-routing-argument-classification-defects-in-the-entry-scripts` — Routing argument classification defects in the entry scripts · status: closed · num: 277 · priority: medium · created: 2026-08-07T11:43:55Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-test-suite-wall-clock-exceeds-a-single-foreground-run` — Test suite wall-clock exceeds a single foreground run · status: open · num: 261 · priority: low · created: 2026-08-07T10:59:37Z · labels: [testing, performance] · origin: docs/specs/issue/011-issue-placement/plan.md
 - `20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag` — Auto-file scrub gate is fail-open on a forgotten flag · status: open · num: 278 · priority: high · created: 2026-08-08T18:39:29Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-blueprint-emitter-face-omits-the-auto-flag-and-exit-code-4` — Blueprint emitter face omits the auto flag and exit code 4 · status: closed · num: 279 · priority: medium · created: 2026-08-08T18:49:44Z · labels: [blueprint, contract] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -297,10 +297,10 @@
 - `20260808-migrate-commit-phase-is-not-transactional-and-tmp-files-are-publ` — migrate commit phase is not transactional and tmp files are publishable · status: closed · num: 288 · priority: medium · created: 2026-08-08T18:49:42Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-neither-the-canonical-snippet-nor-the-sweep-binds-the-scrub-gate` — Neither the canonical snippet nor the sweep binds the scrub gate · status: closed · num: 289 · priority: medium · created: 2026-08-08T18:40:07Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-origin-is-not-yaml-encoded-and-a-bare-brace-argument-is-substitu` — origin is not YAML-encoded and a bare brace argument is substituted · status: open · num: 290 · priority: high · created: 2026-08-08T18:49:41Z · labels: [issue, security, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant` — Placed reads hard-fail where the group read path is tolerant · status: open · num: 291 · priority: medium · created: 2026-08-08T18:39:50Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant` — Placed reads hard-fail where the group read path is tolerant · status: closed · num: 291 · priority: medium · created: 2026-08-08T18:39:50Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-placement-doc-gaps-close-flow-bookmark-claim-ordinal-read-back` — Placement doc gaps: close-flow, bookmark claim, ordinal read-back · status: closed · num: 292 · priority: medium · created: 2026-08-08T18:40:08Z · labels: [issue, placement, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-placement-test-gaps-after-the-repair-pass` — Placement test gaps after the repair pass · status: closed · num: 293 · priority: medium · created: 2026-08-08T18:40:10Z · labels: [testing, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` — render.sh swallows a regeneration failure and serves a stale index · status: open · num: 294 · priority: medium · created: 2026-08-08T18:49:43Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` — render.sh swallows a regeneration failure and serves a stale index · status: closed · num: 294 · priority: medium · created: 2026-08-08T18:49:43Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: closed · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-tests-place-sh-sits-outside-every-declared-territory` — tests/place.sh sits outside every declared territory · status: closed · num: 296 · priority: medium · created: 2026-08-08T18:40:09Z · labels: [blueprint, territory] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` — Compute checkout-dependent index warnings at read time · status: open · num: P-20260811-compute-checkout-dependent-index-warnings-at-read-time · priority: medium · created: 2026-08-11T01:31:36Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/remediation.md
@@ -424,6 +424,8 @@
 - `20260806-document-the-id-coordination-key-family-in-jimconf-toml-example` --related-to--> `spec-issue-placement-config-for-issue-content-location`
 - `20260806-extract-a-shared-valid-branch-verb-into-jimfile-sh` --related-to--> `fixture-the-invalid-id-coordination-branch-refusal-in-tests-jima`
 - `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn` --related-to--> `20260811-compute-checkout-dependent-index-warnings-at-read-time`
+- `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant` --related-to--> `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind`
+- `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` --related-to--> `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant`
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` --related-to--> `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn`
 
 ## Integrity Warnings

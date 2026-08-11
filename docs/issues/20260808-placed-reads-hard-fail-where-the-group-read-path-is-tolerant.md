@@ -2,7 +2,7 @@
 id: 20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant
 num: 291
 title: "Placed reads hard-fail where the group read path is tolerant"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:50Z
-updated: 2026-08-08T18:39:50Z
+updated: 2026-08-11T11:05:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -66,3 +66,30 @@ strict is kept, note it in the group blueprint's read-path guarantee, since
 
 Not covered. A case with an unwritable materialized collection would pin
 whichever behavior is chosen.
+
+## Resolution (2026-08-11)
+
+Fixed in `5a5c83d`, as one decision with
+[[20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind]]
+rather than as two independent fixes — which is what this issue asked for.
+
+The group's rule is now that **a view known to be stale is never reported as
+success, and never published.** That resolves the divergence by posture, not by
+making the two calls identical:
+
+- `place.sh`'s **read** path no longer hard-fails. The materialized copy still
+  carries the index the destination holds, so the run degrades to what a reader
+  in the working tree gets — served, disclosed on stderr, and carried in the
+  exit status.
+- `place.sh`'s **write** path still refuses. There the stale index is precisely
+  what would reach the shared branch, and refusing is not a failure to disclose.
+
+The read relaxation is **not pinned by a test.** The collection it reindexes is
+a temp directory `place.sh` creates and owns, so the failure is unreachable
+without injecting a hook into production code, which this group avoids. It was
+verified by neutering `place_reindex` against a seeded placement fixture: before
+the change a placed read returned rc 1 with empty stdout; after it, rc 1 with
+the destination's own `INDEX.md` on stdout and the disclosure on stderr, while a
+placed write still refused and published nothing. The reachable half of this
+issue — an unwritable collection in a developer's checkout, which is also what
+the direct arm serves reads from — is pinned through `render.sh`.

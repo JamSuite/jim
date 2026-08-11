@@ -2,7 +2,7 @@
 id: 20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind
 num: 294
 title: "render.sh swallows a regeneration failure and serves a stale index"
-status: open
+status: closed
 priority: medium
 labels: [issue, invariant]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:49:43Z
-updated: 2026-08-08T18:49:43Z
+updated: 2026-08-11T11:05:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -69,3 +69,30 @@ rather than silent, so "never serve a stale view" is not quietly false.
 
 Not covered. A case with an unwritable collection directory would pin whichever
 posture is chosen.
+
+## Resolution (2026-08-11)
+
+Fixed in `5a5c83d`. `ensure_index` still serves the index it already held — a
+stale-but-valid view beats no answer on a read surface — but it names the
+directory on stderr and sets a flag that degrades the run's exit status, so the
+verb no longer reports success over a view it established was out of date one
+line earlier.
+
+The posture was chosen for the whole group rather than for this script, together
+with [[20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant]]:
+**a view known to be stale is never reported as success, and never published.**
+`reconcile.sh` already had exactly this shape (print, carry a non-zero rc), so
+the rule adopts an in-group precedent rather than inventing one.
+
+Pinned by four cases in `tests/issues.sh`, one per read verb, over a collection
+whose directory is unwritable and whose index is stale — each asserting the view
+is still served, the status carries, and stderr says so. A fifth case pins the
+other direction: a collection whose index regenerates cleanly stays silent at
+rc 0, so the four cannot pass against a render that fails every read. Neutering
+the status degradation and the disclosure separately takes them red separately.
+
+The blast radius was checked before choosing: `render.sh`'s only consumers are
+`/jim:issue`, which presents stdout verbatim, and the `issue-analyst` subagent.
+No script reads its exit status, so a non-zero rc breaks no automated path. The
+analyst is told what a non-zero status alongside facts means, since it is the
+terminal reader and nothing downstream of it can tell the graph may be behind.
