@@ -1665,6 +1665,30 @@ updated: 2026-06-13'
   assert_match "warns on malformed"          'not a valid date or timestamp' "$ERR"
 }
 
+# A malformed created carrying a literal backslash-n must stay one field's text.
+# `awk -v` would expand it into a real newline and the value's own trailing text
+# would open a second frontmatter pair — so `status:` is placed AFTER `created:`
+# here, where an injected pair becomes the first match every reader resolves.
+# The assertion is on what a reader resolves, not on whether the text survives:
+# the text is the issue's own field value and not this script's to censor.
+case_issues_backfill_normalize_no_escape_expansion() {
+  local dir f
+  dir=$(empty_dir backfill_normalize_escape)
+  # A date-only `updated` is what makes the file eligible for rewrite at all —
+  # the skip fires only when neither field changed.
+  write_issue "$dir" "20260613-x" 'title: "X"
+num: 1
+created: not-a-date\nstatus: closed
+updated: 2026-06-13
+status: open'
+  run_backfill timestamp "$dir"
+  f="$dir/20260613-x.md"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "updated still normalized"  "2026-06-13T00:00:00Z" "$(read_fm_field "$f" updated)"
+  assert_eq   "status a reader resolves"  "open"                 "$(read_fm_field "$f" status)"
+  assert_eq   "no second status pair"     "1"                    "$(grep -c '^status:' "$f")"
+}
+
 # extract_ts_shape <script> — the canonical timestamp-shape pattern marked with
 # `# SYNC(ts-shape): <pattern>`, indentation-independent (Finding F6).
 extract_ts_shape() {

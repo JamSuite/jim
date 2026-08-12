@@ -158,7 +158,7 @@ cmd_timestamp() {
   dir="$(resolve_dir "${1:-}")" || return $?
   [[ -d "$dir" ]] || return 0
 
-  local normalized=0 f base tmp cval uval new_c new_u
+  local normalized=0 f base tmp cval uval new_c new_u wr_c wr_u
   for f in "$dir"/*.md; do
     [[ -f "$f" ]] || continue
     base="$(basename "$f")"
@@ -175,10 +175,28 @@ cmd_timestamp() {
       echo "error: cannot create tmp file in '$dir'" >&2
       return 1
     }
-    if awk -v c="$new_c" -v u="$new_u" '
+    # Rewrite only a field whose canonical form normalize_ts actually minted, so
+    # the sole value this writes is one it produced itself. A malformed value is
+    # returned unchanged, and the skip above fires only when NEITHER field
+    # changed — so a file with one normalizable field and one malformed one is
+    # rewritten, and reprinting the malformed one puts issue-file text back
+    # through the writer for no gain.
+    #
+    # The values reach awk through the environment rather than `awk -v`, which
+    # processes its operand as a string literal and expands escape sequences: a
+    # literal backslash-n in an untrusted created/updated would become a real
+    # newline, and an issue's own field text would open a second frontmatter
+    # pair. Two independent guards, because the first one rests on a contract
+    # normalize_ts states and this loop cannot see.
+    wr_c=""; wr_u=""
+    [[ "$new_c" != "$cval" ]] && wr_c=1
+    [[ "$new_u" != "$uval" ]] && wr_u=1
+    if c="$new_c" u="$new_u" wr_c="$wr_c" wr_u="$wr_u" awk '
       /^---$/ { fm++; print; next }
-      fm == 1 && /^created:/ && !cdone { print "created: " c; cdone = 1; next }
-      fm == 1 && /^updated:/ && !udone { print "updated: " u; udone = 1; next }
+      fm == 1 && /^created:/ && !cdone && ENVIRON["wr_c"] != "" {
+        print "created: " ENVIRON["c"]; cdone = 1; next }
+      fm == 1 && /^updated:/ && !udone && ENVIRON["wr_u"] != "" {
+        print "updated: " ENVIRON["u"]; udone = 1; next }
       { print }
     ' "$f" > "$tmp"; then
       mv "$tmp" "$f" || {
