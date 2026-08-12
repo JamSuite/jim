@@ -2037,6 +2037,52 @@ issue_id_prefix = \"timestamp\"")
   assert_match "collision count"   '1 collision'           "$OUT"
 }
 
+# AC: a skipped issue says why it was skipped. The preview is the gate an
+# operator approves a destructive migration on, and every skip row carries an
+# empty new-id field — which `IFS=$'\t' read` collapses, since tab is IFS
+# whitespace, shifting the reason into the new-id slot and dropping it.
+case_issues_migrate_preview_states_the_skip_reason() {
+  local dir cfg
+  dir=$(empty_dir migrate_skip_reason)
+  write_issue "$dir" "noprefix" 'title: "X"
+status: open
+num: 1
+created: 2026-01-01T00:00:00Z'
+  cfg=$(fixture migrate-skip-reason.toml "issues_path = \"$dir\"")
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the skip names its reason" \
+    'un-migratable: id has no prefix delimiter' "$OUT"
+}
+
+# AC: the collision discriminator is an id in its own right, and it becomes a
+# filename. Its source cleared the id boundary, but clearance does not transfer:
+# the suffix can carry a slug already at the 128-character cap past it. The
+# header claimed "the new id and any -2/-3 discriminator pass jimfile's
+# valid-id" while only the former did (`id-gate-before-path`, critical).
+case_issues_migrate_discriminator_clears_the_id_boundary() {
+  local dir cfg slug
+  dir=$(empty_dir migrate_disc_cap)
+  # 119 characters, so the re-derived `20260101-<slug>` is exactly 128 and its
+  # discriminated form is 130.
+  slug="$(printf 'a%.0s' $(seq 1 119))"
+  write_issue "$dir" "20250101-$slug" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01T00:00:00Z'
+  write_issue "$dir" "20250102-$slug" 'title: "B"
+status: open
+num: 2
+created: 2026-01-01T00:00:00Z'
+  cfg=$(fixture migrate-disc-cap.toml "issues_path = \"$dir\"")
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the over-long discriminated id is refused" \
+    'discriminated id failed validation' "$OUT"
+  assert_eq "and no 130-character name is proposed" "no" \
+    "$(grep -q -- "-$slug-2" <<< "$OUT" && echo yes || echo no)"
+}
+
 # spec 023 Task 4: the preview adds a stable PLAN-HASH and a read-only VCS note,
 # and mutates nothing.
 case_issues_migrate_prefix_preview() {
@@ -2307,7 +2353,7 @@ case_new_happy_path() {
   assert_match "title"    '^title: "Sample title"$'              "$(cat "$f")"
   assert_match "priority" '^priority: high$'                      "$(cat "$f")"
   assert_match "labels"   '^labels: \[auth, refactor\]$'         "$(cat "$f")"
-  assert_match "origin"   '^origin: docs/specs/jim/025/plan.md$'  "$(cat "$f")"
+  assert_match "origin"   '^origin: "docs/specs/jim/025/plan.md"$' "$(cat "$f")"
   assert_match "body"     'A normal body\.'                       "$(cat "$f")"
 }
 
@@ -2333,6 +2379,46 @@ hi' --priority medium --labels "x" --origin conversation --body-file "$b"
   # index.sh parses the result without error.
   run_index "$dir"
   assert_exit "index parses" 0 "$RC"
+}
+
+# AC: --origin is YAML-encoded like --title. It is model-composed free text with
+# a convention behind it — a source path, or the `conversation` sentinel — and
+# nothing mechanical enforcing either, so it belongs to the untrusted set the
+# invariant names. Emitted bare, an origin of `foo: bar`, `[a, b]` or `!!tag`
+# changes the parsed type or leaves the frontmatter unparseable for a real YAML
+# consumer, and lands verbatim in INDEX.md prose.
+case_new_origin_is_a_quoted_scalar() {
+  local dir b f
+  dir=$(empty_dir new_origin_enc)
+  b=$(fixture new_origin_enc_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-org" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels "x" \
+    --origin 'foo: bar "q" \b' --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  f="$dir/20260101-org.md"
+  assert_match "emitted as a quoted scalar" '^origin: "' "$(cat "$f")"
+  assert_match "the inner quote is escaped"     'bar \\"q\\"' "$(cat "$f")"
+  assert_match "the backslash is escaped first" '\\\\b"$'     "$(cat "$f")"
+  assert_eq "frontmatter is still well formed" "2" "$(grep -c '^---$' "$f")"
+  run_index "$dir"
+  assert_exit "index parses" 0 "$RC"
+}
+
+# AC: the id clears the validator before any path is composed from it — the
+# ordering `id-gate-before-path` (criticality critical) states. It is asserted
+# textually because what the gate guards here is a stat: it answers a filesystem
+# question and leaves nothing behind for a behavioural case to read. Brittle to
+# renaming `$slug` by design, in the same way the byte-agreement fixtures are.
+case_new_validates_the_id_before_composing_a_path() {
+  local src gate compose
+  src="$REPO_ROOT/skills/issue/scripts/new.sh"
+  gate="$(grep -n 'valid-id "\$slug"' "$src" | head -1 | cut -d: -f1)"
+  compose="$(grep -n '\$issues_dir/\$slug' "$src" | head -1 | cut -d: -f1)"
+  assert_nonempty "the gate is present"        "$gate"
+  assert_nonempty "a composition is present"   "$compose"
+  assert_eq "the gate comes first" "yes" \
+    "$([[ -n "$gate" && -n "$compose" && "$gate" -lt "$compose" ]] && echo yes || echo no)"
 }
 
 # AC: untrusted --labels cannot break the inline YAML array (spec 025 AC4, Finding 6)
@@ -2430,7 +2516,7 @@ relations:
   duplicates: []
 created: 2026-01-01T00:00:00Z
 updated: 2026-01-01T00:00:00Z
-origin: conversation
+origin: "conversation"
 ---
 
 ## Description
@@ -3003,7 +3089,7 @@ case_issues_placement_tolerates_a_branch_only_origin() {
     --origin "docs/brainstorms/only-here.md" --body-file "$body"
   assert_exit "rc" 0 "$RC"
   slug="${OUT%%$'\t'*}"
-  assert_match "origin recorded verbatim" '^origin: docs/brainstorms/only-here\.md$' \
+  assert_match "origin recorded verbatim" '^origin: "docs/brainstorms/only-here\.md"$' \
     "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
   assert_match "index still built" 'docs/issues/INDEX\.md' \
     "$(dest_paths "$repo" jim/issues)"

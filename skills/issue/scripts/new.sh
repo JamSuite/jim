@@ -12,11 +12,14 @@
 #     never interpolated, `source`d, or `eval`d (AC4, Finding 5).
 #   - Scalar fields are YAML-encoded so an untrusted --title/--labels/--origin
 #     cannot inject or alter frontmatter or cross the frontmatter/body boundary
-#     (AC4, Findings 1, 6): --title is escaped into a double-quoted scalar,
-#     each --labels token is reduced to the slug charset, newlines are stripped.
+#     (AC4, Findings 1, 6): --title and --origin are each escaped into a
+#     double-quoted scalar, each --labels token is reduced to the slug charset,
+#     newlines are stripped.
 #   - The target path is derived only through the validated id resolver: the id
-#     is checked with `jimfile.sh valid-id` before any write, so untrusted input
-#     cannot direct the write outside the issues directory (AC5, Finding 2).
+#     is checked with `jimfile.sh valid-id` before any path is composed from it —
+#     a stat included — so untrusted input cannot direct the write outside the
+#     issues directory, nor use a composed path to answer a question about one
+#     (AC5, Finding 2).
 #   - stdout is exactly "<slug>\t<path>"; failures go to stderr as fixed reason
 #     codes — never raw --title/--body content (Finding 4).
 #
@@ -206,6 +209,15 @@ issues_dir="${issues_dir%/}"
 # collection instead, mirroring the suffix into the stored provisional
 # ordinal. A real ordinal is already registry-disambiguated, so a local
 # filename collision here is tree/registry drift — refused, never overwritten.
+# Always validate the id through the single security boundary before composing a
+# path — even a caller-supplied --slug, and even an allocator-derived one (AC5).
+#
+# Before, not after: a stat composes a path too. It answers a question about the
+# filesystem, which is exactly the read the boundary governs, and an
+# allocator-derived id is not exempt — the sanitization that produced it lives
+# in another group, so the value is not provably validator-clean here.
+bash "$JIMFILE" valid-id "$slug" || { echo "error: invalid issue id" >&2; exit 1; }
+
 if (( slug_via_alloc )); then
   if [[ "$num" == P-* ]]; then
     base_slug="$slug"
@@ -213,6 +225,10 @@ if (( slug_via_alloc )); then
     while [[ -e "$issues_dir/$slug.md" ]]; do
       suffix=$((suffix + 1))
       slug="${base_slug}-${suffix}"
+      # A derived id is a new id, and it composes the next iteration's path.
+      # The suffix can also push a slug already near the cap past it, which is
+      # a refusal rather than something to discover after the loop.
+      bash "$JIMFILE" valid-id "$slug" || { echo "error: invalid issue id" >&2; exit 1; }
     done
     num="P-${slug}"
   elif [[ -e "$issues_dir/$slug.md" ]]; then
@@ -220,10 +236,6 @@ if (( slug_via_alloc )); then
     exit 1
   fi
 fi
-
-# Always validate the id through the single security boundary before composing a
-# path — even a caller-supplied --slug, and even an allocator-derived one (AC5).
-bash "$JIMFILE" valid-id "$slug" || { echo "error: invalid issue id" >&2; exit 1; }
 
 path="$issues_dir/$slug.md"
 
@@ -233,9 +245,13 @@ path="$issues_dir/$slug.md"
 # double-quoted scalar. Order matters (backslash first).
 title_enc="$(printf '%s' "$title" | tr '\n\r' '  ' | sed 's/\\/\\\\/g; s/"/\\"/g')"
 
-# --origin: collapse newlines; emitted as a plain scalar (skill-controlled path
-# or "conversation"). Not in the AC4 untrusted-field set, but normalized anyway.
-origin_enc="$(printf '%s' "$origin" | tr '\n\r' '  ')"
+# --origin: the same encoding --title gets, and for the same reason. The
+# convention is a source path or the `conversation` sentinel, but nothing
+# mechanical enforces either — it is composed by a skill's prompt, which makes
+# it model-produced text of the same trust class as a title. Emitted bare, a
+# value like `foo: bar`, `[a, b]` or `!!tag` changes the parsed type or leaves
+# the frontmatter unparseable for a real YAML consumer.
+origin_enc="$(printf '%s' "$origin" | tr '\n\r' '  ' | sed 's/\\/\\\\/g; s/"/\\"/g')"
 
 # --labels: csv → slug tokens. Any character outside [a-z0-9-] is reduced, so a
 # label containing ] , " or [[ cannot break the inline YAML array.
@@ -267,7 +283,7 @@ trap 'rm -f "$tmpfile"' EXIT INT TERM
   printf 'relations:\n  blocks: []\n  depends-on: []\n  related-to: []\n  duplicates: []\n'
   printf 'created: %s\n' "$created"
   printf 'updated: %s\n' "$updated"
-  printf 'origin: %s\n' "$origin_enc"
+  printf 'origin: "%s"\n' "$origin_enc"
   printf -- '---\n'
   printf '\n## Description\n\n'
   cat "$body_file"

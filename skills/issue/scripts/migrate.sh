@@ -59,6 +59,25 @@ field_value() {
     | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
 }
 
+# Set together by split_row; the four fields of the plan row last read.
+ROW_ACTION="" ROW_OLD="" ROW_NEW="" ROW_REASON=""
+
+# split_row <row> — fill those four from one tab-separated plan row.
+#
+#   Not `IFS=$'\t' read -r action old new reason`: tab is IFS *whitespace*, so a
+#   run of tabs collapses to a single delimiter. Every skip row carries an empty
+#   new-id field, so reading one that way shifts its reason into the new-id slot
+#   and drops it — which is why the preview announced "un-migratable:" with
+#   nothing after it, for every skipped issue. The preview is what an operator
+#   approves the migration on, so the row that cannot say why it was skipped is
+#   the one that most needs to.
+split_row() {
+  local row="$1"
+  ROW_ACTION="${row%%$'\t'*}"; row="${row#*$'\t'}"
+  ROW_OLD="${row%%$'\t'*}";    row="${row#*$'\t'}"
+  ROW_NEW="${row%%$'\t'*}";    ROW_REASON="${row#*$'\t'}"
+}
+
 # build_plan <dir> — emit one TAB row per issue (deterministic, sorted-glob
 # order): <action>\t<old_id>\t<new_id>\t<reason>
 #   action ∈ rename | collision-resolved | skip-conforming | skip-unmigratable
@@ -105,16 +124,28 @@ build_plan() {
   local -A taken=()
   local row action old new reason
   for row in "${rows[@]}"; do
-    IFS=$'\t' read -r action old new reason <<<"$row"
+    split_row "$row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     [[ "$action" == rename ]] || taken["$old"]=1
   done
   for row in "${rows[@]}"; do
-    IFS=$'\t' read -r action old new reason <<<"$row"
+    split_row "$row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     if [[ "$action" == rename ]]; then
       if [[ -n "${taken[$new]:-}" ]]; then
         local n=2 cand
         while cand="${new}-${n}"; [[ -n "${taken[$cand]:-}" ]]; do n=$((n+1)); done
         new="$cand"; action="collision-resolved"
+        # The discriminator makes a *new* id, and this one becomes a filename.
+        # Its source cleared the boundary, but clearance does not transfer: the
+        # charset cannot change and '..' cannot be introduced, yet the suffix
+        # can carry a near-cap id past the length limit. So it clears the
+        # boundary on its own account, which is what the header claims.
+        if ! jf valid-id "$new" >/dev/null 2>&1; then
+          printf '%s\t%s\t%s\t%s\n' "skip-unmigratable" "$old" "" \
+            "discriminated id failed validation"
+          continue
+        fi
       fi
       taken["$new"]=1
     fi
@@ -124,9 +155,11 @@ build_plan() {
 
 # render_plan <plan-rows> — human preview + summary counts.
 render_plan() {
-  local plan="$1" action old new reason renames=0 skips=0 collisions=0
-  while IFS=$'\t' read -r action old new reason; do
-    [[ -z "$action" ]] && continue
+  local plan="$1" action old new reason renames=0 skips=0 collisions=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_row "$__row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     case "$action" in
       rename)             printf '  rename     %s  ->  %s\n' "$old" "$new"; renames=$((renames+1)) ;;
       collision-resolved) printf '  collision  %s  ->  %s\n' "$old" "$new"; renames=$((renames+1)); collisions=$((collisions+1)) ;;
@@ -177,9 +210,11 @@ apply_plan() {
   local mapfile
   mapfile="$(mktemp "$dir/.migrate.map.XXXXXX")" || {
     echo "error: cannot create tmp in $dir" >&2; return 1; }
-  local action old new reason
-  while IFS=$'\t' read -r action old new reason; do
-    [[ -z "$action" ]] && continue
+  local action old new reason __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_row "$__row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     case "$action" in
       rename|collision-resolved) printf '%s\t%s\n' "$old" "$new" >> "$mapfile" ;;
     esac
@@ -255,9 +290,11 @@ apply_plan() {
 
   bash "$HERE/index.sh" "$dir" >/dev/null 2>&1
 
-  local renamed=0 skipped=0 collisions=0
-  while IFS=$'\t' read -r action old new reason; do
-    [[ -z "$action" ]] && continue
+  local renamed=0 skipped=0 collisions=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_row "$__row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     case "$action" in
       rename)             renamed=$((renamed+1)) ;;
       collision-resolved) renamed=$((renamed+1)); collisions=$((collisions+1)) ;;

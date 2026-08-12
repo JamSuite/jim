@@ -15,7 +15,7 @@ relations:
   duplicates: []
 created: {YYYY-MM-DDThh:mm:ssZ}
 updated: {YYYY-MM-DDThh:mm:ssZ}
-origin: {origin}
+origin: "{origin}"
 ---
 
 ## Description
