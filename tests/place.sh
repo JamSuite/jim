@@ -1084,6 +1084,41 @@ case_place_deferred_mutation_survives_a_moved_destination() {
   assert_match "and this run's"                           '20260101-c' "$index"
 }
 
+# AC: a read in that same diverged state is served from the unpublished side —
+# the only tree carrying this clone's own outstanding mutations — so it omits
+# everything the destination gained since the fork. The run knows, having just
+# fetched it, and the disclosure for that state is gated to writes, so the
+# reader was told nothing at all (spec AC #6, and the user story's "never act on
+# a stale or partial view").
+case_place_diverged_read_discloses_what_it_omits() {
+  local bare mine theirs
+  bare="$(place_bare place_div_read_bare)"
+  mine="$(place_clone "$bare" place_div_read_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_div_read_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb close --id 20260101-a -- \
+    sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "offline write rc" 0 "$RC"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "theirs\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$bare"
+  run_place_in "$mine" run --read --verb reindex -- \
+    sh -c 'ls "$1" | tr "\n" " "' _ '{}'
+  assert_exit "read rc" 0 "$RC"
+  assert_eq "the teammate's issue is genuinely not in the view" "no" \
+    "$(grep -q '20260101-b' <<< "$OUT" && echo yes || echo no)"
+  assert_match "so the read says the view is partial" 'omits' "$ERR"
+  assert_match "and names what closes it"             'next write' "$ERR"
+  # The write path's own disclosure is a different sentence for a different
+  # audience, and must not be the one a read prints.
+  assert_eq "not the write path's wording" "no" \
+    "$(grep -q 'being reapplied' <<< "$ERR" && echo yes || echo no)"
+}
+
 # AC: a deferred mutation survives the resuming run losing a push race. The
 # deferral arm builds on this clone's own head, so the changed set measured
 # against it does not contain the deferred paths — they are the base, not the
@@ -1588,6 +1623,14 @@ case_place_offline_read_does_not_rewind_the_bookmark() {
   run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
   assert_exit "offline read rc" 0 "$RC"
   assert_eq "an offline read leaves it alone" "$seen" "$(place_bookmark "$mine" jim/issues)"
+  # And it serves what the bookmark names, not this clone's own older branch
+  # ref. The two are advanced by different events — only a publish moves the
+  # branch, every authoritative read moves the bookmark — so preferring the
+  # branch serves *less* than the clone last saw while announcing the opposite.
+  run_place_in "$mine" run --read --verb reindex -- \
+    sh -c 'ls "$1" | tr "\n" " "' _ '{}'
+  assert_exit  "offline read rc"         0                "$RC"
+  assert_match "serves what it last saw" '20260101-b\.md' "$OUT"
   # Nor may it raise the alarm. Comparing the bookmark against this clone's own
   # branch ref, which only a publish advances, makes an ordinary teammate push
   # look like a rewrite on a routine offline read.

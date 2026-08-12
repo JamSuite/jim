@@ -401,21 +401,41 @@ place_head_tip() {
 # place_local_tip <branch> — the freshest destination state this clone can reach
 # without the network.
 #
-# Usually that is its own copy of the branch, but a clone that has only ever
-# read the collection has none: `git clone` creates no local head for the
-# destination, and a fetch writes FETCH_HEAD and the remote-tracking ref rather
-# than that head. The bookmark does record the tip such a clone last saw, and
-# because it is a ref, the objects it names are still here to be materialized.
-# Without it an unreachable remote would serve an empty collection while
-# announcing the last-seen state, and a write would build on nothing.
+# Two refs know something about it, and they are advanced by different events:
+# `refs/heads/<branch>` moves only when a publish reaches the destination, while
+# the bookmark moves on every run that reached the destination's owner, read or
+# write. So neither is reliably the fresher, and preferring one outright is
+# wrong in one direction or the other.
+#
+#   - A clone that has only ever read the collection has no local head at all:
+#     `git clone` creates none for the destination, and a fetch writes
+#     FETCH_HEAD and the remote-tracking ref rather than that head. Without the
+#     bookmark an unreachable remote would serve an empty collection while
+#     announcing the last-seen state, and a write would build on nothing.
+#   - A clone that published once and later read online while a teammate
+#     published has a head *behind* its bookmark. Preferring the head there
+#     serves strictly less than the clone last saw, under a message saying
+#     otherwise.
+#
+# Whichever descends from the other is the newer, and is taken. When they are
+# unrelated the head wins: it carries this clone's own unpublished commits, and
+# only the origin tier has the machinery to reconcile the two sides.
 place_local_tip() {
-  local tip bref
-  tip="$(place_head_tip "$1")"
-  if [[ -z "$tip" ]]; then
-    bref="$(place_bookmark_ref "$1")" || return 0
-    tip="$(git rev-parse --verify --quiet --end-of-options "$bref" 2>/dev/null || true)"
+  local branch="$1" head="" bref="" seen=""
+  head="$(place_head_tip "$branch")"
+  if bref="$(place_bookmark_ref "$branch")"; then
+    seen="$(git rev-parse --verify --quiet --end-of-options "$bref" 2>/dev/null || true)"
   fi
-  [[ -n "$tip" ]] && printf '%s\n' "$tip"
+  if [[ -z "$head" ]]; then
+    [[ -n "$seen" ]] && printf '%s\n' "$seen"
+    return 0
+  fi
+  if [[ -n "$seen" && "$seen" != "$head" ]] \
+     && git merge-base --is-ancestor --end-of-options "$head" "$seen" 2>/dev/null; then
+    printf '%s\n' "$seen"
+    return 0
+  fi
+  printf '%s\n' "$head"
   return 0
 }
 
@@ -506,6 +526,30 @@ place_disclose_unpublished() {
     diverged)
       echo "place.sh: '$1' moved on while this clone held unpublished mutations;" \
            "they are being reapplied on top of it" >&2 ;;
+  esac
+  return 0
+}
+
+# place_disclose_partial_view <dest> — the read-side counterpart: say what this
+# view is *not* showing.
+#
+#   A diverged read is served from this clone's own unpublished tip, because
+#   that is the only tree carrying its outstanding mutations — so it omits
+#   everything the destination gained since the two sides forked. The run knows
+#   this, having just fetched it.
+#
+#   It discloses rather than merging. Merging would mean building a union tree
+#   on a path that publishes nothing, and presenting the reader a state that
+#   exists at neither side as though it were the collection. This engine grafts
+#   only as part of a publish, where the result is something a reader can go and
+#   look at; the next write does exactly that, which is what closes the gap.
+place_disclose_partial_view() {
+  case "$PLACE_TIP_STATE" in
+    diverged)
+      echo "place.sh: this clone holds mutations to '$1' that were never" \
+           "published, and '$1' has moved on since — so this view is served from" \
+           "the unpublished side and omits what the destination gained. The next" \
+           "write reapplies them on top and reconciles the two." >&2 ;;
   esac
   return 0
 }
@@ -862,7 +906,11 @@ cmd_begin() {
   place_check_rewrite "$dest" "$tip" "$(( unreachable == 0 ? 1 : 0 ))"
   place_resolve_tips "$dest" "$tier" "$tip"
   tip="$PLACE_ONTO_TIP"
-  (( read_only )) || place_disclose_unpublished "$dest"
+  if (( read_only )); then
+    place_disclose_partial_view "$dest"
+  else
+    place_disclose_unpublished "$dest"
+  fi
   mkdir -p -- "$handle/collection" || { rm -rf -- "$handle"; return 1; }
   # Every refusal below reaches the caller with the status it was refused with.
   # `begin`'s whole contract is the "<token><TAB><dir>" it prints, so a refusal
@@ -1536,7 +1584,11 @@ cmd_run() {
   place_check_rewrite "$dest" "$tip" "$(( unreachable == 0 ? 1 : 0 ))"
   place_resolve_tips "$dest" "$tier" "$tip"
   tip="$PLACE_ONTO_TIP"
-  (( read_only )) || place_disclose_unpublished "$dest"
+  if (( read_only )); then
+    place_disclose_partial_view "$dest"
+  else
+    place_disclose_unpublished "$dest"
+  fi
 
   place_materialize "$PLACE_WORK_TIP" "$prefix" "$PLACE_COLL" || return $?
   local -A before=() after=()
