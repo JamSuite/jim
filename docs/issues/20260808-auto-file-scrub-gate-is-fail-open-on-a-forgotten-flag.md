@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:29Z
-updated: 2026-08-11T08:55:48Z
+updated: 2026-08-12T09:45:03Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -91,3 +91,24 @@ closed. The genuinely fail-closed shape is the inverse — treat every filing as
 unreviewed and have the interactive path opt out with `--reviewed` — so a
 forgotten flag refuses instead of publishing. The cost is that every interactive
 caller, including `/jim:issue add`, then carries a flag. Deliberately not taken.
+
+## Decision (2026-08-12)
+
+**The polarity is settled**, superseding the 2026-08-11 Progress note above,
+which said it remained open. It is **not** the inverse this issue proposed.
+
+The shape taken is a third one: **require an explicit `--auto` or `--reviewed`
+and refuse when neither is given, scoped to the routing condition.**
+
+Why over the straight inversion. The inverse removes the fail-open but installs
+a new silent default in the other direction — a caller that forgets
+`--reviewed` on a genuinely reviewed batch gets an rc 4 redirection it should
+not. Requiring a declaration has no silent default in either direction: a
+forgotten flag is a loud refusal at the one moment it matters. Scoping it to the
+routing condition keeps it inert for any project without a placement, which is
+the entire installed base today — so the default path, the one AC 2 protects,
+is unchanged.
+
+Cost is the same either way: twelve call sites, ten of them prose.
+
+**Not yet implemented.** This records the decision so it is not re-opened.

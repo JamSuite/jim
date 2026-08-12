@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:31Z
-updated: 2026-08-12T03:41:31Z
+updated: 2026-08-12T09:45:03Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -56,3 +56,33 @@ currently have.
 
 Post-build review of `issue/011`; found by tracing AC 3's "every collection
 write" against the tree rather than the diff.
+
+## Decision (2026-08-12)
+
+**Route it, script-to-script.** `reconcile.sh` drives `place.sh begin` /
+`commit` directly around the issue half of the sweep.
+
+Two alternatives were weighed and rejected. Moving the issue half behind a
+self-routing issue-group entry script — which would keep `place.sh` faceless and
+honour plan DD 2 — collapses back into this one unless the *grammar* moves too,
+and moving it would put spec's citation forms (typed `group/NNN`, pathed spec
+dirs, bare ordinals, fence skipping) into the issue group as a fourth rewriter
+that must stay in lockstep with spec's across a group boundary. Refusing under a
+placement was rejected because it leaves `/jim:spec reconcile --apply` unusable
+on exactly the team configuration the spec exists to serve.
+
+DD 2 nominally rejected caller-side wrapping, but its stated reasons were
+cross-group **SKILL.md** edits and a future caller silently missing placement —
+neither applies to a script calling a script.
+
+**Consequence to take with it:** `place.sh` gains its first external caller, so
+the group blueprint's Structure line ("It exposes no face: no caller outside the
+group invokes it") and its Provides face both need amending, plus a contract edge
+`issue → spec`. Through `/jim:blueprint`, not by hand.
+
+**Correction to this issue's own text:** no skill grant is required. The agent
+runs `reconcile.sh`, not the callee, and that script already calls
+`issue/scripts/index.sh` by `BASH_SOURCE`-relative path. The grant claim holds
+only for a skill-level shape, which this is not.
+
+**Not yet implemented.**
