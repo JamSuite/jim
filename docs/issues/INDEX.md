@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 114
-- Closed: 208
+- Open: 112
+- Closed: 211
 
 ## Issues
 
@@ -296,7 +296,7 @@
 - `20260808-local-tier-retry-reopens-a-compare-and-swap-clobber-window` — Local-tier retry reopens a compare-and-swap clobber window · status: closed · num: 287 · priority: medium · created: 2026-08-08T18:39:30Z · labels: [issue, placement, concurrency] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-migrate-commit-phase-is-not-transactional-and-tmp-files-are-publ` — migrate commit phase is not transactional and tmp files are publishable · status: closed · num: 288 · priority: medium · created: 2026-08-08T18:49:42Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-neither-the-canonical-snippet-nor-the-sweep-binds-the-scrub-gate` — Neither the canonical snippet nor the sweep binds the scrub gate · status: closed · num: 289 · priority: medium · created: 2026-08-08T18:40:07Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260808-origin-is-not-yaml-encoded-and-a-bare-brace-argument-is-substitu` — origin is not YAML-encoded and a bare brace argument is substituted · status: open · num: 290 · priority: high · created: 2026-08-08T18:49:41Z · labels: [issue, security, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-origin-is-not-yaml-encoded-and-a-bare-brace-argument-is-substitu` — origin is not YAML-encoded and a bare brace argument is substituted · status: closed · num: 290 · priority: high · created: 2026-08-08T18:49:41Z · labels: [issue, security, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant` — Placed reads hard-fail where the group read path is tolerant · status: closed · num: 291 · priority: medium · created: 2026-08-08T18:39:50Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-placement-doc-gaps-close-flow-bookmark-claim-ordinal-read-back` — Placement doc gaps: close-flow, bookmark claim, ordinal read-back · status: closed · num: 292 · priority: medium · created: 2026-08-08T18:40:08Z · labels: [issue, placement, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-placement-test-gaps-after-the-repair-pass` — Placement test gaps after the repair pass · status: closed · num: 293 · priority: medium · created: 2026-08-08T18:40:10Z · labels: [testing, placement] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -320,7 +320,8 @@
 - `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller` — jimconf resolver can hand a fabricated default to a caller · status: open · num: 311 · priority: medium · created: 2026-08-12T03:42:09Z · labels: [conf, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-last-seen-state-prefers-a-ref-only-a-publish-advances` — Last-seen state prefers a ref only a publish advances · status: closed · num: 312 · priority: high · created: 2026-08-12T03:41:35Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-migrate-sh-failure-handler-is-not-rename-chain-aware` — migrate.sh failure handler is not rename-chain aware · status: open · num: 313 · priority: medium · created: 2026-08-12T03:41:47Z · labels: [issue, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs` — new.sh composes and stats a path before valid-id runs · status: open · num: 320 · priority: critical · created: 2026-08-12T04:09:10Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
+- `20260812-migration-preview-drops-every-skip-reason` — Migration preview drops every skip reason · status: closed · num: P-20260812-migration-preview-drops-every-skip-reason · priority: medium · created: 2026-08-12T08:07:42Z · labels: [issue, migrate, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs` — new.sh composes and stats a path before valid-id runs · status: closed · num: 320 · priority: critical · created: 2026-08-12T04:09:10Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260812-partition-migrate-arms-bypass-issue-placement` — Partition migrate arms bypass issue placement · status: open · num: 314 · priority: high · created: 2026-08-12T03:41:32Z · labels: [issue, placement, partition] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-place-sh-header-and-usage-still-misdescribe-the-script` — place.sh header and usage still misdescribe the script · status: closed · num: 315 · priority: low · created: 2026-08-12T03:42:10Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-place-snapshot-publishes-what-materialization-refuses` — place_snapshot publishes what materialization refuses · status: closed · num: 322 · priority: medium · created: 2026-08-12T07:44:30Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md

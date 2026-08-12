@@ -2,7 +2,7 @@
 id: 20260808-origin-is-not-yaml-encoded-and-a-bare-brace-argument-is-substitu
 num: 290
 title: "origin is not YAML-encoded and a bare brace argument is substituted"
-status: open
+status: closed
 priority: high
 labels: [issue, security, invariant]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:49:41Z
-updated: 2026-08-11T12:20:00Z
+updated: 2026-08-12T08:31:52Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -114,3 +114,28 @@ because `--title`/`--labels`/`--origin` are untrusted; the implementation
 comment at the emit site says origin is skill-controlled and outside that set. A
 comment changes whichever way the fork is resolved, so "the code deliberately
 recorded the narrower scope" is not settled intent to defer to.
+
+## Resolution (2026-08-12)
+
+**Both halves are now closed.** Part 2 — the bare-brace argument — was closed
+under WP14 and is described above.
+
+Part 1 is closed in `227ce29` by the first arm of the fork: `--origin` is encoded
+the way `--title` is, rather than narrowing the invariant to match the code.
+
+The deciding fact is one the issue left open. The code's comment called origin
+"skill-controlled", but `skills/issue/SKILL.md` defines it as "relative path to
+the source artifact when knowable… or `conversation`" — a convention with nothing
+mechanical enforcing it, composed by a skill's *prompt*. That makes it
+model-produced text of the same trust class as a title, so the narrower scope was
+not a deliberate security judgment to defer to. Narrowing a critical invariant to
+match code that had just produced a finding would also have been the move the
+remediation's own standing rule forbids.
+
+Note this does **not** close the index-row forgery route that shares an origin:
+the row is built from the *parsed* value, so ` · ` survives any YAML quoting.
+That is fixed at the index writer under
+`20260812-index-md-rows-are-forgeable-by-two-independent-routes`.
+
+Pinned by `case_new_origin_is_a_quoted_scalar`; the template and the file's
+security-model header were brought into agreement in the same pass.

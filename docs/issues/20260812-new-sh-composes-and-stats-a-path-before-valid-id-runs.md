@@ -2,7 +2,7 @@
 id: 20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs
 num: 320
 title: "new.sh composes and stats a path before valid-id runs"
-status: open
+status: closed
 priority: critical
 labels: [000-blueprint, verify, issue]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T04:09:10Z
-updated: 2026-08-12T04:09:10Z
+updated: 2026-08-12T08:31:52Z
 origin: docs/specs/issue/000-blueprint/spec.md
 ---
 
@@ -63,3 +63,28 @@ re-validate `migrate.sh`'s discriminator before it becomes a path.
 Post-build review of `issue/011`; the `id-gate-before-path` judge. Resolved
 **fix** at the blueprint fork — the rule stands and the code diverged — so the
 invariant text is unchanged and this issue carries the divergence.
+
+## Resolution (2026-08-12)
+
+Fixed in `227ce29`. The `valid-id` call moves above the disambiguation block, so
+nothing composes or stats a path from an unvalidated id, and each suffixed
+variant the loop derives clears the boundary in turn — a derived id is a new id,
+and it composes the next iteration's path. A slug pushed past the 128-character
+cap by its own suffix is now refused there rather than discovered after the loop.
+
+**The secondary is closed too.** `migrate.sh`'s collision discriminator appended
+`-2` to an id that had cleared the boundary and used the result as a filename.
+Clearance does not transfer: the charset cannot change and `..` cannot be
+introduced, but the length cap can be crossed. It now clears the boundary on its
+own account, which is what the file's header already claimed.
+
+Pinned by `case_new_validates_the_id_before_composing_a_path` — a textual
+assertion that the gate precedes the first composition, because what it guards is
+a stat and a stat leaves nothing for a behavioural case to read — and by
+`case_issues_migrate_discriminator_clears_the_id_boundary`, which drives two
+issues re-deriving to the same 128-character id so the discriminated form is 130.
+Both proven to go red with their guard removed.
+
+Writing the second of those exposed a separate defect that was swallowing its own
+skip reason, filed and fixed as
+`20260812-migration-preview-drops-every-skip-reason`.
