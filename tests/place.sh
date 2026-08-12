@@ -1328,6 +1328,28 @@ case_place_read_emits_stdout_unheld() {
   assert_match "the read's own output" 'read-side output'  "$OUT"
 }
 
+# AC: and it stays unheld when the read reports something. The holding mechanism
+# exists so a *write* cannot name a destination path its failed publish never
+# created; a read has no such path to protect. A degraded view is still the
+# view, and render.sh serves one at a non-zero status by design — so treating
+# that status as a failed run sends the whole view to stderr under a "not
+# published" marker, on a run that publishes nothing by construction, leaving
+# the caller's stdout empty (spec AC #5).
+case_place_read_emits_stdout_even_when_the_command_reports() {
+  local repo
+  repo="$(place_repo place_stdout_read_degraded 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=alpha'
+  run_place_in "$repo" run --read --verb reindex -- \
+    sh -c 'printf "the view\n"; printf "served from a stale index\n" >&2; exit 1'
+  assert_exit "forwards the command's own status" 1          "$RC"
+  assert_eq   "the view is on stdout"             "the view" "$OUT"
+  assert_eq   "and was not moved to stderr" "no" \
+    "$(grep -q 'the view' <<< "$ERR" && echo yes || echo no)"
+  assert_eq   "nor marked unpublished" "no" \
+    "$(grep -q 'not published' <<< "$ERR" && echo yes || echo no)"
+  assert_match "the command's own stderr survives" 'stale index' "$ERR"
+}
+
 # AC: the two-phase flow discloses a deferral too. It is the edit path with no
 # allocator ahead of it to fail first, so silence there is the whole exposure
 # (spec AC #7).

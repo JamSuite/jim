@@ -1647,13 +1647,22 @@ cmd_run() {
   # failed holds one that exists nowhere.
   JIM_PLACE_TOKEN="$PLACE_TOKEN" JIM_PLACE_PREFIX="$prefix" "${PLACE_CMD[@]}" \
     > "$PLACE_WORK/held" || rc=$?
+  # A read is asked first, and unconditionally. Holding exists so a write cannot
+  # hand back a destination path its failed publish never created; a read names
+  # no such path, and publishes nothing whatever the wrapped command reported.
+  # A degraded view is still the view — the read surface serves one at a
+  # non-zero status by design — so reading that status as a failed run would put
+  # the whole view on stderr under a "not published" marker and leave the
+  # caller's stdout empty. The command's own status is forwarded either way,
+  # which is what the passthrough arm's `exec` does.
+  if (( read_only )); then
+    place_release_held "$PLACE_WORK/held" 1
+    (( rc == 0 )) || return "$rc"
+    return "$stale"
+  fi
   if (( rc != 0 )); then
     place_release_held "$PLACE_WORK/held" 0
     return "$rc"
-  fi
-  if (( read_only )); then
-    place_release_held "$PLACE_WORK/held" 1
-    return "$stale"
   fi
   local prc=0
   if ! place_reindex "$PLACE_COLL"; then
