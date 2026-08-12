@@ -62,6 +62,11 @@ plan's — `review.md` is their record and lists the five that gate closure. Do
 not read the counts below as current; they describe the set this remediation
 was scoped against.
 
+**That next round has since run and closed.** Its outcome, and everything a
+reader needs before the fourth `/jim:review`, is at the end of this file under
+*§ The review-remediation round*. `review.md`'s "five that gate closure" list is
+fully stale — all five are closed.
+
 The fix pass's 8 recorded their resolutions in commit trailers alone and were
 **backfilled** here, each marked as reconstructed and dated to the backfill
 rather than to the close. Four of them carry something the trailers did not: the
@@ -882,3 +887,73 @@ points at resolves to itself and yields an **empty array with no error** — it 
 two debugging rounds during the build. Nothing mechanically enforces the
 convention; that is #259, which originates from this spec's plan rather than
 from a review and sits outside the tracked follow-on set.
+
+## The review-remediation round
+
+*The round `review.md` set up, run 2026-08-12 against `c6aadf2`. Recorded here
+because this file is tracked and the session note that carried it is not.*
+
+**The bar was: close everything in the reviewed set except `#297`.** Met. Zero
+follow-ons with `origin: review.md` remain open. Seventeen commits, and the suite
+moved **1356 → 1370**.
+
+| Issue | What shipped |
+| :--- | :--- |
+| `#301` | `backfill.sh` writes only a value the normalizer minted, and passes it through the environment rather than `awk -v` |
+| `#313` | `migrate.sh`'s commit-failure handler holds a staged file that is an issue's last copy, and claims no all-clear it cannot make |
+| `#311` | `jimconf` refuses an unsupported value form, and refuses to ignore a config it can see above the working directory — located, never read |
+| `#278` | the batch declaration is required under a placement (`--auto` XOR `--reviewed`), rc 2 when absent or contradictory |
+| `#317` + `#45` | the surfacing-skill roster is a property held to the emitter grant by a sweep, not a count restated in four places |
+| `#316` | the spec citation sweep rewrites the collection where placement puts it, published as one commit |
+| `#314` | partition discloses the re-points it will not apply, read from the destination through a read-only handle |
+
+Every close carries a `## Resolution` naming what shipped, the commit, and the
+case that pins it. **Every fix was proven by neutering its guard and watching the
+case go red**; each reproduced the filed defect exactly. `#45` was closed
+alongside `#317` because the by-file rule put both under the same edit.
+
+**Three issues' own text was wrong, and their resolutions say so.** `#317` names
+§ 7a's "ten" as the canonical roster to correct the others to — that roster was
+itself short, since `/jim:blueprint` files through the emitter and appeared in
+none of the four. `#314` says rename, split and merge all edit issue bodies —
+only split and merge do. `#311` proposes a walk-up — declined, because
+`pre_commit`, `pre_completion` and the `deps_command_*` / `verify_command_*`
+families are values jim hands to bash, so honouring a config from above the
+trusted folder runs a command from outside it.
+
+**Nine decisions were taken across the round**, each recorded in its issue with
+the alternatives weighed and rejected. Do not re-litigate them from the issue
+bodies alone — the body states the original proposal, and the correction lives in
+the `## Decision` or `## Resolution` below it.
+
+### Before the fourth `/jim:review`
+
+1. **The ledger under-scopes it by an order of magnitude.** `/jim:review` builds
+   its change set from `jimledger.sh files`, which returns the build's **19
+   files**, and `metrics` reports `base_sha=f024b9e head_sha=3c1a78f commits=15`.
+   The tree is **124 commits and 106 files beyond that recorded head**. The third
+   review hit this and recorded it twice — an "Instrumentation gap" under
+   Coverage, a "Grounding gap" under Living intent — and judged alignment against
+   the **working tree**, as the omission class requires. Do the same, and say so,
+   rather than letting the numbers imply a 19-file review.
+2. **`review_fanout_cap` is 10 and the high-stakes set exceeds it.** The third
+   run dispatched **16** investigators — 13 by acceptance criterion, 3 by region
+   — on the developer's explicit authorization. Ask rather than silently capping;
+   a capped run must name the un-investigated remainder.
+3. **A re-run overwrites `review.md`** — latest snapshot wins. The third review's
+   per-AC verdicts and investigation evidence are the authority this file cites,
+   so after the fourth run they live only in git history. Read it first, and cite
+   it by commit if any of it stays load-bearing.
+4. **The completion gate is the developer's call.** The spec is held open at
+   `plan.md: approved`; the previous gate was answered `no` on the judgment that a
+   pass still surfacing two dozen follow-ons is not a tail. Present the verdict
+   and the tracked set; do not answer it.
+
+### The tracked set after this round
+
+Eight follow-ons remain against the spec, **none from the review** — all predate
+it and none was in this round's bar: `#255` `#256` (from `research.md`), `#257`
+`#258` `#259` `#260` `#261` (from `plan.md`), and `#297` (from this file,
+deliberately deferred). `#258` — that `-c` does not carry placement — is worth
+reading before any further placement work; it is latent only because no
+production caller passes `-c`.
