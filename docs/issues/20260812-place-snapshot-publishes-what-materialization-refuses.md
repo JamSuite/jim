@@ -1,7 +1,7 @@
 ---
-id: 20260812-place-snapshot-publishes-a-collection-entry-materialization-refu
-num: P-20260812-place-snapshot-publishes-a-collection-entry-materialization-refu
-title: "place_snapshot publishes a collection entry materialization refuses"
+id: 20260812-place-snapshot-publishes-what-materialization-refuses
+num: P-20260812-place-snapshot-publishes-what-materialization-refuses
+title: "place_snapshot publishes what materialization refuses"
 status: closed
 priority: medium
 labels: [issue, placement, correctness]
@@ -10,8 +10,8 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-created: 2026-08-12T07:04:57Z
-updated: 2026-08-12T07:32:50Z
+created: 2026-08-12T07:44:30Z
+updated: 2026-08-12T07:44:39Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -55,6 +55,14 @@ the collection cannot be put into a state it cannot be read out of. The two gate
 are the same rule at the two ends of the same round trip, and the group's
 convention is that a shape the reader refuses is a shape the writer must not
 produce.
+
+## Note
+
+Filed first as `20260812-place-snapshot-publishes-a-collection-entry-materialization-refu`,
+which the 64-character slug cap truncated mid-word. That identity was never
+recorded in the registry — the coordination point was unreachable, so the
+allocation was provisional and local — so it was re-filed under this one rather
+than kept. Commit `fb6864e`'s trailer names the superseded id.
 
 ## Origin
 
