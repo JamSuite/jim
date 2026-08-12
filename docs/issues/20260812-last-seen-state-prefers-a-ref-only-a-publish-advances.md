@@ -2,7 +2,7 @@
 id: 20260812-last-seen-state-prefers-a-ref-only-a-publish-advances
 num: 312
 title: "Last-seen state prefers a ref only a publish advances"
-status: open
+status: closed
 priority: high
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:35Z
-updated: 2026-08-12T03:41:35Z
+updated: 2026-08-12T06:30:53Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -63,3 +63,21 @@ bookmark.
 ## Origin
 
 Post-build review of `issue/011`, AC 6.
+
+## Resolution (2026-08-12)
+
+Fixed in `49b7921`. `place_local_tip` no longer prefers either ref. Whichever of
+`refs/heads/<dest>` and the bookmark descends from the other is the newer and is
+taken; when they are unrelated the head wins, because it carries this clone's own
+unpublished commits and only the origin tier has the machinery to reconcile the
+two sides.
+
+Pinned by an extension to `case_place_offline_read_does_not_rewind_the_bookmark`,
+which is already the fixture that puts a clone's head behind its bookmark — it now
+also reads offline and asserts the teammate's issue is in the view. Proven to go
+red with the descendant test removed.
+
+The finding's note that `refs/remotes/<remote>/<dest>` is never consulted stands
+and was not taken: the bookmark already records what the last authoritative run
+saw, which is the same fact with an explicit write behind it rather than one
+fetch's side effect.

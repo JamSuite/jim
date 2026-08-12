@@ -2,7 +2,7 @@
 id: 20260812-place-sh-header-and-usage-still-misdescribe-the-script
 num: 315
 title: "place.sh header and usage still misdescribe the script"
-status: open
+status: closed
 priority: low
 labels: [issue, docs]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:42:10Z
-updated: 2026-08-12T03:42:10Z
+updated: 2026-08-12T06:30:53Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -60,3 +60,23 @@ the publish loop, and correct the resolution note on
 ## Origin
 
 Post-build review of `issue/011`; conventions region sweep.
+
+## Resolution (2026-08-12)
+
+Fixed in `722d722` (the text) and `57489aa` (the stderr capture).
+
+- `cmd_mode`'s docstring no longer claims to be the only place the config gate is
+  evaluated, and says why the other three resolve it for themselves.
+- The parsing-tools line names `head` and `cut`.
+- `usage()` marks `--verb` optional on a read run, matching the header and the
+  code.
+- Both `git cat-file blob` calls carry `--end-of-options`.
+- `place_land` captures git's stderr at both landing sites instead of discarding
+  it, and the non-contention diagnosis relays it — so "cannot lock ref",
+  "protected branch" and "permission denied" no longer arrive as the same
+  status with nothing to tell them apart. Pinned by
+  `case_place_local_tier_non_contention_is_named_as_such`.
+
+The overclaiming resolution note on
+`20260807-place-sh-conformance-and-hygiene-pass` carries a dated Correction
+section saying which of its listed fixes did not land.

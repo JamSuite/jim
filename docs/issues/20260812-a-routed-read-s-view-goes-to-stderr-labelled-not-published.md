@@ -2,7 +2,7 @@
 id: 20260812-a-routed-read-s-view-goes-to-stderr-labelled-not-published
 num: 299
 title: "A routed read's view goes to stderr labelled not published"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:48Z
-updated: 2026-08-12T03:41:48Z
+updated: 2026-08-12T06:30:53Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -59,3 +59,17 @@ such contract to protect.
 Post-build review of `issue/011`. Both changes were made in the same remediation
 and are correct in isolation; the defect is in their composition. Found
 independently by the AC 5 investigator and the `staleness-gated-reads` judge.
+
+## Resolution (2026-08-12)
+
+Fixed in `d76de6c`. The read case is now asked first and unconditionally: a read
+releases its held stdout to stdout whatever the wrapped command reported, and
+forwards that command's own status — which is what the passthrough arm's `exec`
+already does. Holding stays exactly where it was justified, on the write path,
+where a failed publish would otherwise hand back a destination path that exists
+nowhere.
+
+Pinned by `case_place_read_emits_stdout_even_when_the_command_reports`, which
+drives a `--read` run whose command writes to both streams and exits non-zero,
+then asserts the view is on stdout, is not also on stderr, and carries no
+"not published" marker. Proven to go red with the read arm removed.

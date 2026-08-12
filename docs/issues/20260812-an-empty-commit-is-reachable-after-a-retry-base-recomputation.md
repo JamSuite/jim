@@ -2,7 +2,7 @@
 id: 20260812-an-empty-commit-is-reachable-after-a-retry-base-recomputation
 num: 300
 title: "An empty commit is reachable after a retry base recomputation"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:53Z
-updated: 2026-08-12T03:41:53Z
+updated: 2026-08-12T06:30:53Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -53,3 +53,17 @@ count after a retry.
 
 Post-build review of `issue/011`; found independently by the AC 4 and AC 7
 investigators.
+
+## Resolution (2026-08-12)
+
+Fixed in `57489aa`. `place_changed` is now re-asked on the plain-build arm inside
+the loop, not only before it. The graft arm already asked its own version after
+regrafting; the two arms are now symmetric in this.
+
+Pinned by `case_place_retry_publishes_no_empty_commit`, which drives the state
+the finding describes rather than approximating it: a clone defers a close while
+offline, reconnects against a remote that rejects the first push and accepts the
+second, and runs a mutation that undoes the deferred one — so the retry's
+refreshed base already holds exactly what the run produced. Against the prior code
+the destination gained a second commit with no diff; it now gains none. Proven to
+go red with the re-check removed.

@@ -2,7 +2,7 @@
 id: 20260812-a-diverged-read-serves-the-local-head-and-omits-fetched-commits
 num: 298
 title: "A diverged read serves the local head and omits fetched commits"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:42:05Z
-updated: 2026-08-12T03:42:05Z
+updated: 2026-08-12T06:30:53Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -52,3 +52,21 @@ in the `diverged` state.
 
 Post-build review of `issue/011`, AC 6; found independently by the AC 6
 investigator and the publish-engine investigator.
+
+## Resolution (2026-08-12)
+
+Fixed in `49b7921`. Of the finding's two options — serve the merge, or disclose —
+disclosure was taken. `place_disclose_partial_view` is the read-side counterpart
+to the write path's `place_disclose_unpublished`: it names that the view is served
+from the unpublished side, that it omits what the destination gained, and that the
+next write reapplies and reconciles.
+
+Merging was rejected on the merits rather than deferred. It would build a union
+tree on a path that publishes nothing and present the reader a state that exists
+at neither side as though it were the collection; this engine grafts only as part
+of a publish, where the result is something a reader can go and look at.
+
+Pinned by `case_place_diverged_read_discloses_what_it_omits`, which drives a read
+in the diverged state, asserts the teammate's file is genuinely absent from the
+view, and asserts the write path's own wording is not what a read prints. Proven
+to go red with the disclosure removed.

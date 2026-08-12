@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:54Z
-updated: 2026-08-12T03:41:54Z
+updated: 2026-08-12T06:30:53Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -56,3 +56,22 @@ discarded.
 ## Origin
 
 Post-build review of `issue/011`, AC 7.
+
+## Progress (2026-08-12)
+
+**The plumbing arm's half is closed** in `57489aa`. The non-contention diagnosis
+was gated to the origin tier; it now applies on either, so a local `update-ref`
+refused for a locked ref, a directory/file conflict at the ref path or a
+read-only object store is named as such instead of burning five attempts and
+reporting that the branch "kept moving". It stays within one tier: a run that
+lost its remote mid-publish has degraded to a different operation against a
+different ref, and an unmoved tip across that transition says nothing about the
+next attempt. `place_land` now captures git's stderr, so the diagnosis relays the
+actual cause. Pinned by
+`case_place_local_tier_non_contention_is_named_as_such`.
+
+**The direct arm's half is open**, and is held behind a decision rather than
+unwritten: whether the checked-out arm owes AC 6's freshness guarantee at all.
+Distinguishing unreachable from rejected there means consulting the remote, which
+is the same question `20260812-direct-arm-never-consults-the-remote-before-serving-a-read`
+asks — so the two want answering together rather than separately.

@@ -137,3 +137,30 @@ the pair, permitting one fixed subdirectory rather than an arbitrary path, so th
 two are not interchangeable.
 
 Suite 1319 → 1322.
+
+## Correction (2026-08-12)
+
+The Resolution above is more complete than the change was. Three of the items it
+lists did not land, and a later review found them still standing:
+
+- **"names the parsing tools it actually uses"** — the line still omitted `head`
+  (which selects the remote name) and `cut` (which truncates in the display
+  sanitizer).
+- **"Four git calls taking a derived argument gained `--end-of-options`"** — the
+  sweep was not complete. Two `git cat-file blob` calls did not have it. Both
+  arguments are git's own hex output, so a leading `-` was unreachable, but the
+  file is otherwise uniform on this and the note claimed the sweep was done.
+- **"marks `--verb` optional on a read run"** — the header did; `usage()` went on
+  printing it as required.
+
+Also unlanded from this package: the plan item requiring git's stderr to be
+captured in the publish loop, which both landing calls still discarded.
+
+A fourth item was never in this issue's own list but its wording was named in the
+review: `cmd_mode`'s docstring claiming to be "the only place the config gate is
+evaluated", which three other functions falsify.
+
+All five are closed under
+`20260812-place-sh-header-and-usage-still-misdescribe-the-script`. This section
+exists because a resolution note is the durable record: one that outruns its
+change hands the next reader a false clean.

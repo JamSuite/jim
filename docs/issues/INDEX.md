@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 122
-- Closed: 199
+- Open: 117
+- Closed: 204
 
 ## Issues
 
@@ -304,9 +304,9 @@
 - `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: closed · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-tests-place-sh-sits-outside-every-declared-territory` — tests/place.sh sits outside every declared territory · status: closed · num: 296 · priority: medium · created: 2026-08-08T18:40:09Z · labels: [blueprint, territory] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` — Compute checkout-dependent index warnings at read time · status: open · num: 297 · priority: medium · created: 2026-08-11T01:31:36Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/remediation.md
-- `20260812-a-diverged-read-serves-the-local-head-and-omits-fetched-commits` — A diverged read serves the local head and omits fetched commits · status: open · num: 298 · priority: medium · created: 2026-08-12T03:42:05Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-a-routed-read-s-view-goes-to-stderr-labelled-not-published` — A routed read's view goes to stderr labelled not published · status: open · num: 299 · priority: medium · created: 2026-08-12T03:41:48Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-an-empty-commit-is-reachable-after-a-retry-base-recomputation` — An empty commit is reachable after a retry base recomputation · status: open · num: 300 · priority: medium · created: 2026-08-12T03:41:53Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-a-diverged-read-serves-the-local-head-and-omits-fetched-commits` — A diverged read serves the local head and omits fetched commits · status: closed · num: 298 · priority: medium · created: 2026-08-12T03:42:05Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-a-routed-read-s-view-goes-to-stderr-labelled-not-published` — A routed read's view goes to stderr labelled not published · status: closed · num: 299 · priority: medium · created: 2026-08-12T03:41:48Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-an-empty-commit-is-reachable-after-a-retry-base-recomputation` — An empty commit is reachable after a retry base recomputation · status: closed · num: 300 · priority: medium · created: 2026-08-12T03:41:53Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-backfill-sh-injects-frontmatter-through-awk-v-escape-expansion` — backfill.sh injects frontmatter through awk -v escape expansion · status: open · num: 301 · priority: high · created: 2026-08-12T03:41:36Z · labels: [issue, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-cmd-begin-checked-out-arm-writes-with-no-containment-gate` — cmd_begin checked-out arm writes with no containment gate · status: closed · num: 302 · priority: high · created: 2026-08-12T03:41:34Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-cmd-begin-refuses-where-cmd-run-degrades-on-a-failed-reindex` — cmd_begin refuses where cmd_run degrades on a failed reindex · status: closed · num: 303 · priority: medium · created: 2026-08-12T03:41:49Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -318,11 +318,11 @@
 - `20260812-index-md-rows-are-forgeable-by-two-independent-routes` — INDEX.md rows are forgeable by two independent routes · status: open · num: 309 · priority: high · created: 2026-08-12T03:41:37Z · labels: [issue, security, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-index-sh-fails-open-on-a-config-resolve-and-caps-no-display-valu` — index.sh fails open on a config resolve and caps no display value · status: open · num: 310 · priority: medium · created: 2026-08-12T03:42:08Z · labels: [issue, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller` — jimconf resolver can hand a fabricated default to a caller · status: open · num: 311 · priority: medium · created: 2026-08-12T03:42:09Z · labels: [conf, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-last-seen-state-prefers-a-ref-only-a-publish-advances` — Last-seen state prefers a ref only a publish advances · status: open · num: 312 · priority: high · created: 2026-08-12T03:41:35Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-last-seen-state-prefers-a-ref-only-a-publish-advances` — Last-seen state prefers a ref only a publish advances · status: closed · num: 312 · priority: high · created: 2026-08-12T03:41:35Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-migrate-sh-failure-handler-is-not-rename-chain-aware` — migrate.sh failure handler is not rename-chain aware · status: open · num: 313 · priority: medium · created: 2026-08-12T03:41:47Z · labels: [issue, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs` — new.sh composes and stats a path before valid-id runs · status: open · num: 320 · priority: critical · created: 2026-08-12T04:09:10Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260812-partition-migrate-arms-bypass-issue-placement` — Partition migrate arms bypass issue placement · status: open · num: 314 · priority: high · created: 2026-08-12T03:41:32Z · labels: [issue, placement, partition] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-place-sh-header-and-usage-still-misdescribe-the-script` — place.sh header and usage still misdescribe the script · status: open · num: 315 · priority: low · created: 2026-08-12T03:42:10Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-place-sh-header-and-usage-still-misdescribe-the-script` — place.sh header and usage still misdescribe the script · status: closed · num: 315 · priority: low · created: 2026-08-12T03:42:10Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-spec-reconcile-citation-sweep-bypasses-issue-placement` — Spec reconcile citation sweep bypasses issue placement · status: open · num: 316 · priority: high · created: 2026-08-12T03:41:31Z · labels: [issue, placement, spec] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-the-analyst-s-granted-read-verb-can-create-a-directory-and-index` — The analyst's granted read verb can create a directory and index · status: open · num: 321 · priority: high · created: 2026-08-12T04:09:11Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260812-three-surfacing-skill-roster-counts-are-stale` — Three surfacing-skill roster counts are stale · status: open · num: 317 · priority: low · created: 2026-08-12T03:42:11Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
