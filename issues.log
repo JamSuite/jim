@@ -319,3 +319,4 @@ issue allocate 318 20260812-two-argument-read-shape-bypasses-placement-and-creat
 issue allocate 319 20260812-two-placement-cases-cannot-fail-and-four-guards-have-no-coverage 20260811 jrko
 issue allocate 320 20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs 20260811 jrko
 issue allocate 321 20260812-the-analyst-s-granted-read-verb-can-create-a-directory-and-index 20260811 jrko
+issue allocate 322 20260812-place-snapshot-publishes-what-materialization-refuses 20260812 jrko
