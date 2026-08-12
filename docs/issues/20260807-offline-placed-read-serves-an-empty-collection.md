@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:22Z
-updated: 2026-08-07T20:27:17Z
+updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -52,3 +52,20 @@ not. The fixture makes the bug unrepresentable.
 Fall back to the bookmark ref when `refs/heads/<dest>` is absent — it is the
 recorded last-seen tip, which is precisely what the message claims to be
 serving. Add a fixture that reads from a clone which has never published.
+
+## Resolution (backfilled 2026-08-12)
+
+*Closed by the fix pass in `5de0c70`; this note is reconstructed from that pass's
+commits, which recorded the resolution in trailers alone.*
+
+Fixed in `a039a08`. A read that cannot reach the remote serves the last-seen tip
+recorded for the destination instead of an empty collection, and says on stderr
+that it is doing so — an unreachable network degrades the view's freshness, not
+its existence.
+
+Pinned by `case_place_offline_read_serves_the_last_seen_collection` and
+`case_place_read_degrades_when_remote_unreachable` in `tests/place.sh`.
+
+**Related consequence.** Making this path reachable more often is what turned the
+bookmark's honesty into a live concern, argued in as its own package under this
+remediation rather than left as a latent one.

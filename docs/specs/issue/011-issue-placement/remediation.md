@@ -37,10 +37,20 @@ meets it, and what is deliberately left tracked.*
 | WP7 close out | **outstanding** | — |
 
 **Twenty-four issues closed by this remediation**, on top of the 8 the fix pass
-had closed — 32 of the 36 now filed against the spec, leaving **4 open**. Each
-closed issue carries a `## Resolution` section naming what shipped, the commit,
-and the case that pins it; the collection's convention is that a close without
-one is incomplete.
+had closed — 32 of the 36 now filed against the spec, leaving **4 open**. Every
+closed issue in the set carries a `## Resolution` section naming what shipped,
+the commit, and the case that pins it; the collection's convention is that a
+close without one is incomplete.
+
+The fix pass's 8 recorded their resolutions in commit trailers alone and were
+**backfilled** here, each marked as reconstructed and dated to the backfill
+rather than to the close. Four of them carry something the trailers did not: the
+half that was left, and where it went. The placeholder fix closed the realistic
+brace case but not the literal one; the test repair fixed two vacuous cases but
+not the class; the reconnect fix handled every composition but reconnect-plus-
+race; and the emitter gate shipped alongside a commit message asserting the
+opposite of the polarity it implemented. Each is linked to the issue that
+finished it, so the record reads as a chain rather than as eight closes.
 
 Two of the four stay open having been narrowed rather than deferred whole, each
 to the half that carries a decision, and each carrying a `## Progress` section

@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:24Z
-updated: 2026-08-07T21:28:09Z
+updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -67,3 +67,27 @@ in order of preference:
 
 Whichever is chosen, the docsurfaces invariant should assert the *consumers*
 honor it, not merely that §7a mentions it.
+
+## Resolution (backfilled 2026-08-12)
+
+*Closed by the fix pass in `647ca2f`; this note is reconstructed from that pass's
+commits, which recorded the resolution in trailers alone.*
+
+Fixed in `3d4e592` and `4194ee3`. The decision moved out of the surfacing skills
+and into the emitter, which is the one place that can make it mechanically: a
+skill can only carry the rule as prose an agent may or may not act on, while
+`new.sh` sees the flag. It exits **4** under an unacknowledged placement having
+written nothing, so the caller's remedy is to show the batch for review. Every
+auto-file site declares the batch unreviewed with `--auto`.
+
+Pinned by the sweep in `tests/docsurfaces.sh`, which asserts each consumer passes
+the flag and handles the code rather than certifying the rule is stated
+somewhere — the property that turned out not to matter.
+
+**Two later corrections belong with this note.** The fix-pass commit message
+claimed a caller that forgets the flag "gets the interactive bargain rather than
+a silent publish, which is the safe direction to fail." That is backwards, and
+the three artifacts repeating it were corrected under this remediation in
+`457c8d6`; the polarity itself is tracked as
+[[20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag]]. The sweep's
+binding was also weaker than it looked and was strengthened separately.

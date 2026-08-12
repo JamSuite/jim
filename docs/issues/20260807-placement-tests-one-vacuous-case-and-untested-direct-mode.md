@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:58Z
-updated: 2026-08-07T20:27:17Z
+updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -61,3 +61,22 @@ Fix the one vacuous case and the three misnamed ones first — a test that canno
 fail is worse than no test, because it reports coverage. Then add the
 direct-branch and `place_prefix` cases; both are cheap and both guard confirmed
 defects.
+
+## Resolution (backfilled 2026-08-12)
+
+*Closed by the fix pass in `5de0c70`; this note is reconstructed from that pass's
+commits, which recorded the resolution in trailers alone.*
+
+Fixed in `91b5001`. The vacuous cases were repaired — one asserted a state a
+published run would have corrected, and the dangling-origin case created the very
+origin file it claimed was missing — and the coverage the audit ranked highest was
+added: the direct-token branch of `begin`/`commit`/`abort`, the `issues_path`
+refusal, `--id` validation at both call sites, and the local-tier retry. Every
+other race case drives the origin tier, so a dropped local compare-and-swap was
+invisible.
+
+**Partial as shipped.** A wider audit of the same class — cases that cannot fail
+when the guard they name is removed — was filed as
+[[20260808-placement-test-gaps-after-the-repair-pass]] and closed as
+this remediation's first package, because tests that cannot fail were what let
+the preceding round land new defects of the class it was fixing.

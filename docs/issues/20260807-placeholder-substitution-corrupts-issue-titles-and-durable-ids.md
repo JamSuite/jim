@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:20Z
-updated: 2026-08-07T20:27:17Z
+updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -62,3 +62,24 @@ them to the wrapped command through the environment. That removes the class
 rather than escaping one instance of it.
 
 Add a test with a `{}`-bearing title; no test currently exercises one.
+
+## Resolution (backfilled 2026-08-12)
+
+*Closed by the fix pass in `5de0c70`; this note is reconstructed from that pass's
+commits, which recorded the resolution in trailers alone.*
+
+Fixed in `b25e6d8`. Substitution became whole-argument, so an argument that
+merely *contains* braces is left alone — `interface{}` and `map[string]interface{}`
+are ordinary in a developer-tool issue title, and rewriting one put the run's
+temp path into the title and from there into the slug, which is the durable id an
+append-only registry has already recorded.
+
+Pinned by `case_place_substitutes_whole_arguments_only` and its passthrough
+sibling in `tests/place.sh`.
+
+**Incomplete as shipped, and finished under this remediation.** Whole-argument
+matching closed the realistic case but not the literal one: an argument that *is*
+exactly `{}` still matched, so `new.sh --title '{}'` filed at rc 0 under a
+placement with the temp path as its permanent slug. That was filed as
+[[20260808-origin-is-not-yaml-encoded-and-a-bare-brace-argument-is-substitu]] and
+closed by reading a placeholder positionally as well as by value.

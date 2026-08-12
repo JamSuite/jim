@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:26Z
-updated: 2026-08-07T20:27:17Z
+updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -47,3 +47,27 @@ signal stops being falsified.
 
 Cost is one index regeneration per placed read, which is the same work the
 staleness gate would have done had the mtimes been meaningful.
+
+## Resolution (backfilled 2026-08-12)
+
+*Closed by the fix pass in `5de0c70`; this note is reconstructed from that pass's
+commits, which recorded the resolution in trailers alone.*
+
+Fixed in `2aa2e1d`. The materialized collection's index is regenerated rather
+than touched, so a destination whose index arrived stale — by a hand commit, or a
+merge the emitter never saw — is not served as current. Content reaches the
+destination by routes the emitter never sees, and before this every clone served
+a view with such an issue missing until some later write happened to trigger a
+regen.
+
+The regeneration runs inside the discarded temp copy, so a read still commits
+nothing, and it runs after the base snapshot is taken, so a write publishes the
+correction rather than measuring its changed set against it.
+
+Pinned by `case_place_read_serves_a_current_index` and
+`case_place_write_publishes_a_corrected_index` in `tests/place.sh`.
+
+**Failure handling settled later.** What a read should do when that regeneration
+*fails* was not decided here; the group carried two postures until this
+remediation chose one — see
+[[20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant]].

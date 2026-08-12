@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:21Z
-updated: 2026-08-07T20:27:17Z
+updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -64,3 +64,23 @@ which is the allocator's posture for the same condition.
 
 Whichever is chosen, `place_land`'s unconditional local `update-ref` needs an
 old-value, and `cmd_commit` needs the deferral disclosure `cmd_run` already has.
+
+## Resolution (backfilled 2026-08-12)
+
+*Closed by the fix pass in `5de0c70`; this note is reconstructed from that pass's
+commits, which recorded the resolution in trailers alone.*
+
+Fixed in `8f30b75`. A run that reconnects publishes the mutations an earlier
+unreachable run left committed locally, rather than discarding them. Where the
+destination had moved too, the changed set is measured from the two sides' common
+ancestor and reapplied on top of it — measuring from the remote's tip instead
+would read a teammate's commit as a deletion.
+
+Pinned by `case_place_deferred_mutation_publishes_on_reconnect` in
+`tests/place.sh`.
+
+**Extended by this remediation.** The fix handled reconnect and diverged but not
+a reconnect that then loses a push race, which was filed separately as
+[[20260808-deferred-mutation-lost-when-the-resuming-push-loses-a-race]]
+and closed by collapsing attempt 1 and attempt N onto one path. That the two
+compose is the reason this class recurred.
