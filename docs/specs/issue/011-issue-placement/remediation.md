@@ -2,7 +2,7 @@
 title: "Issue placement — remediation plan"
 spec: "docs/specs/issue/011-issue-placement/spec.md"
 type: remediation
-status: in-progress
+status: complete
 bar: regression
 base_sha: "ae4b877"
 ---
@@ -15,8 +15,20 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8–WP16 complete; WP7 outstanding.** Forty-five commits over
+**All work packages complete, WP7 included.** Fifty-two commits over
 `ae4b877..HEAD`. Suite **1284 → 1322 green**.
+
+**The spec is deliberately held open.** `/jim:review` returned `minor-drift` —
+up from `major-drift` twice — and the completion gate was answered **no** on the
+developer's judgment: a single review pass surfaced 24 new follow-ons, of which
+five are fixes owed against invariants the fork left standing, four of those
+against `critical` ones. A pass that still finds two dozen items is not a tail.
+`plan.md` stays `approved`; closing it is a separate decision against the
+tracked set, not against this plan.
+
+This remediation is finished in the sense its bar defines: what the build and
+fix pass introduced or touched is closed, and everything else is filed. It is
+not a claim that the feature is done.
 
 | WP | State | Closes |
 | :--- | :--- | :--- |
@@ -760,6 +772,30 @@ face, so the graph, its health and the face counts all stand where they were.
    code change made here; none rewrites the spec to match code left alone.
 4. Take the completion gate: mark `plan.md` `status: complete` only on explicit
    human confirmation.
+
+**Outcome — the gate was answered `no`.** The review ran at `thorough` depth over
+16 investigators (the configured fan-out cap of 10 was lifted for the run), with
+the living-intent sensor judging all nine invariants. Verdict `minor-drift`; 24
+follow-ons filed; 7 invariants violated, 2 folded, 5 owed a fix.
+
+`plan.md` stays `approved`. The reasoning is recorded here so it is not
+re-derived: the spec's own paths are sound and the data-loss class is closed and
+independently re-verified, but one review pass still surfaced two dozen items —
+including two cross-group flows that write into this collection without routing,
+and a containment gate missing from the door § 6a makes the default for every
+edit under a placement. Closing on that count would record a verdict the evidence
+does not support.
+
+**What closure now waits on**, in the order that matters:
+
+1. The containment gate on `cmd_begin`'s checked-out arm (`critical` class).
+2. `commit`'s routed arm re-establishing the placement gate (`critical`).
+3. The two cross-group write paths (`/jim:spec reconcile`, `/jim:partition`).
+4. The `awk -v` frontmatter injection and both index-row forgery routes.
+5. The `id-gate-before-path` ordering in the emitter.
+
+Each is filed with a concrete action. The remaining nineteen are tracked and do
+not gate closure.
 
 ## Deferred
 
