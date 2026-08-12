@@ -805,6 +805,13 @@ does not support.
 Each is filed with a concrete action. The remaining nineteen are tracked and do
 not gate closure.
 
+**Superseded 2026-08-12.** Four of those five are closed by the round that
+followed; only item 3, the two cross-group write paths, is still owed. That
+round's bar was set wider than this list — close the whole reviewed set bar
+`#297` — so the open set against the spec is now eight rather than twenty-seven.
+The per-issue `## Resolution` and `## Progress` sections are its record; this
+list is left standing as what was true when WP7 answered the gate.
+
 ## Deferred
 
 Tracked, not dropped. Each is pre-existing substance surfaced by this spec's
@@ -813,7 +820,7 @@ was taken as WP8 and is gone from the list.
 
 | Issue | Why deferred |
 | :--- | :--- |
-| #290 *(part 1 only)* | A text-vs-code fork: encode `--origin` or narrow the invariant. Part 2 was a defect rather than a fork and is closed under WP14. |
+| #290 *(part 1 only)* | ~~A text-vs-code fork: encode `--origin` or narrow the invariant.~~ **Taken 2026-08-12** — encoded, not narrowed. Part 2 was a defect rather than a fork and is closed under WP14; the issue is now closed whole. |
 | #297 | Not surfaced by a review — filed *by* this remediation, as the successor to #273. Moving the origin check out of the stored index and into the reader's view restores a signal WP10 could only stop from lying, but it changes the stored artifact for projects with no placement at all. |
 
 ## Open decisions carried forward
@@ -844,6 +851,28 @@ there: the group's read-failure posture, the emitter's stdout timing, and the
 **A sixth item listed here previously is already taken.** Whether rc 4 belongs in
 the emitter's declared face was settled by WP11: the entry records the flag, the
 code, and that the flag is a declaration the emitter cannot verify.
+
+**Both of the two are now taken as well (2026-08-12), by the round that followed
+this one.** Neither is carried forward any longer, and each decision is recorded
+on its own issue rather than here — which is where a reader should go, since the
+issue also carries what was weighed against it.
+
+- **The `--auto` polarity** went to the third shape this section describes:
+  require an explicit declaration and refuse when neither flag is given, scoped
+  to the routing condition. Not the inverse — that removes the fail-open but
+  installs a new silent default in the other direction. **Decided, not yet
+  implemented.**
+- **`--origin`** is encoded, not narrowed. The fact this section says is missing
+  turned out to settle it: the field is defined by a skill's *prompt* as "a path
+  when knowable, else a sentinel", with nothing enforcing either, so it is
+  model-produced text of a title's trust class and the narrower scope was never
+  settled authorial intent. Implemented.
+
+Two forks this round *added* to the carried set, both on issues rather than
+here: `#311`'s remaining three parts (single-quoted and bare values, a strict
+mode for unknown keys, and whether resolution walks up to the project root), and
+the cross-group routing decisions on `#316` and `#314`, which are taken but not
+yet implemented.
 
 ## Nameref hazard
 
