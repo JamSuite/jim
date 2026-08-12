@@ -15,7 +15,7 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8–WP15 complete; WP7 outstanding.** Thirty-nine commits over
+**WP0–WP6 and WP8–WP16 complete; WP7 outstanding.** Forty-five commits over
 `ae4b877..HEAD`. Suite **1284 → 1322 green**.
 
 | WP | State | Closes |
@@ -35,6 +35,7 @@ meets it, and what is deliberately left tracked.*
 | WP13 read posture + emitter stdout | done | #291, #294, #277 (item 4) |
 | WP14 placeholder + capability | done | #286; #290 **part 2 only** |
 | WP15 conformance pass | done | #269 |
+| WP16 declare two rules | done | — |
 | WP7 close out | **outstanding** | — |
 
 **Twenty-five issues closed by this remediation**, on top of the 8 the fix pass
@@ -175,7 +176,7 @@ by the later packages; what is left is listed under *Deferred* below.
 - **Likely verdict:** `minor-drift` rather than `aligned`. That is the honest
   outcome of this bar and should not be argued away at review time.
 
-*This section describes the bar as set. WP8–WP14 were taken after it on the
+*This section describes the bar as set. WP8–WP16 were taken after it on the
 developer's approval; they moved AC 3, 5, 11 and 12 past what it promised and
 cleared the remaining contract violation — see **Status**. AC 3 is no longer
 partial.*
@@ -706,6 +707,36 @@ nameref *prefix* convention. #269 mentions namerefs only as the portability floo
 they raised. The enforcement is #259, which originates from this spec's plan
 rather than from a review.
 
+### WP16 — The two rules worth declaring *(added mid-flight)*
+
+Closes no issue. The last three packages established two rules the blueprint did
+not carry, and a rule that lives only in a test and a code comment is one the
+next author has to rediscover.
+
+**`placeholder-by-position` (new, high).** The placement wrapper substitutes only
+the placeholders a caller positioned. Nothing existing reached it: the shell/YAML
+interpolation rule governs a different mechanism, and the id-validation rule
+would not have caught the observed failure because the corrupted slug was
+well-formed and passed cleanly. It was valid and wrong — which is exactly the
+shape a validator cannot see.
+
+**`placement-gate-before-git` (amended, still critical).** It already forbade
+falling back to the working branch when a configured value fails. The code
+reached that same forbidden outcome by a route the wording did not name — the
+configuration *read* failed, and an empty result was read as an unset key. The
+amendment names both routes. Additive: the rule widens, nothing loosens.
+
+Three candidates were declined and why is recorded at the gate: the emitter's
+publish-conditional stdout is already declared in its Provides face and this
+group's invariants are cross-cutting rules rather than one script's output
+contract; the `--end-of-options` hardening covered arguments that were git's own
+hex output, so it was discipline rather than a gap; and the insights change
+removed *pressure* toward violating an existing invariant rather than
+establishing a rule.
+
+The reconcile pass that follows the write measured no change — the edits touch no
+face, so the graph, its health and the face counts all stand where they were.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
@@ -717,12 +748,16 @@ rather than from a review.
    over its own work. AC 3 is now whole — #277's last item is closed. What
    remains against the ACs is the set under *Deferred* — two entries, one a
    decision and one this remediation filed itself.
-3. Blueprint: `staleness-gated-reads` is amended, and the amendment is WP13's,
-   not a convenience. The rule it replaced was already false before this
-   remediation — a failed regeneration served a stale view at rc 0 — so the new
-   wording records a posture that was chosen here rather than rewriting the spec
-   to match untouched code. That distinction is the standing rule: do **not**
-   amend an invariant to match code this remediation did not change.
+3. Blueprint: three invariant edits landed, and each survives the standing rule
+   — do **not** amend an invariant to match code this remediation did not
+   change. `staleness-gated-reads` is amended because WP13 *chose* the posture
+   it now records; the rule it replaced was already false before this
+   remediation, since a failed regeneration served a stale view at rc 0.
+   `placement-gate-before-git` is widened to name the second route to an outcome
+   it already forbade, after WP15 closed that route in the code.
+   `placeholder-by-position` is new, and is the only rule this remediation adds
+   rather than corrects — it records what WP14 established. Every one follows a
+   code change made here; none rewrites the spec to match code left alone.
 4. Take the completion gate: mark `plan.md` `status: complete` only on explicit
    human confirmation.
 
