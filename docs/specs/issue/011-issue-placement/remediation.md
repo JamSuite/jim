@@ -735,7 +735,7 @@ was taken as WP8 and is gone from the list.
 | Issue | Why deferred |
 | :--- | :--- |
 | #290 *(part 1 only)* | A text-vs-code fork: encode `--origin` or narrow the invariant. Part 2 was a defect rather than a fork and is closed under WP14. |
-| `20260811-compute-checkout-dependent-index-warnings-at-read-time` | Not surfaced by a review — filed *by* this remediation, as the successor to #273. Moving the origin check out of the stored index and into the reader's view restores a signal WP10 could only stop from lying, but it changes the stored artifact for projects with no placement at all. Provisional ordinal until the host reconciles. |
+| #297 | Not surfaced by a review — filed *by* this remediation, as the successor to #273. Moving the origin check out of the stored index and into the reader's view restores a signal WP10 could only stop from lying, but it changes the stored artifact for projects with no placement at all. |
 
 ## Open decisions carried forward
 
