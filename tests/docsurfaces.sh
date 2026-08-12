@@ -214,6 +214,35 @@ case_docsurfaces_candidate_batch_roster_matches_the_grant() {
     "$(grep -oE '\b(seven|eight|nine|ten|eleven|twelve) surfacing skills' <<< "$body")"
 }
 
+# A partition migration does not route its issue-collection re-points — routing
+# them would split jimledger.sh's fixed two-commit choreography, which is a
+# partition-spec invariant. What it must not do is stay silent: a run that edits
+# a stale checkout fork, or matches nothing and reports zero touched, is the
+# staleness the placement exists to prevent. So the methodology has to state the
+# skip AND say where the disclosure is read from, and the grant has to stay
+# read-only — a write verb here would be the routing that was rejected.
+case_docsurfaces_partition_discloses_unapplied_issue_repoints() {
+  local m="$REPO_ROOT/skills/partition/references/partition-methodology.md"
+  local s="$REPO_ROOT/skills/partition/SKILL.md" body tools
+  assert_eq "the methodology is present" "yes" \
+    "$([[ -r "$m" ]] && echo yes || echo no)"
+  body="$(cat "$m")"
+  assert_match "names the placement key"        'issue_placement'   "$body"
+  assert_match "names the mode verb it asks"    'place\.sh mode'    "$body"
+  assert_match "reads the real collection"      'begin --read'      "$body"
+  assert_match "and releases the handle"        'place\.sh abort'   "$body"
+  assert_match "states the skip in the gate"    'UNAPPLIED'         "$body"
+  assert_match "names the constraint behind it" 'commit-split'      "$body"
+
+  tools="$(sed -n '/^allowed-tools:/p' "$s")"
+  assert_match "grants the read handle" 'place\.sh begin --read' "$tools"
+  assert_match "grants the release"     'place\.sh abort'        "$tools"
+  # The decision was out-of-scope-for-the-write. A publish verb in this grant is
+  # that decision reversed by accident.
+  assert_eq "grants no publish verb" "" \
+    "$(grep -oE 'place\.sh (commit|run)' <<< "$tools")"
+}
+
 # The interactive half of the declaration. Under a placement the emitter refuses
 # a filing that declares neither --auto nor --reviewed, so a consumer whose
 # interactive path still calls the bare emitter is broken at exactly the moment

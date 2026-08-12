@@ -280,7 +280,12 @@ code-surface / historical keeps, the code-move fork (only when a
 `TERRITORY-IDENTITY` path exists), the config split (an offered
 `verify_appetite_<old>` edit vs. informational command / territory rows), and the
 informational out-of-scope mentions (ROADMAP / README / issue bodies — listed,
-never edited; ARCHITECTURE.md excluded entirely). Under `rewrite`, the
+never edited; ARCHITECTURE.md excluded entirely). Rename edits no issue body on
+any arm, so a branch placement changes nothing it *writes* — but it does change
+what the listing should be read from: under `place.sh mode` = `route` the
+checkout's collection is a stale fork, so read the real one through
+`place.sh begin --read` / `abort` as § Split protocol describes, and say on the
+line which collection was listed. Under `rewrite`, the
 numbered-body identity edits are presented as **secret-scrubbed old→new diffs** —
 the actual changed lines, never a bare changed-file count (AC #12) — and each
 freeze-on-doubt prose mention left frozen is listed by `file:line` (AC #13).
@@ -484,13 +489,67 @@ successor) takes freeze-on-doubt (AC 10). Strategic docs (ROADMAP / README /
 WORKFLOW) are advisory-listed, never edited (043 parity). Under `forward` /
 `immutable` no reference is edited — the ledger remap is the bridge.
 
+**Under a branch placement the issue collection is not in the working tree.**
+`issue_placement` may put the collection on a designated branch, in which case
+`git ls-files -- <issues-dir>` enumerates either a stale branch-local fork or
+nothing at all. Editing that copy is exactly what the placement exists to
+prevent, and routing the edits is not available here: `jimledger.sh commit-split`
+commits the reference edits and the issue `INDEX.md` as one changeset behind one
+all-or-nothing gate, and splitting that into a working-branch commit plus a
+destination-branch commit — which can independently defer on an unreachable
+remote or refuse on a conflict — would let a gate approved all-or-nothing land
+partly. That fixed two-commit choreography is a partition-spec invariant, not
+something to trade away here.
+
+So under a placement the issue class is **detected and disclosed, never edited**
+— the precedent the origin lint set: a check that cannot be grounded says so
+rather than being inferred from absence.
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/place.sh mode
+```
+
+- `direct` — today's behaviour exactly. The issues dir stays in the `ls-files`
+  pathspec and its references re-point with everything else.
+- `route` — **drop the issues dir from the pathspec entirely**, then read the
+  real collection to report what would have changed:
+
+  ```bash
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/place.sh begin --read
+  ```
+
+  It prints `<token>\t<dir>`. Scan `<dir>` for the remap's source ids, record each
+  hit as a `file:line` row against the **destination-relative** path
+  (`<issues-dir>/<id>.md` — where a later run will find it, not the temp
+  directory it is being read from), and release the handle:
+
+  ```bash
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/place.sh abort <token>
+  ```
+
+  **Never edit inside `<dir>`.** A read handle publishes nothing and its
+  materialized copy is discarded, so an edit made there is lost silently — worse
+  than not making it. The handle is a viewing window; `abort` closes it.
+
+  If `begin --read` fails, or reports the remote unreachable and serves the
+  last-seen state, the listing is **degraded, not absent**: say which in the
+  gate, so an empty UNAPPLIED block is never read as "nothing to re-point".
+
 **The single gate (spec 040).** Compose one gate presenting the entire change-set
 per the gate-presentation rule (`skills/blueprint/references/gate-presentation.md`):
 the assignment rows (rangeable, e.g. `006–009 → checkout/001–004`), the revealed
 edges (each confirm / reject), the spanning rows, the spec remap, the config rows
 (an offered `verify_appetite_<old>` disposition + per-child adds), a **REFERENCES**
 block (the non-spec re-points and the freeze-on-doubt list, by `file:line`), and
-the informational out-of-scope mentions. Under `rewrite`, every artifact edit —
+the informational out-of-scope mentions. Under a branch placement that REFERENCES
+block carries an explicit **`UNAPPLIED — issue collection at <branch>`**
+subsection holding the collection's `file:line` rows, stated as re-points this run
+will **not** make and the operator applies afterwards. They are never folded in
+with the rows that *will* be applied, and the subsection is never omitted when the
+placement is active: a gate silent about the collection reads as a collection with
+nothing to re-point, which is the silent staleness this disclosure exists to
+prevent. When the read degraded, say so on that line instead of showing an empty
+list. Under `rewrite`, every artifact edit —
 spec bodies and non-spec references alike — is a **secret-scrubbed old→new diff**,
 never a bare changed-file count (AC 15). On the **symmetric** arm the gate carries
 an explicit **`RETIRES <old>`** row — the standalone `--retire` prompt is skipped
@@ -511,7 +570,9 @@ decline writes nothing (`outcome=declined`).
    group half, then `rewrite-refs <remap> <file>...` over the assembled sweep set
    for the archive-wide + non-spec re-points. Touched issue files get an `updated:`
    refresh (`jimfile.sh now`, spec 022) and ONE `INDEX.md` regeneration after the
-   batch.
+   batch. Under a branch placement no issue file is in the sweep set, so neither
+   the refresh nor the regeneration happens — the collection's rows were disclosed
+   at the gate as unapplied, and the run does not touch them.
 3. *Doc fission* — `Skill(jim:blueprint) --split <old> --targets <csv> --changes
    <file>`: map fission, in-place remainder edit, kernel-first fresh children,
    symmetric-source retirement (no re-prompt), Contract Graph rewrite. It defers
@@ -520,8 +581,11 @@ decline writes nothing (`outcome=declined`).
 4. *Commits* — the fixed **two-commit** choreography: `jimledger.sh commit-split
    <specs-dir> <old> <targets-csv> <path>...` (the docs: moved spec-dir pairs,
    touched blueprints, reference edits, issue `INDEX.md`), then `commit-map` (the
-   map + specs-root ledger). There is no code commit — a split is assignment-only
-   (AC 6).
+   map + specs-root ledger). Under a branch placement the issue `INDEX.md` is
+   simply not among the paths, because nothing regenerated it — keeping the
+   changeset exactly one gate's worth of work, which is the property routing the
+   issue half would have broken. There is no code commit — a split is
+   assignment-only (AC 6).
 
 **Verify.**
 
@@ -529,7 +593,12 @@ decline writes nothing (`outcome=declined`).
    artifact set (per child across the spec archive, plus the issue / brainstorm /
    debug reference classes). Mode-dependent: under `rewrite` a surviving old-name
    identity mention or a stale moved-spec reference is a **failure**; under
-   `forward` / `immutable` it is a classified keep (AC 16).
+   `forward` / `immutable` it is a classified keep (AC 16). Under a branch
+   placement the issue class is scoped out of this sweep the same way it was
+   scoped out of the rewrite — its survivors are the disclosed unapplied rows, so
+   counting them as failures would fail every placement run for doing exactly what
+   the gate said it would do. Report them as **verification owed**, naming the
+   count, rather than dropping them from the report.
 2. *Graph check* — compose the expected after-graph (baseline edges re-pointed per
    the assignment + the gate-confirmed reveals) and `jimpartition.sh edges-diff
    <expected> <actual> <g> <g>` with old == new (the identity degrades it to a pure
@@ -677,6 +746,14 @@ an unmoved spec is unrewritable by construction (AC 11). Bare group-name prose
 takes freeze-on-doubt; strategic docs stay advisory. Under `forward` /
 `immutable` no reference is edited — the ledger remap is the bridge.
 
+The branch-placement rule is identical too, and stated once under § Split
+protocol → *Reference sweep assembly*: with `place.sh mode` reporting `route`,
+drop the issues dir from the pathspec, read the real collection through
+`place.sh begin --read` / `abort`, and disclose its rows in the gate's
+`UNAPPLIED` subsection instead of rewriting them. `jimledger.sh commit-merge`
+carries the same fixed choreography `commit-split` does, so it is the same
+constraint for the same reason.
+
 **The single hard gate (spec 040).** Compose one gate presenting the fully
 resolved change-set per the gate-presentation rule
 (`skills/blueprint/references/gate-presentation.md`), led by a **per-group
@@ -707,7 +784,9 @@ advisory. Approval is all-or-nothing; a declined gate materializes nothing
    <target> <spec-file>...` per source (batch-by-source) for the moved bodies'
    group half, then `rewrite-refs <remap> <file>...` over the assembled sweep set
    for the archive-wide + non-spec re-points. Touched issue files get an
-   `updated:` refresh and ONE `INDEX.md` regeneration after the batch.
+   `updated:` refresh and ONE `INDEX.md` regeneration after the batch — neither
+   under a branch placement, where no issue file is in the sweep set and the
+   collection's rows were disclosed at the gate as unapplied.
 3. *Doc fusion* — `Skill(jim:blueprint) --merge <target> --sources <csv>
    --changes <file>`: map fusion (N rows → 1), the fused group blueprint (in-place
    edit of an absorption target; fresh for a fresh target), retirement of every
