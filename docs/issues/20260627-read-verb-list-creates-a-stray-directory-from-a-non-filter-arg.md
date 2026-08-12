@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-27T05:13:33Z
-updated: 2026-08-12T09:35:31Z
+updated: 2026-08-12T19:28:27Z
 origin: conversation
 ---
 
@@ -104,3 +104,29 @@ checking against the first-filing flow, since that is the one path where the
 collection legitimately does not exist yet — or anchor the resolver's relative
 default to the project root, which is the walk-up decision carried under
 `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller`.
+
+## Note (2026-08-12): trigger 2 now splits on whether the project has a config
+
+The walk-up decision landed as **locate-and-refuse, never read** (`1bef1f2`) —
+the walk-up itself was declined, because jimconf values reach `bash` and reading
+a config from above the folder the session started in would run a command from
+outside that boundary. Anchoring relative values to a project root, the half that
+would have addressed this issue, was not taken.
+
+Measured against both shapes rather than assumed:
+
+- **A project with a `jimconf.toml` at its root: trigger 2 is closed.**
+  `index.sh` run from `docs/issues/` now exits 2 and creates nothing. The config
+  refusal propagates into `place.sh`'s placement gate, which refuses an
+  unresolvable setting rather than reading it as unset. Nobody wrote this;
+  two guards composed.
+- **A zero-config project: trigger 2 is unchanged.** With no `jimconf.toml`
+  anywhere there is nothing to refuse, `issues` resolves to its relative default,
+  and `docs/issues/docs/issues/INDEX.md` is still created at rc 0.
+
+So the root fix this issue's 2026-07-01 note argues for — `index.sh` must not
+`mkdir -p` its target on a regeneration — is still the one that closes it, and
+it is now the *only* remaining trigger. Worth folding in when it is taken:
+`resolve_dir` discards jimconf's stderr, so a configured project hitting the
+refusal is told the placement gate failed rather than that it is not at the
+project root.

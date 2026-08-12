@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 106
-- Closed: 217
+- Open: 105
+- Closed: 218
 
 ## Issues
 
@@ -317,7 +317,7 @@
 - `20260812-dirty-guard-is-fail-open-on-any-git-failure` — Dirty guard is fail-open on any git failure · status: closed · num: 308 · priority: medium · created: 2026-08-12T03:41:52Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-index-md-rows-are-forgeable-by-two-independent-routes` — INDEX.md rows are forgeable by two independent routes · status: closed · num: 309 · priority: high · created: 2026-08-12T03:41:37Z · labels: [issue, security, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-index-sh-fails-open-on-a-config-resolve-and-caps-no-display-valu` — index.sh fails open on a config resolve and caps no display value · status: closed · num: 310 · priority: medium · created: 2026-08-12T03:42:08Z · labels: [issue, index] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller` — jimconf resolver can hand a fabricated default to a caller · status: open · num: 311 · priority: medium · created: 2026-08-12T03:42:09Z · labels: [conf, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller` — jimconf resolver can hand a fabricated default to a caller · status: closed · num: 311 · priority: medium · created: 2026-08-12T03:42:09Z · labels: [conf, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-last-seen-state-prefers-a-ref-only-a-publish-advances` — Last-seen state prefers a ref only a publish advances · status: closed · num: 312 · priority: high · created: 2026-08-12T03:41:35Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-migrate-sh-failure-handler-is-not-rename-chain-aware` — migrate.sh failure handler is not rename-chain aware · status: closed · num: 313 · priority: medium · created: 2026-08-12T03:41:47Z · labels: [issue, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-migration-preview-drops-every-skip-reason` — Migration preview drops every skip reason · status: closed · num: P-20260812-migration-preview-drops-every-skip-reason · priority: medium · created: 2026-08-12T08:07:42Z · labels: [issue, migrate, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
