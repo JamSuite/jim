@@ -294,3 +294,4 @@ issue allocate 293 20260808-placement-test-gaps-after-the-repair-pass 20260808 j
 issue allocate 294 20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind 20260808 jrko
 issue allocate 295 20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod 20260808 jrko
 issue allocate 296 20260808-tests-place-sh-sits-outside-every-declared-territory 20260808 jrko
+issue allocate 297 20260811-compute-checkout-dependent-index-warnings-at-read-time 20260811 jrko
