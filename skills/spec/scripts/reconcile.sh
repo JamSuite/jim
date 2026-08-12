@@ -31,6 +31,12 @@
 #     answers under a different one), a plain move when not — and rewrite the
 #     frontmatter id. Runs from the worktree top only; anywhere else is refused,
 #     because every path it resolves is relative to the current directory.
+#     The citation sweep that follows rewrites the specs / brainstorms / debug
+#     roots in the worktree, and the issue collection wherever `issue_placement`
+#     puts it: under a branch placement it opens a placement handle, rewrites
+#     there, and publishes as one commit, rather than editing a checkout copy
+#     the destination never sees. This is the one place this group calls into
+#     the issue group's placement primitive.
 #   bash reconcile.sh -c <config> [...]
 #     Forward -c to jimfile.sh / jimconf.sh / jimalloc.sh (used by tests).
 #   specs_dir default: jimconf.sh get specs
@@ -470,6 +476,36 @@ sweep_citations() {
     echo "error: citation sweep — not in a git repo" >&2
     return 1
   fi
+  # Where the issue half of the sweep actually lands. The collection may live on
+  # a designated branch rather than on the branch this run is standing on, and
+  # the working checkout is then the wrong copy: rewriting it either edits a
+  # branch-local fork the destination never sees, or — where the working branch
+  # carries no collection at all — matches nothing, counts zero touched files,
+  # and exits clean while the destination keeps citing an identity that no longer
+  # exists. Both are the silent staleness this sweep exists to prevent.
+  #
+  # So the issue root is swept through the placement door instead: `begin` hands
+  # back the collection wherever it lives, the rewrite runs there, and `commit`
+  # publishes it as one commit. Under the default placement `begin` hands back
+  # the project's own issues directory and `commit` does nothing, which is why
+  # the direct path below is left exactly as it was rather than re-expressed
+  # through the handle — git can only enumerate the working tree, and that
+  # enumeration is what the untracked and own-directory passes extend.
+  #
+  # This is the first caller of place.sh from outside its own group, script to
+  # script. Moving the rewrite behind an issue-group entry point instead would
+  # require moving the citation *grammar* with it — typed `group/NNN` refs,
+  # pathed spec dirs, bare ordinals, fence skipping — making it a fourth
+  # rewriter in another group that has to stay in lockstep with this one across
+  # a boundary.
+  local PLACE="$HERE/../../issue/scripts/place.sh" place_mode="direct"
+  if [[ -r "$PLACE" ]]; then
+    if ! place_mode="$(bash "$PLACE" mode)"; then
+      echo "error: citation sweep — issue placement could not be resolved, so" \
+           "where the collection's citations belong is unknown; nothing swept" >&2
+      return 1
+    fi
+  fi
   # `git ls-files` emits repo-relative paths whatever spelling the pathspec
   # carries, so a root consumed in its raw configured form can never prefix-match
   # its own output — which is how an absolute issues root rewrote citations and
@@ -480,6 +516,11 @@ sweep_citations() {
   local -a roots=() files=()
   local key root rp issues_root=""
   for key in specs issues brainstorms debug; do
+    # Under a routed placement the working checkout's copy of the collection is
+    # not the collection. It is swept through the handle opened below, so it must
+    # not also be enumerated here — sweeping both would rewrite a fork nobody
+    # reads and publish the same edits twice.
+    [[ "$key" == issues && "$place_mode" == "route" ]] && continue
     root="$(jc get "$key" 2>/dev/null)"; root="${root%/}"; root="${root#./}"
     [[ -n "$root" ]] || continue
     # A dropped root means some citations are rewritten and others are not, and
@@ -563,8 +604,6 @@ sweep_citations() {
       done
     done <<<"$own_dirs"
   fi
-  (( ${#files[@]} )) || return 0
-
   local f resolved
   local -A seen_file=()
   local -a unique=()
@@ -575,6 +614,14 @@ sweep_citations() {
   done
   files=("${unique[@]}")
 
+  # Every target enumerated so far is a worktree path, and clears the worktree
+  # boundary before any edit. The placement handle's entries are added AFTER this
+  # loop deliberately: they live in a temp directory outside the worktree by
+  # construction, so this containment check would refuse the very collection the
+  # sweep is here to rewrite. Their own containment is established where it
+  # belongs — place.sh materializes each entry as a regular file with a plain
+  # name resolving inside the collection, and aborts the extraction before
+  # handing back a handle otherwise.
   for f in "${files[@]}"; do
     if ! jf valid-relpath "$f" >/dev/null 2>&1; then
       echo "error: citation sweep — unsafe path rejected: $f" >&2; return 1
@@ -583,6 +630,30 @@ sweep_citations() {
       echo "error: citation sweep — path escapes worktree: $f" >&2; return 1
     fi
   done
+
+  local place_token="" place_dir="" begin_out entry
+  if [[ "$place_mode" == "route" ]]; then
+    if ! begin_out="$(bash "$PLACE" begin)"; then
+      echo "error: citation sweep — could not open the issue collection at its" \
+           "placement; the spec-side citations are rewritten and the issue-side" \
+           "ones are not" >&2
+      return 1
+    fi
+    place_token="${begin_out%%$'\t'*}"
+    place_dir="${begin_out#*$'\t'}"
+    for entry in "$place_dir"/*.md; do
+      [[ -f "$entry" ]] || continue
+      [[ "$(basename "$entry")" == "INDEX.md" ]] && continue
+      files+=("$entry")
+    done
+  fi
+
+  # Checked after the handle is opened, so a destination collection with
+  # citations to rewrite is still swept when the worktree half is empty.
+  if (( ${#files[@]} == 0 )); then
+    [[ -n "$place_token" ]] && bash "$PLACE" abort "$place_token" >/dev/null 2>&1
+    return "$sweep_failed"
+  fi
 
   local swtmp parsed tmp_out rec awk_rc issue_touched=0
   if ! swtmp="$(mktemp -d 2>/dev/null)"; then
@@ -670,7 +741,9 @@ sweep_citations() {
         continue
       fi
       cat -- "$rec"
-      if [[ -n "$issues_root" ]] \
+      if [[ -n "$place_dir" && "$f" == "$place_dir"/* ]]; then
+        issue_touched=1
+      elif [[ -n "$issues_root" ]] \
          && { [[ "$issues_root" == "." ]] || [[ "$f" == "$issues_root"/* ]]; }; then
         issue_touched=1
       fi
@@ -678,7 +751,27 @@ sweep_citations() {
   done
   rm -rf -- "$swtmp"
 
-  if (( issue_touched )); then
+  if [[ "$place_mode" == "route" ]]; then
+    # place.sh regenerates the index inside what it publishes, so there is no
+    # separate index.sh call on this arm — and no explicit directory argument,
+    # which is the routing opt-out that made this sweep bypass placement in the
+    # first place. The verb enum plus the absence of an id is the whole commit
+    # subject: a multi-file citation re-point names no single issue, and no
+    # drafted text can reach a message composed from an enum.
+    if (( issue_touched )); then
+      if ! bash "$PLACE" commit "$place_token" --verb edit; then
+        echo "error: citation sweep — the collection's re-points could not be" \
+             "published to its placement. They are NOT lost: the handle still" \
+             "holds them at '$place_dir'; re-run" \
+             "\`place.sh commit $place_token --verb edit\` once the conflict is" \
+             "resolved, or \`place.sh abort $place_token\` to discard them. The" \
+             "spec-side citations are already rewritten in the worktree" >&2
+        sweep_failed=1
+      fi
+    else
+      bash "$PLACE" abort "$place_token" >/dev/null 2>&1
+    fi
+  elif (( issue_touched )); then
     if ! bash "$HERE/../../issue/scripts/index.sh" "$issues_root" >/dev/null 2>&1; then
       echo "error: citation sweep — the issue index failed to regenerate for '$issues_root'; the rewritten citations are on disk and INDEX.md no longer describes them" >&2
       return 1

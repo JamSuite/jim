@@ -15,6 +15,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 
 SCRIPT_specreconcile="$REPO_ROOT/skills/spec/scripts/reconcile.sh"
+SCRIPT_specreconcile_new="$REPO_ROOT/skills/issue/scripts/new.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -286,6 +287,61 @@ case_specreconcile_rewrites_own_h1_token() {
   assert_match "own H1 realized" '^# 001 Alpha$' "$(cat "$spec")"
   assert_match "suffixed sibling heading untouched" '^# P-20260728-alpha-2 sibling heading$' "$(cat "$spec")"
   assert_match "later bare mention untouched" 'body mentions P-20260728-alpha bare' "$(cat "$spec")"
+}
+
+# AC: under a branch placement the collection is not in the working tree, so the
+# sweep routes its issue half through place.sh instead of enumerating the
+# checkout. Without this the sweep either rewrites a branch-local fork nobody
+# reads, or — as here, where the working branch carries no collection at all —
+# matches nothing, reports zero touched, and exits clean while the destination
+# keeps citing an identity that no longer exists.
+case_specreconcile_sweeps_the_collection_at_its_placement() {
+  local repo body slug dest_before dest_after issue_body
+  repo="$(specrec_repo sr_placement)"
+  # The shape a placement project actually has: the working branch carries no
+  # collection at all. The shared fixture pre-creates the directory, and leaving
+  # it would let the worktree assertions below pass on the fixture's own mkdir.
+  rmdir "$repo/docs/issues" 2>/dev/null
+  printf 'issue_placement = "jim/issues"\n' > "$repo/jimconf.toml"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_commit "$repo"
+
+  # File through the emitter so the fixture's collection is built the way a real
+  # one is — on the destination branch, by the door that owns it.
+  body="$TMP_BASE/sr_placement_body.md"
+  printf 'Tracks sdlc/P-20260728-alpha closely.\n' > "$body"
+  OUT="$(cd "$repo" && bash "$SCRIPT_specreconcile_new" --reviewed \
+    --title "Cites the provisional spec" --priority low --labels x \
+    --origin "docs/specs/sdlc/P-20260728-alpha/spec.md" --body-file "$body" 2>/dev/null)"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "the fixture issue was filed" "yes" \
+    "$([[ -n "$slug" ]] && echo yes || echo no)"
+  assert_eq "and it landed on the destination, not the worktree" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  dest_before="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+
+  issue_body="$(git -C "$repo" show "refs/heads/jim/issues:docs/issues/$slug.md" 2>/dev/null)"
+  assert_match "typed citation swept at the destination" 'sdlc/001' "$issue_body"
+  assert_match "path citation swept at the destination" \
+    'docs/specs/sdlc/001-alpha/spec\.md' "$issue_body"
+  assert_eq "no provisional citation survives there" "0" \
+    "$(grep -c 'P-20260728-alpha' <<<"$issue_body")"
+
+  dest_after="$(git -C "$repo" rev-parse refs/heads/jim/issues)"
+  assert_eq "the re-points were published" "no" \
+    "$([[ "$dest_before" == "$dest_after" ]] && echo yes || echo no)"
+  assert_eq "as exactly one commit" "1" \
+    "$(git -C "$repo" rev-list --count "$dest_before..$dest_after")"
+  assert_eq "and the working tree still holds no collection" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  # The index at the destination describes the rewritten bodies, not the
+  # retired identity — place.sh regenerates it inside what it publishes.
+  assert_eq "the published index does not resurrect the citation" "0" \
+    "$(git -C "$repo" show "refs/heads/jim/issues:docs/issues/INDEX.md" 2>/dev/null \
+       | grep -c 'P-20260728-alpha')"
 }
 
 # AC: an untracked file inside a content root that cites the realized identity
