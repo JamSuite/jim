@@ -15,8 +15,8 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8–WP13 complete; WP7 outstanding.** Thirty-three commits over
-`ae4b877..HEAD`. Suite **1284 → 1318 green**.
+**WP0–WP6 and WP8–WP14 complete; WP7 outstanding.** Thirty-six commits over
+`ae4b877..HEAD`. Suite **1284 → 1319 green**.
 
 | WP | State | Closes |
 | :--- | :--- | :--- |
@@ -33,19 +33,22 @@ meets it, and what is deliberately left tracked.*
 | WP11 declarations | done | #279, #296 |
 | WP12 atomic writes | done | #288 |
 | WP13 read posture + emitter stdout | done | #291, #294, #277 (item 4) |
+| WP14 placeholder + capability | done | #286; #290 **part 2 only** |
 | WP7 close out | **outstanding** | — |
 
-**Twenty-three issues closed by this remediation**, on top of the 8 the fix pass
-had closed — 31 of the 36 now filed against the spec, leaving **5 open**. Each
+**Twenty-four issues closed by this remediation**, on top of the 8 the fix pass
+had closed — 32 of the 36 now filed against the spec, leaving **4 open**. Each
 closed issue carries a `## Resolution` section naming what shipped, the commit,
 and the case that pins it; the collection's convention is that a close without
 one is incomplete.
 
-One of the five stays open having been narrowed rather than deferred whole, to
-the half that carries a decision, and carrying a `## Progress` section saying
-what is done and what is left:
+Two of the four stay open having been narrowed rather than deferred whole, each
+to the half that carries a decision, and each carrying a `## Progress` section
+saying what is done and what is left:
 
 - **#278** — the three false-prose sites are corrected; the polarity is not
+  taken.
+- **#290** — the placeholder collision is fixed; the encode-or-narrow fork is not
   taken.
 
 **WP8 was added after the bar was set**, on the developer's approval, once the
@@ -161,7 +164,7 @@ by the later packages; what is left is listed under *Deferred* below.
 - **Likely verdict:** `minor-drift` rather than `aligned`. That is the honest
   outcome of this bar and should not be argued away at review time.
 
-*This section describes the bar as set. WP8–WP13 were taken after it on the
+*This section describes the bar as set. WP8–WP14 were taken after it on the
 developer's approval; they moved AC 3, 5, 11 and 12 past what it promised and
 cleared the remaining contract violation — see **Status**. AC 3 is no longer
 partial.*
@@ -619,16 +622,46 @@ served a stale view before this change did so honestly. Amending it settles the
 carried wording decision; it records the posture chosen here, not a rewrite to
 match code this remediation left alone.
 
+### WP14 — The placeholder and the ungranted count *(added mid-flight)*
+
+**Closes #286 and #290's part 2.** Two items carrying no decision, taken
+together because both are cases of a boundary being crossed by something that
+merely looked like it belonged.
+
+**The placeholder (#290 part 2).** `place_substitute` matched on value alone, so
+an argument that *was* exactly `{}` was rewritten wherever it sat. The emitter
+re-execs carrying its own caller's entire argv, so `--title '{}'` arrived as a
+bare marker. Reproduced before fixing, and worse than the issue's "low
+likelihood, permanent consequence" reads: it filed at **rc 0** with the slug
+`20260811-tmp-tmp-<rand>-collection` and wrote that row to the append-only
+registry, which no later run can reclaim.
+
+A placeholder is now read by position as well as value — the operand of
+`--dir` / `--place-token`, or the trailing argument. Every entry script already
+builds its re-exec in one of those two shapes, so nothing travelling through the
+middle of an argv can reach a marker position. That removes the class instead of
+shrinking it a second time, which is what the finding asked for and what the
+first narrowing did not achieve. Nine fixtures passed a marker mid-argv and now
+pass it last, which is the shape the contract describes.
+
+**The ungranted count (#286).** The insights step asked the main agent to count
+`*.md` files with no granted way to do it — `Glob`, `LS` and `Bash(ls *)` are all
+absent — leaving a `Read` of `INDEX.md`, the exact read the next step forbids and
+the checklist checks against. The step is dropped: the analyst already returns a
+one-line note when there is nothing to analyze, so it bought nothing while
+applying pressure at the `insights-capability-boundary`'s instruction-enforced
+half. A question only the trusted party can answer belongs to that party.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
 2. Re-run `/jim:review`, and assign the verdict over that run's own evidence. The
    `minor-drift` estimate under *What this bar does and does not buy* was made
-   against bar C alone, before six further packages moved AC 3, 5, 11 and 12 and
+   against bar C alone, before seven further packages moved AC 3, 5, 11 and 12 and
    cleared both contract violations; it is stale as a prediction and is left
    standing only because a remediation should not revise its own forecast upward
    over its own work. AC 3 is now whole — #277's last item is closed. What
-   remains against the ACs is the set under *Deferred* — four issues, of which
+   remains against the ACs is the set under *Deferred* — three issues, of which
    two are decisions rather than defects.
 3. Blueprint: `staleness-gated-reads` is amended, and the amendment is WP13's,
    not a convenience. The rule it replaced was already false before this
@@ -647,8 +680,7 @@ was taken as WP8 and is gone from the list.
 
 | Issue | Why deferred |
 | :--- | :--- |
-| #290 (high) | Part 1 is a text-vs-code fork: encode `--origin` or narrow the invariant. Part 2 — an argument that is exactly `{}` is still substituted, burning a permanent registry slug — carries no decision and is a defect, not a fork; it is queued, not deferred. |
-| #286 (low) | Insights empty-collection step has no granted capability. |
+| #290 *(part 1 only)* | A text-vs-code fork: encode `--origin` or narrow the invariant. Part 2 was a defect rather than a fork and is closed under WP14. |
 | #269 (low) | `place.sh` conformance and hygiene, incl. the unenforced nameref prefix convention. |
 | `20260811-compute-checkout-dependent-index-warnings-at-read-time` | Not surfaced by a review — filed *by* this remediation, as the successor to #273. Moving the origin check out of the stored index and into the reader's view restores a signal WP10 could only stop from lying, but it changes the stored artifact for projects with no placement at all. Provisional ordinal until the host reconciles. |
 
