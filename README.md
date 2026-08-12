@@ -109,6 +109,8 @@ Copy the shipped template to start:
 cp jimconf.toml.example jimconf.toml
 ```
 
+**Run jim from the project root.** The config is read as `./jimconf.toml`, with no walk-up — a session started in a subdirectory would otherwise resolve every key to its default and silently ignore your settings. Rather than do that quietly, jim refuses and tells you where the config it found actually is. It never *reads* that file: several keys (`pre_commit`, `pre_completion`, `deps_command_*`, `verify_command_*`) are commands jim runs, so honouring a config from above the folder your session trusts would run a command from outside it. Values written in a form the parser does not read — `key = 'single-quoted'` or a bare `key = 3` — are refused the same way rather than falling back to the default; only `key = "double-quoted"` is recognized.
+
 Supported keys (all optional — omitted keys keep their defaults):
 
 | Key | Default | Used by |
