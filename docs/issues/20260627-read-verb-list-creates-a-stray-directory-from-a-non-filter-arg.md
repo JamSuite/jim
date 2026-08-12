@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-27T05:13:33Z
-updated: 2026-07-09T06:45:02Z
+updated: 2026-08-12T09:35:31Z
 origin: conversation
 ---
 
@@ -79,3 +79,28 @@ the `show`/`stats` paths, which never touch `cmd_list`.
 reached from a non-repo-root CWD mis-resolves the target. Whether the resolver
 should anchor the default to the project root is arguably a second, narrower
 fix worth weighing alongside the index.sh root fix.)
+
+## Progress (2026-08-12)
+
+**Two of the three triggers are closed** in `c13caa9`, while closing
+`20260812-two-argument-read-shape-bypasses-placement-and-creates-a-stray-d`.
+
+- *Trigger 1 — `list <non-filter>`.* `cmd_list` reads its arguments by shape
+  and refuses a token that is neither a filter nor an existing directory.
+- *Trigger 3 — any read verb via `ensure_index`.* The guard sits in
+  `ensure_index` itself, which is the single function every read verb
+  regenerates through: an absent directory means no issues, so it serves nothing
+  and creates nothing. This is the root fix the 2026-07-09 note argued for, at
+  the shared helper rather than in each verb.
+
+**Trigger 2 is untouched.** A direct `index.sh` run with no directory argument,
+from a CWD other than the repository root, still resolves the relative
+`./docs/issues` against the wrong place and `mkdir -p`s a stray nested tree. It
+never passes through `ensure_index`, so nothing above reaches it.
+
+Two candidate fixes remain, and this issue's own notes name both: drop
+`index.sh`'s `mkdir -p` so a regeneration never creates its target — which needs
+checking against the first-filing flow, since that is the one path where the
+collection legitimately does not exist yet — or anchor the resolver's relative
+default to the project root, which is the walk-up decision carried under
+`20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller`.
