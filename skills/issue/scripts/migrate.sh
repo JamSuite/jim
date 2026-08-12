@@ -261,22 +261,43 @@ apply_plan() {
   # and not yet supplied the new one, leaving every issue past the failure point
   # with neither — its only copy a tmp nothing removes. Renaming first means the
   # worst failure leaves a duplicate rather than a hole.
-  local i j
-  local -A new_names=()
+  local i j held
+  local -A new_names=() landed=()
   for i in "${!s_new[@]}"; do new_names["${s_new[$i]}"]=1; done
   for i in "${!s_tmp[@]}"; do
     # Test seam: simulate a mid-commit failure, after one rename has landed.
     # Never set in production.
     if [[ -n "${MIGRATE_FAIL_COMMIT:-}" && "$i" -eq 1 ]] \
        || ! mv "${s_tmp[$i]}" "${s_new[$i]}"; then
-      # No old name has been removed yet, so every issue still has a copy under
-      # one name or the other. Discard the tmps that never landed rather than
-      # leaving them in the collection for a later run to publish.
-      for (( j=i; j<${#s_tmp[@]}; j++ )); do rm -f "${s_tmp[$j]}"; done
+      # No old name has been RETIRED yet, so every issue still has a copy under
+      # one name or the other — except where a rename chain or a swap made one
+      # file's old name another's new one, the same shape the retire loop below
+      # guards. There a completed rename has written over a still-pending
+      # issue's only on-disk copy, and its staged file is what is left of it, so
+      # that one is kept and named. The rest never landed and are discarded
+      # rather than left in the collection for a later run to publish.
+      held=""
+      for (( j=i; j<${#s_tmp[@]}; j++ )); do
+        if [[ -n "${landed[${s_old[$j]}]:-}" ]]; then
+          held+="  ${s_new[$j]} is staged at ${s_tmp[$j]}"$'\n'
+        else
+          rm -f "${s_tmp[$j]}"
+        fi
+      done
       rm -f "$mapfile"
-      echo "error: commit failed at ${s_new[$i]} — the collection is PARTIALLY migrated: the issues committed before this point now exist under both names, and none has been lost. Recover via your version control (e.g. git checkout) and re-run" >&2
+      {
+        printf 'error: commit failed at %s — the collection is PARTIALLY migrated.\n' "${s_new[$i]}"
+        if [[ -n "$held" ]]; then
+          printf '%s\n' "The issues committed before this point now exist under both names, except those below: a completed rename has already taken the old name, so the staged file named beside each is its only copy on disk and has been kept."
+          printf '%s' "$held"
+        else
+          printf '%s\n' "The issues committed before this point now exist under both names, and none has been lost."
+        fi
+        printf '%s\n' "Recover via your version control (e.g. git checkout) and re-run"
+      } >&2
       return 1
     fi
+    landed["${s_new[$i]}"]=1
   done
   # Retire the old names, skipping any that another issue has just been renamed
   # *onto* — a rename chain or a swap makes one file's old name another's new

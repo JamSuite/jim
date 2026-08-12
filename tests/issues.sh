@@ -2337,6 +2337,54 @@ issue_id_prefix = \"timestamp\"")
     "$([[ -f "$dir/20260613T100000-bbb.md" ]] && echo yes || echo no)"
 }
 
+# AC: a mid-commit failure on a rename CHAIN loses no issue either. Where one
+# file's new name is another's old name, the earlier rename writes over the
+# later issue's only on-disk copy — so discarding that issue's staged file, as
+# the disjoint case correctly does, is what would leave it nowhere. The staged
+# file is held instead, and the message stops claiming a guarantee it cannot
+# make. `aaa`'s target IS `bbb`'s current name, and the seam fails at `bbb`.
+case_issues_migrate_commit_failure_on_a_chain_holds_the_last_copy() {
+  local dir cfg f content
+  dir=$(empty_dir migrate_commit_fail_chain)
+  write_issue "$dir" "20260613T090000-foo" 'title: "A"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z'
+  write_issue "$dir" "20260613T100000-foo" 'title: "B"
+status: open
+num: 2
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T11:00:00Z'
+  cfg=$(fixture migrate-chainfail.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  export MIGRATE_FAIL_COMMIT=1
+  run_migrate -c "$cfg" prefix --apply
+  unset MIGRATE_FAIL_COMMIT
+  assert_exit "injected commit fails" 1 "$RC"
+
+  # B's content is what the clobber puts at risk. Search the whole directory,
+  # dotfiles included — a held staged file is exactly where it should be found.
+  local b_found=no
+  for f in "$dir"/* "$dir"/.[!.]*; do
+    [[ -f "$f" ]] || continue
+    content="$(cat "$f")"
+    [[ "$content" == *'title: "B"'* ]] && b_found=yes
+  done
+  assert_eq    "B still exists on disk"        "yes"          "$b_found"
+  assert_eq    "no false all-clear"            ""             "$(grep -o 'none has been lost' <<<"$ERR")"
+  assert_match "names the staged copy it kept" 'is staged at' "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
