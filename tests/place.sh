@@ -1820,6 +1820,27 @@ case_place_direct_refuses_a_collection_outside_the_worktree() {
     "$([[ -e "$outside/issues/INDEX.md" ]] && echo yes || echo no)"
 }
 
+# AC: and it refuses through the two-phase door, which is the door that needs it
+# most — there is no wrapped command on that arm, so the agent is the writer.
+# `begin` handing back an escaping directory means the write has already
+# happened outside the worktree by the time `commit` objects, and the refusal it
+# prints then ("it will not be written or staged") is false (security Finding 7).
+case_place_direct_begin_refuses_a_collection_outside_the_worktree() {
+  local repo outside
+  repo="$(place_here place_direct_begin_escape)"
+  outside="$(empty_dir place_direct_begin_escape_target)"
+  ln -s "$outside" "$repo/docs"
+  run_place_in "$repo" begin
+  assert_exit  "refuses"              2          "$RC"
+  assert_match "says why"             'worktree' "$ERR"
+  assert_eq    "hands back no handle" ""         "$OUT"
+  # The read arm names the same directory, and § 6a opens one on every insights
+  # run — so it clears the same gate rather than a weaker one.
+  run_place_in "$repo" begin --read
+  assert_exit  "the read arm refuses too" 2      "$RC"
+  assert_eq    "and names no directory"   ""     "$OUT"
+}
+
 # AC: direct mode records what the destination was seen holding on the same
 # terms as the plumbing path. A commit whose push was rejected reached nobody,
 # so a bookmark advanced before the attempt names a commit only this clone has —
@@ -1858,6 +1879,26 @@ case_place_direct_begin_refuses_a_dirty_collection() {
   assert_eq    "hands back no handle" "" "$OUT"
   assert_eq "the edit is still the developer's own" "half-finished" \
     "$(cat "$repo/docs/issues/20260101-a.md")"
+}
+
+# AC: a guard that cannot run has not passed. `status` reports a dirty
+# collection on stdout, so testing output alone reads every failure — a corrupt
+# index, a refused pathspec, a permissions error — as "clean", and the guard
+# waves through exactly the states it exists to stop (security Finding 9).
+case_place_direct_begin_refuses_when_the_dirty_guard_cannot_run() {
+  local repo
+  repo="$(place_here place_direct_begin_guard_blind)"
+  mkdir -p "$repo/docs/issues"
+  printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  # A corrupt index: `status` exits non-zero having printed nothing, while
+  # `rev-parse` still answers — so the containment gate passes and this guard is
+  # the one being driven.
+  printf 'GARBAGE' > "$repo/.git/index"
+  run_place_in "$repo" begin
+  assert_exit  "refuses"              2             "$RC"
+  assert_eq    "hands back no handle" ""            "$OUT"
+  assert_match "says it could not tell" 'cannot tell' "$ERR"
 }
 
 # AC: a read handle takes the arm that has no edits to protect, so the guard is
@@ -2005,6 +2046,100 @@ case_place_begin_commit_conflict_preserves_state() {
   assert_eq "edit preserved"   "mine" "$(cat "$dir/20260101-a.md")"
   assert_eq "their edit intact" "theirs" \
     "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
+}
+
+# AC: everything that made a handle safe to publish was established at `begin`,
+# and each of those facts can have changed since — so the routed arm re-proves
+# them, as the checked-out arm already does. It reads its destination back from
+# handle state and hands it to push / update-ref / ls-remote / fetch, so the
+# gate has to be re-established on this side of that read (spec AC #9, AC #10).
+case_place_commit_refuses_a_retargeted_destination() {
+  local repo token dir before
+  repo="$(place_repo place_commit_dest_drift 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=open'
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  printf 'closed\n' > "$dir/20260101-a.md"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  printf 'issue_placement = "jim/other"\n' > "$repo/jimconf.toml"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit  "refuses"                        2            "$RC"
+  assert_match "names the handle's destination" 'jim/issues' "$ERR"
+  assert_match "and the one now configured"     'jim/other'  "$ERR"
+  assert_eq "the handle's destination is unmoved" "$before" \
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "and nothing was created at the new one" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/other)"
+}
+
+# AC: the reachable case the gate exists for — the coordination branch retargeted
+# onto a destination already in flight. `place_destination` refuses that pairing,
+# and it is the refusal the routed arm never re-asked for, publishing issue
+# content onto the registry's own branch (spec AC #9).
+case_place_commit_refuses_a_destination_that_became_the_coordination_branch() {
+  local repo token dir before
+  repo="$(place_repo place_commit_coord_drift 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=open'
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  printf 'closed\n' > "$dir/20260101-a.md"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  printf 'issue_placement = "jim/issues"\nid_coordination_branch = "jim/issues"\n' \
+    > "$repo/jimconf.toml"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit  "refuses"  2              "$RC"
+  assert_match "says why" 'coordination' "$ERR"
+  assert_eq "nothing was published" "$before" \
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+}
+
+# AC: the collection path is re-proved on this arm too. It composes the tree
+# entries the publish writes, so a changed `issues` key publishes the handle's
+# edits at a path they were never prepared for (spec AC #3).
+case_place_commit_refuses_a_moved_collection_path() {
+  local repo token dir before
+  repo="$(place_repo place_commit_prefix_drift 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=open'
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  printf 'closed\n' > "$dir/20260101-a.md"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  printf 'issue_placement = "jim/issues"\nissues_path = "docs/tickets"\n' \
+    > "$repo/jimconf.toml"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit  "refuses"                    2              "$RC"
+  assert_match "names the moved collection" 'docs/tickets' "$ERR"
+  assert_eq "nothing was published" "$before" \
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "and no collection appeared at the new path" "no" \
+    "$(place_dest_paths "$repo" jim/issues | grep -q 'docs/tickets' && echo yes || echo no)"
+}
+
+# AC: a plumbing handle publishes by moving `refs/heads/<dest>` with update-ref,
+# which has no checked-out-branch protection of its own. If the developer checks
+# the destination out between the two steps, that ref moves under their index and
+# working tree and the collection reads as deleted. The checked-out arm guards
+# this exact transition; this arm reached the same outcome by the other door.
+case_place_commit_refuses_when_the_destination_became_checked_out() {
+  local repo token dir before
+  repo="$(place_repo place_commit_head_drift 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=open'
+  run_place_in "$repo" begin
+  assert_exit "begin rc" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
+  printf 'closed\n' > "$dir/20260101-a.md"
+  git -C "$repo" checkout -q jim/issues
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit  "refuses"               2            "$RC"
+  assert_match "names the destination" 'jim/issues' "$ERR"
+  assert_eq "the ref did not move under the working tree" "$before" \
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "and the checkout still reads as it did" "open" \
+    "$(cat "$repo/docs/issues/20260101-a.md")"
 }
 
 # AC: abort discards the materialized collection and publishes nothing.

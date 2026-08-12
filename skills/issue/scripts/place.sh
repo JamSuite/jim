@@ -549,9 +549,22 @@ place_new_token() {
 #
 #   Paths reach git literally: a shape-valid path does not neutralize pathspec
 #   magic, so a configured collection path is never interpreted as a pattern.
+#
+#   A guard that could not run has not passed. `status` reports a dirty
+#   collection on stdout, so testing output alone reads every failure — a
+#   corrupt index, a pathspec git refuses, a permissions error — as a clean
+#   collection, and waves through exactly the states this exists to stop.
 place_dirty_guard() {
-  local prefix="$1" st
+  local prefix="$1" st rc
   st="$(git --literal-pathspecs status --porcelain -- "$prefix" 2>/dev/null)"
+  rc=$?
+  if (( rc != 0 )); then
+    echo "place.sh: cannot tell whether the collection at '$prefix' has" \
+         "uncommitted changes — git reported an error instead of a listing, so" \
+         "this mutation is refused rather than published over work that may be" \
+         "sitting there" >&2
+    return 2
+  fi
   [[ -n "$st" ]] || return 0
   echo "place.sh: the collection at '$prefix' has uncommitted changes; commit or" \
        "stash them first so this mutation does not publish them:" >&2
@@ -808,6 +821,13 @@ cmd_begin() {
   local current
   current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
   if [[ -n "$current" && "$current" == "$dest" ]]; then
+    # Ahead of everything, as on the wrapped-command arm. There is no wrapped
+    # command here — the agent is the writer — so a directory handed back is
+    # already the write, and a refusal that arrives at `commit` arrives after
+    # it. Shape validation does not resolve symlinks, and the dirty guard below
+    # is a `git status` on the same path, which answers nothing about where it
+    # leads.
+    place_worktree_contained "$prefix" || return 2
     place_disclose_rewrite "$dest" "$(place_head_commit)"
     if (( read_only )); then
       printf '%s\t%s\n' "$PLACE_TOKEN_DIRECT_READ" "$prefix"
@@ -855,18 +875,35 @@ cmd_begin() {
     rm -rf -- "$handle"
     return "$mrc"
   }
-  local -A base=()
-  if [[ "$PLACE_BASE_TIP" == "$PLACE_WORK_TIP" ]]; then
-    place_snapshot "$handle/collection" base || { rm -rf -- "$handle"; return 1; }
-  else
-    place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$handle/base.d" base || {
-      mrc=$?
-      rm -rf -- "$handle"
-      return "$mrc"
-    }
+  # A read handle publishes nothing, so it has no changed set to measure and no
+  # base to measure it from. Taking one anyway is only a way for a read to fail
+  # on work it will never use.
+  if (( read_only == 0 )); then
+    local -A base=()
+    if [[ "$PLACE_BASE_TIP" == "$PLACE_WORK_TIP" ]]; then
+      place_snapshot "$handle/collection" base || { rm -rf -- "$handle"; return 1; }
+    else
+      place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$handle/base.d" base || {
+        mrc=$?
+        rm -rf -- "$handle"
+        return "$mrc"
+      }
+    fi
+    place_save_snapshot base "$handle/base" || { rm -rf -- "$handle"; return 1; }
   fi
-  place_save_snapshot base "$handle/base" || { rm -rf -- "$handle"; return 1; }
-  place_reindex "$handle/collection" || { rm -rf -- "$handle"; return 1; }
+  # The group's one read-failure posture, on the group's other read door. A
+  # write cannot proceed: publishing a collection whose index was never brought
+  # up to date is how the destination acquires a stale one. A read can, because
+  # the materialized copy still carries the index the destination holds — so it
+  # degrades, disclosed and carried in the status rather than refused. Deleting
+  # the handle here would take that view away with it, which is the refusal by
+  # another name.
+  local stale=0
+  if ! place_reindex "$handle/collection"; then
+    (( read_only )) || { rm -rf -- "$handle"; return 1; }
+    echo "place.sh: serving '$dest' from the index it already held" >&2
+    stale=1
+  fi
   {
     printf 'dest=%s\n'   "$dest"
     printf 'prefix=%s\n' "$prefix"
@@ -878,6 +915,37 @@ cmd_begin() {
     printf 'read=%s\n'   "$read_only"
   } > "$handle/state" || { rm -rf -- "$handle"; return 1; }
   printf '%s\t%s\n' "${handle##*/}" "$handle/collection"
+  return "$stale"
+}
+
+# place_handle_drift <dest> <prefix>
+#   Re-establish at publish time the two facts `begin` established: that
+#   placement still names this destination, and that the collection still sits
+#   where the handle was opened against it.
+#
+#   Both arms need this and for the same reason. The destination reaches `push`,
+#   `update-ref`, `ls-remote` and `fetch`; the prefix composes the tree entries
+#   the publish writes. A handle records them so `commit` need not re-resolve —
+#   but recording is not proving, and a value that cleared the gate in one
+#   process is not thereby cleared in the next. Re-asking is also what puts the
+#   coordination-branch refusal back in front of a destination retargeted onto
+#   it after the handle was opened.
+place_handle_drift() {
+  local dest="$1" prefix="$2" now_dest now_prefix
+  now_dest="$(place_destination)" || return 2
+  if [[ "$now_dest" != "$dest" ]]; then
+    echo "place.sh commit: this handle was opened for '$dest', but issue" \
+         "placement now names '$(place_shown "$now_dest")'" >&2
+    return 2
+  fi
+  now_prefix="$(place_prefix)" || return 2
+  if [[ "$now_prefix" != "$prefix" ]]; then
+    echo "place.sh commit: this handle was opened against '$prefix', but the" \
+         "configured collection is now '$(place_shown "$now_prefix")'; the" \
+         "edits it holds are not the ones that would be published" >&2
+    return 2
+  fi
+  return 0
 }
 
 # cmd_commit <token> --verb <enum> [--id <slug>] — publish a handle's edits.
@@ -920,29 +988,17 @@ cmd_commit() {
          "publish; use abort to discard it" >&2
     return 2
   fi
-  local dest prefix tip work_tip tier remote ref_old
+  local dest prefix tip work_tip tier remote ref_old current where
   dest="$(place_state_get "$handle/state" dest)"
   prefix="$(place_state_get "$handle/state" prefix)"
+  # Both arms re-prove what `begin` established, before either reaches git with
+  # a value read back out of handle state.
+  place_handle_drift "$dest" "$prefix" || return 2
+  current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
   if [[ "$(place_state_get "$handle/state" mode)" == "direct" ]]; then
     # A handle opened against a checked-out destination. Its edits are already
-    # in the working tree, so there is nothing to replay — but everything that
-    # made publishing them safe was established at `begin`, and each of those
-    # facts can have changed since.
-    local now_dest now_prefix current where
-    now_dest="$(place_destination)" || return 2
-    if [[ "$now_dest" != "$dest" ]]; then
-      echo "place.sh commit: this handle was opened for '$dest', but issue" \
-           "placement now names '$(place_shown "$now_dest")'" >&2
-      return 2
-    fi
-    now_prefix="$(place_prefix)" || return 2
-    if [[ "$now_prefix" != "$prefix" ]]; then
-      echo "place.sh commit: this handle was opened against '$prefix', but the" \
-           "configured collection is now '$(place_shown "$now_prefix")'; the" \
-           "edits it holds are not the ones that would be published" >&2
-      return 2
-    fi
-    current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    # in the working tree, so there is nothing to replay — but the branch they
+    # are committed onto has to still be the one they were made for.
     where="${current:-a detached HEAD}"
     if [[ "$current" != "$dest" ]]; then
       echo "place.sh commit: this handle was opened with '$dest' checked out," \
@@ -954,6 +1010,18 @@ cmd_commit() {
     (( drc == 0 )) || return "$drc"
     rm -rf -- "$handle"
     return 0
+  fi
+  # The mirror image on this arm. A plumbing handle publishes by moving
+  # `refs/heads/<dest>`, and `update-ref` has no checked-out-branch protection:
+  # if the developer checked the destination out after `begin`, that ref moves
+  # under their index and working tree and the collection reads as deleted. It
+  # is the transition the other arm guards, reached through the other door.
+  if [[ -n "$current" && "$current" == "$dest" ]]; then
+    echo "place.sh commit: '$dest' is now the checked-out branch, and this" \
+         "handle publishes by moving its ref — which would leave your index and" \
+         "working tree behind it, with the collection reading as deleted. Run" \
+         "\`begin\` again to take the checked-out path" >&2
+    return 2
   fi
   tip="$(place_state_get "$handle/state" tip)"
   # What the agent's edits were made against. It differs from the tip only when
@@ -1472,10 +1540,15 @@ cmd_run() {
 
   place_materialize "$PLACE_WORK_TIP" "$prefix" "$PLACE_COLL" || return $?
   local -A before=() after=()
-  if [[ "$PLACE_BASE_TIP" == "$PLACE_WORK_TIP" ]]; then
-    place_snapshot "$PLACE_COLL" before || return 1
-  else
-    place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$PLACE_WORK/base" before || return $?
+  # A read publishes nothing, so it measures no changed set and needs no base to
+  # measure one from — and taking one anyway is a way for a read to fail on work
+  # it will never use.
+  if (( read_only == 0 )); then
+    if [[ "$PLACE_BASE_TIP" == "$PLACE_WORK_TIP" ]]; then
+      place_snapshot "$PLACE_COLL" before || return 1
+    else
+      place_base_snapshot "$PLACE_BASE_TIP" "$prefix" "$PLACE_WORK/base" before || return $?
+    fi
   fi
   # Only now, with the destination's own state recorded, bring the index up to
   # date. Content reaches the destination by routes the emitter never sees — a
