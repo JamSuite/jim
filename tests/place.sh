@@ -193,6 +193,51 @@ case_place_refuses_an_unsafe_issues_path() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
 }
 
+# AC: a dot segment in issues_path refuses naming the setting, rather than
+# failing later on a message about entry names or about building a tree. `./`
+# alone resolves to the repository root, which would make the whole checkout the
+# collection (spec AC #10).
+case_place_refuses_a_dot_segment_issues_path() {
+  local repo
+  repo="$(place_repo place_dot_prefix \
+    'issue_placement = "jim/issues"' 'issues_path = "./"')"
+  run_place_in "$repo" run --verb file -- sh -c 'true'
+  assert_exit  "rc"                        2                   "$RC"
+  assert_match "names the setting"         'issues directory'  "$ERR"
+  assert_match "and what is wrong with it" "'\\.' or '\\.\\.' segment" "$ERR"
+  assert_eq "no branch created" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# AC: and a repeated `./` is stripped rather than half-stripped — one leading
+# pair removed leaves a dot segment that reads fine here and fails opaquely when
+# git is asked to build a tree from it.
+case_place_normalizes_a_repeated_dot_slash_issues_path() {
+  local repo
+  repo="$(place_repo place_dotdot_prefix \
+    'issue_placement = "jim/issues"' 'issues_path = "././docs/issues"')"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "rc" 0 "$RC"
+  assert_match "lands at the normalized prefix" 'docs/issues/20260101-a\.md' \
+    "$(place_dest_paths "$repo" jim/issues)"
+}
+
+# AC: place_valid_branch and alloc_valid_branch are knowingly duplicated — the
+# two scripts share no library and neither imports the other — so the agreement
+# is asserted here rather than assumed. The SYNC comments on both name this
+# fixture; without it a drift in either is silent.
+case_place_valid_branch_agrees_with_the_allocator_copy() {
+  local mine theirs
+  mine="$(awk 'index($0,"place_valid_branch()")==1 {f=1} f {print} f && /^}$/ {exit}' \
+    "$REPO_ROOT/skills/issue/scripts/place.sh" | sed 's/place_/X_/g')"
+  theirs="$(awk 'index($0,"alloc_valid_branch()")==1 {f=1} f {print} f && /^}$/ {exit}' \
+    "$REPO_ROOT/skills/file/scripts/jimalloc.sh" | sed 's/alloc_/X_/g')"
+  assert_nonempty "place copy found" "$mine"
+  assert_nonempty "alloc copy found" "$theirs"
+  assert_eq "the two copies agree modulo their prefix" "$mine" "$theirs"
+}
+
 # AC: an --id that is not a real issue id refuses at both call sites. The verb
 # half of "no free text reaches a commit message" is what the enum covers; the
 # id half is this.

@@ -18,8 +18,12 @@
 # HOW WRITES REACH A BRANCH NOBODY HAS CHECKED OUT
 #   By plumbing, never by checkout: the destination tip's collection is
 #   extracted into a temp directory, the wrapped command runs against that
-#   directory, and the result is committed with hash-object / mktree /
-#   commit-tree and landed with a ref compare-and-swap. The developer's working
+#   directory, and the result is committed by writing each entry with
+#   hash-object, assembling the tree through a scratch index (update-index into
+#   a private GIT_INDEX_FILE, then write-tree) and sealing it with commit-tree —
+#   then landed with a ref compare-and-swap. A scratch index rather than mktree
+#   because the destination tree has to keep every path outside the collection
+#   exactly as the tip holds it, which is read-tree's job. The developer's working
 #   tree is never touched, and the wrapped command keeps the primary checkout as
 #   its working directory, so config resolves to the project's real settings.
 #
@@ -37,14 +41,25 @@
 #   bash place.sh mode [--place-token <tok>]
 #     Print `direct` (run against the working tree, today's behavior) or
 #     `route` (re-exec through `run`). The config gate lives here.
-#   bash place.sh run [--read] --verb <enum> [--id <slug>] -- CMD [ARGS...]
-#     Run CMD against the collection. An ARG that is exactly `{}` becomes the
+#   bash place.sh run [--read] [--verb <enum>] [--id <slug>] -- CMD [ARGS...]
+#     Run CMD against the collection. --verb is required for a write and
+#     optional on a --read run, which publishes nothing and so composes no
+#     commit subject. An ARG that is exactly `{}` becomes the
 #     collection directory and one that is exactly `{token}` becomes this run's
 #     token — but only where a caller building an invocation puts a placeholder:
 #     as the operand of `--dir` / `--place-token`, or as the trailing argument.
 #     Every other argument is forwarded untouched, because ARGS carry free-form
 #     user text that can look exactly like a placeholder. --read discards the
 #     result instead of publishing it.
+#
+#   bash place.sh begin [--read]
+#     Materialize the collection and print `<token>\t<dir>` for a mutation with
+#     no single command to wrap — the agent edits in <dir> and publishes with
+#     `commit`. The two-phase door; `run` is the one-shot one.
+#   bash place.sh commit <token> --verb <enum> [--id <slug>]
+#     Publish a handle's edits through the same engine `run` uses.
+#   bash place.sh abort <token>
+#     Discard a handle, publishing nothing.
 #
 #   verb enum: file | edit | close | rename | realize | reindex | backfill |
 #   migrate. Commit subjects are composed from the enum plus an optional
@@ -62,7 +77,16 @@
 #   In passthrough the wrapped command's own status is forwarded verbatim, so a
 #   caller sees the emitter's failure rather than a placement-flavored one.
 #
-# Parses with grep/sed only; never sources or evals config or issue content.
+# Parses with grep, sed, awk, tr and `read` only; never sources or evals config
+# or issue content.
+#
+# PORTABILITY
+#   This script raises the corpus's bash floor from 4.0 to **4.3**: it is the
+#   first to use namerefs (`local -n`), which 4.2 does not have. It also uses
+#   `grep -m1`, `find -mindepth` and `find -print0` — GNU and BSD both, so the
+#   floor that moves is bash's, not coreutils'. The prior floor was already
+#   above stock macOS bash 3.2 by way of associative arrays, so the marginal
+#   cost is a Homebrew bash either way.
 
 set -uo pipefail
 export LC_ALL=C
@@ -85,13 +109,22 @@ PLACE_CMD=()
 # ─── Section: Config resolution ──────────────────────────────────────────────
 
 # place_conf <key> — resolve one jimconf key from the primary checkout.
+#   The resolver's own status is forwarded rather than discarded: a broken or
+#   unreachable jimconf otherwise yields an empty value indistinguishable from
+#   an unset key, and every caller here reads an unset key as a default. On the
+#   placement key that default is `branch`, so an infrastructure failure would
+#   silently stop centralizing and land the write on the working branch — the
+#   fallback the gate below promises never happens.
 place_conf() { bash "$JIMCONF" get "$1" 2>/dev/null; }
 
 # place_issues_dir — the configured collection directory, trailing slash
 # stripped. Used as the `{}` substitution when placement is not centralizing.
 place_issues_dir() {
   local dir
-  dir="$(place_conf issues)"
+  if ! dir="$(place_conf issues)"; then
+    echo "place.sh: could not resolve the issues directory from configuration" >&2
+    return 2
+  fi
   dir="${dir%/}"
   if [[ -z "$dir" ]]; then
     echo "place.sh: the configured issues directory is empty" >&2
@@ -105,6 +138,11 @@ place_issues_dir() {
 # git's own ref-name policy (which rejects '..', control characters, ~^:?*[,
 # .lock and the rest). Both branch names this script handles are config-supplied
 # and reach fetch refspecs and ref paths, so they clear this gate first.
+#
+# SYNC(valid-branch): byte-identical to alloc_valid_branch in
+# skills/file/scripts/jimalloc.sh. Duplicated rather than extracted because the
+# two scripts share no library and neither should import the other; a
+# byte-agreement fixture in tests/place.sh fails if they drift.
 place_valid_branch() {
   local b="${1:-}"
   [[ -n "$b" ]] || return 1
@@ -118,8 +156,14 @@ place_valid_branch() {
 # name, and a guard that cannot be established must not be assumed to pass.
 place_coord_branch() {
   local b
-  b="$(place_conf id_coordination_branch)"
-  [[ -n "$b" ]] || b="jim/registry"
+  # No local default: jimconf owns the default for this key, and a second copy
+  # here would make changing it a multi-file edit. An empty result therefore
+  # means the resolver failed, which is a refusal like any other unusable value.
+  if ! b="$(place_conf id_coordination_branch)" || [[ -z "$b" ]]; then
+    echo "place.sh: could not resolve id_coordination_branch, so the" \
+         "coordination-branch guard cannot be established" >&2
+    return 1
+  fi
   if ! place_valid_branch "$b"; then
     echo "place.sh: id_coordination_branch '$b' is not a valid git branch name," \
          "so the coordination-branch guard cannot be established" >&2
@@ -134,7 +178,15 @@ place_coord_branch() {
 # fallback would scatter a team's collection across feature branches at rc 0.
 place_destination() {
   local v
-  v="$(place_conf issue_placement)"
+  # A failed resolve is not an unset key. Defaulting to `branch` on it would
+  # answer "do not centralize" to a question that was never actually asked, and
+  # the write would land on the working branch — the one outcome a project that
+  # configured a destination is relying on this gate to prevent.
+  if ! v="$(place_conf issue_placement)"; then
+    echo "place.sh: could not resolve issue_placement from configuration, so" \
+         "where this mutation belongs is unknown" >&2
+    return 2
+  fi
   [[ -n "$v" ]] || v="branch"
   if [[ "$v" == "branch" ]]; then
     printf 'branch\n'
@@ -244,8 +296,22 @@ place_open_work() {
 place_prefix() {
   local dir
   dir="$(place_issues_dir)" || return 2
-  dir="${dir#./}"
+  # Strip every leading `./`, not one: `././docs/issues` otherwise keeps a dot
+  # segment that reads fine on this side and fails opaquely when git is asked to
+  # build a tree from it.
+  while [[ "$dir" == ./* ]]; do dir="${dir#./}"; done
   dir="${dir%/}"
+  # A dot segment anywhere means the configured path does not name a directory
+  # inside the tree — `.` names the repository root, which would make the whole
+  # checkout the collection. It fails closed further down either way, but on a
+  # message about entry names rather than about the setting that caused it.
+  case "$dir" in
+    .|..|*/.|*/..|./*|../*|*/./*|*/../*)
+      echo "place.sh: the configured issues directory '$(place_shown "$dir")'" \
+           "contains a '.' or '..' segment, so it does not name a directory" \
+           "inside the destination branch's tree" >&2
+      return 2 ;;
+  esac
   if ! bash "$JIMFILE" valid-relpath "$dir" >/dev/null 2>&1; then
     echo "place.sh: the configured issues directory is not a safe repo-relative" \
          "path, so it cannot be mirrored onto a destination branch" >&2
@@ -255,10 +321,14 @@ place_prefix() {
   printf '%s\n' "$dir"
 }
 
-# place_shown <text> — <text> with control characters removed, for messages that
-# quote a name taken from branch content. The name is data, and a terminal is
-# not obliged to interpret whatever escape sequence it carries.
-place_shown() { printf '%s' "$1" | tr -d '[:cntrl:]'; }
+# place_shown <text> — <text> made safe to print, for messages that quote a name
+# taken from branch content or configuration. The name is data: a terminal is
+# not obliged to interpret whatever escape sequence it carries, and a message is
+# not obliged to carry a whole file's worth of it. Same shape as the display
+# sanitizer the ledger, spec-reconcile and partition scripts use — control
+# characters out, length capped — so one class of name is not printable in four
+# ways depending on which script met it.
+place_shown() { printf '%s' "$1" | tr -d '\000-\037\177' | cut -c1-512; }
 
 # place_bookmark_ref <branch> — the local ref recording the last destination tip
 # this clone acted on. It lives outside refs/heads so it is never pushed,
@@ -378,7 +448,7 @@ place_merge_base() {
     printf '%s\n' "$work"
     return 0
   fi
-  git merge-base "$work" "$onto" 2>/dev/null || true
+  git merge-base --end-of-options "$work" "$onto" 2>/dev/null || true
 }
 
 # place_resolve_tips <dest> <tier> <tip>
@@ -410,10 +480,10 @@ place_resolve_tips() {
   head="$(place_head_tip "$dest")"
   [[ -n "$head" && "$head" != "$tip" ]] || return 0
   # Contained in what the remote already has: the remote is simply ahead.
-  if [[ -n "$tip" ]] && git merge-base --is-ancestor "$head" "$tip" 2>/dev/null; then
+  if [[ -n "$tip" ]] && git merge-base --is-ancestor --end-of-options "$head" "$tip" 2>/dev/null; then
     return 0
   fi
-  if [[ -z "$tip" ]] || git merge-base --is-ancestor "$tip" "$head" 2>/dev/null; then
+  if [[ -z "$tip" ]] || git merge-base --is-ancestor --end-of-options "$tip" "$head" 2>/dev/null; then
     PLACE_ONTO_TIP="$head"
     PLACE_WORK_TIP="$head"
     PLACE_BASE_TIP="$head"
@@ -605,6 +675,12 @@ readonly PLACE_TOKEN_DIRECT="direct"
 # to resolve inside the git dir so a symlinked path cannot redirect the writes.
 # Absolute: git reports a relative git dir from the project root, and a handle
 # path is handed to a caller who will use it from wherever they happen to be.
+# SYNC(write-contained): the containment check below is the same rule as
+# alloc_write_contained in skills/file/scripts/jimalloc.sh — resolve both sides
+# with realpath and require the target to sit under the permitted root — with
+# one deliberate difference: this one permits a single fixed subdirectory of the
+# git dir rather than an arbitrary caller-supplied path, so it is the tighter of
+# the two. Kept separate for that reason; they are not interchangeable.
 place_handle_root() {
   local gd gd_real root_real
   gd="$(git rev-parse --git-dir 2>/dev/null)" || {
@@ -626,7 +702,11 @@ place_handle_root() {
 # separators, no leading dash, nothing that could climb out of the root.
 place_handle_dir() {
   local tok="${1:-}" root dir
-  if [[ ! "$tok" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+  # The token composes a filesystem path, so it clears the same boundary every
+  # other identifier in the corpus clears rather than a charset spelled out here
+  # — which was this one's charset minus its length cap and its '..' rejection.
+  # Every token this script mints passes it unchanged.
+  if ! bash "$JIMFILE" valid-id "$tok" >/dev/null 2>&1; then
     echo "place.sh: malformed handle token" >&2
     return 2
   fi
@@ -930,7 +1010,7 @@ place_advance_bookmark() {
   local bref
   [[ -n "${2:-}" ]] || return 0
   bref="$(place_bookmark_ref "$1")" || return 0
-  git update-ref "$bref" "$2" 2>/dev/null || true
+  git update-ref --end-of-options "$bref" "$2" 2>/dev/null || true
   return 0
 }
 
@@ -962,7 +1042,7 @@ place_disclose_rewrite() {
     return 0
   fi
   [[ "$seen" != "$tip" ]] || return 0
-  git merge-base --is-ancestor "$seen" "$tip" 2>/dev/null
+  git merge-base --is-ancestor --end-of-options "$seen" "$tip" 2>/dev/null
   rc=$?
   if (( rc == 1 )); then
     echo "place.sh: destination branch '$branch' was rewritten — the state this" \
@@ -1051,7 +1131,7 @@ place_materialize() {
       echo "place.sh: could not read collection content from branch '$prefix'" >&2
       return 1
     fi
-  done < <(git ls-tree -r -z "$subtree")
+  done < <(git ls-tree -r -z --end-of-options "$subtree")
   return 0
 }
 
@@ -1082,7 +1162,8 @@ place_snapshot() {
   while IFS= read -r -d '' entry; do
     name="${entry##*/}"
     if [[ ! -f "$entry" || -L "$entry" ]]; then
-      echo "place.sh: the collection may hold regular files only; found '$name'" >&2
+      echo "place.sh: the collection may hold regular files only; found" \
+           "'$(place_shown "$name")'" >&2
       return 1
     fi
     # -w stores the blob: the destination tree is built from these object names,
@@ -1126,7 +1207,7 @@ place_build_commit() {
     export GIT_INDEX_FILE="$PLACE_GIT_INDEX"
     rm -f -- "$PLACE_GIT_INDEX"
     if [[ -n "$tip" ]]; then
-      git read-tree "$tip" || exit 1
+      git read-tree --end-of-options "$tip" || exit 1
     else
       git read-tree --empty || exit 1
     fi
@@ -1171,12 +1252,12 @@ place_land() {
   local remote="$1" tier="$2" branch="$3" ref_old="$4" commit="$5"
   if [[ "$tier" == "origin" ]]; then
     if git push --quiet --end-of-options "$remote" "$commit:refs/heads/$branch" 2>/dev/null; then
-      git update-ref "refs/heads/$branch" "$commit" "$ref_old" 2>/dev/null || true
+      git update-ref --end-of-options "refs/heads/$branch" "$commit" "$ref_old" 2>/dev/null || true
       return 0
     fi
     return 3
   fi
-  git update-ref "refs/heads/$branch" "$commit" "$ref_old" 2>/dev/null || return 3
+  git update-ref --end-of-options "refs/heads/$branch" "$commit" "$ref_old" 2>/dev/null || return 3
   return 0
 }
 
@@ -1232,9 +1313,9 @@ place_regraft() {
     ours="${_rg_after[$name]:-}"
     theirs="${_rg_upstream[$name]:-}"
     if [[ "$theirs" != "$base" ]]; then
-      echo "place.sh: '$name' also changed at the destination while this mutation" \
-           "was being prepared; refusing to overwrite it. Nothing is lost —" \
-           "re-run to reapply on the current state." >&2
+      echo "place.sh: '$(place_shown "$name")' also changed at the destination" \
+           "while this mutation was being prepared; refusing to overwrite it." \
+           "Nothing is lost — re-run to reapply on the current state." >&2
       return 3
     fi
     if [[ -n "$ours" ]]; then

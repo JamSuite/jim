@@ -1976,6 +1976,11 @@ alloc_backoff() {
 # own ref-name policy (rejects '..', control chars, ~^:?*[, .lock, etc.). The
 # coordination branch is config-supplied, so it is validated before it ever
 # reaches a git command.
+#
+# SYNC(valid-branch): byte-identical to place_valid_branch in
+# skills/issue/scripts/place.sh. Duplicated rather than extracted because the
+# two scripts share no library and neither should import the other; a
+# byte-agreement fixture in tests/place.sh fails if they drift.
 alloc_valid_branch() {
   local b="${1:-}"
   [[ -n "$b" ]] || return 1
