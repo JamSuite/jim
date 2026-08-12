@@ -2,7 +2,7 @@
 id: 20260812-cmd-begin-refuses-where-cmd-run-degrades-on-a-failed-reindex
 num: 303
 title: "cmd_begin refuses where cmd_run degrades on a failed reindex"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:49Z
-updated: 2026-08-12T03:41:49Z
+updated: 2026-08-12T06:06:19Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -60,3 +60,24 @@ reindex-failure branch has a test — add one per door.
 Post-build review of `issue/011`. The posture decision was taken during the
 remediation and applied to `cmd_run` only; the second door was missed. Found
 independently by the AC 6 investigator and the `staleness-gated-reads` judge.
+
+## Resolution (2026-08-12)
+
+Fixed in `8673d3c`. `cmd_begin`'s read path now takes the posture the group
+chose and `cmd_run` already applied: the handle is kept, the materialized copy
+is served carrying the index the destination holds, the degradation is disclosed
+on stderr, and the staleness is carried in the exit status. A write still
+refuses, since a collection whose index was never brought up to date is how the
+destination acquires a stale one.
+
+The secondary is closed too, on both doors: a read handle no longer snapshots a
+base it can never publish. A read measures no changed set, so taking one was only
+a way for it to fail on work it never uses.
+
+**Not pinned by a case, deliberately.** The directory being reindexed is one
+`place.sh` creates and owns, so the failure is unreachable without a production
+test hook — the same conclusion WP13 reached for the sibling door's relaxation,
+and this group avoids such hooks. Verified instead by forcing `place_reindex` to
+fail and observing the result: `begin --read` returns 1 having printed its
+handle, with the destination's own index in the served directory and the
+disclosure on stderr, while `begin` for a write refuses with no handle.

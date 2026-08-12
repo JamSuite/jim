@@ -2,7 +2,7 @@
 id: 20260812-cmd-begin-checked-out-arm-writes-with-no-containment-gate
 num: 302
 title: "cmd_begin checked-out arm writes with no containment gate"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:34Z
-updated: 2026-08-12T03:41:34Z
+updated: 2026-08-12T06:06:19Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -61,3 +61,17 @@ ahead of the read-arm print, mirroring `place_direct:597`. Add a case driving
 
 Post-build review of `issue/011`. Found independently by a region investigator
 and by the `materialization-contained` judge.
+
+## Resolution (2026-08-12)
+
+Fixed in `8673d3c`. `place_worktree_contained` now runs as the first thing
+`cmd_begin`'s checked-out arm does, ahead of the rewrite disclosure and the
+dirty guard, mirroring `place_direct`. It covers the read arm as well as the
+write arm: § 6a opens a read handle on every insights run and it names the same
+directory. Pinned by
+`case_place_direct_begin_refuses_a_collection_outside_the_worktree`, which
+drives both arms against a `docs` symlink pointing out of the repo and asserts
+no handle and no directory come back — proven to go red with the gate removed.
+
+The finding's observation that the dirty guard made this silent rather than
+noisy is closed separately as #308.

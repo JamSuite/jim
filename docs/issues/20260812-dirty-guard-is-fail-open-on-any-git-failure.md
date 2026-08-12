@@ -2,7 +2,7 @@
 id: 20260812-dirty-guard-is-fail-open-on-any-git-failure
 num: 308
 title: "Dirty guard is fail-open on any git failure"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:52Z
-updated: 2026-08-12T03:41:52Z
+updated: 2026-08-12T06:06:19Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -56,3 +56,25 @@ approved.
 ## Origin
 
 Post-build review of `issue/011`; found by the two-phase region investigator.
+
+## Resolution (2026-08-12)
+
+Fixed in `8673d3c`. `place_dirty_guard` now checks git's exit status before
+reading its output, and refuses when git reported an error instead of a listing.
+Pinned by `case_place_direct_begin_refuses_when_the_dirty_guard_cannot_run`,
+which corrupts the index so `status` exits non-zero having printed nothing while
+`rev-parse` still answers — so the containment gate passes and this guard is the
+one under test. Proven to go red with the status check removed.
+
+The finding's first observation — that this is what made the missing containment
+check silent — is closed by #302, which puts that gate ahead of this one.
+
+## Progress (2026-08-12)
+
+**The handle fingerprint is not taken.** The finding's second, structural half
+stands: `place_direct_handle` records no state of the collection at the moment
+`begin` approved it, so two `begin` calls on a clean collection mint two live
+handles and the second remains a durable capability to publish whatever is dirty
+later. Deferred rather than dropped — it is a design question about handle
+lifetime (expiry, single-live-handle, or a recorded fingerprint `commit`
+re-checks), not a missing status check, and it wants deciding on its own terms.

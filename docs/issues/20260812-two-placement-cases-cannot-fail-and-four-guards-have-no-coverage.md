@@ -2,7 +2,7 @@
 id: 20260812-two-placement-cases-cannot-fail-and-four-guards-have-no-coverage
 num: 319
 title: "Two placement cases cannot fail and four guards have no coverage"
-status: open
+status: closed
 priority: medium
 labels: [issue, test]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:42:07Z
-updated: 2026-08-12T03:42:07Z
+updated: 2026-08-12T06:06:19Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -62,3 +62,31 @@ with the bookmark-advance clause since its removal is invisible today.
 Post-build review of `issue/011`; the test-integrity region sweep. 2 of 115 cases
 fall into the passes-regardless class, down from a systemic finding in the prior
 round.
+
+## Resolution (2026-08-12)
+
+Fixed in `de45961`. The two cases that passed regardless now pin the refusing
+guard's own words — `'malformed handle token'` for the charset gate and
+`'opened read-only'` for the direct-read commit arm — so deleting either guard
+changes the outcome rather than shifting it to an identically-shaped refusal
+below.
+
+Four new cases cover the guards that had none:
+`case_place_remoteless_publish_advances_the_bookmark` (the `|| -z "$remote"`
+clause, whose removal silently disables rewrite detection for every remote-less
+centralized repo), `…_refuses_a_leading_dash_tree_entry`,
+`…_refuses_a_symlink_the_command_created` (a *live* symlink, so only the `-L`
+half of the guard refuses it), and `…_exhausted_attempts_reports_unpublished`,
+which drives five lost races through a remote that rejects every push while
+advancing the branch — the loop exit no fixture reached.
+
+Every one was proven by neutering its guard and watching the case go red, with
+the edit's application checked before the result was trusted.
+
+## Progress (2026-08-12)
+
+The remaining uncovered guards the finding lists — `place_handle_root`'s
+containment refusal, `place_coord_branch`'s two refusals, `place_valid_sha`,
+`cmd_abort` with a garbage token, and the `--dir`-operand form of the placeholder
+position rule — are not yet pinned. They are lower stakes than the four taken
+here: none is silently load-bearing the way the bookmark clause was.

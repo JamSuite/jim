@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 127
-- Closed: 194
+- Open: 122
+- Closed: 199
 
 ## Issues
 
@@ -308,13 +308,13 @@
 - `20260812-a-routed-read-s-view-goes-to-stderr-labelled-not-published` — A routed read's view goes to stderr labelled not published · status: open · num: 299 · priority: medium · created: 2026-08-12T03:41:48Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-an-empty-commit-is-reachable-after-a-retry-base-recomputation` — An empty commit is reachable after a retry base recomputation · status: open · num: 300 · priority: medium · created: 2026-08-12T03:41:53Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-backfill-sh-injects-frontmatter-through-awk-v-escape-expansion` — backfill.sh injects frontmatter through awk -v escape expansion · status: open · num: 301 · priority: high · created: 2026-08-12T03:41:36Z · labels: [issue, security] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-cmd-begin-checked-out-arm-writes-with-no-containment-gate` — cmd_begin checked-out arm writes with no containment gate · status: open · num: 302 · priority: high · created: 2026-08-12T03:41:34Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-cmd-begin-refuses-where-cmd-run-degrades-on-a-failed-reindex` — cmd_begin refuses where cmd_run degrades on a failed reindex · status: open · num: 303 · priority: medium · created: 2026-08-12T03:41:49Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-commit-routed-arm-re-establishes-neither-the-gate-nor-head` — commit routed arm re-establishes neither the gate nor HEAD · status: open · num: 304 · priority: medium · created: 2026-08-12T03:41:50Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-cmd-begin-checked-out-arm-writes-with-no-containment-gate` — cmd_begin checked-out arm writes with no containment gate · status: closed · num: 302 · priority: high · created: 2026-08-12T03:41:34Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-cmd-begin-refuses-where-cmd-run-degrades-on-a-failed-reindex` — cmd_begin refuses where cmd_run degrades on a failed reindex · status: closed · num: 303 · priority: medium · created: 2026-08-12T03:41:49Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-commit-routed-arm-re-establishes-neither-the-gate-nor-head` — commit routed arm re-establishes neither the gate nor HEAD · status: closed · num: 304 · priority: medium · created: 2026-08-12T03:41:50Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-direct-arm-never-consults-the-remote-before-serving-a-read` — Direct arm never consults the remote before serving a read · status: open · num: 305 · priority: medium · created: 2026-08-12T03:42:06Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-direct-arm-raises-a-false-rewrite-alarm-on-a-stale-checkout` — Direct arm raises a false rewrite alarm on a stale checkout · status: open · num: 306 · priority: medium · created: 2026-08-12T03:41:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-direct-arm-reports-an-unreachable-remote-as-divergence` — Direct arm reports an unreachable remote as divergence · status: open · num: 307 · priority: medium · created: 2026-08-12T03:41:54Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-dirty-guard-is-fail-open-on-any-git-failure` — Dirty guard is fail-open on any git failure · status: open · num: 308 · priority: medium · created: 2026-08-12T03:41:52Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-dirty-guard-is-fail-open-on-any-git-failure` — Dirty guard is fail-open on any git failure · status: closed · num: 308 · priority: medium · created: 2026-08-12T03:41:52Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-index-md-rows-are-forgeable-by-two-independent-routes` — INDEX.md rows are forgeable by two independent routes · status: open · num: 309 · priority: high · created: 2026-08-12T03:41:37Z · labels: [issue, security, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-index-sh-fails-open-on-a-config-resolve-and-caps-no-display-valu` — index.sh fails open on a config resolve and caps no display value · status: open · num: 310 · priority: medium · created: 2026-08-12T03:42:08Z · labels: [issue, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller` — jimconf resolver can hand a fabricated default to a caller · status: open · num: 311 · priority: medium · created: 2026-08-12T03:42:09Z · labels: [conf, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -327,7 +327,7 @@
 - `20260812-the-analyst-s-granted-read-verb-can-create-a-directory-and-index` — The analyst's granted read verb can create a directory and index · status: open · num: 321 · priority: high · created: 2026-08-12T04:09:11Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260812-three-surfacing-skill-roster-counts-are-stale` — Three surfacing-skill roster counts are stale · status: open · num: 317 · priority: low · created: 2026-08-12T03:42:11Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-two-argument-read-shape-bypasses-placement-and-creates-a-stray-d` — Two-argument read shape bypasses placement and creates a stray directory · status: open · num: 318 · priority: high · created: 2026-08-12T03:41:33Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-two-placement-cases-cannot-fail-and-four-guards-have-no-coverage` — Two placement cases cannot fail and four guards have no coverage · status: open · num: 319 · priority: medium · created: 2026-08-12T03:42:07Z · labels: [issue, test] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-two-placement-cases-cannot-fail-and-four-guards-have-no-coverage` — Two placement cases cannot fail and four guards have no coverage · status: closed · num: 319 · priority: medium · created: 2026-08-12T03:42:07Z · labels: [issue, test] · origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Graph
 
