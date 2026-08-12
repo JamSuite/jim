@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 101
-- Closed: 222
+- Open: 100
+- Closed: 223
 
 ## Issues
 
@@ -327,7 +327,7 @@
 - `20260812-place-snapshot-publishes-what-materialization-refuses` — place_snapshot publishes what materialization refuses · status: closed · num: 322 · priority: medium · created: 2026-08-12T07:44:30Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-spec-reconcile-citation-sweep-bypasses-issue-placement` — Spec reconcile citation sweep bypasses issue placement · status: closed · num: 316 · priority: high · created: 2026-08-12T03:41:31Z · labels: [issue, placement, spec] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-the-analyst-s-granted-read-verb-can-create-a-directory-and-index` — The analyst's granted read verb can create a directory and index · status: closed · num: 321 · priority: high · created: 2026-08-12T04:09:11Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
-- `20260812-three-surfacing-skill-roster-counts-are-stale` — Three surfacing-skill roster counts are stale · status: open · num: 317 · priority: low · created: 2026-08-12T03:42:11Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-three-surfacing-skill-roster-counts-are-stale` — Three surfacing-skill roster counts are stale · status: closed · num: 317 · priority: low · created: 2026-08-12T03:42:11Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-two-argument-read-shape-bypasses-placement-and-creates-a-stray-d` — Two-argument read shape bypasses placement and creates a stray directory · status: closed · num: 318 · priority: high · created: 2026-08-12T03:41:33Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-two-placement-cases-cannot-fail-and-four-guards-have-no-coverage` — Two placement cases cannot fail and four guards have no coverage · status: closed · num: 319 · priority: medium · created: 2026-08-12T03:42:07Z · labels: [issue, test] · origin: docs/specs/issue/011-issue-placement/review.md
 

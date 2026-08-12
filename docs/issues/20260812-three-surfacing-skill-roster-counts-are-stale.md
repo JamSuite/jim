@@ -2,7 +2,7 @@
 id: 20260812-three-surfacing-skill-roster-counts-are-stale
 num: 317
 title: "Three surfacing-skill roster counts are stale"
-status: open
+status: closed
 priority: low
 labels: [issue, docs]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:42:11Z
-updated: 2026-08-12T03:42:11Z
+updated: 2026-08-12T20:22:35Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -52,3 +52,42 @@ the canonical one was corrected during the remediation and these three were not.
 ## Origin
 
 Post-build review of `issue/011`, AC 13.
+
+## Resolution (2026-08-12)
+
+Fixed across `e7982b7` (the two skill sites) and `d409f8d` (`ARCHITECTURE.md`,
+through `/jim:arch`, never by hand).
+
+**Not by correcting the counts — by removing them.** This issue proposes
+correcting all three to agree with § 7a's "ten". Working it alongside `#45`,
+which had filed the same class against § 7a itself a month earlier, showed why
+that would have been wrong twice over:
+
+1. **The canonical roster was itself short.** Derived mechanically —
+   `grep -l 'scripts/new\.sh \*' skills/*/SKILL.md`, minus the `issue` skill that
+   owns the emitter — the consumer set is **eleven**, not ten. `/jim:blueprint`
+   files through `new.sh` from its divergence and reconcile-finding offers, and
+   appears in none of the four rosters. Correcting the three to match § 7a would
+   have propagated that omission into the sites being fixed.
+2. **A count is the defect, not the value of the count.** All four rotted the
+   same way, at different times, because a consumer accruing has no mechanical
+   consequence for prose stating a number.
+
+So each site now states the roster as a property: § 7a names its consumers with
+no leading numeral and says the grant is the definition; `new.sh:4`'s "the seven
+surfacing skills" becomes "every skill that files through the candidate-batch
+contract"; § 7's untrusted-content roster, which had listed eight and omitted
+`/jim:review` and `/jim:verify`, now defers to § 7a rather than re-enumerating;
+and `ARCHITECTURE.md`'s two counts are restated the same way. The auto-file rule
+likewise binds "those that read `auto_issue_file`" instead of "the nine".
+
+**The sweep this issue's proposed action asked to consider now exists.**
+`case_docsurfaces_candidate_batch_roster_matches_the_grant` derives the consumer
+set from the emitter grant, requires § 7a to name every member, and additionally
+fails if a fixed count reappears in the roster prose — so the next consumer to
+accrue fails a case instead of silently widening the gap. That answers the "since
+the canonical one was corrected during the remediation and these three were not"
+observation mechanically rather than by vigilance.
+
+`ARCHITECTURE.md` remains outside the doc sweep's corpus, as this issue notes;
+its currency rides `/jim:arch`, which ran for this change.
