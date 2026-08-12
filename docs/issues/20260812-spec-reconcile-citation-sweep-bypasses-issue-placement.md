@@ -2,7 +2,7 @@
 id: 20260812-spec-reconcile-citation-sweep-bypasses-issue-placement
 num: 316
 title: "Spec reconcile citation sweep bypasses issue placement"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, spec]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:31Z
-updated: 2026-08-12T09:45:03Z
+updated: 2026-08-12T20:02:19Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -86,3 +86,50 @@ runs `reconcile.sh`, not the callee, and that script already calls
 only for a skill-level shape, which this is not.
 
 **Not yet implemented.**
+
+## Resolution (2026-08-12)
+
+Implemented in `7c235fc`, as decided — `reconcile.sh` drives `place.sh`
+`begin`/`commit` directly around the issue half of the sweep.
+
+**What routing meant in practice.** `sweep_citations` asks `place.sh mode` once.
+On `direct` nothing changes: the issues root stays in the `git ls-files`
+pathspec, the untracked and own-directory passes extend that enumeration as
+before, and `index.sh` regenerates with the explicit directory argument. On
+`route` the issues root is dropped from the pathspec entirely — sweeping both the
+checkout fork and the destination would rewrite a copy nobody reads and publish
+the same edits twice — and the handle's collection is enumerated instead.
+
+**Three details that were not obvious from the finding.**
+
+1. *The containment guard had to be split.* Every worktree target clears
+   `valid-relpath` plus a `realpath` containment check against the worktree top.
+   The handle's entries live in a temp directory outside the worktree by
+   construction, so that check would refuse the very collection the sweep exists
+   to rewrite. They are appended **after** the guard loop; their containment is
+   established where it belongs, in `place_materialize`, which requires each
+   entry to be a regular file with a plain name resolving inside the collection
+   and aborts before handing back a handle otherwise.
+2. *The empty-set early return had to move.* It sat before the handle was opened,
+   so a destination with citations to rewrite would have been skipped whenever
+   the worktree half was empty — which is the common shape under a placement.
+3. *No `index.sh` call on the routed arm.* `place.sh` regenerates the index inside
+   what it publishes, and calling `index.sh` with an explicit directory is the
+   routing opt-out this issue is about.
+
+**Commit shape.** `--verb edit`, no `--id`: a multi-file citation re-point names
+no single issue, and the subject is composed from the verb enum, so no drafted
+text can reach it. A refused publish (rc 3) fails the sweep and names the handle,
+the directory still holding the edits, and both recovery commands — `place.sh`
+preserves a handle on conflict rather than discarding the work.
+
+Pinned by `case_specreconcile_sweeps_the_collection_at_its_placement`, which
+files its fixture issue through the emitter so the collection is built on the
+destination the way a real one is. Proven red with `place.sh` made unreachable:
+the destination's issue still carries both provisional citations, zero commits
+land, and the sweep exits 0 — the "counts zero touched and exits clean" outcome
+this issue describes, reproduced exactly.
+
+**Confirmed as stated in the decision:** no skill grant was needed. The agent
+runs `reconcile.sh`; the script reaches `place.sh` by `BASH_SOURCE`-relative
+path, as it already did for `index.sh`.

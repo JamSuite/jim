@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 103
-- Closed: 220
+- Open: 101
+- Closed: 222
 
 ## Issues
 
@@ -322,10 +322,10 @@
 - `20260812-migrate-sh-failure-handler-is-not-rename-chain-aware` — migrate.sh failure handler is not rename-chain aware · status: closed · num: 313 · priority: medium · created: 2026-08-12T03:41:47Z · labels: [issue, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-migration-preview-drops-every-skip-reason` — Migration preview drops every skip reason · status: closed · num: P-20260812-migration-preview-drops-every-skip-reason · priority: medium · created: 2026-08-12T08:07:42Z · labels: [issue, migrate, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs` — new.sh composes and stats a path before valid-id runs · status: closed · num: 320 · priority: critical · created: 2026-08-12T04:09:10Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
-- `20260812-partition-migrate-arms-bypass-issue-placement` — Partition migrate arms bypass issue placement · status: open · num: 314 · priority: high · created: 2026-08-12T03:41:32Z · labels: [issue, placement, partition] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-partition-migrate-arms-bypass-issue-placement` — Partition migrate arms bypass issue placement · status: closed · num: 314 · priority: high · created: 2026-08-12T03:41:32Z · labels: [issue, placement, partition] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-place-sh-header-and-usage-still-misdescribe-the-script` — place.sh header and usage still misdescribe the script · status: closed · num: 315 · priority: low · created: 2026-08-12T03:42:10Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-place-snapshot-publishes-what-materialization-refuses` — place_snapshot publishes what materialization refuses · status: closed · num: 322 · priority: medium · created: 2026-08-12T07:44:30Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-spec-reconcile-citation-sweep-bypasses-issue-placement` — Spec reconcile citation sweep bypasses issue placement · status: open · num: 316 · priority: high · created: 2026-08-12T03:41:31Z · labels: [issue, placement, spec] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-spec-reconcile-citation-sweep-bypasses-issue-placement` — Spec reconcile citation sweep bypasses issue placement · status: closed · num: 316 · priority: high · created: 2026-08-12T03:41:31Z · labels: [issue, placement, spec] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-the-analyst-s-granted-read-verb-can-create-a-directory-and-index` — The analyst's granted read verb can create a directory and index · status: closed · num: 321 · priority: high · created: 2026-08-12T04:09:11Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260812-three-surfacing-skill-roster-counts-are-stale` — Three surfacing-skill roster counts are stale · status: open · num: 317 · priority: low · created: 2026-08-12T03:42:11Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-two-argument-read-shape-bypasses-placement-and-creates-a-stray-d` — Two-argument read shape bypasses placement and creates a stray directory · status: closed · num: 318 · priority: high · created: 2026-08-12T03:41:33Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
