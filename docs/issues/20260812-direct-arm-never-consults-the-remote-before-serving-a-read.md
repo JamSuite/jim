@@ -2,7 +2,7 @@
 id: 20260812-direct-arm-never-consults-the-remote-before-serving-a-read
 num: 305
 title: "Direct arm never consults the remote before serving a read"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:42:06Z
-updated: 2026-08-12T03:42:06Z
+updated: 2026-08-12T07:32:50Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -49,3 +49,26 @@ asymmetry unstated.
 ## Origin
 
 Post-build review of `issue/011`, AC 6.
+
+## Resolution (2026-08-12)
+
+Fixed in `fb6864e`. The decision the finding asked for was taken: **the checked-out
+arm does owe the freshness guarantee**, in the only form it can honour.
+
+It cannot serve fresher content. The collection *is* the working tree, and
+bringing the destination into a developer's checkout to serve an issue list is
+`git pull` — the invasiveness DD 6 refused. So the arm consults and discloses
+rather than consults and merges: `place_direct_probe` runs one `ls-remote` plus
+one refspec fetch, which write FETCH_HEAD and the remote-tracking ref and leave
+HEAD, the index and the working tree untouched. A read then says the checkout is
+behind what the team can see, or that the remote was unreachable, instead of
+serving either case silently.
+
+Pinned by `case_place_direct_read_discloses_a_stale_checkout` (which also asserts
+the checkout is left exactly as it was) and
+`case_place_direct_read_degrades_when_remote_unreachable`. Both proven to go red
+with the disclosure removed. The fixture `place_here_remote` is new: every
+previous direct-mode fixture had no remote at all, which is the one configuration
+where this arm has nothing to ask.
+
+The probe is what closes #306 and #307's remaining half as well.

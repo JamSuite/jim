@@ -2,7 +2,7 @@
 id: 20260812-direct-arm-raises-a-false-rewrite-alarm-on-a-stale-checkout
 num: 306
 title: "Direct arm raises a false rewrite alarm on a stale checkout"
-status: open
+status: closed
 priority: medium
 labels: [issue, placement]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:51Z
-updated: 2026-08-12T03:41:51Z
+updated: 2026-08-12T07:32:50Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -60,3 +60,23 @@ and a direct run in one clone; add one.
 ## Origin
 
 Post-build review of `issue/011`, AC 12.
+
+## Resolution (2026-08-12)
+
+Fixed in `fb6864e`, by the first of the finding's two options — comparing against a
+tip of the same provenance — rather than by recording provenance alongside the
+bookmark value.
+
+The arm now probes the destination's owner, so the tip it compares against is the
+one the bookmark records: what the destination was last seen holding at its
+owner. With a remote configured and reachable that is the remote's tip; with no
+remote configured the local branch *is* the destination, so HEAD is authoritative
+exactly as before; and an unreachable remote is not authoritative, so the run
+neither compares nor records — the same rule the plumbing arm follows.
+
+Pinned by `case_place_direct_read_does_not_alarm_after_a_routed_read`, which
+builds the finding's own reproduction: a routed read from a feature branch
+records the remote's tip, the developer checks the destination out without
+pulling, and the direct read must report the real condition — the checkout is
+behind — rather than a rewrite. Proven to go red when the comparison reverts to
+bookmark-against-HEAD.
