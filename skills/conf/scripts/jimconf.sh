@@ -138,14 +138,41 @@ is_dynamic_family() {
 #   - Comments (#), blank lines, and nested-table lines are ignored.
 #   - First match wins for duplicate keys.
 #   - Pure grep+sed; never `source`s the file.
+#   - A config that is genuinely absent means "no override", and resolving to
+#     the documented default is the zero-config path. Anything else is a
+#     resolver *failure* and says so: a directory, a dangling symlink, or a file
+#     this process may not read all produced empty output before, which every
+#     caller reads as an unset key. On `issue_placement` the fabricated default
+#     is "do not centralize", so a team's collection silently stops being
+#     centralized on an infrastructure fault — and the placement gate, hardened
+#     to refuse exactly that, never sees it.
 parse_value() {
   local file="$1" key="$2"
-  if [[ ! -f "$file" ]]; then
+  if [[ -L "$file" && ! -e "$file" ]]; then
+    echo "error: config path '$file' is a dangling symlink" >&2
+    return 1
+  fi
+  if [[ ! -e "$file" ]]; then
     return 0
   fi
-  grep -E "^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"" "$file" 2>/dev/null \
+  if [[ ! -f "$file" ]]; then
+    echo "error: config path '$file' is not a regular file" >&2
+    return 1
+  fi
+  if [[ ! -r "$file" ]]; then
+    echo "error: config file '$file' exists but could not be read" >&2
+    return 1
+  fi
+  # A key that is simply not in the file is the "no override" case, not a
+  # failure: grep's rc 1 for "no match" must not reach the caller as one, or
+  # every unset key would refuse. The file-level failures above are the only
+  # non-zero returns this function makes.
+  local out=""
+  out="$(grep -E "^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"" "$file" 2>/dev/null \
     | head -n 1 \
-    | sed -E "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([^\"]*)\".*/\1/"
+    | sed -E "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([^\"]*)\".*/\1/")" || true
+  printf '%s\n' "$out"
+  return 0
 }
 
 # resolve <config-file> <cli-key>
@@ -209,10 +236,11 @@ resolve() {
   else
     toml_key="${cli_key}_path"
   fi
+  # parse_value decides for itself what an absent file means, and reports a
+  # resolver failure rather than returning empty — so its status is forwarded
+  # instead of being flattened into "no override".
   local value=""
-  if [[ -f "$file" ]]; then
-    value="$(parse_value "$file" "$toml_key")"
-  fi
+  value="$(parse_value "$file" "$toml_key")" || return 1
   # Trim leading/trailing whitespace; treat all-whitespace as empty so
   # configured-empty values fall through to the documented default
   # (Finding 13 / spec 017 — defense against silent empty-path writes).

@@ -35,6 +35,53 @@ run() {
 
 # ─── Section: Test cases ─────────────────────────────────────────────────────
 
+# AC: a config that exists but cannot be read is a resolver failure, not an
+# unset key. Reporting it as unset hands the caller a fabricated default at
+# rc 0 — and on `issue_placement` that default is "do not centralize", so a
+# team's collection silently stops being centralized on an infrastructure
+# fault. The placement gate was hardened to refuse a failed resolve and cannot
+# detect this class, because the failure never reaches it.
+case_jimconf_unreadable_config_refuses() {
+  local dir
+  dir=$(empty_dir conf_unreadable)
+  printf 'issue_placement = "jim/issues"\n' > "$dir/jimconf.toml"
+  chmod 000 "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT" get issue_placement 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  chmod 644 "$dir/jimconf.toml"
+  assert_eq    "refuses rather than defaulting" "no" \
+    "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "and prints no fabricated value" "" "$OUT"
+  assert_match "saying why"                     'read' "$ERR"
+}
+
+# AC: nor is a config path that is not a regular file. A directory or a dangling
+# symlink took the same silent-default route, since the guard tested only for a
+# regular file and read its absence as "no override".
+case_jimconf_non_regular_config_refuses() {
+  local dir
+  dir=$(empty_dir conf_nonregular)
+  mkdir -p "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT" get issue_placement 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_eq    "refuses"        "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "no value"       ""   "$OUT"
+  assert_match "names the shape" 'regular file' "$ERR"
+}
+
+# AC: and a genuinely absent config still resolves to the documented default at
+# rc 0 — the zero-config path is what this whole distinction exists to preserve.
+case_jimconf_absent_config_still_defaults() {
+  local dir
+  dir=$(empty_dir conf_absent_ok)
+  OUT="$(cd "$dir" && bash "$SCRIPT" get issue_placement 2>"$TMP_BASE/.err")"
+  RC=$?
+  assert_exit "rc" 0        "$RC"
+  assert_eq   "default"     "branch" "$OUT"
+}
+
 # AC: zero-config baseline preserved (spec AC #2)
 # When PWD has no jimconf.toml, every key resolves to its documented default.
 case_no_config_returns_defaults() {

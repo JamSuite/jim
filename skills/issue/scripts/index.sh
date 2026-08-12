@@ -259,6 +259,27 @@ parse_wikilinks_from_body() {
 # resolve_dir <arg>
 #   Determine the issues directory: arg if non-empty, else jimconf default.
 #   Errors with rc=2 if the result is empty or whitespace-only.
+# row_safe <value> — a frontmatter scalar made safe to place in an INDEX.md row.
+#
+#   A row is ` · `-separated `key: value` pairs and every reader assigns by key
+#   in the order it meets them, so a later pair overrides an earlier one. A value
+#   able to reproduce the separator can therefore append its own pair and forge a
+#   field the writer already emitted — a `status`, a `priority`, or the `num` that
+#   `show <N>` resolves against. Removing the separator's own character makes the
+#   row's shape a property of this writer rather than of its inputs.
+#
+#   The middle dot is removed rather than the three-character sequence, so no
+#   arrangement of spaces around it can reconstitute a separator. A legitimate
+#   `·` in a title is lost from the index row only; the issue file keeps it.
+#   Byte-sequence safe under LC_ALL=C: sed matches the whole two-byte encoding,
+#   where `tr -d` would delete each byte wherever it occurred and corrupt any
+#   other character sharing one.
+#
+#   Control characters and the length cap are the corpus display-sanitizer form.
+row_safe() {
+  printf '%s' "$1" | tr -d '\000-\037\177' | sed 's/·//g' | cut -c1-512
+}
+
 resolve_dir() {
   local arg="$1"
   local dir="$arg"
@@ -341,7 +362,7 @@ main() {
     local slug
     slug="$(basename "$f" .md)"
     if ! is_valid_id "$slug" 2>/dev/null; then
-      warnings_section+="- Skipped \`$slug\`: filename is not a valid id.\n"
+      warnings_section+="- Skipped \`$slug\`: filename is not a valid id."$'\n'
       continue
     fi
     slugs_seen+=("$slug")
@@ -349,7 +370,7 @@ main() {
     local fm
     fm="$(extract_frontmatter "$f")"
     if [[ -z "$fm" ]]; then
-      warnings_section+="- \`$slug\`: missing or malformed frontmatter.\n"
+      warnings_section+="- \`$slug\`: missing or malformed frontmatter."$'\n'
       continue
     fi
 
@@ -375,7 +396,7 @@ main() {
       else
         created=""
       fi
-      warnings_section+="- \`$slug\` created is not a valid date or timestamp; degraded.\n"
+      warnings_section+="- \`$slug\` created is not a valid date or timestamp; degraded."$'\n'
     fi
 
     meta_status[$slug]="$status"
@@ -404,7 +425,7 @@ main() {
     while IFS=$'\t' read -r type target; do
       [[ -z "$type" || -z "$target" ]] && continue
       if ! is_valid_id "$target" 2>/dev/null; then
-        warnings_section+="- \`$slug\`: invalid relation target \`$target\` (type $type).\n"
+        warnings_section+="- \`$slug\`: invalid relation target \`$target\` (type $type)."$'\n'
         continue
       fi
       edges_fm+="$type:$target "
@@ -424,7 +445,7 @@ main() {
     while IFS= read -r wl; do
       [[ -z "$wl" ]] && continue
       if ! is_valid_id "$wl" 2>/dev/null; then
-        warnings_section+="- \`$slug\`: malformed wikilink \`[[${wl}]]\` ignored.\n"
+        warnings_section+="- \`$slug\`: malformed wikilink \`[[${wl}]]\` ignored."$'\n'
         continue
       fi
       # Absorption: a typed frontmatter edge to this target already
@@ -466,15 +487,25 @@ main() {
   # somebody else's; keying on the arm would keep the flapping and only move the
   # seam. The skip is stated rather than silent: a check that cannot be grounded
   # says so.
-  local placement placement_shown origin_value origin_created
-  placement="$(bash "$JIMCONF" get issue_placement 2>/dev/null)"
+  local placement placement_shown origin_value origin_created prc
+  # The resolver's own status decides this, not its output. An empty result read
+  # as `branch` means a failed resolve *runs* the lint and the index then claims
+  # the check was performed — while `place.sh` takes the explicitly opposite
+  # stance on the same key. A failed resolve is not an unset key.
+  placement="$(bash "$JIMCONF" get issue_placement 2>/dev/null)"; prc=$?
+  if (( prc != 0 )); then
+    echo "error: could not resolve issue_placement; refusing to write an index" \
+         "that would claim the origin lint was performed" >&2
+    return 2
+  fi
   [[ -n "$placement" ]] || placement="branch"
   if [[ "$placement" != "branch" ]]; then
     # The name is config-supplied and this is the index every reader parses, so
-    # it is stripped of control characters and backticks before it is quoted
-    # into markdown — the same care the row writers take.
-    placement_shown="$(printf '%s' "$placement" | tr -d '[:cntrl:]`')"
-    warnings_section+="- origin paths not checked: the collection is placed on \`$placement_shown\`, so a path resolves against whichever checkout wrote last rather than against the collection.\n"
+    # it clears the same display sanitizer every row value clears — control
+    # characters out, the row separator out, length capped — plus the backticks
+    # that would close the code span it is quoted into.
+    placement_shown="$(row_safe "$placement" | tr -d '`')"
+    warnings_section+="- origin paths not checked: the collection is placed on \`$placement_shown\`, so a path resolves against whichever checkout wrote last rather than against the collection."$'\n'
   else
     for s in "${slugs_seen[@]}"; do
       origin_value="${meta_origin[$s]-}"
@@ -483,7 +514,7 @@ main() {
         */*)
           if [[ ! -e "$origin_value" ]]; then
             origin_created="${meta_created[$s]-}"
-            warnings_section+="- \`$s\` origin path does not resolve: $origin_value (created $origin_created)\n"
+            warnings_section+="- \`$s\` origin path does not resolve: $origin_value (created $origin_created)"$'\n'
           fi
           ;;
       esac
@@ -510,7 +541,7 @@ main() {
         fi
       done
       if (( found == 0 )); then
-        warnings_section+="- \`$s\` --$etype--> \`$etarget\` has no inverse \`$inverse\` back-edge.\n"
+        warnings_section+="- \`$s\` --$etype--> \`$etarget\` has no inverse \`$inverse\` back-edge."$'\n'
       fi
     done
   done
@@ -518,12 +549,12 @@ main() {
   # Render Issues section
   for s in "${slugs_seen[@]}"; do
     local row
-    row="- \`$s\` — ${meta_title[$s]:-(untitled)} · status: ${meta_status[$s]:-open}"
-    [[ -n "${meta_num[$s]:-}" ]]      && row+=" · num: ${meta_num[$s]}"
-    [[ -n "${meta_priority[$s]:-}" ]] && row+=" · priority: ${meta_priority[$s]}"
-    [[ -n "${meta_created[$s]:-}" ]]  && row+=" · created: ${meta_created[$s]}"
-    [[ -n "${meta_labels[$s]:-}" ]]   && row+=" · labels: ${meta_labels[$s]}"
-    [[ -n "${meta_origin[$s]:-}" ]]   && row+=" · origin: ${meta_origin[$s]}"
+    row="- \`$s\` — $(row_safe "${meta_title[$s]:-(untitled)}") · status: $(row_safe "${meta_status[$s]:-open}")"
+    [[ -n "${meta_num[$s]:-}" ]]      && row+=" · num: $(row_safe "${meta_num[$s]}")"
+    [[ -n "${meta_priority[$s]:-}" ]] && row+=" · priority: $(row_safe "${meta_priority[$s]}")"
+    [[ -n "${meta_created[$s]:-}" ]]  && row+=" · created: $(row_safe "${meta_created[$s]}")"
+    [[ -n "${meta_labels[$s]:-}" ]]   && row+=" · labels: $(row_safe "${meta_labels[$s]}")"
+    [[ -n "${meta_origin[$s]:-}" ]]   && row+=" · origin: $(row_safe "${meta_origin[$s]}")"
     issues_section+="$row"$'\n'
   done
 
@@ -568,7 +599,14 @@ main() {
     fi
     printf '\n## Integrity Warnings\n\n'
     if [[ -n "$warnings_section" ]]; then
-      printf '%b' "$warnings_section"
+      # %s, not %b. The section is concatenated from untrusted values — a
+      # body-derived wikilink, a frontmatter relation target, an origin path, a
+      # filename-derived slug — and %b expands backslash escapes in them, so a
+      # value carrying a literal \n could inject lines into the index. Every
+      # reader re-opens the issues section on a later `## Issues`, which is how
+      # injected lines become served rows. The line breaks are real newlines in
+      # the accumulator instead.
+      printf '%s' "$warnings_section"
     else
       printf '_None._\n'
     fi

@@ -2381,6 +2381,124 @@ hi' --priority medium --labels "x" --origin conversation --body-file "$b"
   assert_exit "index parses" 0 "$RC"
 }
 
+# AC: the index refuses when it cannot resolve the placement, rather than
+# reading an empty result as `branch`. That default *runs* the origin lint, so a
+# failed resolve made the published index claim a check it never performed —
+# while place.sh takes the explicitly opposite stance on the same key.
+case_index_refuses_when_the_placement_resolve_fails() {
+  local dir before
+  dir=$(empty_dir index_resolve_fail)
+  write_issue "$dir" "20260101-r" 'title: "T"
+status: open
+num: 1
+priority: low
+created: 2026-01-01T00:00:00Z'
+  bash "$SCRIPT_INDEX" "$dir" >/dev/null 2>&1
+  before="$(cat "$dir/INDEX.md")"
+  # A config that exists but cannot be read: the resolver reports a failure
+  # rather than an unset key, and this caller honours it. The directory is
+  # passed explicitly so `resolve_dir` does not consult the config first — the
+  # placement resolve is the failure under test, not the issues-root one.
+  printf 'issue_placement = "jim/issues"\n' > "$dir/jimconf.toml"
+  chmod 000 "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT_INDEX" "$dir" 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  chmod 644 "$dir/jimconf.toml"
+  assert_eq    "refuses"          "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_match "names the key"    'issue_placement' "$ERR"
+  assert_eq "and the previous index is untouched" "$before" "$(cat "$dir/INDEX.md")"
+}
+
+# AC: the placement name lands in a committed artifact, so it clears the corpus
+# display sanitizer — control characters out and a length cap — rather than a
+# local one that had neither.
+case_index_caps_the_displayed_placement_name() {
+  local dir long line
+  dir=$(empty_dir index_place_cap)
+  write_issue "$dir" "20260101-c" 'title: "T"
+status: open
+num: 1
+priority: low
+created: 2026-01-01T00:00:00Z'
+  long="$(printf 'b%.0s' $(seq 1 900))"
+  # index.sh reads config from its CWD, and an explicit directory argument opts
+  # out of placement routing — so this drives the lint's skip branch directly.
+  printf 'issue_placement = "%s"\n' "$long" > "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT_INDEX" "$dir" 2>&1)"; RC=$?
+  assert_exit "rc" 0 "$RC"
+  line="$(grep -m1 'origin paths not checked' "$dir/INDEX.md")"
+  assert_nonempty "the skip is stated" "$line"
+  assert_eq "and the name is capped" "yes" \
+    "$([[ "${#line}" -lt 700 ]] && echo yes || echo no)"
+}
+
+# AC: an INDEX.md row's shape is a property of the writer, not of its inputs. A
+# row is ` · `-separated `key: value` pairs and every reader assigns by key in
+# the order it meets them, so a value able to reproduce the separator appends a
+# pair that overrides one the writer already emitted — forging the status `list`
+# serves, or the `num` that `show <N>` resolves against.
+case_index_row_values_cannot_forge_a_later_key() {
+  local dir
+  dir=$(empty_dir index_row_forge)
+  write_issue "$dir" "20260101-forge" 'title: "T"
+status: open
+num: 5
+priority: low
+created: 2026-01-01T00:00:00Z
+origin: " · status: closed · num: 1"'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  # The forged text may still be *present* — it is the issue's own origin value
+  # and is not the writer's to censor. What must not survive is its ability to
+  # form a pair, so the assertions are on the separator-qualified form a reader
+  # splits on, never on the bare substring.
+  assert_eq "exactly one status pair" "1" \
+    "$(grep -c ' · status: open' "$dir/INDEX.md")"
+  assert_eq "no forged status pair" "no" \
+    "$(grep -q ' · status: closed' "$dir/INDEX.md" && echo yes || echo no)"
+  assert_eq "no forged ordinal pair" "no" \
+    "$(grep -q ' · num: 1' "$dir/INDEX.md" && echo yes || echo no)"
+  # And every read verb agrees, since they parse the row the writer wrote.
+  run_render list "$dir"
+  assert_exit "list rc" 0 "$RC"
+  assert_eq "the issue is still open to a reader" "no" \
+    "$(grep -q 'closed' <<< "$OUT" && echo yes || echo no)"
+}
+
+# AC: the integrity-warnings section is concatenated from untrusted values — a
+# body wikilink, a relation target, an origin path, a filename-derived slug —
+# and was emitted with `printf '%b'`, which expands backslash escapes in them.
+# A value carrying a literal \n could inject lines, and every reader re-opens
+# the issues section on a later `## Issues`, so injected lines become rows.
+case_index_warnings_do_not_expand_escapes() {
+  local dir before_rows after_rows
+  dir=$(empty_dir index_warn_escape)
+  write_issue "$dir" "20260101-esc" 'title: "T"
+status: open
+num: 1
+priority: low
+created: 2026-01-01T00:00:00Z
+relations:
+  blocks: [not-a-valid-id\n## Issues\n- `20260101-ghost` — Ghost · status: open]'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "only one Issues heading" "1" \
+    "$(grep -c '^## Issues$' "$dir/INDEX.md")"
+  # The target's text may appear inside the warning that names it — that is the
+  # warning doing its job. What must not exist is a *row*: a line that opens
+  # like one, which is what every reader parses.
+  assert_eq "no injected row" "no" \
+    "$(grep -q '^- `20260101-ghost`' "$dir/INDEX.md" && echo yes || echo no)"
+  assert_eq "and the warning stayed on one line" "1" \
+    "$(grep -c 'invalid relation target' "$dir/INDEX.md")"
+  # And no reader serves a ghost.
+  run_render list "$dir"
+  assert_exit "list rc" 0 "$RC"
+  assert_eq "nothing fabricated reaches a reader" "no" \
+    "$(grep -q 'Ghost' <<< "$OUT" && echo yes || echo no)"
+}
+
 # AC: --origin is YAML-encoded like --title. It is model-composed free text with
 # a convention behind it — a source path, or the `conversation` sentinel — and
 # nothing mechanical enforcing either, so it belongs to the untrusted set the
