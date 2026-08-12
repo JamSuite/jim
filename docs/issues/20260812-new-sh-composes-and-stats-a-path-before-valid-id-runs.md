@@ -1,6 +1,6 @@
 ---
 id: 20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs
-num: P-20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs
+num: 320
 title: "new.sh composes and stats a path before valid-id runs"
 status: open
 priority: critical

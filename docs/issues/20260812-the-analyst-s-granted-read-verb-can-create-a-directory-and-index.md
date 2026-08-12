@@ -1,6 +1,6 @@
 ---
 id: 20260812-the-analyst-s-granted-read-verb-can-create-a-directory-and-index
-num: P-20260812-the-analyst-s-granted-read-verb-can-create-a-directory-and-index
+num: 321
 title: "The analyst's granted read verb can create a directory and index"
 status: open
 priority: high
