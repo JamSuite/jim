@@ -1,6 +1,6 @@
 ---
 id: 20260812-control-char-filename-forges-index-rows-and-leaks-the-checkout
-num: P-20260812-control-char-filename-forges-index-rows-and-leaks-the-checkout
+num: 328
 title: "Control-char filename forges index rows and leaks the checkout"
 status: open
 priority: critical

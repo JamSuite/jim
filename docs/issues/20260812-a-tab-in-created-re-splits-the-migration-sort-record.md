@@ -1,6 +1,6 @@
 ---
 id: 20260812-a-tab-in-created-re-splits-the-migration-sort-record
-num: P-20260812-a-tab-in-created-re-splits-the-migration-sort-record
+num: 324
 title: "A tab in created re-splits the migration sort record"
 status: open
 priority: high

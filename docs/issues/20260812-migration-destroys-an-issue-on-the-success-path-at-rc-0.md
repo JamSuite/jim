@@ -1,6 +1,6 @@
 ---
 id: 20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0
-num: P-20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0
+num: 336
 title: "Migration destroys an issue on the success path at rc 0"
 status: open
 priority: critical

@@ -1,6 +1,6 @@
 ---
 id: 20260812-citation-sweep-drops-containment-on-the-checked-out-arm
-num: P-20260812-citation-sweep-drops-containment-on-the-checked-out-arm
+num: 326
 title: "Citation sweep drops containment on the checked-out arm"
 status: open
 priority: critical

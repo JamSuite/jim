@@ -1,6 +1,6 @@
 ---
 id: 20260812-records-docs-and-commit-subject-hygiene-after-the-review
-num: P-20260812-records-docs-and-commit-subject-hygiene-after-the-review
+num: 342
 title: "Records docs and commit subject hygiene after the review"
 status: open
 priority: low

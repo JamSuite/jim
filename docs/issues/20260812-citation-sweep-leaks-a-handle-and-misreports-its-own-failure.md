@@ -1,6 +1,6 @@
 ---
 id: 20260812-citation-sweep-leaks-a-handle-and-misreports-its-own-failure
-num: P-20260812-citation-sweep-leaks-a-handle-and-misreports-its-own-failure
+num: 327
 title: "Citation sweep leaks a handle and misreports its own failure"
 status: open
 priority: medium

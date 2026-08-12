@@ -1,6 +1,6 @@
 ---
 id: 20260812-jimconf-value-form-refusal-covers-one-of-three-read-doors
-num: P-20260812-jimconf-value-form-refusal-covers-one-of-three-read-doors
+num: 334
 title: "jimconf value-form refusal covers one of three read doors"
 status: open
 priority: high

@@ -1,6 +1,6 @@
 ---
 id: 20260812-architecture-md-keeps-two-stale-rosters-and-a-contradiction
-num: P-20260812-architecture-md-keeps-two-stale-rosters-and-a-contradiction
+num: 325
 title: "ARCHITECTURE.md keeps two stale rosters and a contradiction"
 status: open
 priority: high

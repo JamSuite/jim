@@ -1,6 +1,6 @@
 ---
 id: 20260812-three-load-bearing-place-sh-guards-are-unpinned
-num: P-20260812-three-load-bearing-place-sh-guards-are-unpinned
+num: 343
 title: "Three load-bearing place.sh guards are unpinned"
 status: open
 priority: high

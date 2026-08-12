@@ -1,6 +1,6 @@
 ---
 id: 20260812-ledger-grounding-gap-under-scopes-every-review-of-this-spec
-num: P-20260812-ledger-grounding-gap-under-scopes-every-review-of-this-spec
+num: 335
 title: "Ledger grounding gap under-scopes every review of this spec"
 status: open
 priority: high

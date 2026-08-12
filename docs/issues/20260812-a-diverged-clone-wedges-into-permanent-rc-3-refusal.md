@@ -1,6 +1,6 @@
 ---
 id: 20260812-a-diverged-clone-wedges-into-permanent-rc-3-refusal
-num: P-20260812-a-diverged-clone-wedges-into-permanent-rc-3-refusal
+num: 323
 title: "A diverged clone wedges into permanent rc 3 refusal"
 status: open
 priority: high

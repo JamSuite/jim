@@ -1,6 +1,6 @@
 ---
 id: 20260812-plan-md-design-decisions-and-interface-contract-are-stale
-num: P-20260812-plan-md-design-decisions-and-interface-contract-are-stale
+num: 341
 title: "plan.md design decisions and interface contract are stale"
 status: open
 priority: medium

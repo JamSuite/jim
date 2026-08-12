@@ -1,6 +1,6 @@
 ---
 id: 20260812-index-sh-warnings-and-row-set-escape-the-sanitizer-discipline
-num: P-20260812-index-sh-warnings-and-row-set-escape-the-sanitizer-discipline
+num: 333
 title: "index.sh warnings and row set escape the sanitizer discipline"
 status: open
 priority: high

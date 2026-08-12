@@ -1,6 +1,6 @@
 ---
 id: 20260812-emitter-writes-created-and-updated-to-yaml-unencoded
-num: P-20260812-emitter-writes-created-and-updated-to-yaml-unencoded
+num: 331
 title: "Emitter writes created and updated to YAML unencoded"
 status: open
 priority: high

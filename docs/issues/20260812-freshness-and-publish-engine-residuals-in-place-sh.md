@@ -1,6 +1,6 @@
 ---
 id: 20260812-freshness-and-publish-engine-residuals-in-place-sh
-num: P-20260812-freshness-and-publish-engine-residuals-in-place-sh
+num: 332
 title: "Freshness and publish engine residuals in place.sh"
 status: open
 priority: medium

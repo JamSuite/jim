@@ -1,6 +1,6 @@
 ---
 id: 20260812-partition-skill-md-steps-contradict-its-disclosure-rule
-num: P-20260812-partition-skill-md-steps-contradict-its-disclosure-rule
+num: 339
 title: "partition SKILL.md steps contradict its disclosure rule"
 status: open
 priority: medium

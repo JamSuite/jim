@@ -1,6 +1,6 @@
 ---
 id: 20260812-docsurfaces-sweeps-are-directory-scoped-and-one-directional
-num: P-20260812-docsurfaces-sweeps-are-directory-scoped-and-one-directional
+num: 330
 title: "docsurfaces sweeps are directory-scoped and one-directional"
 status: open
 priority: medium

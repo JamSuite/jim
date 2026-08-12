@@ -1,6 +1,6 @@
 ---
 id: 20260812-direct-arm-commit-is-hook-exposed-and-leaves-the-index-staged
-num: P-20260812-direct-arm-commit-is-hook-exposed-and-leaves-the-index-staged
+num: 329
 title: "Direct-arm commit is hook-exposed and leaves the index staged"
 status: open
 priority: medium

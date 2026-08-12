@@ -1,6 +1,6 @@
 ---
 id: 20260812-new-contract-graph-rows-are-unbacked-by-requires-entries
-num: P-20260812-new-contract-graph-rows-are-unbacked-by-requires-entries
+num: 338
 title: "New contract graph rows are unbacked by Requires entries"
 status: open
 priority: high

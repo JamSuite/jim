@@ -1,6 +1,6 @@
 ---
 id: 20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish
-num: P-20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish
+num: 340
 title: "place_direct_publish reads a git failure as nothing to publish"
 status: open
 priority: critical
