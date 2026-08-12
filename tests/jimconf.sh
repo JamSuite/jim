@@ -71,6 +71,53 @@ case_jimconf_non_regular_config_refuses() {
   assert_match "names the shape" 'regular file' "$ERR"
 }
 
+# AC: a key written in a form this grammar does not read is a resolver failure
+# too. Both are legal TOML that the `= "…"` pattern skips, so both resolved to
+# the documented default at rc 0 — a fabricated value the caller cannot tell
+# from a configured one. On issue_placement that default is "do not centralize".
+case_jimconf_unsupported_value_form_refuses() {
+  local cfg
+  cfg=$(fixture singlequoted.toml "issue_placement = 'jim/issues'")
+  run -c "$cfg" get issue_placement
+  assert_eq    "single-quoted refuses"  "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "no fabricated value"    ""   "$OUT"
+  assert_match "names the key"          'issue_placement' "$ERR"
+  assert_match "names the form it reads" 'double-quoted'  "$ERR"
+
+  cfg=$(fixture bareval.toml 'blueprint_regen_threshold = 3')
+  run -c "$cfg" get blueprint_regen_threshold
+  assert_eq "bare value refuses"     "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq "no fabricated value"    ""   "$OUT"
+}
+
+# AC: and the two forms that must NOT refuse still do not — a quoted value
+# resolves, and a key simply absent from a present file is still no override.
+# Without this the refusal above is satisfiable by refusing everything.
+case_jimconf_unsupported_value_form_spares_the_valid_ones() {
+  local cfg
+  cfg=$(fixture quoted-and-absent.toml 'issue_placement = "jim/issues"')
+  run -c "$cfg" get issue_placement
+  assert_exit "quoted resolves"       0             "$RC"
+  assert_eq   "configured value"      "jim/issues"  "$OUT"
+  run -c "$cfg" get specs
+  assert_exit "absent key defaults"   0             "$RC"
+  assert_eq   "documented default"    "docs/specs"  "$OUT"
+}
+
+# AC: a commented-out key is not a key. jimconf.toml.example ships dozens, and
+# refusing one would refuse every project that keeps the shipped reference.
+case_jimconf_commented_key_is_not_a_value_form() {
+  local cfg
+  cfg=$(fixture commented.toml '# issue_placement = "jim/issues"
+#   issue_placement_ack = false')
+  run -c "$cfg" get issue_placement
+  assert_exit "comment ignored"  0        "$RC"
+  assert_eq   "default"          "branch" "$OUT"
+  run -c "$cfg" get issue_placement_ack
+  assert_exit "indented comment ignored" 0       "$RC"
+  assert_eq   "default"                  "false" "$OUT"
+}
+
 # AC: and a genuinely absent config still resolves to the documented default at
 # rc 0 — the zero-config path is what this whole distinction exists to preserve.
 case_jimconf_absent_config_still_defaults() {

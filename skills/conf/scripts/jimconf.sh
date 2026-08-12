@@ -163,6 +163,28 @@ parse_value() {
     echo "error: config file '$file' exists but could not be read" >&2
     return 1
   fi
+  # A key written in a form this grammar does not read is a resolver failure,
+  # not an unset key. Only `KEY = "value"` is recognized, so `key = 'v'` and
+  # `key = 3` — both legal TOML — would otherwise resolve to the documented
+  # default with no message: the same fabricated-default class an unreadable
+  # file is, and indistinguishable from a real value at every caller.
+  #
+  # Refused rather than parsed. Widening the grammar means a bare `true`
+  # resolves to a value every consumer compares against the *string* "true",
+  # trading a silent default for a silent type mismatch. Refusing states the
+  # problem where the user can fix it, and the remedy is to add quotes.
+  #
+  # Judged on the FIRST line naming the key, which is the one first-match-wins
+  # would have taken.
+  local first=""
+  first="$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "$file" 2>/dev/null | head -n 1)"
+  if [[ -n "$first" ]] \
+     && ! printf '%s\n' "$first" \
+        | grep -qE "^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\""; then
+    echo "error: config key '$key' in '$file' is not a double-quoted string;" \
+         "jim reads only KEY = \"value\"" >&2
+    return 1
+  fi
   # A key that is simply not in the file is the "no override" case, not a
   # failure: grep's rc 1 for "no match" must not reach the caller as one, or
   # every unset key would refuse. The file-level failures above are the only
@@ -348,6 +370,12 @@ main "$@"
 # 2. Quoting. Only double-quoted scalar values are recognized. Bare
 #    values and single-quoted values are intentionally not parsed —
 #    keeps the grammar simple and matches the documented config format.
+#    They are, however, REFUSED rather than skipped: both are legal TOML,
+#    so skipping them resolved the key to its documented default at rc 0,
+#    which the caller cannot tell from a configured value. Widening the
+#    grammar instead would let a bare `true` resolve to a value every
+#    consumer compares against the string "true" — a silent type mismatch
+#    in place of a silent default.
 #
 # 3. Never source. The file is data, not code. `source jimconf.toml`
 #    would execute arbitrary bash from a project file; the security
