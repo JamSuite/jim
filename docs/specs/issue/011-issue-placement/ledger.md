@@ -14,3 +14,5 @@
 1786101674	2026-08-07T11:21:14Z	review	finished	alignment=major-drift;findings=22;undelegated=0
 1786142580	2026-08-07T22:43:00Z	review	started	
 1786143550	2026-08-07T22:59:10Z	review	finished	alignment=major-drift;findings=28;undelegated=0
+1786500052	2026-08-12T02:00:52Z	review	started	
+1786501024	2026-08-12T02:17:04Z	review	finished	alignment=minor-drift;findings=30;undelegated=0
