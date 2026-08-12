@@ -88,7 +88,7 @@ re-declared here.*
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-08-12T04:08:19Z
+on every blueprint write; do not edit. Last reconciled: 2026-08-12T20:31:59Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |
@@ -98,6 +98,7 @@ on every blueprint write; do not edit. Last reconciled: 2026-08-12T04:08:19Z
 | sdlc | jimledger-cli (`jimledger.sh` ledger CLI) | platform |
 | sdlc | emitter (`new.sh` single emitter) | issue |
 | sdlc | candidate-batch-contract (§ 7a) | issue |
+| sdlc | placement-door (`place.sh` begin/commit) | issue |
 | sdlc | advisor (`/jim:blueprint` map read) | blueprint |
 | sdlc | blast-radius-facts (`jimverify.sh` edges) | blueprint |
 | sdlc | living-intent-sensor (`/jim:verify` + judge) | blueprint |
@@ -109,6 +110,7 @@ on every blueprint write; do not edit. Last reconciled: 2026-08-12T04:08:19Z
 | blueprint | testlib (meta-test framework) | platform |
 | blueprint | emitter (`new.sh` single emitter) | issue |
 | blueprint | candidate-batch-contract (§ 7a) | issue |
+| blueprint | placement-read (`place.sh` begin --read) | issue |
 | blueprint | personas (`agent:` bindings — architect, reviewer) | sdlc |
 | issue | jimfile-cli (`jimfile.sh` path/id CLI) | platform |
 | issue | jimconf-cli (`jimconf.sh` resolver) | platform |
