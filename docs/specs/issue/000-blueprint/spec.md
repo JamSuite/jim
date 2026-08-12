@@ -78,10 +78,13 @@ face after the platform CLIs.
   wrapped command's own exit status is forwarded verbatim; `begin` hands back a
   collection directory and a handle whose `commit` publishes it as one commit
   under a fixed verb enum, while a read handle (`begin --read`) publishes nothing
-  and discards what it materialized. Two callers outside the group hold it: the
-  spec group's citation sweep drives `begin`/`commit` around the issue half of a
-  realization, and the partition surface holds `mode`, `begin --read` and `abort`
-  alone — no publish verb — for the re-points it discloses rather than applies.
+  and discards what it materialized. A read handle whose index could not be
+  regenerated is still handed back: the status is non-zero and the degradation is
+  named on stderr, so the view stays serviceable and the handle still requires an
+  `abort`. Two callers outside the group hold it: the spec group's citation sweep
+  drives `begin`/`commit` around the issue half of a realization, and the
+  partition surface holds `mode`, `begin --read` and `abort` alone — no publish
+  verb — for the re-points it discloses rather than applies.
 - `backfill.sh` / `migrate.sh` / `reconcile.sh` **migrations** — opt-in,
   preview-gated one-shot transforms (num / timestamp / prefix; and realizing
   provisional ordinals into real coordinated ones). Internal surface, low
@@ -133,7 +136,7 @@ face after the platform CLIs.
 
 | Id | Invariant | Criticality | Check |
 | :--- | :--- | :--- | :--- |
-| single-emitter | Every issue file is created only through `new.sh`; no skill or agent composes an issue file by hand. Editing an existing issue is a different path, governed by the two-phase door | high | judge |
+| single-emitter | Every issue file is created only through `new.sh`; no skill or agent composes an issue file by hand. Editing an existing issue is a different path, governed by the two-phase door — which publishes a content diff rather than a verb-scoped one, so a handle-holder that creates a file there publishes it like any edit. That separation rests on the caller's discipline, not on a mechanism the door enforces | high | judge |
 | untrusted-body-never-shell | Issue bodies travel only via `--body-file` temp files, copied file→file; title/label/origin scalars are YAML-encoded; no untrusted value is interpolated into shell or YAML | critical | judge |
 | id-gate-before-path | Every id passes the validator before any path composition or file read; `show` resolves only against the indexed set | critical | judge |
 | placeholder-by-position | The placement wrapper substitutes only the placeholders a caller positioned — a flag's operand, or the trailing argument it appended — never an argument matching a placeholder's text elsewhere in the argv. Forwarded caller text can look exactly like one, and rewriting it puts a run-local path into a durable identity | high | judge |
