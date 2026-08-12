@@ -354,7 +354,10 @@ case_place_user_text_matching_a_marker_is_not_substituted() {
   repo="$(place_repo place_subst_user_marker 'issue_placement = "jim/issues"')"
   body="$(fixture place_subst_marker_body.md 'body')"
   err="$TMP_BASE/.subst-marker.err"
-  out="$(cd "$repo" && bash "$REPO_ROOT/skills/issue/scripts/new.sh" \
+  # --reviewed because the emitter requires a batch declaration under a
+  # placement; without it the run refuses before the substitution this case is
+  # about is ever reached.
+  out="$(cd "$repo" && bash "$REPO_ROOT/skills/issue/scripts/new.sh" --reviewed \
            --title '{}' --priority medium --labels x \
            --origin conversation --body-file "$body" 2>"$err")"
   rc=$?
