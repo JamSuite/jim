@@ -30,7 +30,11 @@
 # EXIT CODES
 #   0  Success.
 #   1  Unknown key (only `get <unknown_key>` triggers this; missing keys
-#      inside an existing config silently fall through to defaults).
+#      inside an existing config silently fall through to defaults), or a
+#      resolution that failed rather than being absent: a config that exists
+#      but cannot be read, a key written in a value form this grammar does not
+#      read, or a run started below a project root whose config it would
+#      otherwise ignore in silence.
 #   2  Malformed invocation (missing argument, unknown subcommand).
 #
 
@@ -274,6 +278,33 @@ resolve() {
   fi
 }
 
+# nearest_ignored_config
+#   Print the path of a jimconf.toml that exists ABOVE the current directory
+#   inside this repository, or nothing. Reached only when ./jimconf.toml is
+#   absent, and used only to refuse: the file is located, never read.
+#
+#   Locating rather than honouring is the whole point. Config values reach
+#   bash — pre_commit and pre_completion name scripts jim runs, and the
+#   deps_command_ / verify_command_ families are command strings run verbatim —
+#   so reading a config from above the directory the session was started in
+#   would run a command from outside that boundary. jim reads ./jimconf.toml
+#   and no other; this is what stops a run started elsewhere resolving every
+#   key to a documented default with nothing said.
+#
+#   The repository is the bound. The walk stops at the directory holding .git
+#   and reports nothing at all when it finds none, so a config belonging to an
+#   unrelated project — a home directory's, say — is never named. Pure path
+#   arithmetic and stats; no forks.
+nearest_ignored_config() {
+  local d="$PWD" found=""
+  while [[ -n "$d" && "$d" != "/" ]]; do
+    [[ -e "$d/.git" ]] && { printf '%s' "$found"; return 0; }
+    d="${d%/*}"; [[ -z "$d" ]] && d="/"
+    [[ -z "$found" && -f "$d/jimconf.toml" ]] && found="$d/jimconf.toml"
+  done
+  return 0
+}
+
 # ─── Section: Subcommand handlers ────────────────────────────────────────────
 
 cmd_get() {
@@ -328,13 +359,14 @@ USAGE
 }
 
 main() {
-  local config_file="./jimconf.toml"
+  local config_file="./jimconf.toml" explicit=0
   if [[ "${1:-}" == "-c" ]]; then
     if [[ -z "${2:-}" ]]; then
       echo "error: -c requires a path argument" >&2
       return 2
     fi
     config_file="$2"
+    explicit=1
     shift 2
   fi
   local subcmd="${1:-}"
@@ -343,6 +375,22 @@ main() {
     return 2
   fi
   shift
+  # A run started somewhere other than the project root reads ./jimconf.toml,
+  # finds nothing, and resolves every key to its documented default — a value
+  # the caller cannot tell from a configured one. Refuse instead, naming where
+  # the config actually is. Scoped to the two resolving verbs: `path` answers
+  # "is there an active config here" and has to stay able to say no, and `keys`
+  # does no I/O. An explicit -c named a file, so it is left alone.
+  if (( explicit == 0 )) && [[ "$subcmd" == "get" || "$subcmd" == "list" ]] \
+     && [[ ! -e "$config_file" ]]; then
+    local ignored
+    ignored="$(nearest_ignored_config)"
+    if [[ -n "$ignored" ]]; then
+      echo "error: no ./jimconf.toml here, but one exists at '$ignored'." \
+           "jim reads ./jimconf.toml only — run from the project root." >&2
+      return 1
+    fi
+  fi
   case "$subcmd" in
     get)  cmd_get  "$config_file" "$@" ;;
     list) cmd_list "$config_file" ;;
@@ -384,7 +432,17 @@ main "$@"
 # 4. Default-PWD lookup is non-recursive. The script reads
 #    `./jimconf.toml` relative to PWD only — no walk-up. Users are
 #    expected to launch `claude` at the project root. Walking up would
-#    conflict with Claude Code's "trust this folder" sandbox boundary.
+#    conflict with Claude Code's "trust this folder" sandbox boundary,
+#    and the conflict is sharper than mere reading: pre_commit,
+#    pre_completion, deps_command_* and verify_command_* are values jim
+#    hands to bash, so honouring a config from above that boundary runs a
+#    command from outside it.
+#
+#    What is NOT tolerated is doing this silently. `get` and `list`
+#    locate — never read — a jimconf.toml above PWD within the same
+#    repository, and refuse rather than resolving every key to its
+#    documented default. Zero-config is untouched: no config anywhere
+#    still resolves to defaults at rc 0.
 #
 # 5. -c with a missing path is silent. Same behavior as a missing
 #    default file. The spec's "no strict mode" decision applies.

@@ -71,6 +71,64 @@ case_jimconf_non_regular_config_refuses() {
   assert_match "names the shape" 'regular file' "$ERR"
 }
 
+# AC: a run started below the project root read ./jimconf.toml, found nothing,
+# and resolved every key to its documented default at rc 0 — the same fabricated
+# value an unreadable config used to hand back. It now refuses and says where
+# the config is. The file is located, never read: config values reach bash, so
+# honouring one from above the folder the session started in would run a command
+# from outside that boundary.
+case_jimconf_config_above_cwd_refuses_rather_than_defaulting() {
+  local root
+  root=$(empty_dir conf_above_repo)
+  mkdir -p "$root/.git" "$root/docs/issues"
+  printf 'issue_placement = "SENTINEL-NOT-TO-BE-READ"\n' > "$root/jimconf.toml"
+  OUT="$(cd "$root/docs/issues" && bash "$SCRIPT" get issue_placement 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_eq    "refuses rather than defaulting" "no" \
+    "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "no fabricated value"   ""                  "$OUT"
+  assert_match "names where it is"     'jimconf.toml'      "$ERR"
+  assert_match "names the remedy"      'project root'      "$ERR"
+  # It located the file; it must not have read it. The rejected alternative —
+  # walk up and honour what is found — is what this distinguishes, and it is
+  # what the trust boundary forbids, since these values reach bash.
+  assert_eq "the parent's value surfaces nowhere" "" \
+    "$(grep -o 'SENTINEL-NOT-TO-BE-READ' <<<"$OUT$ERR")"
+}
+
+# AC: the three shapes that must NOT refuse. Zero-config anywhere in the tree is
+# the path this whole distinction exists to preserve; a subdirectory carrying its
+# own config is a project root by jim's own definition; and outside a repository
+# there is no project to name, so an unrelated jimconf.toml — a home directory's
+# — is never reported.
+case_jimconf_config_above_cwd_spares_the_valid_ones() {
+  local root
+  root=$(empty_dir conf_above_negatives)
+  mkdir -p "$root/.git" "$root/bare" "$root/own"
+  OUT="$(cd "$root/bare" && bash "$SCRIPT" get issue_placement 2>/dev/null)"
+  RC=$?
+  assert_exit "no config anywhere still defaults" 0        "$RC"
+  assert_eq   "documented default"                "branch" "$OUT"
+
+  printf 'issue_placement = "own/branch"\n' > "$root/own/jimconf.toml"
+  printf 'issue_placement = "root/branch"\n' > "$root/jimconf.toml"
+  OUT="$(cd "$root/own" && bash "$SCRIPT" get issue_placement 2>/dev/null)"
+  RC=$?
+  assert_exit "a local config wins outright" 0            "$RC"
+  assert_eq   "and is the one read"          "own/branch" "$OUT"
+
+  # No .git anywhere above: nothing to bound the walk, so nothing is named.
+  local loose
+  loose=$(empty_dir conf_above_norepo)
+  mkdir -p "$loose/sub"
+  printf 'issue_placement = "unrelated"\n' > "$loose/jimconf.toml"
+  OUT="$(cd "$loose/sub" && bash "$SCRIPT" get issue_placement 2>/dev/null)"
+  RC=$?
+  assert_exit "outside a repo, unchanged" 0        "$RC"
+  assert_eq   "documented default"        "branch" "$OUT"
+}
+
 # AC: a key written in a form this grammar does not read is a resolver failure
 # too. Both are legal TOML that the `= "…"` pattern skips, so both resolved to
 # the documented default at rc 0 — a fabricated value the caller cannot tell
