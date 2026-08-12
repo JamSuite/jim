@@ -869,6 +869,74 @@ case_place_non_contention_rejection_is_named_as_such() {
     "$(git -C "$bare" rev-parse --verify --quiet refs/heads/jim/issues)"
 }
 
+# AC: the same diagnosis is owed on the local tier. An `update-ref` that fails
+# for a reason retrying cannot fix — a locked ref, a directory/file conflict, a
+# read-only object store — left the loop burning all five attempts and then
+# reporting that the branch "kept moving", which is a false cause: it never
+# moved at all (spec AC #7's "the degradation is reported").
+case_place_local_tier_non_contention_is_named_as_such() {
+  local repo empty
+  repo="$(place_repo place_local_df 'issue_placement = "jim/issues"')"
+  # `refs/heads/jim` cannot be both a ref and the parent of one, so every
+  # update-ref to the destination fails identically.
+  empty="$(git -C "$repo" mktree < /dev/null)"
+  git -C "$repo" update-ref refs/heads/jim \
+    "$(git -C "$repo" commit-tree "$empty" -m block)"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit  "rc"                        3                 "$RC"
+  assert_match "says it is not contention" 'not contention'  "$ERR"
+  assert_match "and relays what git said"  'cannot lock ref' "$ERR"
+  assert_eq "nothing was published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# place_reject_once <bare> — a remote that refuses the first push and accepts
+# every one after it, so a run takes exactly one retry.
+place_reject_once() {
+  cat > "$1/hooks/pre-receive" <<'HOOK'
+#!/bin/sh
+if [ -e "$GIT_DIR/rejected-once" ]; then exit 0; fi
+: > "$GIT_DIR/rejected-once"
+exit 1
+HOOK
+  chmod +x "$1/hooks/pre-receive"
+}
+
+# AC: no empty commit reaches the destination — including after a retry has
+# moved the merge base. The changed set is measured before the loop, and a
+# rejection that re-reads the remote refreshes it in place, so a set that was
+# non-empty on the first attempt can be empty on the second; building from it
+# writes a tree identical to the tip's and publishes a commit with no diff
+# (spec AC #4's "exactly one commit").
+case_place_retry_publishes_no_empty_commit() {
+  local bare mine before_count after_count
+  bare="$(place_bare place_empty_bare)"
+  mine="$(place_clone "$bare" place_empty_mine 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  before_count="$(git -C "$bare" rev-list --count refs/heads/jim/issues)"
+  # Defer a close, so this clone's head runs ahead of the remote.
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb close --id 20260101-a -- \
+    sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "offline close rc" 0 "$RC"
+  git -C "$mine" remote set-url origin "$bare"
+  place_reject_once "$bare"
+  # A mutation that undoes the deferred one. The first attempt builds on this
+  # clone's own head and is rejected; the retry re-reads the remote, the merge
+  # base moves back to it, and the refreshed base already holds exactly what
+  # this run produced — so there is nothing left to publish.
+  run_place_in "$mine" run --verb edit --id 20260101-a -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "rc" 0 "$RC"
+  after_count="$(git -C "$bare" rev-list --count refs/heads/jim/issues)"
+  assert_eq "the destination gained no commit" "$before_count" "$after_count"
+  assert_eq "and still reads as it did" "open" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md 2>/dev/null)"
+}
+
 # place_reject_and_advance <bare> <branch>
 #   A remote that rejects every push *and* moves the branch on each attempt, so
 #   every re-read finds a genuinely different tip. That is what keeps the run in

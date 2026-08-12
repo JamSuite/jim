@@ -1364,17 +1364,32 @@ place_build_commit() {
 #   the collection prepares against the tip the bookmark remembers while its own
 #   copy of the branch does not exist yet, and it is the ref's state — absent —
 #   that the swap has to match.
+#   git's own complaint is kept rather than discarded. A landing that failed for
+#   a reason retrying cannot fix has to say what that reason was, and only git
+#   knows it: "cannot lock ref", "protected branch", "permission denied" are all
+#   the same rc from here.
 place_land() {
   local remote="$1" tier="$2" branch="$3" ref_old="$4" commit="$5"
+  local err="$PLACE_WORK/land.err"
+  : > "$err" 2>/dev/null || true
   if [[ "$tier" == "origin" ]]; then
-    if git push --quiet --end-of-options "$remote" "$commit:refs/heads/$branch" 2>/dev/null; then
+    if git push --quiet --end-of-options "$remote" "$commit:refs/heads/$branch" 2>"$err"; then
       git update-ref --end-of-options "refs/heads/$branch" "$commit" "$ref_old" 2>/dev/null || true
       return 0
     fi
     return 3
   fi
-  git update-ref --end-of-options "refs/heads/$branch" "$commit" "$ref_old" 2>/dev/null || return 3
+  git update-ref --end-of-options "refs/heads/$branch" "$commit" "$ref_old" 2>"$err" || return 3
   return 0
+}
+
+# place_land_reason — what git said about the last failed landing, as one
+# printable line. Empty when it said nothing, or when there was nowhere to keep
+# it. Branch and remote content, so it clears the display sanitizer first.
+place_land_reason() {
+  local err="$PLACE_WORK/land.err"
+  [[ -n "${PLACE_WORK:-}" && -s "$err" ]] || return 0
+  place_shown "$(tr '\n\r\t' '   ' < "$err")"
 }
 
 # place_reindex <dir> — regenerate the collection index in <dir>.
@@ -1703,12 +1718,18 @@ place_commit_changes() {
   local dest="$1" prefix="$2" verb="$5" id="$6"
   local remote="$7" tier="$8" work_tip="$9" tip="${10}" ref_old="${11}"
   place_changed "$3" "$4" || return 0
-  local msg commit attempt rc base prev_tip new_base
+  local msg commit attempt rc base prev_tip prev_tier new_base
   local -A upstream=() merged=()
   msg="$(place_message "$verb" "$id")"
   base="$(place_merge_base "$work_tip" "$tip")"
   for (( attempt=1; attempt<=PLACE_ATTEMPTS; attempt++ )); do
     if [[ "$base" == "$tip" ]]; then
+      # Re-asked every attempt, not only before the loop. A retry that moves the
+      # merge base refreshes the caller's `before` in place, so a changed set
+      # that was real on attempt 1 can be empty on attempt N — and building from
+      # an empty one writes a tree identical to the tip's and lands a commit
+      # with no diff. The graft arm asks its own version of this below.
+      place_changed "$3" "$4" || return 0
       commit="$(place_build_commit "$tip" "$prefix" "$3" "$4" "$msg")" || return 1
     else
       place_regraft "$tip" "$prefix" "$3" "$4" upstream merged || return $?
@@ -1731,6 +1752,7 @@ place_commit_changes() {
     (( rc == 3 )) || return "$rc"
     (( attempt < PLACE_ATTEMPTS )) && place_backoff "$attempt"
     prev_tip="$tip"
+    prev_tier="$tier"
     # Re-read whatever won the race. A remote that dropped out mid-retry
     # degrades to the local tier rather than spinning against it. On either tier
     # the ref's own value is read *before* the tip it is paired with: a racer
@@ -1757,12 +1779,26 @@ place_commit_changes() {
     fi
     # A destination that did not move cannot have rejected this for contention,
     # and every further attempt would fail the same way — the diagnosis has to
-    # name the cause it actually has.
-    if [[ "$tier" == "origin" && "$tip" == "$prev_tip" ]]; then
-      echo "place.sh: '$remote' rejected the publish to '$dest', which has not" \
-           "moved — so this is not contention and retrying cannot help. Check" \
-           "push rights, branch protection, or the connection. The mutation was" \
-           "not published." >&2
+    # name the cause it actually has. True on either tier: a local update-ref
+    # refused for a locked ref, a directory/file conflict at the ref path or a
+    # read-only object store is no more retriable than a protected branch.
+    #
+    # Only within one tier, though. A run that lost its remote mid-publish has
+    # degraded to a different operation against a different ref, so an unmoved
+    # tip across that transition says nothing about whether the next attempt can
+    # succeed — and it usually can, which is the whole point of degrading.
+    if [[ "$tier" == "$prev_tier" && "$tip" == "$prev_tip" ]]; then
+      local reason; reason="$(place_land_reason)"
+      if [[ "$tier" == "origin" ]]; then
+        echo "place.sh: '$remote' rejected the publish to '$dest', which has not" \
+             "moved — so this is not contention and retrying cannot help. Check" \
+             "push rights, branch protection, or the connection. The mutation was" \
+             "not published.${reason:+ git reported: $reason}" >&2
+      else
+        echo "place.sh: could not update '$dest', which has not moved — so this" \
+             "is not contention and retrying cannot help. The mutation was not" \
+             "published.${reason:+ git reported: $reason}" >&2
+      fi
       return 3
     fi
     new_base="$(place_merge_base "$work_tip" "$tip")"
