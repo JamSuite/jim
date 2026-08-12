@@ -1187,6 +1187,34 @@ case_place_diverged_read_discloses_what_it_omits() {
     "$(grep -q 'being reapplied' <<< "$ERR" && echo yes || echo no)"
 }
 
+# AC: the same on the other read door. § 6a opens a read handle for insights,
+# and a handle materialized from the unpublished side omits the same commits —
+# with no wrapped command's output to hint at it, since what the caller gets is
+# a directory (spec AC #6).
+case_place_begin_read_discloses_a_partial_view() {
+  local bare mine theirs dir
+  bare="$(place_bare place_div_begin_bare)"
+  mine="$(place_clone "$bare" place_div_begin_mine   'issue_placement = "jim/issues"')"
+  theirs="$(place_clone "$bare" place_div_begin_them 'issue_placement = "jim/issues"')"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
+  run_place_in "$mine" run --verb close --id 20260101-a -- \
+    sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "offline write rc" 0 "$RC"
+  run_place_in "$theirs" run --verb file -- \
+    sh -c 'printf "theirs\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit "their write landed" 0 "$RC"
+  git -C "$mine" remote set-url origin "$bare"
+  run_place_in "$mine" begin --read
+  assert_exit "begin rc" 0 "$RC"
+  dir="${OUT##*$'\t'}"
+  assert_eq "the teammate's issue is genuinely not in the handed dir" "no" \
+    "$([[ -e "$dir/20260101-b.md" ]] && echo yes || echo no)"
+  assert_match "so the door says the view is partial" 'omits' "$ERR"
+}
+
 # AC: a deferred mutation survives the resuming run losing a push race. The
 # deferral arm builds on this clone's own head, so the changed set measured
 # against it does not contain the deferred paths — they are the base, not the
@@ -1914,6 +1942,139 @@ case_place_direct_commit_refuses_a_moved_collection() {
     "$(git -C "$repo" rev-parse --verify HEAD)"
   assert_eq "and no empty collection was created" "no" \
     "$([[ -e "$repo/docs/tickets" ]] && echo yes || echo no)"
+}
+
+# place_here_remote <bare> <name>
+#   A clone standing on the destination branch with a real remote behind it, one
+#   issue already seeded and pushed. Every other direct-mode fixture has no
+#   remote at all — which is the one configuration where this arm has nothing to
+#   ask anybody.
+place_here_remote() {
+  local bare="$1" name="$2" repo branch
+  repo="$(place_clone "$bare" "$name")"
+  printf 'unrelated\n' > "$repo/README.md"
+  git -C "$repo" add README.md && git -C "$repo" commit -q -m base
+  branch="$(git -C "$repo" symbolic-ref --short HEAD)"
+  printf 'issue_placement = "%s"\n' "$branch" > "$repo/jimconf.toml"
+  mkdir -p "$repo/docs/issues"
+  printf 'open\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add jimconf.toml docs/issues
+  git -C "$repo" commit -q -m seed
+  git -C "$repo" push -q origin "HEAD:refs/heads/$branch" 2>/dev/null
+  printf '%s' "$repo"
+}
+
+# place_teammate_advances <bare> <name> <branch> <file>
+#   A second clone that lands one commit on the destination branch.
+place_teammate_advances() {
+  local bare="$1" name="$2" branch="$3" file="$4" theirs
+  theirs="$(place_clone "$bare" "$name")"
+  git -C "$theirs" checkout -q "$branch" 2>/dev/null \
+    || git -C "$theirs" checkout -q -b "$branch" "origin/$branch"
+  mkdir -p "$theirs/docs/issues"
+  printf 'theirs\n' > "$theirs/docs/issues/$file"
+  git -C "$theirs" add docs/issues && git -C "$theirs" commit -q -m theirs
+  git -C "$theirs" push -q origin "HEAD:refs/heads/$branch"
+}
+
+# AC: the destination's owner is consulted on this arm too. A fetch can never
+# make this read fresher — the collection *is* the working tree, and merging the
+# destination into a developer's checkout to serve an issue list is exactly what
+# this arm exists to avoid — so what the look buys is honesty: the run says the
+# checkout is behind rather than serving it as though it were the collection
+# (spec AC #6, whose condition is "when a remote exists").
+case_place_direct_read_discloses_a_stale_checkout() {
+  local bare mine branch head_before
+  bare="$(place_bare place_direct_stale_bare)"
+  mine="$(place_here_remote "$bare" place_direct_stale_mine)"
+  branch="$(git -C "$mine" symbolic-ref --short HEAD)"
+  place_teammate_advances "$bare" place_direct_stale_them "$branch" 20260101-b.md
+  head_before="$(git -C "$mine" rev-parse --verify HEAD)"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit  "rc" 0 "$RC"
+  assert_match "says the checkout is behind" \
+    'holds commits this checkout does not' "$ERR"
+  assert_eq "the checkout is left exactly as it is" "$head_before" \
+    "$(git -C "$mine" rev-parse --verify HEAD)"
+  assert_eq "and nothing was merged into it" "" \
+    "$(git -C "$mine" status --porcelain)"
+}
+
+# AC: and when it cannot be reached, the read serves what this checkout holds
+# and says so — the same degradation the routed arm offers (spec AC #6).
+case_place_direct_read_degrades_when_remote_unreachable() {
+  local mine
+  mine="$(place_here place_direct_unreach)"
+  git -C "$mine" remote add origin "$TMP_BASE/no-such-remote.git"
+  mkdir -p "$mine/docs/issues"
+  printf 'open\n' > "$mine/docs/issues/20260101-a.md"
+  git -C "$mine" add docs/issues && git -C "$mine" commit -q -m seed
+  run_place_in "$mine" run --read --verb reindex -- \
+    sh -c 'cat "$1/20260101-a.md"' _ '{}'
+  assert_exit  "rc"           0             "$RC"
+  assert_eq    "still serves" "open"        "$OUT"
+  assert_match "and says so"  'unreachable' "$ERR"
+}
+
+# AC: the rewrite detector compares against a tip of the same provenance the
+# bookmark records. A routed run records what it saw at the *remote*; comparing
+# that against this checkout's HEAD compares two different things, so an
+# ordinary un-pulled checkout read as a rewritten branch on every direct read
+# until the developer pulled (spec AC #12). This is the same false-alarm class a
+# closed finding removed from the offline plumbing path.
+case_place_direct_read_does_not_alarm_after_a_routed_read() {
+  local bare mine branch
+  bare="$(place_bare place_direct_prov_bare)"
+  mine="$(place_here_remote "$bare" place_direct_prov_mine)"
+  branch="$(git -C "$mine" symbolic-ref --short HEAD)"
+  place_teammate_advances "$bare" place_direct_prov_them "$branch" 20260101-b.md
+  # A read from a feature branch takes the routed arm, which fetches and records
+  # the remote's tip; this clone's own branch ref stays where it was, since only
+  # a publish moves that.
+  git -C "$mine" checkout -q -b feature
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "routed read rc" 0 "$RC"
+  # Back onto the destination without pulling.
+  git -C "$mine" checkout -q "$branch"
+  run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
+  assert_exit "direct read rc" 0 "$RC"
+  assert_eq "no rewrite alarm" "no" \
+    "$(grep -q 'rewritten' <<< "$ERR" && echo yes || echo no)"
+  assert_match "it names the condition it actually has" \
+    'holds commits this checkout does not' "$ERR"
+}
+
+# AC: an unreachable remote is a deferral, not a divergence. The advice differs —
+# one says pull and push again, the other says nothing is owed — and this arm
+# gave the first for both (spec AC #7's "the degradation is reported").
+case_place_direct_unreachable_remote_is_a_deferral() {
+  local mine
+  mine="$(place_here place_direct_defer)"
+  git -C "$mine" remote add origin "$TMP_BASE/no-such-remote.git"
+  mkdir -p "$mine/docs/issues"
+  run_place_in "$mine" run --verb file -- \
+    sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
+  assert_exit  "rc"                  0          "$RC"
+  assert_match "calls it a deferral" 'deferred' "$ERR"
+  assert_eq    "and not a divergence" "no" \
+    "$(grep -q 'diverged' <<< "$ERR" && echo yes || echo no)"
+  assert_eq "the mutation is committed here" "hello" \
+    "$(git -C "$mine" show "HEAD:docs/issues/20260101-x.md" 2>/dev/null)"
+}
+
+# AC: what the collection may hold is one rule, enforced at both ends of the
+# round trip. Materialization refuses an entry whose name begins with '-'; the
+# snapshot that becomes the published tree did not, so a wrapped command could
+# land one at rc 0 and every later run then refused to read the collection back.
+case_place_refuses_to_publish_a_leading_dash_entry() {
+  local repo
+  repo="$(place_repo place_dash_publish 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "x\n" > "$1/-rf.md"' _ '{}'
+  assert_eq    "refuses"         "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_match "names the entry" '\-rf\.md' "$ERR"
+  assert_eq "nothing was published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
 }
 
 # AC: a destination that is checked out has its tip in hand, so a read verb can

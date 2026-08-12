@@ -649,13 +649,82 @@ place_worktree_contained() {
   return 0
 }
 
+
+# Set together by place_direct_probe.
+PLACE_DIRECT_REMOTE=""   # the remote for the destination, empty when none
+PLACE_DIRECT_TIP=""      # what the destination's owner holds
+PLACE_DIRECT_REACHED=0   # 1 when this run learned that, rather than assuming it
+
+# place_direct_probe <dest>
+#   Look at the destination's owner once, without touching the checkout.
+#
+#   A fetch cannot make this arm's read fresher: the collection *is* the working
+#   tree, and merging the destination into a developer's checkout to serve an
+#   issue list is precisely what this arm exists to avoid. What the look buys is
+#   honesty rather than currency — the run can say the checkout is behind
+#   instead of serving it as though it were the collection, rewrite detection
+#   gets a tip of the same provenance the bookmark records, and a failed publish
+#   can tell an unreachable remote from a refused one.
+#
+#   It is genuinely non-invasive: ls-remote and a refspec fetch write
+#   FETCH_HEAD and the remote-tracking ref, and leave HEAD, the index and the
+#   working tree exactly as they were.
+#
+#   With no remote configured the local branch *is* the destination, so HEAD is
+#   the authoritative answer and there is nobody to reach.
+place_direct_probe() {
+  local dest="$1"
+  PLACE_DIRECT_REMOTE="$(place_remote)"
+  PLACE_DIRECT_TIP=""
+  PLACE_DIRECT_REACHED=0
+  if [[ -z "$PLACE_DIRECT_REMOTE" ]]; then
+    PLACE_DIRECT_TIP="$(place_head_commit)"
+    PLACE_DIRECT_REACHED=1
+    return 0
+  fi
+  if PLACE_DIRECT_TIP="$(place_remote_tip "$PLACE_DIRECT_REMOTE" "$dest")"; then
+    PLACE_DIRECT_REACHED=1
+  else
+    PLACE_DIRECT_TIP=""
+  fi
+  return 0
+}
+
+# place_direct_freshness <dest>
+#   What this run can honestly say about the destination before it serves or
+#   hands anything back. Rewrite detection first, since it compares against the
+#   bookmark and so needs a tip of the bookmark's own provenance; then the plain
+#   question of whether this checkout is behind what the team can see.
+place_direct_freshness() {
+  local dest="$1" head
+  head="$(place_head_commit)"
+  place_direct_probe "$dest"
+  # Only a run that reached the destination's owner learned anything about it,
+  # and one that learned nothing may neither compare nor record.
+  place_check_rewrite "$dest" "$PLACE_DIRECT_TIP" "$PLACE_DIRECT_REACHED"
+  if (( PLACE_DIRECT_REACHED == 0 )); then
+    echo "place.sh: remote '$PLACE_DIRECT_REMOTE' is unreachable; working from" \
+         "'$dest' as this checkout holds it" >&2
+    return 0
+  fi
+  # With no remote the two are the same commit by construction, and there is
+  # nothing a checkout can be behind.
+  [[ -n "$PLACE_DIRECT_REMOTE" && -n "$PLACE_DIRECT_TIP" && -n "$head" ]] || return 0
+  [[ "$PLACE_DIRECT_TIP" != "$head" ]] || return 0
+  if ! git merge-base --is-ancestor --end-of-options \
+       "$PLACE_DIRECT_TIP" "$head" 2>/dev/null; then
+    echo "place.sh: '$dest' at '$PLACE_DIRECT_REMOTE' holds commits this" \
+         "checkout does not ($PLACE_DIRECT_TIP), so the collection here may be" \
+         "behind what your team sees. Pull to bring it up to date — this run" \
+         "leaves your checkout exactly as it is." >&2
+  fi
+  return 0
+}
+
 place_direct() {
   local dest="$1" prefix="$2" verb="$3" id="$4" read_only="$5"; shift 5
   place_worktree_contained "$prefix" || return 2
-  # The destination is checked out, so its tip is HEAD and no fetch is needed to
-  # know it: a rebase, reset or amend of the branch the collection lives on is a
-  # rewrite of the destination, and this arm is where a read verb meets it.
-  place_disclose_rewrite "$dest" "$(place_head_commit)"
+  place_direct_freshness "$dest"
   if (( read_only == 0 )); then
     place_dirty_guard "$prefix" || return 2
   fi
@@ -692,13 +761,33 @@ place_direct_publish() {
     place_advance_bookmark "$dest" "$commit"
     return 0
   fi
-  if git push --quiet --end-of-options "$remote" "HEAD:refs/heads/$dest" 2>/dev/null; then
+  local err="" reason=""
+  err="$(mktemp 2>/dev/null || true)"
+  if git push --quiet --end-of-options "$remote" "HEAD:refs/heads/$dest" \
+       2>"${err:-/dev/null}"; then
+    [[ -n "$err" ]] && rm -f -- "$err"
     place_advance_bookmark "$dest" "$commit"
     return 0
   fi
-  echo "place.sh: '$dest' has diverged from '$remote', so the mutation is" \
-       "committed here but not published. Pull and push again to share it —" \
-       "your checkout is left exactly as it is." >&2
+  [[ -n "$err" ]] && reason="$(place_git_reason "$err")"
+  [[ -n "$err" ]] && rm -f -- "$err"
+  # A push fails for reasons that owe the developer different answers: the
+  # destination moved, this clone may not write to it, or the remote is not
+  # there at all. The third is a deferral rather than a divergence — nothing is
+  # owed and the next reachable run carries it — so telling the developer to
+  # pull and push again is advice for a problem they do not have. One ls-remote
+  # separates them, and only on the path that already failed.
+  if ! git ls-remote --heads --end-of-options "$remote" "$dest" >/dev/null 2>&1; then
+    echo "place.sh: remote '$remote' is unreachable, so the mutation is" \
+         "committed here on '$dest' but not published; publication is deferred" \
+         "until the next reachable run. Nothing is lost and nothing is owed." >&2
+    return 0
+  fi
+  echo "place.sh: '$remote' rejected the publish to '$dest' — it has diverged" \
+       "from this checkout, or this clone may not write to it. The mutation is" \
+       "committed here but not published. Pull and push again to share it, or" \
+       "check push rights and branch protection — your checkout is left exactly" \
+       "as it is.${reason:+ git reported: $reason}" >&2
   return 0
 }
 
@@ -872,7 +961,7 @@ cmd_begin() {
     # is a `git status` on the same path, which answers nothing about where it
     # leads.
     place_worktree_contained "$prefix" || return 2
-    place_disclose_rewrite "$dest" "$(place_head_commit)"
+    place_direct_freshness "$dest"
     if (( read_only )); then
       printf '%s\t%s\n' "$PLACE_TOKEN_DIRECT_READ" "$prefix"
       return 0
@@ -1282,6 +1371,16 @@ place_snapshot() {
            "'$(place_shown "$name")'" >&2
       return 1
     fi
+    # The same rule materialization enforces on the way in. Without it here the
+    # two ends of the round trip disagree: a wrapped command could land such an
+    # entry at rc 0, after which every later run refused to read the collection
+    # back and the only repair was by hand on the destination branch.
+    case "$name" in -*)
+      echo "place.sh: refusing to publish '$(place_shown "$name")' — a" \
+           "collection entry may not begin with '-', and one that does could" \
+           "not be materialized again" >&2
+      return 1 ;;
+    esac
     # -w stores the blob: the destination tree is built from these object names,
     # so a sha that was only computed names nothing the tree can reference.
     sha="$(git hash-object -w -- "$entry")" || return 1
@@ -1383,13 +1482,18 @@ place_land() {
   return 0
 }
 
-# place_land_reason — what git said about the last failed landing, as one
-# printable line. Empty when it said nothing, or when there was nowhere to keep
-# it. Branch and remote content, so it clears the display sanitizer first.
+# place_git_reason <file> — what git said, as one printable line. Remote and
+# branch content, so it clears the display sanitizer before it is printed.
+place_git_reason() {
+  [[ -s "$1" ]] || return 0
+  place_shown "$(tr '\n\r\t' '   ' < "$1")"
+}
+
+# place_land_reason — the same, for the last failed landing in the publish loop.
+# Empty when git said nothing, or when there was nowhere to keep it.
 place_land_reason() {
-  local err="$PLACE_WORK/land.err"
-  [[ -n "${PLACE_WORK:-}" && -s "$err" ]] || return 0
-  place_shown "$(tr '\n\r\t' '   ' < "$err")"
+  [[ -n "${PLACE_WORK:-}" ]] || return 0
+  place_git_reason "$PLACE_WORK/land.err"
 }
 
 # place_reindex <dir> — regenerate the collection index in <dir>.
