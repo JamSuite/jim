@@ -77,7 +77,7 @@
 #   In passthrough the wrapped command's own status is forwarded verbatim, so a
 #   caller sees the emitter's failure rather than a placement-flavored one.
 #
-# Parses with grep, sed, awk, tr and `read` only; never sources or evals config
+# Parses with grep, sed, awk, tr, head, cut and `read` only; never sources or evals config
 # or issue content.
 #
 # PORTABILITY
@@ -1243,7 +1243,7 @@ place_materialize() {
            "outside the collection directory" >&2
       return 2
     fi
-    if ! git cat-file blob "$sha" > "$dest/$name" 2>/dev/null; then
+    if ! git cat-file blob --end-of-options "$sha" > "$dest/$name" 2>/dev/null; then
       echo "place.sh: could not read collection content from branch '$prefix'" >&2
       return 1
     fi
@@ -1450,7 +1450,7 @@ place_regraft() {
       return 3
     fi
     if [[ -n "$ours" ]]; then
-      git cat-file blob "$ours" > "$merge/$name" || return 1
+      git cat-file blob --end-of-options "$ours" > "$merge/$name" || return 1
     else
       rm -f -- "$merge/$name" || return 1
     fi
@@ -1495,8 +1495,12 @@ place_release_held() {
 
 # ─── Section: Verbs ──────────────────────────────────────────────────────────
 
-# cmd_mode [--place-token <tok>] — the self-routing decision, and the only place
-# the config gate is evaluated. See the header for the token contract.
+# cmd_mode [--place-token <tok>] — the self-routing decision: the one gate an
+# entry script asks before deciding whether to re-exec. It is not the only
+# evaluation of the config gate — `run`, `begin` and `commit` each resolve the
+# destination for themselves, because a value that cleared the gate in one
+# process is not thereby cleared in the next. See the header for the token
+# contract.
 cmd_mode() {
   local passed=""
   while (( $# )); do
@@ -1523,7 +1527,7 @@ cmd_mode() {
   printf 'route\n'
 }
 
-# cmd_run [--read] --verb <enum> [--id <slug>] -- CMD [ARGS...]
+# cmd_run [--read] [--verb <enum>] [--id <slug>] -- CMD [ARGS...]
 #   Run the wrapped command against the collection. Under the default placement
 #   this is transparent: `{}` resolves to the configured issues directory and the
 #   command is exec'd, so its exit status is the caller's and no git work
@@ -1825,7 +1829,9 @@ usage() {
   cat <<'USAGE'
 Usage:
   place.sh mode [--place-token <tok>]        print `direct` or `route`
-  place.sh run [--read] --verb <enum> [--id <slug>] -- CMD [ARGS...]
+  place.sh run [--read] [--verb <enum>] [--id <slug>] -- CMD [ARGS...]
+                                             --verb is required for a write,
+                                             optional on a --read run
   place.sh begin [--read]                    print "<token><TAB><dir>"
   place.sh commit <token> --verb <enum> [--id <slug>]
   place.sh abort <token>
