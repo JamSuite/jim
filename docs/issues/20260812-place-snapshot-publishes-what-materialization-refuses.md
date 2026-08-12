@@ -1,6 +1,6 @@
 ---
 id: 20260812-place-snapshot-publishes-what-materialization-refuses
-num: P-20260812-place-snapshot-publishes-what-materialization-refuses
+num: 322
 title: "place_snapshot publishes what materialization refuses"
 status: closed
 priority: medium
