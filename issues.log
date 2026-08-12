@@ -317,3 +317,5 @@ issue allocate 316 20260812-spec-reconcile-citation-sweep-bypasses-issue-placeme
 issue allocate 317 20260812-three-surfacing-skill-roster-counts-are-stale 20260811 jrko
 issue allocate 318 20260812-two-argument-read-shape-bypasses-placement-and-creates-a-stray-d 20260811 jrko
 issue allocate 319 20260812-two-placement-cases-cannot-fail-and-four-guards-have-no-coverage 20260811 jrko
+issue allocate 320 20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs 20260811 jrko
+issue allocate 321 20260812-the-analyst-s-granted-read-verb-can-create-a-directory-and-index 20260811 jrko
