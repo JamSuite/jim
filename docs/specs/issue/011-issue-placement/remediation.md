@@ -62,10 +62,12 @@ plan's — `review.md` is their record and lists the five that gate closure. Do
 not read the counts below as current; they describe the set this remediation
 was scoped against.
 
-**That next round has since run and closed.** Its outcome, and everything a
-reader needs before the fourth `/jim:review`, is at the end of this file under
-*§ The review-remediation round*. `review.md`'s "five that gate closure" list is
-fully stale — all five are closed.
+**That next round has since run and closed, and a fourth `/jim:review` has run
+over its result.** Both are recorded at the end of this file — *§ The
+review-remediation round*, then *§ The fourth review*. `review.md` now holds the
+fourth review; its predecessor's per-AC evidence is preserved at commit
+`0563c42`. Every list of "what gates closure" written before those two sections
+is stale; the current tracked set is the last subsection of this file.
 
 The fix pass's 8 recorded their resolutions in commit trailers alone and were
 **backfilled** here, each marked as reconstructed and dated to the backfill
@@ -810,12 +812,13 @@ does not support.
 Each is filed with a concrete action. The remaining nineteen are tracked and do
 not gate closure.
 
-**Superseded 2026-08-12.** Four of those five are closed by the round that
-followed; only item 3, the two cross-group write paths, is still owed. That
-round's bar was set wider than this list — close the whole reviewed set bar
-`#297` — so the open set against the spec is now eight rather than twenty-seven.
-The per-issue `## Resolution` and `## Progress` sections are its record; this
-list is left standing as what was true when WP7 answered the gate.
+**Superseded 2026-08-12.** **All five are closed** by the round that followed,
+item 3 — the two cross-group write paths — included. That round's bar was set
+wider than this list: close the whole reviewed set bar `#297`. The per-issue
+`## Resolution` and `## Progress` sections are its record; this list is left
+standing as what was true when WP7 answered the gate, not as work outstanding.
+The open set against the spec is now **28**, from the fourth review — see
+*§ The tracked set*.
 
 ## Deferred
 
@@ -873,11 +876,11 @@ issue also carries what was weighed against it.
   model-produced text of a title's trust class and the narrower scope was never
   settled authorial intent. Implemented.
 
-Two forks this round *added* to the carried set, both on issues rather than
-here: `#311`'s remaining three parts (single-quoted and bare values, a strict
-mode for unknown keys, and whether resolution walks up to the project root), and
-the cross-group routing decisions on `#316` and `#314`, which are taken but not
-yet implemented.
+Two forks this round *added* to the carried set are both settled and shipped:
+`#311`'s remaining three parts (an unsupported value form now refuses; the
+walk-up is declined in favour of locate-and-refuse; a strict mode for unknown
+keys is declined with reasoning), and the cross-group routing decisions on `#316`
+and `#314`. Nothing is carried forward from this section.
 
 ## Nameref hazard
 
@@ -926,34 +929,137 @@ the alternatives weighed and rejected. Do not re-litigate them from the issue
 bodies alone — the body states the original proposal, and the correction lives in
 the `## Decision` or `## Resolution` below it.
 
-### Before the fourth `/jim:review`
+### The four things this round flagged for the next review
 
-1. **The ledger under-scopes it by an order of magnitude.** `/jim:review` builds
-   its change set from `jimledger.sh files`, which returns the build's **19
-   files**, and `metrics` reports `base_sha=f024b9e head_sha=3c1a78f commits=15`.
-   The tree is **124 commits and 106 files beyond that recorded head**. The third
-   review hit this and recorded it twice — an "Instrumentation gap" under
-   Coverage, a "Grounding gap" under Living intent — and judged alignment against
-   the **working tree**, as the omission class requires. Do the same, and say so,
-   rather than letting the numbers imply a 19-file review.
-2. **`review_fanout_cap` is 10 and the high-stakes set exceeds it.** The third
-   run dispatched **16** investigators — 13 by acceptance criterion, 3 by region
-   — on the developer's explicit authorization. Ask rather than silently capping;
-   a capped run must name the un-investigated remainder.
-3. **A re-run overwrites `review.md`** — latest snapshot wins. The third review's
-   per-AC verdicts and investigation evidence are the authority this file cites,
-   so after the fourth run they live only in git history. Read it first, and cite
-   it by commit if any of it stays load-bearing.
-4. **The completion gate is the developer's call.** The spec is held open at
-   `plan.md: approved`; the previous gate was answered `no` on the judgment that a
-   pass still surfacing two dozen follow-ons is not a tail. Present the verdict
-   and the tracked set; do not answer it.
+All four were answered by the fourth review. The ledger gap was recorded and
+worked around a third time — and is now filed rather than re-derived (`#335`).
+The fan-out ran at 21 on explicit authorization, again exceeding the cap of 10.
+The third review was read before being overwritten and is cited by commit. The
+gate was presented, not answered.
 
-### The tracked set after this round
+## The fourth review
 
-Eight follow-ons remain against the spec, **none from the review** — all predate
-it and none was in this round's bar: `#255` `#256` (from `research.md`), `#257`
-`#258` `#259` `#260` `#261` (from `plan.md`), and `#297` (from this file,
-deliberately deferred). `#258` — that `-c` does not carry placement — is worth
-reading before any further placement work; it is latent only because no
-production caller passes `-c`.
+*Run 2026-08-12 against `2860869`. Verdict `minor-drift`, its second consecutive
+— but over a tree three prior reviews had already worked.*
+
+**Coverage was the widest yet: 21 investigators and 9 living-intent judges, all
+dispatched, none undelegated.** 10 investigators by acceptance criterion, 8 by
+high-stakes region, 3 meta — test-suite integrity, resolution-note accuracy, and
+plan/architecture conformance.
+
+**Alignment improved on every axis:**
+
+| | 3rd review | 4th review |
+| :--- | :--- | :--- |
+| ACs met / drift / violated | 5 / 8 / 0 | **6 / 7 / 0** |
+| Invariant violations | 7 of 9 | **3 of 9** |
+| Contract violations | 0 | 0 |
+| Findings | 30 | 45 |
+
+Both `critical` security regressions the third review recorded are fixed and
+pinned. Both cross-group routing bypasses are closed. Of the round's own claims,
+**every one held under independent judging**: 28 cited test cases all exist, 18
+cited shas all resolve, and 60 closed issues all carry a `## Resolution`.
+
+**The count rose because the depth did.** Three of the sharpest findings needed
+two or three agents converging independently before they were visible.
+
+### What it found that four passes had not
+
+- **`index.sh:338`** — an unquoted expansion. A shared-branch filename carrying a
+  newline splits, re-globs against the *developer's own checkout*, and publishes
+  that checkout's markdown frontmatter to the shared branch as forged issue rows.
+  No gate anywhere rejects a control character in an entry name. Reached
+  independently by one investigator and two judges. `#328`.
+- **`place.sh:749-750`** — `place_direct_publish` discards `git status`'s exit
+  status, so a git failure reads as "nothing to publish": rc 0, nothing committed,
+  handle deleted, success reported. The sibling guard 145 lines earlier carries
+  the identical two lines *with* the check and a comment naming this exact failure
+  class. Found by two investigators. `#340`.
+
+### What this round itself introduced
+
+Two of the four criticals were **created by the fixes meant to close the spec**:
+
+- **`migrate.sh:144-148`** (`#336`) — the discriminator fix moved a downgrade past
+  the reservation loop its siblings sit inside. A row that degrades to
+  `skip-unmigratable` keeps its filename without reserving it; a later row is
+  assigned that name, the second `mv` overwrites the first, the retire loop
+  deletes the survivor, and the run exits 0 reporting success.
+- **`skills/spec/scripts/reconcile.sh:644-648`** (`#326`) — the routed sweep
+  correctly stopped enumerating the worktree copy, then re-added the handle's
+  entries *past* the containment guard, on the justification that `place.sh`
+  materialized them. True of the plumbing arm only.
+
+**Both fixes were proven red-first against the defect they targeted.** That is
+the lesson worth carrying: neuter-and-verify proves a fix, and says nothing about
+what the edit is now adjacent to. This is the third consecutive round where the
+failure mode was composition rather than the fix itself, and the first where
+red-first verification passed cleanly on both.
+
+### Living intent, and the blueprint fold
+
+Nine invariants sensed, **six hold**. The four the third review recorded as
+violated and this round repaired: `id-gate-before-path`,
+`placement-gate-before-git`, `insights-capability-boundary`,
+`staleness-gated-reads`. The three violated —
+`untrusted-body-never-shell`, `materialization-contained`, `atomic-index-write` —
+were all resolved **fix the code**: in each case the invariant is right and the
+code is wrong, so no rule was folded to match a defect.
+
+Two edits landed through `/jim:blueprint --from-review`:
+
+- **`single-emitter`** now records that the two-phase door publishes a content
+  diff rather than a verb-scoped one, so the create/edit separation rests on the
+  caller's discipline rather than a mechanism the door enforces. A deliberate
+  weakening, confirmed at the gate — it makes an enforcement model explicit rather
+  than implied.
+- The **`place.sh` Provides entry** declares that `begin --read` hands back a
+  usable handle at non-zero status when the index could not be regenerated, and
+  that the handle still requires an `abort`.
+
+### The contract graph lost two rows, on purpose
+
+The reconcile derives edges from `Requires` faces and is the graph's sole writer.
+The two placement rows added in the previous round — `sdlc → issue`
+(placement-door) and `blueprint → issue` (placement-read) — were hand-carried
+into a table marked *do not edit*, with no backing `Requires` entry in either
+consumer blueprint. Deriving honestly drops them: **25 edges → 23**.
+
+The dependencies are real in code; only the declarations are missing. The
+consequence is now visible rather than masked — the `place.sh` placement-door
+Provides entry is required by no mapped consumer, which the reconcile records as
+its one finding, **dead-surface = 1**. The class's stock remedy ("trim the
+entry") is wrong here. `#338` carries the right one: add the reciprocal
+`Requires` entries, after which both edges re-derive and the finding clears
+itself.
+
+## The tracked set
+
+**Twenty-eight follow-ons stand against the spec.**
+
+- **Twenty from the fourth review** — `#323`–`#343`, contiguous except `#337`.
+  Four are `critical`: `#328` and `#336` (each destroys user data), `#326` and
+  `#340`.
+- **Eight predating it** — `#255` `#256` (from `research.md`), `#257` `#258`
+  `#259` `#260` `#261` (from `plan.md`), `#297` (from this file, deliberately
+  deferred).
+
+`#337` is the migration-preview finding carried over from the previous round; it
+realized alongside this batch. No provisional ordinals remain in the collection.
+
+Three worth reading before touching anything nearby:
+
+- **`#258`** — `-c` does not carry placement. Latent only because no production
+  caller passes `-c`, and the routed citation sweep now depends on that
+  resolution.
+- **`#335`** — the ledger's change set is the build's 19 files against a 113-file
+  subject. It is not only a reporting gap: the same set drives the living-intent
+  sensor's judge selection, so a remediation touching a *new* file would leave its
+  invariants unjudged and the review would report clean coverage.
+- **`#338`** — the two undeclared contract edges, above.
+
+**The completion gate remains unanswered.** `plan.md` stays `approved`. The fact
+it turns on: alignment genuinely improved on every axis while a deeper pass found
+two defects that destroy user data, one of them freshly introduced by the round
+that was meant to be closing this out.
