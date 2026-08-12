@@ -2,8 +2,8 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-08-11"
-last_full_generate: "2026-08-11T10:49:03Z"
+updated: "2026-08-12"
+last_full_generate: "2026-08-12T01:40:54Z"
 ---
 
 # issue — blueprint
@@ -117,8 +117,9 @@ face after the platform CLIs.
 | single-emitter | Every issue file is written only through `new.sh`; no skill or agent composes an issue file by hand | high | judge |
 | untrusted-body-never-shell | Issue bodies travel only via `--body-file` temp files, copied file→file; title/label/origin scalars are YAML-encoded; no untrusted value is interpolated into shell or YAML | critical | judge |
 | id-gate-before-path | Every id passes the validator before any path composition or file read; `show` resolves only against the indexed set | critical | judge |
+| placeholder-by-position | The placement wrapper substitutes only the placeholders a caller positioned — a flag's operand, or the trailing argument it appended — never an argument matching a placeholder's text elsewhere in the argv. Forwarded caller text can look exactly like one, and rewriting it puts a run-local path into a durable identity | high | judge |
 | atomic-index-write | `INDEX.md` and issue-file writes are tmp+mv atomic; a failed run leaves the previous file untouched | medium | judge |
 | staleness-gated-reads | A read builds a current index where it can — gated on staleness in the working tree, unconditionally on a materialized copy, whose mtimes encode extraction order rather than edit history. A view served from an index that could not be rebuilt is disclosed on stderr and carries a non-zero status; a write refuses instead, so a stale index never reaches the destination | medium | judge |
-| placement-gate-before-git | The destination branch name clears a validity gate and the coordination-branch refusal before it reaches any git argument; a value that fails refuses rather than falling back to the working branch | critical | judge |
+| placement-gate-before-git | The destination branch name clears a validity gate and the coordination-branch refusal before it reaches any git argument. A configured value that fails, and a configuration read that fails, both refuse — neither falls back to the working branch, and an unresolvable setting is never read as an unset one | critical | judge |
 | materialization-contained | Every entry extracted from destination-branch content is a regular file with a plain name resolving inside the collection directory, and its bytes are read by object name, never by tree path; the first violation aborts the extraction before the wrapped command runs | critical | judge |
 | insights-capability-boundary | Insights synthesis happens only in the write-free issue-analyst subagent; the main agent reads no issue bodies during insights. The runtime enforcement rides the allowed-tools permission channel, which no mechanical check here models — judged from the prompt surface | high | judge |
