@@ -2,7 +2,7 @@
 id: 20260807-place-sh-conformance-and-hygiene-pass
 num: 269
 title: "place.sh conformance and hygiene pass"
-status: open
+status: closed
 priority: low
 labels: [issue, placement, refactor]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-07T11:43:58Z
-updated: 2026-08-07T11:43:58Z
+updated: 2026-08-12T11:40:00Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -92,3 +92,48 @@ it at all three sites, delegate the token check to `jimfile.sh valid-id`, add
 add the four missing `--end-of-options`, tighten `place_prefix`'s normalization,
 and check `place_conf`'s rc. Record the bash 4.3 floor wherever the corpus
 records its portability assumptions.
+
+## Resolution (2026-08-12)
+
+Fixed in `c250c6b`, all nine items in one pass over the file.
+
+**Two changed behavior rather than presentation.**
+
+`place_conf` discarded jimconf's exit status, so a broken plugin tree produced an
+empty value indistinguishable from an unset key — and every caller reads unset as
+a default. On `issue_placement` that default is `branch`, so an infrastructure
+failure silently stopped centralizing and landed the write on the working branch.
+Proven against the prior code rather than argued: with the resolver unreadable it
+printed `direct` at rc 0; it now refuses at rc 2 naming the key. The
+discrimination is exact — jimconf applies defaults at rc 0, so an absent config
+file or an unset key still resolves normally, and only a genuine resolver failure
+refuses.
+
+`place_prefix` stripped one leading `./` and admitted a bare `.`. Both are pinned:
+a dot segment refuses naming the setting, and `././docs/issues` normalizes and
+lands. Each goes red when its guard is neutered.
+
+**Seven were conformance.** `place_shown` adopts the corpus form
+(`tr -d '\000-\037\177' | cut -c1-512`) and now reaches the snapshot refusal and
+the graft-conflict message, which printed a branch-supplied name raw. The handle
+token clears `jimfile.sh valid-id` rather than an inline charset — that charset
+minus its length cap and its `..` rejection — and every token this script mints
+passes it unchanged, so the swap is behavior-preserving. Four git calls taking a
+derived argument gained `--end-of-options`. `place_coord_branch` lost its local
+`jim/registry` fallback, so the default lives only where jimconf declares it. The
+header no longer claims `mktree` (which appears nowhere — the tree is built
+through a scratch index because the destination must keep every path outside the
+collection as the tip holds it), documents all five verbs rather than two, marks
+`--verb` optional on a read run, names the parsing tools it actually uses, and
+records the bash floor this script raised to **4.3** by being the corpus's first
+nameref user.
+
+**The two knowing duplicates now carry the house marker.** `place_valid_branch`
+and `alloc_valid_branch` have reciprocal `SYNC(valid-branch)` comments and a
+byte-agreement fixture that fails if either drifts — the precedent `is_valid_id`
+and `is_prov_token` already set. `place_handle_root` carries a
+`SYNC(write-contained)` note recording that it is the deliberately *tighter* of
+the pair, permitting one fixed subdirectory rather than an arbitrary path, so the
+two are not interchangeable.
+
+Suite 1319 → 1322.

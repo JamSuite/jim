@@ -15,8 +15,8 @@ meets it, and what is deliberately left tracked.*
 
 ## Status
 
-**WP0–WP6 and WP8–WP14 complete; WP7 outstanding.** Thirty-six commits over
-`ae4b877..HEAD`. Suite **1284 → 1319 green**.
+**WP0–WP6 and WP8–WP15 complete; WP7 outstanding.** Thirty-nine commits over
+`ae4b877..HEAD`. Suite **1284 → 1322 green**.
 
 | WP | State | Closes |
 | :--- | :--- | :--- |
@@ -34,10 +34,11 @@ meets it, and what is deliberately left tracked.*
 | WP12 atomic writes | done | #288 |
 | WP13 read posture + emitter stdout | done | #291, #294, #277 (item 4) |
 | WP14 placeholder + capability | done | #286; #290 **part 2 only** |
+| WP15 conformance pass | done | #269 |
 | WP7 close out | **outstanding** | — |
 
-**Twenty-four issues closed by this remediation**, on top of the 8 the fix pass
-had closed — 32 of the 36 now filed against the spec, leaving **4 open**. Every
+**Twenty-five issues closed by this remediation**, on top of the 8 the fix pass
+had closed — 33 of the 36 now filed against the spec, leaving **3 open**. Every
 closed issue in the set carries a `## Resolution` section naming what shipped,
 the commit, and the case that pins it; the collection's convention is that a
 close without one is incomplete.
@@ -52,7 +53,7 @@ race; and the emitter gate shipped alongside a commit message asserting the
 opposite of the polarity it implemented. Each is linked to the issue that
 finished it, so the record reads as a chain rather than as eight closes.
 
-Two of the four stay open having been narrowed rather than deferred whole, each
+Two of the three stay open having been narrowed rather than deferred whole, each
 to the half that carries a decision, and each carrying a `## Progress` section
 saying what is done and what is left:
 
@@ -662,6 +663,49 @@ one-line note when there is nothing to analyze, so it bought nothing while
 applying pressure at the `insights-capability-boundary`'s instruction-enforced
 half. A question only the trusted party can answer belongs to that party.
 
+### WP15 — The conformance pass *(added mid-flight)*
+
+**Closes #269.** Filed `low` and read as hygiene, but two of its nine items were
+behavioral and one of those was a fail-open on the infrastructure path.
+
+**`place_conf` discarded jimconf's exit status.** A broken plugin tree then
+produced an empty value indistinguishable from an unset key — and every caller
+reads unset as a default. On `issue_placement` that default is `branch`, so an
+infrastructure failure silently stopped centralizing and put the write on the
+working branch, three lines below a comment promising no silent fallback. Proven
+against the prior code rather than argued: with the resolver unreadable it
+printed `direct` at rc 0. The discrimination is exact, which is what makes the
+fix safe — jimconf applies defaults at rc 0, so an absent config file and an
+unset key still resolve normally; only a genuine resolver failure refuses.
+
+**`place_prefix` admitted a dot segment.** `./` resolved to `.`, which names the
+repository root and would make the whole checkout the collection, and a repeated
+`./` was half-stripped into a path that read fine here and failed opaquely when
+git was asked to build a tree from it. Both are now pinned, each red when its
+guard is neutered.
+
+The remaining seven were conformance: the display sanitizer adopts the corpus
+form with its length cap and reaches the two sites that printed a
+branch-supplied name raw; the handle token clears the shared id boundary instead
+of an inline charset that was that boundary minus its length cap and its `..`
+rejection; four git calls taking a derived argument gained `--end-of-options`;
+the coordination branch lost its local default so the value lives in one place;
+and the header stopped claiming `mktree`, documented all five verbs rather than
+two, and recorded the bash floor this script raised to 4.3 by being the corpus's
+first nameref user.
+
+The two knowingly duplicated functions now carry the marker the convention's own
+precedent uses: reciprocal `SYNC` comments, and for the byte-identical pair an
+agreement fixture that fails if either drifts. `place_handle_root`'s note records
+that it is the deliberately *tighter* of its pair, so the two are not
+interchangeable — the reason extraction was declined, written where the next
+reader meets it.
+
+**Not in this package, despite the plan previously saying so:** enforcing the
+nameref *prefix* convention. #269 mentions namerefs only as the portability floor
+they raised. The enforcement is #259, which originates from this spec's plan
+rather than from a review.
+
 ### WP7 — Close out
 
 1. Full suite green, run in the background per WP0.
@@ -671,8 +715,8 @@ half. A question only the trusted party can answer belongs to that party.
    cleared both contract violations; it is stale as a prediction and is left
    standing only because a remediation should not revise its own forecast upward
    over its own work. AC 3 is now whole — #277's last item is closed. What
-   remains against the ACs is the set under *Deferred* — three issues, of which
-   two are decisions rather than defects.
+   remains against the ACs is the set under *Deferred* — two entries, one a
+   decision and one this remediation filed itself.
 3. Blueprint: `staleness-gated-reads` is amended, and the amendment is WP13's,
    not a convenience. The rule it replaced was already false before this
    remediation — a failed regeneration served a stale view at rc 0 — so the new
@@ -691,7 +735,6 @@ was taken as WP8 and is gone from the list.
 | Issue | Why deferred |
 | :--- | :--- |
 | #290 *(part 1 only)* | A text-vs-code fork: encode `--origin` or narrow the invariant. Part 2 was a defect rather than a fork and is closed under WP14. |
-| #269 (low) | `place.sh` conformance and hygiene, incl. the unenforced nameref prefix convention. |
 | `20260811-compute-checkout-dependent-index-warnings-at-read-time` | Not surfaced by a review — filed *by* this remediation, as the successor to #273. Moving the origin check out of the stored index and into the reader's view restores a signal WP10 could only stop from lying, but it changes the stored artifact for projects with no placement at all. Provisional ordinal until the host reconciles. |
 
 ## Open decisions carried forward
@@ -729,4 +772,5 @@ code, and that the flag is a declaration the emitter cannot verify.
 `_ch_`, `_sv_`, `_ld_`). **Keep it.** A nameref whose own name matches the array it
 points at resolves to itself and yields an **empty array with no error** — it cost
 two debugging rounds during the build. Nothing mechanically enforces the
-convention; that is #269.
+convention; that is #259, which originates from this spec's plan rather than
+from a review and sits outside the tracked follow-on set.

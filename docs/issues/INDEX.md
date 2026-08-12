@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 104
-- Closed: 193
+- Open: 103
+- Closed: 194
 
 ## Issues
 
@@ -273,7 +273,7 @@
 - `20260807-offline-placed-read-serves-an-empty-collection` — Offline placed read serves an empty collection · status: closed · num: 267 · priority: high · created: 2026-08-07T11:43:22Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-pin-the-nameref-prefix-convention-with-a-textual-invariant` — Pin the nameref-prefix convention with a textual invariant · status: open · num: 259 · priority: medium · created: 2026-08-07T10:59:35Z · labels: [testing, bash, refactor] · origin: docs/specs/issue/011-issue-placement/plan.md
 - `20260807-place-direct-publish-stages-without-the-worktree-containment-gat` — place_direct_publish stages without the worktree containment gate · status: closed · num: 268 · priority: medium · created: 2026-08-07T11:43:56Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260807-place-sh-conformance-and-hygiene-pass` — place.sh conformance and hygiene pass · status: open · num: 269 · priority: low · created: 2026-08-07T11:43:58Z · labels: [issue, placement, refactor] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260807-place-sh-conformance-and-hygiene-pass` — place.sh conformance and hygiene pass · status: closed · num: 269 · priority: low · created: 2026-08-07T11:43:58Z · labels: [issue, placement, refactor] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-placeholder-substitution-corrupts-issue-titles-and-durable-ids` — Placeholder substitution corrupts issue titles and durable ids · status: closed · num: 270 · priority: critical · created: 2026-08-07T11:43:20Z · labels: [issue, placement, data-integrity] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-placement-bookmark-produces-false-rewrite-alarms` — Placement bookmark produces false rewrite alarms · status: closed · num: 271 · priority: medium · created: 2026-08-07T11:43:54Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-placement-tests-one-vacuous-case-and-untested-direct-mode` — Placement tests: one vacuous case and untested direct mode · status: closed · num: 272 · priority: medium · created: 2026-08-07T11:43:58Z · labels: [testing, placement] · origin: docs/specs/issue/011-issue-placement/review.md
