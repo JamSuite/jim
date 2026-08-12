@@ -303,7 +303,7 @@
 - `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` — render.sh swallows a regeneration failure and serves a stale index · status: closed · num: 294 · priority: medium · created: 2026-08-08T18:49:43Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-rewrite-detection-absent-from-the-retry-loop-and-from-direct-mod` — Rewrite detection absent from the retry loop and from direct mode · status: closed · num: 295 · priority: medium · created: 2026-08-08T18:39:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-tests-place-sh-sits-outside-every-declared-territory` — tests/place.sh sits outside every declared territory · status: closed · num: 296 · priority: medium · created: 2026-08-08T18:40:09Z · labels: [blueprint, territory] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260811-compute-checkout-dependent-index-warnings-at-read-time` — Compute checkout-dependent index warnings at read time · status: open · num: P-20260811-compute-checkout-dependent-index-warnings-at-read-time · priority: medium · created: 2026-08-11T01:31:36Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/remediation.md
+- `20260811-compute-checkout-dependent-index-warnings-at-read-time` — Compute checkout-dependent index warnings at read time · status: open · num: 297 · priority: medium · created: 2026-08-11T01:31:36Z · labels: [issue, placement, index] · origin: docs/specs/issue/011-issue-placement/remediation.md
 
 ## Graph
 

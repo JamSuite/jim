@@ -1,6 +1,6 @@
 ---
 id: 20260811-compute-checkout-dependent-index-warnings-at-read-time
-num: P-20260811-compute-checkout-dependent-index-warnings-at-read-time
+num: 297
 title: "Compute checkout-dependent index warnings at read time"
 status: open
 priority: medium
