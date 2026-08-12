@@ -3569,6 +3569,77 @@ case_issues_placement_list_typo_does_not_litter() {
   assert_match "routed rather than read as a collection" 'unknown filter' "$ERR"
 }
 
+# AC: the two-argument shape is classified the same way. `dir_given` answered on
+# argument *count* for every shape but `list`'s lone one, so
+# `/jim:issue list open high` — two valid filters, which the skill substitutes
+# whole into `render.sh list` — declined routing, adopted `high` as the
+# collection, had a directory created for it in the checkout and served an empty
+# view at rc 0 while the destination went unread (spec AC #5).
+case_issues_placement_two_filters_do_not_bypass_placement() {
+  local repo body
+  repo="$(placement_repo issues_place_two_filters jim/issues)"
+  body="$(fixture issues_place_two_filters_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_RENDER" list open high
+  assert_eq "no directory was created for the second filter" "no" \
+    "$([[ -e "$repo/high" ]] && echo yes || echo no)"
+  assert_eq "and it did not serve an empty view as success" "no" \
+    "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_match "it says what is wrong" 'high' "$ERR"
+}
+
+# AC: a read verb never brings a collection into being. index.sh mkdir -p's
+# whatever directory it is handed, and every render verb regenerates through it,
+# so a mistyped or steered argument had a directory and an INDEX.md created for
+# it — by a read — in the developer's checkout. That is also the capability the
+# analyst's agent definition states is absent rather than forbidden.
+case_render_read_verbs_create_no_directory() {
+  local dir
+  dir=$(empty_dir render_no_create)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+priority: low
+created: 2026-01-01T00:00:00Z'
+  # A collection the caller *named* that is not there is a mistake, and is
+  # refused rather than brought into being.
+  run_render stats "$dir/nope-stats"
+  assert_eq    "stats refuses"       "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "and created nothing" "no" \
+    "$([[ -e "$dir/nope-stats" ]] && echo yes || echo no)"
+  run_render show 1 "$dir/nope-show"
+  assert_eq "show refuses"        "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq "and created nothing" "no" \
+    "$([[ -e "$dir/nope-show" ]] && echo yes || echo no)"
+  run_render insights-graph "$dir/nope-graph"
+  assert_eq "insights-graph refuses" "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq "and created nothing"    "no" \
+    "$([[ -e "$dir/nope-graph" ]] && echo yes || echo no)"
+  # And a named collection that does exist still reads normally. The header
+  # names the directory served, which is what pins that *this* one was used —
+  # asserting only on a row would match whatever the ambient config resolves to.
+  run_render list "$dir"
+  assert_exit  "list rc"                 0      "$RC"
+  assert_match "serves the named collection" "$dir" "$OUT"
+  assert_match "and its issue"               '#1'   "$OUT"
+}
+
+# AC: a collection resolved from config that does not exist yet is an ordinary
+# empty project, not a mistake — so it reads as empty rather than refusing, and
+# still nothing is created. This is the other side of the same guard: refusing
+# here would break every project before its first filing.
+case_render_unconfigured_collection_reads_as_empty() {
+  local dir
+  dir=$(empty_dir render_empty_project)
+  printf 'issues_path = "%s/docs/issues"\n' "$dir" > "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT_RENDER" list 2>"$TMP_BASE/.err")"; RC=$?
+  assert_exit "reads rather than refusing" 0 "$RC"
+  assert_eq "and created no collection" "no" \
+    "$([[ -e "$dir/docs/issues" ]] && echo yes || echo no)"
+}
+
 # AC: the same holds with no placement configured at all — the stray directory
 # is what a read verb must never create, whichever branch the collection is on.
 case_issues_list_typo_refuses_instead_of_creating_a_dir() {

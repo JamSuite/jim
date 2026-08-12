@@ -107,6 +107,14 @@ index_is_stale() {
 #   materialized copy, whose path is not the one the caller asked about.
 ensure_index() {
   local dir="$1"
+  # A read never brings a collection into being. `index.sh` mkdir -p's whatever
+  # directory it is handed and every verb here regenerates through this one
+  # function, so without this a mistyped filter or a steered argument got a
+  # directory and an INDEX.md created for it, by a read, in the developer's
+  # checkout. It is also the capability the analyst's agent definition states is
+  # absent rather than merely forbidden — and an absent collection has nothing to
+  # serve, which each caller already handles as "no issues".
+  [[ -d "$dir" ]] || return 0
   index_is_stale "$dir" "$dir/$INDEX_FILENAME" || return 0
   if [[ -x "$INDEX_SCRIPT" || -r "$INDEX_SCRIPT" ]]; then
     bash "$INDEX_SCRIPT" "$dir" >/dev/null 2>&1 && return 0
@@ -205,8 +213,20 @@ HELP
 
 # ─── Section: stats ──────────────────────────────────────────────────────────
 
+# named_dir_exists <arg> — refuse a collection the caller *named* that is not
+#   there. One resolved from config that does not exist is an ordinary empty
+#   project and still reads as one; a name handed in that is not a directory is
+#   a mistake, and reading it as a collection is how a read verb came to create
+#   one in the developer's checkout.
+named_dir_exists() {
+  [[ -z "${1:-}" || -d "$1" ]] && return 0
+  echo "error: '$1' is not an existing collection directory" >&2
+  return 1
+}
+
 cmd_stats() {
   local dir
+  named_dir_exists "${1:-}" || return 1
   dir="$(resolve_dir "${1:-}")"
   if [[ -z "$dir" ]]; then
     echo "Issue Collection — (unconfigured)"
@@ -358,26 +378,38 @@ format_row() {
 
 cmd_list() {
   local filter="" dir=""
-  if [[ $# -eq 2 ]]; then
-    filter="$1"; dir="$2"
-  elif [[ $# -eq 1 ]]; then
-    if is_filter_token "$1"; then
-      filter="$1"
-    elif [[ -d "$1" ]]; then
-      dir="$1"
+  # Read by shape, not by count. A collection is the trailing argument and only
+  # when it is a directory — which is the form the placement re-exec appends,
+  # and the form a caller naming one uses. Everything before it has to be a
+  # filter: counting instead let `list open high` read `high` as a collection,
+  # decline routing, and have a directory created for it by a read verb.
+  if (( $# )) && [[ -d "${!#}" ]]; then
+    dir="${!#}"
+    set -- "${@:1:$#-1}"
+  fi
+  # What a leftover token can have meant depends on whether the collection is
+  # already settled. With a trailing directory taken it can only have been a
+  # filter; without one, both readings were open and the message says so —
+  # which is the difference between "you mistyped a filter" and "there is no
+  # such collection", two different answers to two different questions.
+  local stray=""
+  (( $# > 1 )) && stray="$2"
+  (( $# == 1 )) && ! is_filter_token "$1" && stray="$1"
+  if [[ -n "$stray" ]]; then
+    if [[ -n "$dir" ]]; then
+      echo "error: unknown filter '$stray'" \
+           "(valid: ${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]})" >&2
     else
       # Neither a filter nor a collection. Taking it for a directory anyway is
       # how a mistyped filter got one created for it, by a read verb, in the
       # developer's checkout.
-      echo "error: '$1' is neither a filter (${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]})" \
-           "nor an existing directory" >&2
-      return 1
+      echo "error: '$stray' is neither a filter" \
+           "(${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]}) nor an existing directory" >&2
     fi
-  fi
-  if [[ -n "$filter" ]] && ! is_filter_token "$filter"; then
-    echo "error: unknown filter '$filter' (valid: ${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]})" >&2
     return 1
   fi
+  # Only a token that already cleared is_filter_token reaches here.
+  (( $# == 1 )) && filter="$1"
   dir="$(resolve_dir "$dir")"
   ensure_index "$dir"
   local index_file="$dir/$INDEX_FILENAME"
@@ -564,6 +596,7 @@ cmd_show() {
     echo "error: 'show' requires an id (number, slug, or prefix)" >&2
     return 2
   fi
+  named_dir_exists "$dir" || return 1
   dir="$(resolve_dir "$dir")"
   ensure_index "$dir"
   local index_file="$dir/$INDEX_FILENAME"
@@ -621,6 +654,7 @@ cmd_show() {
 # that the graph it is told to trust may be behind the collection.
 cmd_insights_graph() {
   local dir
+  named_dir_exists "${1:-}" || return 1
   dir="$(resolve_dir "${1:-}")"
   [[ -z "$dir" ]] && return 0
   ensure_index "$dir"
@@ -669,15 +703,23 @@ cmd_insights_graph() {
 #   it is also what keeps the placement re-exec from recursing.
 dir_given() {
   local sub="$1"; shift
+  # In every shape, an argument is a directory only if it *is* one. Answering on
+  # argument count alone let a second filter token — `list open high`, which the
+  # skill substitutes whole — read as a collection: routing was declined, a
+  # directory of that name was created in the checkout by a read verb, and the
+  # destination went unread behind an empty view at rc 0.
+  #
+  # `stats` and `show` stay on count. Their operand is a directory or it is
+  # nothing — there is no filter to confuse it with — so a bad one is a usage
+  # error, and each verb refuses it. Routing instead would be worse than the
+  # bypass: the re-exec appends the real collection as a trailing argument, and
+  # those verbs read their directory positionally, so the bad token would bind
+  # as the collection and the real one be ignored.
   case "$sub" in
     stats|insights-graph) (( $# >= 1 )) ;;
     show)                 (( $# >= 2 )) ;;
     list)
-      (( $# >= 2 )) && return 0
-      # A lone argument is a directory only if it is one. Reading any non-filter
-      # token as a directory means a typo opts the run out of placement and then
-      # gets a directory of that name created for it, in the developer's
-      # checkout, by a read verb.
+      (( $# >= 2 )) && [[ -d "$2" ]] && return 0
       (( $# == 1 )) && ! is_filter_token "$1" && [[ -d "$1" ]]
       ;;
     *) return 1 ;;
