@@ -562,6 +562,39 @@ case_place_refuses_non_regular_tree_entry() {
   assert_match "explains"  'link\.md' "$ERR"
 }
 
+# AC: an entry whose name begins with '-' is refused on its own account. It is
+# plain, relpath-valid and resolves inside the collection, so every other gate
+# admits it — and it goes on to be a bare argument to the tools that read the
+# collection back.
+case_place_refuses_a_leading_dash_tree_entry() {
+  local repo
+  repo="$(place_repo place_dash_entry 'issue_placement = "jim/issues"')"
+  place_seed_collection "$repo" jim/issues docs/issues '-rf.md=payload'
+  assert_exit "fixture seeded" 0 "$?"
+  run_place_in "$repo" run --read --verb reindex -- sh -c 'true'
+  assert_exit  "rc"                 2         "$RC"
+  assert_match "names the entry"    '\-rf\.md' "$ERR"
+  assert_match "and the dash rule"  "begin with '-'" "$ERR"
+}
+
+# AC: the collection the *wrapped command* leaves behind clears the same
+# regular-files bar the destination's own content does. Materialization gates
+# what comes in; this gates what goes out, and it is the only thing standing
+# between a symlink the command created and a published tree entry.
+case_place_refuses_a_symlink_the_command_created() {
+  local repo
+  repo="$(place_repo place_out_symlink 'issue_placement = "jim/issues"')"
+  # A *live* symlink: it satisfies -f, so only the -L half of the guard refuses
+  # it. A dangling one would be caught either way and would not pin this.
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "real\n" > "$1/20260101-a.md"; ln -s 20260101-a.md "$1/20260101-b.md"' \
+    _ '{}'
+  assert_eq    "refuses"          "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_match "names the entry"  '20260101-b\.md' "$ERR"
+  assert_eq "and nothing was published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
 # AC: the containment gate refuses through the two-phase door too, and says so
 # with the same status. `begin`'s contract is "<token><TAB><dir>" on stdout, so a
 # refusal reported as success hands the caller an empty dir — an agent following
@@ -834,6 +867,55 @@ case_place_non_contention_rejection_is_named_as_such() {
   assert_match "says it is not contention" 'not contention' "$ERR"
   assert_eq "and nothing reached the remote" "" \
     "$(git -C "$bare" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# place_reject_and_advance <bare> <branch>
+#   A remote that rejects every push *and* moves the branch on each attempt, so
+#   every re-read finds a genuinely different tip. That is what keeps the run in
+#   the retry loop rather than diagnosing a fixed rejection — contention, five
+#   times over.
+place_reject_and_advance() {
+  local bare="$1" branch="$2"
+  cat > "$bare/hooks/pre-receive" <<HOOK
+#!/bin/sh
+# A push hook runs inside git's object quarantine, where ref updates are
+# forbidden outright and new objects are discarded when the push is refused.
+# Leaving it is what lets this hook move the branch it is about to reject.
+unset GIT_QUARANTINE_PATH GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+old=\$(git rev-parse --verify --quiet "refs/heads/$branch") || exit 1
+n=\$(cat "\$GIT_DIR/attempts" 2>/dev/null || echo 0)
+n=\$((n + 1))
+echo "\$n" > "\$GIT_DIR/attempts"
+new=\$(git commit-tree "\$old^{tree}" -p "\$old" -m "advance \$n") || exit 1
+git update-ref "refs/heads/$branch" "\$new" "\$old"
+exit 1
+HOOK
+  chmod +x "$bare/hooks/pre-receive"
+}
+
+# AC: a destination that keeps moving exhausts the attempt budget rather than
+# retrying forever, and says the mutation is unpublished rather than lost — the
+# one exit from the loop no case drives, since every race fixture loses exactly
+# one race (spec AC #7's "no mutation is ever silently dropped").
+case_place_exhausted_attempts_reports_unpublished() {
+  local bare clone
+  bare="$(place_bare place_exhaust_bare)"
+  clone="$(place_clone "$bare" place_exhaust 'issue_placement = "jim/issues"')"
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "alpha\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "seed landed" 0 "$RC"
+  git -C "$bare" config user.name  "Remote"
+  git -C "$bare" config user.email "remote@example.com"
+  place_reject_and_advance "$bare" jim/issues
+  run_place_in "$clone" run --verb file -- \
+    sh -c 'printf "mine\n" > "$1/20260101-b.md"' _ '{}'
+  assert_exit  "rc"                       3             "$RC"
+  assert_match "says the branch kept moving" 'kept moving' "$ERR"
+  assert_match "and that nothing is lost"    'not lost'    "$ERR"
+  assert_eq "the mutation is not at the destination" "" \
+    "$(git -C "$bare" cat-file -p refs/heads/jim/issues:docs/issues/20260101-b.md 2>/dev/null)"
+  assert_eq "and the remote saw every attempt" "5" \
+    "$(cat "$bare/attempts" 2>/dev/null)"
 }
 
 # AC: a remote that drops out between attempts leaves the run on the local tier,
@@ -1463,6 +1545,23 @@ case_place_offline_write_does_not_advance_the_bookmark() {
     "$published" "$(place_bookmark "$clone" jim/issues)"
 }
 
+# AC: with no remote configured at all the local branch *is* the destination, so
+# a publish that reached it is one the bookmark records. The tier is `local` on
+# that path, so testing the tier alone would skip the advance — and rewrite
+# detection would then be silently inert for every remote-less centralized repo
+# (spec AC #12).
+case_place_remoteless_publish_advances_the_bookmark() {
+  local repo published
+  repo="$(place_repo place_bm_noremote 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
+  assert_exit "rc" 0 "$RC"
+  published="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_nonempty "the write landed"   "$published"
+  assert_eq "the bookmark records it"  "$published" \
+    "$(place_bookmark "$repo" jim/issues)"
+}
+
 # A run that could not reach the destination's owner learned nothing about it,
 # so it may not rewind the bookmark to its own state either. Rewinding is worse
 # than noisy: a force-push built on the rewound commit is then an ordinary
@@ -1806,8 +1905,11 @@ case_place_direct_read_handle_cannot_commit() {
   assert_exit "begin rc" 0 "$RC"
   token="${OUT%%$'\t'*}"
   run_place_in "$repo" commit "$token" --verb close --id 20260101-a
-  assert_exit     "refuses"  2 "$RC"
-  assert_nonempty "explains" "$ERR"
+  assert_exit  "refuses"                2                  "$RC"
+  # Pinned to the read-handle arm's own words: with that arm deleted the literal
+  # falls through to the handle lookup, which refuses at the same rc 2 with a
+  # message about a handle it cannot find.
+  assert_match "because it is read-only" 'opened read-only' "$ERR"
   assert_eq "nothing published" "$head_before" \
     "$(git -C "$repo" rev-parse --verify HEAD)"
   assert_eq "the note is still the developer's own" "HALF-FINISHED PRIVATE NOTE" \
@@ -1965,9 +2067,12 @@ case_place_commit_unknown_token_refuses() {
   run_place_in "$repo" commit "handle.deadbeef" --verb close
   assert_exit     "rc"       2      "$RC"
   assert_nonempty "explains" "$ERR"
+  # Pinned to the charset gate's own words. A bare "rc 2 and something on
+  # stderr" passes with that gate deleted, because the next guard down refuses
+  # a handle it cannot find in exactly the same shape.
   run_place_in "$repo" commit "../../escape" --verb close
-  assert_exit     "traversal refused" 2 "$RC"
-  assert_nonempty "explains"          "$ERR"
+  assert_exit  "traversal refused"      2                         "$RC"
+  assert_match "at the token boundary" 'malformed handle token'   "$ERR"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
