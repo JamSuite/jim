@@ -2,7 +2,7 @@
 id: 20260812-index-sh-fails-open-on-a-config-resolve-and-caps-no-display-valu
 num: 310
 title: "index.sh fails open on a config resolve and caps no display value"
-status: open
+status: closed
 priority: medium
 labels: [issue, index]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:42:08Z
-updated: 2026-08-12T03:42:08Z
+updated: 2026-08-12T09:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -60,3 +60,26 @@ house sanitizer.
 Post-build review of `issue/011`; found by the AC 11, AC 1/2 and conventions
 investigators independently. The placement gate itself was made fail-closed
 during the remediation; this second reader was not brought along.
+
+## Resolution (2026-08-12)
+
+Fixed in `39661e1`. The resolver's exit status now decides, and a failure refuses
+at rc 2 naming the key rather than defaulting to `branch` — which *runs* the
+origin lint, so a failed resolve had the published index claim a check it never
+performed. The display value adopts the capped corpus sanitizer, which is now the
+same `row_safe` every row value clears, plus the backtick stripping the code span
+it sits in requires.
+
+This depended on `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller`:
+until the resolver returned a status, checking one was inert.
+
+Pinned by `case_index_refuses_when_the_placement_resolve_fails` and
+`case_index_caps_the_displayed_placement_name`. The first passes the directory
+explicitly on purpose — with it resolved from config, `resolve_dir` refuses first
+and the case would pass without exercising this check at all, which is how the
+first version of it went green under neutering.
+
+The finding's third observation stands and is not taken here: this read applies
+neither `place_valid_branch` nor the coordination-branch refusal. The value is
+display-only on this path and the gate lives in `place.sh`; giving `index.sh` its
+own copy would duplicate a boundary rather than move it.

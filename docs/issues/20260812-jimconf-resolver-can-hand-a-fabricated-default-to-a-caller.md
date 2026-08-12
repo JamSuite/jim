@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:42:09Z
-updated: 2026-08-12T03:42:09Z
+updated: 2026-08-12T09:00:02Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -59,3 +59,31 @@ whether a walk-up to the project root is wanted.
 ## Origin
 
 Post-build review of `issue/011`, AC 10.
+
+## Progress (2026-08-12)
+
+**The unreadable/unparseable half is fixed** in `39661e1` — the half the issue
+states unconditionally. A config that is genuinely absent still resolves to the
+documented default at rc 0, which is the zero-config path; a path that exists but
+is a directory, a dangling symlink, or unreadable now reports a resolver failure
+instead of an unset key, and `resolve` forwards it rather than flattening it into
+"no override". A key simply not present in the file is still no override — grep's
+"no match" must not read as a failure, or every unset key would refuse.
+
+Pinned by `case_jimconf_unreadable_config_refuses` and
+`case_jimconf_non_regular_config_refuses`, with
+`case_jimconf_absent_config_still_defaults` holding the zero-config path in
+place. The first is proven to go red with the readability check removed.
+
+**Three parts remain open, and each is a decision rather than a fix** — the
+issue's own proposed action says "consider" and "decide" for two of them:
+
+1. **Single-quoted and bare values.** The grammar matches only `= "…"`, so
+   `key = 'v'` or `key = 3` silently become the default. Supporting them widens
+   a parser that is deliberately grep-and-sed.
+2. **A strict mode for unknown keys in the file.** A typo'd key is silently
+   ignored. Refusing one would break every project carrying an extra or
+   commented key.
+3. **Walk-up to the project root.** `./jimconf.toml` with no walk-up means a run
+   started from a subdirectory sees no config at all — arguably the highest-value
+   of the three, and the largest change in resolution semantics.

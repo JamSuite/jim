@@ -2,7 +2,7 @@
 id: 20260812-index-md-rows-are-forgeable-by-two-independent-routes
 num: 309
 title: "INDEX.md rows are forgeable by two independent routes"
-status: open
+status: closed
 priority: high
 labels: [issue, security, index]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T03:41:37Z
-updated: 2026-08-12T03:41:37Z
+updated: 2026-08-12T09:00:02Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -71,3 +71,36 @@ decision.
 
 Post-build review of `issue/011`; found by the trust-boundary investigator and
 the `untrusted-body-never-shell` judge. Both routes are pre-existing.
+
+## Resolution (2026-08-12)
+
+Fixed in `39661e1`.
+
+**Route 1** is broken at the writer, which is where it makes the artifact itself
+unforgeable rather than fixing one reader: `row_safe` strips the separator's own
+character from every value a row carries, so the row's shape is a property of
+this writer and not of its inputs. Parsing positionally in `render.sh` was
+considered and not taken — it would leave the forged segment in the committed
+index and cover only readers that go through that script, while the analyst reads
+`INDEX.md` directly.
+
+The middle dot is removed rather than the three-character sequence, so no
+arrangement of spaces around it can reconstitute a separator. The removal is by
+`sed` rather than `tr -d`, which under `LC_ALL=C` would delete each byte of the
+two-byte encoding wherever it occurred and corrupt any other character sharing
+one.
+
+**Route 2** is independent and closed by emitting the warnings section with
+`printf '%s'`; the accumulator carries real newlines instead of the two-character
+escapes `%b` was expanding.
+
+Pinned by `case_index_row_values_cannot_forge_a_later_key` and
+`case_index_warnings_do_not_expand_escapes`, both proven to go red with their
+guard removed. Both assert on what a *reader* resolves, not on whether the
+attacker's text is present: the text is the issue's own field and is not the
+writer's to censor — what must not survive is its ability to form a pair or open
+a row.
+
+Note the encode-or-narrow fork this issue points at was settled separately, and
+does not close either route: the row is built from the *parsed* value, so ` · `
+survives any YAML quoting.

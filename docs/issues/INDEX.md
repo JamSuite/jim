@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 112
-- Closed: 211
+- Open: 110
+- Closed: 213
 
 ## Issues
 
@@ -315,8 +315,8 @@
 - `20260812-direct-arm-raises-a-false-rewrite-alarm-on-a-stale-checkout` — Direct arm raises a false rewrite alarm on a stale checkout · status: closed · num: 306 · priority: medium · created: 2026-08-12T03:41:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-direct-arm-reports-an-unreachable-remote-as-divergence` — Direct arm reports an unreachable remote as divergence · status: closed · num: 307 · priority: medium · created: 2026-08-12T03:41:54Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-dirty-guard-is-fail-open-on-any-git-failure` — Dirty guard is fail-open on any git failure · status: closed · num: 308 · priority: medium · created: 2026-08-12T03:41:52Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-index-md-rows-are-forgeable-by-two-independent-routes` — INDEX.md rows are forgeable by two independent routes · status: open · num: 309 · priority: high · created: 2026-08-12T03:41:37Z · labels: [issue, security, index] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-index-sh-fails-open-on-a-config-resolve-and-caps-no-display-valu` — index.sh fails open on a config resolve and caps no display value · status: open · num: 310 · priority: medium · created: 2026-08-12T03:42:08Z · labels: [issue, index] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-index-md-rows-are-forgeable-by-two-independent-routes` — INDEX.md rows are forgeable by two independent routes · status: closed · num: 309 · priority: high · created: 2026-08-12T03:41:37Z · labels: [issue, security, index] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-index-sh-fails-open-on-a-config-resolve-and-caps-no-display-valu` — index.sh fails open on a config resolve and caps no display value · status: closed · num: 310 · priority: medium · created: 2026-08-12T03:42:08Z · labels: [issue, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller` — jimconf resolver can hand a fabricated default to a caller · status: open · num: 311 · priority: medium · created: 2026-08-12T03:42:09Z · labels: [conf, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-last-seen-state-prefers-a-ref-only-a-publish-advances` — Last-seen state prefers a ref only a publish advances · status: closed · num: 312 · priority: high · created: 2026-08-12T03:41:35Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-migrate-sh-failure-handler-is-not-rename-chain-aware` — migrate.sh failure handler is not rename-chain aware · status: open · num: 313 · priority: medium · created: 2026-08-12T03:41:47Z · labels: [issue, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
