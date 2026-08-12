@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 105
-- Closed: 218
+- Open: 103
+- Closed: 220
 
 ## Issues
 
@@ -57,7 +57,7 @@
 - `20260704-strengthen-commit-map-containment-or-amend-dd-4` — Strengthen commit-map containment or amend DD 4 · status: closed · num: 38 · priority: low · created: 2026-07-04T00:22:58Z · labels: [security, review] · origin: docs/specs/blueprint/005-context-map/review.md
 - `20260704-surface-face-freshness-in-the-reconcile-report` — Surface face freshness in the reconcile report · status: open · num: 44 · priority: low · created: 2026-07-04T09:23:24Z · labels: [000-blueprint, contract-graph] · origin: docs/specs/blueprint/006-contract-graph/plan.md
 - `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: closed · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/blueprint/005-context-map/review.md
-- `20260704-update-issue-skill-md-7a-surfacing-skills-enumeration` — Update issue SKILL.md 7a surfacing-skills enumeration · status: open · num: 45 · priority: low · created: 2026-07-04T11:07:13Z · labels: [issue, docs] · origin: docs/specs/blueprint/006-contract-graph/review.md
+- `20260704-update-issue-skill-md-7a-surfacing-skills-enumeration` — Update issue SKILL.md 7a surfacing-skills enumeration · status: closed · num: 45 · priority: low · created: 2026-07-04T11:07:13Z · labels: [issue, docs] · origin: docs/specs/blueprint/006-contract-graph/review.md
 - `20260705-allowed-tools-exactness-drift-in-issue-and-meta-matrix-skills` — allowed-tools exactness drift in issue, partition, and meta-matrix skills · status: open · num: 52 · priority: critical · created: 2026-07-05T00:28:45Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-assert-edge-outcome-evidence-is-location-only-in-contracts-check` — Assert edge-outcome evidence is location-only in contracts-check tests · status: closed · num: 59 · priority: medium · created: 2026-07-05T22:44:11Z · labels: [verify, contract-graph, test] · origin: docs/specs/blueprint/009-verify-contracts/review.md
 - `20260705-guard-the-contracts-check-edge-loop-against-self-edges` — Guard the contracts-check edge loop against self-edges · status: closed · num: 61 · priority: low · created: 2026-07-05T22:44:13Z · labels: [verify, contract-graph] · origin: docs/specs/blueprint/009-verify-contracts/review.md
@@ -284,7 +284,7 @@
 - `20260807-regenerate-the-index-on-placed-reads-instead-of-touching-it` — Regenerate the index on placed reads instead of touching it · status: closed · num: 276 · priority: high · created: 2026-08-07T11:43:26Z · labels: [issue, placement, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-routing-argument-classification-defects-in-the-entry-scripts` — Routing argument classification defects in the entry scripts · status: closed · num: 277 · priority: medium · created: 2026-08-07T11:43:55Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260807-test-suite-wall-clock-exceeds-a-single-foreground-run` — Test suite wall-clock exceeds a single foreground run · status: open · num: 261 · priority: low · created: 2026-08-07T10:59:37Z · labels: [testing, performance] · origin: docs/specs/issue/011-issue-placement/plan.md
-- `20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag` — Auto-file scrub gate is fail-open on a forgotten flag · status: open · num: 278 · priority: high · created: 2026-08-08T18:39:29Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag` — Auto-file scrub gate is fail-open on a forgotten flag · status: closed · num: 278 · priority: high · created: 2026-08-08T18:39:29Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-blueprint-emitter-face-omits-the-auto-flag-and-exit-code-4` — Blueprint emitter face omits the auto flag and exit code 4 · status: closed · num: 279 · priority: medium · created: 2026-08-08T18:49:44Z · labels: [blueprint, contract] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-cmd-begin-flattens-a-containment-refusal-to-an-io-failure` — cmd_begin flattens a containment refusal to an IO failure · status: closed · num: 280 · priority: low · created: 2026-08-08T18:49:45Z · labels: [issue, invariant] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260808-commit-direct-publishes-uncommitted-work-with-no-dirty-guard` — commit direct publishes uncommitted work with no dirty guard · status: closed · num: 281 · priority: medium · created: 2026-08-08T18:39:49Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md

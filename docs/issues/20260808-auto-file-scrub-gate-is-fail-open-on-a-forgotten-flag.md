@@ -2,7 +2,7 @@
 id: 20260808-auto-file-scrub-gate-is-fail-open-on-a-forgotten-flag
 num: 278
 title: "Auto-file scrub gate is fail-open on a forgotten flag"
-status: open
+status: closed
 priority: high
 labels: [issue, placement, security]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-08T18:39:29Z
-updated: 2026-08-12T09:45:03Z
+updated: 2026-08-12T19:49:07Z
 origin: docs/specs/issue/011-issue-placement/review.md
 ---
 
@@ -112,3 +112,44 @@ is unchanged.
 Cost is the same either way: twelve call sites, ten of them prose.
 
 **Not yet implemented.** This records the decision so it is not re-opened.
+
+## Resolution (2026-08-12)
+
+Implemented in `e7982b7`, as decided.
+
+**The emitter.** `new.sh` gains `--reviewed` alongside `--auto`, and inside the
+routing condition requires **exactly one**: neither is rc **2** naming the
+destination and both remedies, both is rc **2** naming the contradiction. rc 4
+keeps its old meaning — an acknowledged-placement redirect for a declared
+`--auto` batch — and the header now distinguishes the two, since one has a
+remedy (show the batch, file it `--reviewed`) and the other is a caller defect
+with no remedy but to say which kind of batch this is.
+
+Scoping to `route` is what keeps the default path literally unchanged: with no
+placement configured, both flags are inert and a filing that declares nothing
+still works. Pinned by `case_issues_declaration_is_not_required_by_default`.
+
+**The call sites.** Every consumer's interactive path now declares `--reviewed`,
+including `/jim:issue add` — step 5's confirm-or-edit *is* the review — and the
+two consumers with no quiet path at all, `/jim:partition` and `/jim:blueprint`,
+whose filings are always the reviewed case. The blueprint calls live in
+`references/`, not in its `SKILL.md`, which is why a SKILL.md-scoped sweep never
+saw them.
+
+**The binding.** `tests/docsurfaces.sh` gains
+`case_docsurfaces_interactive_paths_declare_reviewed`, swept over the emitter
+grant rather than over a list, so a consumer added later inherits the check. The
+existing `--auto` half is unchanged.
+
+Pinned by `case_issues_placement_filing_without_a_declaration_refuses` and
+`case_issues_placement_contradictory_declarations_refuse`. The first is proven
+red with the gate neutered, and reproduces this issue exactly: the filing
+publishes at rc 0 to `jim/issues` and prints a path. Seventeen pre-existing
+placement fixtures filed with no declaration and had to be updated — that count
+is the honest measure of how reachable the fail-open was.
+
+**Correction to this issue's own text.** It says the gate "is satisfied *today*"
+because all nine consumers pass the flag, and treats the polarity as
+documentation-only. That was true of the nine SKILL.md quiet paths and false of
+the surface as a whole: `/jim:blueprint` files through the same emitter and
+appears in no roster this issue or `#317` consulted.
