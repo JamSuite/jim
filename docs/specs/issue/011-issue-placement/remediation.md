@@ -48,13 +48,19 @@ not a claim that the feature is done.
 | WP14 placeholder + capability | done | #286; #290 **part 2 only** |
 | WP15 conformance pass | done | #269 |
 | WP16 declare two rules | done | — |
-| WP7 close out | **outstanding** | — |
+| WP7 close out | done | — |
 
 **Twenty-five issues closed by this remediation**, on top of the 8 the fix pass
-had closed — 33 of the 36 now filed against the spec, leaving **3 open**. Every
-closed issue in the set carries a `## Resolution` section naming what shipped,
-the commit, and the case that pins it; the collection's convention is that a
-close without one is incomplete.
+had closed — 33 of the 36 then filed against the spec, leaving **3 open** when
+the review ran. Every closed issue in that set carries a `## Resolution` section
+naming what shipped, the commit, and the case that pins it; the collection's
+convention is that a close without one is incomplete.
+
+**The review then filed 24 more** (#298–#319 plus two realized later), so the
+spec's open set is **27**, not 3. Those are the next round's subject, not this
+plan's — `review.md` is their record and lists the five that gate closure. Do
+not read the counts below as current; they describe the set this remediation
+was scoped against.
 
 The fix pass's 8 recorded their resolutions in commit trailers alone and were
 **backfilled** here, each marked as reconstructed and dated to the backfill
@@ -66,9 +72,9 @@ race; and the emitter gate shipped alongside a commit message asserting the
 opposite of the polarity it implemented. Each is linked to the issue that
 finished it, so the record reads as a chain rather than as eight closes.
 
-Two of the three stay open having been narrowed rather than deferred whole, each
-to the half that carries a decision, and each carrying a `## Progress` section
-saying what is done and what is left:
+Two of those three stayed open having been narrowed rather than deferred whole,
+each to the half that carries a decision, and each carrying a `## Progress`
+section saying what is done and what is left:
 
 - **#278** — the three false-prose sites are corrected; the polarity is not
   taken.
@@ -93,9 +99,8 @@ not inherit them:
   structural rather than scattered across each advance, and the rewind is now
   pinned by a case that goes silent when it is reintroduced.
 
-WP7 needs `/jim:review` re-run, which fans out to investigator subagents — the
-developer's call to invoke. The completion gate after it is a human decision by
-construction.
+WP7 ran. Its outcome — the verdict, the fan-out, and the answered completion
+gate — is recorded in its own section below.
 
 ## Context
 
@@ -114,8 +119,11 @@ pass and **27 stood open** when this plan was written. The plan sits at
 `complete`. *(Current counts are under **Status**; this paragraph describes the
 starting position.)*
 
-The full record is `review.md` (authoritative — it was overwritten by the second
-pass) and `docs/notes/20260807-issue-placement-handoff.md`.
+`review.md` is the authoritative record and now holds the **third** review, which
+supersedes the two described above. It carries the per-AC verdicts, the
+investigation evidence, the living-intent outcomes, and the five items that gate
+closure. Read it before this plan for anything about current state; read this
+plan for why the remediation did what it did.
 
 ### Why the last pass produced new defects
 
