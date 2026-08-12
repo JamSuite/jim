@@ -3,7 +3,7 @@ title: "issue — blueprint"
 group: "issue"
 kind: blueprint
 updated: "2026-08-12"
-last_full_generate: "2026-08-12T01:40:54Z"
+last_full_generate: "2026-08-12T20:31:41Z"
 ---
 
 # issue — blueprint
@@ -42,12 +42,14 @@ face after the platform CLIs.
   nothing on stdout and reports the line on stderr marked unpublished, so a
   printed path is one a reader can open. The identity it names is spent either
   way, since the allocator is append-only. A
-  caller declares an unreviewed batch with `--auto`; under a placement the
-  project has not acknowledged with `issue_placement_ack`, the emitter then
-  exits **4** having written nothing — a redirection to the interactive path
-  rather than a failure. The flag is a declaration the emitter cannot verify:
-  absent, it reads as reviewed, so a caller that omits it on a quiet path
-  publishes rather than degrading.
+  caller declares the batch with exactly one of `--auto` (no human reviewed it)
+  or `--reviewed` (one did). Under a placement the declaration is required:
+  neither flag, or both, exits **2** having written nothing; `--auto` against a
+  placement the project has not acknowledged with `issue_placement_ack` exits
+  **4** — a redirection to the interactive path rather than a failure. The
+  emitter cannot verify the declaration, which is why it refuses to supply one:
+  no absence is read as an answer in either direction. Under the default
+  placement both flags are inert.
 - `index.sh` **index generation** — frontmatter scan → `INDEX.md`
   (summary, issues, relation graph, integrity warnings). Guarantee:
   line-oriented parse only; atomic write — a failed run leaves the previous
@@ -69,6 +71,17 @@ face after the platform CLIs.
 - **Untrusted-issue-content discipline** — the canonical
   `<untrusted-issue-content slug=…>` delimiter form for any agent handoff of
   issue content.
+- `place.sh` **placement door** — `mode` / `run` / `begin` / `commit` / `abort`.
+  Guarantee: the destination branch clears the validity gate and the
+  coordination-branch refusal before it reaches any git argument, and an
+  unresolvable setting refuses rather than falling back to the working branch; a
+  wrapped command's own exit status is forwarded verbatim; `begin` hands back a
+  collection directory and a handle whose `commit` publishes it as one commit
+  under a fixed verb enum, while a read handle (`begin --read`) publishes nothing
+  and discards what it materialized. Two callers outside the group hold it: the
+  spec group's citation sweep drives `begin`/`commit` around the issue half of a
+  realization, and the partition surface holds `mode`, `begin --read` and `abort`
+  alone — no publish verb — for the re-points it discloses rather than applies.
 - `backfill.sh` / `migrate.sh` / `reconcile.sh` **migrations** — opt-in,
   preview-gated one-shot transforms (num / timestamp / prefix; and realizing
   provisional ordinals into real coordinated ones). Internal surface, low
@@ -90,7 +103,11 @@ face after the platform CLIs.
   and script-to-script (`index.sh`, `render.sh`, `backfill.sh`, `migrate.sh`,
   `place.sh`). `place.sh` additionally reads `id_coordination_branch`, the one
   key this group consumes that another group owns the meaning of — it is the
-  branch placement refuses to write the collection to.
+  branch placement refuses to write the collection to. The resolver
+  distinguishes an unset key from a failed resolution, which is what lets the
+  placement gate's refusal hold: a configuration it cannot read, a value form it
+  cannot parse, and a run started below the project root each refuse rather than
+  yielding the key's default.
 - `platform.testlib` — `tests/issues.sh` and `tests/place.sh` run under the
   shared framework.
 
@@ -101,8 +118,10 @@ face after the platform CLIs.
   `new.sh` (emitter), `index.sh` (index), `render.sh` (views), `backfill.sh` /
   `migrate.sh` (migrations), `reconcile.sh` (realize provisional ordinals), and
   `place.sh` — the seam between an on-branch collection and one centralized on a
-  designated branch, which the other six route themselves through. It exposes no
-  face: no caller outside the group invokes it.
+  designated branch, which the other six route themselves through. It also
+  carries a face: the spec group's citation sweep and the partition surface
+  invoke it directly, script to script, for mutations that have no single
+  command to wrap.
 - `agents/issue-analyst.md` — the read-only insights subagent.
 - `tests/issues.sh` and `tests/place.sh` — the group's test files.
 - **Data store** (owned, not territory): `docs/issues/` + `INDEX.md` — one
@@ -118,7 +137,7 @@ face after the platform CLIs.
 | untrusted-body-never-shell | Issue bodies travel only via `--body-file` temp files, copied file→file; title/label/origin scalars are YAML-encoded; no untrusted value is interpolated into shell or YAML | critical | judge |
 | id-gate-before-path | Every id passes the validator before any path composition or file read; `show` resolves only against the indexed set | critical | judge |
 | placeholder-by-position | The placement wrapper substitutes only the placeholders a caller positioned — a flag's operand, or the trailing argument it appended — never an argument matching a placeholder's text elsewhere in the argv. Forwarded caller text can look exactly like one, and rewriting it puts a run-local path into a durable identity | high | judge |
-| atomic-index-write | Every script-mediated write of `INDEX.md` or an issue file is tmp+mv atomic, and a failed run leaves the previous file untouched. An agent editing an issue in place through the two-phase door is outside this rule — there the atomicity is the publish, not the write | medium | judge |
+| atomic-index-write | Every script-mediated write of `INDEX.md` or an issue file is tmp+mv atomic, and a failed run leaves the previous file untouched. An agent editing an issue in place through the two-phase door is outside this rule — there the atomicity is the publish, not the write. A failure handler never discards a staged file that is an issue's only remaining copy, and claims no all-clear it cannot make | medium | judge |
 | staleness-gated-reads | A read builds a current index where it can — gated on staleness in the working tree, unconditionally on a materialized copy, whose mtimes encode extraction order rather than edit history. A view served from an index that could not be rebuilt is disclosed on stderr and carries a non-zero status; a write refuses instead, so a stale index never reaches the destination | medium | judge |
 | placement-gate-before-git | The destination branch name clears a validity gate and the coordination-branch refusal before it reaches any git argument. A configured value that fails, and a configuration read that fails, both refuse — neither falls back to the working branch, and an unresolvable setting is never read as an unset one | critical | judge |
 | materialization-contained | Every entry extracted from destination-branch content is a regular file with a plain name resolving inside the collection directory, and its bytes are read by object name, never by tree path; the first violation aborts the extraction before the wrapped command runs | critical | judge |
