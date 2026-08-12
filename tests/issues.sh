@@ -3214,7 +3214,7 @@ case_issues_placement_filing_lands_on_destination() {
   local repo body slug paths
   repo="$(placement_repo issues_place_file jim/issues)"
   body="$(fixture issues_place_file_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "rc" 0 "$RC"
   slug="${OUT%%$'\t'*}"
@@ -3236,7 +3236,7 @@ case_issues_placement_stdout_names_the_destination_path() {
   local repo body slug path
   repo="$(placement_repo issues_place_stdout jim/issues)"
   body="$(fixture issues_place_stdout_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "rc" 0 "$RC"
   slug="${OUT%%$'\t'*}"
@@ -3253,7 +3253,7 @@ case_issues_placement_preserves_braces_in_a_title() {
   local repo body slug
   repo="$(placement_repo issues_place_braces jim/issues)"
   body="$(fixture issues_place_braces_body.md 'body')"
-  run_new_in "$repo" --title "Fix the {} placeholder in output" \
+  run_new_in "$repo" --reviewed --title "Fix the {} placeholder in output" \
     --priority medium --labels x --origin conversation --body-file "$body"
   assert_exit "rc" 0 "$RC"
   slug="${OUT%%$'\t'*}"
@@ -3275,7 +3275,7 @@ case_issues_placement_tolerates_a_branch_only_origin() {
   # path-shaped, which is what makes the lint look at it at all — a bare token
   # carries no `/` and is exempted before its existence is ever checked, so the
   # AC's case would go unexercised whether the file was there or not.
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin "docs/brainstorms/only-here.md" --body-file "$body"
   assert_exit "rc" 0 "$RC"
   slug="${OUT%%$'\t'*}"
@@ -3301,7 +3301,7 @@ case_issues_origin_lint_still_runs_without_a_placement() {
   local repo body index
   repo="$(new_repo issues_origin_default)"
   body="$(fixture issues_origin_default_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin "docs/brainstorms/only-here.md" --body-file "$body"
   assert_exit "rc" 0 "$RC"
   run_index "$repo/docs/issues"
@@ -3402,19 +3402,71 @@ case_issues_auto_file_is_inert_under_an_explicit_dir() {
     "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
 }
 
-# AC: the interactive path is untouched — the batch a developer has just
-# reviewed still files under an unacknowledged placement, because the review it
-# is missing is exactly what the gate is asking for (spec AC #13).
+# AC: the interactive path still files under an unacknowledged placement — the
+# review the gate asks for is exactly what that path already did. It declares it
+# with --reviewed, which is the counterpart of --auto rather than a second gate
+# (spec AC #13).
 case_issues_interactive_file_unaffected_by_the_gate() {
   local repo body slug
   repo="$(placement_repo issues_auto_interactive jim/issues)"
   body="$(fixture issues_auto_interactive_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "rc" 0 "$RC"
   slug="${OUT%%$'\t'*}"
   assert_match "landed on the destination" "docs/issues/${slug}\.md" \
     "$(dest_paths "$repo" jim/issues)"
+}
+
+# AC: under a placement the declaration is REQUIRED, not defaulted. Reading a
+# missing --auto as "reviewed" is what published an unreviewed batch to a shared
+# branch on a forgotten flag; the inverse would merely move the silent default,
+# sending a reviewed batch to a second review. Neither absence is an answer, so
+# a filing that declares nothing refuses — loudly, at the one moment it matters,
+# and having written nothing (spec AC #13).
+case_issues_placement_filing_without_a_declaration_refuses() {
+  local repo body
+  repo="$(placement_repo issues_decl_missing jim/issues)"
+  body="$(fixture issues_decl_missing_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit  "refuses as a caller defect, not a redirect" 2 "$RC"
+  assert_match "names the destination it would publish to" 'jim/issues' "$ERR"
+  assert_match "names both remedies"                       'reviewed'   "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+  assert_eq "nothing in the working tree either" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  assert_eq "and no path on stdout" "" "$OUT"
+}
+
+# AC: declaring both is a contradiction, not a precedence puzzle — refused the
+# same way rather than letting one win silently.
+case_issues_placement_contradictory_declarations_refuse() {
+  local repo body
+  repo="$(placement_repo issues_decl_both jim/issues)"
+  body="$(fixture issues_decl_both_body.md 'body')"
+  run_new_in "$repo" --auto --reviewed --title "Alpha bug" --priority medium \
+    --labels x --origin conversation --body-file "$body"
+  assert_exit  "refuses"            2 "$RC"
+  assert_match "says they conflict" 'contradict' "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# AC: and the requirement is scoped to routing, so it is inert for every project
+# without a placement — the entire installed base, and the path the
+# default-unchanged criterion protects (spec AC #2, #13).
+case_issues_declaration_is_not_required_by_default() {
+  local repo body slug
+  repo="$(new_repo issues_decl_default)"
+  body="$(fixture issues_decl_default_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "files with no declaration at all" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "written to the working tree" "yes" \
+    "$([[ -e "$repo/docs/issues/$slug.md" ]] && echo yes || echo no)"
 }
 
 # AC: index.sh routes too, so a standalone reindex lands at the destination
@@ -3423,7 +3475,7 @@ case_issues_placement_index_routes_to_destination() {
   local repo body
   repo="$(placement_repo issues_place_index jim/issues)"
   body="$(fixture issues_place_index_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
   OUT="$(cd "$repo" && bash "$SCRIPT_INDEX" 2>&1)"
@@ -3453,7 +3505,7 @@ case_issues_placement_list_serves_the_destination() {
   local repo body slug
   repo="$(placement_repo issues_place_list jim/issues)"
   body="$(fixture issues_place_list_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
   slug="${OUT%%$'\t'*}"
@@ -3474,7 +3526,7 @@ case_issues_placement_read_publishes_nothing() {
   local repo body before
   repo="$(placement_repo issues_place_readonly jim/issues)"
   body="$(fixture issues_place_readonly_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
   stale_dest_index "$repo" jim/issues docs/issues
@@ -3497,7 +3549,7 @@ case_issues_placement_read_degrades_with_a_note() {
   local repo body
   repo="$(placement_repo issues_place_degrade jim/issues)"
   body="$(fixture issues_place_degrade_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
   git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
@@ -3513,7 +3565,7 @@ case_issues_placement_insights_graph_routes() {
   local repo body
   repo="$(placement_repo issues_place_graph jim/issues)"
   body="$(fixture issues_place_graph_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
   run_render_in "$repo" insights-graph
@@ -3537,7 +3589,7 @@ case_issues_placement_realize_lands_at_the_destination() {
   local repo body before
   repo="$(placement_repo issues_place_realize jim/issues)"
   body="$(fixture issues_place_realize_body.md 'body')"
-  run_new_in "$repo" --slug 20260101-a --num "P-20260101-a" \
+  run_new_in "$repo" --reviewed --slug 20260101-a --num "P-20260101-a" \
     --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
@@ -3562,7 +3614,7 @@ case_issues_placement_preview_publishes_nothing() {
   local repo body before
   repo="$(placement_repo issues_place_preview jim/issues)"
   body="$(fixture issues_place_preview_body.md 'body')"
-  run_new_in "$repo" --slug 20260101-a --num "P-20260101-a" \
+  run_new_in "$repo" --reviewed --slug 20260101-a --num "P-20260101-a" \
     --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
@@ -3593,7 +3645,7 @@ case_issues_placement_reconcile_routes_with_a_config_flag() {
   local repo body
   repo="$(placement_repo issues_place_reconcile_cfg jim/issues)"
   body="$(fixture issues_place_reconcile_cfg_body.md 'body')"
-  run_new_in "$repo" --slug 20260101-a --num "P-20260101-a" \
+  run_new_in "$repo" --reviewed --slug 20260101-a --num "P-20260101-a" \
     --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
@@ -3628,7 +3680,7 @@ case_issues_placement_list_typo_does_not_litter() {
   local repo body
   repo="$(placement_repo issues_place_list_typo jim/issues)"
   body="$(fixture issues_place_list_typo_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
   run_in "$repo" "$SCRIPT_RENDER" list opne
@@ -3651,7 +3703,7 @@ case_issues_placement_two_filters_do_not_bypass_placement() {
   local repo body
   repo="$(placement_repo issues_place_two_filters jim/issues)"
   body="$(fixture issues_place_two_filters_body.md 'body')"
-  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
   run_in "$repo" "$SCRIPT_RENDER" list open high
@@ -3730,7 +3782,7 @@ case_issues_placement_backfill_lands_at_the_destination() {
   local repo body
   repo="$(placement_repo issues_place_backfill jim/issues)"
   body="$(fixture issues_place_backfill_body.md 'body')"
-  run_new_in "$repo" --slug 20260101-a --num 7 --created 2026-01-01 \
+  run_new_in "$repo" --reviewed --slug 20260101-a --num 7 --created 2026-01-01 \
     --updated 2026-01-01 --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
@@ -3753,7 +3805,7 @@ case_issues_placement_migrate_lands_renames_as_one_commit() {
     > "$repo/jimconf.toml"
   git -C "$repo" commit -q -am conf
   body="$(fixture issues_place_migrate_body.md 'body')"
-  run_new_in "$repo" --slug 20260101-alpha --num 3 \
+  run_new_in "$repo" --reviewed --slug 20260101-alpha --num 3 \
     --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
@@ -3784,7 +3836,7 @@ case_issues_placement_rename_race_grafts_as_delete_and_create() {
     > "$mine/jimconf.toml"
   printf 'issue_placement = "jim/issues"\n' > "$theirs/jimconf.toml"
   body="$(fixture issues_race_body.md 'body')"
-  run_new_in "$mine" --slug 20260101-alpha --num 3 \
+  run_new_in "$mine" --reviewed --slug 20260101-alpha --num 3 \
     --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"

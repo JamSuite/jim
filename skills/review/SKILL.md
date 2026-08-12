@@ -214,9 +214,9 @@ I noted N candidate issues during this run:
 
 Wait for the developer's response.
 
-- ON `file all`: FOR each checked row, file it via `new.sh` (body to a temp file first; no per-row regen). AFTER the loop, regenerate INDEX.md ONCE, emit `"Filed N candidates. See INDEX.md."`
+- ON `file all`: FOR each checked row, file it via `new.sh --reviewed` (body to a temp file first; no per-row regen). AFTER the loop, regenerate INDEX.md ONCE, emit `"Filed N candidates. See INDEX.md."`
 - ON `skip all`: discard all rows.
-- ON per-row `f` / `e` / `s`: file (via `new.sh` + regen) / edit (present the full draft with the spec 017 AC-C2 scrub reminder, then file via `new.sh` on approval) / skip.
+- ON per-row `f` / `e` / `s`: file (via `new.sh --reviewed` + regen) / edit (present the full draft with the spec 017 AC-C2 scrub reminder, then file via `new.sh --reviewed` on approval) / skip.
 
 ### 10. Blueprint update (require_blueprint / auto_blueprint)
 

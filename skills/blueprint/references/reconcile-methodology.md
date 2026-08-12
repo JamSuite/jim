@@ -200,11 +200,15 @@ with `[file all] [skip all] · per-row: f / e / s`. Per confirmed finding:
 File through the single emitter, one index refresh after the batch:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh \
+bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --reviewed \
   --title "<title>" --priority <p> --labels "000-blueprint,contract-graph,<class>" \
   --origin "<map-path>" --body-file "<tmp>"
 bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh
 ```
+
+`--reviewed` declares that a human saw this batch — the offer above is that
+review. This surface has no quiet path, so it is always the reviewed case. Under
+a branch placement the emitter requires the declaration and refuses without it.
 
 ## The graph section
 

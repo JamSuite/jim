@@ -208,8 +208,11 @@ counters plus the reconcile's health block) **alongside** the reconcile outcome
 
 **Candidate batch.** Offer every surfaced misalignment as a tracked issue
 through the standard end-of-run batch (AC #13) — the shared § 7a contract
-(`skills/issue/SKILL.md`), filed through `new.sh` with the body written to a
-temp file first (never inlined), labeled `partition`. Empty batches are normal;
+(`skills/issue/SKILL.md`), filed through `new.sh --reviewed` with the body
+written to a temp file first (never inlined), labeled `partition`. This skill
+has no quiet path, so every filing is the reviewed case; under a branch
+placement the emitter requires that declaration and refuses without it. Empty
+batches are normal;
 a run that surfaces nothing offers nothing. The developer confirms; declining
 leaves no hidden state.
 
@@ -547,9 +550,9 @@ scanned content (AC #12).
 ### 4. Offer issues and close
 
 Offer each fired signal's finding as a tracked issue through the standard § 7a
-candidate batch (`skills/issue/SKILL.md`) — filed via `new.sh` with the body
-written to a temp file first, labeled `partition`/`health`; declining leaves no
-artifact (AC #10, AC #13). Then record the finished event and self-commit the
+candidate batch (`skills/issue/SKILL.md`) — filed via `new.sh --reviewed` with
+the body written to a temp file first, labeled `partition`/`health`; declining
+leaves no artifact (AC #10, AC #13). Then record the finished event and self-commit the
 ledger alone:
 
 ```bash

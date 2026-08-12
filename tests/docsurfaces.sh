@@ -179,8 +179,57 @@ case_docsurfaces_placement_scrub_rule_is_stated() {
   assert_match "names the placement key"      'issue_placement'     "$body"
   assert_match "names the acknowledgement"    'issue_placement_ack' "$body"
   assert_match "states the degrade"           'degrade'             "$body"
-  assert_match "names the flag that carries it" '\-\-auto'          "$body"
+  assert_match "names the flag that carries it" '[-][-]auto'        "$body"
+  assert_match "names its counterpart"          '[-][-]reviewed'    "$body"
   assert_match "names the code it answers with" 'exit'              "$body"
+}
+
+# The § 7a roster, held to the grant rather than to a number. Three rosters
+# disagreed with each other and with the canonical one, and a fourth consumer
+# (the blueprint surface) was in none of them — because a count in prose goes
+# stale the moment a consumer accrues, and nothing mechanical noticed. The
+# consumer set has a mechanical definition: a skill that can invoke the emitter
+# is one that files through the contract. Derive it and require § 7a to name
+# every member, so the next consumer to accrue fails here instead of silently
+# widening the gap.
+case_docsurfaces_candidate_batch_roster_matches_the_grant() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" body f name missing="" n=0
+  body="$(sed -n '/^### 7a\./,/^### 8\./p' "$skill")"
+  assert_eq "the candidate-batch section was located" "yes" \
+    "$([[ -n "$body" ]] && echo yes || echo no)"
+  while IFS= read -r f; do
+    name="${f#"$REPO_ROOT"/skills/}"; name="${name%/SKILL.md}"
+    # The issue skill owns the contract and the interactive `add` verb; it is
+    # the emitter's home, not one of its consumers.
+    [[ "$name" == "issue" ]] && continue
+    n=$(( n + 1 ))
+    grep -q "/jim:$name" <<< "$body" || missing+="$name "
+  done < <(grep -l 'scripts/new\.sh \*' "$REPO_ROOT"/skills/*/SKILL.md 2>/dev/null)
+  # Without a floor the sweep passes vacuously on a glob that matched nothing.
+  assert_eq "the consumer set was found (>= 11, got $n)" "yes" \
+    "$([[ "$n" -ge 11 ]] && echo yes || echo no)"
+  assert_eq "every skill granted the emitter is named in § 7a" "" "${missing% }"
+  # And no fixed count is restated, which is what rotted three of these rosters.
+  assert_eq "the roster states no fixed count" "" \
+    "$(grep -oE '\b(seven|eight|nine|ten|eleven|twelve) surfacing skills' <<< "$body")"
+}
+
+# The interactive half of the declaration. Under a placement the emitter refuses
+# a filing that declares neither --auto nor --reviewed, so a consumer whose
+# interactive path still calls the bare emitter is broken at exactly the moment
+# a team configuration is adopted. Swept rather than listed, like the auto half.
+case_docsurfaces_interactive_paths_declare_reviewed() {
+  local f name missing="" n=0
+  while IFS= read -r f; do
+    name="${f#"$REPO_ROOT"/skills/}"; name="${name%/SKILL.md}"
+    [[ "$name" == "issue" ]] && continue
+    n=$(( n + 1 ))
+    # References count: the blueprint surface keeps its emitter calls there.
+    grep -rq -- 'new\.sh --reviewed' "$(dirname "$f")" || missing+="$name "
+  done < <(grep -l 'scripts/new\.sh \*' "$REPO_ROOT"/skills/*/SKILL.md 2>/dev/null)
+  assert_eq "the consumer set was found (>= 11, got $n)" "yes" \
+    "$([[ "$n" -ge 11 ]] && echo yes || echo no)"
+  assert_eq "every consumer declares a reviewed filing" "" "${missing% }"
 }
 
 # The consumers half — the property that actually matters. The emitter can only

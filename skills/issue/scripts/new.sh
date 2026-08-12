@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #
 # skills/issue/scripts/new.sh — Write one issue file from fields. The single
-#   issue-file emitter: every candidate-batch step (the seven surfacing skills)
-#   and /jim:issue add file through here, so the spec-017 template is
-#   materialized in exactly one place (spec 025 AC1–AC3).
+#   issue-file emitter: every skill that files through the candidate-batch
+#   contract and /jim:issue add file through here, so the spec-017 template is
+#   materialized in exactly one place (spec 025 AC1–AC3). The consumer set is
+#   defined by the grant, never by a count kept here — it accrues.
 #
 # SECURITY MODEL (spec 025 security.md)
 #   - Untrusted body never reaches a shell command line. The caller writes the
@@ -27,12 +28,17 @@
 #   bash new.sh --title <s> --priority <low|medium|high|critical> \
 #               --labels <csv> --origin <s> --body-file <path> \
 #               [--status open] [--slug <id>] [--num <int>] \
-#               [--created <ts>] [--updated <ts>] [--dir <issues_dir>] [--auto]
+#               [--created <ts>] [--updated <ts>] [--dir <issues_dir>] \
+#               (--auto | --reviewed)
 #
-#   --auto declares that no human has reviewed this candidate — the quiet
-#   auto-file path. It changes nothing under the default placement; under a
-#   branch placement it is refused at rc 4 unless the project has acknowledged
-#   that auto-filed content publishes immediately (see the scrub gate below).
+#   --auto and --reviewed are the caller's declaration about THIS batch:
+#   --auto says no human has looked at it (the quiet auto-file path),
+#   --reviewed says one has. Under a branch placement exactly one is required
+#   and neither may be assumed — see the scrub gate below. Under the default
+#   placement both are inert, so the zero-config path is unchanged.
+#
+#   --auto under a branch placement is refused at rc 4 unless the project has
+#   acknowledged that auto-filed content publishes immediately.
 #
 #   An unset slug/num is resolved as a coordinated pair via jimalloc.sh
 #   allocate issue (the durable id and display ordinal reserved together, one
@@ -52,8 +58,10 @@
 #      identity is spent either way: the allocator is append-only, so a re-run
 #      files under a new ordinal rather than reclaiming this one.
 #   4  --auto refused: the batch would publish to an unacknowledged placement.
-#      The caller's remedy is to show the batch for review and file it without
-#      --auto, so this is a redirection rather than a failure.
+#      The caller's remedy is to show the batch for review and file it with
+#      --reviewed instead, so this is a redirection rather than a failure.
+#      Distinct from the rc 2 a missing declaration gets: that one is a caller
+#      defect with no remedy but to say which kind of batch this is.
 #
 # Conventions: set -uo pipefail; LC_ALL=C; BASH_SOURCE-relative jimfile/jimalloc paths.
 
@@ -69,7 +77,7 @@ JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 
 title="" priority="" labels="" origin="" body_file=""
 status="open" slug="" num="" created="" updated="" dir="" place_token=""
-auto=0
+auto=0 reviewed=0
 
 # Kept whole for the placement re-exec below, which has to hand this script its
 # own invocation back.
@@ -90,6 +98,7 @@ while [[ $# -gt 0 ]]; do
     --dir)       dir="${2-}";       shift 2 || break ;;
     --place-token) place_token="${2-}"; shift 2 || break ;;
     --auto)      auto=1;            shift ;;
+    --reviewed)  reviewed=1;        shift ;;
     *) echo "error: unknown flag '$1'" >&2; exit 2 ;;
   esac
 done
@@ -119,16 +128,40 @@ if [[ -z "$dir" && -r "$PLACE" ]]; then
     # text drawn from tool output or a fetched page is shared the moment it is
     # accumulated — unpublishing it means rewriting a shared branch.
     #
-    # It is decided here rather than in the nine skills that auto-file because
-    # here it is mechanical: a skill can only carry the rule as prose for an
-    # agent to remember.
+    # It is decided here rather than in each skill that auto-files because here
+    # it is mechanical: a skill can only carry the rule as prose for an agent to
+    # remember.
     #
-    # What the emitter cannot do is observe whether a human looked. --auto is
-    # the caller's declaration that nobody did, and its absence is read as a
-    # reviewed batch — so a caller on the quiet path that omits the flag
-    # publishes rather than degrading. The flag is the whole coupling. Reading
-    # auto_issue_file here instead would refuse the legitimately degraded
-    # interactive filing, which is the batch that has already been reviewed.
+    # What the emitter cannot do is observe whether a human looked. That makes
+    # it the caller's declaration — and a declaration with a default is not one.
+    # Requiring the caller to state which kind of batch this is means a
+    # forgotten flag is a loud refusal at the one moment it matters, rather than
+    # a silent publish to a branch the whole team reads. Both directions are
+    # closed: reading the absence of --auto as "reviewed" published an
+    # unreviewed batch, and inverting that to read the absence of --reviewed as
+    # "unreviewed" would merely move the silent default, redirecting a genuinely
+    # reviewed batch to a second review it does not need.
+    #
+    # Scoped to `route`, which is what makes it inert for every project without
+    # a placement — the entire installed base today, and the path the
+    # default-unchanged criterion protects.
+    #
+    # Reading auto_issue_file here instead is neither necessary nor sufficient:
+    # it would refuse the legitimately degraded interactive filing, which is a
+    # batch that HAS been reviewed.
+    if (( auto == reviewed )); then
+      if (( auto )); then
+        echo "error: --auto and --reviewed contradict each other; pass exactly" \
+             "one — --auto for a batch no human has reviewed, --reviewed for one" \
+             "that has" >&2
+      else
+        echo "error: issue placement publishes to" \
+             "'$(bash "$JIMCONF" get issue_placement 2>/dev/null)', so this filing" \
+             "must declare whether the batch was reviewed: pass --reviewed if a" \
+             "human looked at it, or --auto if none did" >&2
+      fi
+      exit 2
+    fi
     if (( auto )) && [[ "$(bash "$JIMCONF" get issue_placement_ack 2>/dev/null)" != "true" ]]; then
       echo "error: auto-file refused — issue placement publishes to" \
            "'$(bash "$JIMCONF" get issue_placement 2>/dev/null)', so this batch" \

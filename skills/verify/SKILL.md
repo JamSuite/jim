@@ -273,10 +273,10 @@ IF auto_issue_file == "true" THEN apply the AUTO-FILE PATH:
   - File each candidate without prompting: `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --auto --title "<title>" --priority <criticality> --labels "000-blueprint,verify" --origin "<blueprint_spec>" --body-file "<tmp>"`. `--auto` declares the batch unreviewed, which is what lets the emitter apply the placement scrub gate (`skills/issue/SKILL.md` § 7a). Omitting it on this path publishes the batch instead of degrading.
   - On **exit code 4** the emitter refused the whole batch rather than this candidate: issue placement publishes to a shared branch and the project has not acknowledged auto-filing to it. Nothing was written and nothing will be. STOP the loop, emit the disclosure `"issue placement publishes to <branch>; showing the batch for review before it is shared"`, and apply the INTERACTIVE PATH below to the entire batch.
 
-Otherwise apply the INTERACTIVE PATH: the shared batch UX — default-checked list, `[file all]`/`[skip all]`/per-row `f`/`e`/`s` — filing each confirmed candidate through the same emitter **without** `--auto`, since a batch the developer has just reviewed is the reviewed case:
+Otherwise apply the INTERACTIVE PATH: the shared batch UX — default-checked list, `[file all]`/`[skip all]`/per-row `f`/`e`/`s` — filing each confirmed candidate through the same emitter with `--reviewed` in place of `--auto`, since a batch the developer has just reviewed is the reviewed case. Under a placement the emitter requires one of the two and refuses if neither is given:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh \
+bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --reviewed \
   --title "<title>" --priority <criticality> --labels "000-blueprint,verify" \
   --origin "<blueprint_spec>" --body-file "<tmp>"
 bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh

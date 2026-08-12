@@ -198,11 +198,16 @@ unattended:
   index once after the last filing:
 
   ```bash
-  bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh \
+  bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --reviewed \
     --title "<title>" --priority <criticality> --labels "000-blueprint,drift" \
     --origin "<origin>" --body-file "<tmp>"
   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh
   ```
+
+  `--reviewed` declares that a human saw this batch — the offer above is that
+  review. This surface has no quiet path, so it is always the reviewed case.
+  Under a branch placement the emitter requires the declaration and refuses
+  without it; under the default placement it changes nothing.
 
 A declined offer discards the issue but the divergence still counts in U4's
 outcome record. The skill never modifies source code — the fix itself is the

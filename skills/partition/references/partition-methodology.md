@@ -296,7 +296,7 @@ all-or-nothing; a declined gate writes nothing.
      <new> code <territory-old> <territory-new> <import-fixed>...`. The map's
      territory reads the new paths (AC #8). Recommend this arm only when the
      reference-fix set is mechanically bounded.
-   - **Docs-only** — file a developer-confirmed code-move issue through `new.sh`;
+   - **Docs-only** — file a developer-confirmed code-move issue through `new.sh --reviewed`;
      territory paths keep pointing at the unmoved old-named directories, so the
      map stays truthful (AC #9).
 2. *Spec dir* — `jimledger.sh rename-tracked <specs-dir>/<old> <specs-dir>/<new>`.
@@ -446,7 +446,7 @@ immediately after a clean split reports no new finding.
 - A **spanning invariant** (an `Invariant` the substrate shows serving >1 child)
   gets a proposed **primary owner** (editable at the gate); the invariant id
   ratchets unchanged (never split, duplicated, or renamed), and a cross-child
-  contract issue is offered via `new.sh` carrying the id and text, the children it
+  contract issue is offered via `new.sh --reviewed` carrying the id and text, the children it
   spans, the per-side evidence, and a concrete imperative — author the boundary
   contract, or re-key into per-side invariants under it (AC 5).
 - A **spanning territory file** (a path serving >1 child) gets a **provisional

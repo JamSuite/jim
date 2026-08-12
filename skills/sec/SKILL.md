@@ -286,11 +286,11 @@ I noted N candidate issues during this run:
 
 Wait for the developer's response.
 
-- ON bulk `file all`: FOR each checked row, file it via `new.sh` (no per-row regen). AFTER the loop, regenerate INDEX.md ONCE via `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`. Emit `"Filed N candidates. See INDEX.md."`
+- ON bulk `file all`: FOR each checked row, file it via `new.sh --reviewed` (no per-row regen). AFTER the loop, regenerate INDEX.md ONCE via `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`. Emit `"Filed N candidates. See INDEX.md."`
 - ON bulk `skip all`: discard all rows.
 - ON per-row override:
-  - `f` (file) — file via `new.sh`, regenerate INDEX.md once for the row.
-  - `e` (edit) — present the full drafted issue (title + frontmatter + body) inline with the spec 017 AC-C2 scrub reminder: *"this is your last chance to scrub sensitive content (API keys, customer data, raw secrets) before persistence. Sec findings may contain attack-vector details and internal paths — this is the recommended redaction point before they enter `docs/issues/`."* On approve: file via `new.sh` + regenerate. On edit: re-present the modified draft. On cancel: discard the row.
+  - `f` (file) — file via `new.sh --reviewed`, regenerate INDEX.md once for the row.
+  - `e` (edit) — present the full drafted issue (title + frontmatter + body) inline with the spec 017 AC-C2 scrub reminder: *"this is your last chance to scrub sensitive content (API keys, customer data, raw secrets) before persistence. Sec findings may contain attack-vector details and internal paths — this is the recommended redaction point before they enter `docs/issues/`."* On approve: file via `new.sh --reviewed` + regenerate. On edit: re-present the modified draft. On cancel: discard the row.
   - `s` (skip) — discard the row.
 
 When candidates are filed, populate the security.md `### Candidate issues` subsection under `## Routing Recommendations` with one bullet per filed finding (paraphrased text + the resulting issue slug). Spec amendments and plan amendments sections are unaffected.
