@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:35Z
-updated: 2026-08-12T21:53:35Z
+updated: 2026-08-13T05:29:53Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -21,7 +21,7 @@ origin: "docs/specs/issue/011-issue-placement/review.md"
 the review-remediation round set out to purge, plus one sentence that contradicts
 its own paragraph.
 
-## The two stale rosters
+## The stale rosters
 
 - **`ARCHITECTURE.md:274`** — "`/jim:partition` the **eighth** surfacing skill".
 - **`ARCHITECTURE.md:320`** — the Issue Collection producer cell:
@@ -37,10 +37,23 @@ of them with a quiet path.
 `tests/jimconf.sh:820` carries a third ("the 7 surfacing skills"), in a code
 comment.
 
+A fourth sits in a blueprint face — `docs/specs/sdlc/000-blueprint/spec.md`'s
+`## Requires`, on the `issue.emitter` entry: "the end-of-run § 7a candidate
+batches from the surfacing skills (spec, research, plan, build, debug, sec,
+review, brainstorm)". Eight named; `/jim:verify`, `/jim:partition` and
+`/jim:blueprint` are absent, and all three hold the emitter grant. This one is
+the group's declared consumer face rather than prose, so it is what a
+blast-radius reader resolves against.
+
+Correcting it belongs to the blueprint surface (`/jim:blueprint sdlc`), not a
+hand edit — the same "through the skill, never by hand" rule this issue applies
+to `ARCHITECTURE.md`.
+
 The mechanical sweep added in the round —
 `case_docsurfaces_candidate_batch_roster_matches_the_grant`
 (`tests/docsurfaces.sh:195-215`) — is scoped to § 7a's body, so it cannot catch any
-of these. `ARCHITECTURE.md` is outside its corpus entirely.
+of these. `ARCHITECTURE.md` and `docs/specs/` are outside its corpus entirely,
+and neither falls in any group's declared territory.
 
 **The closing issue's resolution overclaims.** It reads as a clean sweep of the
 file, asserting "`ARCHITECTURE.md`'s two counts are restated the same way"; only
@@ -82,5 +95,18 @@ Separately, add a dated `## Correction` to the roster issue naming `:274` and
 `:320` as not landed — the instrument `#269` used for the same situation. And fix
 the code comment at `tests/jimconf.sh:820`.
 
-Worth considering: extend the docsurfaces roster sweep to `ARCHITECTURE.md`, so
-this class cannot recur outside § 7a.
+Through `/jim:blueprint sdlc`, restate the `issue.emitter` Requires entry's
+roster as the same property, so the declared consumer face stops enumerating.
+
+Worth considering: extend the docsurfaces roster sweep to `ARCHITECTURE.md` and
+to the group blueprints' faces, so this class cannot recur outside § 7a. Both
+corpora sit outside every current sweep.
+
+## Note
+
+**2026-08-13.** The fourth site — the `sdlc` blueprint's `issue.emitter`
+Requires entry — was found while adding the reciprocal `issue.placement-door`
+entry to the same face. The roster sits one bullet above the addition, so the
+edit surfaced it; nothing swept it up. Recorded here rather than corrected in
+that pass, because the two edits answer different findings and the roster
+restatement is this issue's to own.
