@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 114
-- Closed: 229
+- Open: 113
+- Closed: 231
 
 ## Issues
 
@@ -311,8 +311,8 @@
 - `20260812-an-empty-commit-is-reachable-after-a-retry-base-recomputation` — An empty commit is reachable after a retry base recomputation · status: closed · num: 300 · priority: medium · created: 2026-08-12T03:41:53Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-architecture-md-keeps-two-stale-rosters-and-a-contradiction` — ARCHITECTURE.md keeps two stale rosters and a contradiction · status: open · num: 325 · priority: high · created: 2026-08-12T21:53:35Z · labels: [docs, architecture] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-backfill-sh-injects-frontmatter-through-awk-v-escape-expansion` — backfill.sh injects frontmatter through awk -v escape expansion · status: closed · num: 301 · priority: high · created: 2026-08-12T03:41:36Z · labels: [issue, security] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-citation-sweep-drops-containment-on-the-checked-out-arm` — Citation sweep drops containment on the checked-out arm · status: open · num: 326 · priority: critical · created: 2026-08-12T21:53:20Z · labels: [spec, security, placement] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-citation-sweep-leaks-a-handle-and-misreports-its-own-failure` — Citation sweep leaks a handle and misreports its own failure · status: open · num: 327 · priority: medium · created: 2026-08-12T21:53:56Z · labels: [spec, placement, hygiene] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-citation-sweep-drops-containment-on-the-checked-out-arm` — Citation sweep drops containment on the checked-out arm · status: closed · num: 326 · priority: critical · created: 2026-08-12T21:53:20Z · labels: [spec, security, placement] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-citation-sweep-leaks-a-handle-and-misreports-its-own-failure` — Citation sweep leaks a handle and misreports its own failure · status: closed · num: 327 · priority: medium · created: 2026-08-12T21:53:56Z · labels: [spec, placement, hygiene] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-cmd-begin-checked-out-arm-writes-with-no-containment-gate` — cmd_begin checked-out arm writes with no containment gate · status: closed · num: 302 · priority: high · created: 2026-08-12T03:41:34Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-cmd-begin-refuses-where-cmd-run-degrades-on-a-failed-reindex` — cmd_begin refuses where cmd_run degrades on a failed reindex · status: closed · num: 303 · priority: medium · created: 2026-08-12T03:41:49Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-commit-routed-arm-re-establishes-neither-the-gate-nor-head` — commit routed arm re-establishes neither the gate nor HEAD · status: closed · num: 304 · priority: medium · created: 2026-08-12T03:41:50Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -350,6 +350,7 @@
 - `20260812-three-surfacing-skill-roster-counts-are-stale` — Three surfacing-skill roster counts are stale · status: closed · num: 317 · priority: low · created: 2026-08-12T03:42:11Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-two-argument-read-shape-bypasses-placement-and-creates-a-stray-d` — Two-argument read shape bypasses placement and creates a stray directory · status: closed · num: 318 · priority: high · created: 2026-08-12T03:41:33Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-two-placement-cases-cannot-fail-and-four-guards-have-no-coverage` — Two placement cases cannot fail and four guards have no coverage · status: closed · num: 319 · priority: medium · created: 2026-08-12T03:42:07Z · labels: [issue, test] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260813-begin-does-not-report-which-arm-it-took` — begin does not report which arm it took · status: open · num: P-20260813-begin-does-not-report-which-arm-it-took · priority: medium · created: 2026-08-13T09:40:47Z · labels: [issue, placement, contracts] · origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Graph
 

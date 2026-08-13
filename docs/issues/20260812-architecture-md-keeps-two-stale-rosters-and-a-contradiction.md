@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:35Z
-updated: 2026-08-13T05:29:53Z
+updated: 2026-08-13T09:48:16Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -110,3 +110,18 @@ entry to the same face. The roster sits one bullet above the addition, so the
 edit surfaced it; nothing swept it up. Recorded here rather than corrected in
 that pass, because the two edits answer different findings and the roster
 restatement is this issue's to own.
+
+**2026-08-13, a fifth site.** `:395`'s description of the citation sweep — "it
+drops the issues root from its `git ls-files` pathspec under a placement,
+rewrites the collection the handle hands back, and publishes it as one `edit`
+commit" — now describes only part of what the sweep does, and the part it
+describes was the defect. Dropping the root from the pathspec never kept the
+worktree's fork of the collection out: another configured root can be its
+ancestor, and git lists it through that one. And "rewrites the collection the
+handle hands back" is exactly the assumption the containment fix removed — the
+sweep now establishes containment against whatever directory it was handed,
+because `begin` does not report which arm it took.
+
+Restate through `/jim:arch` as: the sweep drops from its enumeration every path
+resolving inside a routed issues root (the pathspec alone does not), and bounds
+every target by the root it came from rather than by which arm `begin` took.

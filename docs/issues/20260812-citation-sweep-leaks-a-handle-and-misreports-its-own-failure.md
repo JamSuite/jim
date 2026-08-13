@@ -2,7 +2,7 @@
 id: 20260812-citation-sweep-leaks-a-handle-and-misreports-its-own-failure
 num: 327
 title: "Citation sweep leaks a handle and misreports its own failure"
-status: open
+status: closed
 priority: medium
 labels: [spec, placement, hygiene]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:56Z
-updated: 2026-08-12T21:53:56Z
+updated: 2026-08-13T09:44:19Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -85,3 +85,54 @@ regenerated.
 Coverage note: `tests/specreconcile.sh` has one placement case (`:298`), the
 plumbing happy path. Unpinned: the `issue_touched == 0` abort, the `commit`-failure
 disclosure, the handle-leak path, and `place.sh mode` failing.
+
+## Resolution
+
+**2026-08-13.** All four items taken, alongside the containment fix in the same
+function.
+
+**1. The handle leak.** The `mktemp -d` failure now aborts `$place_token` before
+returning, as the empty-set branch three lines above already does. The token is
+*not* named in the message: it has just been released, so naming it would offer
+the developer a handle that no longer exists. Pinned by
+`case_specreconcile_sweep_temp_failure_releases_the_handle`, which drives the
+failure through `TMPDIR` — the sweep's scratch directory is the one temp it takes
+from there, while the handle root lives under the git dir, so `begin` opens
+normally and the failure lands exactly on the path between the two.
+
+**2. The failure message.** Reworded to say what has actually happened at that
+point: no citation swept on either side, and the realization itself standing —
+directories renamed, frontmatter realized. Pinned by
+`case_specreconcile_begin_refusal_reports_the_real_state`, which drives the
+refusal a developer actually meets (an uncommitted edit in the collection on the
+direct arm) and asserts both the wording and the ground truth it claims.
+
+**3. The nested configured root.** A routed issues root is now resolved for its
+own sake and carried to the enumeration as the prefix every target is dropped
+against — the pathspec alone was never enough, because another configured root
+can be its ancestor and `git ls-files` lists it through that one. The resolved
+form is compared, not the configured spelling, so a collection configured as the
+worktree top drops the whole enumeration instead of matching nothing.
+
+The second half of item 3 dissolves rather than being fixed: with the worktree
+fork out of the sweep there is nothing in it to regenerate an index for. The
+`issue_touched` guard's inability to fire under `route` was a symptom of the fork
+being swept at all. Pinned by
+`case_specreconcile_nested_root_leaves_the_worktree_fork_alone`, which asserts
+the fork is left byte-for-byte as it was while the destination is swept.
+
+**4. The stranded-handle claim.** The comment was corrected rather than an
+age-based sweep added. `commit` and `abort` each act on the one handle they are
+named; a sweep of the root would have to distinguish a stranded handle from a
+live one in another process, which is a race, not a reclamation. The header now
+says plainly that only the token holder can reclaim a stranded handle, and that
+what keeps the root empty is every caller releasing its handle on the way out of
+every path — which is what item 1 restores here.
+
+Each guard was proved by neutering it and watching its case go red.
+
+**Still unpinned**, from the coverage note above: the `issue_touched == 0` abort,
+the `commit`-failure disclosure, and `place.sh mode` failing. The handle-leak
+path is now pinned. The missing `trap … EXIT INT TERM` this issue also names
+belongs to the trap issue, which covers `backfill.sh`, `reconcile.sh`, and
+`migrate.sh` together.
