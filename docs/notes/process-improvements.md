@@ -620,6 +620,23 @@ overwrites it, orphaning their provenance), and the target ledger's recorded
 have diffed the wrong code entirely. Either failure means running the review as a
 freestanding pass instead.
 
+**The ledger's write path is unvalidated; its two read paths disagree about what
+they show.** `cmd_event` joins its `k=v` arguments with `;` and appends — no key
+allowlist, no shape check, no sanitizer. So a new counter key needs no script
+change to be *written*. What it does next depends on which reader sees it:
+`events` re-emits the field verbatim, so the key **displays**; `metrics` iterates
+a fixed code-literal stage list (`LEDGER_STAGES`) and never reads that field, so
+the key is **silently invisible**. Adding a counter and confirming it in `events`
+therefore proves nothing about `metrics`. Neither the script nor the platform
+blueprint records this — the blueprint states the fixed-key `metrics` guarantee
+and not the asymmetry behind it.
+
+**Realize assigns ordinals in glob order, not filing order.** `scan_pending`
+enumerates `P-*` directories with a shell glob, so the sort key is the
+provisional token: chronological across days, and **alphabetical by slug within
+one day's batch**. Two specs filed an hour apart on the same date get their
+ordinals by title, not by when they were filed.
+
 **Bash and tooling traps that cost real time:**
 
 - `local a=1 b="$a"` does not work. `local` expands every argument before
