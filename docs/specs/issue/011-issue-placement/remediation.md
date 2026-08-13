@@ -1098,7 +1098,7 @@ suite moved **1384 → 1392**.*
 
 | Issue | What shipped |
 | :--- | :--- |
-| `#326` | containment is a property of the enumeration rather than a claim about the provider: every target clears the boundary of the root it came from, and the symlink discipline three of the four enumerations already carried now covers all four |
+| `#326` | containment is a property of the enumeration rather than a claim about the provider: every target clears the boundary of the root it came from, and all four enumerations now carry the same symlink discipline — two already did, the handle enumeration had neither half, and the tracked one had only the escape half, so a *contained* tracked symlink used to be rewritten through and is now skipped |
 | `#327` | the handle is released on the one exit that leaked it; the `begin`-failure message states what has actually happened; a routed collection's worktree fork is dropped by resolved prefix rather than by pathspec alone; `place.sh`'s header stops claiming stranded handles are reported and reclaimed |
 
 **Eight guards, each proved by neutering it and watching its case go red**, with

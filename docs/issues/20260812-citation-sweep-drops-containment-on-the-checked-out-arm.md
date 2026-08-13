@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:20Z
-updated: 2026-08-13T09:44:19Z
+updated: 2026-08-13T10:27:58Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -123,3 +123,29 @@ front of the enumeration catches it — and it has to, because `for entry in
 makes the check fire. It holds the posture `place.sh`'s own comment names: a
 refusal reported as success hands back an empty dir that resolves to wherever
 the caller happens to be standing.
+
+## Correction
+
+**2026-08-13.** The resolution above says the fix applies "the same symlink
+discipline the function's three other enumerations already carry". That is
+wrong, and it undersells what the fix changed.
+
+Two of the four enumerations carried the discipline, not three: the
+untracked-files pass and the realized-directories pass each tested `-L`
+explicitly, skipping a contained symlink and refusing an escaping one. The
+handle enumeration carried neither half. And the **tracked** enumeration carried
+only one half, by accident rather than by design: its containment check resolves
+symlinks, so an escaping one was refused — but a *contained* one passed every
+gate and was swept **through**, rewriting a file the enumeration never selected.
+
+So the fix did not bring a fourth enumeration into line with three. It brought
+two into line with two, and one of those two is a **behavior change on the
+tracked path**: a contained tracked symlink used to be rewritten through and is
+now skipped. It is pinned by
+`case_specreconcile_sweep_skips_a_tracked_symlink`, which was written for it —
+but it belonged in the resolution's own words, not folded into a count.
+
+The same sentence is in `remediation.md` § The sweep round and in commit
+`cb17771`'s body. The record is corrected; the commit body is not rewritten,
+because five `## Resolution` sections in this collection already cite shas in
+this range.
