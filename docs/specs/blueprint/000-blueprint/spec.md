@@ -2,7 +2,7 @@
 title: "blueprint — blueprint"
 group: "blueprint"
 kind: blueprint
-updated: "2026-07-25"
+updated: "2026-08-13"
 last_full_generate: "2026-07-25T18:42:26Z"
 ---
 
@@ -86,6 +86,10 @@ rest of the plugin cites.
 - `issue.emitter` + `issue.candidate-batch-contract` — violations,
   misalignments, and health findings are offered as tracked issues through
   `new.sh`/`index.sh` per the § 7a contract.
+- `issue.placement-read` — `/jim:partition` reads the collection through
+  `place.sh` `mode` / `begin --read` / `abort` to ground the issue re-points a
+  rename, split, or merge discloses. The grant carries no publish verb: the
+  rows are stated as changes the operator applies, never written from here.
 - `sdlc.personas` — skill frontmatter binds `agent: architect` (blueprint,
   partition) and `agent: reviewer` (verify); a prose/frontmatter channel, not
   a code composition.
