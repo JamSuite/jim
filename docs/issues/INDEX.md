@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 113
+- Open: 118
 - Closed: 231
 
 ## Issues
@@ -350,7 +350,12 @@
 - `20260812-three-surfacing-skill-roster-counts-are-stale` — Three surfacing-skill roster counts are stale · status: closed · num: 317 · priority: low · created: 2026-08-12T03:42:11Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-two-argument-read-shape-bypasses-placement-and-creates-a-stray-d` — Two-argument read shape bypasses placement and creates a stray directory · status: closed · num: 318 · priority: high · created: 2026-08-12T03:41:33Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-two-placement-cases-cannot-fail-and-four-guards-have-no-coverage` — Two placement cases cannot fail and four guards have no coverage · status: closed · num: 319 · priority: medium · created: 2026-08-12T03:42:07Z · labels: [issue, test] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260813-a-review-finding-does-not-carry-the-scope-it-was-derived-from` — A review finding does not carry the scope it was derived from · status: open · num: P-20260813-a-review-finding-does-not-carry-the-scope-it-was-derived-from · priority: medium · created: 2026-08-13T11:01:06Z · labels: [sdlc, review, coverage] · origin: docs/notes/20260728-id-coordination-issue-grouping.md
 - `20260813-begin-does-not-report-which-arm-it-took` — begin does not report which arm it took · status: open · num: P-20260813-begin-does-not-report-which-arm-it-took · priority: medium · created: 2026-08-13T09:40:47Z · labels: [issue, placement, contracts] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260813-jim-arch-has-no-present-tense-or-provenance-scan` — jim:arch has no present-tense or provenance scan · status: open · num: P-20260813-jim-arch-has-no-present-tense-or-provenance-scan · priority: medium · created: 2026-08-13T11:00:01Z · labels: [docs, architecture, consistency] · origin: docs/notes/20260805-b-double-prime-exit-handoff.md
+- `20260813-nine-review-findings-that-were-never-filed` — Nine review findings that were never filed · status: open · num: P-20260813-nine-review-findings-that-were-never-filed · priority: medium · created: 2026-08-13T11:00:48Z · labels: [review, records, docs] · origin: docs/notes/20260805-b-double-prime-review.md
+- `20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts` — Provisional slug charset is wider than the move verb accepts · status: open · num: P-20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts · priority: medium · created: 2026-08-13T10:59:41Z · labels: [platform, allocator, grammar] · origin: docs/notes/20260804-b-prime-completion-handoff.md
+- `20260813-six-deliberately-unfiled-items-from-the-c-prime-fix-round` — Six deliberately-unfiled items from the C-prime fix round · status: open · num: P-20260813-six-deliberately-unfiled-items-from-the-c-prime-fix-round · priority: low · created: 2026-08-13T11:00:24Z · labels: [docs, correctness, cleanup] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 
 ## Graph
 
@@ -488,3 +493,4 @@
 - `20260812-index-sh-warnings-and-row-set-escape-the-sanitizer-discipline`: malformed wikilink `[[ -z "$fm" ]]` ignored.
 - `20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0`: malformed wikilink `[[ "$action" == rename ]]` ignored.
 - `20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish`: malformed wikilink `[[ -n "$st" ]]` ignored.
+- `20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts`: malformed wikilink `[[ "P-20260801-Foo.bar" =~ <src_shape> ]]` ignored.

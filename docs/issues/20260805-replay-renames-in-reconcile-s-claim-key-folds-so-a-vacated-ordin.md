@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T22:20:08Z
-updated: 2026-08-05T22:20:08Z
+updated: 2026-08-13T11:01:21Z
 origin: docs/notes/20260805-b-double-prime-review.md
 ---
 
@@ -57,3 +57,26 @@ key, and a vacated ordinal can never be returned as `have`.
 Fixture both kinds: allocate, rename away, then reconcile the same durable
 identity and assert the answer is the rename destination or a fresh mint, never
 the vacated ordinal.
+
+## Note
+
+**2026-08-13.** This issue falsifies a standing blueprint invariant, and nothing
+on either side says so.
+
+`docs/specs/platform/000-blueprint/spec.md` states, as current fact, that the
+per-kind fold "counts every ordinal a group has ever held — allocate ids, rename
+destinations, and rename sources — so **a vacated ordinal is permanently gapped
+whatever shape the log takes**".
+
+This issue describes `reconcile spec` / `reconcile issue` handing a vacated
+ordinal back as `have`, from the allocator itself, at rc 0. Both cannot be true.
+
+The direct mechanism an earlier review found was fixed; this path was not, so the
+invariant has been describing an intent rather than a behavior since then. Under
+the fold discipline — a fold is a waypoint, and the pre-fold text is the
+restoration target — the blueprint sentence is this issue's restoration target:
+closing this issue is what makes it true again, and until then a reader of that
+blueprint is being told something the code does not do.
+
+Recorded here rather than weakening the blueprint, because the invariant is
+right and the code is wrong — the opposite of the case a fold is for.
