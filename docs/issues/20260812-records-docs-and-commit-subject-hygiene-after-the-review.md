@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:54:00Z
-updated: 2026-08-12T21:54:00Z
+updated: 2026-08-13T10:39:07Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -96,3 +96,46 @@ roster still carries `(spec 025 AC1–AC3)`, against `CLAUDE.md`'s rule that scr
 comments carry no artifact IDs. The surrounding SECURITY MODEL block's citations
 are pre-existing and covered by the open purge issue; this one sits inside text the
 round edited.
+
+## Progress
+
+**2026-08-13.** Two items are already taken, and a seventh is added.
+
+**Item 1 is done** — and was done before this note, with nothing recording it.
+The `**Superseded 2026-08-12.**` paragraph in `remediation.md` already reads
+"**All five are closed** by the round that followed, item 3 — the two cross-group
+write paths — included." The contradiction this item describes is gone. That
+paragraph has since been edited again, to stop restating the open count at all
+and point at § The tracked set instead, so the class it belonged to is narrower
+now: one maintained count, everything else timestamped as history.
+
+**Item 6's first half is done** — `resolve_dir`'s docstring sits against
+`resolve_dir()` again, restored during the index sanitizer pass. Its second half
+stands: `skills/issue/scripts/new.sh:6` still carries `(spec 025 AC1–AC3)`.
+
+**Item 2 stands.** Neither remainder is filed: `grep fingerprint docs/issues/`
+still hits only the parent issue and this one.
+
+## 7. `file:line` citations inside issue bodies rot with no sweep
+
+Two open issues cite lines that moved rounds ago, and nothing detects it:
+
+- `20260805-teach-both-single-source-guards-in-jimfile-tests-the-spellings-a.md`
+  cites `skills/spec/scripts/reconcile.sh:722` for a grammar restatement that now
+  lives near `:876`. At `297ca80` that line was mid-`awk`, so the citation was
+  already wrong before the sweep round touched the file.
+- `20260805-route-the-twelve-proven-unsanitized-sites-and-sweep-the-class-co.md`
+  cites `tests/specreconcile.sh:485-490` for the class sweep, which sat at `:544`
+  before the sweep round and `:744` after. Also already wrong at `297ca80`.
+
+This item's own citations of `remediation.md` (`:68`, `:813-814`, `:226-227`,
+`:219-221`) have moved for the same reason.
+
+The rot is systemic rather than these two files': every edit shifts every citation
+below it, and an issue body is the one artifact class with no regeneration step.
+Worth deciding, not just fixing — a line citation that must stay correct wants an
+anchor a rewrite cannot move (a function name, a distinctive string), and the
+cheapest rule may be to stop writing bare line numbers in issue bodies at all.
+
+**Action:** repoint the two above, and decide the rule. Nothing sweeps for this
+class today.
