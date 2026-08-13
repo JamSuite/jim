@@ -88,7 +88,7 @@ re-declared here.*
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-08-13T05:28:48Z
+on every blueprint write; do not edit. Last reconciled: 2026-08-13T05:50:54Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |
@@ -110,6 +110,7 @@ on every blueprint write; do not edit. Last reconciled: 2026-08-13T05:28:48Z
 | blueprint | testlib (meta-test framework) | platform |
 | blueprint | emitter (`new.sh` single emitter) | issue |
 | blueprint | candidate-batch-contract (§ 7a) | issue |
+| blueprint | placement-read (`place.sh` begin --read) | issue |
 | blueprint | personas (`agent:` bindings — architect, reviewer) | sdlc |
 | issue | jimfile-cli (`jimfile.sh` path/id CLI) | platform |
 | issue | jimconf-cli (`jimconf.sh` resolver) | platform |
