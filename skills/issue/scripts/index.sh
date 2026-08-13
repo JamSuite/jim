@@ -256,9 +256,6 @@ parse_wikilinks_from_body() {
 
 # ─── Section: Main pipeline ──────────────────────────────────────────────────
 
-# resolve_dir <arg>
-#   Determine the issues directory: arg if non-empty, else jimconf default.
-#   Errors with rc=2 if the result is empty or whitespace-only.
 # row_safe <value> — a frontmatter scalar made safe to place in an INDEX.md row.
 #
 #   A row is ` · `-separated `key: value` pairs and every reader assigns by key
@@ -276,10 +273,20 @@ parse_wikilinks_from_body() {
 #   other character sharing one.
 #
 #   Control characters and the length cap are the corpus display-sanitizer form.
+#
+#   The stage order is load-bearing, not incidental. `tr` runs first because
+#   deleting a control byte can bring the separator's own two bytes together —
+#   `C2 01 B7` collapses to `C2 B7`, a reconstituted `·` — and `sed` removes it
+#   only by running afterwards. `cut` runs last for the same reason in reverse:
+#   the separator is already gone, so the cap can never bisect one and leave a
+#   half. Reordering these three reopens separator forgery.
 row_safe() {
   printf '%s' "$1" | tr -d '\000-\037\177' | sed 's/·//g' | cut -c1-512
 }
 
+# resolve_dir <arg>
+#   Determine the issues directory: arg if non-empty, else jimconf default.
+#   Errors with rc=2 if the result is empty or whitespace-only.
 resolve_dir() {
   local arg="$1"
   local dir="$arg"
@@ -334,9 +341,23 @@ main() {
   done
 
   # First pass: collect per-issue metadata into parallel arrays.
-  # Sorted in declare order; we sort the file list lexicographically by slug.
-  IFS=$'\n' files_sorted=($(printf '%s\n' "${files[@]}" | sort))
-  unset IFS
+  #
+  # The glob above already produced this list in order: bash sorts pathname
+  # expansion, and LC_ALL=C makes that byte order — byte-for-byte the order a
+  # `sort` of the same full paths yields, since they share a directory prefix.
+  # So the order needs no second pass, and it is taken from the glob's own
+  # array rather than round-tripped through a word-split array assignment.
+  #
+  # That shape is load-bearing, not stylistic. An entry name is untrusted input
+  # from a shared branch and may carry any byte but NUL and `/`, so a
+  # line-oriented round trip cannot represent one that carries a newline: the
+  # sort reads a single name as two records, and the split assignment reifies
+  # two elements — one of them a fragment that has lost its directory prefix.
+  # `IFS=$'\n'` closes space-splitting but not pathname expansion, and `set -f`
+  # appears nowhere in this corpus, so that fragment re-globs against the
+  # invoking checkout rather than the collection: a fragment of `*.md`
+  # enumerates a project root and renders its frontmatter as issue rows.
+  # Iterating the array keeps every name one word whatever bytes it holds.
 
   local open_count=0 closed_count=0
   local issues_section="" graph_section="" warnings_section=""
@@ -358,14 +379,19 @@ main() {
   declare -A typed_target_for
   typed_target_for[__sentinel__]=1; unset 'typed_target_for[__sentinel__]'
 
-  for f in "${files_sorted[@]}"; do
+  for f in "${files[@]}"; do
     local slug
     slug="$(basename "$f" .md)"
     if ! is_valid_id "$slug" 2>/dev/null; then
-      warnings_section+="- Skipped \`$slug\`: filename is not a valid id."$'\n'
+      # The value quoted here is precisely the one that failed the id gate, so
+      # it is arbitrary bytes from a shared branch reaching the artifact every
+      # reader parses. It clears the display sanitizer first — control
+      # characters out, so a name cannot close this line and open a second
+      # `## Issues` section for readers to take rows from, and the backticks
+      # that would close the code span it sits in.
+      warnings_section+="- Skipped \`$(row_safe "$slug" | tr -d '`')\`: filename is not a valid id."$'\n'
       continue
     fi
-    slugs_seen+=("$slug")
 
     local fm
     fm="$(extract_frontmatter "$f")"
@@ -373,6 +399,11 @@ main() {
       warnings_section+="- \`$slug\`: missing or malformed frontmatter."$'\n'
       continue
     fi
+    # Recorded only past both gates, so the row set and the Summary counts below
+    # derive from one population. A slug recorded ahead of the frontmatter gate
+    # renders an `(untitled)` row while contributing to neither count — an index
+    # asserting a row its own Summary denies.
+    slugs_seen+=("$slug")
 
     local status priority title origin labels created num
     {
@@ -425,7 +456,7 @@ main() {
     while IFS=$'\t' read -r type target; do
       [[ -z "$type" || -z "$target" ]] && continue
       if ! is_valid_id "$target" 2>/dev/null; then
-        warnings_section+="- \`$slug\`: invalid relation target \`$target\` (type $type)."$'\n'
+        warnings_section+="- \`$slug\`: invalid relation target \`$(row_safe "$target" | tr -d '`')\` (type $type)."$'\n'
         continue
       fi
       edges_fm+="$type:$target "
@@ -445,7 +476,7 @@ main() {
     while IFS= read -r wl; do
       [[ -z "$wl" ]] && continue
       if ! is_valid_id "$wl" 2>/dev/null; then
-        warnings_section+="- \`$slug\`: malformed wikilink \`[[${wl}]]\` ignored."$'\n'
+        warnings_section+="- \`$slug\`: malformed wikilink \`[[$(row_safe "$wl" | tr -d '`')]]\` ignored."$'\n'
         continue
       fi
       # Absorption: a typed frontmatter edge to this target already
@@ -514,7 +545,13 @@ main() {
         */*)
           if [[ ! -e "$origin_value" ]]; then
             origin_created="${meta_created[$s]-}"
-            warnings_section+="- \`$s\` origin path does not resolve: $origin_value (created $origin_created)"$'\n'
+            # A raw frontmatter scalar, and the one warning value that lands
+            # outside a code span — so an unbalanced backtick would open one
+            # over the rest of the block. Same sanitizer as a row value: the
+            # length cap is what keeps an unbounded origin from landing whole
+            # in a committed artifact, and the control-character strip is what
+            # keeps ESC and CR out of every reader that cats this file.
+            warnings_section+="- \`$s\` origin path does not resolve: $(row_safe "$origin_value" | tr -d '`') (created $origin_created)"$'\n'
           fi
           ;;
       esac

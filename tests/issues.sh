@@ -675,6 +675,15 @@ case_issues_index_malformed_frontmatter_warning() {
   local idx
   idx="$(cat "$dir/INDEX.md")"
   assert_match "malformed frontmatter warning" 'missing or malformed frontmatter' "$idx"
+  # The row set and the Summary counts derive from one population. A file that
+  # fails the frontmatter gate contributes to neither, so an index can never
+  # assert a row its own Summary denies.
+  if echo "$idx" | grep -q '`20260530-x` —'; then
+    CURRENT_FAILED=1
+    echo "    [a file failing the frontmatter gate should render no row]"
+  fi
+  assert_match "open count excludes it" '^- Open: 0$' "$idx"
+  assert_match "closed count excludes it" '^- Closed: 0$' "$idx"
 }
 
 # AC: filename that is not a valid slug is skipped with a warning
@@ -693,6 +702,141 @@ case_issues_index_invalid_filename_skipped() {
   if echo "$idx" | grep -q '`bad@slug` —'; then
     CURRENT_FAILED=1
     echo "    [bad-id filename should not appear as an Issues entry]"
+  fi
+}
+
+# AC: an entry name carrying a control character is one word, whatever bytes it
+# holds — the enumeration never splits it into fragments that re-glob against
+# the run's own working directory.
+case_issues_index_control_char_name_does_not_reglob() {
+  local dir cwd
+  dir=$(empty_dir index_ctrl_name)
+  cwd=$(empty_dir index_ctrl_cwd)
+  # Stands in for the developer's own checkout: markdown whose basename is a
+  # valid id, so it would clear the per-slug validator if it were ever reached.
+  printf -- '---\ntitle: "LEAKED"\nstatus: open\nnum: 999\n---\n' \
+    > "$cwd/20260101-leaked.md"
+  # An ordinarily-committed collection entry whose name carries a newline
+  # followed by a glob. Under a branch placement any teammate can create one.
+  printf -- '---\ntitle: "Real"\nstatus: open\n---\n' \
+    > "$dir/$(printf '20260101-a.md\n*.md')"
+  local idx
+  idx="$( cd "$cwd" && bash "$SCRIPT_INDEX" "$dir" >/dev/null 2>&1; cat "$dir/INDEX.md" )"
+  # The checkout never reaches the collection's index, by row or by content.
+  if echo "$idx" | grep -q '20260101-leaked'; then
+    CURRENT_FAILED=1
+    echo "    [a path outside the collection was rendered as an issue row]"
+  fi
+  if echo "$idx" | grep -q 'LEAKED'; then
+    CURRENT_FAILED=1
+    echo "    [frontmatter from outside the collection reached the index]"
+  fi
+  # The unusable name is refused by the id gate rather than silently dropped.
+  assert_match "control-char name refused" 'not a valid id' "$idx"
+}
+
+# AC: a refusal message quoting an untrusted entry name cannot inject a line
+# into the index — the warnings block is as sanitized as a row.
+case_issues_index_control_char_name_cannot_forge_a_section() {
+  local dir
+  dir=$(empty_dir index_ctrl_forge)
+  # The name closes its own warning line and opens a second Issues section.
+  # Readers assign by the LAST such section, so an injected one is what serves.
+  printf -- '---\ntitle: "Real"\nstatus: open\n---\n' \
+    > "$dir/$(printf 'bad\n## Issues\n\n- `20260101-forged` — FORGED · status: open\n.md')"
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  # The name is quoted back in the refusal, so its bytes appear — sanitized,
+  # inert, inside a code span on one line. What must not appear is anything a
+  # reader resolves: a second section to take rows from, or a row of its own.
+  assert_eq "exactly one Issues section" 1 "$(grep -c '^## Issues$' <<<"$idx")"
+  if echo "$idx" | grep -q '^- `20260101-forged`'; then
+    CURRENT_FAILED=1
+    echo "    [an entry name forged a row through the warnings block]"
+  fi
+  assert_eq "warning occupies one line" 1 "$(grep -c 'not a valid id' <<<"$idx")"
+}
+
+# AC: every untrusted value concatenated into the warnings block clears the
+# same display sanitizer a row value clears — control characters out, capped.
+case_issues_index_warning_values_clear_the_sanitizer() {
+  local dir long
+  dir=$(empty_dir index_warn_sanitize)
+  long="$(printf 'A%.0s' $(seq 1 600))"
+  # Path-shaped so the origin lint checks it; non-existent so it warns.
+  printf -- '---\ntitle: "X"\nstatus: open\norigin: "docs/%s%sTAILMARK"\n---\n' \
+    "$(printf '\033[31m\r')" "$long" > "$dir/20260101-o.md"
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "origin warning present" 'origin path does not resolve' "$idx"
+  if grep -q $'\033' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [an escape byte reached the committed index]"
+  fi
+  if grep -q $'\r' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [a carriage return reached the committed index]"
+  fi
+  if echo "$idx" | grep -q 'TAILMARK'; then
+    CURRENT_FAILED=1
+    echo "    [an unbounded origin value landed whole in the index]"
+  fi
+}
+
+# AC: stripping control characters cannot reconstitute the row separator — the
+# sanitizer's stages run in the one order that closes this, and this case is
+# what says so when someone reorders them.
+case_issues_index_sanitizer_cannot_reconstitute_a_separator() {
+  local dir
+  dir=$(empty_dir index_sep_reconstitute)
+  # The separator is two bytes, C2 B7. Splitting them with a control byte hides
+  # it from a separator strip that runs before the control-character strip, and
+  # the strip then rejoins them. Spaces either side so a survivor is the exact
+  # ` · ` sequence readers split rows on.
+  printf -- '---\ntitle: "A %s status: closed"\nstatus: open\n---\n' \
+    "$(printf '\xc2\x01\xb7')" > "$dir/20260101-s.md"
+  run_index "$dir"
+  local row seps
+  row="$(grep '^- `20260101-s`' "$dir/INDEX.md")"
+  assert_nonempty "row rendered" "$row"
+  # This fixture carries title and status only, so the writer emits exactly one
+  # separator. Any second one came from the title.
+  seps="$(grep -o ' · ' <<<"$row" | wc -l)"
+  assert_eq "no separator reconstituted" 1 "$seps"
+  assert_match "the writer's own status is what resolves" 'status: open' "$row"
+}
+
+# AC: a malformed wikilink is sanitized on its way into the warning that names
+# it — body text is untrusted on the same footing as frontmatter.
+case_issues_index_malformed_wikilink_is_sanitized() {
+  local dir
+  dir=$(empty_dir index_wl_sanitize)
+  # Bracket-free control bytes: the wikilink grammar is `[[^][]+]]`, so a value
+  # carrying `[` never matches as a wikilink in the first place.
+  printf -- '---\ntitle: "X"\nstatus: open\n---\n\nSee [[not a valid id%s]].\n' \
+    "$(printf '\033\r')" > "$dir/20260101-w.md"
+  run_index "$dir"
+  assert_match "wikilink warning present" 'malformed wikilink' "$(cat "$dir/INDEX.md")"
+  if grep -q $'\033' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [an escape byte reached the index via a wikilink]"
+  fi
+}
+
+# AC: an invalid relation target is sanitized on its way into the warning that
+# names it, like every other untrusted value the block quotes.
+case_issues_index_invalid_relation_target_is_sanitized() {
+  local dir
+  dir=$(empty_dir index_rel_sanitize)
+  printf -- '---\ntitle: "X"\nstatus: open\nrelations:\n  blocks: ["%s"]\n---\n' \
+    "$(printf 'not a valid id\033[31m')" > "$dir/20260101-r.md"
+  run_index "$dir"
+  assert_match "relation warning present" 'invalid relation target' "$(cat "$dir/INDEX.md")"
+  if grep -q $'\033' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [an escape byte reached the index via a relation target]"
   fi
 }
 
