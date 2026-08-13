@@ -62,12 +62,13 @@ plan's — `review.md` is their record and lists the five that gate closure. Do
 not read the counts below as current; they describe the set this remediation
 was scoped against.
 
-**That next round has since run and closed, and a fourth `/jim:review` has run
-over its result.** Both are recorded at the end of this file — *§ The
-review-remediation round*, then *§ The fourth review*. `review.md` now holds the
-fourth review; its predecessor's per-AC evidence is preserved at commit
-`0563c42`. Every list of "what gates closure" written before those two sections
-is stale; the current tracked set is the last subsection of this file.
+**Three things have since run.** In order, and each recorded at the end of this
+file: *§ The review-remediation round*, *§ The fourth review*, and *§ The
+containment round*, which worked the fourth review's tracked set rather than
+producing a new review. `review.md` still holds the fourth review; its
+predecessor's per-AC evidence is preserved at commit `0563c42`. Every list of
+"what gates closure" written before those sections is stale; the current tracked
+set is the last subsection of this file.
 
 The fix pass's 8 recorded their resolutions in commit trailers alone and were
 **backfilled** here, each marked as reconstructed and dated to the backfill
@@ -817,8 +818,7 @@ item 3 — the two cross-group write paths — included. That round's bar was se
 wider than this list: close the whole reviewed set bar `#297`. The per-issue
 `## Resolution` and `## Progress` sections are its record; this list is left
 standing as what was true when WP7 answered the gate, not as work outstanding.
-The open set against the spec is now **28**, from the fourth review — see
-*§ The tracked set*.
+The open set against the spec is now **23** — see *§ The tracked set*.
 
 ## Deferred
 
@@ -1034,19 +1034,80 @@ entry") is wrong here. `#338` carries the right one: add the reciprocal
 `Requires` entries, after which both edges re-derive and the finding clears
 itself.
 
+## The containment round
+
+*Run 2026-08-13 against `05523ea`, working the fourth review's tracked set
+rather than a new review. Twelve commits; the suite moved **1370 → 1383**.*
+
+**Two declarations, then two file-scoped fix passes.** The order was deliberate:
+the contract edges first, so blast-radius analysis was honest before any code in
+`place.sh` moved.
+
+| Issue | What shipped |
+| :--- | :--- |
+| `#338` | both placement edges derive from reciprocal `Requires` entries; the graph is 25 rows and `dead-surface` cleared itself from 1 to 0 |
+| `#333` | the index's row set and Summary counts derive from one population, and four warning values clear the display sanitizer |
+| `#328` | a control character is refused at both ends — the enumeration no longer splits a name, and neither end of the round trip accepts one |
+| `#340` | the publish side checks `git status`'s exit status instead of reading a failure as nothing to publish |
+| `#329` | the direct arm's commit is hook-free, unstages on failure, and excludes the dotfile namespace |
+| `#332` | items 5 and 6 only — the snapshot's enumerability precondition and the replay's mode preservation |
+
+**Every fix was proven by neutering its own guard and watching the case that
+names it go red**, with each neuter diffed against a saved copy first so a
+pattern that silently missed could not be recorded as a proof. Fourteen cases
+were added across the two files.
+
+### What the round learned
+
+**A fix opened a hole its own issue did not name.** Correcting the index
+enumeration stopped mangling filenames, which delivered the raw name intact to a
+refusal message that concatenated it unsanitized — so a committed filename could
+forge a second `## Issues` section and a row inside it. The site is named by
+neither `#328` nor `#333`. This is the fourth consecutive round where the
+failure mode is composition rather than the fix, and the first where the rule
+recorded after the last one (*re-read the whole function and ask what else
+depends on the state you just moved*) caught it prospectively rather than a
+review catching it afterwards.
+
+**Two mechanisms were tested rather than assumed, and both changed the fix.**
+`--no-verify` does not protect a commit subject — a `prepare-commit-msg` hook
+rewrites it through that flag — so the direct arm scopes hooks off by
+`core.hooksPath` instead. And `:(exclude)` pathspec magic is unavailable under
+`--literal-pathspecs`: the whole `add` fails rather than the pathspec being
+ignored, so the dotfile exclusion is applied by unstaging.
+
+**One guard ships pinned by nothing, named rather than left to be found.**
+`place_snapshot`'s enumerability precondition cannot be driven from any external
+invocation — the directory it enumerates is one `place.sh` creates and owns, and
+the reindex fails against the same directory first. It is recorded as unpinned
+in `#332`'s progress section, since `#343` is an open issue about exactly this
+class.
+
+**Three fixtures wrote into the real collection before being caught.** On the
+direct arm `begin` hands back a *repo-relative* prefix, and a test process's CWD
+is the project's own checkout — so writing through the returned path landed in
+`docs/issues/`. Two untracked files, nothing committed, `INDEX.md` untouched;
+removed, and the cases anchored at their fixture repo with the trap named in a
+comment. It also exposed one of those cases as passing for the wrong reason.
+
 ## The tracked set
 
-**Twenty-eight follow-ons stand against the spec.**
+**Twenty-three follow-ons stand against the spec.**
 
-- **Twenty from the fourth review** — `#323`–`#343`, contiguous except `#337`.
-  Four are `critical`: `#328` and `#336` (each destroys user data), `#326` and
-  `#340`.
+- **Fifteen from the fourth review** — `#323`–`#343`, less `#337` and less the
+  five the containment round closed (`#328` `#329` `#333` `#338` `#340`).
+  **Two are `critical`**: `#336`, which destroys user data on the migration's
+  success path, and `#326`, the citation sweep's containment gap. Both live
+  outside `place.sh` — in `migrate.sh` and `reconcile.sh` — which is why the
+  placement work did not reach them.
 - **Eight predating it** — `#255` `#256` (from `research.md`), `#257` `#258`
   `#259` `#260` `#261` (from `plan.md`), `#297` (from this file, deliberately
   deferred).
 
 `#337` is the migration-preview finding carried over from the previous round; it
 realized alongside this batch. No provisional ordinals remain in the collection.
+
+`#332` is open on items 1–4 of six, and carries a `## Progress` saying which.
 
 Three worth reading before touching anything nearby:
 
@@ -1057,9 +1118,10 @@ Three worth reading before touching anything nearby:
   subject. It is not only a reporting gap: the same set drives the living-intent
   sensor's judge selection, so a remediation touching a *new* file would leave its
   invariants unjudged and the review would report clean coverage.
-- **`#338`** — the two undeclared contract edges, above.
+- **`#336`** — the sharpest thing still open. One line reserves the name; the
+  cost of not taking it is an issue deleted on a success path at rc 0.
 
 **The completion gate remains unanswered.** `plan.md` stays `approved`. The fact
-it turns on: alignment genuinely improved on every axis while a deeper pass found
-two defects that destroy user data, one of them freshly introduced by the round
-that was meant to be closing this out.
+it turned on when the fourth review closed — a deeper pass finding two defects
+that destroy user data, one freshly introduced by the round meant to be closing
+this out — is half addressed: `#328` is closed, and `#336` is not.
