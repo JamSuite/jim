@@ -514,19 +514,29 @@ sweep_citations() {
   # Normalize every root to its worktree-relative form once, here, and drop one
   # that does not resolve inside the worktree rather than sweeping nothing at all.
   local -a roots=() files=()
-  local key root rp issues_root=""
+  local key root rp issues_root="" routed_issues="" routed=0
   for key in specs issues brainstorms debug; do
     # Under a routed placement the working checkout's copy of the collection is
     # not the collection. It is swept through the handle opened below, so it must
     # not also be enumerated here — sweeping both would rewrite a fork nobody
-    # reads and publish the same edits twice.
-    [[ "$key" == issues && "$place_mode" == "route" ]] && continue
+    # reads and publish the same edits twice. Leaving it out of the pathspec is
+    # not enough to keep it out: another configured root can be its ancestor, or
+    # the worktree top itself, and git lists it through that one. So a routed
+    # issues root is still resolved here, and what it resolves to is carried to
+    # the enumeration below as the prefix every target is dropped against.
+    routed=0
+    [[ "$key" == issues && "$place_mode" == "route" ]] && routed=1
     root="$(jc get "$key" 2>/dev/null)"; root="${root%/}"; root="${root#./}"
     [[ -n "$root" ]] || continue
     # A dropped root means some citations are rewritten and others are not, and
     # the issue index is never regenerated for the dropped one. That is a partial
-    # sweep, so it fails the run — the caller cannot see it any other way.
+    # sweep, so it fails the run — the caller cannot see it any other way. A
+    # routed issues root is the exception: it is not swept from the worktree at
+    # all, and a path that does not resolve inside the worktree cannot be the
+    # ancestor of anything enumerated there, so there is nothing to drop and
+    # nothing to report.
     if ! rp="$(realpath -m -- "$root" 2>/dev/null)" || [[ -z "$rp" ]]; then
+      (( routed )) && continue
       echo "warning: citation sweep — cannot resolve the configured '$key' root ('$root'); not swept" >&2
       sweep_failed=1
       continue
@@ -536,10 +546,15 @@ sweep_citations() {
     elif [[ "$rp" == "$top"/* ]]; then
       root="${rp#"$top"/}"
     else
+      (( routed )) && continue
       echo "warning: citation sweep — the configured '$key' root ('$root') resolves outside the worktree; not swept" >&2
       sweep_failed=1
       continue
     fi
+    # Resolved, never worktree-relative: the drop below compares it against a
+    # resolved target, so a collection configured as the worktree top drops the
+    # whole enumeration instead of matching nothing.
+    if (( routed )); then routed_issues="$rp"; continue; fi
     roots+=("$root")
     [[ "$key" == issues ]] && issues_root="$root"
   done
@@ -616,12 +631,9 @@ sweep_citations() {
 
   # Every target enumerated so far is a worktree path, and clears the worktree
   # boundary before any edit. The placement handle's entries are added AFTER this
-  # loop deliberately: they live in a temp directory outside the worktree by
-  # construction, so this containment check would refuse the very collection the
-  # sweep is here to rewrite. Their own containment is established where it
-  # belongs — place.sh materializes each entry as a regular file with a plain
-  # name resolving inside the collection, and aborts the extraction before
-  # handing back a handle otherwise.
+  # loop because they are not worktree paths — they clear the boundary of the
+  # directory THEY came from, below, under the same rule.
+  local -a kept=()
   for f in "${files[@]}"; do
     if ! jf valid-relpath "$f" >/dev/null 2>&1; then
       echo "error: citation sweep — unsafe path rejected: $f" >&2; return 1
@@ -629,21 +641,64 @@ sweep_citations() {
     if ! resolved="$(realpath -m -- "$f" 2>/dev/null)" || [[ "$resolved" != "$top"/* ]]; then
       echo "error: citation sweep — path escapes worktree: $f" >&2; return 1
     fi
+    # A symlink is never a citation's home, and `>` follows one — so an in-tree
+    # symlink rewrites a file this enumeration never selected. The untracked and
+    # own-directory passes drop theirs where they are built; the tracked
+    # enumeration is the one that can still carry one this far.
+    [[ -L "$f" ]] && continue
+    # The working checkout's copy of a routed collection. It is a fork nobody
+    # reads: the collection itself is swept through the handle below, wherever
+    # it lives.
+    [[ -n "$routed_issues" && "$resolved" == "$routed_issues"/* ]] && continue
+    kept+=("$f")
   done
+  files=("${kept[@]}")
 
-  local place_token="" place_dir="" begin_out entry
+  local place_token="" place_dir="" place_rp="" begin_out entry ent_rp
   if [[ "$place_mode" == "route" ]]; then
     if ! begin_out="$(bash "$PLACE" begin)"; then
+      # Said in the order the run actually happened in: `begin` is called before
+      # the first rewrite, so nothing is half-swept on either side. What stands
+      # is the realization — the spec directories are renamed and their
+      # frontmatter carries the real identity — and every citation of the retired
+      # one is still a citation of it.
       echo "error: citation sweep — could not open the issue collection at its" \
-           "placement; the spec-side citations are rewritten and the issue-side" \
-           "ones are not" >&2
+           "placement, so no citation was swept, on either side. The realization" \
+           "itself stands: the spec directories are renamed and their frontmatter" \
+           "is realized. Re-run once the collection can be opened" >&2
       return 1
     fi
     place_token="${begin_out%%$'\t'*}"
     place_dir="${begin_out#*$'\t'}"
+    # These entries are not worktree paths, so they clear the boundary of the
+    # directory they came from instead. `begin` hands back a materialized copy
+    # under the git dir on one arm and the working tree's own collection on the
+    # other, and it does not report which — so containment here is a property of
+    # THIS enumeration rather than a claim about the provider. On the arm that
+    # materializes, place.sh has already established the same property and this
+    # is redundant; on the arm that does not, it is the only thing standing
+    # between a symlink in the collection and a rewrite outside the repository.
+    if ! place_rp="$(realpath -m -- "$place_dir" 2>/dev/null)" || [[ -z "$place_rp" ]]; then
+      bash "$PLACE" abort "$place_token" >/dev/null 2>&1
+      echo "error: citation sweep — the issue collection's own path does not resolve: $place_dir" >&2
+      return 1
+    fi
     for entry in "$place_dir"/*.md; do
+      # An unmatched glob leaves the pattern itself, which is neither. A dangling
+      # symlink is not -e either, and is still a live write target: `>` creates
+      # what it points at.
+      [[ -e "$entry" || -L "$entry" ]] || continue
+      if ! ent_rp="$(realpath -m -- "$entry" 2>/dev/null)" || [[ -z "$ent_rp" ]] \
+         || [[ "$ent_rp" != "$place_rp"/* ]]; then
+        bash "$PLACE" abort "$place_token" >/dev/null 2>&1
+        echo "error: citation sweep — path escapes the issue collection: $entry" >&2
+        return 1
+      fi
+      # Contained, but still not an issue's own body — the file it names is
+      # enumerated on its own account if it belongs to the collection.
+      [[ -L "$entry" ]] && continue
       [[ -f "$entry" ]] || continue
-      [[ "$(basename "$entry")" == "INDEX.md" ]] && continue
+      [[ "${entry##*/}" == "INDEX.md" ]] && continue
       files+=("$entry")
     done
   fi
@@ -657,7 +712,12 @@ sweep_citations() {
 
   local swtmp parsed tmp_out rec awk_rc issue_touched=0
   if ! swtmp="$(mktemp -d 2>/dev/null)"; then
-    echo "error: citation sweep — cannot create temp dir" >&2; return 1
+    # The handle goes back with the failure, as it does on every other exit
+    # before the first rewrite. It holds a full materialized copy of the
+    # destination under the git dir, and a token nobody was told names a
+    # directory nobody can reclaim.
+    [[ -n "$place_token" ]] && bash "$PLACE" abort "$place_token" >/dev/null 2>&1
+    echo "error: citation sweep — cannot create temp dir; nothing swept" >&2; return 1
   fi
   parsed="$swtmp/remap"; tmp_out="$swtmp/out"; rec="$swtmp/rec"
   printf '%s\n' "$remap" > "$parsed"

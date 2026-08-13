@@ -344,6 +344,206 @@ case_specreconcile_sweeps_the_collection_at_its_placement() {
        | grep -c 'P-20260728-alpha')"
 }
 
+# AC: the destination branch may be the one already checked out. The sweep still
+# runs through the placement door — the collection it is handed IS the working
+# tree's own, the re-points land there, and the door publishes them as one
+# commit on that branch.
+case_specreconcile_sweeps_the_checked_out_collection() {
+  local repo head_before head_after body
+  repo="$(specrec_repo sr_direct_sweep)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_issue "$repo" 20260728-a \
+    'see sdlc/P-20260728-alpha at docs/specs/sdlc/P-20260728-alpha/spec.md'
+  specrec_place_here "$repo"
+  specrec_commit "$repo"
+  head_before="$(git -C "$repo" rev-parse HEAD)"
+
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  body="$(cat "$repo/docs/issues/20260728-a.md")"
+  assert_match "typed citation swept" 'see sdlc/001 ' "$body"
+  assert_match "path citation swept"  'docs/specs/sdlc/001-alpha/spec\.md' "$body"
+  assert_eq "no provisional citation survives the file" "0" \
+    "$(grep -c 'P-20260728-alpha' <<<"$body")"
+
+  head_after="$(git -C "$repo" rev-parse HEAD)"
+  assert_eq "published as exactly one commit" "1" \
+    "$(git -C "$repo" rev-list --count "$head_before..$head_after")"
+  assert_eq "the collection is committed, not left dirty" "" \
+    "$(git -C "$repo" status --porcelain -- docs/issues)"
+  assert_eq "the index does not resurrect the citation" "0" \
+    "$(grep -c 'P-20260728-alpha' "$repo/docs/issues/INDEX.md" 2>/dev/null)"
+  assert_eq "and the handle was released" "" "$(specrec_handles "$repo")"
+}
+
+# AC: containment is a property of the enumeration, not a claim about which arm
+# `begin` took. With the destination checked out nothing materialized the
+# collection — `place.sh`'s per-entry gates never ran on it — so a symlink there
+# is a live write target, and the sweep refuses it instead of following it out
+# of the worktree.
+case_specreconcile_sweeps_the_collection_with_the_destination_checked_out() {
+  local repo outside
+  repo="$(specrec_repo sr_direct_escape)"
+  outside="$TMP_BASE/sr_direct_escape_outside.md"
+  printf 'outside sdlc/P-20260728-alpha\n' > "$outside"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_issue "$repo" 20260728-a 'see sdlc/P-20260728-alpha'
+  ln -s "$outside" "$repo/docs/issues/evil.md"
+  specrec_place_here "$repo"
+  # Committed: a symlink already in the branch clears the direct arm's dirty
+  # guard, so the trigger is an ordinary commit, not a dirty checkout.
+  specrec_commit "$repo"
+
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "sweep refused"    1         "$RC"
+  assert_match "names the escape" 'escapes' "$ERR"
+  assert_eq "the file outside is untouched" "outside sdlc/P-20260728-alpha" \
+    "$(cat "$outside")"
+  assert_eq "and the handle was released" "" "$(specrec_handles "$repo")"
+}
+
+# AC: a dangling symlink is a live write target too — `>` creates what it points
+# at — so one that leaves the collection is refused, not passed over as "not a
+# regular file".
+case_specreconcile_sweep_refuses_a_dangling_escape_in_the_collection() {
+  local repo outside
+  repo="$(specrec_repo sr_coll_dangling)"
+  outside="$TMP_BASE/sr_coll_dangling_outside.md"
+  rm -f "$outside"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_issue "$repo" 20260728-a 'see sdlc/P-20260728-alpha'
+  ln -s "$outside" "$repo/docs/issues/evil.md"
+  specrec_place_here "$repo"
+  specrec_commit "$repo"
+
+  run_specreconcile_in "$repo" --apply
+  assert_exit  "sweep refused"    1         "$RC"
+  assert_match "names the escape" 'escapes' "$ERR"
+  assert_eq "nothing was created outside" "no" \
+    "$([[ -e "$outside" ]] && echo yes || echo no)"
+  assert_eq "and the handle was released" "" "$(specrec_handles "$repo")"
+}
+
+# AC: a symlink that stays inside the collection is not one of its issues. It is
+# contained, so the run carries on — but it is not swept, and the run does not
+# report a rewrite of a body it never owned. The link is named to sort BEFORE
+# its target: reached the other way round the target is already swept, the
+# rewrite through the link finds nothing to do, and the case cannot go red.
+case_specreconcile_sweep_skips_a_symlinked_collection_entry() {
+  local repo
+  repo="$(specrec_repo sr_coll_symlink)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_issue "$repo" 20260728-a 'see sdlc/P-20260728-alpha'
+  ln -s 20260728-a.md "$repo/docs/issues/20260101-link.md"
+  specrec_place_here "$repo"
+  specrec_commit "$repo"
+
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the issue itself was swept" "0" \
+    "$(grep -c 'P-20260728-alpha' "$repo/docs/issues/20260728-a.md")"
+  assert_eq "no rewrite claimed for the link" "0" \
+    "$(grep -c 'docs/issues/20260101-link\.md' <<<"$OUT")"
+  assert_eq "and it is still a link" "yes" \
+    "$([[ -L "$repo/docs/issues/20260101-link.md" ]] && echo yes || echo no)"
+}
+
+# AC: under a routed placement the working checkout's copy of the collection is
+# not the collection, and dropping the issues root from the pathspec does not
+# keep it out — another configured root can be its ancestor, and `git ls-files`
+# lists it through that one. The fork is left exactly as it is; only the
+# destination is swept.
+case_specreconcile_nested_root_leaves_the_worktree_fork_alone() {
+  local repo body slug fork_before
+  repo="$(specrec_repo sr_nested_root)"
+  {
+    printf 'issue_placement = "jim/issues"\n'
+    printf 'brainstorms_path = "docs"\n'
+  } > "$repo/jimconf.toml"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  # The stale fork: a collection this branch still carries, which the routed
+  # destination is the real copy of.
+  specrec_issue "$repo" 20260728-fork 'see sdlc/P-20260728-alpha'
+  specrec_commit "$repo"
+  fork_before="$(cat "$repo/docs/issues/20260728-fork.md")"
+
+  body="$TMP_BASE/sr_nested_root_body.md"
+  printf 'Tracks sdlc/P-20260728-alpha closely.\n' > "$body"
+  OUT="$(cd "$repo" && bash "$SCRIPT_specreconcile_new" --reviewed \
+    --title "Cites the provisional spec" --priority low --labels x \
+    --origin "docs/specs/sdlc/P-20260728-alpha/spec.md" --body-file "$body" 2>/dev/null)"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "the destination issue was filed" "yes" \
+    "$([[ -n "$slug" ]] && echo yes || echo no)"
+
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "the destination was swept" 'sdlc/001' \
+    "$(git -C "$repo" show "refs/heads/jim/issues:docs/issues/$slug.md" 2>/dev/null)"
+  assert_eq "the worktree fork is left exactly as it is" "$fork_before" \
+    "$(cat "$repo/docs/issues/20260728-fork.md")"
+  assert_eq "and nothing in it is left uncommitted" "" \
+    "$(git -C "$repo" status --porcelain -- docs/issues)"
+}
+
+# AC: the message a refused `begin` prints describes the state the run is
+# actually in. `begin` runs before the first rewrite, so no citation has been
+# swept on either side — what stands is the realization itself.
+case_specreconcile_begin_refusal_reports_the_real_state() {
+  local repo issue_before
+  repo="$(specrec_repo sr_begin_refused)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_issue "$repo" 20260728-a 'see sdlc/P-20260728-alpha'
+  specrec_place_here "$repo"
+  specrec_commit "$repo"
+  # The refusal a developer actually meets: an uncommitted edit inside the
+  # collection, which the direct arm's dirty guard will not publish over.
+  printf 'half-finished\n' >> "$repo/docs/issues/20260728-a.md"
+  issue_before="$(cat "$repo/docs/issues/20260728-a.md")"
+
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 1 "$RC"
+  assert_match "names what stands" 'renamed' "$ERR"
+  assert_eq "does not claim a half-applied sweep" "0" \
+    "$(grep -c 'citations are rewritten' <<<"$ERR")"
+  assert_eq "and no citation really was swept" "$issue_before" \
+    "$(cat "$repo/docs/issues/20260728-a.md")"
+  assert_eq "while the realization really does stand" "yes" \
+    "$([[ -d "$repo/docs/specs/sdlc/001-alpha" ]] && echo yes || echo no)"
+}
+
+# AC: a failure after the handle is open releases it. The handle holds a full
+# materialized copy of the destination under the git dir, and a token nobody was
+# told is a directory nobody can reclaim.
+case_specreconcile_sweep_temp_failure_releases_the_handle() {
+  local repo body slug
+  repo="$(specrec_repo sr_handle_leak)"
+  rmdir "$repo/docs/issues" 2>/dev/null
+  printf 'issue_placement = "jim/issues"\n' > "$repo/jimconf.toml"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  specrec_commit "$repo"
+
+  body="$TMP_BASE/sr_handle_leak_body.md"
+  printf 'Tracks sdlc/P-20260728-alpha closely.\n' > "$body"
+  OUT="$(cd "$repo" && bash "$SCRIPT_specreconcile_new" --reviewed \
+    --title "Cites the provisional spec" --priority low --labels x \
+    --origin "docs/specs/sdlc/P-20260728-alpha/spec.md" --body-file "$body" 2>/dev/null)"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "the destination issue was filed" "yes" \
+    "$([[ -n "$slug" ]] && echo yes || echo no)"
+
+  # The sweep's scratch directory is the one temp it takes from TMPDIR; the
+  # handle root lives under the git dir, so `begin` opens normally and the
+  # failure lands exactly on the path between the two.
+  OUT="$(cd "$repo" && TMPDIR="$repo/nowhere" bash "$SCRIPT_specreconcile" --apply \
+    2> "$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_exit  "rc"                1          "$RC"
+  assert_match "names the failure" 'temp dir' "$ERR"
+  assert_eq "no handle is stranded" "" "$(specrec_handles "$repo")"
+}
+
 # AC: an untracked file inside a content root that cites the realized identity
 # is swept too — artifacts created in the same offline session are exactly the
 # files most likely to be uncommitted when realize runs — and the index
@@ -995,6 +1195,34 @@ specrec_commit() {
   git -C "$1" commit -q -m "fixture"
 }
 
+# specrec_issue <repo> <id> <body>
+#   One issue in the working checkout's collection, shaped enough for the index
+#   regeneration to read it. Its origin cites the provisional identity too, the
+#   way a real issue filed against a provisional spec does.
+specrec_issue() {
+  local repo="$1" id="$2" body="$3"
+  mkdir -p "$repo/docs/issues"
+  printf -- '---\nid: %s\nnum: 7\ntitle: "Track me"\nstatus: open\npriority: low\nlabels: []\ncreated: 2026-07-28T00:00:00Z\nupdated: 2026-07-28T00:00:00Z\norigin: docs/specs/sdlc/P-20260728-alpha/spec.md\n---\n\n%s\n' \
+    "$id" "$body" > "$repo/docs/issues/$id.md"
+}
+
+# specrec_place_here <repo> — configure the collection onto the branch this repo
+# already has checked out. `mode` still reports `route`, so the sweep goes
+# through the door; `begin` then takes the direct arm and hands back the working
+# tree's own collection. Callers commit afterwards — the direct arm's dirty
+# guard refuses over an uncommitted collection.
+specrec_place_here() {
+  local repo="$1" branch
+  branch="$(git -C "$repo" symbolic-ref --short HEAD)" || return 1
+  printf 'issue_placement = "%s"\n' "$branch" > "$repo/jimconf.toml"
+}
+
+# specrec_handles <repo> — the live placement handles under the git dir, one
+# per line. A released handle leaves none.
+specrec_handles() {
+  find "$1/.git/jim-place" -mindepth 1 -maxdepth 1 2>/dev/null
+}
+
 # specrec_claim <repo> <group> <subject> — allocate a real ordinal, so a spec
 # dir the fixture already put in the tree has the registry record it would
 # have had. Without this the tree holds an ordinal the registry never issued,
@@ -1457,6 +1685,27 @@ case_specreconcile_sweep_skips_symlinked_own_entry() {
   assert_exit  "rc" 0 "$RC"
   assert_match "link target untouched" 'sdlc/P-20260728-alpha stays' \
     "$(cat "$repo/outside.md")"
+}
+
+# AC: the same rule on the enumeration that can still carry a symlink this far.
+# A tracked symlink is listed by `git ls-files` like any other path, and it is
+# no more a citation's home than an untracked one — sweeping it would rewrite a
+# file the four content roots do not contain.
+case_specreconcile_sweep_skips_a_tracked_symlink() {
+  local repo
+  repo="$(specrec_repo sr_sweep_tracked_symlink)"
+  specrec_prov_dir "$repo" sdlc P-20260728-alpha
+  mkdir -p "$repo/docs/specs/sdlc/001-other"
+  specrec_claim "$repo" sdlc other
+  printf 'elsewhere sdlc/P-20260728-alpha stays\n' > "$repo/notes.md"
+  ln -s "$repo/notes.md" "$repo/docs/specs/sdlc/001-other/link.md"
+  specrec_commit "$repo"
+  run_specreconcile_in "$repo" --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the link's target is untouched" "elsewhere sdlc/P-20260728-alpha stays" \
+    "$(cat "$repo/notes.md")"
+  assert_eq "and the link is still a link" "yes" \
+    "$([[ -L "$repo/docs/specs/sdlc/001-other/link.md" ]] && echo yes || echo no)"
 }
 
 # ─── Section: Test cases — durable realize record ────────────────────────────
