@@ -142,6 +142,13 @@ build_plan() {
         # can carry a near-cap id past the length limit. So it clears the
         # boundary on its own account, which is what the header claims.
         if ! jf valid-id "$new" >/dev/null 2>&1; then
+          # The reservation loop above leaves a rename's old id free, because a
+          # renamed file moves away from it. This row entered as a rename and is
+          # leaving as a skip, so it keeps its file — and must keep its name
+          # with it. Without re-reserving, a later row is assigned the name of a
+          # file still sitting there, both are moved into one path, and the
+          # retire loop then removes the survivor's old name.
+          taken["$old"]=1
           printf '%s\t%s\t%s\t%s\n' "skip-unmigratable" "$old" "" \
             "discriminated id failed validation"
           continue

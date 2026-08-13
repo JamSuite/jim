@@ -2251,6 +2251,44 @@ created: 2026-01-01T00:00:00Z'
     "$(grep -q -- "-$slug-2" <<< "$OUT" && echo yes || echo no)"
 }
 
+# AC: a row downgraded inside the assignment loop keeps its file, so it must
+# keep its name too. The reservation loop deliberately leaves a rename's old id
+# free — a licence that holds only while the file actually moves away. A
+# downgrade revokes that, and without re-reserving, a later row is assigned the
+# name of a file that is still sitting there: both mv into one path, the retire
+# loop removes the survivor's old name, and the run exits 0 reporting success.
+case_issues_migrate_downgraded_row_keeps_its_name_reserved() {
+  local dir cfg slug titles
+  dir=$(empty_dir migrate_downgrade_reserve)
+  # 119 characters, so a re-derived `<8-digit>-<slug>` is exactly 128 and any
+  # discriminated form is 130 — over the cap, which is what forces a downgrade.
+  slug="$(printf 'a%.0s' $(seq 1 119))"
+  # Re-derives onto C-below's conforming id, so it discriminates past the cap
+  # and is downgraded. Its own file stays at this name.
+  write_issue "$dir" "20250101-$slug" 'title: "B"
+status: open
+num: 2
+created: 2026-01-01T00:00:00Z'
+  # Already conforming, so the reservation loop holds this id.
+  write_issue "$dir" "20260101-$slug" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01T00:00:00Z'
+  # Sorts last, and re-derives onto the downgraded row's still-occupied name.
+  write_issue "$dir" "20270101-$slug" 'title: "C"
+status: open
+num: 3
+created: 2025-01-01T00:00:00Z'
+  cfg=$(fixture migrate-downgrade-reserve.toml "issues_path = \"$dir\"")
+  run_migrate -c "$cfg" prefix --apply
+  assert_exit "rc" 0 "$RC"
+  # Every issue that existed before the run still exists after it. Asserted on
+  # titles rather than filenames: the defect renames one file over another, so
+  # a filename count alone stays at three while one issue's content is gone.
+  titles="$(grep -h '^title:' "$dir"/*.md 2>/dev/null | sort | tr -d '"' | sed 's/title: //' | tr '\n' ' ')"
+  assert_eq "all three issues survive" "A B C " "$titles"
+}
+
 # spec 023 Task 4: the preview adds a stable PLAN-HASH and a read-only VCS note,
 # and mutates nothing.
 case_issues_migrate_prefix_preview() {
