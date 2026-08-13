@@ -1,6 +1,6 @@
 ---
 id: 20260813-begin-does-not-report-which-arm-it-took
-num: P-20260813-begin-does-not-report-which-arm-it-took
+num: 345
 title: "begin does not report which arm it took"
 status: open
 priority: medium

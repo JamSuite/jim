@@ -1,6 +1,6 @@
 ---
 id: 20260813-a-review-finding-does-not-carry-the-scope-it-was-derived-from
-num: P-20260813-a-review-finding-does-not-carry-the-scope-it-was-derived-from
+num: 344
 title: "A review finding does not carry the scope it was derived from"
 status: open
 priority: medium

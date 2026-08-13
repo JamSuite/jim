@@ -1,6 +1,6 @@
 ---
 id: 20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts
-num: P-20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts
+num: 348
 title: "Provisional slug charset is wider than the move verb accepts"
 status: open
 priority: medium
