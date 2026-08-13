@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:45Z
-updated: 2026-08-12T21:53:45Z
+updated: 2026-08-13T10:28:26Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -83,3 +83,19 @@ the known flake rather than investigated as a regression. And
 `tests/place.sh:661` / `:2443` capture a `before` tip with no non-emptiness floor,
 so a silently-failed `place_seed_collection` makes them compare `"" == ""` — only
 2 of ~17 call sites check the helper's status.
+
+## Note
+
+**2026-08-13, one more for the class, argued rather than found.** The sweep round
+shipped a guard in `sweep_citations` that no case pins: the check that the
+directory `place.sh begin` handed back resolves at all. It cannot be driven from
+outside — it would take `begin` printing an empty directory at rc 0 — and it is
+load-bearing anyway, because the empty string it refuses would make the loop
+below it glob the filesystem root.
+
+Recorded here so this sweep's next run reads it as a known decision rather than a
+fresh coverage gap. `#332`'s progress section carries the other one, in
+`place_snapshot`. That is two rounds in a row, which is the signal worth acting
+on: the class is accruing at roughly one per round, and this issue's action should
+say what a run is expected to do with a guard that is deliberately unpinned —
+count it, name it, and move on — rather than re-deriving that judgment each time.
