@@ -1090,22 +1090,72 @@ is the project's own checkout — so writing through the returned path landed in
 removed, and the cases anchored at their fixture repo with the trap named in a
 comment. It also exposed one of those cases as passing for the wrong reason.
 
+## The sweep round
+
+*Run 2026-08-13 against `297ca80`, on one function: `sweep_citations` in
+`skills/spec/scripts/reconcile.sh`, and the two issues filed against it. The
+suite moved **1384 → 1392**.*
+
+| Issue | What shipped |
+| :--- | :--- |
+| `#326` | containment is a property of the enumeration rather than a claim about the provider: every target clears the boundary of the root it came from, and the symlink discipline three of the four enumerations already carried now covers all four |
+| `#327` | the handle is released on the one exit that leaked it; the `begin`-failure message states what has actually happened; a routed collection's worktree fork is dropped by resolved prefix rather than by pathspec alone; `place.sh`'s header stops claiming stranded handles are reported and reclaimed |
+
+**Eight guards, each proved by neutering it and watching its case go red**, with
+every neuter diffed against a saved copy first. Eight cases were added; the
+`route`-with-the-destination-checked-out arm had no coverage at all before this,
+on either half.
+
+### What the round learned
+
+**The tidiest-looking fix was the trap, and naming why is what kept it out.**
+Having `cmd_mode` report which arm `begin` would take reads as the obvious fix —
+one verb, one field, no breaking change. It is wrong: `mode`'s contract is *"should
+you re-exec through place.sh?"*, and the entry scripts gate their re-exec on it.
+A `mode` that answered `direct` when the destination is checked out would stop
+them routing and lose `place_direct_publish` — trading a containment bug for a
+silent publishing one. **A verb's contract is what its consumers gate on, not
+what its name suggests.**
+
+**The fix that removes a coupling beats the fix that patches it.** The issue's own
+wording — check containment "when `place_dir` resolves inside the worktree" —
+would have worked, and would have asked which arm `begin` took. That question is
+what caused the defect. Bounding every path by the root it came from never asks
+it: on the arm that materializes, the check is redundant, and that redundancy is
+the price of not coupling to the provider again.
+
+**Layered guards need separate proofs.** With the containment check neutered the
+escape still did not land, because the symlink skip beside it caught the write —
+each guard produces a different *outcome* (a refusal versus a silent skip), so
+each needed its own case. A proof that a hole is closed is not a proof that the
+guard you wrote is what closes it.
+
+**A case was green because the ordering defused it.** The symlinked-collection
+case passed with its guard removed: the link sorted *after* its target, so by the
+time the rewrite followed the link the target had already been swept and there
+was nothing left to rewrite. Renaming the link so it sorts first made the case
+able to fail. This is the second round in a row where a case that could not go
+red was found by neutering rather than by reading.
+
+**Half of one finding dissolved instead of being fixed.** `#327`'s complaint that
+`issue_touched` cannot fire for the worktree fork under `route` was a symptom of
+the fork being swept at all. With the fork out of the enumeration there is nothing
+in it to regenerate an index for, and the guard it named needs no change.
+
 ## The tracked set
 
-**Twenty-three follow-ons stand against the spec.**
+**Twenty-one follow-ons stand against the spec, and none is `critical`.**
 
-- **Fifteen from the fourth review** — `#323`–`#343`, less `#337` and less the
-  five the containment round closed (`#328` `#329` `#333` `#338` `#340`).
-  **Two are `critical`**: `#336`, which destroys user data on the migration's
-  success path, and `#326`, the citation sweep's containment gap. Both live
-  outside `place.sh` — in `migrate.sh` and `reconcile.sh` — which is why the
-  placement work did not reach them.
+- **Twelve from the fourth review** — `#323` `#324` `#325` `#330` `#331` `#332`
+  `#334` `#335` `#339` `#341` `#342` `#343`. Seven are `high`.
 - **Eight predating it** — `#255` `#256` (from `research.md`), `#257` `#258`
   `#259` `#260` `#261` (from `plan.md`), `#297` (from this file, deliberately
   deferred).
-
-`#337` is the migration-preview finding carried over from the previous round; it
-realized alongside this batch. No provisional ordinals remain in the collection.
+- **One filed by the sweep round** — the `mode`/`begin` divergence, deferred out
+  of `#326` because closing it breaks `begin`'s output shape and moves the
+  `place.sh` Provides face and both placement contract edges with it. It carries
+  a provisional ordinal: this clone cannot reach the coordination point, so
+  `/jim:issue reconcile` settles it where one is reachable.
 
 `#332` is open on items 1–4 of six, and carries a `## Progress` saying which.
 
@@ -1118,10 +1168,13 @@ Three worth reading before touching anything nearby:
   subject. It is not only a reporting gap: the same set drives the living-intent
   sensor's judge selection, so a remediation touching a *new* file would leave its
   invariants unjudged and the review would report clean coverage.
-- **`#336`** — the sharpest thing still open. One line reserves the name; the
-  cost of not taking it is an issue deleted on a success path at rc 0.
+- **`#343`** — three load-bearing `place.sh` guards are unpinned, and two rounds
+  have now added their own named-but-unpinned guard to that class. It is the
+  sharpest thing still open.
 
 **The completion gate remains unanswered.** `plan.md` stays `approved`. The fact
-it turned on when the fourth review closed — a deeper pass finding two defects
-that destroy user data, one freshly introduced by the round meant to be closing
-this out — is half addressed: `#328` is closed, and `#336` is not.
+that turned it on when the fourth review closed — a deeper pass finding two
+defects that destroy user data, one freshly introduced by the round meant to be
+closing this out — is now fully addressed: both are closed, and every `critical`
+against the spec is closed with it. What remains is a `high`-and-below tail, which
+is a different judgment from the one the gate was answered `no` on.
