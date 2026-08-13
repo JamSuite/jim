@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:32Z
-updated: 2026-08-12T21:53:32Z
+updated: 2026-08-13T06:19:48Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -62,7 +62,21 @@ prints the input line unchanged. `get pre_commit` returns the literal string
 
 That is a fabricated **value**, not a fabricated default — the sharper form of the
 class the refusal was written to close. On the `issues` key it reaches
-`place_prefix` / `ensure_index` as a directory name.
+`place_prefix` / `ensure_index` as a directory name — and `index.sh`'s
+`resolve_dir` (`:287`) as a third, where it is then `mkdir -p`'d and written into.
+
+That consumer is worth naming because its own guard cannot see this case.
+`resolve_dir` discards the resolver's status and screens the result with
+`[[ -z "$dir" ]]`, which catches every failure mode that yields *empty* output but
+not one that yields a fabricated non-empty string at rc 0. The same file checks
+the status explicitly one key over (`:495`, on `issue_placement`, where a failed
+resolve refuses at rc 2), so the asymmetry is within a single function's reach.
+Hardening `resolve_dir` does not close this on its own — the fabricated value
+arrives at rc 0 — which is why the fix belongs here at the resolver rather than at
+each consumer. Whoever edits that function should read
+[[20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg]]
+first: its untouched third trigger is the same function's relative-path
+resolution and `mkdir -p`, so the two findings meet in one place.
 
 A TOML multi-line basic string (`key = """`) resolves to the silent default by the
 same sed; an escaped quote (`key = "say \"hi\""`) truncates to `say \`.

@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:18Z
-updated: 2026-08-12T21:53:18Z
+updated: 2026-08-13T06:37:15Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -78,3 +78,51 @@ defence in depth that makes the enumeration correct regardless:
 
 Pin each direction with a case that plants a newline-bearing name and asserts the
 refusal, and one asserting no row is rendered for a path outside the collection.
+
+## Progress (2026-08-13)
+
+**Action item 1 is closed** in `6e68a22`; **action item 2 is not taken.** The
+issue stays open on the containment gate.
+
+**What shipped — the enumeration.** Taken differently from the proposal, and the
+difference is worth recording. The action asked to quote the substitution and
+read the sorted list NUL-delimited. Instead the re-sort is **removed**: the glob
+that builds the list already returns it in order, because bash sorts pathname
+expansion and `LC_ALL=C` makes that byte order — byte-for-byte the order a sort
+of the same full paths yields, since they share a directory prefix. That
+equivalence was checked against a sweep of one filename per byte value 1–255
+before being relied on. Deleting the round trip removes the splitting surface
+outright rather than quoting around it, and drops a `sort -z` dependency the
+NUL-delimited form would have added.
+
+The sweep found exactly one input where glob order and sort order disagree, and
+it is this finding's own: a name carrying a newline. There the old path did not
+produce a different order — it produced a **corrupted array**, one element torn
+into two, the second having lost its directory prefix entirely. That fragment is
+what re-globbed.
+
+Pinned by `case_issues_index_control_char_name_does_not_reglob`, which plants a
+decoy in the invoking working directory and asserts neither its row nor its
+frontmatter reaches the collection's index. Proven by neutering: restoring the
+split turns it red.
+
+**What the fix exposed.** With the enumeration corrected, the raw name reaches
+the "not a valid id" refusal, and that message was concatenated into the
+warnings block unsanitized — so a committed filename forges a second
+`## Issues` section and a row inside it. That site is named by neither this
+issue nor the sanitizer one. It is fixed and pinned in the same commit, and it
+is why the two were taken as one pass: this issue's fix is what made it
+reachable.
+
+**What is left — the containment gate.** `place_materialize` (inbound) and
+`place_snapshot` (outbound) still accept an entry name containing
+`[[:cntrl:]]`. Everything this issue records about the two-phase base snapshot
+stands: it is a line-oriented `sha\tname` round trip, so a newline-bearing name
+still loads as two bogus records, and a fabricated record still reaches the
+deletion loop as a real name. `index.sh` no longer *renders* anything from such
+a name — it refuses it with one sanitized warning — but nothing yet stops one
+being materialized or published.
+
+That half belongs with the `place.sh` pass rather than here, because it is the
+same file and the same read of the placement door as three other open findings,
+and the by-file rule puts them in one edit.

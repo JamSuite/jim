@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 119
-- Closed: 224
+- Open: 118
+- Closed: 225
 
 ## Issues
 
@@ -327,7 +327,7 @@
 - `20260812-freshness-and-publish-engine-residuals-in-place-sh` — Freshness and publish engine residuals in place.sh · status: open · num: 332 · priority: medium · created: 2026-08-12T21:53:58Z · labels: [issue, placement, disclosure] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-index-md-rows-are-forgeable-by-two-independent-routes` — INDEX.md rows are forgeable by two independent routes · status: closed · num: 309 · priority: high · created: 2026-08-12T03:41:37Z · labels: [issue, security, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-index-sh-fails-open-on-a-config-resolve-and-caps-no-display-valu` — index.sh fails open on a config resolve and caps no display value · status: closed · num: 310 · priority: medium · created: 2026-08-12T03:42:08Z · labels: [issue, index] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-index-sh-warnings-and-row-set-escape-the-sanitizer-discipline` — index.sh warnings and row set escape the sanitizer discipline · status: open · num: 333 · priority: high · created: 2026-08-12T21:53:31Z · labels: [issue, data-integrity, index] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-index-sh-warnings-and-row-set-escape-the-sanitizer-discipline` — index.sh warnings and row set escape the sanitizer discipline · status: closed · num: 333 · priority: high · created: 2026-08-12T21:53:31Z · labels: [issue, data-integrity, index] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-jimconf-resolver-can-hand-a-fabricated-default-to-a-caller` — jimconf resolver can hand a fabricated default to a caller · status: closed · num: 311 · priority: medium · created: 2026-08-12T03:42:09Z · labels: [conf, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-jimconf-value-form-refusal-covers-one-of-three-read-doors` — jimconf value-form refusal covers one of three read doors · status: open · num: 334 · priority: high · created: 2026-08-12T21:53:32Z · labels: [platform, config, fail-open] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-last-seen-state-prefers-a-ref-only-a-publish-advances` — Last-seen state prefers a ref only a publish advances · status: closed · num: 312 · priority: high · created: 2026-08-12T03:41:35Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -478,6 +478,7 @@
 - `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant` --related-to--> `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind`
 - `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` --related-to--> `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant`
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` --related-to--> `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn`
+- `20260812-jimconf-value-form-refusal-covers-one-of-three-read-doors` --related-to--> `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg`
 
 ## Integrity Warnings
 
