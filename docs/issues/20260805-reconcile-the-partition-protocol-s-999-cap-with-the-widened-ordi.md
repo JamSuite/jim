@@ -12,7 +12,7 @@ relations:
   duplicates: []
 created: 2026-08-05T01:53:41Z
 updated: 2026-08-05T10:21:33Z
-origin: docs/notes/20260805-b-prime-review.md
+origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 ---
 
 ## Description

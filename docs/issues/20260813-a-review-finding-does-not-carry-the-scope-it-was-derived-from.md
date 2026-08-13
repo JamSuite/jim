@@ -12,7 +12,7 @@ relations:
   duplicates: []
 created: 2026-08-13T11:01:06Z
 updated: 2026-08-13T11:01:06Z
-origin: "docs/notes/20260728-id-coordination-issue-grouping.md"
+origin: "20260728-id-coordination-issue-grouping.md (retired; see 5e712bf)"
 ---
 
 ## Description

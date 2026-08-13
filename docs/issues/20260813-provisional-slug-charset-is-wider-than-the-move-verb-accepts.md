@@ -12,7 +12,7 @@ relations:
   duplicates: []
 created: 2026-08-13T10:59:41Z
 updated: 2026-08-13T10:59:41Z
-origin: "docs/notes/20260804-b-prime-completion-handoff.md"
+origin: "20260804-b-prime-completion-handoff.md (retired; see 5e712bf)"
 ---
 
 ## Description
@@ -36,8 +36,8 @@ Lowercase only, no dot, no underscore.
 
 Demonstrated:
 
-    $ jimfile.sh valid-id "P-20260801-Foo.bar"   # accepted
-    $ [[ "P-20260801-Foo.bar" =~ <src_shape> ]]  # rejected
+    $ jimfile.sh valid-id "P-20260801-Foo.bar"        # accepted
+    $ printf '%s' "P-20260801-Foo.bar" | grep -E "$src_shape"   # no match
 
 A directory named `P-20260801-Foo.bar` is therefore a well-formed provisional
 identity by the allocator's own boundary and unmovable by the verb that realizes

@@ -12,7 +12,7 @@ relations:
   duplicates: []
 created: 2026-08-13T11:00:01Z
 updated: 2026-08-13T11:00:01Z
-origin: "docs/notes/20260805-b-double-prime-exit-handoff.md"
+origin: "20260805-b-double-prime-exit-handoff.md (retired; see 5e712bf)"
 ---
 
 ## Description

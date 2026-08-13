@@ -12,7 +12,7 @@ relations:
   duplicates: []
 created: 2026-08-01T06:36:07Z
 updated: 2026-08-01T10:01:09Z
-origin: docs/notes/20260801-c-prime-fix-handoff.md
+origin: "20260801-c-prime-fix-handoff.md (retired; see 5e712bf)"
 ---
 
 ## Description
