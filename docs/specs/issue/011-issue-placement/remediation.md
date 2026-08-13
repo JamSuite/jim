@@ -16,7 +16,9 @@ meets it, and what is deliberately left tracked.*
 ## Status
 
 **All work packages complete, WP7 included.** Fifty-two commits over
-`ae4b877..HEAD`. Suite **1284 → 1322 green**.
+`ae4b877..96d5731`. Suite **1284 → 1322 green**. The range is pinned at both
+ends on purpose: written against `HEAD` it grew with every later round, and a
+reader counting commits got a number this plan never claimed.
 
 **The spec is deliberately held open.** `/jim:review` returned `minor-drift` —
 up from `major-drift` twice — and the completion gate was answered **no** on the
@@ -62,13 +64,14 @@ plan's — `review.md` is their record and lists the five that gate closure. Do
 not read the counts below as current; they describe the set this remediation
 was scoped against.
 
-**Three things have since run.** In order, and each recorded at the end of this
-file: *§ The review-remediation round*, *§ The fourth review*, and *§ The
-containment round*, which worked the fourth review's tracked set rather than
-producing a new review. `review.md` still holds the fourth review; its
-predecessor's per-AC evidence is preserved at commit `0563c42`. Every list of
-"what gates closure" written before those sections is stale; the current tracked
-set is the last subsection of this file.
+**Four things have since run.** In order, and each recorded at the end of this
+file: *§ The review-remediation round*, *§ The fourth review*, *§ The containment
+round*, and *§ The sweep round*. The last two worked the fourth review's tracked
+set rather than producing a new review. `review.md` still holds the fourth
+review; its predecessor's per-AC evidence is preserved at commit `0563c42`. Every
+list of "what gates closure" written before those sections is stale; the current
+tracked set is the last subsection of this file, and it is the only count in this
+file that is maintained.
 
 The fix pass's 8 recorded their resolutions in commit trailers alone and were
 **backfilled** here, each marked as reconstructed and dated to the backfill
@@ -519,7 +522,8 @@ The `list` fix needed two edits, not one, and the second is the load-bearing one
 a token that is neither filter nor collection. Without the second, the stray
 directory is still reachable with no placement configured at all.
 
-**Item 4 is deliberately not taken** — see *Deferred*.
+**Item 4 was not taken here** — it was a decision rather than a fix, and it went
+to WP13, which closed it.
 
 ### WP10 — The origin lint *(added mid-flight)*
 
@@ -818,7 +822,8 @@ item 3 — the two cross-group write paths — included. That round's bar was se
 wider than this list: close the whole reviewed set bar `#297`. The per-issue
 `## Resolution` and `## Progress` sections are its record; this list is left
 standing as what was true when WP7 answered the gate, not as work outstanding.
-The open set against the spec is now **23** — see *§ The tracked set*.
+For the current open set see *§ The tracked set* — the count is deliberately not
+restated here, because a number written in two places rots in one of them.
 
 ## Deferred
 
@@ -868,8 +873,8 @@ issue also carries what was weighed against it.
 - **The `--auto` polarity** went to the third shape this section describes:
   require an explicit declaration and refuse when neither flag is given, scoped
   to the routing condition. Not the inverse — that removes the fail-open but
-  installs a new silent default in the other direction. **Decided, not yet
-  implemented.**
+  installs a new silent default in the other direction. Implemented in `e7982b7`,
+  and the scoping is what keeps it inert for every project without a placement.
 - **`--origin`** is encoded, not narrowed. The fact this section says is missing
   turned out to settle it: the field is defined by a skill's *prompt* as "a path
   when knowable, else a sentinel", with nothing enforcing either, so it is
@@ -880,7 +885,17 @@ Two forks this round *added* to the carried set are both settled and shipped:
 `#311`'s remaining three parts (an unsupported value form now refuses; the
 walk-up is declined in favour of locate-and-refuse; a strict mode for unknown
 keys is declined with reasoning), and the cross-group routing decisions on `#316`
-and `#314`. Nothing is carried forward from this section.
+and `#314`.
+
+**One fork is open again (2026-08-13), and it lives on its issue, not here.**
+`place.sh begin` does not report which arm it took, and a caller holding a handle
+therefore cannot know whether what it was handed was materialized. The sweep
+round removed the one consequence — its consumer re-derives containment from the
+enumeration instead — and left the interface question to
+`20260813-begin-does-not-report-which-arm-it-took`, which carries three candidate
+shapes and what each costs. It is filed rather than carried here because closing
+it moves `place.sh`'s Provides face and both placement contract edges, so it is a
+spec-scoped design decision rather than a remainder of this plan.
 
 ## Nameref hazard
 
@@ -1141,6 +1156,23 @@ red was found by neutering rather than by reading.
 `issue_touched` cannot fire for the worktree fork under `route` was a symptom of
 the fork being swept at all. With the fork out of the enumeration there is nothing
 in it to regenerate an index for, and the guard it named needs no change.
+
+**A second guard ships pinned by nothing, and that is now a pattern rather than
+an exception.** The check that `begin`'s directory resolves at all cannot be
+driven from outside, and is load-bearing anyway: the empty string it refuses
+would make the loop below it glob the filesystem root. Recorded in `#326`'s
+resolution and on `#343`, which owns the class. Two consecutive rounds have each
+added one, which is the signal — `#343`'s action should say what a sweep does
+with a deliberately unpinned guard rather than each round re-deriving it.
+
+**One claim in this round's own record was wrong and is corrected on the issue.**
+The `#326` resolution first said the fix applied the discipline "three other
+enumerations already carry". Two carried it; the tracked one carried only the
+escape half, which meant the fix silently changed that path's behavior. The
+count was the small half of the error — the sentence hid a behavior change that
+had a case written for it. `#326` carries the dated `## Correction`; the commit
+body that repeats it stands, because five resolutions already cite shas in that
+range.
 
 ## The tracked set
 
