@@ -31,6 +31,15 @@ have bitten:
    passes whether or not the parser was fooled; assert the *field value a reader
    gets*.
 
+   This is the trap that recurs most. It bit three times in a single round, each
+   time on a case written to prove a sanitizer. Sanitized text *legitimately*
+   survives — a rejected filename is quoted back in its own refusal, inert inside
+   a code span — so "the string is absent" is the wrong property and fails
+   against a correct fix. The right assertions are structural and countable:
+   exactly one `## Issues` section, no line matching a row's shape, exactly one
+   separator in the rendered row. If a case's assertion cannot be stated as a
+   count or a shape, it is probably asserting the wrong thing.
+
 ### A case that cannot go red is a finding
 
 If removing the shipped guard leaves the case green, the case is pinning
@@ -41,6 +50,14 @@ it reports coverage that does not exist.
 
 Four such cases survived into the fourth review of `issue/011`, one of them the
 only thing protecting an acceptance criterion's installed-base guarantee.
+
+**The inverse also happens: a case can be green because the bug is defusing the
+attack.** One case written red-first passed against the unfixed code, because the
+defect it targeted mangled the hostile input before it reached the site under
+test. It went red the moment the *first* of two fixes landed, and green again
+with the second. Treat a red-first case that passes as unexplained until you know
+why — the answer is either that it pins nothing, or that a second defect is
+currently masking the one you are chasing.
 
 ### The reach of a proof
 
@@ -63,7 +80,82 @@ point at them.
 **The rule that would have caught both:** after the fix, re-read the whole
 function and ask what else in it depends on the state you just moved.
 
+Applied prospectively, it works. A later round fixed an enumeration that had been
+mangling untrusted filenames; re-reading the function showed the raw name now
+reached a refusal message that concatenated it unsanitized, which was a fresh
+row-forgery route created *by* the fix. Both edits shipped together. The rule's
+cost is one careful read; its absence has cost three rounds.
+
+### Test the mechanism, don't assume it
+
+A fix that rests on a tool's behaviour is only as good as your belief about that
+behaviour. Two assumptions in one round would each have shipped a fix that did
+not do what its comment claimed:
+
+- `--no-verify` was assumed to keep a commit subject fixed. It does not: it skips
+  `pre-commit` and `commit-msg` and leaves `prepare-commit-msg` free to rewrite
+  the message. Observed by installing such a hook and watching the subject
+  change. The fix became `-c core.hooksPath=<nonexistent>`.
+- An `:(exclude)` pathspec was assumed to drop a namespace from a staging call.
+  Under `--literal-pathspecs` the magic is disabled, the pathspec matches
+  nothing, and the *whole command fails* — so the "exclusion" would have broken
+  the publish outright. The fix became an explicit unstage.
+
+The same discipline applies to a claimed equivalence you are about to rely on.
+Deleting a redundant re-sort rested on "bash glob order equals `sort` order under
+`LC_ALL=C`". Sweeping one filename per byte value 1–255 confirmed it — and found
+the single exception, an embedded newline, which turned out to be the attack the
+fix existed to stop. The check cost one command and upgraded the fix's rationale
+from plausible to demonstrated.
+
+### An ordering can be load-bearing and held by nothing
+
+A sanitizer ran `tr` (strip control characters), then `sed` (strip the row
+separator), then `cut` (cap the length). The order is not incidental: deleting a
+control byte can bring the separator's own two bytes together — `C2 01 B7`
+collapses to a reconstituted `·` — and the separator strip removes it only by
+running afterwards. Reversed, a title forges a second field.
+
+Nothing held that property: not a comment, not a test. A routine tidy-up of three
+pipeline stages would have reopened row forgery silently. When a pipeline's
+correctness depends on stage order, that is an invariant — write it at the
+function and pin it with a case, because it is exactly the kind of thing a later
+reader will "simplify".
+
 ## Organizing a fix pass
+
+### Prefer removing the construct to guarding it
+
+When an unsafe construct turns out to be redundant, delete it rather than
+hardening it. An index enumeration round-tripped filenames through a word-split
+array assignment to sort them — but the glob that produced the list had already
+sorted it, so the sort bought nothing and cost containment. Quoting the split
+would have hardened a construct that did not need to exist; removing it deleted
+the splitting surface outright, and dropped a `sort -z` dependency the proposed
+fix would have added.
+
+The same move applies to a guard whose correctness depends on a claim about
+somebody else's behaviour. A sweep appended one provider's entries *past* its
+containment check, justified by a comment asserting those entries were safe "by
+construction" — true of one of the provider's two arms. The fix is not to ask
+which arm ran, but to make containment a property of the enumeration itself:
+every path must resolve inside the root it came from. A guard that asks nothing
+about its provider cannot be wrong about it.
+
+### A verb's contract is what its consumers gate on
+
+Before making a function "more honest", read what branches on its output. Two
+verbs answered adjacent questions — one *"should you re-exec through the placement
+door?"*, the other *"which arm, and here is the directory"* — and a consumer read
+the first as though it were the second, which is how a containment gap arrived.
+
+The tidy-looking fix is to make the first verb report the arm. It is wrong: entry
+scripts gate their re-exec on that value, so the "honest" answer would stop them
+routing and silently drop the auto-commit that an acceptance criterion depends
+on. A containment bug would have been traded for a publishing bug.
+
+**A verb's contract is the union of what its callers do with it, not what its
+name suggests.** Establish that before changing what it returns.
 
 ### By file, not by issue
 
@@ -105,6 +197,20 @@ resolution, because the overclaim itself is information: it tells the next autho
 which claims in this collection are load-bearing and which were written from
 memory.
 
+### Name the guard that ships pinned by nothing
+
+Some guards cannot be driven from outside: the failure they catch is unreachable
+because an earlier call fails first, or because the directory they check is one
+the script creates and owns. Ship them anyway when they encode a rule the code
+depends on — but **say in the resolution that nothing pins them, and why**.
+
+A round shipped one such precondition and recorded it as unpinned. The
+alternative was leaving it for a later test-integrity sweep to report as a
+coverage gap, which is how the same class arrives as a review finding instead of
+a known, argued decision. An attempt to reach it that turns out to exercise
+different code entirely is worth recording too — it is the evidence for the
+unreachability claim.
+
 ### Narrowed, not closed
 
 An issue narrowed rather than closed takes a `## Progress` section naming the
@@ -142,6 +248,26 @@ coverage section reads clean must mean the investigation happened.
 and a capped run must name the un-investigated remainder rather than presenting
 partial coverage as complete.
 
+### Adversarial verification, and the value of "refuted as worded"
+
+Spending independent readers on *refuting* a fix — each told to default to
+refuted and to produce a reproducing input — pays in two distinct ways, and the
+second is the less obvious one.
+
+It finds properties nobody had written down: the sanitizer stage order above was
+surfaced by a refuter attacking a claim, not by the author who wrote the pipeline.
+
+And a refutation of the *wording* is worth as much as one of the fix. A claim
+that removing a re-sort "changes no ordering" came back refuted — not because the
+fix was wrong, but because for the one input that mattered the old code had not
+produced a different order at all; it had produced a corrupted array with an
+element that had lost its directory prefix. The fix was stronger than its own
+rationale claimed, and the comment was corrected to say so. A rationale that
+overstates is a future reader's false confidence.
+
+Give each refuter a distinct lens rather than three copies of the same brief;
+redundant refuters find redundant things.
+
 ### Convergence is a confidence signal worth recording
 
 When two or three investigators on *different* assignments reach the same defect
@@ -170,6 +296,21 @@ Judge the working tree, and say in `review.md` that you did.
 /tmp/suite.log` first, then run backgrounded and poll for `^Ran `. Never run two
 concurrently — they contend badly, and a 16-second file has taken 5m41s alongside
 another run. Do not edit files the suite reads while it runs.
+
+**"Concurrently" includes subagents.** A round ran three adversarial agents
+building git fixtures while the suite was in flight and watched throughput
+collapse — the same contention, arriving from a direction the rule did not
+obviously name. Sequence the fan-out and the suite.
+
+**A fixture must never write through a path the system under test handed back.**
+One placement verb returns a *repo-relative* prefix on one of its arms, and a
+test process's working directory is the project's own checkout — so
+`printf > "$dir/x.md"` landed in the real collection. Three cases did this before
+it was caught; nothing was committed, but files appeared in a production
+directory. Anchor every fixture write at the fixture's own root
+(`"$repo/${OUT#*$'\t'}"`), and treat a returned relative path as a trap rather
+than a convenience. It also masked a bug: one of those cases had been passing for
+an unrelated reason.
 
 **Load-dependent flakes** wrap work in a fixed `timeout` and can return rc 124
 under full-suite contention. Two cases in `tests/jimalloc.sh` have this shape.
