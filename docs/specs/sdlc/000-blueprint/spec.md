@@ -2,7 +2,7 @@
 title: "sdlc — blueprint"
 group: "sdlc"
 kind: blueprint
-updated: "2026-07-25"
+updated: "2026-08-13"
 last_full_generate: "2026-07-25T18:38:15Z"
 ---
 
@@ -61,6 +61,11 @@ home of the plugin's authoring conventions.
 - `issue.emitter` + `issue.candidate-batch-contract` — the end-of-run § 7a
   candidate batches from the surfacing skills (spec, research, plan, build,
   debug, sec, review, brainstorm).
+- `issue.placement-door` — `/jim:spec reconcile`'s citation sweep drives
+  `place.sh` `mode` / `begin` / `commit` / `abort` around the issue half of a
+  realization, so the collection's citations are rewritten wherever
+  `issue_placement` puts them rather than in a checkout copy the destination
+  never sees.
 - `blueprint.advisor` — `/jim:spec` reads the project map on every spec and
   routes mint-new through the map surface.
 - `blueprint.blast-radius-facts` — `/jim:plan` reads the contract graph's
