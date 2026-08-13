@@ -840,8 +840,11 @@ place_direct_publish() {
 # A handle outlives its process, so unlike a wrapped run its state cannot sit in
 # shell variables or a directory only that process can find. It lives under the
 # git dir: local to the clone, on no branch, never fetched or pushed, and
-# findable by the token `begin` printed. A crash between the two steps strands
-# one directory there, which `commit` reports and `abort` removes.
+# findable by the token `begin` printed. `commit` and `abort` each act on the
+# one handle they are named — nothing enumerates the root — so a crash between
+# the two steps strands a directory there that only the token holder can
+# reclaim. Every caller that opens a handle releases it on the way out of every
+# path, which is what keeps the root empty in practice.
 
 readonly PLACE_TOKEN_NONE="none"     # no placement — the real collection dir
 # A read handle publishes nothing and so needs no state: the flag is the token.
