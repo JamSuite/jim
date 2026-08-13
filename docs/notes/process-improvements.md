@@ -39,6 +39,19 @@ have bitten:
    exactly one `## Issues` section, no line matching a row's shape, exactly one
    separator in the rendered row. If a case's assertion cannot be stated as a
    count or a shape, it is probably asserting the wrong thing.
+5. **A layered guard needs its own proof.** Where two guards sit in one loop,
+   neutering the first leaves the case green — the second catches the input — and
+   the obvious readings are both wrong: that the neuter missed, or that the guard
+   is redundant. Neither. The guards produce different *outcomes*, and the case
+   has to assert the outcome, not the absence of damage.
+
+   A containment check and a symlink skip sat three lines apart. With containment
+   neutered nothing escaped, because the skip dropped the entry anyway — but the
+   run exited 0 in silence where it should have refused and named the path. The
+   fix is to assert the refusal (`rc`, the message) as well as the damage that did
+   not happen, and to give each guard a case whose failure is *its* failure. **A
+   proof that the hole is closed is not a proof that the guard you wrote is what
+   closes it.**
 
 ### A case that cannot go red is a finding
 
@@ -58,6 +71,19 @@ test. It went red the moment the *first* of two fixes landed, and green again
 with the second. Treat a red-first case that passes as unexplained until you know
 why — the answer is either that it pins nothing, or that a second defect is
 currently masking the one you are chasing.
+
+**And a case can be green because the fixture's own ordering defuses it.** A
+symlink inside a swept directory should not be rewritten through; the case that
+proved it stayed green with the guard removed, because the link sorted *after* its
+target. By the time the rewrite followed the link, the target had already been
+swept and there was nothing left to rewrite — the write happened and changed
+nothing. Renaming the link so it sorts first made the case able to fail.
+
+That is the same rule with a third cause. The first two are about the assertion
+and about a second defect; this one is about **enumeration order inside the
+fixture**. Where a case depends on the system reaching one input before another,
+the ordering is part of the fixture's contract: state it in the case's comment, or
+a later reader tidying a filename will silently disarm the case.
 
 ### The reach of a proof
 
@@ -142,6 +168,13 @@ which arm ran, but to make containment a property of the enumeration itself:
 every path must resolve inside the root it came from. A guard that asks nothing
 about its provider cannot be wrong about it.
 
+That shipped, and the price is worth naming: on the arm that *does* materialize,
+the new check is redundant, and it costs three lines. Redundant containment is a
+cheap thing to buy and a coupling to a provider's internals is an expensive thing
+to keep — the exchange rate is not close. Expect the redundancy to read as
+over-engineering to a reader who only sees the safe arm, and say in the comment
+why it is there.
+
 ### A verb's contract is what its consumers gate on
 
 Before making a function "more honest", read what branches on its output. Two
@@ -156,6 +189,20 @@ on. A containment bug would have been traded for a publishing bug.
 
 **A verb's contract is the union of what its callers do with it, not what its
 name suggests.** Establish that before changing what it returns.
+
+### An item can dissolve rather than being fixed
+
+An issue that lists several symptoms will sometimes lose one when the cause moves.
+A hygiene issue named two things about one enumeration: that a routed collection's
+worktree fork was being swept, and that the index-regeneration guard could never
+fire for that fork. Dropping the fork from the enumeration answered the first and
+left the second with nothing to be about — there is no longer a fork in the sweep
+whose index would need regenerating.
+
+**Say so in the resolution.** "Dissolved" and "not done" are opposite facts that
+look identical in a diff, and a reader checking the issue's item list against the
+change will otherwise find an item with no matching edit and no explanation. The
+same note is what stops a later round re-fixing a symptom whose cause is gone.
 
 ### By file, not by issue
 
@@ -204,12 +251,19 @@ because an earlier call fails first, or because the directory they check is one
 the script creates and owns. Ship them anyway when they encode a rule the code
 depends on — but **say in the resolution that nothing pins them, and why**.
 
-A round shipped one such precondition and recorded it as unpinned. The
-alternative was leaving it for a later test-integrity sweep to report as a
-coverage gap, which is how the same class arrives as a review finding instead of
-a known, argued decision. An attempt to reach it that turns out to exercise
-different code entirely is worth recording too — it is the evidence for the
-unreachability claim.
+Two consecutive rounds have each shipped one and recorded it as unpinned: a
+directory-enumerability precondition, and a check that a provider handed back a
+non-empty path. The alternative is leaving them for a later test-integrity sweep
+to report as coverage gaps, which is how the same class arrives as a review
+finding instead of a known, argued decision. An attempt to reach one that turns
+out to exercise different code entirely is worth recording too — it is the
+evidence for the unreachability claim.
+
+**Record what makes the guard load-bearing despite being unreachable**, not just
+that it is unpinned. The second one reads like paranoia until you know that the
+empty string it refuses would have made the loop below it glob the filesystem
+root. That sentence is the difference between a guard a later reader keeps and one
+they delete as dead code.
 
 ### Narrowed, not closed
 
@@ -292,10 +346,13 @@ Judge the working tree, and say in `review.md` that you did.
 
 ## Mechanics
 
-**The suite** takes ~9 minutes and exceeds a foreground timeout. `rm -f
-/tmp/suite.log` first, then run backgrounded and poll for `^Ran `. Never run two
-concurrently — they contend badly, and a 16-second file has taken 5m41s alongside
-another run. Do not edit files the suite reads while it runs.
+**The suite** takes ~9 minutes on a quiet VM and exceeds a foreground timeout.
+`rm -f /tmp/suite.log` first, then run backgrounded and poll for `^Ran `. Never
+run two concurrently — they contend badly, and a 16-second file has taken 5m41s
+alongside another run. Do not edit files the suite reads while it runs. **Budget
+for far worse under load**: one round's run took 25 minutes, and a single
+`index.sh` fired alongside it hit a 2-minute timeout. Plan the wait as work you
+do elsewhere, not as a poll loop.
 
 **"Concurrently" includes subagents.** A round ran three adversarial agents
 building git fixtures while the suite was in flight and watched throughput
@@ -324,6 +381,14 @@ did); an interactive batch is always the reviewed case. Regenerate `INDEX.md`
 
 **Slugs cap at 64 characters and truncate mid-word.** Keep issue titles short
 enough to survive it.
+
+**Config path keys are `<key>_path` in TOML.** `brainstorms_path`, `specs_path`,
+`issues_path` — the bare names are for the behavior knobs (`issue_placement`,
+`auto_review`). The CLI takes the short name and the resolver appends the suffix,
+so a fixture writing the bare name for a path key gets **the default, silently**.
+That is a case passing for the wrong reason with no error anywhere: the run does
+exactly what it would have without the config line. Assert the resolver's answer
+(`jimconf.sh get <key>`) when a fixture's whole point is a non-default root.
 
 **Commit subjects** are ≤50 characters, lowercase, imperative, with IDs in
 trailers only. This one is honoured in the breach — 74 of 140 subjects in one
