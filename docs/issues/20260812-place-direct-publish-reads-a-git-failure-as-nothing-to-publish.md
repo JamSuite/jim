@@ -2,7 +2,7 @@
 id: 20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish
 num: 340
 title: "place_direct_publish reads a git failure as nothing to publish"
-status: open
+status: closed
 priority: critical
 labels: [issue, placement, fail-open]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:21Z
-updated: 2026-08-12T21:53:21Z
+updated: 2026-08-13T07:57:24Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -69,3 +69,28 @@ shape `tests/place.sh:2185-2199` already uses for the dirty guard.
 Related, same function: on a failed `git commit` (`place.sh:752`) the collection
 is left staged in the developer's real index with no reset, against the arm's
 stated contract elsewhere that the checkout is left exactly as it is.
+
+## Resolution
+
+**2026-08-13.** Fixed in `19eb76e`. `place_direct_publish` captures `git
+status`'s exit status and refuses on non-zero, naming what it could not tell —
+the shape `place_dirty_guard` already uses, whose comment names this exact
+failure class.
+
+Pinned by `case_place_direct_commit_refuses_when_the_publish_status_cannot_run`,
+which corrupts `.git/index` *after* `begin` so the dirty guard has already run
+in its own process and this read is the one being driven — the composition the
+issue describes. It asserts the refusal, that HEAD did not move, and that the
+handle's state survives so the mutation stays recoverable.
+
+That last assertion needed care: on this arm the directory `begin` prints is the
+working tree's own collection, which exists whatever happens, so asserting
+against it could never fail. It is asserted against the state directory under
+the git dir instead.
+
+Proven by neutering the status check and watching the case go red.
+
+**The related item is taken too.** On a failed `git commit` the collection is
+unstaged before returning, so the arm's stated contract — the checkout is left
+exactly as it is — holds on the failure path as well. It is pinned separately
+under the hook-exposure issue, which owns that half.

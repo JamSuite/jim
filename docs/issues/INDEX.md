@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 118
-- Closed: 225
+- Open: 115
+- Closed: 228
 
 ## Issues
 
@@ -316,8 +316,8 @@
 - `20260812-cmd-begin-checked-out-arm-writes-with-no-containment-gate` — cmd_begin checked-out arm writes with no containment gate · status: closed · num: 302 · priority: high · created: 2026-08-12T03:41:34Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-cmd-begin-refuses-where-cmd-run-degrades-on-a-failed-reindex` — cmd_begin refuses where cmd_run degrades on a failed reindex · status: closed · num: 303 · priority: medium · created: 2026-08-12T03:41:49Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-commit-routed-arm-re-establishes-neither-the-gate-nor-head` — commit routed arm re-establishes neither the gate nor HEAD · status: closed · num: 304 · priority: medium · created: 2026-08-12T03:41:50Z · labels: [issue, placement, security] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-control-char-filename-forges-index-rows-and-leaks-the-checkout` — Control-char filename forges index rows and leaks the checkout · status: open · num: 328 · priority: critical · created: 2026-08-12T21:53:18Z · labels: [issue, security, data-integrity] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-direct-arm-commit-is-hook-exposed-and-leaves-the-index-staged` — Direct-arm commit is hook-exposed and leaves the index staged · status: open · num: 329 · priority: medium · created: 2026-08-12T21:53:47Z · labels: [issue, placement, git] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-control-char-filename-forges-index-rows-and-leaks-the-checkout` — Control-char filename forges index rows and leaks the checkout · status: closed · num: 328 · priority: critical · created: 2026-08-12T21:53:18Z · labels: [issue, security, data-integrity] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-direct-arm-commit-is-hook-exposed-and-leaves-the-index-staged` — Direct-arm commit is hook-exposed and leaves the index staged · status: closed · num: 329 · priority: medium · created: 2026-08-12T21:53:47Z · labels: [issue, placement, git] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-direct-arm-never-consults-the-remote-before-serving-a-read` — Direct arm never consults the remote before serving a read · status: closed · num: 305 · priority: medium · created: 2026-08-12T03:42:06Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-direct-arm-raises-a-false-rewrite-alarm-on-a-stale-checkout` — Direct arm raises a false rewrite alarm on a stale checkout · status: closed · num: 306 · priority: medium · created: 2026-08-12T03:41:51Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-direct-arm-reports-an-unreachable-remote-as-divergence` — Direct arm reports an unreachable remote as divergence · status: closed · num: 307 · priority: medium · created: 2026-08-12T03:41:54Z · labels: [issue, placement] · origin: docs/specs/issue/011-issue-placement/review.md
@@ -339,7 +339,7 @@
 - `20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs` — new.sh composes and stats a path before valid-id runs · status: closed · num: 320 · priority: critical · created: 2026-08-12T04:09:10Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260812-partition-migrate-arms-bypass-issue-placement` — Partition migrate arms bypass issue placement · status: closed · num: 314 · priority: high · created: 2026-08-12T03:41:32Z · labels: [issue, placement, partition] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-partition-skill-md-steps-contradict-its-disclosure-rule` — partition SKILL.md steps contradict its disclosure rule · status: open · num: 339 · priority: medium · created: 2026-08-12T21:53:57Z · labels: [partition, placement, docs] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish` — place_direct_publish reads a git failure as nothing to publish · status: open · num: 340 · priority: critical · created: 2026-08-12T21:53:21Z · labels: [issue, placement, fail-open] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish` — place_direct_publish reads a git failure as nothing to publish · status: closed · num: 340 · priority: critical · created: 2026-08-12T21:53:21Z · labels: [issue, placement, fail-open] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-place-sh-header-and-usage-still-misdescribe-the-script` — place.sh header and usage still misdescribe the script · status: closed · num: 315 · priority: low · created: 2026-08-12T03:42:10Z · labels: [issue, docs] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-place-snapshot-publishes-what-materialization-refuses` — place_snapshot publishes what materialization refuses · status: closed · num: 322 · priority: medium · created: 2026-08-12T07:44:30Z · labels: [issue, placement, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-plan-md-design-decisions-and-interface-contract-are-stale` — plan.md design decisions and interface contract are stale · status: open · num: 341 · priority: medium · created: 2026-08-12T21:53:59Z · labels: [docs, plan] · origin: docs/specs/issue/011-issue-placement/review.md

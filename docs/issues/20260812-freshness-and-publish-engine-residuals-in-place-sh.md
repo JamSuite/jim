@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:58Z
-updated: 2026-08-12T21:53:58Z
+updated: 2026-08-13T07:57:24Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -109,3 +109,46 @@ has not passed.
 rc-0 arm (`:1855`); the origin-tier `git reported:` relay (asserted only on the
 local tier); a two-phase `commit` exhausting all five attempts; `place_snapshot`'s
 directory/fifo half; `place_materialize`'s gitlink rejection.
+
+## Progress (2026-08-13)
+
+**Items 5 and 6 are closed** in `19eb76e`. Items 1–4 are untouched and this
+issue stays open on them.
+
+They were split on region rather than on issue number: 5 and 6 live in
+`place_snapshot` and `place_build_commit`, the functions the containment and
+publish work was already editing, while 1–4 live in `place_resolve_tips` and
+`place_commit_changes` — the publish state machine, which is also where the
+diverged-clone liveness finding sits. Taking them together is the composition
+that produced new defects in three consecutive rounds, so they get their own
+pass.
+
+**Item 5 — the snapshot's enumeration.** `place_snapshot` now checks it can read
+the directory rather than inferring an empty collection from an empty result.
+The caller reads a name absent from the snapshot as deleted, so a failure read
+as emptiness publishes a whole-collection deletion at rc 0.
+
+**This guard is pinned by nothing, and that is not an oversight.** It cannot be
+driven from any external invocation: on the routed arm the directory it
+enumerates is a temp handle directory `place.sh` creates and owns, and on the
+worktree path `place_reindex` runs against the same directory and fails first.
+An attempt to reach it by making the worktree collection unreadable was
+confirmed not to touch this code at all. It is defence-in-depth against a future
+reordering, in the same position as the read relaxation the earlier remediation
+shipped unpinned for the same reason. Naming it here is the alternative to
+leaving it for a later test-integrity sweep to find.
+
+**Item 6, both halves.** The replay took its mode from a hardcoded `100644`,
+silently demoting an executable entry the destination owned; the mode now comes
+from the index the replay was seeded from, so an entry the destination does not
+have still lands as a regular file. Pinned by
+`case_place_republish_preserves_an_executable_entry` and proven by neutering.
+Separately, a tree-build failure relayed nothing, so `could not build the
+destination tree` carried no cause; git's own words are now relayed through
+`place_git_reason`, the same shape `place_land` uses one function over.
+
+**Still open here:** items 1–4 (the local-tier partial-view disclosure, the
+undisclosed rewind of a remote-less destination, the diverged deferral folding N
+mutations into one commit, and `ref_old` not being re-read on the
+origin-stays-origin retry), plus every composition under *Untested
+compositions* — none of which items 5 and 6 touch.

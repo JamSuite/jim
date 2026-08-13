@@ -2,7 +2,7 @@
 id: 20260812-control-char-filename-forges-index-rows-and-leaks-the-checkout
 num: 328
 title: "Control-char filename forges index rows and leaks the checkout"
-status: open
+status: closed
 priority: critical
 labels: [issue, security, data-integrity]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:18Z
-updated: 2026-08-13T06:37:15Z
+updated: 2026-08-13T07:57:24Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -126,3 +126,39 @@ being materialized or published.
 That half belongs with the `place.sh` pass rather than here, because it is the
 same file and the same read of the placement door as three other open findings,
 and the by-file rule puts them in one edit.
+
+## Resolution
+
+**2026-08-13.** Closed. **The `## Progress` section above is superseded**: it
+was written when action item 1 had landed and item 2 had not, and item 2 has
+since landed in `19eb76e`. Item 1's account there still stands — read it for why
+the enumeration was fixed by removing the re-sort rather than by quoting it.
+
+**The containment gate is in both ends.** `place_materialize` refuses an
+inbound entry name containing `[[:cntrl:]]`, and `place_snapshot` refuses to
+publish one, beside the gates each already carried. Neither of the existing
+gates could see one: the plain-name test looks for separators, `valid-relpath`
+checks segments, and realpath containment is satisfied by a name that stays in
+the directory.
+
+Pinned in both directions:
+
+- `case_place_refuses_a_control_character_in_a_materialized_name` seeds a
+  destination branch whose single entry carries a newline. `mktree` is
+  line-oriented and cannot express such a name, so the fixture uses its `-z`
+  form — which is what makes the point: git itself is content with the name, and
+  only jim's own gates are asked to reject it.
+- `case_place_refuses_to_publish_a_control_character_name` drives a wrapped
+  command that creates one. Before the fix this case **published the name to the
+  destination branch at rc 0**, which is the outbound half this issue predicted.
+
+Both proven by neutering their gate and watching the case go red.
+
+**What this does and does not close.** The two-phase base snapshot is still a
+line-oriented `sha\tname` round trip, and `index.sh`'s row set is still built by
+a reader that would be confused by such a name. Neither is reachable any more,
+because no such name can now enter the collection or leave it — the gate is what
+makes those readers safe rather than each reader being hardened. That is the
+same argument the leading-dash gate rests on.
+
+Suite **1376 → 1383**.
