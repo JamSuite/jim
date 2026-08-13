@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 120
-- Closed: 223
+- Open: 119
+- Closed: 224
 
 ## Issues
 
@@ -335,7 +335,7 @@
 - `20260812-migrate-sh-failure-handler-is-not-rename-chain-aware` — migrate.sh failure handler is not rename-chain aware · status: closed · num: 313 · priority: medium · created: 2026-08-12T03:41:47Z · labels: [issue, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0` — Migration destroys an issue on the success path at rc 0 · status: open · num: 336 · priority: critical · created: 2026-08-12T21:53:19Z · labels: [issue, data-loss, migration] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-migration-preview-drops-every-skip-reason` — Migration preview drops every skip reason · status: closed · num: 337 · priority: medium · created: 2026-08-12T08:07:42Z · labels: [issue, migrate, correctness] · origin: docs/specs/issue/011-issue-placement/review.md
-- `20260812-new-contract-graph-rows-are-unbacked-by-requires-entries` — New contract graph rows are unbacked by Requires entries · status: open · num: 338 · priority: high · created: 2026-08-12T21:53:44Z · labels: [blueprint, contracts] · origin: docs/specs/issue/011-issue-placement/review.md
+- `20260812-new-contract-graph-rows-are-unbacked-by-requires-entries` — New contract graph rows are unbacked by Requires entries · status: closed · num: 338 · priority: high · created: 2026-08-12T21:53:44Z · labels: [blueprint, contracts] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-new-sh-composes-and-stats-a-path-before-valid-id-runs` — new.sh composes and stats a path before valid-id runs · status: closed · num: 320 · priority: critical · created: 2026-08-12T04:09:10Z · labels: [000-blueprint, verify, issue] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260812-partition-migrate-arms-bypass-issue-placement` — Partition migrate arms bypass issue placement · status: closed · num: 314 · priority: high · created: 2026-08-12T03:41:32Z · labels: [issue, placement, partition] · origin: docs/specs/issue/011-issue-placement/review.md
 - `20260812-partition-skill-md-steps-contradict-its-disclosure-rule` — partition SKILL.md steps contradict its disclosure rule · status: open · num: 339 · priority: medium · created: 2026-08-12T21:53:57Z · labels: [partition, placement, docs] · origin: docs/specs/issue/011-issue-placement/review.md
