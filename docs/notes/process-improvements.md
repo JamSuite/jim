@@ -7,6 +7,11 @@ and the next author needs to know which is which.
 This is the transferable half of what session handoff notes carry. Handoffs are
 disposable and spec-scoped; this file is neither.
 
+*Rules originally numbered as the id-coordination cluster's "adopted practice"
+set live here now, under names rather than numbers. They cross-referenced each
+other as "practice 7's sibling" and so on; a number is a worse handle than a
+name once the list stops being one list.*
+
 ## Verification
 
 ### Neuter the guard, watch the case go red
@@ -148,6 +153,99 @@ correctness depends on stage order, that is an invariant — write it at the
 function and pin it with a case, because it is exactly the kind of thing a later
 reader will "simplify".
 
+### A green suite is necessary and says nothing more
+
+All 903 cases passed while three `critical` defects shipped, because each was an
+omission, a shared blind assumption, or deliberately reused code the suite never
+re-examined. A suite tests what someone thought to test; it is silent about the
+rest, and at a completion gate that silence reads as approval.
+
+Treat "tests pass" as a precondition and **say nothing further about it in a
+gate**. A gate that cites the suite as evidence of correctness is citing the one
+artifact structurally incapable of reporting its own gaps.
+
+### Reproduce a finding before believing it
+
+A fan-out reported three criticals; one was refuted by a thirty-second shell
+experiment, after **two** investigators had independently reasoned it into
+existence from bash subscript semantics. That was the second consecutive build
+where a reasoned-from-source finding died on contact with a shell.
+
+Reading generates findings; running confirms them. A review reporting an
+unreproduced critical is reporting a **hypothesis** and should label it one. The
+corollary is the expensive half: re-run the same reproduction against the fix, so
+"fixed" is also a measurement rather than a second hypothesis.
+
+The same applies one step earlier, to a *proposed* fix. Two of three proposed
+actions in one criticals pass were wrong — one would have introduced a new
+refusal bug if implemented literally, and one cited a precedent the registry
+itself disproved. **Before implementing a proposed action, run it: confirm it
+fails without the fix and passes with it.** A proposal that cannot be told apart
+from the status quo has not been specified.
+
+### A clean result does not disclose its own coverage
+
+Two failure modes, one shape — and both read exactly like success.
+
+**A practice that did not run leaves no trace.** A harness-injected directive
+suppressed a judge fan-out; the rung ran inline and reported "10 invariants, 0
+violations" over code containing two. Nothing in the report distinguished that
+from a clean run. Every practice detects something about the code; none detects
+its own absence.
+
+**A practice that ran over less than it appears to leaves no trace either.** A
+finding whose entire subject was "fixed one, missed the sibling" stated its own
+scope as nine references under one directory; a wider sweep found four more on
+live surfaces. The pass that catches an incomplete sweep swept incompletely and
+reported a count that read as exhaustive.
+
+Two rules follow. A run must **name the degradations it can see** — an unscoped
+floor, a capped fan-out, an undispatched judge — and a surface whose contract
+rests on independent judgment should decline to report a clean result at all when
+its independence was removed. And **a stated scope is a claim, not a
+measurement**: re-derive it before acting, never inherit the reporter's grep,
+because the reviewer who wrote it was subject to the same incompleteness it
+describes.
+
+A related trap: **a project cannot detect its own unrepresentativeness.** Where
+code hardcodes a value a configured resolver would also return, the two coincide
+*here*, so every local check passes and the defect fires only where the
+configuration differs — which is most installations. A green check against this
+repo is evidence about this repo.
+
+### Name the set before you write the enumeration
+
+Every corpus-shaped guard in one pass was too narrow in the same way: a sanitizer
+sweep covering 1 of 16 files; a width guard missing the two spellings that caused
+the drift it exists to catch; a stray-file detector that could not see the
+directory named in its own description; a doc sweep omitting every agent body; an
+audit covering one arm of six. In each case a correct derivation pattern already
+existed nearby and was not used.
+
+The practice is not "check the corpus". It is: **when you write a guard, name the
+set it must cover before you write the enumeration that covers it, and make the
+enumeration derive from that name.** A hard-coded list is the failure; a
+`<thing>_verbs()` helper the guard iterates is the pattern.
+
+Note what this rule is blind to on its own, and why it needs the neuter
+discipline beside it: a guard can be mutation-proven *and* have a corpus too
+narrow to matter, because the case that goes red is scoped to the same narrow
+corpus. Mutation testing proves a guard **discriminates**. It cannot tell you the
+set was too small.
+
+### Fixture the caller, not just the function
+
+Two of the worst defects in one build lived in code whose tests call the function
+directly, because the condition — a concurrent writer, a subdirectory CWD —
+cannot be staged through the command surface. Each function was correct in
+isolation and wrong in context.
+
+When a plan proposes a guard whose fixture cannot go through the front door, that
+is the signal to **fixture the caller** and to **state the guard's premise
+explicitly as a claim to check**. One of those two rested on "`mv` preserves the
+inode", which is false across a filesystem boundary and was never written down
+anywhere.
+
 ## Organizing a fix pass
 
 ### Prefer removing the construct to guarding it
@@ -203,6 +301,49 @@ whose index would need regenerating.
 look identical in a diff, and a reader checking the issue's item list against the
 change will otherwise find an item with no matching edit and no explanation. The
 same note is what stops a later round re-fixing a symptom whose cause is gone.
+
+### A contract names a site; a site is not a class
+
+Nine of sixteen contracts in one pass were satisfied exactly where the issue
+pointed and left unapplied at an unnamed sibling site. One verb recurs three
+times as the neglected sibling, across three independent fixes.
+
+**When a fix establishes a rule, enumerate the rule's doors before closing the
+issue** — not the issue's doors. The issue names where the defect was noticed,
+which is evidence about who noticed it, not about where the rule applies.
+
+Draw that enumeration on the right axis, which is the second half of the lesson.
+A later pass did enumerate faithfully — as *verb × entity* — and still missed the
+defect class, because the defects lived in *verb × rule*: which verbs read the
+structure without going through the classifier at all. The matrix was right; its
+axes were not. Ask what the rule is, then what touches the rule.
+
+This is the sibling of *By file, not by issue* below, at a different moment: that
+one governs reading a whole function while editing it, this one governs
+enumerating a rule's reach before declaring it held.
+
+### Assert the verb's assumed property at plan time
+
+Two of one build's three plan deviations were the same defect: an instruction
+naming the right change in the wrong place. One of them — a task that said
+`rename-tracked` where it meant `move-spec-dir` — went on to generate two
+separate issues.
+
+A plan task names verbs it does not implement. **For each named verb, assert the
+property the task assumes it has**, at plan time, before any code exists. This
+acts earlier than everything else in this file; every other rule here fires at or
+after the change.
+
+### A second reader is a disagreement risk, not a correctness risk
+
+Both of one build's criticals traced to a single root: a classifier, the
+resolvers, and a realize path applied three different rules for what establishes
+a claim — and no reader was wrong on its own.
+
+So when a task adds a reader of a structure something already reads, the question
+at plan time is not "is the new reader correct?" but **"what makes the two
+agree?"** Convention is the answer that fails. A shared predicate is the one that
+holds.
 
 ### By file, not by issue
 
@@ -272,6 +413,55 @@ half that remains — and that remainder must be *filed*, not merely described.
 "Deferred rather than dropped" is only true if something tracks it. Two issues
 closed with `## Progress` remainders that appear in no tracked set.
 
+### Reconcile a review's finding count against its dispositions
+
+One review reported **20** findings. Its filing pass produced **9** issues. Six of
+the eleven remaining were neither fixed nor deliberately left — they were lost,
+and nothing noticed, because no artifact holds both numbers. The review records
+its findings; the issues record themselves; nothing says *every finding has a
+disposition*.
+
+Unlike every other rule here, **this check is arithmetic**. The ledger already
+stores `findings=N`; a gate can demand N dispositions, each one *fixed* (with a
+commit), *filed* (with an issue), or *left* (with a reason).
+
+Do it mechanically or it will not hold. A later pass tried it in prose and
+published "twelve findings, twelve dispositions, no remainder" over rows that
+sum to fourteen — the pass that adopted the rule broke it in the artifact
+announcing it.
+
+### A fold is a waypoint; record the restoration target verbatim
+
+Folding a blueprint invariant to match reality is the right move when the code
+contradicts it — the alternative is a document that lies. But the fold silently
+rewrites *intent*: an assertion becomes a description, and nothing in the surface
+distinguishes a deliberate temporary weakening from a considered statement of
+what the group is for. The pre-fold text survives only in git.
+
+So a fold has two halves and only the first is automatic. Write the weakened
+text, **and** record on the issue that owns the fix: the pre-fold text quoted
+verbatim (so restoration is mechanical, not archaeological), that closing is
+incomplete until the invariant returns at least as strong, and which clauses
+should *not* come back — a fold is also the moment to notice the original
+conceded too much or named a retired mechanism.
+
+Every other rule in this file detects something that went wrong. This one guards
+a step that went **right**, which is exactly what makes the loss invisible.
+
+The inverse costs as much: an invariant that still asserts what the code stopped
+doing. One blueprint states that a vacated ordinal is permanently gapped
+"whatever shape the log takes" while an open `high` issue describes a path
+handing that ordinal back — with nothing on either side pointing at the other.
+When you find one, connect them, so the issue names its restoration target and
+the blueprint is not read as current.
+
+### Close each issue as its fix lands
+
+One spec fixed fourteen issues and closed none, because no plan task covered it —
+and the collection misrepresented the project's state until a later review
+reconciled it. A batch close at the end is a window in which the tracked set is
+knowably wrong, and it is exactly the window in which someone else reads it.
+
 ### Never hand-edit a derived artifact
 
 A table whose header says *derived — do not edit* will be regenerated. Rows added
@@ -321,6 +511,25 @@ overstates is a future reader's false confidence.
 
 Give each refuter a distinct lens rather than three copies of the same brief;
 redundant refuters find redundant things.
+
+### Verify a fanned-out investigator's baseline
+
+Two of four investigators in one review reported their worktree had been
+provisioned **1164 commits stale** and reset it before working. All four
+confirmed their baseline in-report, and any result that did not confirm its
+baseline was not used.
+
+An investigator's report is only as good as what "HEAD" meant to it. Require the
+baseline in the report — an unconfirmed one is not a weaker result, it is a
+result about unknown code.
+
+### Run the living-intent sensor before the completion gate
+
+One `high`-criticality invariant was contradicted **by design**, in two
+blueprints, and nothing forced the fold until the sensor ran — after the gate.
+
+The fold-back loop's value is not the report it writes. It is the contradiction
+it refuses to let pass silently, and it can only refuse before the gate closes.
 
 ### Convergence is a confidence signal worth recording
 
@@ -394,6 +603,38 @@ exactly what it would have without the config line. Assert the resolver's answer
 trailers only. This one is honoured in the breach — 74 of 140 subjects in one
 spec's range exceed it — which is worth knowing before you assume the corpus is
 the standard.
+
+**A commit's type must match its content.** A behavioral change never ships under
+`docs` or `test`. One range carried three that did: a `docs` commit that changed
+script runtime behavior, a `test` commit that added a load-bearing arm to a
+production function and fixed a real variable clobber, and a `docs(arch)` commit
+that silently carried three sweep fixes. Mistyped commits are invisible to
+anyone reading the log to find where behavior changed — and rewriting them later
+is not an option, so the discipline has to hold at commit time.
+
+**Pointing `/jim:review` at a spec directory has two preconditions.** Its
+`review.md` must not already be the `origin:` anchor for tracked issues (the run
+overwrites it, orphaning their provenance), and the target ledger's recorded
+`head_sha` must actually match the range you mean to review — one recorded a
+`head_sha` that was an *ancestor* of the intended range's start, so the run would
+have diffed the wrong code entirely. Either failure means running the review as a
+freestanding pass instead.
+
+**Bash and tooling traps that cost real time:**
+
+- `local a=1 b="$a"` does not work. `local` expands every argument before
+  assigning any, so `b` sees an unbound `a` under `set -u`. Split the statement.
+- `assert_eq` is the only equality helper — there is no `assert_ne` or
+  `assert_contains`. The house idiom for absence is
+  `assert_eq "label" "0" "$(… | grep -c …)"`.
+- `assert_match` is ERE, so `(foo)` is a capture group, not literal parens. A
+  pattern like `… (truncated)` silently matches `… truncated`.
+- `grep -rn … .` omits the `./` prefix, so a path filter anchored on `^\./docs/…`
+  matches nothing and looks like a filter with nothing to exclude.
+- `grep -o` with wide context on `ARCHITECTURE.md` gets OOM-killed. Use `awk`
+  with `split()`, or `sed -n` by line number.
+- `skills/issue/scripts/index.sh` is repo-root-relative and fails after a `cd`
+  into the collection in the same compound command. Run it as its own step.
 
 ## Environment
 
