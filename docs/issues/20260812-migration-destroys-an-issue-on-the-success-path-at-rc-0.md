@@ -2,7 +2,7 @@
 id: 20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0
 num: 336
 title: "Migration destroys an issue on the success path at rc 0"
-status: open
+status: closed
 priority: critical
 labels: [issue, data-loss, migration]
 relations:
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-12T21:53:19Z
-updated: 2026-08-12T21:53:19Z
+updated: 2026-08-13T08:48:12Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -73,3 +73,45 @@ Pin it with a three-file fixture under `issue_id_prefix = "date"`: two files who
 re-derived ids collide such that the second discriminates past the cap and is
 skipped, plus a third whose re-derived id equals the skipped file's existing name.
 Assert all three issues still exist after apply.
+
+## Resolution
+
+**2026-08-13.** Fixed in `562ec34`, as the action specifies: `taken["$old"]=1`
+on the discriminated-validation-failure branch, before the `continue`.
+
+Reproduced before fixing, and the trace matched this issue exactly — three
+issues in, two out, `rename … -> X` and `skip X` both in the preview, rc 0.
+
+**Pinned by** `case_issues_migrate_downgraded_row_keeps_its_name_reserved`, the
+three-file fixture this issue describes. It asserts on the surviving **titles**
+rather than on a file count: the defect renames one file over another, so the
+count stays at three while one issue's content is gone. Proven by neutering the
+one line and watching it go red with `expected [A B C], got [A C]`.
+
+**One detail the fixture turns on, which this issue does not name.** The
+downgraded row must be processed *before* the row that claims its name.
+Reserving on downgrade protects rows processed later; a claimant processed
+earlier has already taken the name, and the reservation comes too late to matter.
+The fixture is ordered so the downgrade comes first, which is the reachable case
+under the plan builder's glob ordering. Read the fix as closing that case rather
+than as a general guarantee that two rows can never contend for one name.
+
+**The knock-on is disclosed, not silent.** With the name held, the later row
+discriminates, fails the same 128-character cap, and is reported as its own
+`skip … (un-migratable: discriminated id failed validation)`. The preview now
+shows three skips and no rename, instead of a rename onto an occupied file.
+
+**The three sibling downgrades were checked and need nothing.** All three emit
+their rows during the build phase, so the reservation loop at `:129`
+(`[[ "$action" == rename ]] || taken["$old"]=1`) already covers them. Only the
+fourth sits inside the assignment loop, past that loop — which is the shape the
+previous round's lesson describes, a downgrade moved past the guard its siblings
+sit inside.
+
+**The rename-chain path was re-read and is unaffected.** A chain (A→B, B→C) is
+kept correct by two existing mechanisms: every issue is copied to a staged tmp
+before any `mv` runs, so a completed rename cannot destroy a pending issue's only
+copy; and the retire loop skips any old name another issue was renamed onto.
+Reserving a downgraded row's own name introduces no chain and disturbs neither.
+
+Suite **1383 → 1384**.
