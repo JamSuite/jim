@@ -745,11 +745,50 @@ place_direct_publish() {
   local dest="$1" prefix="$2" verb="$3" id="$4"
   place_worktree_contained "$prefix" || return 2
   place_reindex "$prefix" || return 1
-  local st
+  local st strc
   st="$(git --literal-pathspecs status --porcelain -- "$prefix" 2>/dev/null)"
+  strc=$?
+  # The same discipline place_dirty_guard states, on the side where misreading
+  # it is worse. A failure that printed nothing is indistinguishable from a
+  # clean collection by output alone, and reading it as "nothing to publish"
+  # returns 0 — so the caller is told the mutation landed, the handle is
+  # dropped, and the edits are still sitting in the working tree.
+  if (( strc != 0 )); then
+    echo "place.sh: cannot tell what the collection at '$prefix' has to publish" \
+         "— git reported an error instead of a listing, so this mutation is" \
+         "refused rather than reported as published" >&2
+    return 2
+  fi
   [[ -n "$st" ]] || return 0
   git --literal-pathspecs add -- "$prefix" || return 1
-  git --literal-pathspecs commit -q -m "$(place_message "$verb" "$id")" -- "$prefix" || return 1
+  # The dotfile namespace is not the collection, and place_snapshot excludes it
+  # by construction on the routed arm for the same reason: the atomic writers
+  # stage through `.<name>.tmp.XXXXXX` beside the file they replace, so a crash
+  # mid-write strands one, and this arm stages a whole directory. Published
+  # once, such an entry is re-materialized every run, sits unchanged in both
+  # snapshots, and appears in no index. Pathspec magic is unavailable under
+  # --literal-pathspecs, so the exclusion is applied by unstaging rather than by
+  # an `:(exclude)` pathspec.
+  local dot
+  for dot in "$prefix"/.*; do
+    [[ -e "$dot" ]] || continue
+    case "${dot##*/}" in .|..) continue ;; esac
+    git --literal-pathspecs reset -q -- "$dot" 2>/dev/null || true
+  done
+  # Hooks are scoped off for this one invocation. The routed arm builds its
+  # commit with plumbing, which no hook can reach, so the subject there is the
+  # trusted verb enum by construction; leaving hooks live here would make the
+  # same guarantee hold on one arm and not the other. A commit-msg or
+  # prepare-commit-msg hook can rewrite the subject, a pre-commit hook can alter
+  # tracked content or fail the publish, and either may read stdin and stall a
+  # run that promises no prompt. `--no-verify` is not this: it skips pre-commit
+  # and commit-msg and leaves prepare-commit-msg free to rewrite the message.
+  if ! git --literal-pathspecs -c core.hooksPath=/dev/null \
+         commit -q -m "$(place_message "$verb" "$id")" -- "$prefix"; then
+    # Staged by the line above, so the failure owes the checkout its state back.
+    git --literal-pathspecs reset -q -- "$prefix" 2>/dev/null || true
+    return 1
+  fi
   local commit remote
   commit="$(git rev-parse --verify --quiet HEAD 2>/dev/null || true)"
   remote="$(place_remote)"
@@ -1311,6 +1350,19 @@ place_materialize() {
              "holds regular files only" >&2
         return 2 ;;
     esac
+    # Git accepts any byte but NUL and a slash in a tree entry name, so on a
+    # shared branch a control character is an ordinary commit away. Nothing
+    # below sees one: the plain-name test looks for separators, valid-relpath
+    # checks segments, and realpath containment is satisfied by a name that
+    # stays in the directory. What such a name reaches instead is every
+    # line-oriented reader downstream — the two-phase base snapshot round-trips
+    # `sha\tname` per line, so a newline-bearing name loads back as two records
+    # and a fabricated one reaches the deletion loop as a real name.
+    if [[ "$name" == *[[:cntrl:]]* ]]; then
+      echo "place.sh: refusing '$shown' from branch '$prefix' — a collection" \
+           "entry name may not contain a control character" >&2
+      return 2
+    fi
     if [[ "$name" == */* || "$name" == "." || "$name" == ".." ]]; then
       echo "place.sh: refusing '$shown' from branch '$prefix' — a collection entry" \
            "must be a plain file name" >&2
@@ -1363,6 +1415,17 @@ place_snapshot() {
   local dir="$1"
   local -n _ps_snap="$2"
   _ps_snap=()
+  # An enumeration that fails produces an empty array, and the caller reads a
+  # name absent from this snapshot as deleted — so a directory this run cannot
+  # read would publish as a whole-collection deletion at rc 0. The precondition
+  # is therefore checked rather than inferred from an empty result, which is
+  # the discipline place_dirty_guard states: a guard that could not run has not
+  # passed. Nothing reaches this today, because the reindex against the same
+  # directory fails first; it holds if that ordering ever changes.
+  if [[ ! -d "$dir" || ! -r "$dir" || ! -x "$dir" ]]; then
+    echo "place.sh: cannot enumerate the collection at '$dir'" >&2
+    return 1
+  fi
   local entry name sha
   while IFS= read -r -d '' entry; do
     name="${entry##*/}"
@@ -1381,6 +1444,15 @@ place_snapshot() {
            "not be materialized again" >&2
       return 1 ;;
     esac
+    # The other rule materialization enforces, held at the same end. Publishing
+    # such a name makes the collection unreadable on the next run, and it is
+    # this enumerator's output that becomes tree entries.
+    if [[ "$name" == *[[:cntrl:]]* ]]; then
+      echo "place.sh: refusing to publish '$(place_shown "$name")' — a" \
+           "collection entry name may not contain a control character, and one" \
+           "that does could not be materialized again" >&2
+      return 1
+    fi
     # -w stores the blob: the destination tree is built from these object names,
     # so a sha that was only computed names nothing the tree can reference.
     sha="$(git hash-object -w -- "$entry")" || return 1
@@ -1417,7 +1489,8 @@ place_build_commit() {
   local tip="$1" prefix="$2" msg="$5"
   local -n _pp_before="$3"
   local -n _pp_after="$4"
-  local name tree commit rc
+  local name tree commit rc mode err reason=""
+  err="$PLACE_WORK/tree.err"
   (
     export GIT_INDEX_FILE="$PLACE_GIT_INDEX"
     rm -f -- "$PLACE_GIT_INDEX"
@@ -1428,16 +1501,29 @@ place_build_commit() {
     fi
     for name in "${!_pp_after[@]}"; do
       [[ "${_pp_before[$name]:-}" == "${_pp_after[$name]}" ]] && continue
-      git update-index --add --cacheinfo 100644 "${_pp_after[$name]}" "$prefix/$name" || exit 1
+      # Materialization admits an executable entry, so republishing one as
+      # 100644 would silently demote it — the round trip is enforced at both
+      # ends everywhere else. The index was just seeded from the tip, so it
+      # already holds the mode the destination has for this path; anything the
+      # destination does not have is new and lands as a regular file.
+      mode="$(git ls-files -s -- "$prefix/$name" 2>/dev/null | awk '{print $1; exit}')"
+      [[ "$mode" == 100755 ]] || mode=100644
+      git update-index --add --cacheinfo "$mode" "${_pp_after[$name]}" "$prefix/$name" || exit 1
     done
     for name in "${!_pp_before[@]}"; do
       [[ -n "${_pp_after[$name]:-}" ]] && continue
       git update-index --force-remove -- "$prefix/$name" || exit 1
     done
     git write-tree
-  ) > "$PLACE_WORK/tree" 2>/dev/null
+  ) > "$PLACE_WORK/tree" 2>"$err"
   rc=$?
-  (( rc == 0 )) || { echo "place.sh: could not build the destination tree" >&2; return 1; }
+  if (( rc != 0 )); then
+    # git's own words, rather than a bare failure the developer cannot act on —
+    # the relay place_land already gives the publish side.
+    [[ -s "$err" ]] && reason="$(place_git_reason "$err")"
+    echo "place.sh: could not build the destination tree${reason:+ — git reported: $reason}" >&2
+    return 1
+  fi
   tree="$(cat "$PLACE_WORK/tree")"
   [[ -n "$tree" ]] || { echo "place.sh: could not build the destination tree" >&2; return 1; }
   commit="$(place_commit_tree "$tree" "$msg" "$tip")" || {

@@ -107,6 +107,29 @@ place_seed_traversal() {
   return 0
 }
 
+# place_seed_hostile_name <repo> <branch> <prefix> <raw-name>
+#   Commit a collection whose single entry carries <raw-name> verbatim, which
+#   may hold any byte but NUL and a slash. `mktree` is line-oriented and cannot
+#   express a name containing a newline, so this uses its `-z` form — the shape
+#   a teammate's ordinary commit produces, since git itself is content with such
+#   a name and only jim's own gates are asked to reject it.
+place_seed_hostile_name() {
+  local repo="$1" branch="$2" prefix="$3" name="$4"
+  local blob tree seg rest commit
+  blob="$(printf 'hostile\n' | git -C "$repo" hash-object -w --stdin)" || return 1
+  tree="$(printf '100644 blob %s\t%s\0' "$blob" "$name" \
+    | git -C "$repo" mktree -z)" || return 1
+  rest="$prefix"
+  while [[ "$rest" == */* ]]; do
+    seg="${rest##*/}"; rest="${rest%/*}"
+    tree="$(printf '040000 tree %s\t%s' "$tree" "$seg" | git -C "$repo" mktree)" || return 1
+  done
+  tree="$(printf '040000 tree %s\t%s' "$tree" "$rest" | git -C "$repo" mktree)" || return 1
+  commit="$(git -C "$repo" commit-tree "$tree" -m crafted)" || return 1
+  git -C "$repo" update-ref "refs/heads/$branch" "$commit" || return 1
+  return 0
+}
+
 # place_bookmark <repo> <branch> — the tip this clone last recorded as seen at
 # the destination. Reading it is how a case pins what the bookmark means; no
 # assertion touched it before, so neither of its guarding conditions was held
@@ -2505,6 +2528,168 @@ case_place_commit_unknown_token_refuses() {
   run_place_in "$repo" commit "../../escape" --verb close
   assert_exit  "traversal refused"      2                         "$RC"
   assert_match "at the token boundary" 'malformed handle token'   "$ERR"
+}
+
+# AC: the publish side inherits the dirty guard's discipline — a `git status`
+# that fails having printed nothing is not "nothing to publish". Reading output
+# alone reports success at rc 0 while the edits sit uncommitted and the handle
+# is gone, which is a lost mutation dressed as a landed one.
+case_place_direct_commit_refuses_when_the_publish_status_cannot_run() {
+  local repo token before
+  repo="$(place_here place_direct_publish_status_blind)"
+  mkdir -p "$repo/docs/issues"
+  printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  run_place_in "$repo" begin
+  assert_exit "begin" 0 "$RC"
+  token="${OUT%%$'\t'*}"
+  printf 'edited\n' >> "$repo/docs/issues/20260101-a.md"
+  before="$(git -C "$repo" rev-parse HEAD)"
+  # `status` exits non-zero having printed nothing, while `rev-parse` still
+  # answers — so the containment gate passes and the publish's own read is what
+  # is being driven. The dirty guard already ran, in begin's process.
+  printf 'GARBAGE' > "$repo/.git/index"
+  run_place_in "$repo" commit "$token" --verb edit --id 20260101-a
+  assert_exit  "refuses rather than reporting success" 2 "$RC"
+  assert_match "says it could not tell" 'cannot tell' "$ERR"
+  assert_eq    "nothing was committed" "$before" "$(git -C "$repo" rev-parse HEAD)"
+  # The handle's state survives a refusal, so the mutation stays recoverable.
+  # Asserted against the state directory under the git dir, not the directory
+  # `begin` printed — on this arm that is the working tree's own collection,
+  # which exists either way and would make this assertion unfailable.
+  if [[ ! -d "$repo/.git/jim-place/$token" ]]; then
+    CURRENT_FAILED=1
+    echo "    [a refused publish discarded the handle's state]"
+  fi
+}
+
+# AC: the commit subject is the trusted verb enum, on both arms. The routed arm
+# builds it with plumbing, which no hook can reach; this arm runs `git commit`,
+# so it scopes hooks off for that one invocation. `--no-verify` is not the same
+# guarantee — it leaves prepare-commit-msg free to rewrite the message.
+case_place_direct_commit_subject_survives_a_hook() {
+  local repo token dir
+  repo="$(place_here place_direct_hooked)"
+  mkdir -p "$repo/docs/issues" "$repo/.git/hooks"
+  printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  printf '#!/usr/bin/env bash\nprintf "REWRITTEN\\n" > "$1"\n' \
+    > "$repo/.git/hooks/prepare-commit-msg"
+  chmod +x "$repo/.git/hooks/prepare-commit-msg"
+  run_place_in "$repo" begin
+  assert_exit "begin" 0 "$RC"
+  # On this arm `begin` hands back the working tree's own collection as a
+  # REPO-RELATIVE path, so a case must anchor it at $repo — this process's CWD
+  # is jim's own checkout, where a relative write lands in the real collection.
+  token="${OUT%%$'\t'*}"; dir="$repo/${OUT#*$'\t'}"
+  printf 'edited\n' >> "$dir/20260101-a.md"
+  run_place_in "$repo" commit "$token" --verb close --id 20260101-a
+  assert_exit "commit" 0 "$RC"
+  assert_eq "the enum is what landed" 'docs(issues): close 20260101-a' \
+    "$(git -C "$repo" log -1 --format=%s)"
+}
+
+# AC: this arm's contract is that the checkout is left exactly as it is. A
+# failed commit must not leave the collection staged in the developer's own
+# index — recovering from that means noticing a staging state nobody chose.
+case_place_direct_commit_failure_leaves_nothing_staged() {
+  local repo token dir
+  repo="$(place_here place_direct_commit_fails)"
+  mkdir -p "$repo/docs/issues"
+  printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  run_place_in "$repo" begin
+  assert_exit "begin" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="$repo/${OUT#*$'\t'}"   # repo-relative on this arm
+  printf 'edited\n' >> "$dir/20260101-a.md"
+  # Fails the commit itself rather than a hook, since hooks are scoped off:
+  # signing is demanded and cannot be produced, so `git commit` exits non-zero
+  # after the collection has been staged.
+  git -C "$repo" config commit.gpgsign true
+  git -C "$repo" config user.signingkey NOSUCHKEY0000
+  run_place_in "$repo" commit "$token" --verb edit --id 20260101-a
+  assert_exit "reports the failure" 1 "$RC"
+  assert_eq "nothing is left staged" "" \
+    "$(git -C "$repo" diff --cached --name-only)"
+}
+
+# AC: an entry name is untrusted input from a shared branch and may hold any
+# byte but NUL and a slash. A control character in one is refused on the way in,
+# beside the mode, plain-name and containment gates — none of which sees one.
+case_place_refuses_a_control_character_in_a_materialized_name() {
+  local repo
+  repo="$(place_repo place_ctrl_inbound 'issue_placement = "jim/issues"')"
+  place_seed_hostile_name "$repo" jim/issues docs/issues \
+    "$(printf '20260101-a.md\nevil.md')" || { CURRENT_FAILED=1; echo "    [seed failed]"; return; }
+  run_place_in "$repo" begin --read
+  assert_exit  "refuses"        2           "$RC"
+  assert_match "names the rule" 'control character' "$ERR"
+}
+
+# AC: the same rule holds on the way out, so the two ends of the round trip
+# agree. A wrapped command that lands such a name must not publish it — the
+# next run would have to refuse to read the collection back.
+case_place_refuses_to_publish_a_control_character_name() {
+  local repo
+  repo="$(place_repo place_ctrl_outbound 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --verb file -- \
+    sh -c 'printf "x\n" > "$1/$(printf "20260101-a.md\nevil.md")"' _ '{}'
+  assert_exit "refuses" 1 "$RC"
+  assert_match "names the rule" 'control character' "$ERR"
+  # Nothing reached the destination — the refusal is before the publish, not
+  # a report after one.
+  assert_eq "destination is untouched" "" "$(place_dest_paths "$repo" jim/issues)"
+}
+
+# AC: the dotfile namespace is not the collection, on either arm. The atomic
+# writers stage through `.<name>.tmp.XXXXXX` beside the file they replace, so a
+# crash mid-write strands one — and this arm stages by directory, where the
+# routed arm's enumerator excludes it by construction.
+case_place_direct_publish_excludes_the_dotfile_namespace() {
+  local repo token dir
+  repo="$(place_here place_direct_dotfile)"
+  mkdir -p "$repo/docs/issues"
+  printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
+  git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
+  run_place_in "$repo" begin
+  assert_exit "begin" 0 "$RC"
+  token="${OUT%%$'\t'*}"; dir="$repo/${OUT#*$'\t'}"   # repo-relative on this arm
+  printf 'edited\n' >> "$dir/20260101-a.md"
+  printf 'partial\n' > "$dir/.INDEX.md.tmp.abc123"
+  run_place_in "$repo" commit "$token" --verb edit --id 20260101-a
+  assert_exit "commit" 0 "$RC"
+  if git -C "$repo" ls-tree -r --name-only HEAD | grep -q '\.INDEX\.md\.tmp\.'; then
+    CURRENT_FAILED=1
+    echo "    [a stranded temp was published to the shared branch]"
+  fi
+  # The real edit still landed — the exclusion is scoped to the namespace.
+  assert_match "the mutation published" 'edited' \
+    "$(git -C "$repo" show HEAD:docs/issues/20260101-a.md)"
+}
+
+# AC: materialization admits an executable entry, so a republish must not
+# demote one. The round trip is enforced at both ends everywhere else in this
+# engine; a mode is content the destination owns, not a detail of the replay.
+case_place_republish_preserves_an_executable_entry() {
+  local repo blob tree commit
+  repo="$(place_repo place_mode_roundtrip 'issue_placement = "jim/issues"')"
+  # Seed a collection holding one executable entry and one ordinary one.
+  blob="$(printf 'hook\n' | git -C "$repo" hash-object -w --stdin)"
+  tree="$(printf '100755 blob %s\ttool.md\n100644 blob %s\t20260101-a.md\n' \
+    "$blob" "$blob" | git -C "$repo" mktree)"
+  tree="$(printf '040000 tree %s\tissues' "$tree" | git -C "$repo" mktree)"
+  tree="$(printf '040000 tree %s\tdocs' "$tree" | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" -m seeded)"
+  git -C "$repo" update-ref refs/heads/jim/issues "$commit"
+  # A mutation that touches the executable entry, so it is in the changed set
+  # and is replayed rather than carried through untouched.
+  run_place_in "$repo" run --verb edit --id tool -- \
+    sh -c 'printf "hook v2\n" > "$1/tool.md"' _ '{}'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the executable bit survives republish" "100755" \
+    "$(git -C "$repo" ls-tree refs/heads/jim/issues docs/issues/tool.md | awk '{print $1}')"
+  assert_eq "an ordinary entry stays ordinary" "100644" \
+    "$(git -C "$repo" ls-tree refs/heads/jim/issues docs/issues/20260101-a.md | awk '{print $1}')"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
