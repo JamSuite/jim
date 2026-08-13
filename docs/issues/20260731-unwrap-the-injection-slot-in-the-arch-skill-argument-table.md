@@ -3,7 +3,7 @@ id: 20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table
 num: 163
 title: "Unwrap the injection slot in the arch skill argument table"
 status: open
-priority: critical
+priority: medium
 labels: [000-blueprint, verify]
 relations:
   blocks: []
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T11:48:54Z
-updated: 2026-07-31T11:48:54Z
+updated: 2026-08-13T11:36:20Z
 origin: docs/specs/sdlc/000-blueprint/spec.md
 ---
 
@@ -52,3 +52,18 @@ Restructure the table cell so the slot is not parenthesized — or bind it with 
 `SET` above the table and reference the name.
 
 Surfaced by a `/jim:verify sdlc` run during the `sdlc/018` build.
+
+## Re-grade
+
+**2026-08-13. `critical` → `medium`.**
+
+Inherited from the `injection-set-rhs` invariant, not graded from this breach.
+
+The description records that the shape currently works: "The risk is latent rather
+than currently firing — the empirical wrapper matrix records this shape
+substituting successfully outside an `IF` construct."
+
+Not `low`, because the failure mode is silent — a paren-wrap that does not fire
+surfaces no error at load time, and the model sees raw backticks. A latent defect
+with no failure signal earns more than the two convention-drift items above, and
+less than a breach that is live.

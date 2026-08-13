@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 118
+- Open: 119
 - Closed: 231
 
 ## Issues
@@ -58,7 +58,7 @@
 - `20260704-surface-face-freshness-in-the-reconcile-report` — Surface face freshness in the reconcile report · status: open · num: 44 · priority: low · created: 2026-07-04T09:23:24Z · labels: [000-blueprint, contract-graph] · origin: docs/specs/blueprint/006-contract-graph/plan.md
 - `20260704-sweep-post-033-doc-drift` — Sweep post-033 doc drift · status: closed · num: 36 · priority: low · created: 2026-07-04T00:22:57Z · labels: [docs, workflow, blueprint] · origin: docs/specs/blueprint/005-context-map/review.md
 - `20260704-update-issue-skill-md-7a-surfacing-skills-enumeration` — Update issue SKILL.md 7a surfacing-skills enumeration · status: closed · num: 45 · priority: low · created: 2026-07-04T11:07:13Z · labels: [issue, docs] · origin: docs/specs/blueprint/006-contract-graph/review.md
-- `20260705-allowed-tools-exactness-drift-in-issue-and-meta-matrix-skills` — allowed-tools exactness drift in issue, partition, and meta-matrix skills · status: open · num: 52 · priority: critical · created: 2026-07-05T00:28:45Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
+- `20260705-allowed-tools-exactness-drift-in-issue-and-meta-matrix-skills` — allowed-tools exactness drift in issue, partition, and meta-matrix skills · status: open · num: 52 · priority: high · created: 2026-07-05T00:28:45Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260705-assert-edge-outcome-evidence-is-location-only-in-contracts-check` — Assert edge-outcome evidence is location-only in contracts-check tests · status: closed · num: 59 · priority: medium · created: 2026-07-05T22:44:11Z · labels: [verify, contract-graph, test] · origin: docs/specs/blueprint/009-verify-contracts/review.md
 - `20260705-guard-the-contracts-check-edge-loop-against-self-edges` — Guard the contracts-check edge loop against self-edges · status: closed · num: 61 · priority: low · created: 2026-07-05T22:44:13Z · labels: [verify, contract-graph] · origin: docs/specs/blueprint/009-verify-contracts/review.md
 - `20260705-meta-matrix-probe-agent-body-exceeds-progressive-disclosure-toke` — meta-matrix-probe agent body exceeds progressive-disclosure token budget · status: open · num: 54 · priority: medium · created: 2026-07-05T00:37:36Z · labels: [000-blueprint, verify] · origin: docs/specs/jim/000-blueprint/spec.md
@@ -171,7 +171,7 @@
 - `20260731-close-the-remaining-edges-of-the-ordinal-identity-invariant` — Close the remaining edges of the ordinal identity invariant · status: closed · num: 181 · priority: low · created: 2026-07-31T12:39:24Z · labels: [file, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-describe-both-spec-identity-states-in-the-agent-context-blocks` — Describe both spec-identity states in the agent context blocks · status: closed · num: 168 · priority: medium · created: 2026-07-31T12:08:07Z · labels: [sdlc, docs, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-document-the-provisional-path-arity-in-the-script-own-help` — Document the provisional path arity in the script own help · status: closed · num: 176 · priority: medium · created: 2026-07-31T12:38:48Z · labels: [file, scripts, docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe` — Drop the unbounded bash grant from meta-matrix-probe · status: open · num: 166 · priority: high · created: 2026-07-31T11:49:17Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe` — Drop the unbounded bash grant from meta-matrix-probe · status: open · num: 166 · priority: medium · created: 2026-07-31T11:49:17Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-enumerate-blueprints-through-the-map-in-the-review-omission-swee` — Enumerate blueprints through the map in the review omission sweep · status: closed · num: 169 · priority: high · created: 2026-07-31T12:08:15Z · labels: [sdlc, review, 000-blueprint] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-fix-the-index-script-exit-trap-leaking-its-temp-file` — Fix the index script EXIT trap leaking its temp file · status: closed · num: 170 · priority: medium · created: 2026-07-31T12:08:22Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 - `20260731-fix-the-nesting-guard-false-positive-on-the-mv-copy-fallback` — Fix the nesting guard false-positive on the mv copy fallback · status: closed · num: 171 · priority: critical · created: 2026-07-31T12:38:10Z · labels: [file, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
@@ -180,15 +180,15 @@
 - `20260731-make-spec-reconcile-apply-work-from-a-subdirectory` — Make spec reconcile apply work from a subdirectory · status: closed · num: 172 · priority: high · created: 2026-07-31T12:38:18Z · labels: [spec, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-make-the-plan-approved-gate-an-allowlist` — Make the plan approved gate an allowlist · status: open · num: 167 · priority: high · created: 2026-07-31T11:49:24Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-move-the-explanatory-comment-off-the-spec-template-id-line` — Move the explanatory comment off the spec template id line · status: closed · num: 179 · priority: medium · created: 2026-07-31T12:39:09Z · labels: [spec, docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-namespace-bare-agent-handles-and-add-a-checklist-item` — Namespace bare agent handles and add a checklist item · status: open · num: 161 · priority: critical · created: 2026-07-31T11:48:39Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-namespace-bare-agent-handles-and-add-a-checklist-item` — Namespace bare agent handles and add a checklist item · status: open · num: 161 · priority: low · created: 2026-07-31T11:48:39Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-normalize-the-citation-sweep-configured-roots` — Normalize the citation sweep configured roots · status: closed · num: 173 · priority: high · created: 2026-07-31T12:38:25Z · labels: [spec, scripts, id-coordination] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` — Regenerate the issue index before aborting on a rewrite failure · status: closed · num: 174 · priority: high · created: 2026-07-31T12:38:33Z · labels: [issue, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer` — Retire BASIC and EXISTS vocabulary from the enforcement layer · status: open · num: 164 · priority: high · created: 2026-07-31T11:49:02Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer` — Retire BASIC and EXISTS vocabulary from the enforcement layer · status: open · num: 164 · priority: low · created: 2026-07-31T11:49:02Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-retire-the-mv-spec-prose-now-that-it-has-no-callers` — Retire the mv-spec prose now that it has no callers · status: closed · num: 183 · priority: low · created: 2026-07-31T12:39:39Z · labels: [docs] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` — Skip symlinked entries in the realized directory sweep · status: closed · num: 180 · priority: medium · created: 2026-07-31T12:39:17Z · labels: [spec, scripts] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
-- `20260731-unmix-the-template-brace-around-arguments-in-the-arch-skill` — Unmix the template brace around ARGUMENTS in the arch skill · status: open · num: 165 · priority: high · created: 2026-07-31T11:49:09Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
-- `20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table` — Unwrap the injection slot in the arch skill argument table · status: open · num: 163 · priority: critical · created: 2026-07-31T11:48:54Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
-- `20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcile-script` — Use CLAUDE_SKILL_DIR for the spec skill own reconcile script · status: open · num: 162 · priority: critical · created: 2026-07-31T11:48:47Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-unmix-the-template-brace-around-arguments-in-the-arch-skill` — Unmix the template brace around ARGUMENTS in the arch skill · status: open · num: 165 · priority: medium · created: 2026-07-31T11:49:09Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-unwrap-the-injection-slot-in-the-arch-skill-argument-table` — Unwrap the injection slot in the arch skill argument table · status: open · num: 163 · priority: medium · created: 2026-07-31T11:48:54Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
+- `20260731-use-claude-skill-dir-for-the-spec-skill-own-reconcile-script` — Use CLAUDE_SKILL_DIR for the spec skill own reconcile script · status: open · num: 162 · priority: low · created: 2026-07-31T11:48:47Z · labels: [000-blueprint, verify] · origin: docs/specs/sdlc/000-blueprint/spec.md
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` — Write the fixtures the plan named but the build skipped · status: closed · num: 178 · priority: medium · created: 2026-07-31T12:39:02Z · labels: [spec, issue, test] · origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 - `20260801-citation-sweep-exits-0-after-dropping-a-content-root` — Citation sweep exits 0 after dropping a content root · status: closed · num: 190 · priority: high · created: 2026-08-01T06:36:03Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
 - `20260801-citation-sweep-installer-discards-cat-s-exit-status` — Citation sweep installer discards cat's exit status · status: closed · num: 191 · priority: high · created: 2026-08-01T06:36:04Z · labels: [scripts, spec, id-coordination] · origin: docs/notes/20260801-c-prime-fix-handoff.md
@@ -356,6 +356,7 @@
 - `20260813-nine-review-findings-that-were-never-filed` — Nine review findings that were never filed · status: open · num: P-20260813-nine-review-findings-that-were-never-filed · priority: medium · created: 2026-08-13T11:00:48Z · labels: [review, records, docs] · origin: docs/notes/20260805-b-double-prime-review.md
 - `20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts` — Provisional slug charset is wider than the move verb accepts · status: open · num: P-20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts · priority: medium · created: 2026-08-13T10:59:41Z · labels: [platform, allocator, grammar] · origin: docs/notes/20260804-b-prime-completion-handoff.md
 - `20260813-six-deliberately-unfiled-items-from-the-c-prime-fix-round` — Six deliberately-unfiled items from the C-prime fix round · status: open · num: P-20260813-six-deliberately-unfiled-items-from-the-c-prime-fix-round · priority: low · created: 2026-08-13T11:00:24Z · labels: [docs, correctness, cleanup] · origin: docs/notes/20260801-c-prime-fix-handoff.md
+- `20260813-verify-grades-a-violation-by-its-rule-not-by-its-breach` — verify grades a violation by its rule not by its breach · status: open · num: P-20260813-verify-grades-a-violation-by-its-rule-not-by-its-breach · priority: high · created: 2026-08-13T11:36:55Z · labels: [verify, triage, noise] · origin: docs/specs/jim/000-blueprint/spec.md
 
 ## Graph
 
@@ -494,3 +495,47 @@
 - `20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0`: malformed wikilink `[[ "$action" == rename ]]` ignored.
 - `20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish`: malformed wikilink `[[ -n "$st" ]]` ignored.
 - `20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts`: malformed wikilink `[[ "P-20260801-Foo.bar" =~ <src_shape> ]]` ignored.
+- `20260801-citation-sweep-exits-0-after-dropping-a-content-root` origin path does not resolve: docs/notes/20260801-c-prime-fix-handoff.md (created 2026-08-01T06:36:03Z)
+- `20260801-citation-sweep-installer-discards-cat-s-exit-status` origin path does not resolve: docs/notes/20260801-c-prime-fix-handoff.md (created 2026-08-01T06:36:04Z)
+- `20260801-index-sh-publishes-a-truncated-index-md-as-success` origin path does not resolve: docs/notes/20260801-c-prime-fix-handoff.md (created 2026-08-01T06:36:06Z)
+- `20260801-realize-occupancy-gate-reads-the-configured-specs-dir-not-its-ro` origin path does not resolve: docs/notes/20260801-c-prime-fix-handoff.md (created 2026-08-01T06:36:07Z)
+- `20260801-spec-skill-s-realize-failure-guidance-is-stale-in-two-directions` origin path does not resolve: docs/notes/20260801-c-prime-fix-handoff.md (created 2026-08-01T06:36:06Z)
+- `20260801-sweep-and-reconcile-disagree-on-worktree-top-normalization` origin path does not resolve: docs/notes/20260801-c-prime-fix-handoff.md (created 2026-08-01T06:36:05Z)
+- `20260801-uncommitted-sweep-containment-guard-lost-its-only-coverage` origin path does not resolve: docs/notes/20260801-c-prime-fix-handoff.md (created 2026-08-01T06:36:08Z)
+- `20260805-close-the-fork-amplification-class-at-readability-instead-of-rec` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:11Z)
+- `20260805-correct-the-record-layer-s-section-header-to-admit-its-git-reads` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:48Z)
+- `20260805-correct-the-surviving-stale-doc-site-and-the-four-resolutions-th` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:30Z)
+- `20260805-disclose-what-catch-up-withheld-instead-of-claiming-every-identi` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:12Z)
+- `20260805-exclude-by-path-not-basename-in-the-ordinal-width-guard` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:44Z)
+- `20260805-fold-the-group-alias-into-the-spent-set-so-catch-up-cannot-reiss` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:04Z)
+- `20260805-gate-metatest-run-s-pwd-relative-source-path-and-give-it-a-non-e` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:34Z)
+- `20260805-gate-the-issue-side-ordinal-mint-against-the-width-ceiling` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:47Z)
+- `20260805-make-the-hygiene-sweeps-depth-unlimited-root-enforced-and-occurr` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:31Z)
+- `20260805-pin-each-prov-prefix-constant-individually-not-as-a-deduplicated` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:45Z)
+- `20260805-pin-the-lift-s-eleven-surviving-guards-across-all-three-arms` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:26Z)
+- `20260805-pin-the-lift-s-five-unpinned-batch-guards-and-its-arm-asymmetry` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:43Z)
+- `20260805-pin-verify-s-finished-event-key-set-by-rule-so-a-dropped-counter` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:24Z)
+- `20260805-purge-artifact-citations-from-script-comments-and-sweep-for-them` origin path does not resolve: docs/notes/20260728-id-coordination-issue-grouping.md (created 2026-08-05T12:22:53Z)
+- `20260805-read-the-spent-set-the-lift-already-fills` origin path does not resolve: docs/notes/20260728-id-coordination-issue-grouping.md (created 2026-08-05T09:50:23Z)
+- `20260805-reconcile-a-review-s-finding-count-against-its-disposition-count` origin path does not resolve: docs/notes/20260728-id-coordination-issue-grouping.md (created 2026-08-05T12:01:51Z)
+- `20260805-reconcile-the-partition-protocol-s-999-cap-with-the-widened-ordi` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:41Z)
+- `20260805-refuse-a-newline-bearing-basename-in-merge-map-s-numeric-sort-ro` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:05Z)
+- `20260805-refuse-a-renamed-away-group-in-catch-up-instead-of-reallocating-` origin path does not resolve: docs/notes/20260728-id-coordination-issue-grouping.md (created 2026-08-05T09:50:22Z)
+- `20260805-refuse-a-vacated-ordinal-in-catch-up-instead-of-silently-reissui` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:40Z)
+- `20260805-replay-renames-in-reconcile-s-claim-key-folds-so-a-vacated-ordin` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:08Z)
+- `20260805-resolve-the-discovery-root-refusal-physically-and-measure-its-ot` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:09Z)
+- `20260805-restore-alloc-group-has-records-s-locals-and-correct-its-header` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:47Z)
+- `20260805-retire-the-four-stale-doc-sites-the-emission-cluster-left-behind` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:46Z)
+- `20260805-route-the-twelve-proven-unsanitized-sites-and-sweep-the-class-co` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:13Z)
+- `20260805-sanitize-the-four-remaining-failed-gate-echoes-in-reconcile-sh` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:42Z)
+- `20260805-scope-the-token-memo-warmer-to-the-log-it-is-warming` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:42Z)
+- `20260805-stop-partition-batch-spec-emitting-the-duplicate-ordinal-drift-i` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:06Z)
+- `20260805-sum-ledger-stage-durations-instead-of-reporting-the-span-between` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:33Z)
+- `20260805-teach-both-single-source-guards-in-jimfile-tests-the-spellings-a` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:29Z)
+- `20260805-warm-the-id-boundary-memo-in-catch-up-and-lift` origin path does not resolve: docs/notes/20260805-b-prime-review.md (created 2026-08-05T01:53:44Z)
+- `20260805-widen-the-doc-sweep-s-corpus-and-derive-its-registry-verb-list-f` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-05T22:20:27Z)
+- `20260813-a-review-finding-does-not-carry-the-scope-it-was-derived-from` origin path does not resolve: docs/notes/20260728-id-coordination-issue-grouping.md (created 2026-08-13T11:01:06Z)
+- `20260813-jim-arch-has-no-present-tense-or-provenance-scan` origin path does not resolve: docs/notes/20260805-b-double-prime-exit-handoff.md (created 2026-08-13T11:00:01Z)
+- `20260813-nine-review-findings-that-were-never-filed` origin path does not resolve: docs/notes/20260805-b-double-prime-review.md (created 2026-08-13T11:00:48Z)
+- `20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts` origin path does not resolve: docs/notes/20260804-b-prime-completion-handoff.md (created 2026-08-13T10:59:41Z)
+- `20260813-six-deliberately-unfiled-items-from-the-c-prime-fix-round` origin path does not resolve: docs/notes/20260801-c-prime-fix-handoff.md (created 2026-08-13T11:00:24Z)

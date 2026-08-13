@@ -3,7 +3,7 @@ id: 20260731-retire-basic-and-exists-vocabulary-from-the-enforcement-layer
 num: 164
 title: "Retire BASIC and EXISTS vocabulary from the enforcement layer"
 status: open
-priority: high
+priority: low
 labels: [000-blueprint, verify]
 relations:
   blocks: []
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T11:49:02Z
-updated: 2026-07-31T11:49:02Z
+updated: 2026-08-13T11:36:20Z
 origin: docs/specs/sdlc/000-blueprint/spec.md
 ---
 
@@ -58,3 +58,17 @@ AA/BB as superseded (matching the carve-out its siblings carry), and reword
 `agents/meta.md:66` to name the sentinel form.
 
 Surfaced by a `/jim:verify sdlc` run during the `sdlc/018` build.
+
+## Re-grade
+
+**2026-08-13. `high` → `low`.**
+
+Inherited from the invariant, not graded from this breach.
+
+The description: "No shipped workflow skill can execute a retired gate today, so
+runtime behavior is sound." What remains is that instructions and a fixture
+advertise a retired predicate as load-bearing, biasing future authoring toward
+the regression.
+
+That is a real cost and a slow one. It is not `high`: nothing is broken, and the
+regression it invites would itself be caught by the gate vocabulary's own checks.

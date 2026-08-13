@@ -3,7 +3,7 @@ id: 20260731-namespace-bare-agent-handles-and-add-a-checklist-item
 num: 161
 title: "Namespace bare agent handles and add a checklist item"
 status: open
-priority: critical
+priority: low
 labels: [000-blueprint, verify]
 relations:
   blocks: []
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T11:48:39Z
-updated: 2026-07-31T11:48:39Z
+updated: 2026-08-13T11:36:20Z
 origin: docs/specs/sdlc/000-blueprint/spec.md
 ---
 
@@ -53,3 +53,21 @@ checklists so the invariant's "enforced by this group's authoring checklists"
 clause becomes true.
 
 Surfaced by a `/jim:verify sdlc` run during the `sdlc/018` build.
+
+## Re-grade
+
+**2026-08-13. `critical` → `low`.**
+
+The label was inherited from the `plugin-name` invariant's criticality, not
+graded from this breach. `/jim:verify` sets an offered issue's priority to the
+invariant's criticality (`skills/verify/SKILL.md:267`), so a critical rule
+breached trivially yields a critical issue.
+
+This description already says the breach is trivial: "No dispatch path depends on
+these strings, so nothing fails at runtime — the risk is routing/documentation
+misdirection." Four strings in `description:` frontmatter, all in prose, none
+load-bearing.
+
+The compounding half — that the invariant claims enforcement by authoring
+checklists which carry no such item — is the more durable defect, and it is a
+process gap rather than a critical one.

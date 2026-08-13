@@ -3,7 +3,7 @@ id: 20260731-unmix-the-template-brace-around-arguments-in-the-arch-skill
 num: 165
 title: "Unmix the template brace around ARGUMENTS in the arch skill"
 status: open
-priority: high
+priority: medium
 labels: [000-blueprint, verify]
 relations:
   blocks: []
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T11:49:09Z
-updated: 2026-07-31T11:49:09Z
+updated: 2026-08-13T11:36:20Z
 origin: docs/specs/sdlc/000-blueprint/spec.md
 ---
 
@@ -56,3 +56,18 @@ Drop the braces — `$ARGUMENTS/<filename portion …>`. Optionally lift the nes
 secondary deviation (harmless, since it sits outside any injection slot).
 
 Surfaced by a `/jim:verify sdlc` run during the `sdlc/018` build.
+
+## Re-grade
+
+**2026-08-13. `high` → `medium`.**
+
+Inherited from the invariant. Closer to right than most of this batch, but still
+one grade high.
+
+`$ARGUMENTS` is a live substituted slot, so after substitution the model does see
+literal braces around a real path — a genuine invitation to a brace-bearing target
+on both the create and update branches. That is a live correctness risk, not a
+latent one, which is why it does not drop to `low`.
+
+It stays under `high` because the consequence is a malformed path the developer
+sees immediately, not a silent wrong write.

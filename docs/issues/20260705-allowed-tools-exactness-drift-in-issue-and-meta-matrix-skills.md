@@ -3,7 +3,7 @@ id: 20260705-allowed-tools-exactness-drift-in-issue-and-meta-matrix-skills
 num: 52
 title: "allowed-tools exactness drift in issue, partition, and meta-matrix skills"
 status: open
-priority: critical
+priority: high
 labels: [000-blueprint, verify]
 relations:
   blocks: []
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-05T00:28:45Z
-updated: 2026-07-09T02:47:40Z
+updated: 2026-08-13T11:36:20Z
 origin: docs/specs/jim/000-blueprint/spec.md
 ---
 
@@ -49,3 +49,26 @@ skills/meta-matrix-skill-invocation/SKILL.md:10        Bash(bash -c *)  — body
 The meta-matrix family are documented internal test-harness skills (ARCHITECTURE.md:466), but the invariant/ARCHITECTURE rule is phrased "Every `skills/*/SKILL.md`" with no carve-out. Suggested remedies: (a) switch `issue`'s and `partition`'s own-script references to `${CLAUDE_SKILL_DIR}`, or record an explicit convention exception; (b) drop `Bash(bash -c *)` from the three sub-skills that never invoke it, and either scope or document-exempt the one that does.
 
 Origin: `docs/specs/jim/000-blueprint/spec.md` (inv-3, criticality critical). Reported by `/jim:verify jim`; not yet fixed. The `partition/SKILL.md:18` instance was re-surfaced by the spec-042 `/jim:review` living-intent sensor (2026-07-09) and folded into this issue rather than filed separately.
+
+## Re-grade
+
+**2026-08-13. `critical` → `high`.**
+
+Inherited from `inv-3`, and this issue bundles two breaches of very different
+weight — which is the reason a single grade fits it badly.
+
+**Gap 1 (sigil convention) is `low` on its own.** The description says so: "Risk is
+low, not nil… no permission-scope hole." Same class as the `spec` reconcile-script
+issue, now re-graded `low`.
+
+**Gap 2 (`Bash(bash -c *)`) drives this grade.** Three sub-skills hold a grant for
+arbitrary inline shell with no matching call site in their bodies — an over-grant
+by the project's own grep-the-grant-against-the-call-site check, and the exact
+least-privilege concern the invariant exists to guard.
+
+`high`, not `critical`: the holders are documented internal test-harness skills,
+so nothing in a normal workflow routes through them.
+
+**Worth splitting.** Under one label the cosmetic half is what a reader meets
+first. If gap 2 is taken on its own, file it separately at `high` and let gap 1
+stand at `low`.

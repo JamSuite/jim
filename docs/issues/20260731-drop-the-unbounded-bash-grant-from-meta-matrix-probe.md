@@ -3,7 +3,7 @@ id: 20260731-drop-the-unbounded-bash-grant-from-meta-matrix-probe
 num: 166
 title: "Drop the unbounded bash grant from meta-matrix-probe"
 status: open
-priority: high
+priority: medium
 labels: [000-blueprint, verify]
 relations:
   blocks: []
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-07-31T11:49:17Z
-updated: 2026-07-31T11:49:17Z
+updated: 2026-08-13T11:36:20Z
 origin: docs/specs/sdlc/000-blueprint/spec.md
 ---
 
@@ -61,3 +61,21 @@ paragraph to state which subagents the clause binds, so the reading is not left
 to the next judge.
 
 Surfaced by a `/jim:verify sdlc` run during the `sdlc/018` build.
+
+## Re-grade
+
+**2026-08-13. `high` → `medium`.**
+
+Inherited from the invariant, and the judge itself recorded the counter-reading:
+the blueprint's Provides paragraph names only the investigator as "read-only by
+construction", so a narrower reading of the clause's subject class would make this
+invariant hold outright.
+
+The substance is real — an unbounded command grant on an agent whose entire
+process is "report what arrived and stop" is capability granted-but-forbidden,
+which this project's own posture rejects. It is `medium` rather than `high`
+because the holder is an internal probe reached only by a manually-invoked test
+harness, and because the invariant may not cover it at all.
+
+The same class in the `allowed-tools` drift issue is the one worth taking first:
+there the grant sits on shipped skills.
