@@ -225,18 +225,7 @@ Wire the sweep into `/jim:verify` by configuring the operator check the platform
 verify_command_id-sweep = "bash skills/file/scripts/jimalloc.sh sweep"
 ```
 
-### Issue prefix
-
-Changing `issue_id_prefix` is forward-only, it doesn't touch existing files. To converge an existing collection on the active scheme, run `migrate.sh prefix`, a one-shot, opt-in script:
-
-```bash
-bash skills/issue/scripts/migrate.sh prefix            # preview the rename/skip/collision plan (read-only)
-bash skills/issue/scripts/migrate.sh prefix --apply    # rename files, rewrite inbound relations/[[wikilinks]], regen INDEX.md
-```
-
-`--apply` is destructive (it renames files) and flags an uncommitted collection before mutating — commit a clean state first so recovery is a simple `git restore`.
-
-*Note:* migrate.sh handles the four named presets (`date` / `timestamp` / `sequential` / `project`) only; custom `{date:…}` templates are reported as un-migratable and left unchanged. The `project` tag must itself be hyphen-free — migration recovers each slug by splitting the id at its first dash, so a hyphenated tag (e.g. `MY-TEAM`) won't migrate cleanly.
+For the issue side of coordination — provisional ordinals, `/jim:issue reconcile`, and the one-shot `migrate.sh prefix` that converges an existing collection on a changed `issue_id_prefix` — see [`docs/features/issues.md`](docs/features/issues.md).
 
 ## Permissions
 
