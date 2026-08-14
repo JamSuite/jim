@@ -126,10 +126,10 @@ case_docsurfaces_registry_verbs_reach_every_surface() {
   for v in "${verbs[@]}"; do
     for s in "${surfaces[@]}"; do
       [[ -e "$REPO_ROOT/$s" ]] || { missing="$missing$s(absent) "; continue; }
-      # Matched as a TABLE ROW, not as a substring anywhere in the file. Both
-      # surfaces describe these verbs twice — once in a table, once in prose —
-      # and a substring check is satisfied by either, so it cannot see a row
-      # go missing while the prose still mentions the verb.
+      # Matched as a TABLE ROW, not as a substring anywhere in the file. The
+      # table is the surface each operator scans for the verb; WORKFLOW.md also
+      # names all three in prose, and a substring check is satisfied by that
+      # prose alone, so it cannot see a row go missing.
       grep -qE "^\| *\`jimalloc\.sh $v" "$REPO_ROOT/$s" || missing="$missing$s:$v "
     done
   done

@@ -59,7 +59,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:meta-agent` | Build a jim plugin agent from spec |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite |
 
-Three registry-integrity verbs are hand-run scripts rather than skills (see [Registry integrity](#registry-integrity--jimallocsh-sweep--catch-up--lift)):
+Three registry-integrity verbs are hand-run scripts rather than skills (see [ID coordination](docs/features/id-coordination.md#checking-and-repairing)):
 
 | Command | What it does |
 |---------|-------------|
@@ -138,7 +138,7 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `group_territory` | `"declared-paths"` | `/jim:blueprint` (bare) — how group↔code binding is captured in the map (`directory` / `declared-paths` / `none`) |
 | `id_coordination_mechanism` | `"git"` | `/jim:spec`, `/jim:issue add` — how spec ordinals and issue ids are coordinated between clones; `git` uses an append-only registry on a shared branch |
 | `id_coordination_branch` | `"jim/registry"` | same — the branch the registry lives on; it holds only the registry logs, never project content |
-| `id_coordination_unreachable` | `"fail"` | same — what happens when the coordination point cannot be reached: `fail` issues no identity and says so, `provisional` binds a local-only `P-{date}-{slug}` token that scoping and every later stage run against unchanged, realized afterwards by `/jim:spec reconcile` (specs) or `/jim:issue reconcile` (issues) |
+| `id_coordination_unreachable` | `"fail"` | same — what happens when the coordination point cannot be reached: `fail` issues no identity and says so, `provisional` binds a local-only `P-{date}-{slug}` token, realized afterwards by `/jim:spec reconcile` or `/jim:issue reconcile` |
 | `spec_migration` | `"rewrite"` | `/jim:partition rename` / `split` / `merge` — identity-on-move preference for a moved numbered spec's recorded group identity: `rewrite` edits it to the new group (substance untouched; ambiguous prose frozen on doubt), `forward` freezes the bodies behind the ledger `op=rename` / `op=split` / `op=merge` alias, `immutable` leaves the source in place — split/merge-native (a rename, which relocates the group's home, runs it as `forward`); an unrecognized value degrades to `rewrite`. Governs numbered specs 001+; the `000-blueprint` re-identifies in every mode |
 | `require_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review is a required phase: the build's completion gate is held until the review has run to completion. Its findings stay advisory (a report, not a veto), but the build cannot be marked complete without the review |
 | `auto_review` | `"false"` | `/jim:build` → `/jim:review` — when `"true"`, the post-build review runs automatically with no prompt; composes independently of `auto_issue_file` |
@@ -201,31 +201,11 @@ Inspect what jim resolves with `/jim:conf`:
 
 Path-and-name resolution only — the script never reads, writes, or deletes files. Slug normalization, the `.`/`..` reject, and the 64-char cap are enforced by the script (security boundary).
 
-### Registry integrity — `jimalloc.sh sweep` / `catch-up` / `lift`
+### ID coordination
 
-The registry prevents collisions only while it faithfully represents the repo. Three hand-run allocator verbs keep that true — a read-only check and two repairs that draw on different evidence:
+Spec ordinals, group names, and issue ids are allocated from an append-only registry on a shared branch, so separate clones never mint the same one. The `id_coordination_*` keys above configure it; `jimalloc.sh seed` bootstraps it for an existing project, and the three verbs listed under [Commands](#commands) keep it honest afterwards.
 
-```bash
-bash skills/file/scripts/jimalloc.sh sweep              # read-only: what drifted, and what was not covered
-bash skills/file/scripts/jimalloc.sh catch-up           # preview the records the registry is missing
-bash skills/file/scripts/jimalloc.sh catch-up --apply   # append them, under the same CAS + erosion guard as an allocation
-bash skills/file/scripts/jimalloc.sh lift               # preview the rename records a past move left unrecorded
-bash skills/file/scripts/jimalloc.sh lift --apply       # record them, so a citation frozen before the move still resolves
-```
-
-`sweep` compares every spec directory and issue file against the coordination branch and reports each finding under a named class — `missing-record` (the collision risk), `mismatch`, `duplicate-ordinal`, `duplicate-id`, `reserved-slot` — plus the records with no tree counterpart as *informational*, since another clone allocating first is legitimate. It then names what it did **not** cover: reserved blueprint slots, pending provisionals, groups outside coordination entirely (a retired or partition-source group has neither rows nor records, so a comparison never sees it), and ids known only as rename sources. It exits `0` clean, `3` drift found, `4` could-not-check, so a check that could not run is never read as a pass — and it mutates nothing.
-
-`catch-up` appends exactly what the sweep classifies as `missing-record`, previewing every record verbatim before `--apply` lands them as one commit. It never invents identity data, marks its appends `jim-catchup` so they stay distinguishable from a bootstrap or a live allocation, and refuses to repair a mismatch — choosing which side is right is an operator decision. A run that lands the clean records and leaves a mismatch behind exits non-zero, so a partial repair never reads as a clean one.
-
-`lift` repairs a different gap: a rename, split, or merge that moved identities *before* the registry could record moves left no trail, so a commit trailer written against the old id resolves nowhere. It reads the durable `moved=` pairs a partition recorded on the specs-root ledger and turns them into rename records. The ledger is treated as a **witness, not an instruction** — a pair is recorded only where the registry independently establishes its destination and holds no live claim on its source, so branch content nobody vetted cannot redirect a citation at an attacker-chosen target. Appends are marked `jim-lift` and carry the date the identity actually moved.
-
-Wire the sweep into `/jim:verify` by configuring the operator check the platform blueprint's `registry-tree-consistency` invariant names:
-
-```toml
-verify_command_id-sweep = "bash skills/file/scripts/jimalloc.sh sweep"
-```
-
-The registry itself — what it stores, how an allocation lands, what `seed` bootstraps, and how a provisional identity is realized — is documented in [`docs/features/id-coordination.md`](docs/features/id-coordination.md). For the issue-collection side, including the one-shot `migrate.sh prefix` that converges an existing collection on a changed `issue_id_prefix`, see [`docs/features/issues.md`](docs/features/issues.md).
+See [`docs/features/id-coordination.md`](docs/features/id-coordination.md) for the registry, offline filing and the reconcile verbs, and the integrity verbs in full — and [`docs/features/issues.md`](docs/features/issues.md) for the issue collection, including the one-shot `migrate.sh prefix`.
 
 ## Permissions
 
