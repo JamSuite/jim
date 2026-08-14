@@ -78,7 +78,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:verify` | Check a group's code against its `000-blueprint` invariants — mechanical floor, operator registry, criticality-gated read-only judges — plus contract mode (`--contracts`) checking the contract graph's edges against code on both sides; scoped modes (`--from-review` / `--since`) ground the fold-back loop (see The Lifecycle in Detail) | `@jim:reviewer` | Report + ledger event (no persisted verdict) |
 | `/jim:debug` | Diagnose failures, produce report for spec/plan cycle | `@jim:coder` | `debug/{YYYYMMDD}-{topic}.md` |
 | `/jim:brainstorm` | Freeform ideation — exploratory notes | `@jim:pm` | `brainstorms/{YYYYMMDD}-{topic}.md` |
-| `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list [filter]` / `stats` / `show <id>`; bare → help) | `@jim:pm` | `issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` |
+| `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list [filter]` / `stats` / `show <id>` / `insights`; bare → help); `reconcile` realizes ordinals bound while the coordination point was unreachable | `@jim:pm` | `issues/{YYYYMMDD}-{slug}.md` + `INDEX.md` |
 | `/jim:meta-skill` | Create/update a jim plugin skill from spec | `@jim:meta` | `jim/skills/{name}/SKILL.md` |
 | `/jim:meta-agent` | Create/update a jim plugin agent from spec | `@jim:meta` | `jim/agents/{name}.md` |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite | `@jim:meta` | `jim/tests/{name}.sh` |
@@ -122,11 +122,13 @@ deliberate choice as the issue-prefix migration:
 - **`list [filter]`** — terse, grouped, configurable enumeration; an optional `open`/`closed`/`critical`/`high`/`medium`/`low` filter scopes the view. Closed issues are hidden from the default and priority-filtered views unless `issue_list_closed = "true"`; `list closed` is the ad-hoc closed view. Other defaults are set via the `issue_list_group` / `issue_list_sort` / `issue_list_cols` / `issue_list_order` keys in `jimconf.toml`.
 - **`stats`** — counts (open/closed, by priority, by label, by origin) plus blocking analysis.
 - **`show <id>`** — open one issue by its ordinal number, slug, or a slug prefix.
+- **`insights`** — the LLM-analytical view: convergence on latent capabilities, a sequencing recommendation, and parallel-work candidates. Runs entirely inside the read-only `issue-analyst` subagent; if that agent cannot be dispatched the verb refuses rather than reading issue bodies in the main context.
+- **`reconcile`** — realize provisional ordinals bound while the ID-coordination point was unreachable (`id_coordination_unreachable = "provisional"`) into real coordinated ones. Previews the mapping and asks before applying, since realizing rewrites existing issue files.
 - bare **`/jim:issue`** — print the subcommand help.
 
 Issues are also surfaced automatically at the end of each SDLC phase as a candidate batch (per spec 018), gated by `issue_capture`. Close an issue by editing its `status:` field directly — unless the project keeps its collection on a designated branch (`issue_placement`), in which case the file is not in your working tree and the edit goes through the two-step door described in `skills/issue/SKILL.md` § 6a.
 
-**One-time migration (`backfill.sh`).** Spec 019 added the `num:` ordinal. Existing collections created before 019 are numbered once by running `bash skills/issue/scripts/backfill.sh` against the issues directory — it assigns ordinals in `created:`-date order, is idempotent, and writes each file atomically. Run it once, up-front, before creating new issues. New issues never need it.
+**One-time migration (`backfill.sh`).** Spec 019 added the `num:` ordinal. Existing collections created before 019 are numbered once by running `bash skills/issue/scripts/backfill.sh num` against the issues directory — it assigns ordinals in `created:`-date order, is idempotent, and writes each file atomically. Run it once, up-front, before creating new issues. New issues never need it.
 
 ### Plugin Artifacts (Jim developing Jim)
 
