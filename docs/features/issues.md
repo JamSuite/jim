@@ -17,9 +17,6 @@ Issues are where Jim captures what was noticed but not acted upon. Every stage o
     * [The index](#the-index)
     * [Insights](#insights)
 5. [ID coordination](#id-coordination)
-    * [The registry](#the-registry)
-    * [Working offline](#working-offline)
-    * [Registry integrity](#registry-integrity)
 6. [Issue placement](#issue-placement)
 7. [Migrations](#migrations)
 8. [Trust and safety](#trust-and-safety)
@@ -158,64 +155,15 @@ The synthesis runs entirely inside the *read-only* **`issue-analyst`** subagent,
 
 ## ID coordination
 
-Issue IDs can be coordinated through a centralized registry to avoid collisions in a team setting.
+An issue's identity is two fields, and both are issued by Jim's shared allocator rather than derived from the collection on disk — so two developers filing from separate clones or branches never mint the same one. `id` is the durable identity that names the file and carries citations; `num` is the display ordinal you type at `show`.
 
-### The registry
+The mechanism — the coordination branch, the append-only registry, the compare-and-swap that lands each record, and the verbs that keep the registry honest — is shared with spec ordinals and group names, and is documented in **[ID coordination](id-coordination.md)**. Three things are specific to issues.
 
-Ids come from an append-only registry on a dedicated coordination branch — `jim/registry` by default. That branch carries the registry logs and nothing else: no issue files, no project content. One log per kind, one line per allocation, file order authoritative:
+**Filing offline still works, if you ask for it.** Under `id_coordination_unreachable = "provisional"`, filing binds a local-only ordinal `P-<id>` instead of failing on an unreachable coordination point. Real ordinals are digits, so the two can never be confused; read views render it as `(provisional)`, never as a settled `#N`. The default, `"fail"`, issues nothing and says so rather than writing an uncoordinated id.
 
-```
-issue allocate 350 20260813-foo-widget-lacks-input-validation 20260813 alice
-```
+**`/jim:issue reconcile` realizes them on reconnect.** It previews the provisional → real mapping and asks before applying, because realizing rewrites existing issue files. On confirm the real ordinals reach the registry *before* any file is touched, then each file's `num:` is rewritten in place and the index regenerated. The filename and the durable `id:` never change — only `num:`. Re-running is safe: an already-realized identity keeps the ordinal it already has. Outside an agent session, `skills/issue/scripts/reconcile.sh` is the same operation, previewing by default and mutating behind `--apply`.
 
-An allocation reads the branch tip, derives the next ordinal from the log, and writes its record with a **compare-and-swap** — a push that succeeds only if the tip has not moved since that read. A loser re-reads the new tip and retries with backoff. All of it runs through git plumbing: the coordination branch is never checked out and your working tree is never touched mid-flow.
-
-Three properties govern the registry:
-
-**Durable before use.** An id reaches the caller only after its record has landed. There is no window in which a file carries an identity the registry does not know about.
-
-**Spent, never reclaimed.** The log only grows, so an abandoned issue leaves a permanent gap in the ordinals.
-
-**Rewrites are refused, not absorbed.** Each clone remembers the registry content it last saw. If the branch no longer contains that content as a prefix — a force-push, a truncation — allocation stops and says so rather than allocating over rewritten history.
-
-The registry is push-writable by anyone who can push the branch, so it is treated as untrusted input on read: every id, slug and group token it yields is revalidated before it can reach a git command or a filesystem path.
-
-### Working offline
-
-`id_coordination_unreachable` decides what happens when the coordination point cannot be reached:
-
-- **`fail`** (default) — no identity is issued and the run says so. Nothing uncoordinated is ever written.
-- **`provisional`** — filing binds a local-only ordinal of the form `P-<id>`. Real ordinals are digits, so a provisional one is structurally distinct and the two can never be confused. It never enters the registry, so it can never inflate a later real allocation. Views render it as `P-… (provisional)`, never as a settled `#N`. Everything else proceeds unchanged.
-
-`/jim:issue reconcile` realizes them on reconnect. It previews the provisional → real mapping first and asks before applying, because realizing rewrites existing issue files. On confirm, the real ordinals are published to the registry as one commit *before* any file is touched, then each file's `num:` is rewritten in place and the index regenerated. Filenames and `id:` values never change — only `num:`.
-
-It is idempotent and resumable: an already-realized identity maps to its existing ordinal rather than minting a second one. Still offline is not an error — it changes nothing and reports that.
-
-Alternatively, you can call `skills/issue/scripts/reconcile.sh` directly, to reconcile outside of an agent session.
-
-### Registry integrity
-
-The registry prevents collisions only while it faithfully represents the repo. Three hand-run allocator verbs keep that true — a read-only check, and two repairs drawing on different evidence:
-
-```bash
-bash skills/file/scripts/jimalloc.sh sweep              # read-only: what drifted, and what was not covered
-bash skills/file/scripts/jimalloc.sh catch-up           # preview the records the registry is missing
-bash skills/file/scripts/jimalloc.sh catch-up --apply   # append them, under an allocation's CAS + erosion guard
-bash skills/file/scripts/jimalloc.sh lift               # preview the rename records a past move left unrecorded
-bash skills/file/scripts/jimalloc.sh lift --apply       # record them, so a citation frozen before the move resolves
-```
-
-**`sweep`** compares every issue file and spec directory against the coordination branch, classifying each finding — `missing-record` (the collision risk), `mismatch`, `duplicate-ordinal`, `duplicate-id`, `reserved-slot` — and reporting records with no tree counterpart as *informational*, since another clone allocating first is legitimate. It then names what it did **not** cover: pending provisionals, reserved blueprint slots, groups outside coordination, ids known only as rename sources. It exits `0` clean, `3` drift, `4` could-not-check, so a check that could not run is never read as a pass. It mutates nothing.
-
-**`catch-up`** appends exactly what the sweep classified as `missing-record` and nothing else, rendering every record verbatim before `--apply` lands them as one commit. It refuses to repair a mismatch — deciding which side is right is an operator call — and exits non-zero when it leaves one behind, so a partial repair never reads as a clean run.
-
-**`lift`** repairs a different gap: a rename, split or merge that moved identities before the registry could record moves, so a citation frozen against the old id resolves nowhere. It reads the durable old→new pairs from the [ledger](ledger.md) as a *witness, not an instruction* — a pair becomes a record only where the registry independently establishes its destination and holds no live claim on its source.
-
-Wire the sweep into [`/jim:verify`](blueprints.md#the-verification-engine) as an operator check and it runs with every verification:
-
-```toml
-verify_command_id-sweep = "bash skills/file/scripts/jimalloc.sh sweep"
-```
+**Collection drift is caught by the shared sweep.** `jimalloc.sh sweep` compares issue files against the registry alongside spec directories, so an issue with no record, or two issues claiming one ordinal, surfaces under a named class — see [checking and repairing](id-coordination.md#checking-and-repairing).
 
 ## Issue placement
 
@@ -288,3 +236,5 @@ All keys are optional; zero-config defaults apply throughout.
 | `id_coordination_mechanism` | `"git"` | How ids are coordinated between clones; `git` uses the append-only registry |
 | `id_coordination_branch` | `"jim/registry"` | The branch holding the registry logs — never project content |
 | `id_coordination_unreachable` | `"fail"` | Offline behavior: `fail` issues no identity, `provisional` binds a local `P-<id>` for `/jim:issue reconcile` |
+
+The last three are shared with spec ordinals and group names; see [ID coordination](id-coordination.md#configuration).

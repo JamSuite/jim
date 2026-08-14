@@ -225,7 +225,7 @@ Wire the sweep into `/jim:verify` by configuring the operator check the platform
 verify_command_id-sweep = "bash skills/file/scripts/jimalloc.sh sweep"
 ```
 
-For the issue side of coordination — provisional ordinals, `/jim:issue reconcile`, and the one-shot `migrate.sh prefix` that converges an existing collection on a changed `issue_id_prefix` — see [`docs/features/issues.md`](docs/features/issues.md).
+The registry itself — what it stores, how an allocation lands, what `seed` bootstraps, and how a provisional identity is realized — is documented in [`docs/features/id-coordination.md`](docs/features/id-coordination.md). For the issue-collection side, including the one-shot `migrate.sh prefix` that converges an existing collection on a changed `issue_id_prefix`, see [`docs/features/issues.md`](docs/features/issues.md).
 
 ## Permissions
 
