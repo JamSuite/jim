@@ -23,7 +23,7 @@ brainstorms_path  = "docs/brainstorms"
 debug_path        = "docs/debug"
 issues_path       = "./docs/issues/"
 
-# Project-tier context map (spec 033) — the tier-0 blueprint gluing the
+# Project-tier context map — the tier-0 blueprint gluing the
 # group blueprints into one project scope. Written only through the
 # /jim:blueprint surface (bare invocation). Root-level by default.
 blueprint_path    = "BLUEPRINT.md"
@@ -65,7 +65,7 @@ auto_blueprint = "false"
 # update is developer-invoked and ungated. Default "false".
 require_blueprint = "false"
 
-# Opt-in staleness threshold for the blueprint regen cadence (spec 032): an
+# Opt-in staleness threshold for the blueprint regen cadence: an
 # integer count of targeted updates accumulated since the last full generate.
 # When the count reaches it, /jim:blueprint update mode runs a full whole-group
 # regeneration instead of another targeted diff (unattended under auto_blueprint,
@@ -74,7 +74,7 @@ require_blueprint = "false"
 # since last full generate". Any non-positive-integer value is treated as disabled.
 blueprint_regen_threshold = "0"
 
-# --- Spec-group partition doctrine (spec 033) ------------------------------
+# --- Spec-group partition doctrine ----------------------------------------
 
 # Partition axis the map-creation proposal steers toward. "vertical" (the
 # default) proposes domain-vertical bounded contexts; "layered" is the
@@ -87,11 +87,12 @@ group_axis = "vertical"
 #   directory      : each group owns a subtree (strongest mechanical checks)
 #   declared-paths : the map lists each group's code locations (default)
 #   none           : no code binding; boundary lives in specs/blueprints only
-# Territory is recorded as data; enforcement arrives with the verification
-# engine (issue #22). Territory entries are optional-when-unknown.
+# Territory is recorded as data and enforced by /jim:verify's mechanical
+# floor, whose strength follows the mode above. Entries are
+# optional-when-unknown.
 group_territory = "declared-paths"
 
-# --- Spec migration (spec 046) --------------------------------------------
+# --- Spec migration -------------------------------------------------------
 
 # Identity-on-move preference: how a group move (rename today; split/merge
 # later) treats a numbered spec's recorded group identity.
@@ -106,6 +107,37 @@ group_territory = "declared-paths"
 # A malformed or unrecognized value degrades to "rewrite", named in the run
 # output. Governs numbered specs 001+; the 000-blueprint re-identifies always.
 # spec_migration = "rewrite"
+
+# --- ID coordination ------------------------------------------------------
+
+# How jim hands out the identities that must stay unique across clones: spec
+# ordinals (/jim:spec) and issue display ordinals plus durable ids
+# (/jim:issue add, and every candidate batch filed through the issue emitter).
+# Uncoordinated, each clone derives "the next number" from whatever it can
+# see, so two developers on two branches mint the same one and neither finds
+# out until the branches merge.
+
+# The coordination mechanism. "git" (the default, and the only one built)
+# allocates from an append-only registry on a dedicated branch, landing each
+# record with a compare-and-swap so a concurrent allocation retries rather
+# than collides. An unrecognized value is refused, never silently degraded.
+# id_coordination_mechanism = "git"
+
+# The branch holding the registry logs. It carries the logs and nothing else
+# — no specs, no issues, no project content — and is created on first use.
+# It is also the one branch issue_placement refuses as a destination.
+# id_coordination_branch = "jim/registry"
+
+# What happens when the coordination point cannot be reached — offline, no
+# push access, a fetch that fails.
+#   fail        : issue no identity and say so (default). Nothing
+#                 uncoordinated is ever written.
+#   provisional : bind a local-only "P-<date>-<slug>" token that scoping and
+#                 every later stage run against unchanged, structurally
+#                 distinct from any allocated ordinal. Realize it on
+#                 reconnect with /jim:spec reconcile (specs) or
+#                 /jim:issue reconcile (issues).
+# id_coordination_unreachable = "fail"
 
 # --- Post-build review gate -----------------------------------------------
 
@@ -123,7 +155,7 @@ require_review = "false"
 # auto_issue_file is also "true". Default "false".
 auto_review = "false"
 
-# Depth of the review's deep-investigation pass (spec 027). "thorough" (the
+# Depth of the review's deep-investigation pass. "thorough" (the
 # default) triages the build's diff and fans out read-only investigator
 # subagents on the high-stakes changes; "lean" skips the broad fan-out and
 # investigates only security-relevant regions. A per-run
@@ -185,17 +217,21 @@ auto_security_loop_limit  = "5"
 # prompt. Default "docs/security".
 security_adhoc_path       = "docs/security"
 
-# --- Issue tracking workflow integration (spec 018) -----------------------
+# --- Issue tracking workflow integration ----------------------------------
 
-# Master switch for end-of-phase candidate batch surfacing across the 7
-# surfacing skills (/jim:spec, /jim:research, /jim:plan, /jim:build,
-# /jim:brainstorm, /jim:debug, /jim:sec). When "true" (the default),
-# each skill presents a batch of candidate issues at the conclusion of
-# its run before its final approval/STOP step. When "false", no batch
-# surfaces and ad-hoc /jim:issue is the only capture path. The bare
-# (non-auto_-prefixed) name reflects that the default behavior keeps the
-# human in the loop: surfacing presents a choice, not an automated
-# action. Uncomment to override the default.
+# Master switch for the end-of-phase issue-candidate batch. Every skill
+# that closes its run with a batch reads it — /jim:spec, /jim:research,
+# /jim:plan, /jim:sec, /jim:build, /jim:debug, /jim:brainstorm, and the
+# report stages that offer their findings the same way (/jim:review,
+# /jim:verify). When "true" (the default), each presents a batch of
+# candidate issues at the conclusion of its run before its final
+# approval/STOP step. When "false", no batch surfaces and ad-hoc
+# /jim:issue is the only capture path. The bare (non-auto_-prefixed)
+# name reflects that the default behavior keeps the human in the loop:
+# surfacing presents a choice, not an automated action. /jim:blueprint
+# and /jim:partition file from their own divergence and finding offers
+# rather than an end-of-phase batch, and this key does not gate them.
+# Uncomment to override the default.
 # issue_capture = "true"
 
 # Quiet auto-file mode for the candidate batch. When "true" AND
@@ -207,7 +243,7 @@ security_adhoc_path       = "docs/security"
 # is a no-op. Uncomment to enable.
 # auto_issue_file = "false"
 
-# --- Issue placement (spec issue/011) --------------------------------------
+# --- Issue placement ------------------------------------------------------
 
 # Which branch the issue collection lives on. The default sentinel "branch"
 # means the branch the developer is standing on — today's behavior, and the
@@ -226,8 +262,8 @@ security_adhoc_path       = "docs/security"
 # id_coordination_branch, is refused — placement never silently falls back,
 # because a silent fallback scatters a team's collection across feature
 # branches. Changing this on an existing project moves where issues live but
-# does not move the issues; see skills/issue/SKILL.md for the one-time manual
-# move.
+# does not move the issues; the one-time move is manual, and documented in
+# docs/features/issues.md.
 # issue_placement = "branch"
 
 # Acknowledge that auto-filed batches publish immediately. Under a branch
@@ -238,7 +274,7 @@ security_adhoc_path       = "docs/security"
 # placement, where auto-filing is already a local, amendable act.
 # issue_placement_ack = "false"
 
-# --- Issue list view (spec 019) -------------------------------------------
+# --- Issue list view ------------------------------------------------------
 
 # Default view for `/jim:issue list`. An explicit filter argument
 # (e.g. `/jim:issue list open`) overrides the configured default per call.
@@ -257,7 +293,7 @@ security_adhoc_path       = "docs/security"
 # issue_list_order  = "desc"
 # issue_list_closed = "false"
 
-# --- Issue id prefix (spec 021) -------------------------------------------
+# --- Issue id prefix ------------------------------------------------------
 
 # The prefix segment of an issue id (the part before the slug). Default
 # "date" keeps the zero-config YYYYMMDD- naming. Presets:
@@ -269,14 +305,14 @@ security_adhoc_path       = "docs/security"
 # {seq[:width]} tokens, e.g. "JIM-{date:%Y%m%d}-{seq:03}". A malformed value
 # is reported on stderr and falls back to the date default. Changing this is
 # forward-only — it renames no existing files; converge the legacy collection
-# onto the new scheme with `migrate.sh prefix` (spec 023).
+# onto the new scheme with `migrate.sh prefix`.
 # issue_id_prefix = "date"
 
 # Static project tag used by the "project" preset (also usable as literal
 # text in a template). Empty by default.
 # issue_id_project = "JIM"
 
-# --- Verification engine (spec 035) ---------------------------------------
+# --- Verification engine --------------------------------------------------
 
 # /jim:verify checks a group's code against its 000-blueprint's recorded
 # invariants: a zero-config mechanical floor (pattern/structure), an
@@ -329,7 +365,7 @@ security_adhoc_path       = "docs/security"
 # verify_command_linecount = "scripts/check-line-budget.sh"
 # verify_command_typecheck = "npm run typecheck"
 
-# The partition extractor registry (spec 038) — the same dynamic-suffix,
+# The partition extractor registry — the same dynamic-suffix,
 # one-command-per-entry pattern for /jim:partition. Each deps_command_<name>
 # emits a project dependency graph, one edge per line, as
 # `<from-relpath>\t<to-relpath>[\t<channel>]`; /jim:partition runs it via a
@@ -344,7 +380,7 @@ security_adhoc_path       = "docs/security"
 # deps_command_events = "scripts/jim-extract-events.sh"
 # deps_command_di = "node scripts/extract-di-graph.js"
 
-# Partition-health sensors (spec 044). /jim:blueprint's reconcile pass ends with
+# Partition-health sensors. /jim:blueprint's reconcile pass ends with
 # a silent threshold hook: when a configured threshold crosses, it offers (or,
 # under the knobs below, runs or holds on) the read-only /jim:partition health
 # sensor. All disabled by default — with no threshold set the hook produces no
