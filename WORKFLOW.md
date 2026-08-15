@@ -63,7 +63,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 
 | Command | What It Does | Agent | Output |
 |---------|-------------|-------|--------|
-| `/jim:spec` | Define the work — feature, bug, or refactor | `@jim:pm` | `spec.md` |
+| `/jim:spec` | Define the work — feature, bug, or refactor; `reconcile` realizes spec ordinals bound while the coordination point was unreachable | `@jim:pm` | `spec.md` |
 | `/jim:plan` | Research codebase + break into atomic tasks | `@jim:architect` | `plan.md` |
 | `/jim:research` | Investigate codebase, external docs, and technical landscape | `@jim:researcher` | `research.md` |
 | `/jim:build` | TDD red-green-refactor + commit per task | `@jim:coder` | Tests + code |
@@ -83,8 +83,7 @@ Research is not a gated phase; it is an agile service that grounds the SDLC in r
 | `/jim:meta-agent` | Create/update a jim plugin agent from spec | `@jim:meta` | `jim/agents/{name}.md` |
 | `/jim:meta-test` | Scaffold a bash test file, append a case, or run the suite | `@jim:meta` | `jim/tests/{name}.sh` |
 
-Registry integrity is a hand-run script surface rather than a skill — the same
-deliberate choice as the issue-prefix migration:
+Registry integrity is a hand-run script surface rather than a skill:
 
 | Command | What It Does | Agent | Output |
 | :--- | :--- | :--- | :--- |
@@ -384,10 +383,6 @@ agent: meta
 
 **Gate:** Human approves the spec. Status changes from `draft` to `approved`.
 
-**Realizing a provisional identity:** `/jim:spec reconcile` previews every pending provisional spec and the real ordinal each would take; `--apply` realizes them — renaming each directory onto its ordinal, rewriting its frontmatter, and sweeping in-tree citations of the identity it left. Its issue-side twin is `/jim:issue reconcile`. Both halt loudly rather than write a wrong identity. See [ID coordination](docs/features/id-coordination.md#realizing-a-provisional-identity).
-
-**Checking and repairing the registry itself:** identities created outside the allocator — old habits, non-jim tooling, a move the registry never witnessed — leave it answering below the tree, so the next allocation hands out an id the project already owns. `jimalloc.sh sweep` is the read-only check; `catch-up` and `lift` are the two repairs, drawing on different evidence. All three are hand-run script verbs, not skills; the in-session path is the `registry-tree-consistency` invariant on the platform blueprint, which `/jim:verify` runs as a configured operator check (`verify_command_id-sweep`). See [ID coordination](docs/features/id-coordination.md#checking-and-repairing) for the drift classes, exit codes, and what each repair refuses.
-
 ### `/jim:plan`
 
 **Purpose:** Research the codebase and create an implementation plan.
@@ -425,54 +420,50 @@ agent: meta
 
 **Purpose:** Verify what `/jim:build` actually shipped against its spec, plan, and architecture — catching drift before it compounds — and record how the build measured up.
 
-`@jim:reviewer` fuses three inputs: the **stage ledger** (`ledger.md` — a trusted metrics channel via `jimledger.sh`: a fixed key set carrying trusted-origin, shape-validated values, never free-form ingested text; `/jim:build` records the build range and SHAs, while `/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:sec`, and `/jim:review` each record their own start/finish for per-stage durations and re-runs — `/jim:review` also appends its validated alignment verdict and commits `review.md` + `ledger.md`, spec 028), the **git diff** for the build range, and the **spec / plan / `ARCHITECTURE.md`** ground truth. It reports drift against each, code + process metrics, and any security regressions (optionally invoking `/jim:sec` ad-hoc), then writes `review.md` with a mineable frontmatter summary, a single alignment verdict (`aligned` / `minor-drift` / `major-drift`), and a narrative. Findings can be captured as issues. Ingested commit/diff/ledger content is treated as untrusted; the verdict is the reviewer's judgment, never a value read from that content.
+**Process:**
+1. Resolves the build range from the spec's `ledger.md` — the baseline and head SHAs `/jim:build` recorded, so the review sees that build's changes even when several specs share a branch
+2. Triages the diff by risk and fans out read-only `investigator` subagents across the high-stakes regions and every acceptance criterion, at the depth `review_depth` sets
+3. Reports drift against the spec, the plan, and `ARCHITECTURE.md`, plus code and process metrics and any security regressions; findings can be captured as issues
+4. Senses living intent where the group has a `000-blueprint`, via `/jim:verify --from-review` — its own dimension in `review.md`, never setting the alignment verdict
+5. Writes `review.md` with a single alignment verdict (`aligned` / `minor-drift` / `major-drift`) and self-commits it alongside `ledger.md`
 
-The review is **depth-aware** (spec 027): it triages the build's diff and fans out read-only `investigator` subagents on the high-stakes changes to verify each acceptance criterion for *complete* satisfaction (including code the build did not touch), recording the evidence in `review.md`. Depth is configurable — `review_depth` (default `thorough`; `lean` for trivial changes; `--depth lean|thorough` overrides per run), `review_model` (the investigator model; default `inherit`), and `review_fanout_cap` (max investigators; default `10`).
+**Output:** `docs/specs/{group}/{id}-{name}/review.md`
 
-The review is also a **living-intent sensor** (spec 036): for a group that has a `000-blueprint`, it invokes `/jim:verify --from-review` to check the group's code against its recorded invariants as part of every review — the mechanical floor and registry whole-group, LLM judges scoped to the build's change and gated by `verify_appetite`. Results land as their own `## Living intent` dimension in `review.md`, distinct from the alignment verdict and never setting it (the two signals stay clean). Sensed violations route by two channels: those intersecting the build's change feed the blueprint update's violation fork as engine-grounded divergences; pre-existing drift (and any unlocalized violation) is reported and offered as tracked issues, never folded into the update. A blueprint-less group skips the sensor silently, and a check that fails to run is contained and reported — never aborting the review. When the contract graph names the reviewed group as a provider and the build touched its provides-side code, the affected contract edges join the check (spec 037) — rendered as a **Contracts** subsection of the living-intent dimension with its own counts; consumer-side violations are offered as issues, while provider-side in-change violations feed the blueprint update's fork as provides-face divergences.
+**Gate:** Findings are advisory — a report, never a veto. `require_review` is the separate axis: it makes the review a required phase, holding the build's completion gate until the review has run.
 
-`/jim:build` offers the review at its completion gate by default, or runs it automatically under the `require_review` / `auto_review` knobs. Two axes that don't conflate: the review's **findings** are advisory — a report, never a veto, and they never auto-reject the build. `require_review`, by contrast, makes the review a **required, blocking phase**: the build's completion gate is held until the review has run to completion, so the build cannot be marked complete without it. It is the uncompleted phase that blocks, not the findings.
+See [Review](docs/features/review.md) for the inputs and their trust levels, the triage table, metrics, blueprint integration, and configuration.
 
 ### `/jim:blueprint`
 
 **Purpose:** Keep the living blueprints current at both tiers — each group's `000-blueprint` (the build-grade map of one group) and the project-tier context map (`BLUEPRINT.md`, the declared partition itself).
 
-**Group tier** (`/jim:blueprint <group>`, specs 029–032):
-1. **Generate** — full scan of the group's specs, ARCHITECTURE.md, and code → `000-blueprint/spec.md` (responsibility, provides/requires faces, structure, invariants); stamps the `last_full_generate` watermark
-2. **Update** — targeted section-diff from a change diff: `--from-review <spec-dir> <group>` (fed by the review's verdict ledger, consuming the review sensor's engine outcomes — no double-run) or `--since <ref> <group>` (ad-hoc git range, invoking the engine itself over the range to ground the fork)
-3. **Guard** — the violation fork is grounded in `/jim:verify` engine outcomes on both adapters (spec 036), with an inline fallback sweep for invariants the engine did not cover and fail-closed precedence; violations still fork per-item to *fix the code* or *fold the intent*, the fix-vs-fold semantics unchanged from spec 031
-4. **Cadence** — accumulated targeted updates since the last full generate are counted and reported; the opt-in `blueprint_regen_threshold` swaps a stale enough targeted update for a full regeneration (spec 032)
+**Process:**
+1. **Group tier** (`/jim:blueprint <group>`) — a full generate amalgamates the group's specs, `ARCHITECTURE.md`, and code into `000-blueprint/spec.md` (responsibility, provides/requires faces, structure, invariants); `--from-review <spec-dir> <group>` and `--since <ref> <group>` propose targeted section diffs instead, each guarded by the recorded invariants so a violation forks to *fix the code* or *fold the intent*
+2. **Project tier** (`/jim:blueprint`, bare) — creates the context map by reading the strategic docs *and* interviewing for domain knowledge, or updates it differentially; `/jim:spec`'s assignment advisor consumes it on every spec, and a new group can only be minted through this surface
+3. **Reconcile** (`--reconcile`, and after every write) — re-derives the contract graph by joining each group's `requires` face against the others' `provides`, reports and offers the mismatches as issues, and records the finding and graph-health counters on the specs-root ledger
 
-**Project tier** (`/jim:blueprint`, bare — spec 033):
-1. **Create** — no map yet: a both-directions flow reads the strategic context *and* interviews for domain knowledge, proposes a partition of deliberate bounded contexts (vertical-first doctrine; `group_axis` escape hatch; roles `domain`/`platform`/`layer`; territory per `group_territory`), and writes `BLUEPRINT.md` only on explicit approval
-2. **Update** — differential diff against the current map, graded by the shared Step-4a rule: additive changes may auto-write under `auto_blueprint`; partition downgrades always prompt per-item
-3. **Consumption** — `/jim:spec`'s assignment advisor reads the map on every spec; a new group can only be minted through this surface
+**Output:** `docs/specs/{group}/000-blueprint/spec.md` · `BLUEPRINT.md`
 
-**Reconcile** (`/jim:blueprint --reconcile`, and fired by every blueprint write — spec 034):
-1. **Graph** — joins each group's `requires` face against the other groups' `provides` faces into the derived `## Contract Graph` section of `BLUEPRINT.md`; re-derived after every write through the blueprint surface (fix-only guard runs skip — no face changed), runnable on demand via `--reconcile`, and a one-line no-op note when fewer than two groups have blueprints
-2. **Findings** — declaration-level mismatches (faces reconcile, never "contracts verified") classified as leak / breaking / dead-surface / unresolved-require / undeclared-relation / stale-relation, each with its remedy; reported at detection time, offered as captured issues, and durably counted on the specs-root ledger (`op=reconcile`, the seven finding counters)
-3. **Blast radius** — a Provides weakening/removal names every dependent consumer group from the pre-write graph ("graph as of *Last reconciled*") in the Step-4a grading and violation-fork prompts — informational, never a veto
-4. **Health** (spec 039) — each full reconcile also measures the graph it just wrote — edge density, cycle clusters, max fan-in, territory coverage, and (spec 044) the aggregate provides-face sizes — and renders a measurement-only health block (no verdicts; judgment is downstream sensors' job) with each value's delta since the prior reconcile; the four health counters (`groups`/`cycles`/`fanin`/`uncovered`, integer or `na`), the two face counters (`faces`/`faces_max`), and their slug-validated attribution keys (`faces_max_group`/`fanin_group`, naming the group at each maximum) ride the same `op=reconcile` finished event as the seven finding counters (fifteen total), so partition-health trends are queryable from the ledger alone
-5. **Partition-health sensor** (spec 044) — the read side of those trends: `/jim:partition health` interprets the accumulated reconcile series plus the current map into a reasoned, advisory split/merge (or name-mismatch) read — breaking churn, graph-shape trends, face growth, and territory name mismatches — with `/jim:partition` as the remedy and no persisted verdict. Every reconcile ends with a **silent, deterministic threshold hook**: with no threshold configured it spends nothing, and on a crossing it offers the check (or, under `require_health` / `auto_health`, runs it unattended or holds the reconcile's completion until it runs). Arming thresholds are per-signal `health_threshold_*` knobs, unset by default
+**Gate:** Human approval on every write; `auto_blueprint` buys unattended writes for additive and low-criticality edits only — downgrades of load-bearing content always prompt per item. Both tiers self-commit path-scoped and record `blueprint` stage events on their ledgers.
 
-**Gate:** Human approval on every write (the `auto_blueprint` knob relaxes group-tier folds and additive map changes only). Both tiers self-commit path-scoped via `jimledger.sh` (`commit-blueprint` / `commit-map`) and record `blueprint` stage events on their ledgers. The derived contract-graph rewrite is mechanical content — exempt from Step-4a grading, committed via `commit-map` only.
+See [Blueprints](docs/features/blueprints.md) for the doctrine, the blueprint's sections, territory modes, the contract-graph finding classes, blast radius and graph health, and configuration.
 
 ### `/jim:verify`
 
 **Purpose:** Ask whether a group's code still honors what its `000-blueprint` says must hold — per-invariant outcomes with evidence, violations offered as tracked issues. The engine is read-only toward the project: it reports, never fixes.
 
-**Process** (`/jim:verify [--appetite <level>] <group>`, spec 035):
+**Process** (`/jim:verify [--appetite <level>] <group>`):
 1. **Parse** — `jimverify.sh` reads the blueprint's Invariants table (`Id` / criticality / `Check`) and the map's territory declarations; a group with no blueprint, or a blueprint with no invariants, reports that plainly and stops
-2. **Mechanical floor** (always runs, never appetite-gated) — deterministic `pattern` / `structure` checks scoped to the group's declared territory, plus territory conformance: code attributed to the group that falls outside its declared territory reports as a violation
-3. **Registry** — an invariant checked as `registry:<name>` runs the operator's `verify_command_<name>` from `jimconf.toml`. This is the trust boundary made concrete: a blueprint can only *name* a command, only config can supply one — an unconfigured name reports `unconfigured` and executes nothing. Each command is bounded by `verify_registry_timeout`; a crash or expiry folds into that one check's `failed` outcome, never aborting the run
-4. **Judge ceiling** — invariants with no mechanical check (or checked as `judge`) fan out to read-only `judge` subagents, criticality-gated by `verify_appetite` (default `"low"` — every criticality judged; per-group `verify_appetite_<group>` override; per-run `--appetite` flag), bounded by `verify_fanout_cap`, on the model `verify_model` selects
-5. **Report** — criticality-led per-invariant outcomes (`holds` / `violated` / `failed` / `unconfigured` / `skipped`) with evidence for every non-holding line, so a clean line always means "checked and sound", never "not looked at"; violations are offered as captured issues (priority from criticality); outcome counters self-commit to the group's `000-blueprint/ledger.md` via `commit-verify` — no verdict artifact persists
+2. **Check** — every invariant runs on a three-tier ladder: a zero-config mechanical floor (`pattern` / `structure` checks plus territory conformance), the operator's own project tooling through `verify_command_<name>`, and read-only `judge` subagents for what no mechanical check can express, criticality-gated by `verify_appetite` and bounded by `verify_fanout_cap`
+3. **Report** — criticality-led per-invariant outcomes (`holds` / `violated` / `failed` / `unconfigured` / `skipped`) with evidence on every non-holding line, so a clean line always means "checked and sound", never "not looked at"; violations are offered as captured issues, and outcome counters self-commit to the group's `000-blueprint/ledger.md`
 
-**Scoped modes** (spec 036 — the fold-back loop's grounding): `--from-review <spec-dir> <group>` is `/jim:review`'s living-intent sensor — the floor and registry run whole-group, judges scope to the build's change; `--since <ref> <group>` grounds the ad-hoc blueprint update's violation fork and is entirely diff-scoped. Both hand their outcomes to the caller as `VERIFY-OUTCOME` records — one engine run per change, consumed rather than re-derived.
+**Modes:** `--contracts [<group>]` checks the contract graph's edges against the code on both sides of each boundary; `--retirement [<group>]` runs the load-bearing sources in reverse, flagging blueprint entries nothing justifies anymore; `--from-review <spec-dir> <group>` and `--since <ref> <group>` are the scoped runs that ground the fold-back loop, handing their outcomes to the caller rather than making it re-derive them.
 
-**Contract mode** (`/jim:verify --contracts [<group>]`, spec 037): checks the contract graph's edges against the code on both sides — the provider still honors each declared guarantee, the consumer stays within the declared surface — via a territory cross-reference floor plus per-side judges, edge criticality defaulting to `high` (a provides entry may declare its own). Whole-graph runs also code-ground dead surface; group-scoped runs check leak and breaking on the named group's edges. Findings report in spec 034's finding classes with a code-level provenance marker, and runs record `tier=project` events on the specs-root ledger. The same capability fires change-driven: the review sensor's Contracts extension, and the blueprint surface's boundary-change grading when a provides entry is weakened.
+**Output:** Report in conversation + outcome counters on the ledger — no verdict artifact persists
 
 **Gate:** None — the run is on-demand and advisory. Its only writes are issue files the developer confirms and the self-committed ledger record.
+
+See [the verification engine](docs/features/blueprints.md#the-verification-engine) for the ladder in full, the trust boundary at the registry rung, outcome precedence, and each mode's grain.
 
 ### `/jim:ship` *(not yet implemented)*
 
