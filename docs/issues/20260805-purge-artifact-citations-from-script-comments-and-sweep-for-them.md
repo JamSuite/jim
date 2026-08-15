@@ -1,7 +1,7 @@
 ---
 id: 20260805-purge-artifact-citations-from-script-comments-and-sweep-for-them
 num: 243
-title: "Purge artifact citations from script comments and sweep for them"
+title: "Purge artifact citations from script comments and docs, and sweep for them"
 status: open
 priority: medium
 labels: [scripts, hygiene, docs]
@@ -11,7 +11,7 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-08-05T12:22:53Z
-updated: 2026-08-05T12:22:53Z
+updated: 2026-08-15T08:14:02Z
 origin: "20260728-id-coordination-issue-grouping.md (retired; see 5e712bf)"
 ---
 
@@ -55,28 +55,84 @@ never swept. It is the same fix-one-miss-the-siblings shape that issue's own
 root-cause section describes, and nothing detected it because no check exists:
 the rule is stated in `CLAUDE.md` and enforced by attention.
 
+## The doc half
+
+The same rule governs documentation, and nothing says so. `CLAUDE.md` scopes its
+wording to code comments under `skills/*/scripts/`, so the doc surfaces were
+never covered by the rule or by anything mechanical.
+
+The rot is worse here than in the scripts. A reader of `README.md` cannot open
+`spec 028`, cannot tell a live citation from one whose spec a `rename` or
+`split` has since renumbered, and has no `git log` habit to fall back on. The
+citation buys them nothing and costs them a dead end.
+
+**User-facing surfaces are now clean.** `WORKFLOW.md` carried four — two in the
+Stage Ledger row, one on the candidate-batch sentence, one on the plan's
+blast-radius advisory — plus a `backfill.sh` paragraph framed as "Spec 019 added
+the `num:` ordinal", rewritten to describe the collection state instead.
+`README.md` carried four in the permissions section, and four `/jim:file`
+examples naming jim's own `platform/003-jimfile` spec by group and ordinal,
+genericized to the invented groups the feature docs already use. `README.md`,
+`WORKFLOW.md` and `docs/features/*.md` now hold zero.
+
+**The adjacent corpora are far dirtier than the scripts ever were.** Unaudited
+matching-line counts over the same citation shapes:
+
+| corpus | files | lines |
+| :--- | ---: | ---: |
+| `skills/*/SKILL.md` | 18 | 229 |
+| `skills/*/references/*.md` | 11 | 192 |
+| `agents/*.md` | 5 | 11 |
+| `skills/*/assets/*.md` | 3 | 3 |
+
+`skills/partition/references/partition-methodology.md` (90) and
+`skills/partition/SKILL.md` (82) are 40% of it between them. Two false-positive
+shapes are known to be in these numbers and must be excluded before anyone
+treats them as a work estimate: a `spec_migration`-style phrase like "numbered
+specs 001+", which names a range rather than a spec, and any line where `spec`
+abuts a date (`cart-spec 20260726`).
+
+**Whether that corpus is in scope is the open question**, and it should be
+answered deliberately rather than discovered mid-sweep. The case for including
+it: a `SKILL.md` body is rendered into the user's conversation verbatim when the
+skill is invoked, so "agent-facing" understates who reads it. The case against:
+these files are instructions to a model that has the repo, the citation may
+still carry rationale for a maintainer, and 435 sites is its own spec, not a
+rider on this one.
+
 ## Proposed action
 
-Two halves, and the sweep is the half that matters.
+Three parts now, and the sweep is still the part that matters.
 
 1. **Rewrite the 95 comments** to state current behaviour and rationale without
    the citation. Most already say the useful thing and merely carry a trailing
    `(spec NNN)` or `(Finding N)`; a few are only a citation and need the
    behaviour written out. Rewriting is per-comment judgment, not a regex.
-2. **Add a corpus sweep to `tests/scripthygiene.sh`** so the rule is mechanical
-   rather than remembered — the same shape as the sweeps that now hold the
-   preamble, the locale, the read-scope and the test-placement rules. It must
-   exempt the meta-test convention sites by path and reason, and fail closed on
-   an empty corpus.
+2. **State the rule for docs.** `CLAUDE.md` says it for script comments; extend
+   it to cover user-facing documentation, so the doc half is a written rule
+   rather than a reviewer's memory.
+3. **Sweep both corpora.** The script corpus belongs in
+   `tests/scripthygiene.sh`, the same shape as the sweeps that now hold the
+   preamble, the locale, the read-scope and the test-placement rules. The doc
+   corpus belongs in `tests/docsurfaces.sh`, which already walks `README.md`,
+   `WORKFLOW.md` and `docs/features/*.md` for exactly this class of drift. Both
+   must exempt their convention sites by path and reason — the meta-test `AC`
+   headers on the script side, the two false-positive shapes above on the doc
+   side — and fail closed on an empty corpus.
 
-The sweep cannot land before the rewrite, since it would fail on all 95. That
-ordering is the whole reason this is one issue rather than two.
+The script sweep cannot land before the rewrite, since it would fail on all 95.
+That ordering is the whole reason this is one issue rather than two. The doc
+sweep has no such constraint against the three user-facing surfaces — they are
+already clean, so it can land immediately and hold them there.
 
 ## Scope note
 
-This is a mechanical pass over nine files with no behaviour change, and it is
-large enough to deserve its own scoping rather than riding a pass aimed at
-something else. `jimverify.sh` alone is 43 of the 95.
+The script rewrite is a mechanical pass over nine files with no behaviour
+change, and it is large enough to deserve its own scoping rather than riding a
+pass aimed at something else — `jimverify.sh` alone is 43 of the 95. The
+user-facing doc purge is already done and cost a handful of edits. What stays
+unsized is the `skills/` + `agents/` corpus, which is why it is posed above as a
+question rather than folded into a count.
 
 ## Provenance
 
