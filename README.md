@@ -186,16 +186,16 @@ Inspect what jim resolves with `/jim:conf`:
 `/jim:conf` resolves *where* a configured doc lives. `/jim:file` is its sibling for *operations against those locations* — the deterministic surface jim's skills use to compute filenames and look up artifacts. Backed by `skills/file/scripts/jimfile.sh`, which shells out to `jimconf.sh` so every `/jim:conf` override is honored automatically.
 
 ```
-/jim:file exists docs/specs/platform/003-jimfile/spec.md  # "yes" or "no"
+/jim:file exists docs/specs/mygroup/012-widget/spec.md    # "yes" or "no"
 /jim:file slug "Auth Token Expiry"                        # auth-token-expiry
 /jim:file date                                            # YYYYMMDD
 /jim:file now                                             # YYYY-MM-DDThh:mm:ssZ (UTC)
 /jim:file next-id issue "Auth bug"                        # date-prefixed issue id (spec ordinals come from the allocator)
 /jim:file next-num issue                                  # next issue display ordinal
-/jim:file path spec platform 003 jimfile                  # canonical spec path
-/jim:file path spec platform P-20260728-jimfile           # provisional identity (token is the whole basename)
+/jim:file path spec mygroup 012 widget                    # canonical spec path
+/jim:file path spec mygroup P-20260728-widget             # provisional identity (token is the whole basename)
 /jim:file path debug "auth bug"                           # date-prefixed debug path
-/jim:file glob specs platform                             # every spec in the platform group
+/jim:file glob specs mygroup                              # every spec in that group
 /jim:file kinds                                           # valid artifact kinds
 ```
 
@@ -244,7 +244,7 @@ Claude Code's documented permission model does not let a plugin ship pre-approve
 
 ### Post-build review fan-out (`/jim:review`)
 
-The depth-aware review (`/jim:review`, spec 027) spawns read-only `investigator` subagents that read **your project's own source** to investigate high-stakes changes in depth. Those reads surface the same per-read prompt, since (as above) the skill's grants don't cross the subagent boundary. To suppress it, grant **repo-scoped** reads in `.claude/settings.json`:
+The depth-aware review (`/jim:review`) spawns read-only `investigator` subagents that read **your project's own source** to investigate high-stakes changes in depth. Those reads surface the same per-read prompt, since (as above) the skill's grants don't cross the subagent boundary. To suppress it, grant **repo-scoped** reads in `.claude/settings.json`:
 
 ```json
 {
@@ -260,11 +260,11 @@ Prefer the **narrowest grant that works** — your repo root — rather than a b
 
 ### Invariant-verification fan-out (`/jim:verify`)
 
-Invariant verification (`/jim:verify`, spec 035) fans out read-only `judge` subagents that read **your project's own source** to decide whether a blueprint invariant holds — or, in contract mode (`--contracts`, spec 037), whether one side of a cross-group contract edge holds in code. Like the reviewer's investigators, each judge's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The judges are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when an invariant's check names an operator-configured registry command, `/jim:verify` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a blueprint can never mint that command, only *name* one you configured.
+Invariant verification (`/jim:verify`) fans out read-only `judge` subagents that read **your project's own source** to decide whether a blueprint invariant holds — or, in contract mode (`--contracts`), whether one side of a cross-group contract edge holds in code. Like the reviewer's investigators, each judge's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The judges are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when an invariant's check names an operator-configured registry command, `/jim:verify` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a blueprint can never mint that command, only *name* one you configured.
 
 ### Partition fan-out (`/jim:partition`)
 
-Partition migration (`/jim:partition`, spec 038) fans out read-only `gatherer` subagents that read **your project's own source** to gather per-group evidence for the proposed context map. Like the reviewer's investigators, each gatherer's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The gatherers are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when you configure a `deps_command_<name>` extractor (see Configuration), `/jim:partition` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a scanned artifact can never mint that command, only your own config activates one.
+Partition migration (`/jim:partition`) fans out read-only `gatherer` subagents that read **your project's own source** to gather per-group evidence for the proposed context map. Like the reviewer's investigators, each gatherer's reads surface the same per-read prompt, and the same **repo-scoped** `Read(/absolute/path/to/your/repo/**)` grant in `.claude/settings.json` suppresses it. The gatherers are read-only by construction (no `Write`/`Edit`/`Bash`/`Agent`). Separately, when you configure a `deps_command_<name>` extractor (see Configuration), `/jim:partition` runs that command through the Bash tool — which surfaces the normal Bash permission prompt so you approve each command at run time; a scanned artifact can never mint that command, only your own config activates one.
 
 ## Authorizing the fan-outs
 
