@@ -256,6 +256,34 @@ parse_wikilinks_from_body() {
 
 # ─── Section: Main pipeline ──────────────────────────────────────────────────
 
+# row_safe <value> — a frontmatter scalar made safe to place in an INDEX.md row.
+#
+#   A row is ` · `-separated `key: value` pairs and every reader assigns by key
+#   in the order it meets them, so a later pair overrides an earlier one. A value
+#   able to reproduce the separator can therefore append its own pair and forge a
+#   field the writer already emitted — a `status`, a `priority`, or the `num` that
+#   `show <N>` resolves against. Removing the separator's own character makes the
+#   row's shape a property of this writer rather than of its inputs.
+#
+#   The middle dot is removed rather than the three-character sequence, so no
+#   arrangement of spaces around it can reconstitute a separator. A legitimate
+#   `·` in a title is lost from the index row only; the issue file keeps it.
+#   Byte-sequence safe under LC_ALL=C: sed matches the whole two-byte encoding,
+#   where `tr -d` would delete each byte wherever it occurred and corrupt any
+#   other character sharing one.
+#
+#   Control characters and the length cap are the corpus display-sanitizer form.
+#
+#   The stage order is load-bearing, not incidental. `tr` runs first because
+#   deleting a control byte can bring the separator's own two bytes together —
+#   `C2 01 B7` collapses to `C2 B7`, a reconstituted `·` — and `sed` removes it
+#   only by running afterwards. `cut` runs last for the same reason in reverse:
+#   the separator is already gone, so the cap can never bisect one and leave a
+#   half. Reordering these three reopens separator forgery.
+row_safe() {
+  printf '%s' "$1" | tr -d '\000-\037\177' | sed 's/·//g' | cut -c1-512
+}
+
 # resolve_dir <arg>
 #   Determine the issues directory: arg if non-empty, else jimconf default.
 #   Errors with rc=2 if the result is empty or whitespace-only.
@@ -273,8 +301,29 @@ resolve_dir() {
   printf '%s\n' "$dir"
 }
 
+# route_placement <arg> <place-token>
+#   Re-exec this script through place.sh when the project keeps its collection
+#   on a designated branch, so a reindex lands there rather than on whatever
+#   branch the developer is standing on. An explicit directory argument opts
+#   out — it is both what a caller naming a directory means and what stops the
+#   re-exec from recursing.
+route_placement() {
+  local arg="$1" token="$2" place="$HERE/place.sh" mode
+  [[ -z "$arg" && -r "$place" ]] || return 0
+  mode="$(bash "$place" mode --place-token "$token")" || exit $?
+  [[ "$mode" == "route" ]] || return 0
+  exec bash "$place" run --verb reindex -- \
+    bash "${BASH_SOURCE[0]}" --place-token '{token}' '{}'
+}
+
 main() {
+  local place_token=""
+  if [[ "${1:-}" == "--place-token" ]]; then
+    place_token="${2:-}"
+    shift 2
+  fi
   local arg="${1:-}"
+  route_placement "$arg" "$place_token"
   local dir
   dir="$(resolve_dir "$arg")" || return $?
   mkdir -p "$dir" || { echo "error: cannot mkdir '$dir'" >&2; return 1; }
@@ -292,9 +341,23 @@ main() {
   done
 
   # First pass: collect per-issue metadata into parallel arrays.
-  # Sorted in declare order; we sort the file list lexicographically by slug.
-  IFS=$'\n' files_sorted=($(printf '%s\n' "${files[@]}" | sort))
-  unset IFS
+  #
+  # The glob above already produced this list in order: bash sorts pathname
+  # expansion, and LC_ALL=C makes that byte order — byte-for-byte the order a
+  # `sort` of the same full paths yields, since they share a directory prefix.
+  # So the order needs no second pass, and it is taken from the glob's own
+  # array rather than round-tripped through a word-split array assignment.
+  #
+  # That shape is load-bearing, not stylistic. An entry name is untrusted input
+  # from a shared branch and may carry any byte but NUL and `/`, so a
+  # line-oriented round trip cannot represent one that carries a newline: the
+  # sort reads a single name as two records, and the split assignment reifies
+  # two elements — one of them a fragment that has lost its directory prefix.
+  # `IFS=$'\n'` closes space-splitting but not pathname expansion, and `set -f`
+  # appears nowhere in this corpus, so that fragment re-globs against the
+  # invoking checkout rather than the collection: a fragment of `*.md`
+  # enumerates a project root and renders its frontmatter as issue rows.
+  # Iterating the array keeps every name one word whatever bytes it holds.
 
   local open_count=0 closed_count=0
   local issues_section="" graph_section="" warnings_section=""
@@ -316,21 +379,31 @@ main() {
   declare -A typed_target_for
   typed_target_for[__sentinel__]=1; unset 'typed_target_for[__sentinel__]'
 
-  for f in "${files_sorted[@]}"; do
+  for f in "${files[@]}"; do
     local slug
     slug="$(basename "$f" .md)"
     if ! is_valid_id "$slug" 2>/dev/null; then
-      warnings_section+="- Skipped \`$slug\`: filename is not a valid id.\n"
+      # The value quoted here is precisely the one that failed the id gate, so
+      # it is arbitrary bytes from a shared branch reaching the artifact every
+      # reader parses. It clears the display sanitizer first — control
+      # characters out, so a name cannot close this line and open a second
+      # `## Issues` section for readers to take rows from, and the backticks
+      # that would close the code span it sits in.
+      warnings_section+="- Skipped \`$(row_safe "$slug" | tr -d '`')\`: filename is not a valid id."$'\n'
       continue
     fi
-    slugs_seen+=("$slug")
 
     local fm
     fm="$(extract_frontmatter "$f")"
     if [[ -z "$fm" ]]; then
-      warnings_section+="- \`$slug\`: missing or malformed frontmatter.\n"
+      warnings_section+="- \`$slug\`: missing or malformed frontmatter."$'\n'
       continue
     fi
+    # Recorded only past both gates, so the row set and the Summary counts below
+    # derive from one population. A slug recorded ahead of the frontmatter gate
+    # renders an `(untitled)` row while contributing to neither count — an index
+    # asserting a row its own Summary denies.
+    slugs_seen+=("$slug")
 
     local status priority title origin labels created num
     {
@@ -354,7 +427,7 @@ main() {
       else
         created=""
       fi
-      warnings_section+="- \`$slug\` created is not a valid date or timestamp; degraded.\n"
+      warnings_section+="- \`$slug\` created is not a valid date or timestamp; degraded."$'\n'
     fi
 
     meta_status[$slug]="$status"
@@ -383,7 +456,7 @@ main() {
     while IFS=$'\t' read -r type target; do
       [[ -z "$type" || -z "$target" ]] && continue
       if ! is_valid_id "$target" 2>/dev/null; then
-        warnings_section+="- \`$slug\`: invalid relation target \`$target\` (type $type).\n"
+        warnings_section+="- \`$slug\`: invalid relation target \`$(row_safe "$target" | tr -d '`')\` (type $type)."$'\n'
         continue
       fi
       edges_fm+="$type:$target "
@@ -403,7 +476,7 @@ main() {
     while IFS= read -r wl; do
       [[ -z "$wl" ]] && continue
       if ! is_valid_id "$wl" 2>/dev/null; then
-        warnings_section+="- \`$slug\`: malformed wikilink \`[[${wl}]]\` ignored.\n"
+        warnings_section+="- \`$slug\`: malformed wikilink \`[[$(row_safe "$wl" | tr -d '`')]]\` ignored."$'\n'
         continue
       fi
       # Absorption: a typed frontmatter edge to this target already
@@ -433,19 +506,57 @@ main() {
   # continue when the value is empty — issues without an `origin:` field
   # are common (early adoption, hand-authored fixtures) and the lint pass
   # must not crash on them. (Spec 018 security review Finding 9.)
-  local origin_value origin_created
-  for s in "${slugs_seen[@]}"; do
-    origin_value="${meta_origin[$s]-}"
-    [[ -z "$origin_value" ]] && continue
-    case "$origin_value" in
-      */*)
-        if [[ ! -e "$origin_value" ]]; then
-          origin_created="${meta_created[$s]-}"
-          warnings_section+="- \`$s\` origin path does not resolve: $origin_value (created $origin_created)\n"
-        fi
-        ;;
-    esac
-  done
+  #
+  # The pass is skipped when the collection lives on a designated branch. An
+  # origin resolves or not according to the checkout the run happens to be
+  # standing in, while the index being written belongs to every reader — so a
+  # warning set derived that way is a fact about one developer's tree published
+  # as a fact about the collection, flipping with whoever wrote last and making
+  # a real diff each time. The condition is read from configuration rather than
+  # from whether this run materialized anything, because a destination that is
+  # checked out is linted from its own branch and one that is not is linted from
+  # somebody else's; keying on the arm would keep the flapping and only move the
+  # seam. The skip is stated rather than silent: a check that cannot be grounded
+  # says so.
+  local placement placement_shown origin_value origin_created prc
+  # The resolver's own status decides this, not its output. An empty result read
+  # as `branch` means a failed resolve *runs* the lint and the index then claims
+  # the check was performed — while `place.sh` takes the explicitly opposite
+  # stance on the same key. A failed resolve is not an unset key.
+  placement="$(bash "$JIMCONF" get issue_placement 2>/dev/null)"; prc=$?
+  if (( prc != 0 )); then
+    echo "error: could not resolve issue_placement; refusing to write an index" \
+         "that would claim the origin lint was performed" >&2
+    return 2
+  fi
+  [[ -n "$placement" ]] || placement="branch"
+  if [[ "$placement" != "branch" ]]; then
+    # The name is config-supplied and this is the index every reader parses, so
+    # it clears the same display sanitizer every row value clears — control
+    # characters out, the row separator out, length capped — plus the backticks
+    # that would close the code span it is quoted into.
+    placement_shown="$(row_safe "$placement" | tr -d '`')"
+    warnings_section+="- origin paths not checked: the collection is placed on \`$placement_shown\`, so a path resolves against whichever checkout wrote last rather than against the collection."$'\n'
+  else
+    for s in "${slugs_seen[@]}"; do
+      origin_value="${meta_origin[$s]-}"
+      [[ -z "$origin_value" ]] && continue
+      case "$origin_value" in
+        */*)
+          if [[ ! -e "$origin_value" ]]; then
+            origin_created="${meta_created[$s]-}"
+            # A raw frontmatter scalar, and the one warning value that lands
+            # outside a code span — so an unbalanced backtick would open one
+            # over the rest of the block. Same sanitizer as a row value: the
+            # length cap is what keeps an unbounded origin from landing whole
+            # in a committed artifact, and the control-character strip is what
+            # keeps ESC and CR out of every reader that cats this file.
+            warnings_section+="- \`$s\` origin path does not resolve: $(row_safe "$origin_value" | tr -d '`') (created $origin_created)"$'\n'
+          fi
+          ;;
+      esac
+    done
+  fi
 
   # Bidirectional integrity check (DD #7).
   # For each FRONTMATTER outgoing edge A --type--> B, if type has an inverse,
@@ -467,7 +578,7 @@ main() {
         fi
       done
       if (( found == 0 )); then
-        warnings_section+="- \`$s\` --$etype--> \`$etarget\` has no inverse \`$inverse\` back-edge.\n"
+        warnings_section+="- \`$s\` --$etype--> \`$etarget\` has no inverse \`$inverse\` back-edge."$'\n'
       fi
     done
   done
@@ -475,12 +586,12 @@ main() {
   # Render Issues section
   for s in "${slugs_seen[@]}"; do
     local row
-    row="- \`$s\` — ${meta_title[$s]:-(untitled)} · status: ${meta_status[$s]:-open}"
-    [[ -n "${meta_num[$s]:-}" ]]      && row+=" · num: ${meta_num[$s]}"
-    [[ -n "${meta_priority[$s]:-}" ]] && row+=" · priority: ${meta_priority[$s]}"
-    [[ -n "${meta_created[$s]:-}" ]]  && row+=" · created: ${meta_created[$s]}"
-    [[ -n "${meta_labels[$s]:-}" ]]   && row+=" · labels: ${meta_labels[$s]}"
-    [[ -n "${meta_origin[$s]:-}" ]]   && row+=" · origin: ${meta_origin[$s]}"
+    row="- \`$s\` — $(row_safe "${meta_title[$s]:-(untitled)}") · status: $(row_safe "${meta_status[$s]:-open}")"
+    [[ -n "${meta_num[$s]:-}" ]]      && row+=" · num: $(row_safe "${meta_num[$s]}")"
+    [[ -n "${meta_priority[$s]:-}" ]] && row+=" · priority: $(row_safe "${meta_priority[$s]}")"
+    [[ -n "${meta_created[$s]:-}" ]]  && row+=" · created: $(row_safe "${meta_created[$s]}")"
+    [[ -n "${meta_labels[$s]:-}" ]]   && row+=" · labels: $(row_safe "${meta_labels[$s]}")"
+    [[ -n "${meta_origin[$s]:-}" ]]   && row+=" · origin: $(row_safe "${meta_origin[$s]}")"
     issues_section+="$row"$'\n'
   done
 
@@ -500,7 +611,11 @@ main() {
     echo "error: cannot create tmp file in '$dir'" >&2
     return 1
   }
-  trap 'rm -f "$tmpfile"' EXIT INT TERM
+  # The trap body runs at shell exit, which can be after this function has
+  # returned and its `local` has gone out of scope. Expanding it defensively
+  # keeps that from being fatal under `set -u` — an abort there would take the
+  # cleanup down with it and report a shell-internal error over the real cause.
+  trap 'rm -f "${tmpfile:-}"' EXIT INT TERM
 
   {
     printf '# Issue Index\n\n'
@@ -521,14 +636,37 @@ main() {
     fi
     printf '\n## Integrity Warnings\n\n'
     if [[ -n "$warnings_section" ]]; then
-      printf '%b' "$warnings_section"
+      # %s, not %b. The section is concatenated from untrusted values — a
+      # body-derived wikilink, a frontmatter relation target, an origin path, a
+      # filename-derived slug — and %b expands backslash escapes in them, so a
+      # value carrying a literal \n could inject lines into the index. Every
+      # reader re-opens the issues section on a later `## Issues`, which is how
+      # injected lines become served rows. The line breaks are real newlines in
+      # the accumulator instead.
+      printf '%s' "$warnings_section"
     else
       printf '_None._\n'
     fi
-  } > "$tmpfile"
+  # The rename below is atomic, which makes an unchecked compose actively
+  # dangerous rather than merely unguarded: a short write would publish a
+  # TRUNCATED index over a good one and return 0. Both reconcilers key their
+  # "index failed to regenerate" error off this exit code, so that truncation
+  # would reach them as a clean result. Guarded the way every sibling emitter
+  # guards its write — a filled disk fails the block's last write too, so the
+  # group's status is what catches exhaustion.
+  } > "$tmpfile" || {
+    echo "error: failed to compose INDEX.md; previous INDEX.md untouched" >&2
+    rm -f "$tmpfile"
+    trap - EXIT INT TERM
+    return 1
+  }
 
   mv "$tmpfile" "$dir/$INDEX_FILENAME" || {
     echo "error: atomic rename failed; previous INDEX.md untouched" >&2
+    # Clean up here, while the path is still in scope, rather than leaving it to
+    # a trap that fires after this frame is gone.
+    rm -f "$tmpfile"
+    trap - EXIT INT TERM
     return 1
   }
   trap - EXIT INT TERM

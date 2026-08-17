@@ -1,6 +1,8 @@
 ---
 title: "{Title}"
-spec: "docs/specs/{group}/{id}-{name}/spec.md"
+# spec — the directory the spec sits in, as read; never recomposed. Keep notes
+# on their own line: everything after the colon is the value.
+spec: "{spec-dir}/spec.md"
 type: feature | bug | refactor
 status: draft
 ---

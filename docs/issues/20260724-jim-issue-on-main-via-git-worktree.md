@@ -1,6 +1,6 @@
 ---
 id: 20260724-jim-issue-on-main-via-git-worktree
-num: 19
+num: 96
 title: "jim:issue files and indexes issues on main via git worktree"
 status: open
 priority: medium

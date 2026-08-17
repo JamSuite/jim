@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-20T23:31:27Z
-updated: 2026-06-20T23:31:27Z
-origin: docs/specs/jim/025-issue-candidate-batch-extraction/plan.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/issue/009-issue-candidate-batch-extraction/plan.md
 ---
 
 ## Description

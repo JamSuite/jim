@@ -2,13 +2,18 @@
 title: "{title}"
 type: feature | bug | refactor
 group: "{group}"
-id: "{00X}"
+# id — the bound identity: a 3-digit ordinal, or a P-{date}-{slug} token.
+# Keep notes on their own line: everything after the colon is the value, so a
+# comment left beside it becomes part of the identity and the spec stops matching
+# its own directory.
+id: "{id}"
 status: draft
-origin:                           # optional — list of source documents
+# origin — optional, list of source documents
+origin:
   - "{relative/path/to/source}"
 ---
 
-# {00X} {title}
+# {id} {title}
 
 ## Overview
 {1-2 sentence description of what this spec delivers and why.}

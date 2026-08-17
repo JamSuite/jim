@@ -45,10 +45,43 @@
 #      Then `chmod +x tests/<name>.sh`. This runner picks it up automatically.
 #
 
+set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/testlib.sh"
 
 FILTER="${1:-}"
+
+# PWD-relative, and deliberately so — do NOT anchor this at REPO_ROOT. Two
+# independent reasons, either one sufficient:
+#
+#   1. REPO_ROOT is the PLUGIN's root, resolved BASH_SOURCE-relative. Installed
+#      as a plugin, an anchored glob would discover and run jim's own tests
+#      instead of the tests of the project the developer is standing in. The
+#      test corpus is the consuming project's content, not the plugin's.
+#   2. This runner is itself under test. tests/metatest.sh has cases that invoke
+#      it from a sandbox directory, and the PWD-relative glob is what makes
+#      those runs find no test files and return. Anchored, each would load
+#      tests/metatest.sh and invoke the runner again, without bound.
+#
+# The distinction that resolves this against the BASH_SOURCE rule: that rule
+# governs the plugin locating its OWN parts, which every sibling resolution here
+# does. Where a path names the consuming project's content, PWD is correct.
+#
+# The placement rule this leaves unenforced — a test file authored outside
+# tests/ is silently not run — is detected by tests/scripthygiene.sh instead,
+# which sweeps for test-shaped files under the discovery roots.
+# The floor under that PWD-relativity: an ABSENT tests/ means this runner is not
+# standing in a project that has a corpus at all — in practice a wrong working
+# directory — and discovering nothing there must not report as a passing suite,
+# because a green summary over zero executed cases is indistinguishable from a
+# green summary over all of them. An EMPTY tests/ is a different thing and stays
+# legal at rc 0: it is the shape this runner's own sandbox self-test relies on,
+# and a project may simply have no tests yet. Directory presence is the signal;
+# case count is not, precisely because zero cases is legitimate.
+if [[ ! -d tests ]]; then
+  echo "meta-test run.sh: no tests/ directory under $PWD — run from the project root" >&2
+  exit 2
+fi
 
 for tf in tests/*.sh; do
   [[ -e "$tf" ]] || continue

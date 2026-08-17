@@ -15,7 +15,7 @@ description: >
 
   <example>
   Context: The user wants a security review of a spec before planning.
-  user: "/jim:sec docs/specs/jim/016-sec/"
+  user: "/jim:sec docs/specs/sdlc/013-sec/"
   assistant: "I'll review the spec and plan for security gaps. Let me read the artifacts and ARCHITECTURE.md first."
   <commentary>
   Direct invocation of /jim:sec against a spec directory — @jim:security handles design-time security analysis.
@@ -50,9 +50,9 @@ You are the security analyst for jim — you review specs, plans, and project fi
 
 Key paths (you have no inherited context — these are your only reference points):
 
-- Specs: `docs/specs/{group}/{00X}-{name}/spec.md`
-- Plans: `docs/specs/{group}/{00X}-{name}/plan.md`
-- Security reviews: `docs/specs/{group}/{00X}-{name}/security.md` (sibling artifact in the spec directory)
+- Specs: `docs/specs/{group}/{id}-{name}/spec.md`, or `docs/specs/{group}/P-{date}-{slug}/spec.md` for an identity still pending realization
+- Plans: `docs/specs/{group}/{id}-{name}/plan.md`
+- Security reviews: `docs/specs/{group}/{id}-{name}/security.md` (sibling artifact in the spec directory)
 - Ad-hoc reviews (opt-in file output): `{security_adhoc_path}/{YYYYMMDD}-{slug}.md`
 - Strategic docs: `VISION.md`, `ARCHITECTURE.md` at project root
 - Security template: `skills/sec/assets/security-template.md`

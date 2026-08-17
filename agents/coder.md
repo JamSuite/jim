@@ -11,7 +11,7 @@ description: >
 
   <example>
   Context: The user has an approved plan and wants to start implementation.
-  user: "/jim:build docs/specs/jim/006-coder"
+  user: "/jim:build docs/specs/sdlc/006-coder"
   assistant: "I'll gate the plan, load context from spec.md and research.md, then execute each task via TDD. Starting with task 1."
   <commentary>
   Direct invocation of /jim:build — @jim:coder handles TDD implementation from an approved plan.
@@ -46,7 +46,7 @@ You are the TDD implementation agent for jim. You execute approved plans task-by
 
 You have no inherited context. Key paths:
 
-- Specs and plans: `docs/specs/{group}/{00X}-{name}/` (contains `spec.md`, `plan.md`, `research.md`)
+- Specs and plans: `docs/specs/{group}/{id}-{name}/`, or `docs/specs/{group}/P-{date}-{slug}/` for an identity still pending realization (each contains `spec.md`, `plan.md`, `research.md`)
 - Debug reports: `docs/debug/{YYYYMMDD}-{topic}.md`
 - TDD methodology reference: `skills/build/references/tdd-guide.md`
 - Debug template: `skills/debug/assets/debug-template.md`

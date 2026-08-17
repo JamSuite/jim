@@ -58,6 +58,7 @@ Do not fill the template from assumptions. Read actual code.
 Use Glob and Grep to populate each section:
 
 - **Project Structure:** Glob `{directory}/**` to map the directory tree. Focus on the top 2-3 levels; annotate directories whose purpose is non-obvious.
+- **Partition (spec 033):** SET map_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get blueprint` — when `map_doc != "NOT_FOUND"`, the project has a context map: the spec-group partition is *its* declared content. Reference `BLUEPRINT.md` for the partition (a link plus at most a one-line summary); never re-declare groups, roles, relations, or territories in this document — one authority, no second copy to drift.
 - **Core Components:** Grep for entry points, exported functions, class/interface definitions, and module boundaries. Identify what each component exposes and depends on.
 - **Data Stores:** Grep for database connections, file reads/writes, cache calls, or persistence patterns. Look for config files that declare data locations.
 - **External Integrations:** Grep for HTTP clients, API calls, SDK imports, and third-party service references. Check package manifests (package.json, go.mod, requirements.txt, Cargo.toml) for external dependencies.

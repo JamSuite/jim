@@ -270,3 +270,82 @@ using the new librarian.
 Non-goals (v1): no /jim:map command; no cross-agent sync to .claude/rules/ or AGENTS.md (Roadmap-
 Later render target); no auto-promotion (every extract/promote/enforce is a diff-reviewed proposal).
 ```
+
+## What changed since 2026-07-17 (the blueprint branch)
+
+*2026-07-24*
+
+Specs 026-052 (`feat/blueprint`) shipped `/jim:review`, the blueprint system (`000-blueprint` living
+specs, the `BLUEPRINT.md` context map, the contract graph, `/jim:verify`, `/jim:partition`), and the
+pipeline ledger — none of which existed when the ladder above was drawn. They land directly on the
+ladder's endpoints and on two of the follow-ons: the v1 shape **narrows and de-risks**, but the model
+itself holds. Grounded in `docs/features/{blueprints,review,ledger}.md` and the blueprint-aware
+competitive refresh `docs/research/20260724-competitive-landscape-sdd-skills.md`.
+
+- **Blueprints claimed the Contract and Enforceable rungs — re-scope the corpus to the middle.**
+  *Contract:* the `000-blueprint` now carries criticality-graded, load-bearing **invariants**, and
+  `BLUEPRINT.md` carries boundaries/ownership/dependency-direction as the partition + derived contract
+  graph — a *verifiable* second home for what the Contract rung held (the blueprint reads
+  `ARCHITECTURE.md` as a source, so they coexist). *Enforceable:* the verify engine's `Check`
+  vocabulary (`pattern`/`structure`/`registry:<name>`/`judge`) is a **declarative** enforcement path —
+  attach a check to an invariant and the engine runs it — instead of "promote the doc to a hook" for
+  architectural rules. **Consequence:** re-center the corpus on the rungs blueprints deliberately
+  exclude — **convention / how-to / adr / codemap** — and *reference* the blueprint for the two it now
+  owns, never duplicate them.
+
+- **The librarian's hardest unbuilt mechanics already exist — reuse, don't reinvent.** "Every
+  promotion is a diff for human approval" = the blueprint **update guard** + **gate-presentation rule**
+  (spec 040). "Extract a high-density section" = the blueprint's **targeted section diff**. The
+  `auto_*`-defaults-false autonomy = `auto_blueprint`'s **criticality-graded** writes. The
+  present-tense discipline the convention rung needs = spec 050 (`blueprint-present-tense`) + the
+  provenance guard (052), already operationalized and policed. The **single-writer surface** is the
+  working proof of "the librarian owns the corpus."
+
+- **Follow-on [1] is partly overtaken — merge it with the fold-back loop.** The
+  review → `/jim:verify --from-review` → fix-code/fold-intent loop is already a post-build,
+  change-scoped, human-gated knowledge refresh — the change-type router [1] wanted, built for
+  blueprints. Reconceive [1] not as a bespoke router bolted onto spec 013 but as
+  **`/jim:arch --from-review`**, a sibling to `/jim:blueprint --from-review` that shares the review's
+  diff classification. There are now *two* post-build knowledge mechanisms (013's `ARCHITECTURE.md`
+  refresh and the review loop); [1]'s real job is to **unify** them.
+
+- **Follow-on [2] gains a boundary to define.** jim now has its own `docs/specs/jim/000-blueprint`, so
+  dogfood-slimming can't move every invariant into a `kind: convention` doc — some belong in the
+  blueprint's invariant floor. First-pass rule: project-wide conventions/orientation → `docs/arch/`;
+  group-scoped, verifiable, criticality-graded invariants → `000-blueprint`. jim being single-group
+  makes it the *sharpest* place to force that boundary.
+
+- **The ADR rung got a stronger mandate — it is the home for "why".** Blueprints are present-tense by
+  doctrine; the ledger is content-free by design — so **neither captures rationale**. Yet the branch
+  created exactly the decisions the ADR rung exists for: every **fold-intent vs fix-code** fork and
+  every **partition rename/split/merge** is a load-bearing decision whose reasoning otherwise
+  evaporates (the ledger keeps only the `op=` count). The corpus's `kind: adr` rung should become the
+  home for blueprint fold-back and partition-op rationale. Blueprints didn't fill the ADR gap — they
+  **widened** it.
+
+- **A new organizing axis: per-group vs flat corpus.** The doc assumes a flat `docs/arch/`. The
+  partition doctrine's vertical-first **groups with code territory** raise a new fork: should
+  convention/how-to docs live *with their group* (beside its `000-blueprint`), with `BLUEPRINT.md` as
+  the project spine and the cross-rung index folding into it? One for the interview.
+
+**Still right, undisturbed:** the librarian-as-single-authoring-surface call — blueprint/verify/partition
+are different *verbs*, not competing authoring commands, so "no fleet for the same act" still holds;
+the present-tense discipline (now proven on the blueprint tier); read→do→enforce (blueprints added a
+*declarative* enforcement path beside the generative one); and ADRs still needed, more than before.
+
+### Suggested prompt update (left unapplied, per request)
+
+The `/jim:spec` prompt above still describes the pre-blueprint scope. Before scoping this, revise it
+to:
+
+- **Narrow v1 to the middle rungs** (convention / how-to / adr / codemap) + librarian + index, stating
+  the corpus is **layered on** the blueprint — deferring Contract/Enforceable *content* to
+  `000-blueprint` and `/jim:verify`, which now own those rungs.
+- **Reframe follow-on [1]** as `/jim:arch --from-review`, unified with the review → verify → blueprint
+  fold-back loop, rather than a standalone spec-013 change-type router.
+- **Add interview items:** the `ARCHITECTURE.md`-contract ↔ blueprint-invariant boundary; the ADR rung
+  as the home for fold-back and partition-op rationale; and flat-vs-per-group corpus layout.
+- **Point the librarian at the blueprint's reusable machinery** (update guard, gate-presentation,
+  targeted section diff, criticality-graded `auto_`) instead of inventing its own gates.
+- **Extend the non-goals:** keep the existing three; add "don't duplicate blueprint invariants in
+  convention docs."

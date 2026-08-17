@@ -4,7 +4,7 @@
 #
 # PURPOSE
 #   Resolve deterministic file/path operations for jim's skills and agents:
-#   existence checks, slug normalization, today's date, next spec ID,
+#   existence checks, slug normalization, today's date, next issue id,
 #   canonical artifact paths, and glob discovery. Skills consume this via
 #   Claude Code's `!`-injection primitive so the resolved string lands in
 #   the prompt before the LLM reads it. The /jim:file user-facing skill
@@ -25,20 +25,39 @@
 #                                                     existence-checks)
 #   bash jimfile.sh slug <topic>                      kebab-case slug
 #   bash jimfile.sh date                              today as YYYYMMDD
-#   bash jimfile.sh next-id <group>                   next zero-padded spec id
+#   bash jimfile.sh next-id issue <subject>           date-prefixed issue id
+#   bash jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
+#                                                     rename a spec dir onto a
+#                                                     different id (shift/realize)
+#   bash jimfile.sh mv-spec-id <group> <old-basename> <provisional-token>
+#                                                     rename onto a provisional
+#                                                     identity (whole basename)
 #   bash jimfile.sh path <key>                        configured path for <key>,
 #                                                     regardless of existence
 #                                                     (D3 — single-arg form)
 #   bash jimfile.sh path spec      <group> <id> <name>
 #   bash jimfile.sh path plan      <group> <id> <name>
 #   bash jimfile.sh path research  <group> <id> <name>
+#   bash jimfile.sh path spec      <group> <provisional-token>
+#   bash jimfile.sh path plan      <group> <provisional-token>
+#   bash jimfile.sh path research  <group> <provisional-token>
+#                                                     the token IS the basename
 #   bash jimfile.sh path debug     <topic>            collision-resolved
 #   bash jimfile.sh path brainstorm <topic>           collision-resolved
 #   bash jimfile.sh glob specs [<group>]              one path per line
 #   bash jimfile.sh glob debug                        one path per line
 #   bash jimfile.sh glob brainstorms                  one path per line
 #   bash jimfile.sh kinds                             valid kinds, no I/O
+#   bash jimfile.sh valid-relpath <path>              exit 0 iff safe repo-relative
 #   bash jimfile.sh -c <path> <subcmd>                use <path> as jimconf.toml
+#
+# KIND-VS-KEY: `blueprint`
+#   `blueprint` is both a config KEY (the project-tier map, default
+#   BLUEPRINT.md at the project root) and a per-group KIND (the reserved
+#   000-blueprint slot). Verb + arity disambiguate:
+#     get blueprint            → map path, existence-gated (NOT_FOUND if absent)
+#     path blueprint           → map path from config, regardless of existence
+#     path blueprint <group>   → {specs}/<group>/000-blueprint/spec.md (kind)
 #
 # CONVENTION
 #   Production skills do NOT pass -c. The flag exists for tests and ad-hoc
@@ -54,7 +73,7 @@ set -uo pipefail
 # LC_ALL=C ensures locale-independent behavior for `tr` case folding, regex
 # character class matching, and date formatting. Without this, locales like
 # Turkish produce non-deterministic slugs (dotless ı / dotted İ are not ASCII
-# i/I). Spec 017 security.md Finding 11.
+# i/I).
 export LC_ALL=C
 
 # ─── Section: Globals ────────────────────────────────────────────────────────
@@ -64,7 +83,13 @@ export LC_ALL=C
 JIMCONF="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../conf/scripts" && pwd)/jimconf.sh"
 
 # Valid artifact kinds. Drives `path <kind>` validation and `kinds` output.
-readonly KINDS=(spec plan research debug brainstorm issue)
+readonly KINDS=(spec plan research debug brainstorm issue blueprint)
+
+# The reserved per-group blueprint directory name. Sorts ahead of `001`, parses
+# to id `0`, and is skipped by every ordinal fold. The single definition of this literal in
+# code — consumed by the blueprint slot resolver and emitted by `blueprint-dirname`
+# for sibling scripts that compose the directory path on their own base.
+readonly BLUEPRINT_DIRNAME="000-blueprint"
 
 # Optional -c <path> override for jimconf.toml. Empty when not supplied.
 CONFIG_FILE=""
@@ -132,16 +157,16 @@ today_yyyymmdd() {
 #   Print the current second-resolution UTC timestamp as ISO 8601 with a Z
 #   suffix (e.g. 2026-06-13T14:45:30Z). Single source of truth for issue
 #   created/updated stamping. The format is a hardcoded literal — it takes no
-#   argument and is never config-driven (spec 022 security.md Finding 2).
+#   argument and is never config-driven.
 now_utc_iso8601() {
   date -u +%Y-%m-%dT%H:%M:%SZ
 }
 
 # is_valid_slug <slug>
-#   AC-C7 validation: slug must be lowercase alnum + dash only, alnum-start,
+#   Slug must be lowercase alnum + dash only, alnum-start,
 #   non-empty. Rejects path separators (/, \), '..', leading dot, control
 #   characters, and any other non-conforming input. Errors go to stderr;
-#   stdout stays empty. Spec 017 security.md Finding 1 + Finding 2.
+#   stdout stays empty.
 is_valid_slug() {
   local slug="$1"
   if [[ -z "$slug" ]]; then
@@ -156,8 +181,8 @@ is_valid_slug() {
 }
 
 # is_valid_id <id>
-#   Bounded allowlist for a resolved prefix or a full issue id (spec 021 AC #7,
-#   AC #11). Broader than is_valid_slug — uppercase and '.' are allowed — but
+#   Bounded allowlist for a resolved prefix or a full issue id. Broader than
+#   is_valid_slug — uppercase and '.' are allowed — but
 #   still a positive allowlist, never a denylist, so it cannot escape the
 #   issues directory or be parsed as a flag by downstream tooling.
 #
@@ -193,6 +218,31 @@ is_valid_id() {
 # the single security boundary without copying is_valid_id a fourth time.
 cmd_valid_id() {
   is_valid_id "${1:-}"
+}
+
+# cmd_valid_relpath <path> — exit 0 iff <path> is a safe repo-relative path:
+# non-empty, not absolute, no '..' path segment. The deterministic shape gate
+# for territory declarations recorded in the project map. Shape-only:
+# existence is deliberately not checked — a
+# declared territory may predate its code. Segment-precise: 'a..b/x' passes
+# ('..' inside a name), 'a/../b' is rejected ('..' as a segment).
+cmd_valid_relpath() {
+  local p="${1:-}"
+  if [[ -z "$p" ]]; then
+    echo "error: relpath rejected — empty" >&2
+    return 1
+  fi
+  if [[ "$p" == /* ]]; then
+    echo "error: relpath rejected — absolute: '$p'" >&2
+    return 1
+  fi
+  case "/$p/" in
+    */../*)
+      echo "error: relpath rejected — contains '..' segment: '$p'" >&2
+      return 1
+      ;;
+  esac
+  return 0
 }
 
 cmd_exists() {
@@ -250,52 +300,355 @@ cmd_next_id() {
     echo "error: 'next-id' requires an argument" >&2
     return 2
   fi
-  # Dispatch by first arg: 'issue' takes a subject and returns a
-  # date-prefixed slug; everything else is treated as a spec group name
-  # (existing numeric-id behavior).
-  if [[ "$first" == "issue" ]]; then
-    local subject="${2:-}"
-    if [[ -z "$subject" ]]; then
-      echo "error: 'next-id issue' requires <subject>" >&2
-      return 2
-    fi
-    local slug prefix
-    slug="$(normalize_slug "$subject")" || return 1
-    is_valid_slug "$slug" || return 1
-    prefix="$(resolve_issue_prefix)"
-    printf '%s-%s\n' "$prefix" "$slug"
-    return 0
+  # `issue` is the only kind this verb answers for. A spec ordinal comes from
+  # the coordination allocator and nowhere else: a tree scan is a second
+  # computation of the same number, and two authorities that can disagree
+  # mid-move is exactly the window the registry exists to close.
+  if [[ "$first" != "issue" ]]; then
+    echo "error: 'next-id' answers for issues only — a spec ordinal comes from" \
+         "the coordination allocator (jimalloc.sh peek spec <group>)" >&2
+    return 2
   fi
-  local group="$first"
-  local specs_root group_dir max=0
+  local subject="${2:-}"
+  if [[ -z "$subject" ]]; then
+    echo "error: 'next-id issue' requires <subject>" >&2
+    return 2
+  fi
+  local slug prefix
+  slug="$(normalize_slug "$subject")" || return 1
+  is_valid_slug "$slug" || return 1
+  prefix="$(resolve_issue_prefix)"
+  printf '%s-%s\n' "$prefix" "$slug"
+}
+
+# The reserved prefix a provisional identity's ordinal slot carries. The grammar
+# is the allocator's; it is named here because a spec dir bound offline wears it
+# as a directory name and this boundary has to recognize one.
+PROV_PREFIX="P-"
+
+# prov_id_boundary <token> — the id boundary as is_prov_token's shared body
+# reaches it. Local adapter: this script owns is_valid_id, whose rejection
+# message is noise on what is only a shape probe.
+prov_id_boundary() { is_valid_id "$1" >/dev/null 2>&1; }
+
+# is_prov_token <token>
+#   Exit 0 iff <token> is the reserved provisional ordinal form the allocator
+#   issues: the prefix, then an 8-digit issuance date, then a slug, with the
+#   post-prefix body AND the slug alone each carried through the id boundary.
+#   The token is the whole ordinal slot — a spec bound while the coordination
+#   point was unreachable wears it as its directory name, so there is no
+#   separate ordinal and slug to compose. Grammar-distinct from a real ordinal
+#   by construction: no token satisfies both.
+#
+#   SYNC: the function body below is mirrored verbatim in
+#   skills/file/scripts/jimalloc.sh and skills/spec/scripts/reconcile.sh. A
+#   tests/jimfile.sh case asserts the three copies are byte-identical — keep
+#   them in lockstep when editing. Each script supplies its own PROV_PREFIX and
+#   prov_id_boundary; the grammar itself lives entirely in the body.
+is_prov_token() {
+  local token="$1" body date slug
+  [[ "$token" == "$PROV_PREFIX"* ]] || return 1
+  body="${token#"$PROV_PREFIX"}"
+  [[ -n "$body" ]] || return 1
+  date="${body%%-*}"; slug="${body#*-}"
+  [[ "$date" =~ ^[0-9]{8}$ ]] || return 1
+  [[ -n "$slug" && "$slug" != "$body" ]] || return 1
+  prov_id_boundary "$body" || return 1
+  prov_id_boundary "$slug"
+}
+
+# is_spec_dir_basename <name>
+#   Exit 0 iff <name> is a basename a spec directory can carry: a real ordinal
+#   (bare or slugged) or the reserved provisional form over a token the id
+#   boundary accepts. Nothing else — an arbitrary directory, a path separator,
+#   '..', or a prefixed name whose token is unusable is refused, so the rename
+#   verbs cannot be pointed at a directory that is not a spec.
+is_spec_dir_basename() {
+  local name="$1" tok
+  [[ -n "$name" ]]        || return 1
+  [[ "$name" == *"/"* ]]  && return 1
+  [[ "$name" == *".."* ]] && return 1
+  [[ "$name" =~ ^[0-9]{3,15}(-.+)?$ ]] && return 0
+  if [[ "$name" == "$PROV_PREFIX"* ]]; then
+    tok="${name#"$PROV_PREFIX"}"
+    [[ -n "$tok" ]] || return 1
+    is_valid_id "$tok" >/dev/null 2>&1 && return 0
+  fi
+  return 1
+}
+
+# spec_ordinal_holder <specs_dir> <group> <ordinal> [<exclude_basename>]
+#   Print the basename of the sibling directory already holding <ordinal> in
+#   <group>. rc 0 held (holder printed) · rc 1 free · rc 2 unusable argument.
+#
+#   Occupancy is decided NUMERICALLY: a spec ordinal is a number that happens to
+#   be written zero-padded, so '18' and '018' are one ordinal, and a bare-ordinal
+#   directory holds it as surely as a slugged one. Deciding it by string match is
+#   what lets a differently-spelled ordinal read as free space and land a second
+#   directory on an ordinal already taken.
+#
+#   A sibling whose leading token is not a usable ordinal — a plain name, a
+#   pending provisional dir, or a token wider than the registry could be rebuilt
+#   from — is skipped: never counted as a holder, never an error. The tree is
+#   branch-writable, so one unusable sibling must decide nothing and stop
+#   nothing. An unusable ARGUMENT is the opposite: rc 2, because reading a
+#   rejected ordinal as "free" is exactly how a bad token gets through.
+#
+#   <exclude_basename> names a directory to ignore, so a rename whose source
+#   already sits on the target ordinal does not collide with itself.
+spec_ordinal_holder() {
+  local root="$1" group="$2" ord="$3" exclude="${4:-}"
+  [[ -n "$root" ]] || return 2
+  is_valid_id "$group" >/dev/null 2>&1 || return 2
+  [[ "$ord" =~ ^[0-9]{1,15}$ ]] || return 2
+  if [[ -n "$exclude" ]]; then
+    is_spec_dir_basename "$exclude" || return 2
+  fi
+  local group_dir="$root/$group"
+  [[ -d "$group_dir" ]] || return 1
+  local entry name tok
+  for entry in "$group_dir"/*/; do
+    [[ -d "$entry" ]] || continue
+    name="${entry%/}"; name="${name##*/}"
+    [[ -n "$exclude" && "$name" == "$exclude" ]] && continue
+    tok="${name%%-*}"
+    [[ "$tok" =~ ^[0-9]{1,15}$ ]] || continue
+    if (( 10#$tok == 10#$ord )); then
+      printf '%s\n' "$name"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# dir_inode <path> — the inode number of <path> itself, empty if unreadable.
+# `ls -di` is the portable spelling; `stat` differs between GNU and BSD.
+dir_inode() {
+  ls -di -- "$1" 2>/dev/null | awk 'NR==1{print $1}'
+}
+
+# undo_nested_rename <src> <target> <src-inode-before>
+#   A directory that appears at <target> between the existence check and the move
+#   turns `mv <src> <target>` into a move INSIDE it, leaving the source nested
+#   under a directory this command never created — a realized-but-wrong spec
+#   directory, exactly the silent wrong state a rename must not produce.
+#
+#   PREMISE, stated because reading it wrong is worse than the race it guards:
+#   `mv` guarantees the contents arrive, NOT that the inode survives. A
+#   same-filesystem rename keeps it, so <target> carrying the source's inode
+#   PROVES the rename landed. A cross-device move — what renaming a lower or
+#   merged directory on an overlay filesystem becomes — copies and deletes, so it
+#   lands correctly with a NEW inode. Inode identity is therefore sufficient to
+#   prove a rename landed and useless to disprove it.
+#
+#   The absence of <target>/<basename> is the second tell, and it is the one that
+#   holds on both kinds of filesystem: a rename that landed nested nothing. Only
+#   when <target> is not the moved directory AND something wearing the source's
+#   basename sits inside it is this the race.
+#
+#   The cost of reading it that way: where the move copied, a directory that
+#   legitimately contains an entry named for its own former basename reads as
+#   nested and is restored. That entry would be a provisional spec directory
+#   inside another spec directory — refusing it is the safer error.
+#
+#   An empty <src-inode-before> degrades to the basename tell alone rather than
+#   passing everything through; the callers refuse before the move instead, where
+#   refusing costs nothing.
+#
+#   rc 0 the rename landed · rc 1 it did not; the source is restored where
+#   possible and the caller must fail rather than report a rename that did not
+#   happen. `mv -T` would foreclose the race outright, but it is GNU-only and
+#   this layer is bash plus POSIX tools.
+undo_nested_rename() {
+  local src="$1" target="$2" src_ino="$3"
+  local base="${src##*/}" nested
+  nested="$target/$base"
+  [[ -n "$src_ino" && "$(dir_inode "$target")" == "$src_ino" ]] && return 0
+  [[ -e "$nested" ]] || return 0
+  # The restore is itself a move into a path a concurrent writer can occupy, so
+  # its outcome is verified rather than assumed: the source must be back, and it
+  # must not have nested in turn.
+  if [[ ! -e "$src" ]] && mv -- "$nested" "$src" \
+     && [[ -d "$src" && ! -e "$src/$base" ]]; then
+    echo "error: '$target' appeared as a directory during the rename and '$src'" \
+         "was moved inside it; restored — nothing was renamed" >&2
+  else
+    echo "error: '$target' appeared as a directory during the rename and '$src'" \
+         "did not land there; it could not be restored — repair '$target' by hand" >&2
+  fi
+  return 1
+}
+
+# cmd_spec_ordinal_holder <group> <ordinal> [--exclude <basename>] [--root <dir>]
+#   The verb form of spec_ordinal_holder over the configured specs dir, so the
+#   realizer decides occupancy through the same predicate the rename verbs
+#   enforce rather than keeping a second copy in agreement by convention.
+#
+#   --root names the specs dir explicitly, for a caller that already carries one
+#   as an argument rather than reading it from config. Without it the two would
+#   have to be assumed equal, and a gate that reads a different tree than the one
+#   it is guarding decides nothing.
+cmd_spec_ordinal_holder() {
+  local group="" ord="" exclude="" root="" seen=0
+  while (( $# )); do
+    case "$1" in
+      --exclude)
+        if [[ -z "${2:-}" ]]; then
+          echo "error: spec-ordinal-holder: --exclude requires a basename" >&2
+          return 2
+        fi
+        exclude="$2"; shift 2 ;;
+      --root)
+        if [[ -z "${2:-}" ]]; then
+          echo "error: spec-ordinal-holder: --root requires a directory" >&2
+          return 2
+        fi
+        root="$2"; shift 2 ;;
+      -*)
+        echo "error: spec-ordinal-holder: unknown option '$1'" >&2
+        return 2 ;;
+      *)
+        case "$seen" in
+          0) group="$1" ;;
+          1) ord="$1" ;;
+          *) echo "error: spec-ordinal-holder: unexpected argument '$1'" >&2; return 2 ;;
+        esac
+        seen=$(( seen + 1 )); shift ;;
+    esac
+  done
+  if [[ -z "$group" || -z "$ord" ]]; then
+    echo "error: 'spec-ordinal-holder' requires <group> <ordinal> [--exclude <basename>] [--root <dir>]" >&2
+    return 2
+  fi
+  local specs_root rc
+  specs_root="${root:-$(jimconf_get specs)}"
+  spec_ordinal_holder "$specs_root" "$group" "$ord" "$exclude"
+  rc=$?
+  if (( rc == 2 )); then
+    echo "error: spec-ordinal-holder rejected its arguments — group '$group'," \
+         "ordinal '$ord'${exclude:+, exclude '$exclude'}" >&2
+  fi
+  return "$rc"
+}
+
+# cmd_mv_spec_id <group> <old-basename> <new-id> <name>
+#                <group> <old-basename> <provisional-token>
+#   Rename {specs}/{group}/{old-basename}/ onto a different identity — the sole
+#   spec-directory rename primitive for an untracked directory, taking the source
+#   by explicit basename rather than resolving it by ordinal glob, so it
+#   expresses a cross-id move as readily as a slug-only one. Three callers need
+#   it: an advisory ordinal that shifted before binding, a placeholder binding to
+#   a provisional identity offline, and a pending provisional identity being
+#   realized onto its real ordinal.
+#
+#   The four-argument form composes {new-id}-{name}: {new-id} is digits between
+#   the padded floor and the width the registry can be rebuilt from (so an
+#   unpadded id never becomes a directory name) and {name} clears the slug
+#   boundary. The three-argument form takes the target basename whole, and ONLY
+#   for the reserved provisional form, whose token is the entire basename; every
+#   other target must go through the four-argument form, so this is not a general
+#   rename-to-anything escape hatch.
+#
+#   {group} clears the id boundary and {old-basename} the spec-dir basename gate
+#   in both forms. Same parent only; the source must exist, an ordinal another
+#   directory already holds is refused, and an existing target is refused rather
+#   than clobbered — a spec ordinal is path identity, so a collision halts
+#   instead of overwriting or suffixing. A target that appears only after that
+#   check is caught after the move and undone. Prints the target dir. The
+#   uncommitted-case twin of jimledger.sh's rename-tracked.
+cmd_mv_spec_id() {
+  local group="${1:-}" old="${2:-}" new_id="${3:-}" new_name="${4:-}"
+  if [[ -z "$group" || -z "$old" || -z "$new_id" ]]; then
+    echo "error: 'mv-spec-id' requires <group> <old-basename> <new-id> <name>" \
+         "(or <group> <old-basename> <provisional-token>)" >&2
+    return 2
+  fi
+  if ! is_valid_id "$group"; then
+    echo "error: mv-spec-id group rejected — '$group'" >&2
+    return 1
+  fi
+  if ! is_spec_dir_basename "$old"; then
+    echo "error: mv-spec-id source rejected — '$old'" >&2
+    return 1
+  fi
+  local new_base
+  if [[ -z "$new_name" ]]; then
+    # Three-argument form: the provisional token IS the basename.
+    if ! is_prov_token "$new_id"; then
+      echo "error: mv-spec-id target rejected — '$new_id' (the 3-argument form takes" \
+           "a provisional token only; use <new-id> <name> for a real ordinal)" >&2
+      return 1
+    fi
+    new_base="$new_id"
+  else
+    if [[ ! "$new_id" =~ ^[0-9]{3,15}$ ]]; then
+      echo "error: mv-spec-id new-id rejected — '$new_id' (allowed: ^[0-9]{3,15}\$)" >&2
+      return 1
+    fi
+    if ! is_valid_slug "$new_name"; then
+      echo "error: mv-spec-id name rejected — '$new_name'" >&2
+      return 1
+    fi
+    new_base="$new_id-$new_name"
+  fi
+  local specs_root group_dir
   specs_root="$(jimconf_get specs)"
   group_dir="$specs_root/$group"
-  if [[ -d "$group_dir" ]]; then
-    local entry name id_part id_clean
-    for entry in "$group_dir"/*/; do
-      [[ -d "$entry" ]] || continue
-      name="$(basename "$entry")"
-      # Match leading 3-digit prefix followed by '-' or end.
-      id_part="${name%%-*}"
-      # Strip leading zeros for arithmetic (but guard '000' → 0).
-      id_clean="$(printf '%s' "$id_part" | sed 's/^0*//')"
-      [[ -z "$id_clean" ]] && id_clean=0
-      if [[ "$id_clean" =~ ^[0-9]+$ ]]; then
-        if (( id_clean > max )); then
-          max=$id_clean
-        fi
-      fi
-    done
+  if [[ ! -d "$group_dir" ]]; then
+    echo "error: mv-spec-id group dir not found — '$group_dir'" >&2
+    return 1
   fi
-  printf '%03d\n' $(( max + 1 ))
+  local src="$group_dir/$old" target="$group_dir/$new_base"
+  if [[ ! -d "$src" ]]; then
+    echo "error: mv-spec-id source dir not found — '$src'" >&2
+    return 1
+  fi
+  # A spec ordinal is path identity, so ANOTHER directory already holding the
+  # target ordinal is registry-vs-tree drift — refuse rather than land a second
+  # directory on it. Numeric, so a differently-padded occupant still collides;
+  # the source excludes itself, since a placeholder already sitting on the
+  # ordinal it is being named within is not a collision. The provisional target
+  # form carries no ordinal, so only the numeric form is checked.
+  local held held_rc
+  if [[ -n "$new_name" ]]; then
+    held="$(spec_ordinal_holder "$specs_root" "$group" "$new_id" "$old")"
+    held_rc=$?
+    if (( held_rc == 0 )); then
+      echo "error: mv-spec-id ordinal $new_id is already held by '$held'" \
+           "(registry-vs-tree drift); nothing renamed" >&2
+      return 1
+    fi
+    if (( held_rc != 1 )); then
+      echo "error: mv-spec-id could not decide occupancy of ordinal '$new_id'" >&2
+      return 1
+    fi
+  fi
+  if [[ -e "$target" ]]; then
+    echo "error: mv-spec-id target already exists — '$target'" >&2
+    return 1
+  fi
+  # The post-move guard reads this inode. Refuse now rather than move first and
+  # guard on nothing — before the move, refusing costs nothing.
+  local src_ino
+  src_ino="$(dir_inode "$src")"
+  if [[ -z "$src_ino" ]]; then
+    echo "error: mv-spec-id cannot read the identity of '$src'; nothing renamed" >&2
+    return 1
+  fi
+  if ! mv -- "$src" "$target"; then
+    echo "error: mv-spec-id failed to rename '$src' -> '$target'" >&2
+    return 1
+  fi
+  undo_nested_rename "$src" "$target" "$src_ino" || return 1
+  printf '%s\n' "$target"
 }
 
 # issue_next_num <issues_dir>
 #   Scan <issues_dir>/*.md for top-level `num:` frontmatter and print max+1
 #   (or 1 when none carry a num). Shared by cmd_next_num and the `{seq}`
-#   prefix token (spec 021). Reads num: only; never mutates. The display
+#   prefix token. Reads num: only; never mutates. The display
 #   ordinal is decentralized — duplicates across branches are accepted as
-#   non-fatal (spec 019 DD #5).
+#   non-fatal.
 issue_next_num() {
   local dir="${1:-}" max=0 f n
   dir="${dir%/}"
@@ -335,7 +688,7 @@ cmd_next_num() {
 #   Any other text passes through verbatim. Returns rc 1 when a {date:...}
 #   render fails or an unknown / malformed token is encountered. The format
 #   string is passed as a single quoted argument to `date` — never eval'd or
-#   word-split (spec 021 security.md Finding 3); LC_ALL=C from the preamble
+#   word-split; LC_ALL=C from the preamble
 #   keeps output deterministic. Charset validation is the caller's job.
 render_template() {
   local tmpl="$1" ordinal="$2"
@@ -380,14 +733,14 @@ render_template() {
 }
 
 # resolve_issue_prefix
-#   Resolve the configured issue-id prefix (spec 021). Maps the preset name in
+#   Resolve the configured issue-id prefix. Maps the preset name in
 #   issue_id_prefix to a template, renders it (projecting the next ordinal for
-#   {seq}, AC #4), and validates the result with is_valid_id. Prints the
+#   {seq}), and validates the result with is_valid_id. Prints the
 #   resolved prefix on success. Falls back to the YYYYMMDD- date prefix when
 #   the scheme is unknown, the project tag is empty, or rendering/validation
 #   fails — emitting a one-line notice to stderr in those malformed cases
-#   (AC #8) while a blank/absent config resolves silently to date (AC #9).
-#   Resolution stays entirely in bash — never delegated to the caller (AC #10).
+#   while a blank/absent config resolves silently to date.
+#   Resolution stays entirely in bash — never delegated to the caller.
 resolve_issue_prefix() {
   local scheme project tmpl ordinal prefix default_prefix
   scheme="$(jimconf_get issue_id_prefix)"
@@ -441,7 +794,7 @@ cmd_prefix_from() {
       elif [[ "$created" == *T*Z ]]; then
         prefix="${date_part}T${created:11:2}${created:14:2}${created:17:2}"
       else
-        prefix="${date_part}T000000"        # date-only -> day-start (AC #3)
+        prefix="${date_part}T000000"        # date-only -> day-start
       fi
       ;;
     sequential)
@@ -482,14 +835,19 @@ cmd_prefix_from() {
 #   Two forms, dispatched by arity:
 #     Single-arg form (D3): `path <key>` returns the configured path for a
 #     jimconf key (delegates to jimconf.sh, regardless of disk existence).
-#     The only KINDS∩KEYS overlap is `debug`: `path debug` (no further args)
-#     takes the key form and returns the configured `debug` directory.
+#     KINDS∩KEYS overlaps are `debug` and `blueprint`: `path debug`
+#     / `path blueprint` (no further args) take the key form and return the
+#     configured `debug` directory / project-tier map path respectively.
 #     Multi-arg form: `path <kind> <args...>` resolves a derived artifact path:
-#       spec     <group> <id> <name>
-#       plan     <group> <id> <name>
-#       research <group> <id> <name>
+#       spec     <group> <id> <name>  |  spec     <group> <provisional-token>
+#       plan     <group> <id> <name>  |  plan     <group> <provisional-token>
+#       research <group> <id> <name>  |  research <group> <provisional-token>
 #       debug      <topic>
 #       brainstorm <topic>
+#       blueprint  <group>            (reserved 000-blueprint/spec.md slot)
+#     The two-argument spec/plan/research form takes a provisional identity,
+#     whose token is the WHOLE directory basename rather than an ordinal that
+#     composes with a separate name.
 cmd_path() {
   local first="${1:-}"
   if [[ -z "$first" ]]; then
@@ -516,14 +874,54 @@ cmd_path() {
   fi
   case "$kind" in
     spec|plan|research)
+      # Two arities, one per identity state a bound spec can hold. The numeric
+      # form composes {id}-{name}; the two-argument form takes a provisional
+      # token as the WHOLE basename, because that is what the allocator issues —
+      # composing a second slug onto it would name a directory that does not
+      # exist. Every token clears its boundary here, the way the blueprint and
+      # issue arms do, so this helper cannot hand back a path built from a token
+      # the rest of the flow would refuse.
       local group="${1:-}" id="${2:-}" name="${3:-}"
-      if [[ -z "$group" || -z "$id" || -z "$name" ]]; then
-        echo "error: 'path $kind' requires <group> <id> <name>" >&2
+      if [[ -z "$group" || -z "$id" ]]; then
+        echo "error: 'path $kind' requires <group> <id> <name>" \
+             "(or <group> <provisional-token>)" >&2
         return 2
+      fi
+      is_valid_slug "$group" || return 1
+      local base
+      if [[ -z "$name" ]]; then
+        if ! is_prov_token "$id"; then
+          echo "error: path $kind target rejected — '$id' (the 2-argument form takes" \
+               "a provisional token only; use <id> <name> for a real ordinal)" >&2
+          return 1
+        fi
+        base="$id"
+      else
+        if [[ ! "$id" =~ ^[0-9]{3,15}$ ]]; then
+          echo "error: path $kind id rejected — '$id' (allowed: ^[0-9]{3,15}\$)" >&2
+          return 1
+        fi
+        is_valid_slug "$name" || return 1
+        base="$id-$name"
       fi
       local specs_root
       specs_root="$(jimconf_get specs)"
-      printf '%s/%s/%s-%s/%s.md\n' "$specs_root" "$group" "$id" "$name" "$kind"
+      printf '%s/%s/%s/%s.md\n' "$specs_root" "$group" "$base" "$kind"
+      ;;
+    blueprint)
+      # Reserved per-group slot: {specs}/<group>/000-blueprint/spec.md. The
+      # group is validated through the single is_valid_slug boundary so a
+      # malformed group cannot direct a write outside the specs tree. No
+      # id/name — the slot is fixed, not allocated.
+      local group="${1:-}"
+      if [[ -z "$group" ]]; then
+        echo "error: 'path blueprint' requires <group>" >&2
+        return 2
+      fi
+      is_valid_slug "$group" || return 1
+      local specs_root
+      specs_root="$(jimconf_get specs)"
+      printf '%s/%s/%s/spec.md\n' "$specs_root" "$group" "$BLUEPRINT_DIRNAME"
       ;;
     issue)
       local slug="${1:-}"
@@ -644,6 +1042,13 @@ cmd_kinds() {
   done
 }
 
+# cmd_blueprint_dirname
+#   Echo the reserved per-group blueprint directory name. Lets sibling scripts
+#   single-source the literal instead of hand-composing it. No I/O.
+cmd_blueprint_dirname() {
+  printf '%s\n' "$BLUEPRINT_DIRNAME"
+}
+
 # ─── Section: Argument dispatch ──────────────────────────────────────────────
 
 usage() {
@@ -655,20 +1060,33 @@ usage:
   jimfile.sh slug <topic>                       kebab-case slug
   jimfile.sh date                               today as YYYYMMDD
   jimfile.sh now                                now as YYYY-MM-DDThh:mm:ssZ (UTC)
-  jimfile.sh next-id <group>                    next zero-padded spec id
+  jimfile.sh next-id issue <subject>            date-prefixed issue id
+  jimfile.sh mv-spec-id <group> <old-basename> <new-id> <name>
+                                                rename a spec dir onto a different id
+  jimfile.sh mv-spec-id <group> <old-basename> <provisional-token>
+                                                rename onto a provisional identity
+  jimfile.sh spec-ordinal-holder <group> <ordinal> [--exclude <basename>] [--root <dir>]
+                                                dir holding <ordinal> numerically;
+                                                exit 0 held · 1 free · 2 bad input
   jimfile.sh next-num issue                     next display ordinal (max+1)
   jimfile.sh path <key>                         configured path for <key>
   jimfile.sh path spec      <group> <id> <name>
   jimfile.sh path plan      <group> <id> <name>
   jimfile.sh path research  <group> <id> <name>
+  jimfile.sh path spec      <group> <provisional-token>
+  jimfile.sh path plan      <group> <provisional-token>
+  jimfile.sh path research  <group> <provisional-token>
   jimfile.sh path debug     <topic>             collision-resolved
   jimfile.sh path brainstorm <topic>            collision-resolved
   jimfile.sh glob specs [<group>]               one path per line
   jimfile.sh glob debug                         one path per line
   jimfile.sh glob brainstorms                   one path per line
   jimfile.sh kinds                              valid kinds, no I/O
+  jimfile.sh blueprint-dirname                  reserved group blueprint dir name
   jimfile.sh valid-id <id>                      exit 0 if id passes is_valid_id
-  jimfile.sh prefix-from <created> <num>        re-derive active prefix (spec 023)
+  jimfile.sh valid-relpath <path>               exit 0 iff safe repo-relative
+                                                (no abs, no '..' segment)
+  jimfile.sh prefix-from <created> <num>        re-derive active prefix
   jimfile.sh -c <path> <subcmd>                 forward -c to jimconf.sh
 USAGE
 }
@@ -696,10 +1114,14 @@ main() {
     now)     cmd_now ;;
     next-id)  cmd_next_id  "$@" ;;
     next-num) cmd_next_num "$@" ;;
+    mv-spec-id) cmd_mv_spec_id "$@" ;;
+    spec-ordinal-holder) cmd_spec_ordinal_holder "$@" ;;
     path)    cmd_path    "$@" ;;
     glob)    cmd_glob    "$@" ;;
     kinds)   cmd_kinds ;;
+    blueprint-dirname) cmd_blueprint_dirname ;;
     valid-id) cmd_valid_id "$@" ;;
+    valid-relpath) cmd_valid_relpath "$@" ;;
     prefix-from) cmd_prefix_from "$@" ;;
     *)
       echo "error: unknown subcommand '$subcmd'" >&2
@@ -727,7 +1149,7 @@ main "$@"
 #    or other cross-agent install scopes. Claude-Code-only substitutions
 #    stay at skill-side call sites.
 #
-# 3. next-id parses the directory basename's leading numeric prefix only.
+# 3. Spec-directory readers parse the basename's leading numeric prefix only.
 #    Non-numeric prefixes (e.g., a stray "draft-foo/") are skipped — they
 #    cannot collide with the 3-digit sequence.
 #

@@ -59,6 +59,25 @@ field_value() {
     | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
 }
 
+# Set together by split_row; the four fields of the plan row last read.
+ROW_ACTION="" ROW_OLD="" ROW_NEW="" ROW_REASON=""
+
+# split_row <row> — fill those four from one tab-separated plan row.
+#
+#   Not `IFS=$'\t' read -r action old new reason`: tab is IFS *whitespace*, so a
+#   run of tabs collapses to a single delimiter. Every skip row carries an empty
+#   new-id field, so reading one that way shifts its reason into the new-id slot
+#   and drops it — which is why the preview announced "un-migratable:" with
+#   nothing after it, for every skipped issue. The preview is what an operator
+#   approves the migration on, so the row that cannot say why it was skipped is
+#   the one that most needs to.
+split_row() {
+  local row="$1"
+  ROW_ACTION="${row%%$'\t'*}"; row="${row#*$'\t'}"
+  ROW_OLD="${row%%$'\t'*}";    row="${row#*$'\t'}"
+  ROW_NEW="${row%%$'\t'*}";    ROW_REASON="${row#*$'\t'}"
+}
+
 # build_plan <dir> — emit one TAB row per issue (deterministic, sorted-glob
 # order): <action>\t<old_id>\t<new_id>\t<reason>
 #   action ∈ rename | collision-resolved | skip-conforming | skip-unmigratable
@@ -105,16 +124,35 @@ build_plan() {
   local -A taken=()
   local row action old new reason
   for row in "${rows[@]}"; do
-    IFS=$'\t' read -r action old new reason <<<"$row"
+    split_row "$row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     [[ "$action" == rename ]] || taken["$old"]=1
   done
   for row in "${rows[@]}"; do
-    IFS=$'\t' read -r action old new reason <<<"$row"
+    split_row "$row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     if [[ "$action" == rename ]]; then
       if [[ -n "${taken[$new]:-}" ]]; then
         local n=2 cand
         while cand="${new}-${n}"; [[ -n "${taken[$cand]:-}" ]]; do n=$((n+1)); done
         new="$cand"; action="collision-resolved"
+        # The discriminator makes a *new* id, and this one becomes a filename.
+        # Its source cleared the boundary, but clearance does not transfer: the
+        # charset cannot change and '..' cannot be introduced, yet the suffix
+        # can carry a near-cap id past the length limit. So it clears the
+        # boundary on its own account, which is what the header claims.
+        if ! jf valid-id "$new" >/dev/null 2>&1; then
+          # The reservation loop above leaves a rename's old id free, because a
+          # renamed file moves away from it. This row entered as a rename and is
+          # leaving as a skip, so it keeps its file — and must keep its name
+          # with it. Without re-reserving, a later row is assigned the name of a
+          # file still sitting there, both are moved into one path, and the
+          # retire loop then removes the survivor's old name.
+          taken["$old"]=1
+          printf '%s\t%s\t%s\t%s\n' "skip-unmigratable" "$old" "" \
+            "discriminated id failed validation"
+          continue
+        fi
       fi
       taken["$new"]=1
     fi
@@ -124,9 +162,11 @@ build_plan() {
 
 # render_plan <plan-rows> — human preview + summary counts.
 render_plan() {
-  local plan="$1" action old new reason renames=0 skips=0 collisions=0
-  while IFS=$'\t' read -r action old new reason; do
-    [[ -z "$action" ]] && continue
+  local plan="$1" action old new reason renames=0 skips=0 collisions=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_row "$__row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     case "$action" in
       rename)             printf '  rename     %s  ->  %s\n' "$old" "$new"; renames=$((renames+1)) ;;
       collision-resolved) printf '  collision  %s  ->  %s\n' "$old" "$new"; renames=$((renames+1)); collisions=$((collisions+1)) ;;
@@ -177,9 +217,11 @@ apply_plan() {
   local mapfile
   mapfile="$(mktemp "$dir/.migrate.map.XXXXXX")" || {
     echo "error: cannot create tmp in $dir" >&2; return 1; }
-  local action old new reason
-  while IFS=$'\t' read -r action old new reason; do
-    [[ -z "$action" ]] && continue
+  local action old new reason __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_row "$__row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     case "$action" in
       rename|collision-resolved) printf '%s\t%s\n' "$old" "$new" >> "$mapfile" ;;
     esac
@@ -221,24 +263,66 @@ apply_plan() {
     fi
   done
 
-  local i
+  # Commit. Every staged file is put in place before any old name is retired:
+  # retiring first opens a window where a failure has taken the old name away
+  # and not yet supplied the new one, leaving every issue past the failure point
+  # with neither — its only copy a tmp nothing removes. Renaming first means the
+  # worst failure leaves a duplicate rather than a hole.
+  local i j held
+  local -A new_names=() landed=()
+  for i in "${!s_new[@]}"; do new_names["${s_new[$i]}"]=1; done
   for i in "${!s_tmp[@]}"; do
-    [[ "${s_old[$i]}" != "${s_new[$i]}" ]] && rm -f "${s_old[$i]}"
-  done
-  for i in "${!s_tmp[@]}"; do
-    if ! mv "${s_tmp[$i]}" "${s_new[$i]}"; then
+    # Test seam: simulate a mid-commit failure, after one rename has landed.
+    # Never set in production.
+    if [[ -n "${MIGRATE_FAIL_COMMIT:-}" && "$i" -eq 1 ]] \
+       || ! mv "${s_tmp[$i]}" "${s_new[$i]}"; then
+      # No old name has been RETIRED yet, so every issue still has a copy under
+      # one name or the other — except where a rename chain or a swap made one
+      # file's old name another's new one, the same shape the retire loop below
+      # guards. There a completed rename has written over a still-pending
+      # issue's only on-disk copy, and its staged file is what is left of it, so
+      # that one is kept and named. The rest never landed and are discarded
+      # rather than left in the collection for a later run to publish.
+      held=""
+      for (( j=i; j<${#s_tmp[@]}; j++ )); do
+        if [[ -n "${landed[${s_old[$j]}]:-}" ]]; then
+          held+="  ${s_new[$j]} is staged at ${s_tmp[$j]}"$'\n'
+        else
+          rm -f "${s_tmp[$j]}"
+        fi
+      done
       rm -f "$mapfile"
-      echo "error: commit failed at ${s_new[$i]} — the collection is PARTIALLY migrated; recover via your version control (e.g. git checkout) and re-run" >&2
+      {
+        printf 'error: commit failed at %s — the collection is PARTIALLY migrated.\n' "${s_new[$i]}"
+        if [[ -n "$held" ]]; then
+          printf '%s\n' "The issues committed before this point now exist under both names, except those below: a completed rename has already taken the old name, so the staged file named beside each is its only copy on disk and has been kept."
+          printf '%s' "$held"
+        else
+          printf '%s\n' "The issues committed before this point now exist under both names, and none has been lost."
+        fi
+        printf '%s\n' "Recover via your version control (e.g. git checkout) and re-run"
+      } >&2
       return 1
     fi
+    landed["${s_new[$i]}"]=1
+  done
+  # Retire the old names, skipping any that another issue has just been renamed
+  # *onto* — a rename chain or a swap makes one file's old name another's new
+  # one, and removing it would delete the content just written there.
+  for i in "${!s_old[@]}"; do
+    [[ "${s_old[$i]}" == "${s_new[$i]}" ]] && continue
+    [[ -n "${new_names[${s_old[$i]}]:-}" ]] && continue
+    rm -f "${s_old[$i]}"
   done
   rm -f "$mapfile"
 
   bash "$HERE/index.sh" "$dir" >/dev/null 2>&1
 
-  local renamed=0 skipped=0 collisions=0
-  while IFS=$'\t' read -r action old new reason; do
-    [[ -z "$action" ]] && continue
+  local renamed=0 skipped=0 collisions=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_row "$__row"
+    action="$ROW_ACTION" old="$ROW_OLD" new="$ROW_NEW" reason="$ROW_REASON"
     case "$action" in
       rename)             renamed=$((renamed+1)) ;;
       collision-resolved) renamed=$((renamed+1)); collisions=$((collisions+1)) ;;
@@ -371,7 +455,43 @@ usage() {
     '  issues_dir default: jimconf.sh get issues'
 }
 
+# route_placement <place-token> <args...>
+#   Re-exec through place.sh when the project keeps its collection on a
+#   designated branch, so renames land there as one commit. An explicit
+#   directory argument opts out, which is also what stops the re-exec
+#   recursing; a preview routes read-only, since previewing mutates nothing.
+route_placement() {
+  local token="$1"; shift
+  local place="$HERE/place.sh" mode arg dir="" apply=0 skip_next=0
+  [[ -r "$place" ]] || return 0
+  for arg in "$@"; do
+    if (( skip_next )); then skip_next=0; continue; fi
+    case "$arg" in
+      --apply)          apply=1 ;;
+      --expect|-c)      skip_next=1 ;;
+      prefix|rewrite|-*) ;;
+      *)                dir="$arg" ;;
+    esac
+  done
+  [[ -z "$dir" ]] || return 0
+  mode="$(bash "$place" mode --place-token "$token")" || exit $?
+  [[ "$mode" == "route" ]] || return 0
+  local -a run=(run)
+  if (( apply )); then run+=(--verb migrate); else run+=(--read); fi
+  exec bash "$place" "${run[@]}" -- \
+    bash "${BASH_SOURCE[0]}" --place-token '{token}' "$@" '{}'
+}
+
 main() {
+  local place_token=""
+  if [[ "${1:-}" == "--place-token" ]]; then
+    place_token="${2:-}"
+    shift 2
+  fi
+  case "${1:-}" in
+    ""|-h|--help|help) ;;
+    *) route_placement "$place_token" "$@" ;;
+  esac
   if [[ "${1:-}" == "-c" ]]; then
     [[ -n "${2:-}" ]] || { echo "error: -c requires a path argument" >&2; return 2; }
     CFG="$2"; shift 2

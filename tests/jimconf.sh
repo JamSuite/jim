@@ -13,6 +13,7 @@
 #   bash tests/run.sh                 # run this file alongside every other tests/*.sh
 #
 
+set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 
@@ -34,6 +35,158 @@ run() {
 
 # ─── Section: Test cases ─────────────────────────────────────────────────────
 
+# AC: a config that exists but cannot be read is a resolver failure, not an
+# unset key. Reporting it as unset hands the caller a fabricated default at
+# rc 0 — and on `issue_placement` that default is "do not centralize", so a
+# team's collection silently stops being centralized on an infrastructure
+# fault. The placement gate was hardened to refuse a failed resolve and cannot
+# detect this class, because the failure never reaches it.
+case_jimconf_unreadable_config_refuses() {
+  local dir
+  dir=$(empty_dir conf_unreadable)
+  printf 'issue_placement = "jim/issues"\n' > "$dir/jimconf.toml"
+  chmod 000 "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT" get issue_placement 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  chmod 644 "$dir/jimconf.toml"
+  assert_eq    "refuses rather than defaulting" "no" \
+    "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "and prints no fabricated value" "" "$OUT"
+  assert_match "saying why"                     'read' "$ERR"
+}
+
+# AC: nor is a config path that is not a regular file. A directory or a dangling
+# symlink took the same silent-default route, since the guard tested only for a
+# regular file and read its absence as "no override".
+case_jimconf_non_regular_config_refuses() {
+  local dir
+  dir=$(empty_dir conf_nonregular)
+  mkdir -p "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT" get issue_placement 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_eq    "refuses"        "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "no value"       ""   "$OUT"
+  assert_match "names the shape" 'regular file' "$ERR"
+}
+
+# AC: a run started below the project root read ./jimconf.toml, found nothing,
+# and resolved every key to its documented default at rc 0 — the same fabricated
+# value an unreadable config used to hand back. It now refuses and says where
+# the config is. The file is located, never read: config values reach bash, so
+# honouring one from above the folder the session started in would run a command
+# from outside that boundary.
+case_jimconf_config_above_cwd_refuses_rather_than_defaulting() {
+  local root
+  root=$(empty_dir conf_above_repo)
+  mkdir -p "$root/.git" "$root/docs/issues"
+  printf 'issue_placement = "SENTINEL-NOT-TO-BE-READ"\n' > "$root/jimconf.toml"
+  OUT="$(cd "$root/docs/issues" && bash "$SCRIPT" get issue_placement 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_eq    "refuses rather than defaulting" "no" \
+    "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "no fabricated value"   ""                  "$OUT"
+  assert_match "names where it is"     'jimconf.toml'      "$ERR"
+  assert_match "names the remedy"      'project root'      "$ERR"
+  # It located the file; it must not have read it. The rejected alternative —
+  # walk up and honour what is found — is what this distinguishes, and it is
+  # what the trust boundary forbids, since these values reach bash.
+  assert_eq "the parent's value surfaces nowhere" "" \
+    "$(grep -o 'SENTINEL-NOT-TO-BE-READ' <<<"$OUT$ERR")"
+}
+
+# AC: the three shapes that must NOT refuse. Zero-config anywhere in the tree is
+# the path this whole distinction exists to preserve; a subdirectory carrying its
+# own config is a project root by jim's own definition; and outside a repository
+# there is no project to name, so an unrelated jimconf.toml — a home directory's
+# — is never reported.
+case_jimconf_config_above_cwd_spares_the_valid_ones() {
+  local root
+  root=$(empty_dir conf_above_negatives)
+  mkdir -p "$root/.git" "$root/bare" "$root/own"
+  OUT="$(cd "$root/bare" && bash "$SCRIPT" get issue_placement 2>/dev/null)"
+  RC=$?
+  assert_exit "no config anywhere still defaults" 0        "$RC"
+  assert_eq   "documented default"                "branch" "$OUT"
+
+  printf 'issue_placement = "own/branch"\n' > "$root/own/jimconf.toml"
+  printf 'issue_placement = "root/branch"\n' > "$root/jimconf.toml"
+  OUT="$(cd "$root/own" && bash "$SCRIPT" get issue_placement 2>/dev/null)"
+  RC=$?
+  assert_exit "a local config wins outright" 0            "$RC"
+  assert_eq   "and is the one read"          "own/branch" "$OUT"
+
+  # No .git anywhere above: nothing to bound the walk, so nothing is named.
+  local loose
+  loose=$(empty_dir conf_above_norepo)
+  mkdir -p "$loose/sub"
+  printf 'issue_placement = "unrelated"\n' > "$loose/jimconf.toml"
+  OUT="$(cd "$loose/sub" && bash "$SCRIPT" get issue_placement 2>/dev/null)"
+  RC=$?
+  assert_exit "outside a repo, unchanged" 0        "$RC"
+  assert_eq   "documented default"        "branch" "$OUT"
+}
+
+# AC: a key written in a form this grammar does not read is a resolver failure
+# too. Both are legal TOML that the `= "…"` pattern skips, so both resolved to
+# the documented default at rc 0 — a fabricated value the caller cannot tell
+# from a configured one. On issue_placement that default is "do not centralize".
+case_jimconf_unsupported_value_form_refuses() {
+  local cfg
+  cfg=$(fixture singlequoted.toml "issue_placement = 'jim/issues'")
+  run -c "$cfg" get issue_placement
+  assert_eq    "single-quoted refuses"  "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "no fabricated value"    ""   "$OUT"
+  assert_match "names the key"          'issue_placement' "$ERR"
+  assert_match "names the form it reads" 'double-quoted'  "$ERR"
+
+  cfg=$(fixture bareval.toml 'blueprint_regen_threshold = 3')
+  run -c "$cfg" get blueprint_regen_threshold
+  assert_eq "bare value refuses"     "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq "no fabricated value"    ""   "$OUT"
+}
+
+# AC: and the two forms that must NOT refuse still do not — a quoted value
+# resolves, and a key simply absent from a present file is still no override.
+# Without this the refusal above is satisfiable by refusing everything.
+case_jimconf_unsupported_value_form_spares_the_valid_ones() {
+  local cfg
+  cfg=$(fixture quoted-and-absent.toml 'issue_placement = "jim/issues"')
+  run -c "$cfg" get issue_placement
+  assert_exit "quoted resolves"       0             "$RC"
+  assert_eq   "configured value"      "jim/issues"  "$OUT"
+  run -c "$cfg" get specs
+  assert_exit "absent key defaults"   0             "$RC"
+  assert_eq   "documented default"    "docs/specs"  "$OUT"
+}
+
+# AC: a commented-out key is not a key. jimconf.toml.example ships dozens, and
+# refusing one would refuse every project that keeps the shipped reference.
+case_jimconf_commented_key_is_not_a_value_form() {
+  local cfg
+  cfg=$(fixture commented.toml '# issue_placement = "jim/issues"
+#   issue_placement_ack = false')
+  run -c "$cfg" get issue_placement
+  assert_exit "comment ignored"  0        "$RC"
+  assert_eq   "default"          "branch" "$OUT"
+  run -c "$cfg" get issue_placement_ack
+  assert_exit "indented comment ignored" 0       "$RC"
+  assert_eq   "default"                  "false" "$OUT"
+}
+
+# AC: and a genuinely absent config still resolves to the documented default at
+# rc 0 — the zero-config path is what this whole distinction exists to preserve.
+case_jimconf_absent_config_still_defaults() {
+  local dir
+  dir=$(empty_dir conf_absent_ok)
+  OUT="$(cd "$dir" && bash "$SCRIPT" get issue_placement 2>"$TMP_BASE/.err")"
+  RC=$?
+  assert_exit "rc" 0        "$RC"
+  assert_eq   "default"     "branch" "$OUT"
+}
+
 # AC: zero-config baseline preserved (spec AC #2)
 # When PWD has no jimconf.toml, every key resolves to its documented default.
 case_no_config_returns_defaults() {
@@ -51,11 +204,22 @@ case_no_config_returns_defaults() {
               "require_pre_commit:false" \
               "require_pre_completion:false" \
               "auto_arch_feedback:false" \
+              "auto_blueprint:false" \
+              "require_blueprint:false" \
               "require_security:false" \
               "auto_security:false" \
+              "require_review:false" \
+              "auto_review:false" \
+              "review_depth:thorough" \
+              "review_model:inherit" \
+              "review_fanout_cap:10" \
               "require_security_loop:false" \
               "require_security_loop_sev:critical" \
               "auto_security_loop_limit:5" \
+              "blueprint_regen_threshold:0" \
+              "blueprint:BLUEPRINT.md" \
+              "group_axis:vertical" \
+              "group_territory:declared-paths" \
               "security_adhoc:docs/security" \
               "issue_capture:true" \
               "auto_issue_file:false" \
@@ -65,12 +229,109 @@ case_no_config_returns_defaults() {
               "issue_list_order:desc" \
               "issue_list_closed:false" \
               "issue_id_prefix:date" \
-              "issue_id_project:"; do
+              "issue_id_project:" \
+              "verify_appetite:low" \
+              "verify_fanout_cap:10" \
+              "verify_model:inherit" \
+              "verify_registry_timeout:120" \
+              "require_health:false" \
+              "auto_health:false" \
+              "health_threshold_cycles:0" \
+              "health_threshold_fanin:0" \
+              "health_threshold_uncovered:0" \
+              "health_threshold_faces_max:0" \
+              "health_threshold_breaking_runs:0"; do
     key="${pair%%:*}"
     expected="${pair#*:}"
     actual=$(cd "$dir" && bash "$SCRIPT" get "$key")
     assert_eq "default for $key" "$expected" "$actual"
   done
+}
+
+# AC: auto_blueprint defaults to "false" and resolves from config (029 Task 3)
+case_jimconf_auto_blueprint_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_bp_default)
+  run -c "$dir/absent.toml" get auto_blueprint
+  assert_exit "default rc"      0       "$RC"
+  assert_eq   "default false"   "false" "$OUT"
+  cfg=$(fixture jc-bp.toml 'auto_blueprint = "true"')
+  run -c "$cfg" get auto_blueprint
+  assert_eq   "configured true" "true"  "$OUT"
+}
+
+# AC: require_blueprint defaults to "false" (spec 030 Task 1)
+# Bare-name gate flag — TOML name equals CLI name (no _path suffix); resolved
+# via the require_* prefix dispatch in resolve(). Gates the review-triggered
+# blueprint update (spec 030 AC #5).
+case_require_blueprint_default() {
+  local dir actual
+  dir=$(empty_dir require_blueprint_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get require_blueprint)
+  assert_eq "require_blueprint default" "false" "$actual"
+}
+
+# AC: require_blueprint override via jimconf.toml (spec 030 Task 1)
+case_require_blueprint_overridden() {
+  local cfg
+  cfg=$(fixture require_blueprint-override.toml 'require_blueprint = "true"')
+  run -c "$cfg" get require_blueprint
+  assert_eq "require_blueprint overridden" "true" "$OUT"
+}
+
+# AC: blueprint_regen_threshold defaults to "0" (disabled) and resolves from
+# config — the opt-in regen-cadence threshold (spec 032 AC #5, DD6). Bare-name
+# integer knob, mirroring review_fanout_cap / auto_security_loop_limit.
+case_jimconf_blueprint_regen_threshold_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_brt_default)
+  run -c "$dir/absent.toml" get blueprint_regen_threshold
+  assert_exit "default rc"   0    "$RC"
+  assert_eq   "default 0"    "0"  "$OUT"
+  cfg=$(fixture jc-brt.toml 'blueprint_regen_threshold = "5"')
+  run -c "$cfg" get blueprint_regen_threshold
+  assert_eq   "configured 5" "5"  "$OUT"
+}
+
+# AC: blueprint (project map) path key defaults to "BLUEPRINT.md" and resolves
+# from config (spec 033 Task 1, AC #1). CLI short name `blueprint` maps to
+# TOML `blueprint_path` via the _path suffix rule, like the other strategic
+# docs.
+case_jimconf_blueprint_path_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_map_default)
+  run -c "$dir/absent.toml" get blueprint
+  assert_exit "default rc"        0              "$RC"
+  assert_eq   "default BLUEPRINT" "BLUEPRINT.md" "$OUT"
+  cfg=$(fixture jc-map.toml 'blueprint_path = "docs/BLUEPRINT.md"')
+  run -c "$cfg" get blueprint
+  assert_eq   "configured path"   "docs/BLUEPRINT.md" "$OUT"
+}
+
+# AC: group_axis defaults to "vertical" and resolves from config (spec 033
+# Task 1, AC #7). Bare-name doctrine knob dispatched by the group_* arm.
+case_jimconf_group_axis_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_axis_default)
+  run -c "$dir/absent.toml" get group_axis
+  assert_exit "default rc"         0          "$RC"
+  assert_eq   "default vertical"   "vertical" "$OUT"
+  cfg=$(fixture jc-axis.toml 'group_axis = "layered"')
+  run -c "$cfg" get group_axis
+  assert_eq   "configured layered" "layered"  "$OUT"
+}
+
+# AC: group_territory defaults to "declared-paths" and resolves from config
+# (spec 033 Task 1, AC #8). Bare-name mode knob dispatched by the group_* arm.
+case_jimconf_group_territory_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_terr_default)
+  run -c "$dir/absent.toml" get group_territory
+  assert_exit "default rc"             0                "$RC"
+  assert_eq   "default declared-paths" "declared-paths" "$OUT"
+  cfg=$(fixture jc-terr.toml 'group_territory = "none"')
+  run -c "$cfg" get group_territory
+  assert_eq   "configured none"        "none"           "$OUT"
 }
 
 # AC: full override (spec AC #1, #4)
@@ -88,8 +349,15 @@ pre_completion_path = "scripts/pre-completion"
 require_pre_commit = "true"
 require_pre_completion = "true"
 auto_arch_feedback = "true"
+auto_blueprint = "true"
+require_blueprint = "true"
 require_security = "true"
 auto_security = "true"
+require_review = "true"
+auto_review = "true"
+review_depth = "lean"
+review_model = "opus"
+review_fanout_cap = "5"
 require_security_loop = "true"
 require_security_loop_sev = "notable"
 auto_security_loop_limit = "10"
@@ -114,8 +382,15 @@ issue_id_project = "PROJ"')
   run -c "$cfg" get require_pre_commit;        assert_eq "require_pre_commit"        "true"                   "$OUT"
   run -c "$cfg" get require_pre_completion;    assert_eq "require_pre_completion"    "true"                   "$OUT"
   run -c "$cfg" get auto_arch_feedback;        assert_eq "auto_arch_feedback"        "true"                   "$OUT"
+  run -c "$cfg" get auto_blueprint;            assert_eq "auto_blueprint"            "true"                   "$OUT"
+  run -c "$cfg" get require_blueprint;         assert_eq "require_blueprint"         "true"                   "$OUT"
   run -c "$cfg" get require_security;          assert_eq "require_security"          "true"                   "$OUT"
   run -c "$cfg" get auto_security;             assert_eq "auto_security"             "true"                   "$OUT"
+  run -c "$cfg" get require_review;            assert_eq "require_review"            "true"                   "$OUT"
+  run -c "$cfg" get auto_review;               assert_eq "auto_review"               "true"                   "$OUT"
+  run -c "$cfg" get review_depth;              assert_eq "review_depth"              "lean"                   "$OUT"
+  run -c "$cfg" get review_model;              assert_eq "review_model"              "opus"                   "$OUT"
+  run -c "$cfg" get review_fanout_cap;         assert_eq "review_fanout_cap"         "5"                      "$OUT"
   run -c "$cfg" get require_security_loop;     assert_eq "require_security_loop"     "true"                   "$OUT"
   run -c "$cfg" get require_security_loop_sev; assert_eq "require_security_loop_sev" "notable"                "$OUT"
   run -c "$cfg" get auto_security_loop_limit;  assert_eq "auto_security_loop_limit"  "10"                     "$OUT"
@@ -158,7 +433,11 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "27" "$line_count"
+  assert_eq    "list line count"                  "55" "$line_count"
+  assert_match "blueprint_regen_threshold line"    '^blueprint_regen_threshold=0$'          "$OUT"
+  assert_match "blueprint line"                    '^blueprint=BLUEPRINT\.md$'              "$OUT"
+  assert_match "group_axis line"                   '^group_axis=vertical$'                  "$OUT"
+  assert_match "group_territory line"              '^group_territory=declared-paths$'       "$OUT"
   assert_match "specs line"                        '^specs=docs/specs$'                     "$OUT"
   assert_match "architecture line"                 '^architecture=ARCHITECTURE\.md$'        "$OUT"
   assert_match "vision line"                       '^vision=VISION\.md$'                    "$OUT"
@@ -170,8 +449,13 @@ case_list_outputs_all_keys() {
   assert_match "require_pre_commit line"           '^require_pre_commit=false$'             "$OUT"
   assert_match "require_pre_completion line"       '^require_pre_completion=false$'         "$OUT"
   assert_match "auto_arch_feedback line"           '^auto_arch_feedback=false$'             "$OUT"
+  assert_match "auto_blueprint line"               '^auto_blueprint=false$'                 "$OUT"
+  assert_match "require_blueprint line"            '^require_blueprint=false$'              "$OUT"
   assert_match "require_security line"             '^require_security=false$'               "$OUT"
   assert_match "auto_security line"                '^auto_security=false$'                  "$OUT"
+  assert_match "review_depth line"                 '^review_depth=thorough$'                "$OUT"
+  assert_match "review_model line"                 '^review_model=inherit$'                 "$OUT"
+  assert_match "review_fanout_cap line"            '^review_fanout_cap=10$'                 "$OUT"
   assert_match "require_security_loop line"        '^require_security_loop=false$'          "$OUT"
   assert_match "require_security_loop_sev line"    '^require_security_loop_sev=critical$'   "$OUT"
   assert_match "auto_security_loop_limit line"     '^auto_security_loop_limit=5$'           "$OUT"
@@ -186,6 +470,21 @@ case_list_outputs_all_keys() {
   assert_match "issue_list_closed line"            '^issue_list_closed=false$'              "$OUT"
   assert_match "issue_id_prefix line"              '^issue_id_prefix=date$'                 "$OUT"
   assert_match "issue_id_project line"             '^issue_id_project=$'                    "$OUT"
+  assert_match "verify_appetite line"              '^verify_appetite=low$'                  "$OUT"
+  assert_match "verify_fanout_cap line"            '^verify_fanout_cap=10$'                 "$OUT"
+  assert_match "verify_model line"                 '^verify_model=inherit$'                 "$OUT"
+  assert_match "verify_registry_timeout line"      '^verify_registry_timeout=120$'          "$OUT"
+  assert_match "require_health line"               '^require_health=false$'                 "$OUT"
+  assert_match "auto_health line"                  '^auto_health=false$'                    "$OUT"
+  assert_match "health_threshold_cycles line"      '^health_threshold_cycles=0$'            "$OUT"
+  assert_match "health_threshold_fanin line"       '^health_threshold_fanin=0$'             "$OUT"
+  assert_match "health_threshold_uncovered line"   '^health_threshold_uncovered=0$'         "$OUT"
+  assert_match "health_threshold_faces_max line"   '^health_threshold_faces_max=0$'         "$OUT"
+  assert_match "health_threshold_breaking_runs line" '^health_threshold_breaking_runs=0$'   "$OUT"
+  assert_match "spec_migration line"               '^spec_migration=rewrite$'               "$OUT"
+  assert_match "id_coordination_mechanism line"    '^id_coordination_mechanism=git$'         "$OUT"
+  assert_match "id_coordination_branch line"       '^id_coordination_branch=jim/registry$'   "$OUT"
+  assert_match "id_coordination_unreachable line"  '^id_coordination_unreachable=fail$'      "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -193,7 +492,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nrequire_security\nauto_security\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nissue_placement\nissue_placement_ack\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs\nspec_migration\nid_coordination_mechanism\nid_coordination_branch\nid_coordination_unreachable')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -231,7 +530,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "27" "$line_count"
+  assert_eq "list still emits all keys" "55" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -657,6 +956,335 @@ case_issue_id_project_overridden() {
   cfg=$(fixture issue_id_project-override.toml 'issue_id_project = "JIM"')
   run -c "$cfg" get issue_id_project
   assert_eq "issue_id_project overridden" "JIM" "$OUT"
+}
+
+# AC: review_depth defaults to "thorough" (spec 027)
+# Bare-name behavior knob — TOML name equals CLI name (no _path suffix), resolved
+# via the review_* dispatch arm in resolve(). Default keeps the review thorough.
+case_review_depth_default() {
+  local dir actual
+  dir=$(empty_dir review_depth_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get review_depth)
+  assert_eq "review_depth default" "thorough" "$actual"
+}
+
+# AC: review_depth override via jimconf.toml (spec 027)
+# Guards the silent-no-op the researcher flagged: without the review_* arm the
+# dispatch would look up `review_depth_path` and return the default.
+case_review_depth_overridden() {
+  local cfg
+  cfg=$(fixture review_depth-override.toml 'review_depth = "lean"')
+  run -c "$cfg" get review_depth
+  assert_eq "review_depth overridden" "lean" "$OUT"
+}
+
+# AC: review_model defaults to "inherit" (spec 027)
+case_review_model_default() {
+  local dir actual
+  dir=$(empty_dir review_model_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get review_model)
+  assert_eq "review_model default" "inherit" "$actual"
+}
+
+# AC: review_model override via jimconf.toml (spec 027)
+case_review_model_overridden() {
+  local cfg
+  cfg=$(fixture review_model-override.toml 'review_model = "opus"')
+  run -c "$cfg" get review_model
+  assert_eq "review_model overridden" "opus" "$OUT"
+}
+
+# AC: review_fanout_cap defaults to "10" (spec 027)
+case_review_fanout_cap_default() {
+  local dir actual
+  dir=$(empty_dir review_fanout_cap_baseline)
+  actual=$(cd "$dir" && bash "$SCRIPT" get review_fanout_cap)
+  assert_eq "review_fanout_cap default" "10" "$actual"
+}
+
+# AC: review_fanout_cap override via jimconf.toml (spec 027)
+case_review_fanout_cap_overridden() {
+  local cfg
+  cfg=$(fixture review_fanout_cap-override.toml 'review_fanout_cap = "5"')
+  run -c "$cfg" get review_fanout_cap
+  assert_eq "review_fanout_cap overridden" "5" "$OUT"
+}
+
+# ─── spec 035: verify_* config family ────────────────────────────────────────
+
+# AC: verify_appetite defaults to "low" (thorough — every criticality is
+# judge-eligible) and resolves from config (spec 035 Task 1, DD #5). Bare-name
+# behavior knob dispatched by the verify_* arm in resolve().
+case_verify_appetite_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir vf_appetite_default)
+  run -c "$dir/absent.toml" get verify_appetite
+  assert_exit "default rc"      0     "$RC"
+  assert_eq   "default low"     "low" "$OUT"
+  cfg=$(fixture vf-appetite.toml 'verify_appetite = "high"')
+  run -c "$cfg" get verify_appetite
+  assert_eq   "configured high" "high" "$OUT"
+}
+
+# AC: verify_fanout_cap defaults to "10" and resolves from config (spec 035
+# Task 1). Mirrors review_fanout_cap; the skill degrades junk to the default.
+case_verify_fanout_cap_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir vf_cap_default)
+  run -c "$dir/absent.toml" get verify_fanout_cap
+  assert_exit "default rc"   0    "$RC"
+  assert_eq   "default 10"   "10" "$OUT"
+  cfg=$(fixture vf-cap.toml 'verify_fanout_cap = "5"')
+  run -c "$cfg" get verify_fanout_cap
+  assert_eq   "configured 5" "5"  "$OUT"
+}
+
+# AC: verify_model defaults to "inherit" and resolves from config (spec 035
+# Task 1). Per-spawn Agent model param; validated (incl. fable) by the skill.
+case_verify_model_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir vf_model_default)
+  run -c "$dir/absent.toml" get verify_model
+  assert_exit "default rc"       0         "$RC"
+  assert_eq   "default inherit"  "inherit" "$OUT"
+  cfg=$(fixture vf-model.toml 'verify_model = "fable"')
+  run -c "$cfg" get verify_model
+  assert_eq   "configured fable" "fable"   "$OUT"
+}
+
+# AC: verify_registry_timeout defaults to "120" (seconds) and resolves from
+# config (spec 035 Task 1, DD #5/#9). Bounds registry command execution only.
+case_verify_registry_timeout_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir vf_timeout_default)
+  run -c "$dir/absent.toml" get verify_registry_timeout
+  assert_exit "default rc"    0     "$RC"
+  assert_eq   "default 120"   "120" "$OUT"
+  cfg=$(fixture vf-timeout.toml 'verify_registry_timeout = "60"')
+  run -c "$cfg" get verify_registry_timeout
+  assert_eq   "configured 60" "60"  "$OUT"
+}
+
+# AC: verify_command_<name> is a dynamic-suffix registry key: unconfigured
+# resolves empty (the "not configured" outcome), configured resolves the
+# operator's command string verbatim (spec 035 Task 1, AC #6).
+case_verify_command_dynamic_suffix() {
+  local dir cfg
+  dir=$(empty_dir vf_cmd_default)
+  run -c "$dir/absent.toml" get verify_command_linecount
+  assert_exit "unconfigured rc"    0  "$RC"
+  assert_eq   "unconfigured empty" "" "$OUT"
+  cfg=$(fixture vf-cmd.toml 'verify_command_linecount = "wc -l"')
+  run -c "$cfg" get verify_command_linecount
+  assert_eq   "configured command" "wc -l" "$OUT"
+}
+
+# AC: verify_appetite_<group> is a dynamic-suffix per-group override:
+# unconfigured resolves empty (the skill falls back to the global appetite),
+# configured resolves the override (spec 035 Task 1, AC #8).
+case_verify_appetite_group_dynamic_suffix() {
+  local dir cfg
+  dir=$(empty_dir vf_appetite_group_default)
+  run -c "$dir/absent.toml" get verify_appetite_auth
+  assert_exit "unconfigured rc"    0  "$RC"
+  assert_eq   "unconfigured empty" "" "$OUT"
+  cfg=$(fixture vf-appetite-group.toml 'verify_appetite_auth = "critical"')
+  run -c "$cfg" get verify_appetite_auth
+  assert_eq   "configured override" "critical" "$OUT"
+}
+
+# AC: a dynamic-suffix key whose <name> is not slug-class resolves empty and
+# never reaches a TOML lookup — a blueprint-recorded name can't inject regex
+# metacharacters into the grep pattern (spec 035 security Finding 1). The
+# crafted key `verify_command_.*` must not grep-match either real entry.
+case_verify_command_bad_suffix_resolves_empty() {
+  local cfg
+  cfg=$(fixture vf-inject.toml 'verify_command_linecount = "wc -l"
+verify_command_typecheck = "tsc"')
+  run -c "$cfg" get 'verify_command_.*'
+  assert_exit "bad-suffix rc"          0  "$RC"
+  assert_eq   "no regex injection"     "" "$OUT"
+  run -c "$cfg" get verify_command_BADNAME
+  assert_eq   "uppercase suffix empty" "" "$OUT"
+}
+
+# ─── spec 038: deps_command_<name> dynamic family ────────────────────────────
+
+# AC: deps_command_<name> is a dynamic-suffix registry key mirroring
+# verify_command_<name>: unconfigured resolves empty (the "not configured"
+# outcome → the native scan fallback), configured resolves the operator's
+# command string verbatim (spec 038 Task 1, DD #3).
+case_deps_command_dynamic_suffix() {
+  local dir cfg
+  dir=$(empty_dir dc_cmd_default)
+  run -c "$dir/absent.toml" get deps_command_events
+  assert_exit "unconfigured rc"    0  "$RC"
+  assert_eq   "unconfigured empty" "" "$OUT"
+  cfg=$(fixture dc-cmd.toml 'deps_command_events = "node extract-events.js"')
+  run -c "$cfg" get deps_command_events
+  assert_eq   "configured command" "node extract-events.js" "$OUT"
+}
+
+# AC: a deps_command_<name> whose <name> is not slug-class resolves empty and
+# never reaches a TOML lookup — a map/blueprint-recorded name can't inject
+# regex metacharacters into the grep pattern (spec 035 security Finding 1,
+# carried to the new family). The crafted key must not grep-match a real entry.
+case_deps_command_bad_suffix_resolves_empty() {
+  local cfg
+  cfg=$(fixture dc-inject.toml 'deps_command_events = "node x.js"
+deps_command_di = "grep -R inject"')
+  run -c "$cfg" get 'deps_command_.*'
+  assert_exit "bad-suffix rc"          0  "$RC"
+  assert_eq   "no regex injection"     "" "$OUT"
+  run -c "$cfg" get deps_command_A.B
+  assert_eq   "dotted suffix empty"    "" "$OUT"
+  run -c "$cfg" get deps_command_BADNAME
+  assert_eq   "uppercase suffix empty" "" "$OUT"
+}
+
+# AC: the bare fixed key `deps_command` (no `_<name>` suffix) is not a known
+# key — neither a static default nor a dynamic family member — so `get`
+# rejects it with rc 1 (spec 038 Task 1). Guards the `?*` glob boundary.
+case_deps_command_bare_key_unknown() {
+  run get deps_command
+  assert_exit     "bare rc"         1  "$RC"
+  assert_eq       "stdout empty"    "" "$OUT"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# ─── spec 044: partition-health config family ────────────────────────────────
+
+# AC: require_health / auto_health default to "false" and resolve from config
+# (spec 044 Task 1). Bare-name gate flags dispatched by the require_*/auto_*
+# arms; they arm the reconcile-tail health hook only when a threshold crosses.
+case_jimconf_health_knobs_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_health_knobs)
+  run -c "$dir/absent.toml" get require_health
+  assert_exit "require_health default rc" 0       "$RC"
+  assert_eq   "require_health default"    "false" "$OUT"
+  run -c "$dir/absent.toml" get auto_health
+  assert_eq   "auto_health default"       "false" "$OUT"
+  cfg=$(fixture jc-health-knobs.toml 'require_health = "true"
+auto_health = "true"')
+  run -c "$cfg" get require_health
+  assert_eq   "require_health configured" "true"  "$OUT"
+  run -c "$cfg" get auto_health
+  assert_eq   "auto_health configured"    "true"  "$OUT"
+}
+
+# AC: the five health_threshold_* keys default to "0" (disabled) and resolve
+# from config (spec 044 Task 1, DD #3). Bare-name integer knobs dispatched by
+# the new health_* arm in resolve(); "0" is the unset/disabled sentinel.
+case_jimconf_health_thresholds_default_and_resolve() {
+  local dir cfg sig
+  dir=$(empty_dir jc_health_thresholds)
+  for sig in cycles fanin uncovered faces_max breaking_runs; do
+    run -c "$dir/absent.toml" get "health_threshold_$sig"
+    assert_exit "health_threshold_$sig default rc" 0   "$RC"
+    assert_eq   "health_threshold_$sig default"    "0" "$OUT"
+  done
+  cfg=$(fixture jc-health-thresh.toml 'health_threshold_cycles = "2"
+health_threshold_fanin = "4"
+health_threshold_uncovered = "1"
+health_threshold_faces_max = "12"
+health_threshold_breaking_runs = "3"')
+  run -c "$cfg" get health_threshold_cycles;        assert_eq "cycles configured"        "2"  "$OUT"
+  run -c "$cfg" get health_threshold_fanin;         assert_eq "fanin configured"         "4"  "$OUT"
+  run -c "$cfg" get health_threshold_uncovered;     assert_eq "uncovered configured"     "1"  "$OUT"
+  run -c "$cfg" get health_threshold_faces_max;     assert_eq "faces_max configured"     "12" "$OUT"
+  run -c "$cfg" get health_threshold_breaking_runs; assert_eq "breaking_runs configured" "3"  "$OUT"
+}
+
+# ─── spec 046: spec_migration identity-on-move preference ────────────────────
+
+# AC: spec_migration defaults to "rewrite" and resolves from config (spec 046
+# Task 1, AC #1). Bare-name identity-on-move preference knob dispatched by the
+# new spec_migration arm in resolve(); selects rewrite|forward|immutable.
+case_jimconf_spec_migration_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_spec_migration_default)
+  run -c "$dir/absent.toml" get spec_migration
+  assert_exit "default rc"         0         "$RC"
+  assert_eq   "default rewrite"    "rewrite" "$OUT"
+  cfg=$(fixture jc-spec-migration.toml 'spec_migration = "forward"')
+  run -c "$cfg" get spec_migration
+  assert_eq   "configured forward" "forward" "$OUT"
+}
+
+# ─── platform/007: id-coordination allocator config family ───────────────────
+
+# AC: id_coordination_mechanism / _branch / _unreachable default to
+# "git" / "jim/registry" / "fail" and resolve from config (platform/007 Task 1,
+# spec AC "config governs mechanism/point/unreachable"). Bare-name knobs
+# dispatched by the new id_coordination_* arm in resolve(); the allocator reads
+# them from the current branch so a team's coordination scheme is versioned.
+case_jimconf_id_coordination_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_id_coord_default)
+  run -c "$dir/absent.toml" get id_coordination_mechanism
+  assert_exit "mechanism default rc"  0             "$RC"
+  assert_eq   "mechanism default"     "git"         "$OUT"
+  run -c "$dir/absent.toml" get id_coordination_branch
+  assert_eq   "branch default"        "jim/registry" "$OUT"
+  run -c "$dir/absent.toml" get id_coordination_unreachable
+  assert_eq   "unreachable default"   "fail"        "$OUT"
+  cfg=$(fixture jc-id-coord.toml 'id_coordination_mechanism = "service"
+id_coordination_branch = "refs/jim/reg"
+id_coordination_unreachable = "provisional"')
+  run -c "$cfg" get id_coordination_mechanism
+  assert_eq   "mechanism configured"   "service"      "$OUT"
+  run -c "$cfg" get id_coordination_branch
+  assert_eq   "branch configured"      "refs/jim/reg" "$OUT"
+  run -c "$cfg" get id_coordination_unreachable
+  assert_eq   "unreachable configured" "provisional"  "$OUT"
+}
+
+# ─── issue/011: issue-placement config family ────────────────────────────────
+
+# AC: issue_placement defaults to the reserved sentinel "branch" and
+# issue_placement_ack to "false"; both resolve from config. Bare-name knobs —
+# issue_placement names a git branch, never a path, so the resolver must not
+# reach for a `_path`-suffixed TOML key.
+case_jimconf_issue_placement_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_placement_default)
+  run -c "$dir/absent.toml" get issue_placement
+  assert_exit "placement default rc" 0        "$RC"
+  assert_eq   "placement default"    "branch" "$OUT"
+  run -c "$dir/absent.toml" get issue_placement_ack
+  assert_exit "ack default rc"       0        "$RC"
+  assert_eq   "ack default"          "false"  "$OUT"
+  cfg=$(fixture jc-placement.toml 'issue_placement = "jim/issues"
+issue_placement_ack = "true"')
+  run -c "$cfg" get issue_placement
+  assert_eq   "placement configured" "jim/issues" "$OUT"
+  run -c "$cfg" get issue_placement_ack
+  assert_eq   "ack configured"       "true"       "$OUT"
+}
+
+# AC: issue_placement reads the bare TOML key, never issue_placement_path.
+# A config carrying only the _path spelling must leave the key at its default —
+# the suffix arm would otherwise silently misroute a branch name through a
+# path-shaped key, and a project setting the bare name would see no effect.
+case_jimconf_issue_placement_ignores_path_suffix_key() {
+  local cfg
+  cfg=$(fixture jc-placement-suffix.toml 'issue_placement_path = "docs/decoy"
+issue_placement_ack_path = "true"')
+  run -c "$cfg" get issue_placement
+  assert_exit "suffix-key rc"          0        "$RC"
+  assert_eq   "suffix key not read"    "branch" "$OUT"
+  run -c "$cfg" get issue_placement_ack
+  assert_eq   "ack suffix key not read" "false" "$OUT"
+}
+
+# AC: both keys appear in `list` output at their defaults
+case_jimconf_issue_placement_in_list() {
+  local dir
+  dir=$(empty_dir jc_placement_list)
+  OUT=$(cd "$dir" && bash "$SCRIPT" list)
+  assert_match "issue_placement line"     '^issue_placement=branch$'     "$OUT"
+  assert_match "issue_placement_ack line" '^issue_placement_ack=false$'  "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

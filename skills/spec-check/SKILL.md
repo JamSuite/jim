@@ -105,7 +105,7 @@ Operationalized as a category-level swap test: *if the underlying technology wer
 - **YES + no source** → Tier 3 in disguise → Handoff.
 - **NO** → Tier 3 (Implementation Detail) → Handoff.
 
-**Type calibration.** For `type: refactor` specs, the Razor's technology-agnostic swap test is replaced by a *Rationale-Traceability* test: does the AC trace to a `Refactor Rationale → Desired State` entry, and is it desired-state shape (passes) rather than migration procedure (routes to Handoff)? ACs naming technical artifacts without a Rationale anchor are flagged regardless of type. See `docs/specs/jim/011-directive-vocabulary/spec.md` as the exemplar of a refactor spec whose load-bearing ACs the Razor must accept. For `type: feature` and `type: bug`, the swap test above applies unchanged.
+**Type calibration.** For `type: refactor` specs, the Razor's technology-agnostic swap test is replaced by a *Rationale-Traceability* test: does the AC trace to a `Refactor Rationale → Desired State` entry, and is it desired-state shape (passes) rather than migration procedure (routes to Handoff)? ACs naming technical artifacts without a Rationale anchor are flagged regardless of type. See `docs/specs/sdlc/008-directive-vocabulary/spec.md` as the exemplar of a refactor spec whose load-bearing ACs the Razor must accept. For `type: feature` and `type: bug`, the swap test above applies unchanged.
 
 ### The Four Socratic Probes
 

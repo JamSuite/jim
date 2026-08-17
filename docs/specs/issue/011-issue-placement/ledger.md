@@ -1,0 +1,20 @@
+1786044658	2026-08-06T19:30:58Z	spec	started	
+1786046728	2026-08-06T20:05:28Z	research	started	
+1786047790	2026-08-06T20:23:10Z	research	finished	
+1786047883	2026-08-06T20:24:43Z	sec	started	
+1786050447	2026-08-06T21:07:27Z	sec	finished	
+1786051043	2026-08-06T21:17:23Z	spec	finished	
+1786051479	2026-08-06T21:24:39Z	plan	started	
+1786053061	2026-08-06T21:51:01Z	sec	started	
+1786085452	2026-08-07T06:50:52Z	sec	finished	
+1786085874	2026-08-07T06:57:54Z	plan	finished	
+1786086678	2026-08-07T07:11:18Z	build	started	base_sha=f024b9e378c27935874da4a6533bcfbc6bc648cc
+1786100395	2026-08-07T10:59:55Z	build	finished	head_sha=3c1a78f57834e6fca19a259dddd71f509e166ee5
+1786100889	2026-08-07T11:08:09Z	review	started	
+1786101674	2026-08-07T11:21:14Z	review	finished	alignment=major-drift;findings=22;undelegated=0
+1786142580	2026-08-07T22:43:00Z	review	started	
+1786143550	2026-08-07T22:59:10Z	review	finished	alignment=major-drift;findings=28;undelegated=0
+1786500052	2026-08-12T02:00:52Z	review	started	
+1786501024	2026-08-12T02:17:04Z	review	finished	alignment=minor-drift;findings=30;undelegated=0
+1786568981	2026-08-12T21:09:41Z	review	started	
+1786570187	2026-08-12T21:29:47Z	review	finished	alignment=minor-drift;findings=45;undelegated=0

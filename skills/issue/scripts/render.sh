@@ -12,6 +12,13 @@
 #   Read-only with respect to issue content (AC-R3) — only index.sh's regen
 #   writes, and it writes INDEX.md, not issue files.
 #
+#   When the regeneration fails, the prior index is still served — a
+#   stale-but-valid view beats no answer on a read surface — but the run says
+#   so on stderr and exits non-zero. The group's rule is that a view known to
+#   be out of date is never reported as success: reconcile.sh carries the same
+#   failure the same way, and place.sh refuses outright on the write path,
+#   where the stale index would reach the shared branch.
+#
 #     render.sh stats [<dir>]            counts + clusters + blocking
 #     render.sh list  [<filter>] [<dir>] terse, grouped, configurable view
 #     render.sh show  <id> [<dir>]       one issue, cleaned-up
@@ -30,7 +37,9 @@
 #
 # EXIT CODES
 #   0  Success (rendering failures degrade to empty sections).
-#   1  Validation failure (unknown filter).
+#   1  Validation failure (unknown filter), or the view was served from an
+#      index that is stale and could not be regenerated — stdout still carries
+#      it, and stderr says which directory.
 #   2  Malformed invocation (unknown subcommand, missing show id).
 #
 
@@ -45,6 +54,10 @@ JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 
 readonly INDEX_FILENAME="INDEX.md"
 readonly BLOCKING_TOP_N=10
+# Set when a verb served a view it knew was out of date. It degrades the run's
+# exit status without suppressing the view, so a caller is told what a reader
+# cannot see for itself.
+STALE_VIEW=0
 readonly STATUS_TOKENS=(open closed)
 readonly PRIORITY_TOKENS=(critical high medium low)
 readonly COL_TOKENS=(num date priority status slug labels title)
@@ -81,17 +94,35 @@ index_is_stale() {
   return 1
 }
 
-# ensure_index <dir> — regen INDEX.md only when stale; tolerant of failure.
+# ensure_index <dir> — regen INDEX.md when stale, and disclose when it cannot.
 #   A fresh index is reused as-is, turning a read verb from a full directory
 #   rescan (one process per scalar field per issue) into a single stat-based
-#   staleness check. Regen still fires whenever an issue is added, removed, or
-#   edited, so reads never serve a stale view.
+#   staleness check. Regen fires whenever an issue is added, removed, or edited.
+#
+#   When it fires and fails, the prior index is still the best view available,
+#   so the read is served from it rather than refused. What does not happen is
+#   reporting success: staleness was established one line above, so serving
+#   quietly at rc 0 would state a currency the run knows it does not have. The
+#   note names the directory because a placement routes reads through a
+#   materialized copy, whose path is not the one the caller asked about.
 ensure_index() {
   local dir="$1"
+  # A read never brings a collection into being. `index.sh` mkdir -p's whatever
+  # directory it is handed and every verb here regenerates through this one
+  # function, so without this a mistyped filter or a steered argument got a
+  # directory and an INDEX.md created for it, by a read, in the developer's
+  # checkout. It is also the capability the analyst's agent definition states is
+  # absent rather than merely forbidden — and an absent collection has nothing to
+  # serve, which each caller already handles as "no issues".
+  [[ -d "$dir" ]] || return 0
   index_is_stale "$dir" "$dir/$INDEX_FILENAME" || return 0
   if [[ -x "$INDEX_SCRIPT" || -r "$INDEX_SCRIPT" ]]; then
-    bash "$INDEX_SCRIPT" "$dir" >/dev/null 2>&1 || true
+    bash "$INDEX_SCRIPT" "$dir" >/dev/null 2>&1 && return 0
   fi
+  echo "warning: the index for '$dir' is stale and could not be regenerated;" \
+       "serving the view it already held" >&2
+  STALE_VIEW=1
+  return 1
 }
 
 # in_list <needle> <haystack...> — 0 if needle is a member.
@@ -182,8 +213,20 @@ HELP
 
 # ─── Section: stats ──────────────────────────────────────────────────────────
 
+# named_dir_exists <arg> — refuse a collection the caller *named* that is not
+#   there. One resolved from config that does not exist is an ordinary empty
+#   project and still reads as one; a name handed in that is not a directory is
+#   a mistake, and reading it as a collection is how a read verb came to create
+#   one in the developer's checkout.
+named_dir_exists() {
+  [[ -z "${1:-}" || -d "$1" ]] && return 0
+  echo "error: '$1' is not an existing collection directory" >&2
+  return 1
+}
+
 cmd_stats() {
   local dir
+  named_dir_exists "${1:-}" || return 1
   dir="$(resolve_dir "${1:-}")"
   if [[ -z "$dir" ]]; then
     echo "Issue Collection — (unconfigured)"
@@ -276,7 +319,7 @@ cmd_stats() {
   if (( ${#blocks_out[@]} == 0 )); then
     printf '  _No blocking edges._\n\n'
   else
-    local s
+    local s count src
     for s in "${!blocks_out[@]}"; do
       printf '%d\t%s\n' "${blocks_out[$s]}" "$s"
     done | sort -k1,1nr -k2,2 | head -n "$BLOCKING_TOP_N" | while IFS=$'\t' read -r count src; do
@@ -306,10 +349,20 @@ cmd_stats() {
 format_row() {
   local cols="$1" slug="$2" num="$3" status="$4" prio="$5" created="$6" labels="$7" title="$8"
   local out="" c pad
+  local -a _cols=()
   IFS=',' read -ra _cols <<< "$cols"
   for c in "${_cols[@]}"; do
     case "$c" in
-      num)      printf -v pad '#%-5s' "$num";     out+=$pad ;;
+      num)
+        # A provisional ordinal (P-<id>) is never rendered as a settled #N —
+        # the "(provisional)" marker is what distinguishes it (spec 010 AC 9).
+        if [[ "$num" == P-* ]]; then
+          printf -v pad '%s (provisional)' "$num"
+        else
+          printf -v pad '#%-5s' "$num"
+        fi
+        out+=$pad
+        ;;
       # date portion only; sub-day precision drives sort + shows in `show`.
       date)     printf -v pad '%-12s' "${created:0:10}"; out+=$pad ;;
       priority) printf -v pad '%-9s' "$prio";     out+=$pad ;;
@@ -325,15 +378,38 @@ format_row() {
 
 cmd_list() {
   local filter="" dir=""
-  if [[ $# -eq 2 ]]; then
-    filter="$1"; dir="$2"
-  elif [[ $# -eq 1 ]]; then
-    if is_filter_token "$1"; then filter="$1"; else dir="$1"; fi
+  # Read by shape, not by count. A collection is the trailing argument and only
+  # when it is a directory — which is the form the placement re-exec appends,
+  # and the form a caller naming one uses. Everything before it has to be a
+  # filter: counting instead let `list open high` read `high` as a collection,
+  # decline routing, and have a directory created for it by a read verb.
+  if (( $# )) && [[ -d "${!#}" ]]; then
+    dir="${!#}"
+    set -- "${@:1:$#-1}"
   fi
-  if [[ -n "$filter" ]] && ! is_filter_token "$filter"; then
-    echo "error: unknown filter '$filter' (valid: ${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]})" >&2
+  # What a leftover token can have meant depends on whether the collection is
+  # already settled. With a trailing directory taken it can only have been a
+  # filter; without one, both readings were open and the message says so —
+  # which is the difference between "you mistyped a filter" and "there is no
+  # such collection", two different answers to two different questions.
+  local stray=""
+  (( $# > 1 )) && stray="$2"
+  (( $# == 1 )) && ! is_filter_token "$1" && stray="$1"
+  if [[ -n "$stray" ]]; then
+    if [[ -n "$dir" ]]; then
+      echo "error: unknown filter '$stray'" \
+           "(valid: ${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]})" >&2
+    else
+      # Neither a filter nor a collection. Taking it for a directory anyway is
+      # how a mistyped filter got one created for it, by a read verb, in the
+      # developer's checkout.
+      echo "error: '$stray' is neither a filter" \
+           "(${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]}) nor an existing directory" >&2
+    fi
     return 1
   fi
+  # Only a token that already cleared is_filter_token reaches here.
+  (( $# == 1 )) && filter="$1"
   dir="$(resolve_dir "$dir")"
   ensure_index "$dir"
   local index_file="$dir/$INDEX_FILENAME"
@@ -498,7 +574,12 @@ render_issue_file() {
   field() { printf '%s\n' "$fm" | grep -E "^$1:" | head -n1 | sed -E "s/^$1:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"; }
   num="$(field num)"; title="$(field title)"; status="$(field status)"
   prio="$(field priority)"; labels="$(field labels)"; origin="$(field origin)"; created="$(field created)"
-  printf '#%s · %s\n' "${num:--}" "$slug"
+  # A provisional ordinal is never rendered as a settled #N (spec 010 AC 9).
+  if [[ "$num" == P-* ]]; then
+    printf '%s (provisional) · %s\n' "$num" "$slug"
+  else
+    printf '#%s · %s\n' "${num:--}" "$slug"
+  fi
   printf '%s\n' "${title}"
   printf '  status: %s   priority: %s\n' "${status:-open}" "${prio:--}"
   [[ -n "$labels" ]] && printf '  labels: %s\n' "$labels"
@@ -515,6 +596,7 @@ cmd_show() {
     echo "error: 'show' requires an id (number, slug, or prefix)" >&2
     return 2
   fi
+  named_dir_exists "$dir" || return 1
   dir="$(resolve_dir "$dir")"
   ensure_index "$dir"
   local index_file="$dir/$INDEX_FILENAME"
@@ -566,9 +648,13 @@ cmd_show() {
 # subagent (spec 020). Emits to stdout (LC_ALL=C stable ordering):
 #   ISOLATED <slug>          one per OPEN issue in no blocks/depends-on edge
 #   BLOCKING <count> <slug>  blocking out-degree per source, count desc then slug
-# Read-only; exit 0 always (degrades to empty output on an absent/empty index).
+# Read-only, and degrades to empty output on an absent or empty index. Exits
+# non-zero only when the facts were read from an index that could not be
+# refreshed — the analyst is the terminal reader and has no other way to learn
+# that the graph it is told to trust may be behind the collection.
 cmd_insights_graph() {
   local dir
+  named_dir_exists "${1:-}" || return 1
   dir="$(resolve_dir "${1:-}")"
   [[ -z "$dir" ]] && return 0
   ensure_index "$dir"
@@ -610,21 +696,87 @@ cmd_insights_graph() {
 
 # ─── Section: Dispatch ───────────────────────────────────────────────────────
 
+# dir_given <sub> <args...>
+#   Exit 0 when the invocation already names a collection directory. Each verb
+#   spells its optional directory differently, so the shapes are read here
+#   rather than guessed: naming a directory opts out of placement routing, and
+#   it is also what keeps the placement re-exec from recursing.
+dir_given() {
+  local sub="$1"; shift
+  # In every shape, an argument is a directory only if it *is* one. Answering on
+  # argument count alone let a second filter token — `list open high`, which the
+  # skill substitutes whole — read as a collection: routing was declined, a
+  # directory of that name was created in the checkout by a read verb, and the
+  # destination went unread behind an empty view at rc 0.
+  #
+  # `stats` and `show` stay on count. Their operand is a directory or it is
+  # nothing — there is no filter to confuse it with — so a bad one is a usage
+  # error, and each verb refuses it. Routing instead would be worse than the
+  # bypass: the re-exec appends the real collection as a trailing argument, and
+  # those verbs read their directory positionally, so the bad token would bind
+  # as the collection and the real one be ignored.
+  case "$sub" in
+    stats|insights-graph) (( $# >= 1 )) ;;
+    show)                 (( $# >= 2 )) ;;
+    list)
+      (( $# >= 2 )) && [[ -d "$2" ]] && return 0
+      (( $# == 1 )) && ! is_filter_token "$1" && [[ -d "$1" ]]
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# route_placement <place-token> <sub> <args...>
+#   Re-exec through place.sh when the project keeps its collection on a
+#   designated branch, so the read verbs serve that branch rather than whatever
+#   the working tree happens to hold. The run is read-only: it materializes the
+#   destination and discards it, so a read never becomes a write.
+route_placement() {
+  local token="$1"; shift
+  local sub="$1"; shift
+  local place="$HERE/place.sh" mode
+  [[ -r "$place" ]] || return 0
+  # The re-exec appends the collection directory as a trailing argument, so an
+  # invocation missing a required operand must not be routed: `show` with no id
+  # would take that directory *as* the id, turning a clean usage error into a
+  # lookup for the run's temp path.
+  [[ "$sub" == "show" && $# -eq 0 ]] && return 0
+  dir_given "$sub" "$@" && return 0
+  mode="$(bash "$place" mode --place-token "$token")" || exit $?
+  [[ "$mode" == "route" ]] || return 0
+  exec bash "$place" run --read -- \
+    bash "${BASH_SOURCE[0]}" --place-token '{token}' "$sub" "$@" '{}'
+}
+
 main() {
+  local place_token=""
+  if [[ "${1:-}" == "--place-token" ]]; then
+    place_token="${2:-}"
+    shift 2
+  fi
   local sub="${1:-help}"
   [[ $# -gt 0 ]] && shift
   case "$sub" in
-    stats) cmd_stats "$@" ;;
-    list)  cmd_list  "$@" ;;
-    show)  cmd_show  "$@" ;;
-    insights-graph) cmd_insights_graph "$@" ;;
-    help|-h|--help) cmd_help ;;
+    stats|list|show|insights-graph) route_placement "$place_token" "$sub" "$@" ;;
+  esac
+  local rc=0
+  case "$sub" in
+    stats) cmd_stats "$@" || rc=$? ;;
+    list)  cmd_list  "$@" || rc=$? ;;
+    show)  cmd_show  "$@" || rc=$? ;;
+    insights-graph) cmd_insights_graph "$@" || rc=$? ;;
+    help|-h|--help) cmd_help || rc=$? ;;
     *)
       echo "error: unknown subcommand '$sub' (valid: stats list show insights-graph help)" >&2
       cmd_help >&2
       return 2
       ;;
   esac
+  # A verb that otherwise succeeded still fails the run when it served a view it
+  # could not refresh. A verb that already failed keeps its own status, which is
+  # the more specific of the two.
+  (( rc == 0 )) && (( STALE_VIEW )) && rc=1
+  return "$rc"
 }
 
 main "$@"

@@ -1,6 +1,6 @@
 ---
 id: 20260717-evaluate-optional-ears-when-then-testable-ac-grammar-and-a-spec-
-num: 16
+num: 81
 title: "Evaluate optional EARS/WHEN-THEN testable-AC grammar and a spec-check testability lint"
 status: open
 priority: medium

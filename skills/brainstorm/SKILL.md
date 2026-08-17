@@ -98,8 +98,9 @@ IF auto_issue_file == "true" THEN apply the AUTO-FILE PATH:
 
 FOR each candidate (1-based row_index `i`):
   - Write the candidate body to a temp file with the Write tool.
-  - File it: `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --title "<title>" --priority <p> --labels "<csv>" --origin "<origin>" --body-file "<tmp>"`. The emitter resolves the slug/num/timestamps, validates the id, encodes the fields, and writes atomically.
-  - On a non-zero exit (e.g. an un-normalizable title), add `(i, reason)` to `skipped_list` and continue.
+  - File it: `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --auto --title "<title>" --priority <p> --labels "<csv>" --origin "<origin>" --body-file "<tmp>"`. The emitter resolves the slug/num/timestamps, validates the id, encodes the fields, and writes atomically. `--auto` declares the batch unreviewed, which is what lets the emitter apply the placement scrub gate (`skills/issue/SKILL.md` § 7a).
+  - On **exit code 4** the emitter refused the whole batch rather than this candidate: issue placement publishes to a shared branch and the project has not acknowledged auto-filing to it. Nothing was written and nothing will be. STOP the loop, emit the disclosure `"issue placement publishes to <branch>; showing the batch for review before it is shared"`, and apply the INTERACTIVE PATH below to the entire batch.
+  - On any other non-zero exit (e.g. an un-normalizable title), add `(i, reason)` to `skipped_list` and continue.
 AFTER the per-candidate loop completes, regenerate INDEX.md ONCE:
   - `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`.
 Emit a one-line summary: `"Filed N of M candidates (K skipped: #i — <reason>; #j — <reason>). See INDEX.md."` Skipped candidates are referenced by row index, never by title (spec 018 § Out of Scope — title content may include conversation context that the trusted developer should not have re-exposed in terminal logs).
@@ -120,11 +121,11 @@ I noted N candidate issues during this run:
 
 Wait for the developer's response.
 
-- ON bulk `file all`: FOR each checked row, file it via `new.sh` (no per-row regen). AFTER the loop, regenerate INDEX.md ONCE via `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`. Emit `"Filed N candidates. See INDEX.md."`
+- ON bulk `file all`: FOR each checked row, file it via `new.sh --reviewed` (no per-row regen). AFTER the loop, regenerate INDEX.md ONCE via `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`. Emit `"Filed N candidates. See INDEX.md."`
 - ON bulk `skip all`: discard all rows.
 - ON per-row override:
-  - `f` (file) — file via `new.sh`, regenerate INDEX.md once for the row.
-  - `e` (edit) — present the full drafted issue (title + frontmatter + body) inline with the spec 017 AC-C2 scrub reminder: *"this is your last chance to scrub sensitive content (API keys, customer data, raw secrets) before persistence."* On approve: file via `new.sh` + regenerate. On edit: re-present the modified draft. On cancel: discard the row.
+  - `f` (file) — file via `new.sh --reviewed`, regenerate INDEX.md once for the row.
+  - `e` (edit) — present the full drafted issue (title + frontmatter + body) inline with the spec 017 AC-C2 scrub reminder: *"this is your last chance to scrub sensitive content (API keys, customer data, raw secrets) before persistence."* On approve: file via `new.sh --reviewed` + regenerate. On edit: re-present the modified draft. On cancel: discard the row.
   - `s` (skip) — discard the row.
 
 After the batch concludes (auto-file summary, interactive resolution, or silent skip), continue to Step 7.

@@ -2,7 +2,7 @@
 name: file
 description: >
   Inspect jim's file/path resolver: existence checks, slug normalization,
-  today's date, next spec ID, canonical artifact paths, and glob discovery.
+  today's date, next issue id, canonical artifact paths, and glob discovery.
   Use when the user invokes /jim:file, asks what jim would name a new file,
   wants to audit a slug or ID assignment, or wants to list existing
   artifacts. Do not use for setting paths — there is no write surface;
@@ -19,19 +19,19 @@ Run jim's file/path resolver:
 
 ## Examples
 
-- `/jim:file exists docs/specs/jim/008-jimfile/spec.md` — `yes` or `no`
+- `/jim:file exists docs/specs/platform/003-jimfile/spec.md` — `yes` or `no`
 - `/jim:file get vision` — configured vision-doc path *if the file exists on disk*, else the literal string `NOT_FOUND`
 - `/jim:file get pre_commit` — configured pre-commit script path *if it exists*, else the literal string `NOT_FOUND`
 - `/jim:file path vision` — configured vision-doc path regardless of existence (write-target form)
 - `/jim:file slug "Auth Token Expiry"` — kebab-case slug
 - `/jim:file date` — today as `YYYYMMDD`
-- `/jim:file next-id jim` — next zero-padded spec ID for the `jim` group
-- `/jim:file next-id issue "Auth bug"` — date-prefixed issue id (`YYYYMMDD-auth-bug`)
+- `/jim:file next-id issue "Auth bug"` — date-prefixed issue id (`YYYYMMDD-auth-bug`); spec ordinals are the coordination allocator's, never derived from the tree
 - `/jim:file next-num issue` — next issue display ordinal (max `num` + 1)
-- `/jim:file path spec jim 008 jimfile` — canonical spec path
+- `/jim:file path spec platform 003 jimfile` — canonical spec path
+- `/jim:file path spec platform P-20260728-jimfile` — a provisional identity's path (the token is the whole basename)
 - `/jim:file path issue 20260101-auth-bug` — issue file path (slug validated)
 - `/jim:file path debug "auth bug"` — date-prefixed debug path (collision-resolved)
-- `/jim:file glob specs jim` — every spec in the `jim` group
+- `/jim:file glob specs sdlc` — every spec in the `sdlc` group (omit the group to list all groups)
 - `/jim:file glob debug` — every existing debug report
 - `/jim:file kinds` — valid artifact kinds (no I/O)
 - `/jim:file -c jimconf.toml.example path debug "auth bug"` — inspect a specific config

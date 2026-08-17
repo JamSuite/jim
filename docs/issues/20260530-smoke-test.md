@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-05-30T00:00:00Z
-updated: 2026-06-18T08:55:16Z
-origin: docs/specs/jim/017-issue-tracking/spec.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/issue/001-issue-tracking/spec.md
 ---
 
 ## Description

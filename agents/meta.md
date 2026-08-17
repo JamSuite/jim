@@ -11,7 +11,7 @@ description: >
   <example>
   Context: The user has an approved spec and plan for a new jim skill.
   user: "/jim:meta-skill my-new-skill"
-  assistant: "I'll use the meta-skill skill to build this. Let me locate the spec in docs/specs/jim/."
+  assistant: "I'll use the meta-skill skill to build this. Let me locate the spec under docs/specs/."
   <commentary>
   Direct invocation of /jim:meta-skill — @jim:meta is the right agent and meta-skill is preloaded.
   </commentary>
@@ -49,8 +49,8 @@ Key paths:
 - Skills: `skills/{name}/SKILL.md` (+ `assets/`, `references/`, `scripts/` as needed)
 - Skill scripts: `skills/{name}/scripts/*.sh` — bash only; rules in `CLAUDE.md` and `ARCHITECTURE.md` → Plugin Conventions → Scripting Layer
 - Agents: `agents/{name}.md`
-- Specs: `docs/specs/jim/{00X}-{name}/spec.md`
-- Plans: `docs/specs/jim/{00X}-{name}/plan.md`
+- Specs: `docs/specs/{group}/{id}-{name}/spec.md`, or `docs/specs/{group}/P-{date}-{slug}/spec.md` for an identity still pending realization
+- Plans: `docs/specs/{group}/{id}-{name}/plan.md` (same directory as spec)
 - Workflow reference: `WORKFLOW.md`
 
 Tools: use Read to load specs, plans, research, and existing artifacts; Glob to find files; Grep to search content; Write for new files; Edit for updates; Agent to delegate to @jim:pm (spec creation), @jim:architect (plan creation), and @jim:researcher (research gathering). No Bash — you do not run code.

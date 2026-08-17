@@ -7,7 +7,7 @@ description: >
   (/jim:research), or planning (/jim:plan).
 agent: coder
 argument-hint: "[spec-directory-path]"
-allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(mkdir *) Skill(jim:arch) Skill(jim:sec) Read Write Edit
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh *) Bash(bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh *) Bash(mkdir *) Skill(jim:arch) Skill(jim:sec) Skill(jim:review) Read Write Edit
 ---
 
 # /jim:build
@@ -53,6 +53,14 @@ When neither gate flag is set, this step is skipped silently.
 Read `spec.md` and `research.md` from the same directory. These provide the intent and constraints behind each task — the plan tells you *what*, the spec and research tell you *why*. Note the spec type (`feature`, `bug`, or `refactor`) — it governs Red phase behavior.
 
 If the plan is ambiguous (a task's intent is unclear or its Verify command is malformed), STOP. Report the ambiguous task and what's unclear. Wait for the human to update the plan before continuing.
+
+Then open the jim ledger so the later review phase can scope exactly this build's changes — even on a branch carrying several specs. Before the first task executes, record the baseline:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh start <spec-dir>
+```
+
+Commit the new `ledger.md` with a `chore(review): open jim ledger` message so the baseline survives an interrupted build. This is the first of two ledger commits; the second lands at the completion gate. (If `jimledger.sh` is absent — an older checkout — skip silently; the ledger is best-effort instrumentation.)
 
 ### 4. Execute the TDD loop
 
@@ -163,8 +171,9 @@ After all tasks are marked `[x]`:
 
    FOR each candidate (1-based row_index `i`):
      - Write the candidate body to a temp file with the Write tool.
-     - File it: `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --title "<title>" --priority <p> --labels "<csv>" --origin "<origin>" --body-file "<tmp>"`. The emitter resolves the slug/num/timestamps, validates the id, encodes the fields, and writes atomically.
-     - On a non-zero exit (e.g. an un-normalizable title), add `(i, reason)` to `skipped_list` and continue.
+     - File it: `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --auto --title "<title>" --priority <p> --labels "<csv>" --origin "<origin>" --body-file "<tmp>"`. The emitter resolves the slug/num/timestamps, validates the id, encodes the fields, and writes atomically. `--auto` declares the batch unreviewed, which is what lets the emitter apply the placement scrub gate (`skills/issue/SKILL.md` § 7a).
+     - On **exit code 4** the emitter refused the whole batch rather than this candidate: issue placement publishes to a shared branch and the project has not acknowledged auto-filing to it. Nothing was written and nothing will be. STOP the loop, emit the disclosure `"issue placement publishes to <branch>; showing the batch for review before it is shared"`, and apply the INTERACTIVE PATH below to the entire batch.
+     - On any other non-zero exit (e.g. an un-normalizable title), add `(i, reason)` to `skipped_list` and continue.
    AFTER the per-candidate loop completes, regenerate INDEX.md ONCE:
      - `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`.
    Emit a one-line summary: `"Filed N of M candidates (K skipped: #i — <reason>; #j — <reason>). See INDEX.md."` Skipped candidates are referenced by row index, never by title (spec 018 § Out of Scope — title content may include conversation context that the trusted developer should not have re-exposed in terminal logs).
@@ -185,22 +194,43 @@ After all tasks are marked `[x]`:
 
    Wait for the developer's response.
 
-   - ON bulk `file all`: FOR each checked row, file it via `new.sh` (no per-row regen). AFTER the loop, regenerate INDEX.md ONCE via `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`. Emit `"Filed N candidates. See INDEX.md."`
+   - ON bulk `file all`: FOR each checked row, file it via `new.sh --reviewed` (no per-row regen). AFTER the loop, regenerate INDEX.md ONCE via `bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/index.sh`. Emit `"Filed N candidates. See INDEX.md."`
    - ON bulk `skip all`: discard all rows.
    - ON per-row override:
-     - `f` (file) — file via `new.sh`, regenerate INDEX.md once for the row.
-     - `e` (edit) — present the full drafted issue (title + frontmatter + body) inline with the spec 017 AC-C2 scrub reminder: *"this is your last chance to scrub sensitive content (API keys, customer data, raw secrets) before persistence."* On approve: file via `new.sh` + regenerate. On edit: re-present the modified draft. On cancel: discard the row.
+     - `f` (file) — file via `new.sh --reviewed`, regenerate INDEX.md once for the row.
+     - `e` (edit) — present the full drafted issue (title + frontmatter + body) inline with the spec 017 AC-C2 scrub reminder: *"this is your last chance to scrub sensitive content (API keys, customer data, raw secrets) before persistence."* On approve: file via `new.sh --reviewed` + regenerate. On edit: re-present the modified draft. On cancel: discard the row.
      - `s` (skip) — discard the row.
 
    After the batch concludes (auto-file summary, interactive resolution, or silent skip), continue to sub-step 4.
-4. Report results to the user and ask: "Should I mark the plan status as `complete`?"
-5. STOP. Wait for the human to confirm. Do not proceed to the next SDLC phase, do not auto-invoke review. Update the plan frontmatter to `status: complete` only after explicit confirmation.
+4. Close the jim ledger and commit it:
+
+   ```
+   bash ${CLAUDE_PLUGIN_ROOT}/skills/ledger/scripts/jimledger.sh finish <spec-dir>
+   ```
+
+   Commit the updated `ledger.md` with `chore(review): close jim ledger` — the second of two ledger commits. (If `jimledger.sh` is absent, skip silently.)
+5. Report results to the user.
+6. Post-build review gate (require_review / auto_review):
+
+   SET require_review = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get require_review`
+   SET auto_review    = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/conf/scripts/jimconf.sh get auto_review`
+
+   IF require_review == "true" OR auto_review == "true" THEN
+     Invoke `Skill(jim:review)` with the spec directory as the `args` parameter — it runs once. `auto_review` runs it without a prompt; `require_review` makes it a **required, blocking phase** (enforced at the completion gate, Step 7).
+   ELSE
+     Offer conversationally: "Run the post-build review now? (`/jim:review`)" — the developer chooses. Do not auto-run.
+   ENDIF
+
+   Two distinct axes, do not conflate them: the review's *findings* (drift, metrics, security regressions) are advisory — a report, never a veto, and they never auto-reject the build. What `require_review` gates is that the review *phase runs to completion*, not whether its findings pass.
+7. Completion gate. Ask: "Should I mark the plan status as `complete`?" Then STOP and wait for explicit human confirmation. Do not auto-ship. Update the plan frontmatter to `status: complete` only after that confirmation.
+
+   IF require_review == "true": the Step 6 review is a required, blocking phase — do **not** mark the plan complete until that review has run to completion (a `review.md` was produced for this spec). If the review was interrupted, errored, or the developer declined it, the completion gate is **held**: re-run `/jim:review` (or stop and report), and leave the plan status unchanged. Advisory findings never block; an *uncompleted required review* does.
 
 ## Scope Discipline
 
 - Do NOT add functionality, error handling, or optimizations beyond what the plan tasks specify.
 - Do NOT modify `spec.md` or `plan.md` content — the only allowed change is marking tasks `[x]`.
-- Do NOT proceed to the next SDLC phase (no auto-review, no auto-ship).
+- No auto-ship. The post-build review runs only via the require_review / auto_review gate (Step 6) or the developer's explicit choice — never silently chained beyond it.
 - If stuck and none of the above STOP conditions apply: STOP anyway. Report the task, what was attempted, and what is blocking. The human decides.
 
 ## Validation Checklist

@@ -12,8 +12,8 @@ Scratch project at `/tmp/jim-walkthrough.75UhdC/` with:
   - `specs_path        = "<scratch>/custom-specs"`
   - `debug_path        = "<scratch>/custom-debug"`
   - `brainstorms_path  = "<scratch>/custom-brain"`
-- Pre-existing specs: `<scratch>/custom-specs/jim/002-foo/`,
-  `<scratch>/custom-specs/jim/005-bar/` (gap-bearing layout to verify
+- Pre-existing specs: `<scratch>/custom-specs/sdlc/002-foo/`,
+  `<scratch>/custom-specs/sdlc/005-bar/` (gap-bearing layout to verify
   the max+1 rule).
 
 Each script call below ran with `bash skills/file/scripts/jimfile.sh
@@ -25,7 +25,7 @@ and `jimfile.sh` honors it.
 | Operation | Expected | Got |
 | :-- | :-- | :-- |
 | `next-id jim` | `006` (max of 002/005 + 1, gap not reclaimed) | `006` |
-| `path spec jim 006 walkthrough` | `<scratch>/custom-specs/jim/006-walkthrough/spec.md` | matches |
+| `path spec jim 006 walkthrough` | `<scratch>/custom-specs/sdlc/006-walkthrough/spec.md` | matches |
 | `path debug "walkthrough topic"` | `<scratch>/custom-debug/20260504-walkthrough-topic.md` | matches |
 | `path brainstorm "walkthrough topic"` | `<scratch>/custom-brain/20260504-walkthrough-topic.md` | matches |
 | `path debug` after the file already exists | `…-walkthrough-topic-2.md` (Decision 5 collision) | matches |

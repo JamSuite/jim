@@ -1,6 +1,6 @@
 ---
 id: 20260723-jimfile-ref-verb-and-lint
-num: 17
+num: 94
 title: "Extend jimfile.sh with a reference ref-verb, anchor resolution, and a bare-reference lint"
 status: open
 priority: low

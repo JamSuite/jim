@@ -1,6 +1,6 @@
 ---
 id: 20260717-external-research-refresh
-num: 14
+num: 79
 title: "Automate the external-research refresh as a jim skill"
 status: open
 priority: high

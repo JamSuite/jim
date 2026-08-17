@@ -19,6 +19,7 @@ SCRIPT_RENDER="$REPO_ROOT/skills/issue/scripts/render.sh"
 SCRIPT_BACKFILL="$REPO_ROOT/skills/issue/scripts/backfill.sh"
 SCRIPT_MIGRATE="$REPO_ROOT/skills/issue/scripts/migrate.sh"
 SCRIPT_NEW="$REPO_ROOT/skills/issue/scripts/new.sh"
+SCRIPT_RECONCILE="$REPO_ROOT/skills/issue/scripts/reconcile.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -62,6 +63,39 @@ run_new() {
   ERR="$(cat "$err_file")"
 }
 
+# run_new_in <repo> <args...>
+#   Invoke new.sh with CWD inside <repo> — new.sh's identity fallback shells
+#   out to jimalloc.sh, which requires a git repo (allocate issue's local-tier
+#   CAS) to run at all.
+run_new_in() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# run_issue_reconcile_in <repo> <args...>
+#   Invoke reconcile.sh with CWD inside <repo> — reconcile.sh shells out to
+#   jimalloc.sh reconcile issue, which requires a git repo to run at all.
+run_issue_reconcile_in() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && bash "$SCRIPT_RECONCILE" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# new_repo <name> — a fresh git repo with a committer identity set, for tests
+# that exercise new.sh's allocator-backed identity fallback.
+new_repo() {
+  local repo; repo="$(empty_dir "$1")"
+  git -C "$repo" init -q
+  git -C "$repo" config user.name  "Test User"
+  git -C "$repo" config user.email "test@example.com"
+  printf '%s' "$repo"
+}
+
 # num_of <dir> <slug>
 #   Echo the num: value from an issue file, or empty if absent.
 num_of() {
@@ -93,6 +127,30 @@ case_issues_index_empty_dir() {
   assert_exit "rc"            0          "$RC"
   assert_match "summary open"   "Open: 0"   "$(cat "$dir/INDEX.md")"
   assert_match "summary closed" "Closed: 0" "$(cat "$dir/INDEX.md")"
+}
+
+# AC: a failed atomic rename cleans up after itself and reports only the real
+# cause. The EXIT trap names a `local`, so returning before the trap is cleared
+# runs its body with the variable out of scope — fatal under the script's `set -u`
+# preamble, which both aborts the cleanup it exists for and prints a shell-internal
+# error over the accurate one the line above already gave.
+case_issues_index_failed_rename_leaves_no_temp_file() {
+  local dir leftover
+  dir=$(empty_dir index_renamefail)
+  write_issue "$dir" "20260101-x" 'title: "X"
+status: open
+priority: medium'
+  # An unwritable directory where INDEX.md belongs: the rename cannot land.
+  mkdir -p "$dir/INDEX.md"
+  chmod 500 "$dir/INDEX.md"
+  run_index "$dir"
+  chmod 700 "$dir/INDEX.md"
+  leftover="$(find "$dir" -maxdepth 1 -name '.INDEX.md.tmp.*' | grep -c .)"
+  assert_exit "rc"                     1   "$RC"
+  assert_eq   "no temp file left"      "0" "$leftover"
+  assert_eq   "no shell error printed" "0" \
+    "$(printf '%s\n' "$ERR" | grep -c 'unbound variable')"
+  assert_match "names the real cause" 'atomic rename failed' "$ERR"
 }
 
 # AC: one issue produces an Issues entry with the title and status (AC-I1)
@@ -617,6 +675,15 @@ case_issues_index_malformed_frontmatter_warning() {
   local idx
   idx="$(cat "$dir/INDEX.md")"
   assert_match "malformed frontmatter warning" 'missing or malformed frontmatter' "$idx"
+  # The row set and the Summary counts derive from one population. A file that
+  # fails the frontmatter gate contributes to neither, so an index can never
+  # assert a row its own Summary denies.
+  if echo "$idx" | grep -q '`20260530-x` —'; then
+    CURRENT_FAILED=1
+    echo "    [a file failing the frontmatter gate should render no row]"
+  fi
+  assert_match "open count excludes it" '^- Open: 0$' "$idx"
+  assert_match "closed count excludes it" '^- Closed: 0$' "$idx"
 }
 
 # AC: filename that is not a valid slug is skipped with a warning
@@ -635,6 +702,141 @@ case_issues_index_invalid_filename_skipped() {
   if echo "$idx" | grep -q '`bad@slug` —'; then
     CURRENT_FAILED=1
     echo "    [bad-id filename should not appear as an Issues entry]"
+  fi
+}
+
+# AC: an entry name carrying a control character is one word, whatever bytes it
+# holds — the enumeration never splits it into fragments that re-glob against
+# the run's own working directory.
+case_issues_index_control_char_name_does_not_reglob() {
+  local dir cwd
+  dir=$(empty_dir index_ctrl_name)
+  cwd=$(empty_dir index_ctrl_cwd)
+  # Stands in for the developer's own checkout: markdown whose basename is a
+  # valid id, so it would clear the per-slug validator if it were ever reached.
+  printf -- '---\ntitle: "LEAKED"\nstatus: open\nnum: 999\n---\n' \
+    > "$cwd/20260101-leaked.md"
+  # An ordinarily-committed collection entry whose name carries a newline
+  # followed by a glob. Under a branch placement any teammate can create one.
+  printf -- '---\ntitle: "Real"\nstatus: open\n---\n' \
+    > "$dir/$(printf '20260101-a.md\n*.md')"
+  local idx
+  idx="$( cd "$cwd" && bash "$SCRIPT_INDEX" "$dir" >/dev/null 2>&1; cat "$dir/INDEX.md" )"
+  # The checkout never reaches the collection's index, by row or by content.
+  if echo "$idx" | grep -q '20260101-leaked'; then
+    CURRENT_FAILED=1
+    echo "    [a path outside the collection was rendered as an issue row]"
+  fi
+  if echo "$idx" | grep -q 'LEAKED'; then
+    CURRENT_FAILED=1
+    echo "    [frontmatter from outside the collection reached the index]"
+  fi
+  # The unusable name is refused by the id gate rather than silently dropped.
+  assert_match "control-char name refused" 'not a valid id' "$idx"
+}
+
+# AC: a refusal message quoting an untrusted entry name cannot inject a line
+# into the index — the warnings block is as sanitized as a row.
+case_issues_index_control_char_name_cannot_forge_a_section() {
+  local dir
+  dir=$(empty_dir index_ctrl_forge)
+  # The name closes its own warning line and opens a second Issues section.
+  # Readers assign by the LAST such section, so an injected one is what serves.
+  printf -- '---\ntitle: "Real"\nstatus: open\n---\n' \
+    > "$dir/$(printf 'bad\n## Issues\n\n- `20260101-forged` — FORGED · status: open\n.md')"
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  # The name is quoted back in the refusal, so its bytes appear — sanitized,
+  # inert, inside a code span on one line. What must not appear is anything a
+  # reader resolves: a second section to take rows from, or a row of its own.
+  assert_eq "exactly one Issues section" 1 "$(grep -c '^## Issues$' <<<"$idx")"
+  if echo "$idx" | grep -q '^- `20260101-forged`'; then
+    CURRENT_FAILED=1
+    echo "    [an entry name forged a row through the warnings block]"
+  fi
+  assert_eq "warning occupies one line" 1 "$(grep -c 'not a valid id' <<<"$idx")"
+}
+
+# AC: every untrusted value concatenated into the warnings block clears the
+# same display sanitizer a row value clears — control characters out, capped.
+case_issues_index_warning_values_clear_the_sanitizer() {
+  local dir long
+  dir=$(empty_dir index_warn_sanitize)
+  long="$(printf 'A%.0s' $(seq 1 600))"
+  # Path-shaped so the origin lint checks it; non-existent so it warns.
+  printf -- '---\ntitle: "X"\nstatus: open\norigin: "docs/%s%sTAILMARK"\n---\n' \
+    "$(printf '\033[31m\r')" "$long" > "$dir/20260101-o.md"
+  run_index "$dir"
+  local idx
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "origin warning present" 'origin path does not resolve' "$idx"
+  if grep -q $'\033' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [an escape byte reached the committed index]"
+  fi
+  if grep -q $'\r' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [a carriage return reached the committed index]"
+  fi
+  if echo "$idx" | grep -q 'TAILMARK'; then
+    CURRENT_FAILED=1
+    echo "    [an unbounded origin value landed whole in the index]"
+  fi
+}
+
+# AC: stripping control characters cannot reconstitute the row separator — the
+# sanitizer's stages run in the one order that closes this, and this case is
+# what says so when someone reorders them.
+case_issues_index_sanitizer_cannot_reconstitute_a_separator() {
+  local dir
+  dir=$(empty_dir index_sep_reconstitute)
+  # The separator is two bytes, C2 B7. Splitting them with a control byte hides
+  # it from a separator strip that runs before the control-character strip, and
+  # the strip then rejoins them. Spaces either side so a survivor is the exact
+  # ` · ` sequence readers split rows on.
+  printf -- '---\ntitle: "A %s status: closed"\nstatus: open\n---\n' \
+    "$(printf '\xc2\x01\xb7')" > "$dir/20260101-s.md"
+  run_index "$dir"
+  local row seps
+  row="$(grep '^- `20260101-s`' "$dir/INDEX.md")"
+  assert_nonempty "row rendered" "$row"
+  # This fixture carries title and status only, so the writer emits exactly one
+  # separator. Any second one came from the title.
+  seps="$(grep -o ' · ' <<<"$row" | wc -l)"
+  assert_eq "no separator reconstituted" 1 "$seps"
+  assert_match "the writer's own status is what resolves" 'status: open' "$row"
+}
+
+# AC: a malformed wikilink is sanitized on its way into the warning that names
+# it — body text is untrusted on the same footing as frontmatter.
+case_issues_index_malformed_wikilink_is_sanitized() {
+  local dir
+  dir=$(empty_dir index_wl_sanitize)
+  # Bracket-free control bytes: the wikilink grammar is `[[^][]+]]`, so a value
+  # carrying `[` never matches as a wikilink in the first place.
+  printf -- '---\ntitle: "X"\nstatus: open\n---\n\nSee [[not a valid id%s]].\n' \
+    "$(printf '\033\r')" > "$dir/20260101-w.md"
+  run_index "$dir"
+  assert_match "wikilink warning present" 'malformed wikilink' "$(cat "$dir/INDEX.md")"
+  if grep -q $'\033' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [an escape byte reached the index via a wikilink]"
+  fi
+}
+
+# AC: an invalid relation target is sanitized on its way into the warning that
+# names it, like every other untrusted value the block quotes.
+case_issues_index_invalid_relation_target_is_sanitized() {
+  local dir
+  dir=$(empty_dir index_rel_sanitize)
+  printf -- '---\ntitle: "X"\nstatus: open\nrelations:\n  blocks: ["%s"]\n---\n' \
+    "$(printf 'not a valid id\033[31m')" > "$dir/20260101-r.md"
+  run_index "$dir"
+  assert_match "relation warning present" 'invalid relation target' "$(cat "$dir/INDEX.md")"
+  if grep -q $'\033' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [an escape byte reached the index via a relation target]"
   fi
 }
 
@@ -658,6 +860,51 @@ status: open'
   local tmp_files
   tmp_files=$(ls -1 "$dir/" | grep -c '^\.INDEX\.md\.tmp' || true)
   assert_eq "no tmp leftover" "0" "$tmp_files"
+}
+
+# issues_unwritable_mktemp_shim <name>
+#   A directory holding an `mktemp` that, for the INDEX tmpfile template ONLY,
+#   returns a path it has already created read-only; every other call execs the
+#   real mktemp. Opening that path for write fails, which is how a compose that
+#   cannot be written is staged without needing a full disk.
+issues_unwritable_mktemp_shim() {
+  local dir real
+  dir=$(empty_dir "$1")
+  real="$(command -v mktemp)"
+  {
+    printf '%s\n' '#!/usr/bin/env bash' 'set -uo pipefail' 'for a in "$@"; do'
+    printf '%s\n' '  case "$a" in'
+    printf '%s\n' '    *INDEX.md.tmp.*)'
+    printf '%s\n' '      p="${a%.XXXXXX}.locked"'
+    printf '%s\n' '      : > "$p"; chmod 0444 "$p"; printf "%s\\n" "$p"; exit 0 ;;'
+    printf '%s\n' '  esac' 'done'
+    printf 'exec %s "$@"\n' "$real"
+  } > "$dir/mktemp"
+  chmod +x "$dir/mktemp"
+  printf '%s' "$dir"
+}
+
+# AC: a compose that cannot be written never reaches the atomic rename. The
+# rename is what makes this dangerous rather than merely unguarded — a short
+# write would publish a TRUNCATED index over a good one and still return 0, and
+# both reconcilers key their "index failed to regenerate" error off that code.
+case_issues_index_failed_compose_preserves_prior_index() {
+  local dir shim oldpath
+  dir=$(empty_dir index_compose_fail)
+  write_issue "$dir" "20260530-z" 'title: "Z"
+status: open'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  local good; good="$(cat "$dir/INDEX.md")"
+  shim=$(issues_unwritable_mktemp_shim index_compose_shim)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_index "$dir"
+  PATH="$oldpath"
+  assert_exit  "rc" 1 "$RC"
+  assert_match "names the compose failure" 'compose' "$ERR"
+  assert_eq    "prior INDEX.md byte-unchanged" "$good" "$(cat "$dir/INDEX.md")"
+  chmod 0644 "$dir"/.INDEX.md.tmp.locked 2>/dev/null
+  rm -f "$dir"/.INDEX.md.tmp.locked
 }
 
 # AC: render.sh on an empty dir prints "Open: 0 · Closed: 0" summary line (AC-R1, R2)
@@ -794,6 +1041,95 @@ status: open'
   local after_hash
   after_hash=$(find "$dir" -type f -name '*.md' ! -name 'INDEX.md' -exec md5sum {} + | sort | md5sum)
   assert_eq "issue files unchanged" "$before_hash" "$after_hash"
+}
+
+# stale_locked_collection <name> — a collection whose INDEX.md is stale and
+#   whose directory cannot be written, so index.sh's regeneration fails while a
+#   prior, serviceable index is still on disk. The printed directory is left
+#   unwritable: restore it with `chmod u+w` before the case returns, or the
+#   runner's cleanup cannot remove it.
+stale_locked_collection() {
+  local dir
+  dir=$(empty_dir "$1")
+  write_issue "$dir" "20260530-a" 'title: "A"
+num: 1
+status: open
+priority: high
+created: 2026-05-30'
+  bash "$SCRIPT_INDEX" "$dir" >/dev/null 2>&1
+  touch "$dir/20260530-a.md"
+  chmod a-w "$dir"
+  printf '%s\n' "$dir"
+}
+
+# AC: a read whose index cannot be refreshed still serves the prior view, says
+# so on stderr, and carries a non-zero status — the group serves a stale view
+# rather than failing, but never reports success over one.
+case_issues_render_list_serves_and_flags_an_unrefreshable_index() {
+  local dir
+  dir=$(stale_locked_collection render_stale_list)
+  run_render list "$dir"
+  chmod u+w "$dir"
+  assert_exit "carries the failure"      1        "$RC"
+  assert_match "still serves the view"   '#1'     "$OUT"
+  assert_match "discloses the staleness" 'stale'  "$ERR"
+}
+
+# AC: the same posture on `stats` — the summary is served and the status carries.
+case_issues_render_stats_serves_and_flags_an_unrefreshable_index() {
+  local dir
+  dir=$(stale_locked_collection render_stale_stats)
+  run_render stats "$dir"
+  chmod u+w "$dir"
+  assert_exit "carries the failure"      1          "$RC"
+  assert_match "still serves the view"   'Open: 1'  "$OUT"
+  assert_match "discloses the staleness" 'stale'    "$ERR"
+}
+
+# AC: the same posture on `show` — the issue is served and the status carries.
+case_issues_render_show_serves_and_flags_an_unrefreshable_index() {
+  local dir
+  dir=$(stale_locked_collection render_stale_show)
+  run_render show 1 "$dir"
+  chmod u+w "$dir"
+  assert_exit "carries the failure"      1               "$RC"
+  assert_match "still serves the view"   '20260530-a'    "$OUT"
+  assert_match "discloses the staleness" 'stale'         "$ERR"
+}
+
+# AC: the same posture on `insights-graph`. It is the analyst's input, so a
+# stale graph is exactly the case the analyst cannot detect for itself — the
+# facts are still emitted, and the status is what says they may be behind.
+case_issues_render_insights_graph_serves_and_flags_an_unrefreshable_index() {
+  local dir
+  dir=$(stale_locked_collection render_stale_graph)
+  run_render insights-graph "$dir"
+  chmod u+w "$dir"
+  assert_exit "carries the failure"      1                        "$RC"
+  assert_match "still serves the facts"  'ISOLATED 20260530-a'    "$OUT"
+  assert_match "discloses the staleness" 'stale'                  "$ERR"
+}
+
+# AC: the flag fires only on an actual failure — a collection whose index
+# regenerates cleanly still returns 0 and says nothing. Without this the four
+# cases above pass against a render that fails every read.
+case_issues_render_refreshable_index_stays_silent_and_zero() {
+  local dir
+  dir=$(empty_dir render_fresh_index)
+  write_issue "$dir" "20260530-a" 'title: "A"
+num: 1
+status: open
+priority: high
+created: 2026-05-30'
+  bash "$SCRIPT_INDEX" "$dir" >/dev/null 2>&1
+  touch "$dir/20260530-a.md"
+  run_render list "$dir"
+  assert_exit "clean read succeeds"  0    "$RC"
+  assert_match "view served"         '#1' "$OUT"
+  if printf '%s\n' "$ERR" | grep -q 'stale'; then
+    CURRENT_FAILED=1
+    echo "    [a refreshable index must not be reported stale] [$ERR]"
+  fi
 }
 
 # AC: origin-lint — path-shaped origin that resolves on disk produces no warning
@@ -1473,6 +1809,30 @@ updated: 2026-06-13'
   assert_match "warns on malformed"          'not a valid date or timestamp' "$ERR"
 }
 
+# A malformed created carrying a literal backslash-n must stay one field's text.
+# `awk -v` would expand it into a real newline and the value's own trailing text
+# would open a second frontmatter pair — so `status:` is placed AFTER `created:`
+# here, where an injected pair becomes the first match every reader resolves.
+# The assertion is on what a reader resolves, not on whether the text survives:
+# the text is the issue's own field value and not this script's to censor.
+case_issues_backfill_normalize_no_escape_expansion() {
+  local dir f
+  dir=$(empty_dir backfill_normalize_escape)
+  # A date-only `updated` is what makes the file eligible for rewrite at all —
+  # the skip fires only when neither field changed.
+  write_issue "$dir" "20260613-x" 'title: "X"
+num: 1
+created: not-a-date\nstatus: closed
+updated: 2026-06-13
+status: open'
+  run_backfill timestamp "$dir"
+  f="$dir/20260613-x.md"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "updated still normalized"  "2026-06-13T00:00:00Z" "$(read_fm_field "$f" updated)"
+  assert_eq   "status a reader resolves"  "open"                 "$(read_fm_field "$f" status)"
+  assert_eq   "no second status pair"     "1"                    "$(grep -c '^status:' "$f")"
+}
+
 # extract_ts_shape <script> — the canonical timestamp-shape pattern marked with
 # `# SYNC(ts-shape): <pattern>`, indentation-independent (Finding F6).
 extract_ts_shape() {
@@ -1845,6 +2205,90 @@ issue_id_prefix = \"timestamp\"")
   assert_match "collision count"   '1 collision'           "$OUT"
 }
 
+# AC: a skipped issue says why it was skipped. The preview is the gate an
+# operator approves a destructive migration on, and every skip row carries an
+# empty new-id field — which `IFS=$'\t' read` collapses, since tab is IFS
+# whitespace, shifting the reason into the new-id slot and dropping it.
+case_issues_migrate_preview_states_the_skip_reason() {
+  local dir cfg
+  dir=$(empty_dir migrate_skip_reason)
+  write_issue "$dir" "noprefix" 'title: "X"
+status: open
+num: 1
+created: 2026-01-01T00:00:00Z'
+  cfg=$(fixture migrate-skip-reason.toml "issues_path = \"$dir\"")
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the skip names its reason" \
+    'un-migratable: id has no prefix delimiter' "$OUT"
+}
+
+# AC: the collision discriminator is an id in its own right, and it becomes a
+# filename. Its source cleared the id boundary, but clearance does not transfer:
+# the suffix can carry a slug already at the 128-character cap past it. The
+# header claimed "the new id and any -2/-3 discriminator pass jimfile's
+# valid-id" while only the former did (`id-gate-before-path`, critical).
+case_issues_migrate_discriminator_clears_the_id_boundary() {
+  local dir cfg slug
+  dir=$(empty_dir migrate_disc_cap)
+  # 119 characters, so the re-derived `20260101-<slug>` is exactly 128 and its
+  # discriminated form is 130.
+  slug="$(printf 'a%.0s' $(seq 1 119))"
+  write_issue "$dir" "20250101-$slug" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01T00:00:00Z'
+  write_issue "$dir" "20250102-$slug" 'title: "B"
+status: open
+num: 2
+created: 2026-01-01T00:00:00Z'
+  cfg=$(fixture migrate-disc-cap.toml "issues_path = \"$dir\"")
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the over-long discriminated id is refused" \
+    'discriminated id failed validation' "$OUT"
+  assert_eq "and no 130-character name is proposed" "no" \
+    "$(grep -q -- "-$slug-2" <<< "$OUT" && echo yes || echo no)"
+}
+
+# AC: a row downgraded inside the assignment loop keeps its file, so it must
+# keep its name too. The reservation loop deliberately leaves a rename's old id
+# free — a licence that holds only while the file actually moves away. A
+# downgrade revokes that, and without re-reserving, a later row is assigned the
+# name of a file that is still sitting there: both mv into one path, the retire
+# loop removes the survivor's old name, and the run exits 0 reporting success.
+case_issues_migrate_downgraded_row_keeps_its_name_reserved() {
+  local dir cfg slug titles
+  dir=$(empty_dir migrate_downgrade_reserve)
+  # 119 characters, so a re-derived `<8-digit>-<slug>` is exactly 128 and any
+  # discriminated form is 130 — over the cap, which is what forces a downgrade.
+  slug="$(printf 'a%.0s' $(seq 1 119))"
+  # Re-derives onto C-below's conforming id, so it discriminates past the cap
+  # and is downgraded. Its own file stays at this name.
+  write_issue "$dir" "20250101-$slug" 'title: "B"
+status: open
+num: 2
+created: 2026-01-01T00:00:00Z'
+  # Already conforming, so the reservation loop holds this id.
+  write_issue "$dir" "20260101-$slug" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01T00:00:00Z'
+  # Sorts last, and re-derives onto the downgraded row's still-occupied name.
+  write_issue "$dir" "20270101-$slug" 'title: "C"
+status: open
+num: 3
+created: 2025-01-01T00:00:00Z'
+  cfg=$(fixture migrate-downgrade-reserve.toml "issues_path = \"$dir\"")
+  run_migrate -c "$cfg" prefix --apply
+  assert_exit "rc" 0 "$RC"
+  # Every issue that existed before the run still exists after it. Asserted on
+  # titles rather than filenames: the defect renames one file over another, so
+  # a filename count alone stays at three while one issue's content is gone.
+  titles="$(grep -h '^title:' "$dir"/*.md 2>/dev/null | sort | tr -d '"' | sed 's/title: //' | tr '\n' ' ')"
+  assert_eq "all three issues survive" "A B C " "$titles"
+}
+
 # spec 023 Task 4: the preview adds a stable PLAN-HASH and a read-only VCS note,
 # and mutates nothing.
 case_issues_migrate_prefix_preview() {
@@ -2019,6 +2463,110 @@ issue_id_prefix = \"timestamp\"")
   assert_match "INDEX clean" '_None' "$(cat "$dir/INDEX.md")"
 }
 
+# AC: a failure part-way through the commit loses no issue. Every staged file is
+# put in place before any old name is retired, so the worst a mid-commit failure
+# can leave is an issue present under both names — never one present under
+# neither, with its only copy a tmp nothing removes.
+case_issues_migrate_commit_failure_loses_no_issue() {
+  local dir cfg f content
+  dir=$(empty_dir migrate_commit_fail)
+  write_issue "$dir" "20260613-aaa" 'title: "A"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T09:00:00Z'
+  write_issue "$dir" "20260613-bbb" 'title: "B"
+status: open
+num: 2
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z'
+  cfg=$(fixture migrate-commitfail.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  export MIGRATE_FAIL_COMMIT=1
+  run_migrate -c "$cfg" prefix --apply
+  unset MIGRATE_FAIL_COMMIT
+  assert_exit  "injected commit fails" 1 "$RC"
+  assert_match "says nothing was lost" 'none has been lost' "$ERR"
+
+  # Both issues are still readable under some name.
+  local a_found=no b_found=no
+  for f in "$dir"/*.md; do
+    content="$(cat "$f")"
+    [[ "$content" == *'title: "A"'* ]] && a_found=yes
+    [[ "$content" == *'title: "B"'* ]] && b_found=yes
+  done
+  assert_eq "A survived the failed commit" "yes" "$a_found"
+  assert_eq "B survived the failed commit" "yes" "$b_found"
+  # And no staged tmp is left behind for a later run to pick up.
+  assert_eq "no tmp stranded in the collection" "" \
+    "$(find "$dir" -name '.migrate.tmp.*' -print 2>/dev/null)"
+
+  # A re-run converges: both end up at their migrated names.
+  run_migrate -c "$cfg" prefix --apply
+  assert_exit "retry rc 0" 0 "$RC"
+  assert_eq "A at its migrated name" "yes" \
+    "$([[ -f "$dir/20260613T090000-aaa.md" ]] && echo yes || echo no)"
+  assert_eq "B at its migrated name" "yes" \
+    "$([[ -f "$dir/20260613T100000-bbb.md" ]] && echo yes || echo no)"
+}
+
+# AC: a mid-commit failure on a rename CHAIN loses no issue either. Where one
+# file's new name is another's old name, the earlier rename writes over the
+# later issue's only on-disk copy — so discarding that issue's staged file, as
+# the disjoint case correctly does, is what would leave it nowhere. The staged
+# file is held instead, and the message stops claiming a guarantee it cannot
+# make. `aaa`'s target IS `bbb`'s current name, and the seam fails at `bbb`.
+case_issues_migrate_commit_failure_on_a_chain_holds_the_last_copy() {
+  local dir cfg f content
+  dir=$(empty_dir migrate_commit_fail_chain)
+  write_issue "$dir" "20260613T090000-foo" 'title: "A"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z'
+  write_issue "$dir" "20260613T100000-foo" 'title: "B"
+status: open
+num: 2
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T11:00:00Z'
+  cfg=$(fixture migrate-chainfail.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  export MIGRATE_FAIL_COMMIT=1
+  run_migrate -c "$cfg" prefix --apply
+  unset MIGRATE_FAIL_COMMIT
+  assert_exit "injected commit fails" 1 "$RC"
+
+  # B's content is what the clobber puts at risk. Search the whole directory,
+  # dotfiles included — a held staged file is exactly where it should be found.
+  local b_found=no
+  for f in "$dir"/* "$dir"/.[!.]*; do
+    [[ -f "$f" ]] || continue
+    content="$(cat "$f")"
+    [[ "$content" == *'title: "B"'* ]] && b_found=yes
+  done
+  assert_eq    "B still exists on disk"        "yes"          "$b_found"
+  assert_eq    "no false all-clear"            ""             "$(grep -o 'none has been lost' <<<"$ERR")"
+  assert_match "names the staged copy it kept" 'is staged at' "$ERR"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 #
 # This file works two ways:
@@ -2059,7 +2607,7 @@ case_new_happy_path() {
   assert_match "title"    '^title: "Sample title"$'              "$(cat "$f")"
   assert_match "priority" '^priority: high$'                      "$(cat "$f")"
   assert_match "labels"   '^labels: \[auth, refactor\]$'         "$(cat "$f")"
-  assert_match "origin"   '^origin: docs/specs/jim/025/plan.md$'  "$(cat "$f")"
+  assert_match "origin"   '^origin: "docs/specs/jim/025/plan.md"$' "$(cat "$f")"
   assert_match "body"     'A normal body\.'                       "$(cat "$f")"
 }
 
@@ -2085,6 +2633,164 @@ hi' --priority medium --labels "x" --origin conversation --body-file "$b"
   # index.sh parses the result without error.
   run_index "$dir"
   assert_exit "index parses" 0 "$RC"
+}
+
+# AC: the index refuses when it cannot resolve the placement, rather than
+# reading an empty result as `branch`. That default *runs* the origin lint, so a
+# failed resolve made the published index claim a check it never performed —
+# while place.sh takes the explicitly opposite stance on the same key.
+case_index_refuses_when_the_placement_resolve_fails() {
+  local dir before
+  dir=$(empty_dir index_resolve_fail)
+  write_issue "$dir" "20260101-r" 'title: "T"
+status: open
+num: 1
+priority: low
+created: 2026-01-01T00:00:00Z'
+  bash "$SCRIPT_INDEX" "$dir" >/dev/null 2>&1
+  before="$(cat "$dir/INDEX.md")"
+  # A config that exists but cannot be read: the resolver reports a failure
+  # rather than an unset key, and this caller honours it. The directory is
+  # passed explicitly so `resolve_dir` does not consult the config first — the
+  # placement resolve is the failure under test, not the issues-root one.
+  printf 'issue_placement = "jim/issues"\n' > "$dir/jimconf.toml"
+  chmod 000 "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT_INDEX" "$dir" 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  chmod 644 "$dir/jimconf.toml"
+  assert_eq    "refuses"          "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_match "names the key"    'issue_placement' "$ERR"
+  assert_eq "and the previous index is untouched" "$before" "$(cat "$dir/INDEX.md")"
+}
+
+# AC: the placement name lands in a committed artifact, so it clears the corpus
+# display sanitizer — control characters out and a length cap — rather than a
+# local one that had neither.
+case_index_caps_the_displayed_placement_name() {
+  local dir long line
+  dir=$(empty_dir index_place_cap)
+  write_issue "$dir" "20260101-c" 'title: "T"
+status: open
+num: 1
+priority: low
+created: 2026-01-01T00:00:00Z'
+  long="$(printf 'b%.0s' $(seq 1 900))"
+  # index.sh reads config from its CWD, and an explicit directory argument opts
+  # out of placement routing — so this drives the lint's skip branch directly.
+  printf 'issue_placement = "%s"\n' "$long" > "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT_INDEX" "$dir" 2>&1)"; RC=$?
+  assert_exit "rc" 0 "$RC"
+  line="$(grep -m1 'origin paths not checked' "$dir/INDEX.md")"
+  assert_nonempty "the skip is stated" "$line"
+  assert_eq "and the name is capped" "yes" \
+    "$([[ "${#line}" -lt 700 ]] && echo yes || echo no)"
+}
+
+# AC: an INDEX.md row's shape is a property of the writer, not of its inputs. A
+# row is ` · `-separated `key: value` pairs and every reader assigns by key in
+# the order it meets them, so a value able to reproduce the separator appends a
+# pair that overrides one the writer already emitted — forging the status `list`
+# serves, or the `num` that `show <N>` resolves against.
+case_index_row_values_cannot_forge_a_later_key() {
+  local dir
+  dir=$(empty_dir index_row_forge)
+  write_issue "$dir" "20260101-forge" 'title: "T"
+status: open
+num: 5
+priority: low
+created: 2026-01-01T00:00:00Z
+origin: " · status: closed · num: 1"'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  # The forged text may still be *present* — it is the issue's own origin value
+  # and is not the writer's to censor. What must not survive is its ability to
+  # form a pair, so the assertions are on the separator-qualified form a reader
+  # splits on, never on the bare substring.
+  assert_eq "exactly one status pair" "1" \
+    "$(grep -c ' · status: open' "$dir/INDEX.md")"
+  assert_eq "no forged status pair" "no" \
+    "$(grep -q ' · status: closed' "$dir/INDEX.md" && echo yes || echo no)"
+  assert_eq "no forged ordinal pair" "no" \
+    "$(grep -q ' · num: 1' "$dir/INDEX.md" && echo yes || echo no)"
+  # And every read verb agrees, since they parse the row the writer wrote.
+  run_render list "$dir"
+  assert_exit "list rc" 0 "$RC"
+  assert_eq "the issue is still open to a reader" "no" \
+    "$(grep -q 'closed' <<< "$OUT" && echo yes || echo no)"
+}
+
+# AC: the integrity-warnings section is concatenated from untrusted values — a
+# body wikilink, a relation target, an origin path, a filename-derived slug —
+# and was emitted with `printf '%b'`, which expands backslash escapes in them.
+# A value carrying a literal \n could inject lines, and every reader re-opens
+# the issues section on a later `## Issues`, so injected lines become rows.
+case_index_warnings_do_not_expand_escapes() {
+  local dir before_rows after_rows
+  dir=$(empty_dir index_warn_escape)
+  write_issue "$dir" "20260101-esc" 'title: "T"
+status: open
+num: 1
+priority: low
+created: 2026-01-01T00:00:00Z
+relations:
+  blocks: [not-a-valid-id\n## Issues\n- `20260101-ghost` — Ghost · status: open]'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "only one Issues heading" "1" \
+    "$(grep -c '^## Issues$' "$dir/INDEX.md")"
+  # The target's text may appear inside the warning that names it — that is the
+  # warning doing its job. What must not exist is a *row*: a line that opens
+  # like one, which is what every reader parses.
+  assert_eq "no injected row" "no" \
+    "$(grep -q '^- `20260101-ghost`' "$dir/INDEX.md" && echo yes || echo no)"
+  assert_eq "and the warning stayed on one line" "1" \
+    "$(grep -c 'invalid relation target' "$dir/INDEX.md")"
+  # And no reader serves a ghost.
+  run_render list "$dir"
+  assert_exit "list rc" 0 "$RC"
+  assert_eq "nothing fabricated reaches a reader" "no" \
+    "$(grep -q 'Ghost' <<< "$OUT" && echo yes || echo no)"
+}
+
+# AC: --origin is YAML-encoded like --title. It is model-composed free text with
+# a convention behind it — a source path, or the `conversation` sentinel — and
+# nothing mechanical enforcing either, so it belongs to the untrusted set the
+# invariant names. Emitted bare, an origin of `foo: bar`, `[a, b]` or `!!tag`
+# changes the parsed type or leaves the frontmatter unparseable for a real YAML
+# consumer, and lands verbatim in INDEX.md prose.
+case_new_origin_is_a_quoted_scalar() {
+  local dir b f
+  dir=$(empty_dir new_origin_enc)
+  b=$(fixture new_origin_enc_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-org" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels "x" \
+    --origin 'foo: bar "q" \b' --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  f="$dir/20260101-org.md"
+  assert_match "emitted as a quoted scalar" '^origin: "' "$(cat "$f")"
+  assert_match "the inner quote is escaped"     'bar \\"q\\"' "$(cat "$f")"
+  assert_match "the backslash is escaped first" '\\\\b"$'     "$(cat "$f")"
+  assert_eq "frontmatter is still well formed" "2" "$(grep -c '^---$' "$f")"
+  run_index "$dir"
+  assert_exit "index parses" 0 "$RC"
+}
+
+# AC: the id clears the validator before any path is composed from it — the
+# ordering `id-gate-before-path` (criticality critical) states. It is asserted
+# textually because what the gate guards here is a stat: it answers a filesystem
+# question and leaves nothing behind for a behavioural case to read. Brittle to
+# renaming `$slug` by design, in the same way the byte-agreement fixtures are.
+case_new_validates_the_id_before_composing_a_path() {
+  local src gate compose
+  src="$REPO_ROOT/skills/issue/scripts/new.sh"
+  gate="$(grep -n 'valid-id "\$slug"' "$src" | head -1 | cut -d: -f1)"
+  compose="$(grep -n '\$issues_dir/\$slug' "$src" | head -1 | cut -d: -f1)"
+  assert_nonempty "the gate is present"        "$gate"
+  assert_nonempty "a composition is present"   "$compose"
+  assert_eq "the gate comes first" "yes" \
+    "$([[ -n "$gate" && -n "$compose" && "$gate" -lt "$compose" ]] && echo yes || echo no)"
 }
 
 # AC: untrusted --labels cannot break the inline YAML array (spec 025 AC4, Finding 6)
@@ -2182,7 +2888,7 @@ relations:
   duplicates: []
 created: 2026-01-01T00:00:00Z
 updated: 2026-01-01T00:00:00Z
-origin: conversation
+origin: "conversation"
 ---
 
 ## Description
@@ -2190,6 +2896,1154 @@ origin: conversation
 Parity body line.'
   actual="$(cat "$dir/20260101-parity.md")"
   assert_eq "full file parity" "$expected" "$actual"
+}
+
+# ─── Section: new.sh identity — coordinated ordinals (spec 010) ──────────────
+
+# AC: --num accepts a provisional P-<id> ordinal shape as well as a real
+# numeric ordinal — the strict two-grammar union (spec 010 DD3)
+case_new_num_grammar_accepts_provisional() {
+  local dir b
+  dir=$(empty_dir new_num_grammar_prov)
+  b=$(fixture new_num_grammar_prov_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-prov" --num "P-20260101-widget" \
+    --title "T" --priority low --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  assert_match "num stored verbatim" '^num: P-20260101-widget$' "$(cat "$dir/20260101-prov.md")"
+}
+
+# AC: --num rejects anything outside the two-grammar union — free text can
+# never reach stored frontmatter or a rendered display surface (spec 010 DD3)
+case_new_num_grammar_rejects_free_text() {
+  local dir b
+  dir=$(empty_dir new_num_grammar_bad)
+  b=$(fixture new_num_grammar_bad_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-bad" --num "not-a-num" \
+    --title "T" --priority low --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no file written" "no" "$([[ -e "$dir/20260101-bad.md" ]] && echo yes || echo no)"
+  assert_nonempty "stderr explains" "$ERR"
+}
+
+# AC: new.sh's identity fallback resolves through jimalloc.sh allocate issue
+# — the single coordination point both /jim:issue add and the no-override
+# candidate-batch path go through (spec 010 DD1)
+case_new_allocate_issue_coordinated_via_temp_repo() {
+  local repo b today expected_slug slug log
+  repo=$(new_repo new_allocate_coordinated)
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  expected_slug="${today}-alpha-bug"
+  b=$(fixture new_allocate_coordinated_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Alpha bug" --priority medium --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "slug from allocator" "$expected_slug" "$slug"
+  assert_match "num from allocator" '^num: 1$' "$(cat "$repo/docs/issues/$expected_slug.md")"
+  log="$(git -C "$repo" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null)"
+  assert_match "registry recorded" "^issue allocate 1 ${expected_slug} " "$log"
+}
+
+# AC: when the allocator returns a provisional ordinal, new.sh disambiguates
+# the durable id against the local issues collection (mirroring next-id's
+# tree-scan suffixing) and mirrors the same suffix into the stored provisional
+# ordinal — a caller-pinned --slug is never touched, only the id this call
+# resolved itself (spec 010 DD4)
+case_new_provisional_disambiguates_local_collision() {
+  local repo issues_dir b today expected_second slug
+  repo=$(new_repo new_provisional_disambig)
+  issues_dir="$repo/docs/issues"
+  mkdir -p "$issues_dir"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-provisional-new.git"
+  printf 'id_coordination_unreachable = "provisional"\n' > "$repo/jimconf.toml"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  expected_second="${today}-widget-2"
+  write_issue "$issues_dir" "${today}-widget" "id: ${today}-widget"
+  b=$(fixture new_provisional_disambig_body.md 'body')
+  run_new_in "$repo" --dir "$issues_dir" \
+    --title "Widget" --priority medium --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "slug suffixed" "$expected_second" "$slug"
+  assert_match "num mirrors suffix" "^num: P-${expected_second}\$" "$(cat "$issues_dir/$expected_second.md")"
+}
+
+# AC: in real (non-provisional) mode, new.sh trusts the allocator's
+# registry-disambiguated id and refuses to overwrite a local filename
+# collision — a platform/007 G2 drift anomaly — rather than diverging from the
+# registry (spec 010 DD4)
+case_new_provisional_disambig_real_mode_collision_errors() {
+  local repo issues_dir b today fid
+  repo=$(new_repo new_real_mode_collision)
+  issues_dir="$repo/docs/issues"
+  mkdir -p "$issues_dir"
+  today=$(bash "$REPO_ROOT/skills/file/scripts/jimfile.sh" date)
+  fid="${today}-gadget"
+  write_issue "$issues_dir" "$fid" "id: $fid"
+  b=$(fixture new_real_mode_collision_body.md 'body')
+  run_new_in "$repo" --dir "$issues_dir" \
+    --title "Gadget" --priority medium --labels "x" --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_match "original file untouched" "^id: ${fid}\$" "$(cat "$issues_dir/$fid.md")"
+}
+
+# AC: render.sh list renders a provisional ordinal distinctly — never as a
+# settled #N — and render.sh show does the same (spec 010 DD6, AC 9)
+case_issues_render_list_marks_provisional_ordinal() {
+  local dir
+  dir=$(empty_dir render_list_provisional)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-p" 'title: "P"
+status: open
+num: P-20260102-p
+created: 2026-01-02'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "real ordinal settled" '#1' "$OUT"
+  assert_match "provisional marker present" 'P-20260102-p \(provisional\)' "$OUT"
+  local settled_prov
+  settled_prov="$(printf '%s\n' "$OUT" | grep -c '#P-20260102-p')"
+  assert_eq "provisional never rendered as settled #N" "0" "$settled_prov"
+}
+
+# AC: render.sh show renders a provisional ordinal distinctly (spec 010 DD6, AC 9)
+case_issues_render_show_provisional_marker() {
+  local dir
+  dir=$(empty_dir render_show_provisional)
+  write_issue "$dir" "20260102-p" 'title: "P"
+status: open
+num: P-20260102-p
+created: 2026-01-02'
+  run_render show "20260102-p" "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "provisional marker present" 'P-20260102-p \(provisional\)' "$OUT"
+  local settled_prov
+  settled_prov="$(printf '%s\n' "$OUT" | grep -c '#P-20260102-p')"
+  assert_eq "provisional never rendered as settled #N" "0" "$settled_prov"
+}
+
+# AC: list --sort num tolerates a mix of real and provisional ordinals without
+# erroring — both rows still render (spec 010 DD6)
+case_issues_render_list_sort_num_tolerates_provisional() {
+  local dir cwd
+  dir=$(empty_dir render_list_sort_prov)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-p" 'title: "P"
+status: open
+num: P-20260102-p
+created: 2026-01-02'
+  cwd=$(empty_dir render_list_sort_prov_cwd)
+  printf 'issue_list_sort = "num"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit "rc" 0 "$RC"
+  assert_match "real row present" '#1' "$OUT"
+  assert_match "provisional row present" 'provisional' "$OUT"
+}
+
+# ─── Section: reconcile.sh (realize provisional issue ordinals, spec 010) ────
+
+# AC: reconcile.sh --apply realizes a pending provisional issue's num: into a
+# real ordinal via jimalloc.sh reconcile issue, and regenerates the index
+# (spec 010 DD5)
+case_issues_reconcile_apply_realizes_pending_provisional() {
+  local repo dir fid
+  repo=$(new_repo reconcile_realize)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-widget"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Widget\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "num realized"      '^num: 1$'  "$(cat "$dir/$fid.md")"
+  assert_match "index regenerated" '· num: 1'  "$(cat "$dir/INDEX.md")"
+}
+
+# issues_craft_registry <repo> <issues.log line>...
+#   Plant an issues.log on the coordination branch through plumbing — the branch
+#   is push-writable, so a contradicted registry is exactly what a crafted one
+#   looks like from the realizer's side.
+issues_craft_registry() {
+  local repo="$1"; shift
+  local blob tree commit
+  blob="$(printf '%s\n' "$@" | git -C "$repo" hash-object -w --stdin)"
+  tree="$(printf '100644 blob %s\tissues.log\n' "$blob" | git -C "$repo" mktree)"
+  commit="$(git -C "$repo" commit-tree "$tree" -m crafted)"
+  git -C "$repo" update-ref refs/heads/jim/registry "$commit"
+}
+
+# AC: a pending marker whose durable id is claimed twice in the registry is
+# blocked — its num: stays provisional and the failure is loud — while the rest
+# of the batch realizes and the index regenerates. One contradicted identity
+# must not strand neighbours whose ordinals are safe.
+case_issues_reconcile_blocked_identity_keeps_batch() {
+  local repo dir
+  repo=$(new_repo reconcile_blocked)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  write_issue "$dir" "20260101-dup" 'id: 20260101-dup
+title: "Dup"
+status: open
+num: P-20260101-dup
+priority: medium
+created: 2026-01-01T00:00:00Z'
+  write_issue "$dir" "20260101-clean" 'id: 20260101-clean
+title: "Clean"
+status: open
+num: P-20260101-clean
+priority: medium
+created: 2026-01-01T00:00:00Z'
+  issues_craft_registry "$repo" \
+    'issue allocate 5 20260101-dup 20260101 jane' \
+    'issue allocate 9 20260101-dup 20260102 mallory'
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit  "one blocked file fails the run" 1 "$RC"
+  assert_match "names the blocked identity" '20260101-dup' "$ERR"
+  assert_match "blocked num stays provisional" '^num: P-20260101-dup$' \
+    "$(cat "$dir/20260101-dup.md")"
+  assert_match "neighbour realized past the high-water" '^num: 10$' \
+    "$(cat "$dir/20260101-clean.md")"
+  assert_match "index regenerated over the realized neighbour" '· num: 10' \
+    "$(cat "$dir/INDEX.md")"
+}
+
+# AC: reconcile.sh --apply is idempotent — re-running against a file whose
+# frontmatter still cites the provisional marker (e.g. a resumed run after an
+# interruption before the rewrite landed) maps it to its already-realized
+# ordinal, never allocates a second one (spec 010 DD5, AC 7)
+case_issues_reconcile_apply_idempotent_rerun() {
+  local repo dir fid
+  repo=$(new_repo reconcile_idempotent)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-gizmo"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Gizmo\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit "first rc" 0 "$RC"
+  assert_eq "first realized" "1" "$(num_of "$dir" "$fid")"
+  # Simulate a resumed run: the file still cites the provisional marker even
+  # though the registry already realized it.
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Gizmo\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit "second rc" 0 "$RC"
+  assert_eq "second realized same ordinal" "1" "$(num_of "$dir" "$fid")"
+}
+
+# AC: reconcile.sh --apply rewrites ONLY the leading frontmatter block's num:
+# field — a body line that happens to read "num:" is left byte-for-byte
+# untouched (spec 010 security Finding 5)
+case_issues_reconcile_apply_anchors_frontmatter_num_only() {
+  local repo dir fid
+  repo=$(new_repo reconcile_anchor)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-anchor"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Anchor\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z" 'See the log line below.
+
+num: totally-fake-body-line
+More prose after it.'
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "frontmatter num realized" '^num: 1$'                      "$(cat "$dir/$fid.md")"
+  assert_match "body num line untouched"  '^num: totally-fake-body-line$' "$(cat "$dir/$fid.md")"
+}
+
+# AC: a failed index regeneration is reported, never swallowed — the ordinals
+# are in the files but INDEX.md no longer describes them, and a run that exits 0
+# tells the developer the opposite.
+case_issues_reconcile_surfaces_failed_regen() {
+  local repo dir fid
+  repo=$(new_repo reconcile_regenfail)
+  dir="$repo/docs/issues"
+  # An unwritable directory where INDEX.md belongs: the atomic write's rename
+  # cannot land, so index.sh fails while every other step still succeeds.
+  mkdir -p "$dir/INDEX.md"
+  fid="20260101-regen"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Regen\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  chmod 500 "$dir/INDEX.md"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  chmod 700 "$dir/INDEX.md"
+  assert_exit     "rc"                      1 "$RC"
+  assert_nonempty "names the regen failure" "$ERR"
+  assert_match "the realization itself landed" '^num: 1$' "$(cat "$dir/$fid.md")"
+}
+
+# AC: a rewrite that changed nothing fails loudly, and does not strand the rest
+# of a batch whose ordinals are already published. Unreachable through the CLI —
+# the scan and the rewrite match the same set of inputs, so a scan that finds the
+# field cannot precede a rewrite that misses it — so the realizer is driven
+# directly, the way pure functions are tested elsewhere in this suite.
+case_issues_reconcile_no_op_rewrite_fails_and_continues() {
+  local dir out rc rows mapping
+  dir=$(empty_dir reconcile_noop_rewrite)
+  # The first file carries no num: field, forcing the no-op. The second is
+  # ordinary, and is what proves the batch was not abandoned at the first.
+  printf -- '---\nid: 20260101-a\ntitle: "A"\n---\nbody\n' > "$dir/a.md"
+  printf -- '---\nid: 20260101-b\nnum: P-20260101-b\ntitle: "B"\n---\nbody\n' > "$dir/b.md"
+  rows="$(printf 'P-20260101-a\t%s/a.md\nP-20260101-b\t%s/b.md' "$dir" "$dir")"
+  mapping="$(printf 'P-20260101-a\t7\nP-20260101-b\t8')"
+  out="$( source "$SCRIPT_RECONCILE" >/dev/null 2>&1
+          apply_pending "$dir" "$rows" "$mapping" 2>/dev/null )"
+  rc=$?
+  assert_exit "rc"                            1        "$rc"
+  assert_eq   "the healthy file still realized" "num: 8" "$(grep '^num:' "$dir/b.md")"
+  assert_eq   "count reports only the realized one" "1" "$out"
+}
+
+# AC: a batch that lost one file to a failed rewrite still regenerates the index.
+# The other files' ordinals are already published, so an abort leaves INDEX.md
+# describing a state that no longer exists — the exact failure the regeneration
+# check exists to prevent, reached through the door the verified rewrite opened.
+case_issues_reconcile_failed_rewrite_still_regenerates_index() {
+  local repo dir rc
+  repo=$(new_repo reconcile_partial_regen)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  write_issue "$dir" "20260101-good" 'id: 20260101-good
+title: "Good"
+status: open
+num: P-20260101-good
+priority: medium
+created: 2026-01-01T00:00:00Z'
+  printf 'stale\n' > "$dir/INDEX.md"
+  # A per-file rewrite failure cannot be staged through the command surface, so
+  # the realizer is shadowed with one reporting a realized file AND a failure —
+  # the state the verified rewrite made reachable. What is asserted is the
+  # CALLER's handling of it: regenerate the index, carry the failure, and do not
+  # return before the regeneration.
+  ( cd "$repo" && source "$SCRIPT_RECONCILE" >/dev/null 2>&1
+    apply_pending() { printf '1\n'; return 1; }
+    cmd_reconcile --apply "$dir" ) >/dev/null 2>&1
+  rc=$?
+  assert_exit "rc"                1   "$rc"
+  assert_eq   "index regenerated" "0" "$(grep -c '^stale$' "$dir/INDEX.md")"
+}
+
+# AC: detection anchors to the leading frontmatter block, the same region the
+# rewrite touches — a body line that happens to read "num: P-…" never makes a
+# file pending, so no realization runs behind a rewrite that cannot change it.
+case_issues_reconcile_body_num_is_not_pending() {
+  local repo dir fid before
+  repo=$(new_repo reconcile_bodynum)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-bodynum"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Body num\"
+status: open
+priority: medium
+created: 2026-01-01T00:00:00Z" 'Quoted from another file:
+
+num: P-20260101-bodynum
+End of quote.'
+  before="$(cat "$dir/$fid.md")"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "nothing to realize" 'nothing to realize' "$OUT"
+  assert_eq "file byte-identical" "$before" "$(cat "$dir/$fid.md")"
+}
+
+# AC: a frontmatter opened with a CRLF marker is not a frontmatter open, so the
+# file is not pending — the fail-safe direction rather than a realization the
+# rewrite would then no-op behind.
+case_issues_reconcile_crlf_frontmatter_is_not_pending() {
+  local repo dir fid before
+  repo=$(new_repo reconcile_crlf)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-crlf"
+  printf -- '---\r\nid: %s\r\nnum: P-%s\r\nstatus: open\r\n---\r\n' "$fid" "$fid" \
+    > "$dir/$fid.md"
+  before="$(cat "$dir/$fid.md")"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit  "rc"                 0                    "$RC"
+  assert_match "nothing to realize" 'nothing to realize' "$OUT"
+  assert_eq "file byte-identical" "$before" "$(cat "$dir/$fid.md")"
+}
+
+# AC: reconcile.sh skips a pending file whose frontmatter id fails the
+# jimfile.sh id boundary — a crafted durable id never reaches jimalloc.sh
+# reconcile issue or a composed path, and the file is left untouched
+# (spec 010 security Finding 5)
+case_issues_reconcile_rejects_crafted_frontmatter_id() {
+  local repo dir fid
+  repo=$(new_repo reconcile_crafted)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-crafted"
+  write_issue "$dir" "$fid" "id: ../evil
+title: \"Crafted\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  run_issue_reconcile_in "$repo" --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_nonempty "warns on malformed id" "$ERR"
+  assert_match "num left untouched" "^num: P-${fid}\$" "$(cat "$dir/$fid.md")"
+}
+
+# AC: bare reconcile.sh is a read-only preview — it reports the provisional ->
+# real mapping without writing anything (spec 010 DD5)
+case_issues_reconcile_preview_reports_mapping_without_writing() {
+  local repo dir fid before after
+  repo=$(new_repo reconcile_preview)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  fid="20260101-preview"
+  write_issue "$dir" "$fid" "id: $fid
+title: \"Preview\"
+status: open
+num: P-$fid
+priority: medium
+created: 2026-01-01T00:00:00Z"
+  before="$(cat "$dir/$fid.md")"
+  run_issue_reconcile_in "$repo" "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "preview shows mapping" "${fid}"$'\t'"1" "$OUT"
+  after="$(cat "$dir/$fid.md")"
+  assert_eq "preview mutates nothing" "$before" "$after"
+}
+
+# ─── issue/011: placement routing through the entry scripts ──────────────────
+
+# placement_repo <name> <destination-branch>
+#   A repo whose issue collection is configured to live on <destination-branch>
+#   rather than on whatever branch the developer is standing on.
+placement_repo() {
+  local repo; repo="$(new_repo "$1")"
+  printf 'issue_placement = "%s"\n' "$2" > "$repo/jimconf.toml"
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md jimconf.toml
+  git -C "$repo" commit -q -m base
+  printf '%s' "$repo"
+}
+
+# dest_paths <repo> <branch> — every path on <branch>.
+dest_paths() { git -C "$1" ls-tree -r --name-only "refs/heads/$2" 2>/dev/null; }
+
+# stale_dest_index <repo> <branch> <prefix>
+#   Hollow out <branch>'s INDEX.md by plumbing, leaving the issues beside it
+#   alone — the shape a hand commit, a merge, or a bulk import leaves behind.
+#
+#   This is what gives the read-only cases below something to discriminate on. A
+#   read verb writes no issue file, so a destination whose index already
+#   describes it cannot move whether the run routed read-only or not. Against a
+#   stale one it can: placement regenerates the index in what it materializes,
+#   so a run that published would publish that correction.
+stale_dest_index() {
+  local repo="$1" branch="$2" prefix="$3"
+  local blob tree commit idx rc=0
+  [[ -n "$(git -C "$repo" ls-tree "refs/heads/$branch:$prefix" 2>/dev/null)" ]] || return 1
+  blob="$(printf '# Issues Index\n' | git -C "$repo" hash-object -w --stdin)" || return 1
+  # One path is replaced inside the existing tree rather than each level being
+  # rebuilt from its single known child. Rebuilding drops any sibling the level
+  # also holds — harmless while the destination is an orphan carrying the
+  # collection alone, and a fixture that silently discards the rest of the
+  # branch the moment a case points a placement at one that carries anything
+  # else.
+  idx="$TMP_BASE/.stale-index"
+  rm -f -- "$idx"
+  GIT_INDEX_FILE="$idx" git -C "$repo" read-tree "refs/heads/$branch" || rc=1
+  (( rc == 0 )) && { GIT_INDEX_FILE="$idx" git -C "$repo" update-index --add \
+    --cacheinfo 100644 "$blob" "$prefix/INDEX.md" || rc=1; }
+  (( rc == 0 )) && { tree="$(GIT_INDEX_FILE="$idx" git -C "$repo" write-tree)" || rc=1; }
+  rm -f -- "$idx"
+  (( rc == 0 )) || return 1
+  [[ -n "$tree" ]] || return 1
+  commit="$(git -C "$repo" commit-tree "$tree" -p "refs/heads/$branch" -m stale)" || return 1
+  git -C "$repo" update-ref "refs/heads/$branch" "$commit" || return 1
+  return 0
+}
+
+# AC: filing under a branch placement lands the issue and its regenerated index
+# on the destination as one commit, and leaves the working branch untouched.
+# The emitter is the single write door, so making the door placement-aware is
+# what carries every surfacing skill's candidate batch with it (spec AC #3, #4).
+case_issues_placement_filing_lands_on_destination() {
+  local repo body slug paths
+  repo="$(placement_repo issues_place_file jim/issues)"
+  body="$(fixture issues_place_file_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_nonempty "slug" "$slug"
+  paths="$(dest_paths "$repo" jim/issues)"
+  assert_match "issue on the destination" "docs/issues/${slug}\.md" "$paths"
+  assert_match "index on the destination" 'docs/issues/INDEX\.md'   "$paths"
+  assert_eq "one commit" "1" \
+    "$(git -C "$repo" rev-list --count refs/heads/jim/issues)"
+  assert_eq "working tree untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  assert_eq "working branch clean" "" "$(git -C "$repo" status --porcelain)"
+}
+
+# AC: the stdout contract stays useful under placement — the path a caller is
+# told about is where the issue actually lives on the destination branch, not
+# the temp directory it was composed in.
+case_issues_placement_stdout_names_the_destination_path() {
+  local repo body slug path
+  repo="$(placement_repo issues_place_stdout jim/issues)"
+  body="$(fixture issues_place_stdout_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  path="${OUT##*$'\t'}"
+  assert_eq "repo-relative destination path" "docs/issues/${slug}.md" "$path"
+}
+
+# AC: free-form user text survives the routing re-exec verbatim. A title
+# containing `{}` is ordinary in a developer tool, and the placeholder the
+# re-exec uses to pass the collection directory must not rewrite it — the slug
+# derived from the title is the durable id, and the registry that records it
+# only ever grows (spec AC #2, #3).
+case_issues_placement_preserves_braces_in_a_title() {
+  local repo body slug
+  repo="$(placement_repo issues_place_braces jim/issues)"
+  body="$(fixture issues_place_braces_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Fix the {} placeholder in output" \
+    --priority medium --labels x --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_match "slug derives from the title alone" \
+    '^[0-9]{8}-fix-the-placeholder-in-output$' "$slug"
+  assert_match "title stored verbatim" 'title: "Fix the \{\} placeholder in output"' \
+    "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
+}
+
+# AC: an origin: that names an artifact living only on the filing branch is
+# still valid at the destination — the reference is informational, and its
+# absence is not an error (spec AC #11).
+case_issues_placement_tolerates_a_branch_only_origin() {
+  local repo body slug
+  repo="$(placement_repo issues_place_origin jim/issues)"
+  body="$(fixture issues_place_origin_body.md 'body')"
+  # Deliberately not created: the origin has to be genuinely absent at the
+  # destination for this to be the dangling case the AC is about. It is also
+  # path-shaped, which is what makes the lint look at it at all — a bare token
+  # carries no `/` and is exempted before its existence is ever checked, so the
+  # AC's case would go unexercised whether the file was there or not.
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin "docs/brainstorms/only-here.md" --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_match "origin recorded verbatim" '^origin: "docs/brainstorms/only-here\.md"$' \
+    "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
+  assert_match "index still built" 'docs/issues/INDEX\.md' \
+    "$(dest_paths "$repo" jim/issues)"
+  # The published index says the check was not run rather than reporting a
+  # result it has no ground for. Whether the origin resolves is a fact about the
+  # checkout that wrote last, and this index belongs to every reader.
+  local index
+  index="$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+  assert_match "the skip is disclosed"      'origin paths not checked' "$index"
+  assert_match "and names the destination"  'jim/issues'               "$index"
+  assert_eq "no per-issue origin verdict is published" "no" \
+    "$(grep -q 'origin path does not resolve' <<< "$index" && echo yes || echo no)"
+}
+
+# AC: the same origin, with no placement configured, is still linted — the check
+# has ground truth when the collection is on the branch the run is standing on,
+# and the dangling reference is informational rather than an error (spec AC #11).
+case_issues_origin_lint_still_runs_without_a_placement() {
+  local repo body index
+  repo="$(new_repo issues_origin_default)"
+  body="$(fixture issues_origin_default_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin "docs/brainstorms/only-here.md" --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  run_index "$repo/docs/issues"
+  assert_exit "index rc" 0 "$RC"
+  index="$(cat "$repo/docs/issues/INDEX.md")"
+  assert_match "the dangling origin is reported" 'origin path does not resolve' "$index"
+  assert_eq "and nothing claims the check was skipped" "no" \
+    "$(grep -q 'origin paths not checked' <<< "$index" && echo yes || echo no)"
+}
+
+# AC: an explicit directory argument opts out of routing — a caller that named
+# a directory means that directory, which is also what keeps the placement
+# re-exec from recursing.
+case_issues_placement_explicit_dir_opts_out() {
+  local repo body dir
+  repo="$(placement_repo issues_place_optout jim/issues)"
+  body="$(fixture issues_place_optout_body.md 'body')"
+  dir="$repo/elsewhere"
+  mkdir -p "$dir"
+  run_new_in "$repo" --dir "$dir" --title "Alpha bug" --priority medium \
+    --labels x --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "wrote where told" "1" "$(find "$dir" -name '*.md' | wc -l | tr -d ' ')"
+  assert_eq "no destination branch" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# ─── issue/011: the auto-file scrub gate ─────────────────────────────────────
+
+# AC: an auto-filed batch does not reach a shared branch with nobody having
+# looked at it. The decision lives in the emitter because the emitter is the
+# only place it can be made mechanically — a rule stated in a skill is a rule an
+# agent may or may not execute, and every candidate batch comes through here
+# (spec AC #13).
+case_issues_auto_file_refuses_an_unacknowledged_placement() {
+  local repo body
+  repo="$(placement_repo issues_auto_gate jim/issues)"
+  body="$(fixture issues_auto_gate_body.md 'body')"
+  run_new_in "$repo" --auto --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit     "refuses"  4 "$RC"
+  assert_nonempty "explains" "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+  assert_eq "nothing in the working tree either" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: the acknowledgement restores the quiet path for a project that has said it
+# understands the bargain (spec AC #13).
+case_issues_auto_file_proceeds_when_acknowledged() {
+  local repo body slug
+  repo="$(placement_repo issues_auto_ack jim/issues)"
+  printf 'issue_placement = "jim/issues"\nissue_placement_ack = "true"\n' \
+    > "$repo/jimconf.toml"
+  body="$(fixture issues_auto_ack_body.md 'body')"
+  run_new_in "$repo" --auto --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_match "landed on the destination" "docs/issues/${slug}\.md" \
+    "$(dest_paths "$repo" jim/issues)"
+}
+
+# AC: the gate is placement-only. Under the default placement a filed issue
+# stays on the developer's own branch until it merges, which is the bargain
+# auto-filing was already weighed against (spec AC #2, #13).
+case_issues_auto_file_is_a_no_op_by_default() {
+  local repo body slug
+  repo="$(new_repo issues_auto_default)"
+  body="$(fixture issues_auto_default_body.md 'body')"
+  run_new_in "$repo" --auto --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "written to the working tree" "yes" \
+    "$([[ -e "$repo/docs/issues/$slug.md" ]] && echo yes || echo no)"
+}
+
+# AC: an explicit directory means that directory, so it opts out of routing —
+# and the gate rides on routing, since it is publication to a shared branch that
+# makes the auto-file bargain a different one. A caller that named a directory
+# is publishing nothing, so `--auto` is inert there even under a placement the
+# project has not acknowledged (spec AC #13).
+case_issues_auto_file_is_inert_under_an_explicit_dir() {
+  local repo body slug
+  repo="$(placement_repo issues_auto_dir jim/issues)"
+  body="$(fixture issues_auto_dir_body.md 'body')"
+  mkdir -p "$repo/elsewhere"
+  run_new_in "$repo" --auto --dir "$repo/elsewhere" \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "written where the caller said" "yes" \
+    "$([[ -e "$repo/elsewhere/$slug.md" ]] && echo yes || echo no)"
+  assert_eq "and nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# AC: the interactive path still files under an unacknowledged placement — the
+# review the gate asks for is exactly what that path already did. It declares it
+# with --reviewed, which is the counterpart of --auto rather than a second gate
+# (spec AC #13).
+case_issues_interactive_file_unaffected_by_the_gate() {
+  local repo body slug
+  repo="$(placement_repo issues_auto_interactive jim/issues)"
+  body="$(fixture issues_auto_interactive_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "rc" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_match "landed on the destination" "docs/issues/${slug}\.md" \
+    "$(dest_paths "$repo" jim/issues)"
+}
+
+# AC: under a placement the declaration is REQUIRED, not defaulted. Reading a
+# missing --auto as "reviewed" is what published an unreviewed batch to a shared
+# branch on a forgotten flag; the inverse would merely move the silent default,
+# sending a reviewed batch to a second review. Neither absence is an answer, so
+# a filing that declares nothing refuses — loudly, at the one moment it matters,
+# and having written nothing (spec AC #13).
+case_issues_placement_filing_without_a_declaration_refuses() {
+  local repo body
+  repo="$(placement_repo issues_decl_missing jim/issues)"
+  body="$(fixture issues_decl_missing_body.md 'body')"
+  run_new_in "$repo" --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit  "refuses as a caller defect, not a redirect" 2 "$RC"
+  assert_match "names the destination it would publish to" 'jim/issues' "$ERR"
+  assert_match "names both remedies"                       'reviewed'   "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+  assert_eq "nothing in the working tree either" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  assert_eq "and no path on stdout" "" "$OUT"
+}
+
+# AC: declaring both is a contradiction, not a precedence puzzle — refused the
+# same way rather than letting one win silently.
+case_issues_placement_contradictory_declarations_refuse() {
+  local repo body
+  repo="$(placement_repo issues_decl_both jim/issues)"
+  body="$(fixture issues_decl_both_body.md 'body')"
+  run_new_in "$repo" --auto --reviewed --title "Alpha bug" --priority medium \
+    --labels x --origin conversation --body-file "$body"
+  assert_exit  "refuses"            2 "$RC"
+  assert_match "says they conflict" 'contradict' "$ERR"
+  assert_eq "nothing published" "" \
+    "$(git -C "$repo" rev-parse --verify --quiet refs/heads/jim/issues)"
+}
+
+# AC: and the requirement is scoped to routing, so it is inert for every project
+# without a placement — the entire installed base, and the path the
+# default-unchanged criterion protects (spec AC #2, #13).
+case_issues_declaration_is_not_required_by_default() {
+  local repo body slug
+  repo="$(new_repo issues_decl_default)"
+  body="$(fixture issues_decl_default_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "files with no declaration at all" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "written to the working tree" "yes" \
+    "$([[ -e "$repo/docs/issues/$slug.md" ]] && echo yes || echo no)"
+}
+
+# AC: index.sh routes too, so a standalone reindex lands at the destination
+# rather than on the working branch (spec AC #3).
+case_issues_placement_index_routes_to_destination() {
+  local repo body
+  repo="$(placement_repo issues_place_index jim/issues)"
+  body="$(fixture issues_place_index_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  OUT="$(cd "$repo" && bash "$SCRIPT_INDEX" 2>&1)"
+  RC=$?
+  assert_exit "reindex rc" 0 "$RC"
+  assert_eq "working tree still untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  # The index the filing already published is current, so a bare reindex has
+  # nothing to add — no empty second commit.
+  assert_eq "no redundant commit" "1" \
+    "$(git -C "$repo" rev-list --count refs/heads/jim/issues)"
+}
+
+# run_render_in <repo> <args...> — render from inside <repo>, the way a
+# developer runs it: config, and therefore placement, resolves from there.
+run_render_in() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && bash "$SCRIPT_RENDER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: the read verbs serve the destination branch's collection, from a checkout
+# whose own working tree holds no issues at all (spec AC #5).
+case_issues_placement_list_serves_the_destination() {
+  local repo body slug
+  repo="$(placement_repo issues_place_list jim/issues)"
+  body="$(fixture issues_place_list_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "nothing in the working tree" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+  run_render_in "$repo" list
+  assert_exit  "list rc"          0            "$RC"
+  assert_match "lists the issue"  'Alpha bug'  "$OUT"
+  run_render_in "$repo" show "$slug"
+  assert_exit  "show rc"          0            "$RC"
+  assert_match "shows the issue"  'Alpha bug'  "$OUT"
+}
+
+# AC: a read serves the destination's collection as it actually stands and
+# publishes nothing — even when serving it means regenerating an index the
+# destination carries stale, which a write would have committed (spec AC #5).
+case_issues_placement_read_publishes_nothing() {
+  local repo body before
+  repo="$(placement_repo issues_place_readonly jim/issues)"
+  body="$(fixture issues_place_readonly_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  stale_dest_index "$repo" jim/issues docs/issues
+  assert_exit "fixture" 0 "$?"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_render_in "$repo" list
+  assert_exit  "list rc"               0           "$RC"
+  assert_match "serves a current view" 'Alpha bug' "$OUT"
+  run_render_in "$repo" stats; assert_exit "stats rc" 0 "$RC"
+  assert_eq "tip unmoved" "$before" \
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "the published index is left as it was" "# Issues Index" \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+  assert_eq "working tree still clean" "" "$(git -C "$repo" status --porcelain)"
+}
+
+# AC: when the remote is unreachable a read serves the last-seen state and says
+# so on stderr, without polluting the rendered view (spec AC #6).
+case_issues_placement_read_degrades_with_a_note() {
+  local repo body
+  repo="$(placement_repo issues_place_degrade jim/issues)"
+  body="$(fixture issues_place_degrade_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
+  run_render_in "$repo" list
+  assert_exit  "rc"            0           "$RC"
+  assert_match "still serves"  'Alpha bug' "$OUT"
+  assert_match "notes it"      'last-seen' "$ERR"
+}
+
+# AC: insights-graph routes too, so the read-only analyst persona is handed the
+# destination's collection rather than an empty working branch (spec AC #5).
+case_issues_placement_insights_graph_routes() {
+  local repo body
+  repo="$(placement_repo issues_place_graph jim/issues)"
+  body="$(fixture issues_place_graph_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_render_in "$repo" insights-graph
+  assert_exit     "rc"     0      "$RC"
+  assert_nonempty "output" "$OUT"
+}
+
+# run_in <repo> <script> <args...> — run any issue script from inside <repo>.
+run_in() {
+  local repo="$1" script="$2"; shift 2
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && bash "$script" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: realizing a provisional ordinal under placement rewrites num: at the
+# destination and reindexes there, leaving the working branch alone
+# (spec AC #3).
+case_issues_placement_realize_lands_at_the_destination() {
+  local repo body before
+  repo="$(placement_repo issues_place_realize jim/issues)"
+  body="$(fixture issues_place_realize_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-a --num "P-20260101-a" \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  assert_match "provisional at the destination" '^num: P-20260101-a$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_RECONCILE" --apply
+  assert_exit "realize rc" 0 "$RC"
+  assert_match "num realized at the destination" '^num: 1$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  assert_match "index refreshed there" 'num: 1' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+  assert_eq "one further commit" "1" \
+    "$(git -C "$repo" rev-list --count "$before..refs/heads/jim/issues")"
+  assert_eq "working tree untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: a preview publishes nothing. reconcile and migrate both preview by
+# default, and a preview that committed would make "read-only" a lie.
+case_issues_placement_preview_publishes_nothing() {
+  local repo body before
+  repo="$(placement_repo issues_place_preview jim/issues)"
+  body="$(fixture issues_place_preview_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-a --num "P-20260101-a" \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  stale_dest_index "$repo" jim/issues docs/issues
+  assert_exit "fixture" 0 "$?"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_RECONCILE"
+  assert_exit "preview rc" 0 "$RC"
+  # The preview has to have *seen* the destination's collection, not merely
+  # exited cleanly: run against a working tree that holds no collection at all,
+  # reconcile reports nothing pending and returns 0 too.
+  assert_match "the preview reports the destination's provisional" \
+    '20260101-a' "$OUT"
+  assert_match "and counts it" '1 pending' "$OUT"
+  run_in "$repo" "$SCRIPT_MIGRATE" prefix
+  assert_exit "migrate preview rc" 0 "$RC"
+  assert_eq "tip unmoved" "$before" \
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "the published index is left as it was" "# Issues Index" \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+}
+
+# AC: a flag's value is not a collection directory. Reading `-c <cfg>` as one
+# declines routing, and the realization then rewrites the working tree instead
+# of the destination — the opt-out is for a caller who *named* a collection
+# (spec AC #3).
+case_issues_placement_reconcile_routes_with_a_config_flag() {
+  local repo body
+  repo="$(placement_repo issues_place_reconcile_cfg jim/issues)"
+  body="$(fixture issues_place_reconcile_cfg_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-a --num "P-20260101-a" \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_RECONCILE" -c "$repo/jimconf.toml"
+  assert_exit "preview rc" 0 "$RC"
+  assert_match "the preview saw the destination's collection" '20260101-a' "$OUT"
+  assert_eq "and left the working tree alone" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: an invocation missing a required operand is not routed. The placement
+# re-exec appends the collection directory, so a `show` with no id would take
+# that directory as its id and answer about the run's temp path at rc 0 instead
+# of refusing (spec AC #5).
+case_issues_placement_show_without_an_id_still_refuses() {
+  local repo
+  repo="$(placement_repo issues_place_show_noid jim/issues)"
+  run_in "$repo" "$SCRIPT_RENDER" show
+  assert_exit  "refuses"          2       "$RC"
+  assert_match "asks for an id"   'requires an id' "$ERR"
+  assert_eq "no temp path leaked into the answer" "no" \
+    "$(grep -q 'collection' <<< "$OUT" && echo yes || echo no)"
+  assert_eq "and nothing was created in the checkout" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: a lone argument is a collection directory only if it is one. Reading any
+# non-filter token as a directory opts a mistyped filter out of placement and
+# then has a read verb create a directory of that name in the checkout
+# (spec AC #5).
+case_issues_placement_list_typo_does_not_litter() {
+  local repo body
+  repo="$(placement_repo issues_place_list_typo jim/issues)"
+  body="$(fixture issues_place_list_typo_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_RENDER" list opne
+  assert_eq "no directory was created for the typo" "no" \
+    "$([[ -e "$repo/opne" ]] && echo yes || echo no)"
+  # The typo is reported as what it is — a bad filter against the destination's
+  # collection. Classifying it as a directory instead declines routing, and the
+  # refusal then comes from the working tree having no such collection, which is
+  # a different answer to a different question.
+  assert_match "routed rather than read as a collection" 'unknown filter' "$ERR"
+}
+
+# AC: the two-argument shape is classified the same way. `dir_given` answered on
+# argument *count* for every shape but `list`'s lone one, so
+# `/jim:issue list open high` — two valid filters, which the skill substitutes
+# whole into `render.sh list` — declined routing, adopted `high` as the
+# collection, had a directory created for it in the checkout and served an empty
+# view at rc 0 while the destination went unread (spec AC #5).
+case_issues_placement_two_filters_do_not_bypass_placement() {
+  local repo body
+  repo="$(placement_repo issues_place_two_filters jim/issues)"
+  body="$(fixture issues_place_two_filters_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_RENDER" list open high
+  assert_eq "no directory was created for the second filter" "no" \
+    "$([[ -e "$repo/high" ]] && echo yes || echo no)"
+  assert_eq "and it did not serve an empty view as success" "no" \
+    "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_match "it says what is wrong" 'high' "$ERR"
+}
+
+# AC: a read verb never brings a collection into being. index.sh mkdir -p's
+# whatever directory it is handed, and every render verb regenerates through it,
+# so a mistyped or steered argument had a directory and an INDEX.md created for
+# it — by a read — in the developer's checkout. That is also the capability the
+# analyst's agent definition states is absent rather than forbidden.
+case_render_read_verbs_create_no_directory() {
+  local dir
+  dir=$(empty_dir render_no_create)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+priority: low
+created: 2026-01-01T00:00:00Z'
+  # A collection the caller *named* that is not there is a mistake, and is
+  # refused rather than brought into being.
+  run_render stats "$dir/nope-stats"
+  assert_eq    "stats refuses"       "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq    "and created nothing" "no" \
+    "$([[ -e "$dir/nope-stats" ]] && echo yes || echo no)"
+  run_render show 1 "$dir/nope-show"
+  assert_eq "show refuses"        "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq "and created nothing" "no" \
+    "$([[ -e "$dir/nope-show" ]] && echo yes || echo no)"
+  run_render insights-graph "$dir/nope-graph"
+  assert_eq "insights-graph refuses" "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
+  assert_eq "and created nothing"    "no" \
+    "$([[ -e "$dir/nope-graph" ]] && echo yes || echo no)"
+  # And a named collection that does exist still reads normally. The header
+  # names the directory served, which is what pins that *this* one was used —
+  # asserting only on a row would match whatever the ambient config resolves to.
+  run_render list "$dir"
+  assert_exit  "list rc"                 0      "$RC"
+  assert_match "serves the named collection" "$dir" "$OUT"
+  assert_match "and its issue"               '#1'   "$OUT"
+}
+
+# AC: a collection resolved from config that does not exist yet is an ordinary
+# empty project, not a mistake — so it reads as empty rather than refusing, and
+# still nothing is created. This is the other side of the same guard: refusing
+# here would break every project before its first filing.
+case_render_unconfigured_collection_reads_as_empty() {
+  local dir
+  dir=$(empty_dir render_empty_project)
+  printf 'issues_path = "%s/docs/issues"\n' "$dir" > "$dir/jimconf.toml"
+  OUT="$(cd "$dir" && bash "$SCRIPT_RENDER" list 2>"$TMP_BASE/.err")"; RC=$?
+  assert_exit "reads rather than refusing" 0 "$RC"
+  assert_eq "and created no collection" "no" \
+    "$([[ -e "$dir/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: the same holds with no placement configured at all — the stray directory
+# is what a read verb must never create, whichever branch the collection is on.
+case_issues_list_typo_refuses_instead_of_creating_a_dir() {
+  local repo
+  repo="$(new_repo issues_list_typo_default)"
+  run_in "$repo" "$SCRIPT_RENDER" list opne
+  assert_exit "refuses" 1 "$RC"
+  assert_match "explains the two things it could have been" 'neither a filter' "$ERR"
+  assert_eq "no directory was created for the typo" "no" \
+    "$([[ -e "$repo/opne" ]] && echo yes || echo no)"
+}
+
+# AC: backfill routes too — a display-ordinal backfill lands at the destination
+# rather than on the working branch (spec AC #3).
+case_issues_placement_backfill_lands_at_the_destination() {
+  local repo body
+  repo="$(placement_repo issues_place_backfill jim/issues)"
+  body="$(fixture issues_place_backfill_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-a --num 7 --created 2026-01-01 \
+    --updated 2026-01-01 --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  assert_match "date-only to begin with" '^created: 2026-01-01$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  run_in "$repo" "$SCRIPT_BACKFILL" timestamp
+  assert_exit "backfill rc" 0 "$RC"
+  assert_match "normalized at the destination" '^created: 2026-01-01T00:00:00Z$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  assert_eq "working tree untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: migrate's rename flow lands the renames and the regenerated index as one
+# commit on the destination (spec AC #3, AC #4).
+case_issues_placement_migrate_lands_renames_as_one_commit() {
+  local repo body before paths
+  repo="$(placement_repo issues_place_migrate jim/issues)"
+  printf 'issue_placement = "jim/issues"\nissue_id_prefix = "sequential"\n' \
+    > "$repo/jimconf.toml"
+  git -C "$repo" commit -q -am conf
+  body="$(fixture issues_place_migrate_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-alpha --num 3 \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_MIGRATE" prefix --apply
+  assert_exit "migrate rc" 0 "$RC"
+  paths="$(dest_paths "$repo" jim/issues)"
+  assert_match "renamed at the destination" 'docs/issues/0003-alpha\.md' "$paths"
+  assert_eq "old name gone" "no" \
+    "$(printf '%s\n' "$paths" | grep -q '20260101-alpha\.md' && echo yes || echo no)"
+  assert_eq "one commit for the whole rename" "1" \
+    "$(git -C "$repo" rev-list --count "$before..refs/heads/jim/issues")"
+}
+
+# AC: a rename that loses a push race grafts as a delete plus a create. Carrying
+# only the create would leave one issue under two filenames and an index holding
+# two entries for it — at rc 0 (security Finding 8).
+case_issues_placement_rename_race_grafts_as_delete_and_create() {
+  local bare mine theirs body teammate paths index
+  bare="$(empty_dir issues_race_bare)"; git init -q --bare "$bare/r.git"
+  mine="$(empty_dir issues_race_mine)"
+  git clone -q "$bare/r.git" "$mine"
+  git -C "$mine" config user.name mine && git -C "$mine" config user.email m@e
+  theirs="$(empty_dir issues_race_them)"
+  git clone -q "$bare/r.git" "$theirs"
+  git -C "$theirs" config user.name them && git -C "$theirs" config user.email t@e
+  printf 'issue_placement = "jim/issues"\nissue_id_prefix = "sequential"\n' \
+    > "$mine/jimconf.toml"
+  printf 'issue_placement = "jim/issues"\n' > "$theirs/jimconf.toml"
+  body="$(fixture issues_race_body.md 'body')"
+  run_new_in "$mine" --reviewed --slug 20260101-alpha --num 3 \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  teammate="$TMP_BASE/issues-race-teammate.sh"
+  cat > "$teammate" <<TEAMMATE
+cd "$theirs" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" run --verb file -- \\
+  sh -c 'printf "theirs\\n" > "\$1/20260101-other.md"' _ '{}'
+TEAMMATE
+  # The rename runs, then the teammate publishes, then this mutation tries to
+  # land — so the graft has to replay both halves of the rename.
+  OUT="$(cd "$mine" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" \
+    run --verb migrate -- sh -c \
+    'bash "$1" prefix "$3" --apply >/dev/null; sh "$2" >/dev/null 2>&1' \
+    _ "$SCRIPT_MIGRATE" "$teammate" '{}' 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_exit "rc" 0 "$RC"
+  paths="$(git -C "$bare/r.git" ls-tree -r --name-only refs/heads/jim/issues)"
+  assert_match "renamed"           'docs/issues/0003-alpha\.md'   "$paths"
+  assert_match "teammate survived" 'docs/issues/20260101-other\.md' "$paths"
+  assert_eq "old name did not come back" "no" \
+    "$(printf '%s\n' "$paths" | grep -q '20260101-alpha\.md' && echo yes || echo no)"
+  index="$(git -C "$bare/r.git" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+  assert_eq "index holds one entry for the renamed issue" "1" \
+    "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

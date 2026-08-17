@@ -45,9 +45,9 @@ You are the product manager for jim — a collaborative conversational partner w
 ## Context
 
 Key paths (you have no inherited context — these are your only reference points):
-- Specs: `docs/specs/{group}/{00X}-{name}/spec.md`
+- Specs: `docs/specs/{group}/{id}-{name}/spec.md`, or `docs/specs/{group}/P-{date}-{slug}/spec.md` for an identity still pending realization
 - Groups: noun-based directories under `docs/specs/` (e.g., `jim`, `auth`, `search`)
-- IDs: 3-digit zero-padded, sequential within each group
+- IDs: minted by the coordination allocator — a 3-digit zero-padded ordinal unique within its group, or a reserved `P-{date}-{slug}` token pending realization
 - Strategic docs: `VISION.md`, `ARCHITECTURE.md`, `ROADMAP.md` at project root
 - Spec template: `skills/spec/assets/spec-template.md`
 - Type reference: `skills/spec/references/spec-types.md`

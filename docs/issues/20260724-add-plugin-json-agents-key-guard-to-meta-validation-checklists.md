@@ -1,6 +1,6 @@
 ---
 id: 20260724-add-plugin-json-agents-key-guard-to-meta-validation-checklists
-num: 18
+num: 95
 title: "Add plugin.json agents-key guard to meta validation checklists"
 status: open
 priority: medium

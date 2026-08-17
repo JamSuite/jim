@@ -18,7 +18,10 @@
 #     paths so the script works regardless of cwd or whether ${CLAUDE_PLUGIN_ROOT}
 #     is defined (cross-agent portability — see ARCHITECTURE.md → Scripting Layer).
 #   - PWD-relative `tests/<name>.sh` for read/write — assumes invocation from
-#     the project root (matches jimconf.sh / jimfile.sh convention).
+#     the project root (matches jimconf.sh / jimfile.sh convention), which is
+#     also what lets a harness scaffold inside a temp tree. The write verbs
+#     refuse outright when the cwd is inside a Claude Code discovery root, since
+#     that is the one wrong base the name gate cannot see.
 #   - Never source/eval user-supplied content.
 #   - `set -uo pipefail`, NOT `set -e` (interferes with assertion-style checks).
 #
@@ -33,6 +36,9 @@
 #
 
 set -uo pipefail
+# LC_ALL=C keeps this script's character classes and glob collation
+# locale-independent, matching every sibling under skills/*/scripts/.
+export LC_ALL=C
 
 # ─── Section: Globals ────────────────────────────────────────────────────────
 
@@ -60,6 +66,21 @@ validate_name() {
   printf '%s' "$name"
 }
 
+# refuse_discovery_root
+#   Refuse to write when the cwd sits inside a Claude Code discovery root. The
+#   `tests/` base stays PWD-relative deliberately — that is what lets a harness
+#   scaffold inside a temp tree — but a caller standing in a skill or agent
+#   directory would create `skills/<x>/tests/<name>.sh`, which is loaded as
+#   plugin content and never run as a test. The name gate cannot catch it: the
+#   name is valid and only the base is wrong.
+refuse_discovery_root() {
+  case "$PWD/" in
+    */skills/*|*/agents/*)
+      echo "Error: refusing to write under '$PWD' — that is inside a Claude Code discovery root, so a test placed there would be loaded as plugin content and never run. Invoke from the project root." >&2
+      exit 1 ;;
+  esac
+}
+
 # ─── Section: Scaffold action ────────────────────────────────────────────────
 
 # scaffold <name>
@@ -68,6 +89,7 @@ validate_name() {
 scaffold_action() {
   local name=$1
   validate_name "$name" >/dev/null
+  refuse_discovery_root
 
   local target="tests/$name.sh"
 
@@ -107,6 +129,7 @@ add_action() {
   local name=$1 case_name=$2
   validate_name "$name" >/dev/null
   validate_name "$case_name" >/dev/null
+  refuse_discovery_root
 
   local target="tests/$name.sh"
   local fn="case_${name}_${case_name}"

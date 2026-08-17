@@ -14,6 +14,7 @@
 #   bash tests/run.sh                 # run this file alongside every other tests/*.sh
 #
 
+set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$(cd "$HERE/../skills/meta-test/scripts" && pwd)/testlib.sh"
 
@@ -31,12 +32,13 @@ run_jimfile() {
   ERR="$(cat "$err_file")"
 }
 
-# extract_is_valid_id <script>
-#   Print the is_valid_id function body (def line through its column-0 closing
-#   brace). Used to assert the three hand-synced copies stay byte-identical
-#   (spec 021 security.md Finding 5).
-extract_is_valid_id() {
-  awk '/^is_valid_id\(\) \{/{f=1} f{print} f&&/^\}/{exit}' "$1"
+# extract_fn <name> <script>
+#   Print the named function's body (def line through its column-0 closing
+#   brace). Used to assert hand-synced copies of a shared rule stay
+#   byte-identical across the scripts that carry them.
+extract_fn() {
+  local def="$1() {"
+  awk -v def="$def" 'index($0, def) == 1 {f=1} f{print} f&&/^\}/{exit}' "$2"
 }
 
 # ─── Section: Test cases ─────────────────────────────────────────────────────
@@ -134,45 +136,521 @@ case_jimfile_now_utc_iso8601() {
   assert_match "iso8601 utc" '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$OUT"
 }
 
-# AC: next-id for an empty group returns 001 (Spec AC: start at 001 if empty)
-case_jimfile_next_id_empty_group_returns_001() {
+# AC 9: the tree-scan spec-group form is retired. The registry is the one
+# ordinal authority, so this surface no longer answers for a spec group at all —
+# two computations that can disagree mid-move is the window the coordination
+# work exists to close, and a patched second answer is still a second answer.
+case_jimfile_next_id_spec_group_form_retired() {
   local specs cfg
-  specs=$(empty_dir specs_empty_group)
+  specs=$(empty_dir nextid_retired)
+  mkdir -p "$specs/sdlc/001-alpha"
+  cfg=$(fixture nextid-retired.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" next-id sdlc
+  assert_exit  "rc"                  2  "$RC"
+  assert_eq    "no ordinal on stdout" "" "$OUT"
+  assert_match "points at the allocator" "jimalloc" "$ERR"
+}
+
+# AC: path blueprint <group> resolves the reserved 000-blueprint/spec.md slot
+case_jimfile_path_blueprint_resolves_reserved_slot() {
+  local specs cfg
+  specs=$(empty_dir bp_path)
   mkdir -p "$specs/jim"
-  cfg=$(fixture next-empty.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
+  cfg=$(fixture bp-path.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" path blueprint jim
   assert_exit "rc" 0 "$RC"
-  assert_eq   "001" "001" "$OUT"
+  assert_eq "reserved slot path" "$specs/jim/000-blueprint/spec.md" "$OUT"
 }
 
-# AC: next-id increments max id by 1 (Spec OoS: max+1 rule)
-case_jimfile_next_id_increments_max() {
+# AC: path blueprint rejects an invalid group via the is_valid_slug boundary
+#     (security Finding 3 — write target validated, not composed from raw input)
+case_jimfile_path_blueprint_rejects_invalid_group() {
   local specs cfg
-  specs=$(empty_dir specs_existing)
-  mkdir -p "$specs/jim/001-foo" "$specs/jim/002-bar"
-  cfg=$(fixture next-existing.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_eq "003" "003" "$OUT"
+  specs=$(empty_dir bp_badgroup)
+  mkdir -p "$specs/jim"
+  cfg=$(fixture bp-badgroup.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" path blueprint "Bad Group"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no path emitted"      ""    "$OUT"
+  assert_eq "slug rejection reason" "yes" "$([[ "$ERR" == *rejected* ]] && echo yes || echo no)"
 }
 
-# AC: next-id with gaps still returns max+1 (Spec OoS: no gap reclamation)
-case_jimfile_next_id_with_gaps() {
-  local specs cfg
-  specs=$(empty_dir specs_with_gaps)
-  mkdir -p "$specs/jim/001-a" "$specs/jim/003-b" "$specs/jim/005-c"
-  cfg=$(fixture next-gaps.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_eq "006 not 002" "006" "$OUT"
+# AC: blueprint-dirname emits the reserved directory name so sibling scripts can
+#     compose the path on their own base, single-sourcing the 000-blueprint literal
+case_jimfile_blueprint_dirname_emits_reserved_name() {
+  run_jimfile blueprint-dirname
+  assert_exit "rc" 0 "$RC"
+  assert_eq "reserved dir name" "000-blueprint" "$OUT"
 }
 
-# AC: next-id zero-pads to 3 digits even at boundary
-case_jimfile_next_id_zero_pads() {
+
+
+
+
+
+# AC: mv-spec-id renames a pending provisional dir onto its realized ordinal —
+# taking its source by explicit basename — and the ledger travels with it.
+case_jimfile_mv_spec_id_renames_provisional() {
   local specs cfg
-  specs=$(empty_dir specs_padding)
-  mkdir -p "$specs/jim/099-x"
-  cfg=$(fixture next-pad.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_eq "100 zero-padded" "100" "$OUT"
+  specs=$(empty_dir mvspecid_prov)
+  mkdir -p "$specs/sdlc/P-20260728-new-widget"
+  printf 'x\n' > "$specs/sdlc/P-20260728-new-widget/ledger.md"
+  cfg=$(fixture mvspecid-prov.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-new-widget 018 new-widget
+  assert_exit "rc" 0 "$RC"
+  assert_eq "target printed"   "$specs/sdlc/018-new-widget" "$OUT"
+  assert_eq "source removed"   "no"  "$([[ -d "$specs/sdlc/P-20260728-new-widget" ]] && echo yes || echo no)"
+  assert_eq "final exists"     "yes" "$([[ -d "$specs/sdlc/018-new-widget" ]] && echo yes || echo no)"
+  assert_eq "ledger travelled" "yes" "$([[ -f "$specs/sdlc/018-new-widget/ledger.md" ]] && echo yes || echo no)"
+}
+
+# AC: mv-spec-id also absorbs an ordinal shift — the advisory id that named the
+# placeholder giving way to the one actually bound at write.
+case_jimfile_mv_spec_id_absorbs_ordinal_shift() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_shift)
+  mkdir -p "$specs/sdlc/017-wip"
+  cfg=$(fixture mvspecid-shift.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc 017-wip 019 coordinated-identity
+  assert_exit "rc" 0 "$RC"
+  assert_eq "target printed" "$specs/sdlc/019-coordinated-identity" "$OUT"
+  assert_eq "old id gone"    "no" "$([[ -d "$specs/sdlc/017-wip" ]] && echo yes || echo no)"
+}
+
+# AC: a target ordinal wider than three digits is accepted up to the width the
+# registry can be rebuilt from, so the verb never becomes the reason a legal
+# allocation cannot land.
+case_jimfile_mv_spec_id_accepts_wide_ordinal() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_wide)
+  mkdir -p "$specs/sdlc/P-20260728-x"
+  cfg=$(fixture mvspecid-wide.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x 123456789012345 x
+  assert_exit "rc" 0 "$RC"
+  assert_eq "wide target printed" "$specs/sdlc/123456789012345-x" "$OUT"
+}
+
+# AC: binding offline needs the placeholder renamed onto a provisional identity,
+# whose basename is the whole reserved token rather than an ordinal and a slug —
+# so the same verb takes a three-argument form for that target.
+case_jimfile_mv_spec_id_renames_to_provisional_target() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_toprov)
+  mkdir -p "$specs/sdlc/017-wip"
+  printf 'x\n' > "$specs/sdlc/017-wip/ledger.md"
+  cfg=$(fixture mvspecid-toprov.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc 017-wip P-20260728-new-widget
+  assert_exit "rc" 0 "$RC"
+  assert_eq "target printed"   "$specs/sdlc/P-20260728-new-widget" "$OUT"
+  assert_eq "placeholder gone" "no"  "$([[ -d "$specs/sdlc/017-wip" ]] && echo yes || echo no)"
+  assert_eq "ledger travelled" "yes" \
+    "$([[ -f "$specs/sdlc/P-20260728-new-widget/ledger.md" ]] && echo yes || echo no)"
+}
+
+# AC: the three-argument form is for that one target and nothing else — it is
+# not a general way to rename a spec dir to an arbitrary name, so a real-ordinal
+# target must still go through the four-argument form.
+case_jimfile_mv_spec_id_three_arg_form_is_provisional_only() {
+  local specs cfg bad
+  specs=$(empty_dir mvspecid_3argonly)
+  mkdir -p "$specs/sdlc/017-wip"
+  cfg=$(fixture mvspecid-3argonly.toml "specs_path = \"$specs\"")
+  for bad in 018 018-new-widget notes P---bad "P-abc-x" "../evil"; do
+    run_jimfile -c "$cfg" mv-spec-id sdlc 017-wip "$bad"
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [3-arg target] accepted '$bad'"
+    fi
+  done
+  assert_eq "placeholder untouched" "yes" "$([[ -d "$specs/sdlc/017-wip" ]] && echo yes || echo no)"
+}
+
+# AC: the provisional target refuses to clobber too — a second spec scoped the
+# same day under the same title must not overwrite the first.
+case_jimfile_mv_spec_id_provisional_target_refuses_clobber() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_provclobber)
+  mkdir -p "$specs/sdlc/017-wip" "$specs/sdlc/P-20260728-x"
+  printf 'first\n' > "$specs/sdlc/P-20260728-x/spec.md"
+  cfg=$(fixture mvspecid-provclobber.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc 017-wip P-20260728-x
+  assert_exit     "rc"     1  "$RC"
+  assert_nonempty "stderr" "$ERR"
+  assert_eq "occupant untouched" "first" "$(cat "$specs/sdlc/P-20260728-x/spec.md")"
+}
+
+# AC: mv-spec-id refuses to clobber an existing target — a spec ordinal is path
+# identity, so a collision halts rather than overwriting or suffixing.
+case_jimfile_mv_spec_id_refuses_clobber() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_clobber)
+  mkdir -p "$specs/sdlc/P-20260728-x" "$specs/sdlc/018-x"
+  printf 'occupied\n' > "$specs/sdlc/018-x/spec.md"
+  cfg=$(fixture mvspecid-clobber.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x 018 x
+  assert_exit     "rc"       1  "$RC"
+  assert_nonempty "stderr"   "$ERR"
+  assert_eq "source untouched"  "yes" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
+  assert_eq "target untouched"  "occupied" "$(cat "$specs/sdlc/018-x/spec.md")"
+}
+
+# AC: the target ordinal is digits at the padded floor and the legality ceiling —
+# an unpadded, over-wide, or non-numeric id never becomes a directory name.
+case_jimfile_mv_spec_id_rejects_bad_target_id() {
+  local specs cfg bad
+  specs=$(empty_dir mvspecid_badid)
+  mkdir -p "$specs/sdlc/P-20260728-x"
+  cfg=$(fixture mvspecid-badid.toml "specs_path = \"$specs\"")
+  for bad in 18 1234567890123456 01a ../7 ""; do
+    run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x "$bad" x
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [target id] accepted '$bad'"
+    fi
+  done
+  assert_eq "source untouched" "yes" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
+}
+
+# AC: the source basename is gated to the forms a spec dir can actually carry —
+# a real ordinal or the reserved provisional form — so an arbitrary directory
+# name, a path escape, or a prefixed name with a token the boundary rejects
+# cannot be moved through this verb.
+case_jimfile_mv_spec_id_rejects_bad_source() {
+  local specs cfg bad
+  specs=$(empty_dir mvspecid_badsrc)
+  mkdir -p "$specs/sdlc/notes" "$specs/sdlc/P---bad" "$specs/other/001-x"
+  cfg=$(fixture mvspecid-badsrc.toml "specs_path = \"$specs\"")
+  for bad in notes P---bad "../other/001-x" ".." "P-"; do
+    run_jimfile -c "$cfg" mv-spec-id sdlc "$bad" 018 x
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [source] accepted '$bad'"
+    fi
+  done
+  assert_eq "sibling group untouched" "yes" "$([[ -d "$specs/other/001-x" ]] && echo yes || echo no)"
+}
+
+# AC: group and name cross the same boundaries every other path-composing verb
+# uses, before any move happens.
+case_jimfile_mv_spec_id_rejects_bad_group_and_name() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_badgn)
+  mkdir -p "$specs/sdlc/P-20260728-x"
+  cfg=$(fixture mvspecid-badgn.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id "../evil" P-20260728-x 018 x
+  assert_exit "bad group rc" 1 "$RC"
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x 018 "../evil"
+  assert_exit "bad name rc" 1 "$RC"
+  assert_eq "source untouched" "yes" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
+}
+
+# AC: a missing source dir is a guard failure, not a silent success.
+case_jimfile_mv_spec_id_missing_source_exits_1() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_nosrc)
+  mkdir -p "$specs/sdlc"
+  cfg=$(fixture mvspecid-nosrc.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-absent 018 x
+  assert_exit     "rc"     1  "$RC"
+  assert_nonempty "stderr" "$ERR"
+}
+
+# AC: mv-spec-id with too few args exits 2 with a message — a usage error, kept
+# distinct from a guard refusal. Three args is a valid arity (the provisional
+# target form), so the short invocation is two.
+case_jimfile_mv_spec_id_missing_args_exits_2() {
+  run_jimfile mv-spec-id sdlc P-20260728-x
+  assert_exit     "rc"     2  "$RC"
+  assert_nonempty "stderr" "$ERR"
+}
+
+# AC: with a directory already on the target ordinal under a different slug,
+# binding that ordinal halts loudly naming the drift instead of writing a second
+# directory onto it. The creation path's halt, enforced in the primitive.
+case_jimfile_mv_spec_id_refuses_held_ordinal() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_held)
+  mkdir -p "$specs/sdlc/P-20260728-foo" "$specs/sdlc/001-bar"
+  cfg=$(fixture mvspecid-held.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-foo 001 foo
+  assert_exit     "rc"     1 "$RC"
+  assert_nonempty "stderr" "$ERR"
+  assert_eq "source untouched" "yes" "$([[ -d "$specs/sdlc/P-20260728-foo" ]] && echo yes || echo no)"
+  assert_eq "no second dir on the ordinal" "no" \
+    "$([[ -d "$specs/sdlc/001-foo" ]] && echo yes || echo no)"
+}
+
+# AC: the creation-side halt is numeric too — a wider-padded occupant holds the
+# same ordinal, so binding it refuses rather than writing a padding twin.
+case_jimfile_mv_spec_id_refuses_padding_variant_holder() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_padheld)
+  mkdir -p "$specs/sdlc/P-20260728-foo" "$specs/sdlc/0018-alpha"
+  cfg=$(fixture mvspecid-padheld.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-foo 018 foo
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no padding twin" "no" "$([[ -d "$specs/sdlc/018-foo" ]] && echo yes || echo no)"
+}
+
+# AC: a rename does not collide with itself — the placeholder already sitting on
+# the ordinal it is being named within is excluded from the occupancy check, so
+# binding a spec's slug onto its own advisory ordinal still works.
+case_jimfile_mv_spec_id_excludes_its_own_source() {
+  local specs cfg
+  specs=$(empty_dir mvspecid_selfexcl)
+  mkdir -p "$specs/sdlc/018-wip"
+  cfg=$(fixture mvspecid-selfexcl.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" mv-spec-id sdlc 018-wip 018 finish-coordinated-spec-identity
+  assert_exit "rc" 0 "$RC"
+  assert_eq "renamed in place" "yes" \
+    "$([[ -d "$specs/sdlc/018-finish-coordinated-spec-identity" ]] && echo yes || echo no)"
+}
+
+
+
+# jimfile_dir_inode <path> — the inode of <path> itself, the way the guard reads
+# it, so the fixture and the code agree on what identifies a directory.
+jimfile_dir_inode() {
+  ls -di -- "$1" 2>/dev/null | awk 'NR==1{print $1}'
+}
+
+# AC: when the target appears as a directory between the existence check and the
+# move, the rename refuses rather than nests — the source goes back where it was
+# and the command fails. The window is a race no CLI invocation can open
+# deterministically (the check and the move are consecutive statements in one
+# process), so the guard is exercised against exactly the state the race leaves.
+case_jimfile_nesting_guard_restores_and_fails() {
+  local specs src target ino err rc
+  specs=$(empty_dir nestguard)
+  mkdir -p "$specs/sdlc"
+  src="$specs/sdlc/P-20260728-x"
+  target="$specs/sdlc/018-x"
+  mkdir -p "$src"
+  printf 'payload\n' > "$src/spec.md"
+  ino="$(jimfile_dir_inode "$src")"
+  # Exactly what `mv <src> <target>` leaves behind when a directory appeared at
+  # the target: the source now sits inside it.
+  mkdir -p "$target"
+  mv -- "$src" "$target/"
+  err="$( source "$SCRIPT_JIMFILE" >/dev/null 2>&1
+          undo_nested_rename "$src" "$target" "$ino" 2>&1 )"
+  rc=$?
+  assert_exit     "rc"     1 "$rc"
+  assert_nonempty "names the race" "$err"
+  assert_eq "source restored"  "yes" "$([[ -d "$src" ]] && echo yes || echo no)"
+  assert_eq "payload restored" "payload" "$(cat "$src/spec.md" 2>/dev/null)"
+  assert_eq "nothing left nested" "no" \
+    "$([[ -d "$target/P-20260728-x" ]] && echo yes || echo no)"
+}
+
+# AC: a rename that actually landed is not mistaken for the race — the guard
+# identifies the moved directory itself, so a target that merely happens to
+# contain a similarly-named entry is left alone.
+case_jimfile_nesting_guard_passes_a_real_rename() {
+  local specs src target ino rc
+  specs=$(empty_dir nestguard_ok)
+  mkdir -p "$specs/sdlc"
+  src="$specs/sdlc/P-20260728-x"
+  target="$specs/sdlc/018-x"
+  mkdir -p "$src"
+  ino="$(jimfile_dir_inode "$src")"
+  mv -- "$src" "$target"
+  # A sub-entry sharing the source basename must not read as the artifact.
+  mkdir -p "$target/P-20260728-x"
+  ( source "$SCRIPT_JIMFILE" >/dev/null 2>&1
+    undo_nested_rename "$src" "$target" "$ino" ) 2>/dev/null
+  rc=$?
+  assert_exit "rc" 0 "$rc"
+  assert_eq "target left in place" "yes" "$([[ -d "$target" ]] && echo yes || echo no)"
+  assert_eq "source not resurrected" "no" "$([[ -d "$src" ]] && echo yes || echo no)"
+}
+
+# AC: a rename that landed by copying rather than by renaming is not mistaken for
+# the race. `mv` guarantees the contents arrive, not that the inode survives — on
+# a cross-device move it copies and deletes, which is what renaming a lower or
+# merged directory on an overlay filesystem becomes. Staged here exactly as `mv`
+# leaves it: new inode, correct tree, source gone.
+case_jimfile_nesting_guard_copy_fallback_reads_as_landed() {
+  local specs src target ino rc err
+  specs=$(empty_dir nestguard_copy)
+  mkdir -p "$specs/sdlc"
+  src="$specs/sdlc/P-20260728-x"
+  target="$specs/sdlc/018-x"
+  mkdir -p "$src"
+  printf 'payload\n' > "$src/spec.md"
+  ino="$(jimfile_dir_inode "$src")"
+  cp -R -- "$src" "$target" && rm -rf -- "$src"
+  err="$( source "$SCRIPT_JIMFILE" >/dev/null 2>&1
+          undo_nested_rename "$src" "$target" "$ino" 2>&1 )"
+  rc=$?
+  assert_exit "rc"                 0         "$rc"
+  assert_eq   "no repair demanded" ""        "$err"
+  assert_eq   "target holds the payload" "payload" "$(cat "$target/spec.md" 2>/dev/null)"
+  assert_eq   "source not resurrected" "no" "$([[ -d "$src" ]] && echo yes || echo no)"
+}
+
+# AC: an unreadable source inode degrades to the basename tell rather than passing
+# everything — the guard still refuses a move that nested. The callers refuse
+# before the move, so this is the residual shape only.
+case_jimfile_nesting_guard_empty_inode_still_detects_nesting() {
+  local specs src target rc
+  specs=$(empty_dir nestguard_noino)
+  mkdir -p "$specs/sdlc"
+  src="$specs/sdlc/P-20260728-x"
+  target="$specs/sdlc/018-x"
+  mkdir -p "$src"
+  mkdir -p "$target"
+  mv -- "$src" "$target/"
+  ( source "$SCRIPT_JIMFILE" >/dev/null 2>&1
+    undo_nested_rename "$src" "$target" "" ) 2>/dev/null
+  rc=$?
+  assert_exit "rc" 1 "$rc"
+  assert_eq "source restored" "yes" "$([[ -d "$src" ]] && echo yes || echo no)"
+}
+
+# jimfile_copying_mv_shim — a directory holding an `mv` that copies and deletes
+# instead of renaming, the way `mv` behaves across devices. Prepended to PATH so
+# the rename verbs are driven through their real command surface against that
+# behavior: the guard's own fixtures call it directly and never exercise the
+# `src_ino` capture or the `|| return 1` wiring, which is where a false positive
+# actually reaches a caller.
+jimfile_copying_mv_shim() {
+  local dir
+  dir=$(empty_dir "$1")
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -uo pipefail' \
+    '[[ "${1:-}" == "--" ]] && shift' \
+    'cp -R -- "$1" "$2" && rm -rf -- "$1"' > "$dir/mv"
+  chmod +x "$dir/mv"
+  printf '%s' "$dir"
+}
+
+# AC: mv-spec-id reports success when the underlying move copied rather than
+# renamed — the whole verb, not the guard in isolation.
+case_jimfile_mv_spec_id_lands_through_a_copying_mv() {
+  local specs cfg shim oldpath
+  specs=$(empty_dir mvspecid_copy)
+  mkdir -p "$specs/sdlc/P-20260728-x"
+  printf 'payload\n' > "$specs/sdlc/P-20260728-x/spec.md"
+  cfg=$(fixture mvspecid-copy.toml "specs_path = \"$specs\"")
+  shim=$(jimfile_copying_mv_shim mvspecid_copy_bin)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_jimfile -c "$cfg" mv-spec-id sdlc P-20260728-x 018 x
+  PATH="$oldpath"
+  assert_exit "rc"          0 "$RC"
+  assert_eq   "no stderr"   "" "$ERR"
+  assert_eq   "landed"      "yes" "$([[ -d "$specs/sdlc/018-x" ]] && echo yes || echo no)"
+  assert_eq   "payload"     "payload" "$(cat "$specs/sdlc/018-x/spec.md" 2>/dev/null)"
+  assert_eq   "source gone" "no" "$([[ -d "$specs/sdlc/P-20260728-x" ]] && echo yes || echo no)"
+}
+
+
+# AC: a leading token wider than an ordinal the registry could be rebuilt from
+# is not an ordinal — the predicate reads that ordinal as free rather than held
+# by a sibling it cannot represent.
+case_jimfile_spec_ordinal_holder_over_wide_sibling_is_free() {
+  local specs cfg
+  specs=$(empty_dir soh_overwide)
+  mkdir -p "$specs/sdlc/001-alpha" "$specs/sdlc/0000000000000000018-wide"
+  cfg=$(fixture soh-overwide.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 18
+  assert_exit "predicate reports free" 1 "$RC"
+}
+
+# AC: an ordinal spelled with different padding is the same ordinal — a spec
+# ordinal is a number, so '18' collides with an existing '018-…' rather than
+# reading as free space.
+case_jimfile_spec_ordinal_holder_padding_variant_held() {
+  local specs cfg
+  specs=$(empty_dir soh_padding)
+  mkdir -p "$specs/sdlc/018-alpha"
+  cfg=$(fixture soh-padding.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 18
+  assert_exit "held rc"       0            "$RC"
+  assert_eq   "names the holder" "018-alpha" "$OUT"
+}
+
+# AC: a bare-ordinal directory (no slug) holds its ordinal too — occupancy is
+# about the ordinal, not about carrying a name after it.
+case_jimfile_spec_ordinal_holder_bare_occupant_held() {
+  local specs cfg
+  specs=$(empty_dir soh_bare)
+  mkdir -p "$specs/sdlc/018"
+  cfg=$(fixture soh-bare.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 018
+  assert_exit "held rc"          0     "$RC"
+  assert_eq   "names the holder" "018" "$OUT"
+}
+
+# AC: an unheld ordinal reports free — rc 1 with no holder named, distinct from
+# the rc 2 an unusable argument earns.
+case_jimfile_spec_ordinal_holder_free_ordinal() {
+  local specs cfg
+  specs=$(empty_dir soh_free)
+  mkdir -p "$specs/sdlc/001-a" "$specs/sdlc/003-c"
+  cfg=$(fixture soh-free.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 002
+  assert_exit "free rc"      1  "$RC"
+  assert_eq   "no holder"    "" "$OUT"
+}
+
+# AC: a rename excludes its own source, so a directory already sitting on the
+# ordinal it is being renamed within does not collide with itself.
+case_jimfile_spec_ordinal_holder_excludes_source() {
+  local specs cfg
+  specs=$(empty_dir soh_exclude)
+  mkdir -p "$specs/sdlc/018-wip"
+  cfg=$(fixture soh-exclude.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 018 --exclude 018-wip
+  assert_exit "excluded source reads free" 1  "$RC"
+  assert_eq   "no holder"                  "" "$OUT"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 018
+  assert_exit "unexcluded still held" 0 "$RC"
+}
+
+# AC: a sibling whose leading token is not a usable ordinal — a plain name, a
+# pending provisional dir, or a token wider than the registry could be rebuilt
+# from — is never counted as a holder and never errors the run.
+case_jimfile_spec_ordinal_holder_skips_malformed_siblings() {
+  local specs cfg
+  specs=$(empty_dir soh_malformed)
+  mkdir -p "$specs/sdlc/notes" "$specs/sdlc/P-20260728-x" \
+           "$specs/sdlc/0000000000000000018-wide" "$specs/sdlc/018-alpha"
+  cfg=$(fixture soh-malformed.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 019
+  assert_exit "junk siblings do not hold 019" 1  "$RC"
+  assert_eq   "no stderr noise"               "" "$ERR"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 18
+  assert_exit "the real holder is still found" 0            "$RC"
+  assert_eq   "names the holder"               "018-alpha"  "$OUT"
+}
+
+# AC: a group with no directory at all holds nothing — free, not an error.
+case_jimfile_spec_ordinal_holder_absent_group_is_free() {
+  local specs cfg
+  specs=$(empty_dir soh_nogroup)
+  mkdir -p "$specs"
+  cfg=$(fixture soh-nogroup.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 001
+  assert_exit "free rc"   1  "$RC"
+  assert_eq   "no holder" "" "$OUT"
+}
+
+# AC: unusable arguments are a usage failure (rc 2), never a silent "free" —
+# reading a rejected ordinal as unoccupied is what lets a bad token through.
+case_jimfile_spec_ordinal_holder_rejects_bad_input() {
+  local specs cfg
+  specs=$(empty_dir soh_badinput)
+  mkdir -p "$specs/sdlc/018-alpha"
+  cfg=$(fixture soh-badinput.toml "specs_path = \"$specs\"")
+  run_jimfile -c "$cfg" spec-ordinal-holder "../evil" 018
+  assert_exit "bad group rc" 2 "$RC"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 01a
+  assert_exit "non-numeric ordinal rc" 2 "$RC"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 1234567890123456
+  assert_exit "over-wide ordinal rc" 2 "$RC"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc 018 --exclude "../evil"
+  assert_exit "bad exclude rc" 2 "$RC"
+  run_jimfile -c "$cfg" spec-ordinal-holder sdlc
+  assert_exit "missing ordinal rc" 2 "$RC"
 }
 
 # AC: path spec returns canonical {specs}/{group}/{id}-{name}/spec.md
@@ -198,6 +676,116 @@ case_jimfile_path_research_canonical() {
   cfg=$(fixture path-research.toml 'specs_path = "docs/specs"')
   run_jimfile -c "$cfg" path research jim 008 jimfile
   assert_eq "research path" "docs/specs/jim/008-jimfile/research.md" "$OUT"
+}
+
+# AC: a provisional spec's artifact paths resolve through the same helper — the
+# reserved token IS the whole directory basename, so the two-argument form takes
+# it as one piece rather than composing a fabricated '{token}-{name}' directory.
+case_jimfile_path_spec_provisional_form() {
+  local cfg
+  cfg=$(fixture path-prov.toml 'specs_path = "docs/specs"')
+  run_jimfile -c "$cfg" path spec sdlc P-20260728-new-widget
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "spec path" "docs/specs/sdlc/P-20260728-new-widget/spec.md" "$OUT"
+  run_jimfile -c "$cfg" path plan sdlc P-20260728-new-widget
+  assert_eq "plan path" "docs/specs/sdlc/P-20260728-new-widget/plan.md" "$OUT"
+  run_jimfile -c "$cfg" path research sdlc P-20260728-new-widget
+  assert_eq "research path" "docs/specs/sdlc/P-20260728-new-widget/research.md" "$OUT"
+}
+
+# AC: the two-argument form is the provisional form only — a bare ordinal, a
+# malformed token, or a path escape is refused rather than composed into a
+# directory of its own.
+case_jimfile_path_spec_two_arg_is_provisional_only() {
+  local cfg bad
+  cfg=$(fixture path-prov-only.toml 'specs_path = "docs/specs"')
+  for bad in 018 P---bad "P-20260728" "../evil" "P-2026072-x"; do
+    run_jimfile -c "$cfg" path spec sdlc "$bad"
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [two-arg] accepted '$bad' → $OUT"
+    fi
+  done
+}
+
+# AC 15: the provisional-identity grammar is one authoritative rule — the
+# is_prov_token body is byte-identical across the three scripts that read the
+# form, so a loosened copy fails here instead of silently widening a boundary.
+case_jimfile_is_prov_token_triplicate_identical() {
+  local a b c
+  a="$(extract_fn is_prov_token "$REPO_ROOT/skills/file/scripts/jimfile.sh")"
+  b="$(extract_fn is_prov_token "$REPO_ROOT/skills/file/scripts/jimalloc.sh")"
+  c="$(extract_fn is_prov_token "$REPO_ROOT/skills/spec/scripts/reconcile.sh")"
+  assert_nonempty "jimfile.sh is_prov_token extracted" "$a"
+  assert_eq "jimalloc.sh copy matches jimfile.sh"  "$a" "$b"
+  assert_eq "reconcile.sh copy matches jimfile.sh" "$a" "$c"
+}
+
+# The shared is_prov_token body delegates every charset decision to each
+# file's prov_id_boundary shim and PROV_PREFIX constant — the boundary is
+# where the rule's security content lives, so the copies that DECIDE are
+# pinned as hard as the copy that was easy to keep byte-identical. The shims
+# legitimately differ (each is that file's route to the one is_valid_id rule),
+# so each is pinned verbatim: loosening any one fails here, deliberately.
+case_jimfile_prov_boundary_shims_and_prefixes_pinned() {
+  assert_eq "jimfile shim routes through is_valid_id" \
+    'prov_id_boundary() { is_valid_id "$1" >/dev/null 2>&1; }' \
+    "$(grep -E '^prov_id_boundary\(\)' "$REPO_ROOT/skills/file/scripts/jimfile.sh")"
+  assert_eq "jimalloc shim routes through alloc_valid_token" \
+    'prov_id_boundary() { alloc_valid_token "$1"; }' \
+    "$(grep -E '^prov_id_boundary\(\)' "$REPO_ROOT/skills/file/scripts/jimalloc.sh")"
+  assert_eq "reconcile shim routes through jf valid-id" \
+    'prov_id_boundary() { jf valid-id "$1" >/dev/null 2>&1; }' \
+    "$(grep -E '^prov_id_boundary\(\)' "$REPO_ROOT/skills/spec/scripts/reconcile.sh")"
+  # Each constant is asserted individually, BY PATH. A set-compare over the three
+  # files answers "the distinct values I managed to find agree" — which a deleted
+  # copy satisfies (fewer matches, survivors still reduce to one line) and a
+  # re-quoted copy satisfies too (a quote-literal pattern does not match it, so
+  # it is not among the values compared). Both drifts pass a set-compare with the
+  # constant genuinely changed; neither passes this.
+  local f rel got
+  for f in "$REPO_ROOT/skills/file/scripts/jimfile.sh" \
+           "$REPO_ROOT/skills/file/scripts/jimalloc.sh" \
+           "$REPO_ROOT/skills/spec/scripts/reconcile.sh"; do
+    rel="${f#"$REPO_ROOT"/}"
+    # Quote-agnostic and assignment-anchored, so a re-spelling is READ rather
+    # than skipped — the whole point is that a missed line must not look clean.
+    got="$(grep -hE '^(readonly )?PROV_PREFIX=' "$f" | sed "s/^readonly //; s/[\"']//g")"
+    assert_eq "$rel declares PROV_PREFIX exactly once" "1" \
+      "$(printf '%s\n' "$got" | grep -c .)"
+    assert_eq "$rel pins the prefix value" 'PROV_PREFIX=P-' "$got"
+  done
+}
+
+# AC 15: the shared rule carries the slug through the id boundary too, so a
+# token the allocator could never mint — its slug leading with a separator — is
+# refused rather than composed into a directory name.
+case_jimfile_path_spec_provisional_slug_clears_boundary() {
+  local cfg bad
+  cfg=$(fixture path-prov-slug.toml 'specs_path = "docs/specs"')
+  for bad in "P-20260728--leading" "P-20260728-.dot" "P-20260728-_under"; do
+    run_jimfile -c "$cfg" path spec sdlc "$bad"
+    if (( RC == 0 )); then
+      CURRENT_FAILED=1; echo "    [slug boundary] accepted '$bad' → $OUT"
+    fi
+  done
+}
+
+# AC: the numeric form validates its tokens at the composition boundary, the way
+# every other path-composing arm does — a malformed group, id, or name never
+# becomes part of a path this helper hands back.
+case_jimfile_path_spec_validates_numeric_form() {
+  local cfg
+  cfg=$(fixture path-numeric-gates.toml 'specs_path = "docs/specs"')
+  run_jimfile -c "$cfg" path spec "../evil" 018 name
+  assert_exit "bad group rc" 1 "$RC"
+  run_jimfile -c "$cfg" path spec sdlc 18 name
+  assert_exit "unpadded id rc" 1 "$RC"
+  run_jimfile -c "$cfg" path spec sdlc 01a name
+  assert_exit "non-numeric id rc" 1 "$RC"
+  run_jimfile -c "$cfg" path spec sdlc 1234567890123456 name
+  assert_exit "over-wide id rc" 1 "$RC"
+  run_jimfile -c "$cfg" path spec sdlc 018 "../evil"
+  assert_exit "bad name rc" 1 "$RC"
 }
 
 # AC: path debug returns date-prefixed canonical debug path
@@ -359,9 +947,10 @@ case_jimfile_kinds_outputs_valid_kinds() {
   assert_match "debug"      '^debug$'      "$OUT"
   assert_match "brainstorm" '^brainstorm$' "$OUT"
   assert_match "issue"      '^issue$'      "$OUT"
+  assert_match "blueprint"  '^blueprint$'  "$OUT"
   local lines
   lines=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "6 kinds" "6" "$lines"
+  assert_eq "7 kinds" "7" "$lines"
 }
 
 # AC: unknown subcommand exits 2 with stderr explanation
@@ -631,17 +1220,6 @@ case_jimfile_next_id_issue_handles_dotdot_in_subject() {
   assert_eq   "no traversal in slug" "$today-etc-passwd" "$OUT"
 }
 
-# AC: existing next-id <group> behavior is preserved (regression guard)
-# 'issue' as a kind-arg should not break group-name dispatch for other groups.
-case_jimfile_next_id_group_still_works() {
-  local specs cfg
-  specs=$(empty_dir specs_issue_regression)
-  mkdir -p "$specs/jim/001-a"
-  cfg=$(fixture next-issue-regression.toml "specs_path = \"$specs\"")
-  run_jimfile -c "$cfg" next-id jim
-  assert_eq "002 from existing group" "002" "$OUT"
-}
-
 # AC: next-num issue returns 1 when no issue carries a num: field (spec 019 DD #5)
 case_jimfile_nextnum_empty_returns_1() {
   local issues cfg
@@ -797,9 +1375,9 @@ case_jimfile_next_id_issue_blank_is_silent() {
 # (spec 021 security.md Finding 5 — guard against hand-sync drift).
 case_jimfile_is_valid_id_triplicate_identical() {
   local a b c
-  a="$(extract_is_valid_id "$REPO_ROOT/skills/file/scripts/jimfile.sh")"
-  b="$(extract_is_valid_id "$REPO_ROOT/skills/issue/scripts/index.sh")"
-  c="$(extract_is_valid_id "$REPO_ROOT/skills/issue/scripts/render.sh")"
+  a="$(extract_fn is_valid_id "$REPO_ROOT/skills/file/scripts/jimfile.sh")"
+  b="$(extract_fn is_valid_id "$REPO_ROOT/skills/issue/scripts/index.sh")"
+  c="$(extract_fn is_valid_id "$REPO_ROOT/skills/issue/scripts/render.sh")"
   assert_nonempty "jimfile.sh is_valid_id extracted" "$a"
   assert_eq "index.sh copy matches jimfile.sh"  "$a" "$b"
   assert_eq "render.sh copy matches jimfile.sh" "$a" "$c"
@@ -888,6 +1466,168 @@ case_jimfile_prefix_from_custom_date_template_unmigratable() {
   run_jimfile -c "$cfg" prefix-from "2026-06-13T14:45:30Z" 7
   assert_exit  "rc 1" 1 "$RC"
   assert_match "reason" 'un-migratable' "$ERR"
+}
+
+# AC: `blueprint` kind-vs-key disambiguation (spec 033 Task 2, plan DD 2).
+# `get blueprint` is existence-gated: NOT_FOUND until the map file exists,
+# then the configured path. Contract-lock case — behavior exists post-T1.
+case_jimfile_get_blueprint_existence_gated() {
+  local dir
+  dir=$(empty_dir jf_map_get)
+  local out
+  out=$(cd "$dir" && bash "$SCRIPT_JIMFILE" get blueprint)
+  assert_eq "absent map NOT_FOUND" "NOT_FOUND" "$out"
+  printf '# map\n' > "$dir/BLUEPRINT.md"
+  out=$(cd "$dir" && bash "$SCRIPT_JIMFILE" get blueprint)
+  assert_eq "present map resolves" "BLUEPRINT.md" "$out"
+}
+
+# AC: arity disambiguates the blueprint key from the blueprint kind (spec 033
+# Task 2, plan DD 2 — build-time correction): single-arg `path blueprint`
+# resolves the configured map path like every other strategic key; the
+# two-arg form still resolves the group-tier 000-blueprint slot.
+case_jimfile_path_blueprint_arity_disambiguation() {
+  run_jimfile path blueprint
+  assert_exit "single-arg rc"   0              "$RC"
+  assert_eq   "single-arg map"  "BLUEPRINT.md" "$OUT"
+  run_jimfile path blueprint storage
+  assert_exit "two-arg rc"      0              "$RC"
+  assert_eq   "two-arg group slot" "docs/specs/storage/000-blueprint/spec.md" "$OUT"
+}
+
+# AC: valid-relpath accepts safe repo-relative territory paths (spec 033
+# Task 2, AC #8, security Finding 9). rc-only, mirrors valid-id's shape.
+case_jimfile_valid_relpath_accepts_relative() {
+  run_jimfile valid-relpath "src/billing/"
+  assert_exit "dir with slash"  0 "$RC"
+  run_jimfile valid-relpath "api/billing"
+  assert_exit "plain relative"  0 "$RC"
+  run_jimfile valid-relpath "a..b/file.txt"
+  assert_exit "dotdot-in-name ok (not a segment)" 0 "$RC"
+}
+
+# AC: valid-relpath rejects absolute, ..-segment, and empty paths (spec 033
+# Task 2, AC #8, security Finding 9).
+case_jimfile_valid_relpath_rejects_unsafe() {
+  run_jimfile valid-relpath "/etc/passwd"
+  assert_exit "absolute"        1 "$RC"
+  run_jimfile valid-relpath "../up"
+  assert_exit "leading dotdot"  1 "$RC"
+  run_jimfile valid-relpath "a/../b"
+  assert_exit "inner dotdot"    1 "$RC"
+  run_jimfile valid-relpath ".."
+  assert_exit "bare dotdot"     1 "$RC"
+  run_jimfile valid-relpath ""
+  assert_exit "empty"           1 "$RC"
+}
+
+# ─── Section: ordinal width bound (cross-file value agreement) ───────────────
+
+# The ordinal width bound is ONE value — ALLOC_MAX_ORD_DIGITS in jimalloc.sh —
+# worn in spellings that cannot be byte-compared: jimalloc compares against the
+# constant (in exactly one function, alloc_valid_ord), jimfile and jimledger
+# carry regex literals, and jimledger's awk isord carries arithmetic bounds.
+# This case compares extracted VALUES, so a divergence in any spelling is loud.
+# Two deliberate rules share the ceiling: CANONICAL SPELLING {3,15} (the %03d
+# form — tree basenames, mv-spec-id, the path composer, the ledger parser and
+# move gates) and NUMERIC ACCEPTANCE {1,15} (occupancy, which reads '18' and
+# '018' as one ordinal, the same leniency the registry's canon input has). The
+# partition maps share the bound rather than capping themselves at 999: their
+# starts are pasted from `peek spec`, whose producer and whose downstream binder
+# both admit 15 digits, so a cap in between refuses a value the protocol itself
+# hands the operator.
+
+# code_widths <file> <pattern> — count matches on NON-COMMENT lines only. A gate
+# that loses its bound while a nearby comment gains the literal keeps a whole-file
+# count intact, so the per-file assertions below would stay green through exactly
+# the drift they exist to catch. No counted site sits in a comment today, so this
+# changes no number — it removes a way for one to change unseen.
+code_widths() { grep -vE '^[[:space:]]*#' "$1" | grep -cE "$2"; }
+
+case_jimfile_ordinal_width_bound_single_sourced() {
+  local alloc="$REPO_ROOT/skills/file/scripts/jimalloc.sh"
+  local ledger="$REPO_ROOT/skills/ledger/scripts/jimledger.sh"
+  local max
+  max="$(grep -oE '^ALLOC_MAX_ORD_DIGITS=[0-9]+' "$alloc" | cut -d= -f2)"
+  assert_eq "the one named constant" "15" "$max"
+  assert_eq "jimalloc compares against the constant in one function only" "1" \
+    "$(grep -cE '[<>]=? ALLOC_MAX_ORD_DIGITS' "$alloc")"
+  assert_eq "jimalloc spells no width literal of its own" "0" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$alloc" | wc -l | tr -d ' ')"
+  assert_eq "jimfile canonical-spelling sites (3 gates + 2 messages)" "5" \
+    "$(code_widths "$SCRIPT_JIMFILE" "\[0-9\]\{3,$max\}")"
+  assert_eq "jimfile numeric-acceptance sites (occupancy pair)" "2" \
+    "$(code_widths "$SCRIPT_JIMFILE" "\[0-9\]\{1,$max\}")"
+  assert_eq "jimfile carries no other width spelling" "7" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$SCRIPT_JIMFILE" | wc -l | tr -d ' ')"
+  assert_eq "jimledger canonical-spelling sites (the two move gates)" "2" \
+    "$(code_widths "$ledger" "\[0-9\]\{3,$max\}")"
+  assert_eq "jimledger carries no other width spelling" "2" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$ledger" | wc -l | tr -d ' ')"
+  assert_match "isord: canonical floor and the shared ceiling, in awk" \
+    "length\(s\) >= 3 && length\(s\) <= $max" \
+    "$(grep 'function isord' "$ledger")"
+  local reconcile="$REPO_ROOT/skills/spec/scripts/reconcile.sh"
+  assert_eq "reconcile canonical-spelling sites" "2" \
+    "$(code_widths "$reconcile" "\[0-9\]\{3,$max\}")"
+  assert_eq "reconcile carries no other width spelling" "2" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$reconcile" | wc -l | tr -d ' ')"
+  local partition="$REPO_ROOT/skills/partition/scripts/jimpartition.sh"
+  assert_eq "jimpartition canonical-spelling sites (2 starts, source shape, scan, remap)" "5" \
+    "$(code_widths "$partition" "\[0-9\]\{3,$max\}")"
+  assert_eq "jimpartition carries no other width spelling" "6" \
+    "$(grep -oE '\[0-9\]\{[0-9]+,[0-9]+\}' "$partition" | wc -l | tr -d ' ')"
+  assert_eq "jimpartition's two mint caps compare digits against the same ceiling" "2" \
+    "$(grep -cF "\${#seq} > $max" "$partition")"
+  # The omission class, and the reason it needed widening. The sweep here used to
+  # require a COMMA, so a fixed repetition — [0-9]{3} — matched nothing and the
+  # file carrying it was never exempted from this guard: it was invisible to it.
+  # That is how six gates kept a 999 ceiling after the bound moved to 15.
+  #
+  # A spelling is ORDINAL when its bounds name the floor 3 or the ceiling 15. A
+  # date's {8} and a timestamp's {2}/{4} name neither, so the corpus's many
+  # non-ordinal widths stay out of scope without being enumerated.
+  #
+  # ROOTS: both production roots, skills/ and scripts/ — a top-level adapter is
+  # as able to spell its own bound as a skill script is. tests/ is deliberately
+  # NOT swept, and the reason is a real distinction rather than convenience:
+  # there a bounded digit class is usually pattern-as-DATA, not a gate. The
+  # provenance detector matches three-digit spec citations in prose, so it spells
+  # `[0-9]{3}` four times while enforcing no ordinal bound at all. Sweeping there
+  # would flag a detector for resembling the thing it detects.
+  local spellings n
+  spellings="$(grep -rhoE '\[0-9\]\{[0-9]+(,[0-9]+)?\}' --include='*.sh' \
+                 "$REPO_ROOT/skills" "$REPO_ROOT/scripts" \
+               | grep -E "\{(3|$max)[,}]|,(3|$max)\}" | LC_ALL=C sort -u)"
+  n="$(printf '%s\n' "$spellings" | grep -c .)"
+  # Fail closed: an extraction matching nothing would make the next assertion
+  # pass vacuously, which is the failure this whole case exists to prevent.
+  assert_eq "ordinal spellings were actually extracted (got $n)" "yes" \
+    "$([[ "$n" -ge 2 ]] && echo yes || echo no)"
+  assert_eq "every ordinal-width spelling in the corpus is one of the two rules" \
+    "[0-9]{1,$max} [0-9]{3,$max}" "$(printf '%s ' $spellings | sed 's/ $//')"
+  # Excluded BY PATH, not basename. Two files under skills/ are named
+  # reconcile.sh, so a basename exclusion silently exempted the issue-side one —
+  # and would exempt any future file that happened to take one of these names.
+  local accounted='/skills/(file/scripts/jimfile|ledger/scripts/jimledger|spec/scripts/reconcile|partition/scripts/jimpartition)\.sh$'
+  assert_eq "no ordinal-width regex outside the accounted files" "0" \
+    "$(grep -rloE "\[0-9\]\{(3|1),$max\}|\[0-9\]\{3\}" --include='*.sh' \
+         "$REPO_ROOT/skills" "$REPO_ROOT/scripts" \
+       | grep -vE "$accounted" | grep -c .)"
+  # Regex is not the only spelling. The corpus also states this bound as an awk
+  # length() comparison and as a bash ${#x} comparison, and neither is visible to
+  # a character-class pattern. The CEILING is what identifies them as ordinal
+  # work — a floor of 3 alone appears in unrelated length checks — so the sweep
+  # keys on it rather than trying to judge each site's subject.
+  assert_eq "no ordinal-width comparison outside the accounted files" "0" \
+    "$(grep -rlE "length\([a-z_]+\) *[<>]=? *$max|\\\$\{#[a-z_]+\} *[<>]=? *$max" \
+       --include='*.sh' "$REPO_ROOT/skills" "$REPO_ROOT/scripts" \
+       | grep -vE "$accounted" | grep -c .)"
+  # Fail closed: the comparison sweep must be finding the sites it accounts for,
+  # or its zero above means only that the pattern stopped matching.
+  assert_eq "the comparison spellings were found where they are accounted" "2" \
+    "$(grep -rlE "length\([a-z_]+\) *[<>]=? *$max|\\\$\{#[a-z_]+\} *[<>]=? *$max" \
+       --include='*.sh' "$REPO_ROOT/skills" | grep -cE "$accounted")"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

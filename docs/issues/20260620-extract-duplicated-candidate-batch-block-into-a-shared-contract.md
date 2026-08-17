@@ -11,8 +11,8 @@ relations:
   related-to: []
   duplicates: []
 created: 2026-06-20T07:17:42Z
-updated: 2026-06-20T23:36:48Z
-origin: docs/specs/jim/024-issue-pipeline-ownership/research.md
+updated: 2026-07-25T07:49:14Z
+origin: docs/specs/issue/008-issue-pipeline-ownership/research.md
 ---
 
 ## Description
@@ -39,4 +39,4 @@ contract is extracted, consider whether `/jim:issue add` should reference the sa
 diverge. Reconciling the two is nearly free once the shared contract exists; doing it
 separately means touching the eight scattered sites independently.
 
-Surfaced during spec 024 research (`docs/specs/jim/024-issue-pipeline-ownership/research.md`).
+Surfaced during spec 024 research (`docs/specs/issue/008-issue-pipeline-ownership/research.md`).

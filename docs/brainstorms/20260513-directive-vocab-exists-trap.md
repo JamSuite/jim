@@ -146,11 +146,11 @@ ENDIF
 
 | File | Action |
 | :--- | :--- |
-| `docs/specs/jim/011-directive-vocabulary/spec.md` | Revise Overview, Refactor Rationale, **Acceptance Criteria** (especially the slot-by-slot mapping on lines 35–43), Convention codification AC (lines 45–48), Validation surfaces AC (lines 50–52), Original repro AC (lines 63–66). Replace all references to `READ_IF_EXISTS`/`RUN_IF_EXISTS`/`DO_IF_EXISTS`/`IF X EXISTS THEN` with the new SET + `!=` shape. Keep the spec frontmatter `status: approved`. |
-| `docs/specs/jim/011-directive-vocabulary/plan.md` | Uncheck any `[x]` task that targeted the now-superseded EXISTS vocab; re-migrate those sites to the SET + `!=` shape. Add new tasks for the D2-revised resolver change and the file-update list above. Keep plan `status: in-progress`. |
-| `docs/specs/jim/011-directive-vocabulary/research.md` | Review. Annotate any findings whose load-bearing reasoning has shifted (e.g., D8 empty-no-op semantics are no longer relied on). Body preserved otherwise. |
-| `docs/specs/jim/008-jimconf/spec.md`, `plan.md`, `research.md` | If they reference D2's path-or-empty semantics, update to path-or-`NOT_FOUND`. Targeted edits — don't rewrite. |
-| `docs/specs/jim/009-jimfile/spec.md`, `plan.md`, `research.md` | Same as 008: update D2 references to D2-revised. The `get` semantics description is the primary touchpoint. |
+| `docs/specs/sdlc/008-directive-vocabulary/spec.md` | Revise Overview, Refactor Rationale, **Acceptance Criteria** (especially the slot-by-slot mapping on lines 35–43), Convention codification AC (lines 45–48), Validation surfaces AC (lines 50–52), Original repro AC (lines 63–66). Replace all references to `READ_IF_EXISTS`/`RUN_IF_EXISTS`/`DO_IF_EXISTS`/`IF X EXISTS THEN` with the new SET + `!=` shape. Keep the spec frontmatter `status: approved`. |
+| `docs/specs/sdlc/008-directive-vocabulary/plan.md` | Uncheck any `[x]` task that targeted the now-superseded EXISTS vocab; re-migrate those sites to the SET + `!=` shape. Add new tasks for the D2-revised resolver change and the file-update list above. Keep plan `status: in-progress`. |
+| `docs/specs/sdlc/008-directive-vocabulary/research.md` | Review. Annotate any findings whose load-bearing reasoning has shifted (e.g., D8 empty-no-op semantics are no longer relied on). Body preserved otherwise. |
+| `docs/specs/platform/002-jimconf/spec.md`, `plan.md`, `research.md` | If they reference D2's path-or-empty semantics, update to path-or-`NOT_FOUND`. Targeted edits — don't rewrite. |
+| `docs/specs/platform/003-jimfile/spec.md`, `plan.md`, `research.md` | Same as 008: update D2 references to D2-revised. The `get` semantics description is the primary touchpoint. |
 
 ### Validation surfaces
 
@@ -179,7 +179,7 @@ Per spec 011's existing precedent for "Historical artifacts (instructional/examp
 | :--- | :--- |
 | `docs/brainstorms/20260505-file-resolver-conventions-audit.md` | Annotate near the D1 decision body (lines 56–65), the D2 decision (lines 66–69), the D8 decision (lines 114–121), and the Gate convention table (lines 128–142). D1 vocab superseded; D2 semantics changed from path-or-empty to path-or-`NOT_FOUND`; D8 empty-slot contract no longer load-bearing. |
 | `docs/brainstorms/20260505-bash-scripts-in-meta.md` | Per spec 011 AC line 70: annotation near references to the BASIC dialect (lines 76, 189). Add the brainstorm-20260513 reference where relevant. |
-| `docs/specs/jim/001-meta/spec.md:123` | Per spec 011 AC line 71: same annotation pattern. |
+| `docs/specs/sdlc/001-meta/spec.md:123` | Per spec 011 AC line 71: same annotation pattern. |
 | `docs/debug/20260512-skill-bash-substitution-wrappers.md` | Replace the "Resolved by spec 011" footer (or add it if not yet present) with "Resolved by spec 011, amended 2026-05-13 per `docs/brainstorms/20260513-directive-vocab-exists-trap.md`." Body preserved. |
 | `docs/brainstorms/20260512-jim-howtos.md` *(uncommitted)* | If it references the EXISTS family or path-or-empty semantics, annotate. Otherwise no action. |
 | `docs/research/20260512-jim-prompt-meta-skill.md` *(uncommitted)* | Same — annotate if it references the superseded shapes. |

@@ -10,6 +10,10 @@
 
 *High-level directory layout with one-line annotations. Focus on structure that is non-obvious or architecturally significant.*
 
+<!-- When the project has a BLUEPRINT.md context map, the spec-group
+     partition is its declared content: link to BLUEPRINT.md for groups,
+     roles, relations, and territories — never re-declare them here. -->
+
 ```
 {project-root}/
 ├── {dir}/          # {what it contains and why}

@@ -23,6 +23,11 @@ brainstorms_path  = "docs/brainstorms"
 debug_path        = "docs/debug"
 issues_path       = "./docs/issues/"
 
+# Project-tier context map — the tier-0 blueprint gluing the
+# group blueprints into one project scope. Written only through the
+# /jim:blueprint surface (bare invocation). Root-level by default.
+blueprint_path    = "BLUEPRINT.md"
+
 # Optional project-script path for the per-commit gate. Resolves the
 # path-where-it-would-live; /jim:build wraps the call in an existence
 # gate, so a missing file is silently skipped (no warning, no error).
@@ -45,6 +50,131 @@ require_pre_completion = "false"
 # ARCHITECTURE.md updates directly (bypassing the user-confirmation
 # prompt). Default "false" keeps the existing /jim:arch review step.
 auto_arch_feedback = "false"
+
+# When "true", the blueprint update (and /jim:blueprint generate) writes a
+# group's 000-blueprint spec directly instead of the diff-and-confirm prompt.
+# Default "false" keeps the review step. Applies to both the review-triggered
+# and ad-hoc update paths.
+auto_blueprint = "false"
+
+# Post-review blueprint-update gate. When "true", the blueprint update that runs
+# after /jim:review is a required, blocking step: the review is not treated as
+# complete until the update has run to completion. The update's proposed changes
+# stay advisory — it is the uncompleted step that blocks, not the changes. Gates
+# only the review trigger; the ad-hoc `/jim:blueprint <group> --since <ref>`
+# update is developer-invoked and ungated. Default "false".
+require_blueprint = "false"
+
+# Opt-in staleness threshold for the blueprint regen cadence: an
+# integer count of targeted updates accumulated since the last full generate.
+# When the count reaches it, /jim:blueprint update mode runs a full whole-group
+# regeneration instead of another targeted diff (unattended under auto_blueprint,
+# still criticality-graded; otherwise it prompts). Default "0" disables the
+# trigger, leaving update mode signal-only — it still reports "N targeted updates
+# since last full generate". Any non-positive-integer value is treated as disabled.
+blueprint_regen_threshold = "0"
+
+# --- Spec-group partition doctrine ----------------------------------------
+
+# Partition axis the map-creation proposal steers toward. "vertical" (the
+# default) proposes domain-vertical bounded contexts; "layered" is the
+# escape hatch for layer-style partitions — doctrine guidance and straddle
+# messaging recalibrate, and groups carry role "layer". Steers proposal
+# doctrine only; what each group IS lives in its BLUEPRINT.md role field.
+group_axis = "vertical"
+
+# How group↔code binding is captured in the map:
+#   directory      : each group owns a subtree (strongest mechanical checks)
+#   declared-paths : the map lists each group's code locations (default)
+#   none           : no code binding; boundary lives in specs/blueprints only
+# Territory is recorded as data and enforced by /jim:verify's mechanical
+# floor, whose strength follows the mode above. Entries are
+# optional-when-unknown.
+group_territory = "declared-paths"
+
+# --- Spec migration -------------------------------------------------------
+
+# Identity-on-move preference: how a group move (rename today; split/merge
+# later) treats a numbered spec's recorded group identity.
+#   rewrite   : jim edits the moved specs' recorded identity — group:
+#               frontmatter, dotted-key group-halves, and typed group/NNN refs —
+#               to the new owner, keeping substance byte-unchanged; ambiguous
+#               prose is left frozen on doubt (default)
+#   forward   : the moved bodies stay byte-frozen; the ledger op=rename event is
+#               the durable old->new alias
+#   immutable : split/merge-only; a rename relocates the group's home, which
+#               immutable cannot honor, so a rename states that and runs as forward
+# A malformed or unrecognized value degrades to "rewrite", named in the run
+# output. Governs numbered specs 001+; the 000-blueprint re-identifies always.
+# spec_migration = "rewrite"
+
+# --- ID coordination ------------------------------------------------------
+
+# How jim hands out the identities that must stay unique across clones: spec
+# ordinals (/jim:spec) and issue display ordinals plus durable ids
+# (/jim:issue add, and every candidate batch filed through the issue emitter).
+# Uncoordinated, each clone derives "the next number" from whatever it can
+# see, so two developers on two branches mint the same one and neither finds
+# out until the branches merge.
+
+# The coordination mechanism. "git" (the default, and the only one built)
+# allocates from an append-only registry on a dedicated branch, landing each
+# record with a compare-and-swap so a concurrent allocation retries rather
+# than collides. An unrecognized value is refused, never silently degraded.
+# id_coordination_mechanism = "git"
+
+# The branch holding the registry logs. It carries the logs and nothing else
+# — no specs, no issues, no project content — and is created on first use.
+# It is also the one branch issue_placement refuses as a destination.
+# id_coordination_branch = "jim/registry"
+
+# What happens when the coordination point cannot be reached — offline, no
+# push access, a fetch that fails.
+#   fail        : issue no identity and say so (default). Nothing
+#                 uncoordinated is ever written.
+#   provisional : bind a local-only "P-<date>-<slug>" token that scoping and
+#                 every later stage run against unchanged, structurally
+#                 distinct from any allocated ordinal. Realize it on
+#                 reconnect with /jim:spec reconcile (specs) or
+#                 /jim:issue reconcile (issues).
+# id_coordination_unreachable = "fail"
+
+# --- Post-build review gate -----------------------------------------------
+
+# Post-build review (/jim:review) verifies what the build shipped against the
+# spec, plan, and architecture. When "true", the review is a required, blocking
+# phase: /jim:build holds the completion gate until the review has run to
+# completion — the build cannot be marked complete without it. The review's
+# findings stay advisory (a report, not a veto); it is the uncompleted phase
+# that blocks, not the findings. Default "false" makes /jim:build merely offer it.
+require_review = "false"
+
+# Run the post-build review automatically with no prompt at the completion
+# gate. Composes independently of auto_issue_file: auto_review controls
+# invocation only; the review's issue batch stays interactive unless
+# auto_issue_file is also "true". Default "false".
+auto_review = "false"
+
+# Depth of the review's deep-investigation pass. "thorough" (the
+# default) triages the build's diff and fans out read-only investigator
+# subagents on the high-stakes changes; "lean" skips the broad fan-out and
+# investigates only security-relevant regions. A per-run
+# `/jim:review --depth lean|thorough` overrides this for one run.
+# review_depth = "thorough"
+
+# Model for the investigator subagents (the per-spawn Agent model).
+# "inherit" (the default) runs them on the session model; or pin a tier:
+# "haiku" | "sonnet" | "opus" | "fable". Anything else falls back to "inherit". The
+# review's own orchestration and alignment verdict always run on the
+# session model, which jim does not set.
+# review_model = "inherit"
+
+# Investigator fan-out cap: the maximum number of investigator subagents
+# dispatched per review, highest-stakes first; bounded coverage is named in
+# review.md rather than silently truncated. A non-positive/non-numeric value
+# falls back to 10, and a cap of 0 never silently disables the fan-out.
+# Default "10".
+# review_fanout_cap = "10"
 
 # --- Security review gates and behavior -----------------------------------
 
@@ -87,17 +217,21 @@ auto_security_loop_limit  = "5"
 # prompt. Default "docs/security".
 security_adhoc_path       = "docs/security"
 
-# --- Issue tracking workflow integration (spec 018) -----------------------
+# --- Issue tracking workflow integration ----------------------------------
 
-# Master switch for end-of-phase candidate batch surfacing across the 7
-# surfacing skills (/jim:spec, /jim:research, /jim:plan, /jim:build,
-# /jim:brainstorm, /jim:debug, /jim:sec). When "true" (the default),
-# each skill presents a batch of candidate issues at the conclusion of
-# its run before its final approval/STOP step. When "false", no batch
-# surfaces and ad-hoc /jim:issue is the only capture path. The bare
-# (non-auto_-prefixed) name reflects that the default behavior keeps the
-# human in the loop: surfacing presents a choice, not an automated
-# action. Uncomment to override the default.
+# Master switch for the end-of-phase issue-candidate batch. Every skill
+# that closes its run with a batch reads it — /jim:spec, /jim:research,
+# /jim:plan, /jim:sec, /jim:build, /jim:debug, /jim:brainstorm, and the
+# report stages that offer their findings the same way (/jim:review,
+# /jim:verify). When "true" (the default), each presents a batch of
+# candidate issues at the conclusion of its run before its final
+# approval/STOP step. When "false", no batch surfaces and ad-hoc
+# /jim:issue is the only capture path. The bare (non-auto_-prefixed)
+# name reflects that the default behavior keeps the human in the loop:
+# surfacing presents a choice, not an automated action. /jim:blueprint
+# and /jim:partition file from their own divergence and finding offers
+# rather than an end-of-phase batch, and this key does not gate them.
+# Uncomment to override the default.
 # issue_capture = "true"
 
 # Quiet auto-file mode for the candidate batch. When "true" AND
@@ -109,7 +243,38 @@ security_adhoc_path       = "docs/security"
 # is a no-op. Uncomment to enable.
 # auto_issue_file = "false"
 
-# --- Issue list view (spec 019) -------------------------------------------
+# --- Issue placement ------------------------------------------------------
+
+# Which branch the issue collection lives on. The default sentinel "branch"
+# means the branch the developer is standing on — today's behavior, and the
+# right one for a solo project. Any other value names a destination branch:
+# every read and every write goes there, whatever branch the work happens on,
+# so a discovery filed from a feature branch is visible to the team before that
+# branch merges and an issue closed once is closed everywhere.
+#
+#   branch       : the current working branch (default)
+#   main         : the default branch, if the team can push to it
+#   jim/issues   : a dedicated branch — the option for a protected main
+#
+# A branch that does not exist yet is created on first write as an orphan
+# carrying only the collection, the way the ID-coordination registry branch is.
+# A value that is not a valid git branch name, or that names the configured
+# id_coordination_branch, is refused — placement never silently falls back,
+# because a silent fallback scatters a team's collection across feature
+# branches. Changing this on an existing project moves where issues live but
+# does not move the issues; the one-time move is manual, and documented in
+# docs/features/issues.md.
+# issue_placement = "branch"
+
+# Acknowledge that auto-filed batches publish immediately. Under a branch
+# placement, auto_issue_file = "true" would push candidate text to a shared
+# branch as it is accumulated, with no review — and unpublishing it means
+# rewriting a shared branch. So auto-filing degrades to the interactive batch
+# with a one-line disclosure unless this is "true". No effect under the default
+# placement, where auto-filing is already a local, amendable act.
+# issue_placement_ack = "false"
+
+# --- Issue list view ------------------------------------------------------
 
 # Default view for `/jim:issue list`. An explicit filter argument
 # (e.g. `/jim:issue list open`) overrides the configured default per call.
@@ -128,7 +293,7 @@ security_adhoc_path       = "docs/security"
 # issue_list_order  = "desc"
 # issue_list_closed = "false"
 
-# --- Issue id prefix (spec 021) -------------------------------------------
+# --- Issue id prefix ------------------------------------------------------
 
 # The prefix segment of an issue id (the part before the slug). Default
 # "date" keeps the zero-config YYYYMMDD- naming. Presets:
@@ -140,9 +305,110 @@ security_adhoc_path       = "docs/security"
 # {seq[:width]} tokens, e.g. "JIM-{date:%Y%m%d}-{seq:03}". A malformed value
 # is reported on stderr and falls back to the date default. Changing this is
 # forward-only — it renames no existing files; converge the legacy collection
-# onto the new scheme with `migrate.sh prefix` (spec 023).
+# onto the new scheme with `migrate.sh prefix`.
 # issue_id_prefix = "date"
 
 # Static project tag used by the "project" preset (also usable as literal
 # text in a template). Empty by default.
 # issue_id_project = "JIM"
+
+# --- Verification engine --------------------------------------------------
+
+# /jim:verify checks a group's code against its 000-blueprint's recorded
+# invariants: a zero-config mechanical floor (pattern/structure), an
+# operator-configured registry of project tooling, and a criticality-gated
+# read-only LLM judge. All keys below are optional — the engine runs out of
+# the box with these defaults.
+
+# Appetite: the criticality threshold at which the expensive judge rung runs.
+# The mechanical floor ALWAYS runs and is never gated by this. Values:
+# "critical" | "high" | "medium" | "low". Default "low" is the thorough
+# setting — every criticality is judge-eligible; the knob only ever RAISES the
+# bar (e.g. "high" judges only critical+high invariants, reporting the rest
+# "skipped by appetite" — never silently dropped). A malformed value degrades
+# to "low" and the fallback is noted in the run's report. A per-run
+# `/jim:verify --appetite <level>` overrides this for one run.
+# verify_appetite = "low"
+
+# Per-group appetite override — dynamic suffix, one per group. Overrides
+# verify_appetite for that group only (precedence: --appetite flag > per-group
+# > global > default). The <group> suffix must be a slug.
+# verify_appetite_auth = "critical"
+
+# Judge fan-out cap: the maximum number of judge subagents dispatched per run,
+# highest-criticality first; any remainder is named in the report. Mirrors
+# review_fanout_cap — a non-positive/non-numeric value falls back to 10, and a
+# cap of 0 never silently disables the fan-out. Default "10".
+# verify_fanout_cap = "10"
+
+# Model for the judge subagents (the per-spawn Agent model). "inherit" (the
+# default) runs them on the session model; or pin a tier:
+# "haiku" | "sonnet" | "opus" | "fable". Anything else falls back to "inherit".
+# verify_model = "inherit"
+
+# Per-command timeout (seconds) for REGISTRY command execution only — the
+# native floor and the judges are not governed by it. Expiry folds into that
+# one check's "failed" outcome; the run always continues. A
+# non-positive/non-numeric value falls back to 120. Default "120".
+# verify_registry_timeout = "120"
+
+# The operator-owned registry — dynamic suffix, one command per entry. A
+# blueprint invariant with check `registry:<name>` runs ONLY the command
+# string you place in verify_command_<name> here; the <name> suffix must be a
+# slug. This is the trust boundary: nothing recorded in a blueprint, code, or
+# any scanned artifact can introduce, alter, or activate a command — the
+# blueprint only PROPOSES a name, and this config ACTIVATES it. An unconfigured
+# name reports "not configured" and executes nothing. Registry commands receive
+# no blueprint-derived arguments; each is a complete, self-contained invocation.
+# They run through Claude Code's normal permission prompt (like the pre_commit
+# hook), so you approve each one at run time.
+# verify_command_linecount = "scripts/check-line-budget.sh"
+# verify_command_typecheck = "npm run typecheck"
+
+# The partition extractor registry — the same dynamic-suffix,
+# one-command-per-entry pattern for /jim:partition. Each deps_command_<name>
+# emits a project dependency graph, one edge per line, as
+# `<from-relpath>\t<to-relpath>[\t<channel>]`; /jim:partition runs it via a
+# normal Bash permission prompt (bounded by verify_registry_timeout) and feeds
+# its output through `jimpartition.sh ingest`, which validates and tracks every
+# endpoint. The <name> suffix must be a slug and names the coupling channel
+# (events, di, ...). Same trust boundary as the verify registry: nothing in
+# scanned code, a spec, or the map can introduce or activate a command — this
+# config is the only activation channel. With none configured, /jim:partition
+# falls back to its native import scan. `/jim:partition` can scaffold an adapter
+# and PRINT the exact line for you to paste here — it never writes it itself.
+# deps_command_events = "scripts/jim-extract-events.sh"
+# deps_command_di = "node scripts/extract-di-graph.js"
+
+# Partition-health sensors. /jim:blueprint's reconcile pass ends with
+# a silent threshold hook: when a configured threshold crosses, it offers (or,
+# under the knobs below, runs or holds on) the read-only /jim:partition health
+# sensor. All disabled by default — with no threshold set the hook produces no
+# output and spends nothing on interpretation.
+
+# Arm the reconcile-tail hook. require_health holds the reconcile-carrying run's
+# completion until the health check has run to completion; auto_health runs it
+# unattended; with both unset a crossing yields one conversational offer. A knob
+# set truthy with no valid threshold configured is noted in the report (the hook
+# is unarmed — the fail-open knob is never invisible). Default "false".
+# require_health = "false"
+# auto_health = "false"
+
+# Per-signal threshold knobs — bare-name positive integers, disabled at "0" (the
+# default). A malformed or non-positive value disables that threshold and is
+# noted in the reconcile report (the blueprint_regen_threshold semantics). A
+# crossing is the hook's arming condition; with none crossed, require_health
+# holds nothing. The four latest-value predicates fire when the newest
+# reconcile's counter is >= N (an `na` value never crosses); breaking_runs fires
+# on the trailing run of consecutive reconciles carrying breaking>0.
+#   health_threshold_cycles        — latest cycle-cluster count >= N
+#   health_threshold_fanin         — latest max provider fan-in >= N
+#   health_threshold_uncovered     — latest uncovered-dir count >= N
+#   health_threshold_faces_max     — latest largest provides face >= N
+#   health_threshold_breaking_runs — trailing consecutive reconciles with breaking>0 >= N
+# Worked example: arm the cycle sensor at two cycle clusters, the rest disabled —
+# health_threshold_cycles = "2"
+# health_threshold_fanin = "0"
+# health_threshold_uncovered = "0"
+# health_threshold_faces_max = "0"
+# health_threshold_breaking_runs = "0"

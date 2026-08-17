@@ -1,6 +1,6 @@
 # Meta-test dogfood walkthrough — 2026-05-05
 
-Spec: `docs/specs/jim/007-meta-test/`
+Spec: `docs/specs/platform/001-meta-test/`
 Plan task: 25 (Phase F end-to-end dogfood)
 
 ## Outcome

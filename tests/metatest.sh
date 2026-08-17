@@ -131,6 +131,25 @@ case_metatest_scaffold_rejects_bad_name_path_traversal() {
   assert_nonempty "stderr non-empty" "$ERR"
 }
 
+# The wrong base the name gate cannot see. `widget` is a perfectly valid name;
+# what makes it wrong is standing inside a skill directory, where the resulting
+# skills/<x>/tests/widget.sh is loaded as plugin content and never run as a test.
+# Both write verbs refuse, and neither leaves a file behind.
+case_metatest_write_verbs_refuse_a_discovery_root() {
+  local sb
+  sb=$(metatest_sandbox "discovery-root")
+  mkdir -p "$sb/skills/demo"
+  run_metatest_in "$sb/skills/demo" scaffold widget
+  assert_exit     "scaffold refuses"  1 "$RC"
+  assert_nonempty "and says why"        "$ERR"
+  assert_eq "no test file written" "0" \
+    "$([[ -e "$sb/skills/demo/tests/widget.sh" ]] && echo 1 || echo 0)"
+  mkdir -p "$sb/agents/demo"
+  run_metatest_in "$sb/agents/demo" add widget smoke
+  assert_exit     "add refuses too"   1 "$RC"
+  assert_nonempty "and says why"        "$ERR"
+}
+
 # AC: scaffolded file is executable (chmod +x applied).
 case_metatest_scaffold_makes_file_executable() {
   local sb; sb=$(metatest_sandbox "executable")
@@ -182,6 +201,23 @@ case_metatest_run_no_args_invokes_aggregate_runner() {
   run_metatest_in "$sb" run
   assert_exit "rc" 0 "$RC"
   assert_match "ran header" 'Ran [0-9]+ tests' "$OUT"
+}
+
+# AC: the aggregate runner refuses a directory with no tests/ at all. The glob is
+# PWD-relative by design, so a run from the wrong directory discovers nothing —
+# and a "Ran 0 tests" summary at rc 0 is indistinguishable from a suite that ran
+# everything and passed. Directory presence is the signal, not case count: an
+# EMPTY tests/ stays a legitimate rc 0 (the case above depends on it).
+case_metatest_run_refuses_a_dir_without_tests() {
+  local sb; sb=$(empty_dir "metatest-no-tests-dir")
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$sb" && bash "$REPO_ROOT/skills/meta-test/scripts/run.sh" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+  assert_exit   "setup-error rc"        2  "$RC"
+  assert_match  "names the cause"       'no tests/ directory' "$ERR"
+  assert_eq     "reports no pass total" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^Ran ')"
 }
 
 # AC: run with a name dispatches to the standalone path when the file exists.
