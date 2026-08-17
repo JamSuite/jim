@@ -348,3 +348,4 @@ issue allocate 347 20260813-nine-review-findings-that-were-never-filed 20260813 
 issue allocate 348 20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts 20260813 jrko
 issue allocate 349 20260813-six-deliberately-unfiled-items-from-the-c-prime-fix-round 20260813 jrko
 issue allocate 350 20260813-verify-grades-a-violation-by-its-rule-not-by-its-breach 20260813 jrko
+issue allocate 351 20260817-unify-the-two-issue-frontmatter-parsers 20260817 jrko
