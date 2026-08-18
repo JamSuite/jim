@@ -291,7 +291,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    and to its usage text.
    **Verify:** `bash tests/place.sh`
 
-8. [ ] Add the `schema` subcommand's read-only half to `migrate.sh`: build the
+8. [x] Add the `schema` subcommand's read-only half to `migrate.sh`: build the
    conversion plan — derive each issue's filer from its creating commit using
    the mapping-aware author field, set `type: issue`, set `outcome: done` on
    already-closed issues, leave `claimed-by` and `part-of` empty — and render it

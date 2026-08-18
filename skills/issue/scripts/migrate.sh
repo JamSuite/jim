@@ -33,6 +33,7 @@ export LC_ALL=C
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
+IDENTITY="$HERE/identity.sh"
 readonly INDEX_FILENAME="INDEX.md"
 CFG=""   # optional jimconf override path, forwarded to jimfile/jimconf
 
@@ -333,6 +334,133 @@ apply_plan() {
     "$renamed" "$collisions" "$skipped"
 }
 
+# ─── Section: schema conversion ──────────────────────────────────────────────
+
+# Set together by split_schema_row; the four fields of the conversion row last
+# read. Separate from the rename row's fields because they mean different
+# things — a conversion has no old-to-new, it has a slug and the values that
+# slug gains.
+SCHEMA_ACTION="" SCHEMA_SLUG="" SCHEMA_FILER="" SCHEMA_OUTCOME=""
+
+split_schema_row() {
+  local row="$1"
+  SCHEMA_ACTION="${row%%$'\t'*}"; row="${row#*$'\t'}"
+  SCHEMA_SLUG="${row%%$'\t'*}";   row="${row#*$'\t'}"
+  SCHEMA_FILER="${row%%$'\t'*}";  SCHEMA_OUTCOME="${row#*$'\t'}"
+}
+
+# frontmatter <file> — the lines between the first two fences.
+#   Scoped deliberately: a whole-file read for `^status:` also matches a body
+#   that quotes one, and at least one issue in a real collection does.
+frontmatter() {
+  awk '/^---$/{c++; if(c==2) exit; if(c==1) next} c==1{print}' "$1"
+}
+
+# fm_field <frontmatter> <field> — top-level scalar, quotes stripped, or empty.
+fm_field() {
+  printf '%s\n' "$1" | grep -E "^$2:" | head -n 1 \
+    | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
+}
+
+# derive_filer <file> — the address of the commit that ADDED <file>, resolved
+# through the project's alias mapping where it has one, empty where the file
+# has no creating commit in reach.
+#
+#   --follow so a file renamed since its creation still reports the commit that
+#   created it rather than the one that moved it. The mapping-aware spelling of
+#   the author field costs one character over the raw one and keeps a
+#   contributor's several addresses from splitting every by-person view.
+derive_filer() {
+  git log --diff-filter=A --follow -1 --format='%aE' -- "$1" 2>/dev/null
+}
+
+# build_schema_plan <dir> — emit one TAB row per issue, in sorted-glob order:
+#   <action>\t<slug>\t<filer>\t<outcome>
+#     action ∈ convert | skip-converted | unresolved
+# Pure read: derives and classifies, mutates nothing.
+build_schema_plan() {
+  local dir="$1" f base slug fm type status filer outcome
+  for f in "$dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ "$base" == "$INDEX_FILENAME" ]] && continue
+    [[ "$base" == .* ]] && continue
+    slug="${base%.md}"
+    fm="$(frontmatter "$f")"
+
+    # An issue already carrying the kind field has been through this once.
+    if [[ -n "$(fm_field "$fm" type)" ]]; then
+      printf 'skip-converted\t%s\t\t\n' "$slug"
+      continue
+    fi
+
+    status="$(fm_field "$fm" status)"
+    outcome=""
+    [[ "$status" == "closed" ]] && outcome="done"
+
+    # A filer recovered from history is a recorded identity like any other, so
+    # it clears the same gate the emitter's does. One that cannot is not
+    # recoverable — reported, never replaced with a placeholder.
+    filer="$(bash "$IDENTITY" validate "$(derive_filer "$f")" 2>/dev/null)" || filer=""
+    if [[ -z "$filer" ]]; then
+      printf 'unresolved\t%s\t\t\n' "$slug"
+      continue
+    fi
+
+    printf 'convert\t%s\t%s\t%s\n' "$slug" "$filer" "$outcome"
+  done
+}
+
+# render_schema_plan <plan-rows> — human preview + summary counts.
+render_schema_plan() {
+  local plan="$1" converts=0 skips=0 unresolved=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_schema_row "$__row"
+    case "$SCHEMA_ACTION" in
+      convert)
+        printf '  convert     %s  filed-by %s%s\n' "$SCHEMA_SLUG" "$SCHEMA_FILER" \
+          "${SCHEMA_OUTCOME:+  outcome $SCHEMA_OUTCOME}"
+        converts=$((converts+1)) ;;
+      skip-converted)
+        printf '  skip        %s  (already carries the fields)\n' "$SCHEMA_SLUG"
+        skips=$((skips+1)) ;;
+      unresolved)
+        printf '  unresolved  %s  (no recordable filer in history)\n' "$SCHEMA_SLUG"
+        unresolved=$((unresolved+1)) ;;
+    esac
+  done <<<"$plan"
+  printf '\n  %d to convert · %d to skip · %d unresolved\n' \
+    "$converts" "$skips" "$unresolved"
+}
+
+cmd_schema() {
+  local dir="" apply=0 expect=""
+  while (( $# )); do
+    case "$1" in
+      --apply)  apply=1; shift ;;
+      --expect) expect="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      *)        dir="$1"; shift ;;
+    esac
+  done
+  dir="$(resolve_dir "$dir")" || return $?
+  [[ -d "$dir" ]] || { echo "error: not a directory: $dir" >&2; return 1; }
+
+  # The filer is recovered from the collection's own history, so a collection
+  # with no history to read is refused here — once, naming the cause — rather
+  # than reported as every issue being individually unrecoverable.
+  if ! git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "error: $dir is not inside a work tree; the filer is recovered from its history" >&2
+    return 1
+  fi
+
+  local plan; plan="$(build_schema_plan "$dir")"
+  printf 'Schema conversion plan — %s\n\n' "$dir"
+  render_schema_plan "$plan"
+  printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
+  git_note "$dir"
+}
+
 cmd_prefix() {
   local dir="" apply=0 expect=""
   while (( $# )); do
@@ -452,6 +580,10 @@ usage() {
     '  bash migrate.sh prefix [<issues_dir>] --apply [--expect <hash>]' \
     '      Apply the plan: rename files + rewrite inbound refs + regenerate INDEX.' \
     '' \
+    '  bash migrate.sh schema [<issues_dir>]' \
+    '      Preview (read-only): give every issue the identity, kind and outcome' \
+    '      fields, recovering each filer from the commit that created its file.' \
+    '' \
     '  issues_dir default: jimconf.sh get issues'
 }
 
@@ -469,7 +601,7 @@ route_placement() {
     case "$arg" in
       --apply)          apply=1 ;;
       --expect|-c)      skip_next=1 ;;
-      prefix|rewrite|-*) ;;
+      prefix|schema|rewrite|-*) ;;
       *)                dir="$arg" ;;
     esac
   done
@@ -498,10 +630,11 @@ main() {
   fi
   case "${1:-}" in
     prefix)            shift; cmd_prefix "$@" ;;
+    schema)            shift; cmd_schema "$@" ;;
     rewrite)           shift; cmd_rewrite "$@" ;;
     ""|-h|--help|help) usage ;;
     *)
-      echo "error: unknown subcommand '$1' (expected: prefix)" >&2
+      echo "error: unknown subcommand '$1' (expected: prefix, schema)" >&2
       usage >&2
       return 2
       ;;

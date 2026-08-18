@@ -4073,6 +4073,137 @@ TEAMMATE
     "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
 }
 
+# ─── Section: migrate.sh schema — the collection conversion (preview) ───────
+
+# schema_repo <name> — a git repo holding a committed issue collection, every
+# file created by a known author so the filer derivation has a commit to find.
+schema_repo() {
+  local d
+  d="$(empty_dir "$1")"
+  git init -q "$d"
+  git -C "$d" config user.name "Test Filer"
+  git -C "$d" config user.email "filer@example.test"
+  mkdir -p "$d/docs/issues"
+  printf '%s' "$d"
+}
+
+# schema_commit <repo> <slug> <frontmatter> — add one issue and commit it, so
+# the file has a creating commit.
+schema_commit() {
+  local repo="$1" slug="$2" fm="$3"
+  write_issue "$repo/docs/issues" "$slug" "$fm"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "file $slug" >/dev/null 2>&1
+}
+
+# AC: the filer of an existing issue is recovered from the collection's own
+# history rather than assigned by default.
+case_migrate_schema_recovers_the_filer_from_history() {
+  local repo
+  repo="$(schema_repo migrate_schema_filer)"
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "filer recovered" 'filer@example\.test' "$OUT"
+}
+
+# AC: existing finished issues are recorded as completed.
+case_migrate_schema_records_closed_issues_as_done() {
+  local repo
+  repo="$(schema_repo migrate_schema_done)"
+  schema_commit "$repo" "20260101-shut" 'title: "Shut"
+status: closed
+priority: low'
+  schema_commit "$repo" "20260101-live" 'title: "Live"
+status: open
+priority: low'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "the finished issue gains an outcome" '20260101-shut.*done' "$OUT"
+  assert_eq "the unfinished one does not" "no" \
+    "$(printf '%s' "$OUT" | grep -E '20260101-live.*done' >/dev/null && echo yes || echo no)"
+}
+
+# AC: the conversion previews what it will change before changing anything.
+case_migrate_schema_preview_writes_nothing() {
+  local repo before after
+  repo="$(schema_repo migrate_schema_readonly)"
+  schema_commit "$repo" "20260101-untouched" 'title: "Untouched"
+status: open
+priority: low'
+  before="$(cat "$repo/docs/issues/20260101-untouched.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  after="$(cat "$repo/docs/issues/20260101-untouched.md")"
+  assert_eq "the issue file is byte-identical" "$before" "$after"
+  assert_match "a plan hash is offered" 'PLAN-HASH:' "$OUT"
+}
+
+# AC: every issue in the existing collection carries the new fields after a
+# one-time conversion — one already carrying them is not converted twice.
+case_migrate_schema_skips_an_already_converted_issue() {
+  local repo
+  repo="$(schema_repo migrate_schema_idempotent)"
+  schema_commit "$repo" "20260101-ready" 'title: "Ready"
+status: open
+priority: low
+type: issue
+filed-by: "someone@example.test"
+claimed-by: ""
+outcome: ""'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "reported as already converted" 'skip' "$OUT"
+}
+
+# AC: if the filer of any issue cannot be recovered, the conversion reports
+# every such issue. An uncommitted file has no creating commit to read.
+case_migrate_schema_reports_an_unrecoverable_filer() {
+  local repo
+  repo="$(schema_repo migrate_schema_unresolved)"
+  schema_commit "$repo" "20260101-committed" 'title: "Committed"
+status: open
+priority: low'
+  write_issue "$repo/docs/issues" "20260101-uncommitted" 'title: "Uncommitted"
+status: open
+priority: low'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_match "the unrecoverable one is named" '20260101-uncommitted' "$OUT"
+  assert_match "and marked as such" 'unresolved' "$OUT"
+}
+
+# AC: a recorded identity can never introduce additional fields into the issue
+# record, whatever the environment supplied. A filer read out of history is a
+# recorded identity too, so it clears the same gate the emitter's does.
+case_migrate_schema_refuses_an_unrecordable_derived_filer() {
+  local repo
+  repo="$(schema_repo migrate_schema_bad_filer)"
+  git -C "$repo" config user.email "dev${LINE_SEP}@example.test"
+  schema_commit "$repo" "20260101-tainted" 'title: "Tainted"
+status: open
+priority: low'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_match "not treated as recoverable" 'unresolved' "$OUT"
+  assert_eq "the unrecordable value is not echoed back" "no" \
+    "$(printf '%s' "$OUT" | grep -q "$LINE_SEP" && echo yes || echo no)"
+}
+
+# AC: the filer is recovered from the collection's own history — where there is
+# no history to read, the conversion says so rather than reporting every issue
+# as individually unrecoverable.
+case_migrate_schema_refuses_outside_a_work_tree() {
+  local dir
+  dir=$(empty_dir migrate_schema_no_repo)
+  write_issue "$dir" "20260101-orphan" 'title: "Orphan"
+status: open
+priority: low'
+  run_migrate schema "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "explains why" "$ERR"
+}
+
 # ─── Section: render.sh — the new fields and the third lifecycle state ──────
 
 # AC: a developer can see who filed an issue, and an issue's holder is
