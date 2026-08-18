@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-08-12*
+*Last updated: 2026-08-18*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill to preserve consistency.
 
@@ -71,17 +71,21 @@ jim/
 │   │       └── jimpartition.sh       # deterministic substrate — scan / ingest / aggregate / coverage + spec 043 rename verbs + spec 044 health-eval / identity-check + spec 046 rewrite-identity + spec 047 split verbs + spec 048 merge verbs
 │   ├── brainstorm/          # /jim:brainstorm — freeform ideation capture
 │   ├── issue/               # /jim:issue — capture + review, one command (017+019)
-│   │   ├── SKILL.md          #   subcommands: add / list / stats / show / insights / help
+│   │   ├── SKILL.md          #   subcommands: add / claim / release / start / close / reopen
+│   │   │                     #               / list / stats / show / insights / help
 │   │   ├── assets/
-│   │   │   └── issue-template.md      # YAML-frontmatter template (incl. num ordinal)
+│   │   │   └── issue-template.md      # YAML-frontmatter template (num ordinal; identity,
+│   │   │                              #   lifecycle and umbrella fields per issue/012)
 │   │   └── scripts/
 │   │       ├── index.sh                # Frontmatter scan → INDEX.md (atomic)
 │   │       ├── new.sh                  # Issue-file emitter: fields → spec-017 file (spec 025)
+│   │       ├── identity.sh             # Resolve/validate the recordable contributor identity
+│   │       ├── transition.sh           # Lifecycle verbs: claim/release/start/close/reopen
 │   │       ├── render.sh               # stats/list/show/help dispatcher → stdout
 │   │       ├── place.sh                # Placement primitive: mode/run/begin/commit/abort (issue/011)
 │   │       ├── reconcile.sh            # realize pending provisional issue ordinals (platform/009)
 │   │       ├── backfill.sh             # fill-missing migrations: num | timestamp
-│   │       └── migrate.sh              # transform migrations: prefix (spec 023)
+│   │       └── migrate.sh              # previewed transform migrations: prefix | schema
 │   ├── conf/                # /jim:conf — config inspector + shared resolver script
 │   │   ├── SKILL.md
 │   │   └── scripts/
@@ -108,7 +112,7 @@ jim/
 ├── tests/                   # Developer-only; not loaded by Claude Code (per-script test files only)
 │   ├── jimconf.sh           # Per-script tests for skills/conf/scripts/jimconf.sh (executable)
 │   ├── jimfile.sh           # Per-script tests for skills/file/scripts/jimfile.sh (executable)
-│   ├── issues.sh            # Per-script tests for skills/issue/scripts/{index,render,backfill,migrate,new}.sh (executable)
+│   ├── issues.sh            # Per-script tests for skills/issue/scripts/{index,render,backfill,migrate,new,identity,transition}.sh (executable)
 │   ├── jimledger.sh         # Per-script tests for skills/ledger/scripts/jimledger.sh (executable)
 │   ├── jimverify.sh         # Per-script tests for skills/verify/scripts/jimverify.sh (executable)
 │   ├── jimpartition.sh      # Per-script tests for skills/partition/scripts/jimpartition.sh (executable)
@@ -317,7 +321,7 @@ Spec 048 adds the partition's **merge verb** `/jim:partition merge <src>... into
 | Strategic Docs | Markdown files | Project root (`VISION.md`, `ROADMAP.md`, `ARCHITECTURE.md`; plus `BLUEPRINT.md` when a project draws its context map — spec 033 — carrying the derived `## Contract Graph` section, spec 034) | Project-level strategy and constraints | PM, Architect |
 | Brainstorms | Markdown files | `docs/brainstorms/` | Freeform ideation capture | PM |
 | Debug Reports | Markdown files | `docs/debug/` | Structured failure diagnosis | Coder |
-| Issue Collection | Markdown files | `docs/issues/` within a branch (path via `issues_path`; branch via `issue_placement`, default `branch` = the current working branch, issue/011) | Discovery-artifact capture per spec 017; one file per issue (carrying a display-only `num` ordinal as of spec 019; filename prefix configurable via `issue_id_prefix` as of spec 021; `created`/`updated` recorded as second-resolution UTC timestamps as of spec 022) plus auto-generated `INDEX.md` regenerated on every write | PM via `/jim:issue add` (ad-hoc); the 8 surfacing skills (`/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:build`, `/jim:brainstorm`, `/jim:debug`, `/jim:sec`, `/jim:partition`) via their end-of-phase candidate batch (spec 018; `/jim:partition` added by spec 038); `/jim:blueprint` update mode via the per-fork divergence-issue offer (spec 031); the reconcile pass via the per-finding issue-offer batch (spec 034); `/jim:verify` via the per-violation issue offer (spec 035); `/jim:issue list` / `stats` / `show` for read views |
+| Issue Collection | Markdown files | `docs/issues/` within a branch (path via `issues_path`; branch via `issue_placement`, default `branch` = the current working branch, issue/011) | Discovery-artifact capture per spec 017; one file per issue (carrying a display-only `num` ordinal as of spec 019; filename prefix configurable via `issue_id_prefix` as of spec 021; `created`/`updated` recorded as second-resolution UTC timestamps as of spec 022; issue/012 adds who filed it, who currently holds it, its kind, its umbrella membership and — once it has ever been closed — the outcome of the most recent close, and widens the lifecycle to `open` / `active` / `closed`, with held, blocked and reopened all *derived* rather than stored so no field can contradict them) plus auto-generated `INDEX.md` regenerated on every write | PM via `/jim:issue add` (ad-hoc); the 8 surfacing skills (`/jim:spec`, `/jim:research`, `/jim:plan`, `/jim:build`, `/jim:brainstorm`, `/jim:debug`, `/jim:sec`, `/jim:partition`) via their end-of-phase candidate batch (spec 018; `/jim:partition` added by spec 038); `/jim:blueprint` update mode via the per-fork divergence-issue offer (spec 031); the reconcile pass via the per-finding issue-offer batch (spec 034); `/jim:verify` via the per-violation issue offer (spec 035); `/jim:issue list` / `stats` / `show` for read views |
 
 ## External Integrations
 
@@ -337,6 +341,7 @@ Spec 048 adds the partition's **merge verb** `/jim:partition merge <src>... into
 ## Security Considerations
 
 - **Trust boundary:** All input comes from the human developer via Claude Code. Agents do not accept external input. WebFetch/WebSearch results are the only external data — handled by stopping on failure per CLAUDE.md policy. As of spec 026, `/jim:review` and `jimledger.sh` read git history (commit messages, diffs, the committed ledger), which can carry attacker-influenced text (e.g. from merged contributions); it is treated as untrusted data — parsed only, never `source`d; SHAs validated via `jimfile.sh valid-id` before interpolation into git ranges; and the review verdict is the reviewer's judgment, never a value read from ingested content. As of spec 035, `/jim:verify` extends this: blueprint invariant text, scanned code, registry command output/stderr, and judge-returned evidence are all untrusted — quoted only inside delimited blocks, with no embedded directive able to set an outcome — and the never-execute-config boundary is preserved by having the model (not `jimverify.sh`) run operator registry commands through the Bash tool's permission layer, from config strings alone with no blueprint-derived arguments; a blueprint can never mint an executable command, only *name* a slug-validated one the operator configured. Secret-looking values scanned from code or command output are redacted (`secret-looking value at path:line`) in the report and any filed issue.
+- **Recorded identity:** issue/012 makes the developer's ambient version-control identity durable file content — `filed-by` at capture, `claimed-by` on a transition, and a historical filer recovered from each file's creating commit during the collection conversion. Both sources are local configuration and commit metadata rather than developer prose, and a configured address accepts embedded newlines, so an unchecked value can close the frontmatter it is written into and open fields of its own. `identity.sh` is the single place that judges a value recordable: it accepts a **positively enumerated** character set and refuses everything else, so unanticipated input fails closed rather than surviving a list of known-bad characters. Both the emitter and the conversion route through it, so there is one definition rather than two that can drift. Refusals name no part of the rejected value. The value is stored as version control supplies it — not normalized, hashed, or mapped — because the collection is published content and a public commit history already carries the same addresses; a contributor wanting non-routable attribution configures a forge noreply address, which jim neither requires nor overrides.
 - **Secrets management:** No secrets are stored or managed. `.claude/settings.local.json` contains domain allowlists only.
 - **File system access:** Agents declare tool permissions in frontmatter. Coder agent has Bash access. All agents are prohibited from writing to `.git/`, `~/.ssh/`, `node_modules/`, `.venv/`, `.env`, `.env-*`. The `.gitignore` excludes `docs/prior-art/github.com/` (downloaded references) and `Z_*` files (personal notes).
 - **Auth:** None — the plugin runs within the user's Claude Code session with their permissions.
