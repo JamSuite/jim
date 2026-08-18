@@ -100,7 +100,8 @@ JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 INDEX_SCRIPT="$HERE/index.sh"
 
-readonly PLACE_VERBS=(file edit close rename realize reindex backfill migrate)
+readonly PLACE_VERBS=(file edit close rename realize reindex backfill migrate
+                      claim release start reopen)
 readonly PLACE_INDEX_FILE="INDEX.md"
 
 # Built by place_substitute; the wrapped command with its placeholders resolved.
@@ -2030,6 +2031,7 @@ Usage:
   place.sh abort <token>
 
   verbs: file edit close rename realize reindex backfill migrate
+         claim release start reopen
   an ARG of exactly `{}` becomes the collection directory, `{token}` the token.
 USAGE
 }

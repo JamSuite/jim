@@ -202,6 +202,19 @@ case_place_refuses_unknown_verb() {
   assert_nonempty "explains" "$ERR"
 }
 
+# AC: every transition works identically whether the collection lives on the
+# working branch or on a designated shared branch. The door composes commit
+# subjects from its verb enum, so a transition verb absent from it cannot
+# publish — each of the four new ones is accepted here.
+case_place_accepts_the_transition_verbs() {
+  local repo v
+  repo="$(place_repo place_transition_verbs 'issue_placement = "jim/issues"')"
+  for v in claim release start reopen; do
+    run_place_in "$repo" run --verb "$v" -- sh -c 'true'
+    assert_exit "rc for --verb $v" 0 "$RC"
+  done
+}
+
 # AC: an issues_path that is not a safe repo-relative path refuses before it can
 # be mirrored onto a destination branch — it becomes a tree prefix and a
 # pathspec, so it clears the boundary first (spec AC #10).

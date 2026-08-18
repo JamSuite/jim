@@ -270,7 +270,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    accept `active` wherever `status` is recognized.
    **Verify:** `bash tests/issues.sh`
 
-7. [ ] Add `claim`, `release`, `start`, `reopen` to `PLACE_VERBS` in `place.sh`
+7. [x] Add `claim`, `release`, `start`, `reopen` to `PLACE_VERBS` in `place.sh`
    and to its usage text.
    **Verify:** `bash tests/place.sh`
 
