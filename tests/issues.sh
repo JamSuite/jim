@@ -4215,6 +4215,73 @@ case_transition_close_records_the_given_outcome() {
   assert_match "declined" '^outcome: wontfix$' "$(cat "$dir/20260101-g.md")"
 }
 
+# AC: the outcome distinguishes completed work from work that was declined,
+# superseded, or that ceased to apply — a value outside those is refused before
+# anything is written, rather than written and reported by the index afterwards.
+case_transition_close_refuses_an_unrecognized_outcome() {
+  local dir before
+  dir=$(empty_dir transition_bad_outcome)
+  transition_issue "$dir" 20260101-l 12 open "" ""
+  before="$(cat "$dir/20260101-l.md")"
+  run_transition close 20260101-l --as donw --dir "$dir"
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "explains" "$ERR"
+  assert_eq "nothing written" "$before" "$(cat "$dir/20260101-l.md")"
+}
+
+# AC: work that was declined and work that ceased to apply are both recordable.
+case_transition_close_accepts_the_other_outcomes() {
+  local dir o n=20
+  for o in wontfix obsolete; do
+    dir=$(empty_dir "transition_outcome_$o")
+    transition_issue "$dir" 20260101-m "$n" open "" ""
+    run_transition close 20260101-m --as "$o" --dir "$dir"
+    assert_exit "rc for --as $o" 0 "$RC"
+    assert_match "recorded" "^outcome: $o\$" "$(cat "$dir/20260101-m.md")"
+    n=$((n+1))
+  done
+}
+
+# AC: an issue whose outcome is superseded identifies the issue that supersedes
+# it. The spec states that as a property of the record, so the record is not
+# permitted to contradict it and be reported afterwards.
+case_transition_close_as_duplicate_requires_a_superseding_issue() {
+  local dir before
+  dir=$(empty_dir transition_dup_missing)
+  transition_issue "$dir" 20260101-n 30 open "" ""
+  before="$(cat "$dir/20260101-n.md")"
+  run_transition close 20260101-n --as duplicate --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "explains" "$ERR"
+  assert_eq "nothing written" "$before" "$(cat "$dir/20260101-n.md")"
+}
+
+# AC: the same close is accepted once the record names its superseding issue.
+case_transition_close_as_duplicate_accepts_a_named_supersession() {
+  local dir
+  dir=$(empty_dir transition_dup_named)
+  write_issue "$dir" "20260101-o" 'num: 31
+title: "T"
+status: open
+priority: medium
+type: issue
+filed-by: "filer@example.test"
+claimed-by: ""
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: [20260101-p]
+  part-of: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  run_transition close 20260101-o --as duplicate --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "superseded" '^outcome: duplicate$' "$(cat "$dir/20260101-o.md")"
+}
+
 # AC: reopening a finished issue returns it to not-started and preserves its
 # outcome, so the reason it was previously finished survives the reopen.
 case_transition_reopen_preserves_the_outcome() {

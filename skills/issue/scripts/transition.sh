@@ -31,7 +31,8 @@
 #
 # EXIT CODES
 #   0  success
-#   1  validation or IO failure (no identity, unknown or invalid id, write error)
+#   1  validation or IO failure (no identity, unknown or invalid id, a close
+#      the record cannot carry, write error)
 #   2  usage error (unknown verb, missing id, unrecognized outcome)
 #   3  placement conflict, forwarded from place.sh
 #   5  the issue is held by someone else and --force was not given
@@ -46,6 +47,12 @@ INDEX_SCRIPT="$HERE/index.sh"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 
 readonly TRANSITION_VERBS=(claim release start close reopen)
+
+# How an issue can have been finished. Checked before anything is written: the
+# index reports an unrecognized outcome, but detecting one afterwards leaves a
+# record the schema says cannot exist, where refusing keeps it from existing.
+readonly ISSUE_OUTCOMES=(done wontfix duplicate obsolete)
+
 readonly INDEX_FILENAME="INDEX.md"
 
 usage() {
@@ -77,6 +84,24 @@ frontmatter() {
 fm_field() {
   printf '%s\n' "$1" | grep -E "^$2:" | head -n 1 \
     | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
+}
+
+# relation_targets <frontmatter> <type> — the slugs listed under one relations
+# child, or empty. Children are indented, so the top-level field reader above
+# never sees them.
+relation_targets() {
+  printf '%s\n' "$1" | awk -v type="$2" '
+    /^relations:[[:space:]]*$/ { in_rel = 1; next }
+    in_rel && /^[^[:space:]]/  { in_rel = 0 }
+    in_rel && $0 ~ "^  " type ":[[:space:]]*\\[" {
+      line = $0
+      sub(/^[^[]*\[/, "", line)
+      sub(/\][[:space:]]*$/, "", line)
+      gsub(/[[:space:]]/, "", line)
+      print line
+      exit
+    }
+  '
 }
 
 # resolve_slug <dir> <id> — the single issue <id> names, or empty.
@@ -183,6 +208,17 @@ main() {
     echo "error: '$verb' requires an issue id" >&2
     usage
     return 2
+  fi
+
+  if [[ -n "$outcome" ]]; then
+    local o known=0
+    for o in "${ISSUE_OUTCOMES[@]}"; do
+      [[ "$o" == "$outcome" ]] && { known=1; break; }
+    done
+    if (( ! known )); then
+      echo "error: unrecognized outcome; expected one of: ${ISSUE_OUTCOMES[*]}" >&2
+      return 2
+    fi
   fi
 
   # Every transition acts under a recorded identity: claim and start write one
@@ -300,6 +336,13 @@ apply_verb() {
       # Anyone may close any issue, held or not, and the holder record is left
       # exactly as it was — it says who held the issue, not who finished it.
       [[ -n "$outcome" ]] || outcome="done"
+      # A superseded issue identifies what supersedes it. That is stated as a
+      # property of the record, so a record that would contradict it is refused
+      # here rather than written and reported by the index afterwards.
+      if [[ "$outcome" == duplicate && -z "$(relation_targets "$fm" duplicates)" ]]; then
+        echo "error: closing as duplicate needs the superseding issue in duplicates" >&2
+        return 1
+      fi
       printf 'status\tclosed\n'
       printf 'outcome\t%s\n' "$outcome"
       ;;

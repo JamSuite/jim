@@ -314,14 +314,14 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
     Depends on task 9.
     **Verify:** `bash tests/issues.sh`
 
-10a. [ ] Validate `--as` against the outcome enum before any write, refusing an
+10a. [x] Validate `--as` against the outcome enum before any write, refusing an
     unrecognized value at rc 2 with nothing written — the same fail-closed
     treatment the identity gets, rather than leaving a bad value to be reported
     by the index afterward. Cover an unrecognized outcome in tests.
     Depends on task 10.
     **Verify:** `bash tests/issues.sh`
 
-10b. [ ] Require the superseding reference when closing with the superseded
+10b. [x] Require the superseding reference when closing with the superseded
     outcome: refuse unless the issue names a superseding issue in its
     `duplicates` relation. This makes the spec's "identifies the issue that
     supersedes it" a write-time property rather than only an index warning.
