@@ -347,7 +347,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
     placeholder for any. Depends on task 11.
     **Verify:** `bash tests/issues.sh`
 
-13. [ ] Update `skills/issue/SKILL.md` — the five transition verbs in the
+13. [x] Update `skills/issue/SKILL.md` — the five transition verbs in the
     subcommand dispatch, the new schema fields, the derived states, the `schema`
     conversion, and a validation checklist reflecting the three-state lifecycle.
     **Verify:** `bash tests/docsurfaces.sh`
