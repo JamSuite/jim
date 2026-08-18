@@ -36,7 +36,7 @@ on machinery shared with the current transform migration.
   copy from `migrate.sh` regardless.
 - **Risk and mitigation:** This touches a working, security-sensitive script.
   `migrate.sh` is covered by `tests/issues.sh`; the extraction is complete only
-  when that suite passes unchanged, which task 9 verifies before the new
+  when that suite passes unchanged, which task 8 verifies before the new
   subcommand is built on top.
 
 ### 2. Identity is validated and refused, not encoded
@@ -391,7 +391,7 @@ markers.
   views belong to the epics spec.
 - **Filtering on any new field.** The filter engine is a separate spec; this
   plan makes the data exist, not queryable.
-- **Applying the conversion.** Task 15 previews only. Running `--apply` against
+- **Applying the conversion.** Task 14 previews only. Running `--apply` against
   the real collection is a deliberate operator action, not a build step.
 - **Backfilling `claimed-by`.** No historical signal exists for who held an
   issue; the field starts empty everywhere.
