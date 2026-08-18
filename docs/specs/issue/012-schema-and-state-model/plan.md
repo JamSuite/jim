@@ -342,7 +342,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
     index. Without `--apply` nothing is written. Depends on task 8.
     **Verify:** `bash tests/issues.sh`
 
-12. [ ] Make `migrate.sh schema` collect every issue whose filer cannot be
+12. [x] Make `migrate.sh schema` collect every issue whose filer cannot be
     derived, report all of them, and refuse the whole run rather than writing a
     placeholder for any. Depends on task 11.
     **Verify:** `bash tests/issues.sh`

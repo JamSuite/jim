@@ -4661,6 +4661,90 @@ origin: "conversation"'
     "$(printf '%s\n' "$second" | grep -c '^type:')"
 }
 
+# AC: if the filer of any issue cannot be recovered, the conversion reports
+# every such issue and refuses to run rather than substituting a placeholder.
+# The refusal is whole-run: an issue whose filer WAS recoverable is left
+# untouched too, so the collection is never half-attributed.
+case_migrate_schema_apply_refuses_when_any_filer_is_unrecoverable() {
+  local repo before
+  repo="$(schema_repo migrate_schema_refuse)"
+  schema_commit "$repo" "20260101-known" 'title: "Known"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  write_issue "$repo/docs/issues" "20260101-ghostly" 'title: "Ghostly"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  before="$(cat "$repo/docs/issues/20260101-known.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 1 "$RC"
+  assert_match "names the unrecoverable issue" '20260101-ghostly' "$ERR"
+  assert_eq "the recoverable one is untouched too" "$before" \
+    "$(cat "$repo/docs/issues/20260101-known.md")"
+}
+
+# AC: the conversion reports EVERY such issue, not the first one it meets — a
+# run fixed one at a time would take as many passes as there are problems.
+case_migrate_schema_refusal_names_every_unrecoverable_issue() {
+  local repo
+  repo="$(schema_repo migrate_schema_refuse_all)"
+  schema_commit "$repo" "20260101-anchor" 'title: "Anchor"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  write_issue "$repo/docs/issues" "20260101-ghost1" 'title: "G1"
+status: open
+priority: low
+labels: [x]'
+  write_issue "$repo/docs/issues" "20260101-ghost2" 'title: "G2"
+status: open
+priority: low
+labels: [x]'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 1 "$RC"
+  assert_match "first named"  '20260101-ghost1' "$ERR"
+  assert_match "second named" '20260101-ghost2' "$ERR"
+}
+
+# AC: the preview reports what it would change — including what it cannot —
+# without refusing, since a preview runs no conversion to refuse.
+case_migrate_schema_preview_reports_without_refusing() {
+  local repo
+  repo="$(schema_repo migrate_schema_preview_unresolved)"
+  write_issue "$repo/docs/issues" "20260101-ghost3" 'title: "G3"
+status: open
+priority: low
+labels: [x]'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "reported" '20260101-ghost3' "$OUT"
+}
+
 # AC: the filer is recovered from the collection's own history — where there is
 # no history to read, the conversion says so rather than reporting every issue
 # as individually unrecoverable.

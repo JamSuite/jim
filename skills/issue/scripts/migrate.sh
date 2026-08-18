@@ -453,6 +453,24 @@ apply_schema_plan() {
   local dir="$1" plan="$2" expect="${3:-}" converted=0 skipped=0 __row f tmp outcome
   gate_apply "$expect" "$plan" || return 3
 
+  # A filer that cannot be recovered refuses the WHOLE run, before any file is
+  # touched. Converting the recoverable ones and leaving the rest would attribute
+  # half a collection and make the remainder look like work already done; a
+  # placeholder would be worse still, since it reads as a real attribution.
+  # Every such issue is named at once — fixing them one run at a time would take
+  # as many runs as there are problems.
+  local unresolved=""
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_schema_row "$__row"
+    [[ "$SCHEMA_ACTION" == unresolved ]] && unresolved+="  $SCHEMA_SLUG"$'\n'
+  done <<<"$plan"
+  if [[ -n "$unresolved" ]]; then
+    printf 'error: no recordable filer in history for:\n%s' "$unresolved" >&2
+    echo "error: nothing was written; the conversion needs a filer for every issue" >&2
+    return 1
+  fi
+
   while IFS= read -r __row; do
     [[ -n "$__row" ]] || continue
     split_schema_row "$__row"
