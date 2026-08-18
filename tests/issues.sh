@@ -20,6 +20,7 @@ SCRIPT_BACKFILL="$REPO_ROOT/skills/issue/scripts/backfill.sh"
 SCRIPT_MIGRATE="$REPO_ROOT/skills/issue/scripts/migrate.sh"
 SCRIPT_NEW="$REPO_ROOT/skills/issue/scripts/new.sh"
 SCRIPT_RECONCILE="$REPO_ROOT/skills/issue/scripts/reconcile.sh"
+SCRIPT_IDENTITY="$REPO_ROOT/skills/issue/scripts/identity.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -4044,6 +4045,110 @@ TEAMMATE
   index="$(git -C "$bare/r.git" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
   assert_eq "index holds one entry for the renamed issue" "1" \
     "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
+}
+
+# ─── Section: identity.sh — ambient identity resolution ─────────────────────
+
+# identity_repo <name> [email] — a git repo with user.email set only when one
+# is supplied, so the absent case is genuinely absent.
+identity_repo() {
+  local d
+  d="$(empty_dir "$1")"
+  git init -q "$d"
+  git -C "$d" config user.name tester
+  [[ $# -ge 2 ]] && git -C "$d" config user.email "$2"
+  printf '%s' "$d"
+}
+
+# U+2028 line separator — a character that disturbs a record while carrying
+# none of the bytes an obvious list of known-bad input would name.
+LINE_SEP="$(printf '\xe2\x80\xa8')"
+
+# run_identity <repo> <args...> — invoke identity.sh from inside <repo> with
+# global and system git config neutralized, so only the repo's own setting is
+# in play and an unset user.email cannot be answered by the machine's.
+run_identity() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    bash "$SCRIPT_IDENTITY" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: a newly filed issue has its filer recorded automatically, without the
+# developer supplying it.
+case_identity_resolve_reports_the_configured_address() {
+  local repo
+  repo="$(identity_repo identity_ok 'dev@example.com')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address on stdout" "dev@example.com" "$OUT"
+}
+
+# AC: a forge noreply address resolves like any other — the form the identity
+# takes is the contributor's own configuration decision, not jim's.
+case_identity_resolve_accepts_a_noreply_address() {
+  local repo
+  repo="$(identity_repo identity_noreply '1234+dev@users.noreply.example.com')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address on stdout" "1234+dev@users.noreply.example.com" "$OUT"
+}
+
+# AC: when the developer's identity cannot be determined from the environment,
+# filing is refused and nothing is written.
+case_identity_resolve_refuses_an_absent_identity() {
+  local repo
+  repo="$(identity_repo identity_absent)"
+  run_identity "$repo" resolve
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no identity on stdout" "" "$OUT"
+}
+
+# AC: an empty configured value is absent, not malformed — there is no identity
+# to record either way.
+case_identity_resolve_treats_an_empty_value_as_absent() {
+  local repo
+  repo="$(identity_repo identity_empty '')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no identity on stdout" "" "$OUT"
+}
+
+# AC: a recorded identity can never introduce additional fields into the issue
+# record, whatever the environment supplied. A configured address accepts
+# embedded newlines, so this is the demonstrated injection, not a hypothetical.
+case_identity_resolve_refuses_a_newline_bearing_value() {
+  local repo
+  repo="$(identity_repo identity_newline "$(printf 'dev@example.com\nstatus: closed')")"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: an identity value that cannot be recorded safely is refused exactly as a
+# missing one is. A Unicode line separator carries no byte any obvious list of
+# known-bad characters would name, so accepting only a bounded set is what
+# makes unanticipated input fail closed rather than pass through.
+case_identity_resolve_fails_closed_on_unlisted_input() {
+  local repo
+  repo="$(identity_repo identity_failclosed "dev${LINE_SEP}@example.com")"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: the refusal is reported as a fixed reason that names the missing identity
+# and carries no issue content — in particular not the rejected value.
+case_identity_resolve_refusal_withholds_the_rejected_value() {
+  local repo
+  repo="$(identity_repo identity_quiet "dev${LINE_SEP}@secret-corp.example")"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "a reason was given" "$ERR"
+  assert_eq "the rejected value is not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
