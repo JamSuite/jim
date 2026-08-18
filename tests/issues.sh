@@ -4331,6 +4331,42 @@ case_transition_release_refuses_an_issue_another_holds() {
   assert_match "released" '^claimed-by: ""$' "$(cat "$dir/20260101-k.md")"
 }
 
+# AC: every transition works identically whether the collection lives on the
+# working branch or on a designated shared branch.
+#
+#   Without this the placement criterion is met by construction rather than by
+#   evidence: under the default placement the door is inert, so every other
+#   transition case above would pass whether the door worked or not. Here the
+#   edit has to reach a branch the working tree is not on, and the commit that
+#   carries it has to name the verb.
+case_transition_lands_at_a_configured_destination() {
+  local repo body dest_file subject
+  repo="$(placement_repo transition_placement jim/issues)"
+  body="$(fixture transition_placement_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-remote --num 77 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "Remote" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+
+  OUT="$(cd "$repo" && env "${identity_env[@]}" \
+    bash "$SCRIPT_TRANSITION" claim 20260101-remote 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_exit "transition rc" 0 "$RC"
+
+  assert_eq "nothing landed on the working branch" "no" \
+    "$([[ -e "$repo/docs/issues/20260101-remote.md" ]] && echo yes || echo no)"
+
+  dest_file="$(git -C "$repo" cat-file -p \
+    refs/heads/jim/issues:docs/issues/20260101-remote.md 2>/dev/null)"
+  assert_match "the holder reached the destination" \
+    "^claimed-by: \"$TEST_IDENTITY\"\$" "$dest_file"
+
+  subject="$(git -C "$repo" log -1 --format='%s' refs/heads/jim/issues)"
+  assert_match "the commit names the verb" 'claim' "$subject"
+}
+
 # AC: a developer can claim, release, start, close and reopen an issue through
 # a single command each — a verb outside that set is a usage error.
 case_transition_refuses_an_unknown_verb() {

@@ -329,7 +329,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
     Depends on task 10a.
     **Verify:** `bash tests/issues.sh`
 
-10c. [ ] Exercise at least one transition against a configured destination
+10c. [x] Exercise at least one transition against a configured destination
     branch, asserting the edit lands at the destination and the published commit
     carries the verb matching the subcommand. Under the default placement the
     door is inert, so without this the placement criterion is satisfied by
