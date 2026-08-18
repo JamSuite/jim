@@ -261,7 +261,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    add the five fields to its allowlist, and update every caller to read by key.
    **Verify:** `bash tests/issues.sh`
 
-5. [ ] Add three integrity warnings to `index.sh` — finished-with-no-outcome,
+5. [x] Add three integrity warnings to `index.sh` — finished-with-no-outcome,
    unrecognized outcome, unrecognized `type` or `part-of` target — routing every
    interpolated value through `row_safe`. Depends on task 4.
    **Verify:** `bash tests/issues.sh`

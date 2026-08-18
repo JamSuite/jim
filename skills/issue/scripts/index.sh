@@ -70,6 +70,22 @@ declare -A RELATION_INVERSE=(
 )
 readonly RELATION_TYPES=(blocks depends-on related-to duplicates)
 
+# Recognized values for the schema's enumerated fields. The index reports an
+# unrecognized value rather than correcting it — it reads the collection, it
+# does not repair it.
+readonly ISSUE_TYPES=(issue epic)
+readonly ISSUE_OUTCOMES=(done wontfix duplicate obsolete)
+
+# in_list <needle> <candidate...> — membership test for the enums above.
+in_list() {
+  local needle="$1" item
+  shift
+  for item in "$@"; do
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
 # ─── Section: Id validator (mirrors jimfile.sh is_valid_id) ─────────────────
 
 # is_valid_id <id>
@@ -453,6 +469,23 @@ main() {
     meta_type[$slug]="$type"
     meta_outcome[$slug]="$outcome"
 
+    # Schema integrity. An issue that has ever been finished carries an
+    # outcome, and both enumerated fields carry a recognized value.
+    #
+    # An OPEN issue holding an outcome is not reported: that is an issue which
+    # was finished and later reopened, and the outcome names how it was
+    # finished last time. The pairing is the record of the reopen, so warning
+    # about it would report the schema working as intended.
+    if [[ "$status" == "closed" && -z "$outcome" ]]; then
+      warnings_section+="- \`$slug\` is closed but records no outcome."$'\n'
+    fi
+    if [[ -n "$outcome" ]] && ! in_list "$outcome" "${ISSUE_OUTCOMES[@]}"; then
+      warnings_section+="- \`$slug\` unrecognized outcome: $(row_safe "$outcome" | tr -d '`')."$'\n'
+    fi
+    if [[ -n "$type" ]] && ! in_list "$type" "${ISSUE_TYPES[@]}"; then
+      warnings_section+="- \`$slug\` unrecognized type: $(row_safe "$type" | tr -d '`')."$'\n'
+    fi
+
     if [[ "$status" == "closed" ]]; then
       closed_count=$((closed_count + 1))
     else
@@ -594,6 +627,24 @@ main() {
       done
       if (( found == 0 )); then
         warnings_section+="- \`$s\` --$etype--> \`$etarget\` has no inverse \`$inverse\` back-edge."$'\n'
+      fi
+    done
+  done
+
+  # Umbrella membership resolves within the collection.
+  #
+  # Membership is stored on the member alone, so unlike the check above there
+  # is no reciprocal entry to look for — an umbrella carries no roster to keep
+  # in sync. What can go wrong is the member naming an umbrella the collection
+  # does not hold, which the graph would otherwise render as an edge to
+  # nothing.
+  local m medge mtarget
+  for m in "${slugs_seen[@]}"; do
+    for medge in ${outgoing_fm[$m]:-}; do
+      [[ "${medge%%:*}" == "part-of" ]] || continue
+      mtarget="${medge#*:}"
+      if [[ -z "${meta_status[$mtarget]:-}" ]]; then
+        warnings_section+="- \`$m\` names an umbrella not in the collection: $(row_safe "$mtarget" | tr -d '`')."$'\n'
       fi
     done
   done

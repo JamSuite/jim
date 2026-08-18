@@ -4073,6 +4073,160 @@ TEAMMATE
     "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
 }
 
+# ─── Section: index.sh — schema integrity warnings ──────────────────────────
+
+# AC: the collection index reports any finished issue carrying no outcome.
+case_index_warns_a_closed_issue_with_no_outcome() {
+  local dir
+  dir=$(empty_dir index_no_outcome)
+  write_issue "$dir" "20260101-done" 'title: "Done"
+status: closed
+type: issue
+outcome: ""'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "warned" 'closed.*no outcome' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: an issue that has ever been finished carries an outcome; one that never
+# has carries none. An open issue without an outcome is the ordinary case and
+# must not be warned about.
+case_index_stays_quiet_on_an_open_issue_with_no_outcome() {
+  local dir
+  dir=$(empty_dir index_open_no_outcome)
+  write_issue "$dir" "20260101-open" 'title: "Open"
+status: open
+type: issue
+outcome: ""'
+  run_index "$dir"
+  assert_eq "no outcome warning" "no" \
+    "$(grep -q 'no outcome' "$dir/INDEX.md" && echo yes || echo no)"
+}
+
+# AC: an open issue carrying an outcome has been finished and reopened — a
+# representable state, not a defect, so it draws no warning.
+case_index_stays_quiet_on_a_reopened_issue() {
+  local dir
+  dir=$(empty_dir index_reopened)
+  write_issue "$dir" "20260101-reopened" 'title: "Reopened"
+status: open
+type: issue
+outcome: wontfix'
+  run_index "$dir"
+  assert_eq "no warning" "no" \
+    "$(grep -qE 'no outcome|unrecognized outcome' "$dir/INDEX.md" && echo yes || echo no)"
+}
+
+# AC: the collection index reports any issue whose outcome is not a recognized
+# value.
+case_index_warns_an_unrecognized_outcome() {
+  local dir
+  dir=$(empty_dir index_bad_outcome)
+  write_issue "$dir" "20260101-typo" 'title: "Typo"
+status: closed
+type: issue
+outcome: donw'
+  run_index "$dir"
+  assert_match "warned" 'unrecognized outcome' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: the collection index reports any issue whose kind is not a recognized
+# value.
+case_index_warns_an_unrecognized_kind() {
+  local dir
+  dir=$(empty_dir index_bad_type)
+  write_issue "$dir" "20260101-epik" 'title: "Epik"
+status: open
+type: epik
+outcome: ""'
+  run_index "$dir"
+  assert_match "warned" 'unrecognized type' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: an umbrella is a recognized kind and draws no warning.
+case_index_accepts_an_epic_as_a_kind() {
+  local dir
+  dir=$(empty_dir index_epic_ok)
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+type: epic
+outcome: ""'
+  run_index "$dir"
+  assert_eq "no kind warning" "no" \
+    "$(grep -q 'unrecognized type' "$dir/INDEX.md" && echo yes || echo no)"
+}
+
+# AC: the collection index reports any issue whose umbrella reference is not a
+# recognized value — here, one naming an umbrella the collection does not hold.
+case_index_warns_an_umbrella_that_does_not_exist() {
+  local dir
+  dir=$(empty_dir index_dangling_umbrella)
+  write_issue "$dir" "20260101-member" 'title: "Member"
+status: open
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-ghost]'
+  run_index "$dir"
+  assert_match "warned" 'names an umbrella not in the collection' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: umbrella membership is stored on the member only — an umbrella that
+# exists needs no reciprocal entry, so a resolvable membership is silent.
+case_index_stays_quiet_on_a_single_sided_membership() {
+  local dir
+  dir=$(empty_dir index_single_sided)
+  write_issue "$dir" "20260101-umbrella2" 'title: "Umbrella"
+status: open
+type: epic
+outcome: ""'
+  write_issue "$dir" "20260101-member2" 'title: "Member"
+status: open
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella2]'
+  run_index "$dir"
+  assert_eq "no membership warning" "no" \
+    "$(grep -qE 'names an umbrella not in the collection|no inverse' "$dir/INDEX.md" \
+       && echo yes || echo no)"
+}
+
+# AC: integrity reports identify offending issues without reproducing their
+# body content — the value a schema warning names goes through the same row
+# sanitizer its sibling warnings use, so a control byte or an unbounded value
+# cannot ride into the committed index.
+case_index_schema_warnings_clear_the_sanitizer() {
+  local dir long idx
+  dir=$(empty_dir index_schema_warn_sanitize)
+  long="$(printf 'A%.0s' $(seq 1 600))"
+  printf -- '---\ntitle: "X"\nstatus: closed\ntype: issue\noutcome: "donw%s%sTAILMARK"\n---\n' \
+    "$(printf '\033[31m\r')" "$long" > "$dir/20260101-nasty.md"
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "warned" 'unrecognized outcome' "$idx"
+  if grep -q $'\033' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [an escape byte reached the committed index]"
+  fi
+  if grep -q $'\r' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [a carriage return reached the committed index]"
+  fi
+  if echo "$idx" | grep -q 'TAILMARK'; then
+    CURRENT_FAILED=1
+    echo "    [an unbounded outcome value landed whole in the index]"
+  fi
+}
+
 # ─── Section: new.sh — filer identity and the new schema fields ─────────────
 
 # AC: a newly filed issue has its filer recorded automatically, without the
