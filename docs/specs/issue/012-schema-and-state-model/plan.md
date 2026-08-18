@@ -306,7 +306,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    an unknown verb exits 2. Depends on tasks 2, 4, 7.
    **Verify:** `bash tests/issues.sh`
 
-10. [ ] Implement the five verb behaviors in `transition.sh` and cover each:
+10. [x] Implement the five verb behaviors in `transition.sh` and cover each:
     `start` on an unheld issue claims it; `claim` on a held issue exits 5 naming
     the holder; `--force` takes it over; `close` by a non-holder succeeds and
     preserves `claimed-by`; `close` without `--as` records `done`; `reopen`

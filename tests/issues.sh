@@ -4108,6 +4108,162 @@ origin: "conversation"'
   printf '%s' "$d"
 }
 
+# transition_issue <dir> <slug> <num> <status> <claimed-by> <outcome>
+#   The outcome is rendered bare when set and as an empty quoted scalar when
+#   not, which is how the emitter and the close verb actually write it — a
+#   fixture that quoted a set value would be testing a shape nothing produces.
+transition_issue() {
+  local outcome_field='""'
+  [[ -n "$6" ]] && outcome_field="$6"
+  write_issue "$1" "$2" "num: $3
+title: \"T\"
+status: $4
+priority: medium
+type: issue
+filed-by: \"filer@example.test\"
+claimed-by: \"$5\"
+outcome: $outcome_field
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: \"conversation\""
+}
+
+# AC: starting an unheld issue also claims it for the developer starting it.
+case_transition_start_claims_an_unheld_issue() {
+  local dir out
+  dir=$(empty_dir transition_start)
+  transition_issue "$dir" 20260101-a 1 open "" ""
+  run_transition start 20260101-a --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-a.md")"
+  assert_match "claimed by the starter" "^claimed-by: \"$TEST_IDENTITY\"\$" "$out"
+  assert_match "and underway"           '^status: active$'                 "$out"
+}
+
+# AC: claiming an issue another developer holds is refused, and the refusal
+# names the current holder.
+case_transition_claim_refuses_an_issue_another_holds() {
+  local dir
+  dir=$(empty_dir transition_held)
+  transition_issue "$dir" 20260101-b 2 open "someone@example.test" ""
+  run_transition claim 20260101-b --dir "$dir"
+  assert_exit "rc" 5 "$RC"
+  assert_match "names the holder" 'someone@example\.test' "$ERR"
+  assert_match "holder unchanged" '^claimed-by: "someone@example.test"$' \
+    "$(cat "$dir/20260101-b.md")"
+}
+
+# AC: the developer can override the refusal to take it over.
+case_transition_claim_force_takes_over() {
+  local dir
+  dir=$(empty_dir transition_force)
+  transition_issue "$dir" 20260101-c 3 open "someone@example.test" ""
+  run_transition claim 20260101-c --force --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "taken over" "^claimed-by: \"$TEST_IDENTITY\"\$" "$(cat "$dir/20260101-c.md")"
+}
+
+# AC: an issue's holder is distinct from its lifecycle state — re-claiming what
+# you already hold changes nothing and is not a refusal.
+case_transition_claim_is_idempotent_for_the_holder() {
+  local dir
+  dir=$(empty_dir transition_reclaim)
+  transition_issue "$dir" 20260101-d 4 open "$TEST_IDENTITY" ""
+  run_transition claim 20260101-d --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "still held by the same developer" "^claimed-by: \"$TEST_IDENTITY\"\$" \
+    "$(cat "$dir/20260101-d.md")"
+}
+
+# AC: any developer can close any issue, whether or not they hold it, and
+# closing preserves the record of who held it.
+case_transition_close_by_a_non_holder_preserves_the_holder() {
+  local dir out
+  dir=$(empty_dir transition_close_other)
+  transition_issue "$dir" 20260101-e 5 active "someone@example.test" ""
+  run_transition close 20260101-e --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-e.md")"
+  assert_match "finished"        '^status: closed$'                     "$out"
+  assert_match "holder kept"     '^claimed-by: "someone@example.test"$' "$out"
+}
+
+# AC: closing accepts an outcome; when none is given, the issue is recorded as
+# completed.
+case_transition_close_defaults_the_outcome_to_done() {
+  local dir
+  dir=$(empty_dir transition_close_default)
+  transition_issue "$dir" 20260101-f 6 open "" ""
+  run_transition close 20260101-f --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "recorded as completed" '^outcome: done$' "$(cat "$dir/20260101-f.md")"
+}
+
+# AC: the outcome distinguishes completed work from work that was declined.
+case_transition_close_records_the_given_outcome() {
+  local dir
+  dir=$(empty_dir transition_close_as)
+  transition_issue "$dir" 20260101-g 7 open "" ""
+  run_transition close 20260101-g --as wontfix --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "declined" '^outcome: wontfix$' "$(cat "$dir/20260101-g.md")"
+}
+
+# AC: reopening a finished issue returns it to not-started and preserves its
+# outcome, so the reason it was previously finished survives the reopen.
+case_transition_reopen_preserves_the_outcome() {
+  local dir out
+  dir=$(empty_dir transition_reopen)
+  transition_issue "$dir" 20260101-h 8 closed "someone@example.test" "wontfix"
+  run_transition reopen 20260101-h --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-h.md")"
+  assert_match "back to not-started" '^status: open$'    "$out"
+  assert_match "the reason survives" '^outcome: wontfix$' "$out"
+}
+
+# AC: finishing an issue that was previously finished and reopened replaces the
+# earlier outcome with the current one.
+case_transition_reclosing_replaces_the_earlier_outcome() {
+  local dir
+  dir=$(empty_dir transition_reclose)
+  transition_issue "$dir" 20260101-i 9 open "" "wontfix"
+  run_transition close 20260101-i --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "replaced" '^outcome: done$' "$(cat "$dir/20260101-i.md")"
+}
+
+# AC: a developer can release an issue they are not going to get to.
+case_transition_release_empties_the_holder() {
+  local dir
+  dir=$(empty_dir transition_release)
+  transition_issue "$dir" 20260101-j 10 open "$TEST_IDENTITY" ""
+  run_transition release 20260101-j --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "unheld" '^claimed-by: ""$' "$(cat "$dir/20260101-j.md")"
+}
+
+# AC: claiming an issue another developer holds is refused unless overridden.
+# Releasing one is the same act reached another way — without the same gate,
+# release-then-claim would take an issue over with no override at all.
+case_transition_release_refuses_an_issue_another_holds() {
+  local dir
+  dir=$(empty_dir transition_release_other)
+  transition_issue "$dir" 20260101-k 11 open "someone@example.test" ""
+  run_transition release 20260101-k --dir "$dir"
+  assert_exit "rc" 5 "$RC"
+  assert_match "names the holder" 'someone@example\.test' "$ERR"
+  run_transition release 20260101-k --force --dir "$dir"
+  assert_exit "rc with --force" 0 "$RC"
+  assert_match "released" '^claimed-by: ""$' "$(cat "$dir/20260101-k.md")"
+}
+
 # AC: a developer can claim, release, start, close and reopen an issue through
 # a single command each — a verb outside that set is a usage error.
 case_transition_refuses_an_unknown_verb() {
