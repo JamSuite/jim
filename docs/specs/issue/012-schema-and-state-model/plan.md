@@ -237,11 +237,11 @@ flowchart TD
 Each task pairs its implementation with the tests that prove it, so the suite is
 the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
 
-1. [ ] Add the five fields and the `active` status to
+1. [x] Add the five fields and the `active` status to
    `skills/issue/assets/issue-template.md`, with `part-of` inside `relations:`.
    **Verify:** `grep -qE '^type:' skills/issue/assets/issue-template.md && grep -qE '^filed-by:' skills/issue/assets/issue-template.md && grep -qE '^claimed-by:' skills/issue/assets/issue-template.md && grep -qE '^outcome:' skills/issue/assets/issue-template.md && grep -qE '^ +part-of:' skills/issue/assets/issue-template.md`
 
-2. [ ] Create `skills/issue/scripts/identity.sh` with a `resolve` verb — read the
+2. [x] Create `skills/issue/scripts/identity.sh` with a `resolve` verb — read the
    ambient identity, validate it against a positively enumerated single-line
    character set, print it on stdout; rc 1 absent, rc 2 invalid, no stdout on
    either refusal. Accept only the enumerated set; everything outside it fails
@@ -251,7 +251,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    `---`), proving the validator fails closed rather than enumerating bad input.
    **Verify:** `bash tests/issues.sh`
 
-3. [ ] Update `new.sh` to populate `filed-by` from `identity.sh resolve`, default
+3. [x] Update `new.sh` to populate `filed-by` from `identity.sh resolve`, default
    `type: issue`, emit empty `claimed-by` / `outcome` / `part-of`, and refuse the
    whole filing with a fixed reason when identity resolution fails.
    Depends on task 2.

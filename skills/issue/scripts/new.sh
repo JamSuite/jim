@@ -72,6 +72,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 JIMALLOC="$(dirname "$JIMFILE")/jimalloc.sh"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
+IDENTITY="$HERE/identity.sh"
 
 # ─── Parse flags ─────────────────────────────────────────────────────────────
 
@@ -191,6 +192,19 @@ case "$status" in
   open|closed) ;;
   *) echo "error: invalid status (expected open|closed)" >&2; exit 1 ;;
 esac
+
+# ─── Resolve the filer ───────────────────────────────────────────────────────
+
+# Ahead of the allocator on purpose: the allocator is append-only, so a filing
+# refused after it runs spends an ordinal no file will ever carry. Refusing here
+# costs nothing and leaves the collection exactly as it was.
+#
+# identity.sh has already reported which way it failed; this line says what that
+# cost. Both are fixed strings — neither carries a field of this filing.
+filed_by="$(bash "$IDENTITY" resolve)" || {
+  echo "error: refusing to file without a recordable identity" >&2
+  exit 1
+}
 
 # ─── Resolve identity (overrides win; else compose via jimalloc.sh) ──────────
 
@@ -312,8 +326,17 @@ trap 'rm -f "$tmpfile"' EXIT INT TERM
   printf 'title: "%s"\n' "$title_enc"
   printf 'status: %s\n' "$status"
   printf 'priority: %s\n' "$priority"
+  # A capture is always an issue; an umbrella is made by changing this field,
+  # not by filing a different kind of record.
+  printf 'type: issue\n'
+  # The filer cleared a positive character gate, so it cannot close this scalar
+  # or open a field of its own. A new issue is unheld and has never been
+  # finished, so the holder and outcome start empty.
+  printf 'filed-by: "%s"\n' "$filed_by"
+  printf 'claimed-by: ""\n'
+  printf 'outcome: ""\n'
   printf 'labels: [%s]\n' "$labels_enc"
-  printf 'relations:\n  blocks: []\n  depends-on: []\n  related-to: []\n  duplicates: []\n'
+  printf 'relations:\n  blocks: []\n  depends-on: []\n  related-to: []\n  duplicates: []\n  part-of: []\n'
   printf 'created: %s\n' "$created"
   printf 'updated: %s\n' "$updated"
   printf 'origin: "%s"\n' "$origin_enc"

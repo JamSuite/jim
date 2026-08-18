@@ -57,9 +57,17 @@ run_migrate() {
   ERR="$(cat "$err_file")"
 }
 
+# The emitter records a filer resolved from the environment. Pin it for every
+# invocation so cases assert against a fixed value rather than whatever identity
+# the machine running the suite happens to carry. These variables outrank any
+# config file, so no repo setup is needed to make the value deterministic.
+TEST_IDENTITY="tester@example.test"
+identity_env=(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.email
+              GIT_CONFIG_VALUE_0="$TEST_IDENTITY")
+
 run_new() {
   local err_file="$TMP_BASE/.err"
-  OUT="$(bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  OUT="$(env "${identity_env[@]}" bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
   RC=$?
   ERR="$(cat "$err_file")"
 }
@@ -71,7 +79,20 @@ run_new() {
 run_new_in() {
   local repo="$1"; shift
   local err_file="$TMP_BASE/.err"
-  OUT="$(cd "$repo" && bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  OUT="$(cd "$repo" && env "${identity_env[@]}" bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# run_new_unidentified <repo> <args...>
+#   Invoke new.sh from inside <repo> with no identity reachable at all — the
+#   repo carries none and the machine's own config is neutralized, so this is
+#   the genuine absent case rather than a repo that merely overrides one.
+run_new_unidentified() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
   RC=$?
   ERR="$(cat "$err_file")"
 }
@@ -2881,12 +2902,17 @@ num: 3
 title: "Parity"
 status: open
 priority: medium
+type: issue
+filed-by: "tester@example.test"
+claimed-by: ""
+outcome: ""
 labels: [a, b]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-01-01T00:00:00Z
 updated: 2026-01-01T00:00:00Z
 origin: "conversation"
@@ -4045,6 +4071,69 @@ TEAMMATE
   index="$(git -C "$bare/r.git" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
   assert_eq "index holds one entry for the renamed issue" "1" \
     "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
+}
+
+# ─── Section: new.sh — filer identity and the new schema fields ─────────────
+
+# AC: a newly filed issue has its filer recorded automatically, without the
+# developer supplying it.
+case_new_records_the_filer_from_the_environment() {
+  local dir b
+  dir=$(empty_dir new_filer)
+  b=$(fixture new_filer_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-filer" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels x --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  assert_match "filer recorded" "filed-by: \"$TEST_IDENTITY\"" "$(cat "$dir/20260101-filer.md")"
+}
+
+# AC: an issue records what kind of record it is, who currently holds it, and —
+# once finished at least once — the outcome. A new issue is unheld, has never
+# been finished, and belongs to no umbrella.
+case_new_defaults_kind_and_leaves_holder_and_outcome_empty() {
+  local dir b out
+  dir=$(empty_dir new_defaults)
+  b=$(fixture new_defaults_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-defaults" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels x --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-defaults.md")"
+  assert_match "kind defaults to issue" '^type: issue$'   "$out"
+  assert_match "unheld"                  '^claimed-by: ""$' "$out"
+  assert_match "never finished"          '^outcome: ""$'    "$out"
+  assert_match "no umbrella"             '^  part-of: \[\]$' "$out"
+}
+
+# AC: when the developer's identity cannot be determined from the environment,
+# filing an issue is refused and nothing is written.
+case_new_refuses_a_filing_with_no_identity() {
+  local repo b
+  repo="$(identity_repo new_no_identity)"
+  b=$(fixture new_no_identity_body.md 'body')
+  run_new_unidentified "$repo" --dir "$repo/issues" --slug "20260101-none" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels x --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "nothing written" "no" \
+    "$([[ -e "$repo/issues/20260101-none.md" ]] && echo yes || echo no)"
+}
+
+# AC: the refusal is reported as a fixed reason that names the missing identity
+# and carries no issue content.
+case_new_identity_refusal_carries_no_issue_content() {
+  local repo b
+  repo="$(identity_repo new_no_identity_quiet)"
+  b=$(fixture new_no_identity_quiet_body.md 'body')
+  run_new_unidentified "$repo" --dir "$repo/issues" --slug "20260101-quiet" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "Confidential customer escalation" --priority low --labels x \
+    --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "a reason was given" "$ERR"
+  assert_eq "the title is not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'Confidential' && echo yes || echo no)"
 }
 
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
