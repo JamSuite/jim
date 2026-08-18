@@ -178,6 +178,26 @@ render_plan() {
   printf '\n  %d to rename · %d to skip · %d collisions\n' "$renames" "$skips" "$collisions"
 }
 
+# gate_apply <expect> <plan-rows> — refuse an apply whose preview has gone
+# stale. When the caller passed the preview's PLAN-HASH and the freshly
+# recomputed plan no longer matches, the collection changed in between, so the
+# plan the developer read is not the plan about to run.
+#
+#   Every migration here calls this one copy. A second implementation of the
+#   same refusal is the one duplication worth avoiding outright: two copies can
+#   disagree about when it is safe to write, and only one of them would be
+#   covered by the case that proves the refusal works.
+gate_apply() {
+  local expect="$1" plan="$2" cur
+  [[ -n "$expect" ]] || return 0
+  cur="$(plan_hash "$plan")"
+  if [[ "$cur" != "$expect" ]]; then
+    echo "error: collection changed since preview (expected PLAN-HASH $expect, got $cur) — re-run the preview" >&2
+    return 1
+  fi
+  return 0
+}
+
 # plan_hash <plan-rows> — a stable fingerprint of the plan for drift detection.
 # cksum is POSIX/portable; we only need to catch accidental drift between the
 # preview and a later --apply, not adversarial tampering.
@@ -204,16 +224,7 @@ git_note() {
 # completed by a retry (Tasks 7/8). Mutates the collection.
 apply_plan() {
   local dir="$1" plan="$2" expect="${3:-}"
-  # Drift guard (F5): if the caller passed the preview's PLAN-HASH and the
-  # freshly-recomputed plan no longer matches, the collection changed between
-  # preview and apply — abort rather than apply a stale plan.
-  if [[ -n "$expect" ]]; then
-    local cur; cur="$(plan_hash "$plan")"
-    if [[ "$cur" != "$expect" ]]; then
-      echo "error: collection changed since preview (expected PLAN-HASH $expect, got $cur) — re-run the preview" >&2
-      return 3
-    fi
-  fi
+  gate_apply "$expect" "$plan" || return 3
 
   local mapfile
   mapfile="$(mktemp "$dir/.migrate.map.XXXXXX")" || {
@@ -434,6 +445,64 @@ render_schema_plan() {
     "$converts" "$skips" "$unresolved"
 }
 
+# apply_schema_plan <dir> <plan> [<expect>] — write the new fields into every
+# issue the plan converts. Per-file atomic tmp+mv, so an interrupted run leaves
+# each file either untouched or wholly converted; a retry finishes the rest,
+# because a converted issue is skipped rather than converted again.
+apply_schema_plan() {
+  local dir="$1" plan="$2" expect="${3:-}" converted=0 skipped=0 __row f tmp outcome
+  gate_apply "$expect" "$plan" || return 3
+
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_schema_row "$__row"
+    if [[ "$SCHEMA_ACTION" != convert ]]; then
+      skipped=$((skipped+1))
+      continue
+    fi
+    f="$dir/$SCHEMA_SLUG.md"
+    # An outcome is written bare when set and as an empty scalar when not,
+    # matching how the emitter and the transition verbs write the same field.
+    outcome='""'
+    [[ -n "$SCHEMA_OUTCOME" ]] && outcome="$SCHEMA_OUTCOME"
+
+    tmp="$(mktemp "$dir/.schema.tmp.XXXXXX")" || {
+      echo "error: cannot create tmp in $dir" >&2; return 1; }
+    awk -v filer="$SCHEMA_FILER" -v outcome="$outcome" '
+      /^---$/ { fence++ }
+      # The four scalars sit where the template puts them, ahead of labels.
+      fence == 1 && !scalars && /^labels:/ {
+        print "type: issue"
+        print "filed-by: \"" filer "\""
+        print "claimed-by: \"\""
+        print "outcome: " outcome
+        scalars = 1
+      }
+      # Membership is a relations child, and the member is the only side that
+      # records it.
+      fence == 1 && !member && /^  duplicates:/ {
+        print
+        print "  part-of: []"
+        member = 1
+        next
+      }
+      { print }
+      END { exit (scalars && member) ? 0 : 1 }
+    ' "$f" > "$tmp" || {
+      rm -f "$tmp"
+      echo "error: $SCHEMA_SLUG has no place to put the new fields; nothing written for it" >&2
+      return 1
+    }
+    mv "$tmp" "$f" || {
+      rm -f "$tmp"; echo "error: atomic rename failed for $SCHEMA_SLUG" >&2; return 1; }
+    converted=$((converted+1))
+  done <<<"$plan"
+
+  bash "$HERE/index.sh" "$dir" >/dev/null 2>&1
+
+  printf 'Converted %d issue(s); %d already carried the fields.\n' "$converted" "$skipped"
+}
+
 cmd_schema() {
   local dir="" apply=0 expect=""
   while (( $# )); do
@@ -455,10 +524,14 @@ cmd_schema() {
   fi
 
   local plan; plan="$(build_schema_plan "$dir")"
-  printf 'Schema conversion plan — %s\n\n' "$dir"
-  render_schema_plan "$plan"
-  printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
-  git_note "$dir"
+  if (( apply )); then
+    apply_schema_plan "$dir" "$plan" "$expect"
+  else
+    printf 'Schema conversion plan — %s\n\n' "$dir"
+    render_schema_plan "$plan"
+    printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
+    git_note "$dir"
+  fi
 }
 
 cmd_prefix() {
@@ -583,6 +656,9 @@ usage() {
     '  bash migrate.sh schema [<issues_dir>]' \
     '      Preview (read-only): give every issue the identity, kind and outcome' \
     '      fields, recovering each filer from the commit that created its file.' \
+    '' \
+    '  bash migrate.sh schema [<issues_dir>] --apply [--expect <hash>]' \
+    '      Apply the conversion: write the fields + regenerate INDEX.' \
     '' \
     '  issues_dir default: jimconf.sh get issues'
 }

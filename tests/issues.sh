@@ -4561,6 +4561,106 @@ priority: low'
     "$(printf '%s' "$OUT" | grep -q "$LINE_SEP" && echo yes || echo no)"
 }
 
+# AC: every issue in the existing collection carries the new fields after a
+# one-time conversion.
+case_migrate_schema_apply_writes_the_fields() {
+  local repo out
+  repo="$(schema_repo migrate_schema_apply)"
+  schema_commit "$repo" "20260101-conv" 'title: "Conv"
+status: closed
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$repo/docs/issues/20260101-conv.md")"
+  assert_match "kind"        '^type: issue$'                  "$out"
+  assert_match "filer"       '^filed-by: "filer@example.test"$' "$out"
+  assert_match "unheld"      '^claimed-by: ""$'               "$out"
+  assert_match "finished"    '^outcome: done$'                "$out"
+  assert_match "no umbrella" '^  part-of: \[\]$'              "$out"
+  assert_eq "the index was regenerated" "yes" \
+    "$([[ -f "$repo/docs/issues/INDEX.md" ]] && echo yes || echo no)"
+}
+
+# AC: an issue that never has been finished carries no outcome.
+case_migrate_schema_apply_leaves_an_open_issue_without_an_outcome() {
+  local repo
+  repo="$(schema_repo migrate_schema_apply_open)"
+  schema_commit "$repo" "20260101-live2" 'title: "Live"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "no outcome" '^outcome: ""$' "$(cat "$repo/docs/issues/20260101-live2.md")"
+}
+
+# AC: the conversion previews what it will change before changing anything —
+# an apply whose preview has gone stale is refused rather than applied.
+case_migrate_schema_apply_refuses_a_stale_plan() {
+  local repo before
+  repo="$(schema_repo migrate_schema_drift)"
+  schema_commit "$repo" "20260101-drifted" 'title: "Drifted"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  before="$(cat "$repo/docs/issues/20260101-drifted.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply --expect WRONGHASH
+  assert_exit "rc" 3 "$RC"
+  assert_eq "nothing written" "$before" "$(cat "$repo/docs/issues/20260101-drifted.md")"
+}
+
+# AC: the conversion is one-time — running it twice converts nothing the second
+# time rather than layering a second copy of the fields.
+case_migrate_schema_apply_is_idempotent() {
+  local repo first second
+  repo="$(schema_repo migrate_schema_twice)"
+  schema_commit "$repo" "20260101-once" 'title: "Once"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  first="$(cat "$repo/docs/issues/20260101-once.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 0 "$RC"
+  second="$(cat "$repo/docs/issues/20260101-once.md")"
+  assert_eq "the second run changed nothing" "$first" "$second"
+  assert_eq "exactly one kind field" "1" \
+    "$(printf '%s\n' "$second" | grep -c '^type:')"
+}
+
 # AC: the filer is recovered from the collection's own history — where there is
 # no history to read, the conversion says so rather than reporting every issue
 # as individually unrecoverable.

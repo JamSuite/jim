@@ -336,7 +336,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
     construction rather than by evidence. Depends on tasks 7, 10.
     **Verify:** `bash tests/issues.sh`
 
-11. [ ] Add the `schema` subcommand's write half: under `--apply`, pass the
+11. [x] Add the `schema` subcommand's write half: under `--apply`, pass the
     freshly-recomputed plan through the same `--expect` drift guard `prefix`
     uses, write each file with a per-file atomic tmp+mv, and regenerate the
     index. Without `--apply` nothing is written. Depends on task 8.
