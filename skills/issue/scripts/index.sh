@@ -118,17 +118,21 @@ extract_frontmatter() {
 
 # parse_scalar_fields <frontmatter-content>
 #   Extract every top-level scalar field we care about in a SINGLE awk pass and
-#   emit them ONE PER LINE in a fixed order:
-#     status, priority, title, origin, labels, created, num
-#   This replaces seven per-field `grep|head|sed` pipelines (~28 forks per
-#   issue) with one awk invocation. One field per line (not TAB-joined) so the
-#   caller can read empty fields back without IFS-whitespace collapsing
-#   consecutive delimiters. Semantics match the prior parse_simple_field: only
-#   top-level keys (no leading indent) match, the first occurrence wins,
-#   leading `key:` and surrounding whitespace are stripped, and a single leading
-#   and trailing double quote are removed independently (so `"Foo: bar"` →
-#   `Foo: bar` and an unquoted `[a, b]` is preserved verbatim). Indented
-#   `relations:` children never match the no-indent key pattern.
+#   emit them as `key<TAB>value` lines. This replaces a per-field
+#   `grep|head|sed` pipeline each (~28 forks per issue) with one awk
+#   invocation.
+#
+#   Keyed rather than positional: the caller matches on the name, so adding a
+#   field cannot shift the meaning of every field after it, and a field the
+#   file omits is simply a line the caller never sees. The value keeps any tab
+#   it contains, because the caller splits on the first one only.
+#
+#   Semantics match the prior parse_simple_field: only top-level keys (no
+#   leading indent) match, the first occurrence wins, leading `key:` and
+#   surrounding whitespace are stripped, and a single leading and trailing
+#   double quote are removed independently (so `"Foo: bar"` → `Foo: bar` and an
+#   unquoted `[a, b]` is preserved verbatim). Indented `relations:` children
+#   never match the no-indent key pattern.
 parse_scalar_fields() {
   printf '%s\n' "$1" | awk '
     /^[a-z_-]+:/ {
@@ -136,18 +140,15 @@ parse_scalar_fields() {
       sub(/:.*$/, "", key)
       if (key != "status" && key != "priority" && key != "title" &&
           key != "origin" && key != "labels" && key != "created" &&
-          key != "num") next
+          key != "num" && key != "type" && key != "filed-by" &&
+          key != "claimed-by" && key != "outcome") next
       if (key in seen) next
       seen[key] = 1
       val = $0
       sub(/^[^:]*:[[:space:]]*/, "", val)   # strip "key:" + leading whitespace
       sub(/[[:space:]]+$/, "", val)         # strip trailing whitespace
       sub(/^"/, "", val); sub(/"$/, "", val) # strip one leading + trailing quote
-      f[key] = val
-    }
-    END {
-      print f["status"]; print f["priority"]; print f["title"]
-      print f["origin"]; print f["labels"]; print f["created"]; print f["num"]
+      printf "%s\t%s\n", key, val
     }
   '
 }
@@ -365,6 +366,7 @@ main() {
 
   # Build per-issue map: slug → "<status>\t<priority>\t<title>\t<origin>".
   declare -A meta_status meta_priority meta_title meta_origin meta_labels meta_created meta_num
+  declare -A meta_type meta_outcome
   # Adjacency maps: slug → "<type>:<target> <type>:<target> ..." (space-separated).
   #   outgoing_fm  — frontmatter relations only (drives bidirectional check).
   #   outgoing_all — frontmatter + body wikilinks, deduped per
@@ -405,16 +407,27 @@ main() {
     # asserting a row its own Summary denies.
     slugs_seen+=("$slug")
 
-    local status priority title origin labels created num
-    {
-      IFS= read -r status
-      IFS= read -r priority
-      IFS= read -r title
-      IFS= read -r origin
-      IFS= read -r labels
-      IFS= read -r created
-      IFS= read -r num
-    } < <(parse_scalar_fields "$fm")
+    # Read by key, not by position: a field the file omits produces no line at
+    # all, so every target starts empty and only a present field overwrites it.
+    local status="" priority="" title="" origin="" labels="" created="" num=""
+    local type="" outcome=""
+    local _fline _fkey _fval
+    while IFS= read -r _fline; do
+      [[ "$_fline" == *$'\t'* ]] || continue
+      _fkey="${_fline%%$'\t'*}"
+      _fval="${_fline#*$'\t'}"
+      case "$_fkey" in
+        status)   status="$_fval" ;;
+        priority) priority="$_fval" ;;
+        title)    title="$_fval" ;;
+        origin)   origin="$_fval" ;;
+        labels)   labels="$_fval" ;;
+        created)  created="$_fval" ;;
+        num)      num="$_fval" ;;
+        type)     type="$_fval" ;;
+        outcome)  outcome="$_fval" ;;
+      esac
+    done < <(parse_scalar_fields "$fm")
     [[ -z "$status" ]] && status="open"
 
     # SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
@@ -437,6 +450,8 @@ main() {
     meta_labels[$slug]="$labels"
     meta_created[$slug]="$created"
     meta_num[$slug]="$num"
+    meta_type[$slug]="$type"
+    meta_outcome[$slug]="$outcome"
 
     if [[ "$status" == "closed" ]]; then
       closed_count=$((closed_count + 1))

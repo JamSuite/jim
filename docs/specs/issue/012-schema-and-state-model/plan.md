@@ -257,7 +257,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    Depends on task 2.
    **Verify:** `bash tests/issues.sh`
 
-4. [ ] Change `parse_scalar_fields` in `index.sh` to emit `key<TAB>value` lines,
+4. [x] Change `parse_scalar_fields` in `index.sh` to emit `key<TAB>value` lines,
    add the five fields to its allowlist, and update every caller to read by key.
    **Verify:** `bash tests/issues.sh`
 
