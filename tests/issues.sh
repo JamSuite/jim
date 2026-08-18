@@ -21,6 +21,7 @@ SCRIPT_MIGRATE="$REPO_ROOT/skills/issue/scripts/migrate.sh"
 SCRIPT_NEW="$REPO_ROOT/skills/issue/scripts/new.sh"
 SCRIPT_RECONCILE="$REPO_ROOT/skills/issue/scripts/reconcile.sh"
 SCRIPT_IDENTITY="$REPO_ROOT/skills/issue/scripts/identity.sh"
+SCRIPT_TRANSITION="$REPO_ROOT/skills/issue/scripts/transition.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -4071,6 +4072,117 @@ TEAMMATE
   index="$(git -C "$bare/r.git" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
   assert_eq "index holds one entry for the renamed issue" "1" \
     "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
+}
+
+# ─── Section: transition.sh — dispatch and the shared mutation path ─────────
+
+# run_transition <args...> — invoke transition.sh with a pinned identity.
+run_transition() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(env "${identity_env[@]}" bash "$SCRIPT_TRANSITION" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# transition_dir <name> — a collection holding one open issue.
+transition_dir() {
+  local d
+  d=$(empty_dir "$1")
+  write_issue "$d" "20260101-target" 'num: 42
+title: "Target"
+status: open
+priority: medium
+type: issue
+filed-by: "filer@example.test"
+claimed-by: ""
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  printf '%s' "$d"
+}
+
+# AC: a developer can claim, release, start, close and reopen an issue through
+# a single command each — a verb outside that set is a usage error.
+case_transition_refuses_an_unknown_verb() {
+  local dir
+  dir="$(transition_dir transition_bad_verb)"
+  run_transition frobnicate 42 --dir "$dir"
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "explains" "$ERR"
+}
+
+# AC: each verb acts on one named issue, so a verb with no issue named is a
+# usage error rather than a transition of something unspecified.
+case_transition_refuses_a_missing_id() {
+  local dir
+  dir="$(transition_dir transition_no_id)"
+  run_transition claim --dir "$dir"
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: ids resolve only against the collection, never composed into a path from
+# raw input.
+case_transition_refuses_an_invalid_id() {
+  local dir
+  dir="$(transition_dir transition_bad_id)"
+  run_transition claim '../escape' --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "explains" "$ERR"
+}
+
+# AC: an id naming no issue in the collection is refused rather than created.
+case_transition_refuses_an_unknown_issue() {
+  local dir
+  dir="$(transition_dir transition_absent)"
+  run_transition claim 20260101-nosuch --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: a developer names an issue the way the rest of the surface does — by its
+# display ordinal as well as its slug.
+case_transition_resolves_an_issue_by_ordinal() {
+  local dir
+  dir="$(transition_dir transition_by_num)"
+  run_transition claim 42 --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+}
+
+# AC: every transition updates the issue's last-modified stamp and refreshes
+# the collection index.
+case_transition_stamps_and_reindexes() {
+  local dir before after
+  dir="$(transition_dir transition_stamp)"
+  before="$(grep '^updated:' "$dir/20260101-target.md")"
+  run_transition claim 20260101-target --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  after="$(grep '^updated:' "$dir/20260101-target.md")"
+  assert_eq "the stamp moved" "no" "$([[ "$before" == "$after" ]] && echo yes || echo no)"
+  assert_eq "the index was regenerated" "yes" \
+    "$([[ -f "$dir/INDEX.md" ]] && echo yes || echo no)"
+}
+
+# AC: when the developer's identity cannot be determined from the environment,
+# a transition is refused — every transition records or acts under one.
+case_transition_refuses_without_an_identity() {
+  local repo
+  repo="$(identity_repo transition_no_identity)"
+  write_issue "$repo" "20260101-target" 'num: 42
+title: "Target"
+status: open
+priority: medium'
+  OUT="$(cd "$repo" && GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    bash "$SCRIPT_TRANSITION" claim 20260101-target --dir "$repo" 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "explains" "$ERR"
 }
 
 # ─── Section: migrate.sh schema — the collection conversion (preview) ───────

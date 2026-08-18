@@ -299,7 +299,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    behavior must not change, and its existing tests must pass unmodified.
    **Verify:** `bash tests/issues.sh`
 
-9. [ ] Create `skills/issue/scripts/transition.sh` with its dispatch and shared
+9. [x] Create `skills/issue/scripts/transition.sh` with its dispatch and shared
    path only — resolve identity, validate the id against the indexed set, open
    the placement door, refresh `updated` via the deterministic helper, regenerate
    the index, commit under the verb matching the subcommand. No verb behavior yet;
