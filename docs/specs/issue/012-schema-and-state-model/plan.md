@@ -266,7 +266,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    interpolated value through `row_safe`. Depends on task 4.
    **Verify:** `bash tests/issues.sh`
 
-6. [ ] Update `render.sh` to parse and display the new fields in `show`, and to
+6. [x] Update `render.sh` to parse and display the new fields in `show`, and to
    accept `active` wherever `status` is recognized.
    **Verify:** `bash tests/issues.sh`
 

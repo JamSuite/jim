@@ -25,7 +25,7 @@
 #     render.sh insights-graph [<dir>]   graph facts for the issue-analyst
 #     render.sh help                     subcommand listing
 #
-#   <filter> ∈ {open, closed, critical, high, medium, low} — validated
+#   <filter> ∈ {open, active, closed, critical, high, medium, low} — validated
 #   against this closed set (security 019 Finding 3); anything else errors.
 #   <id> is resolved ONLY against the indexed set of known issues
 #   (ordinal / exact slug / prefix / substring) — never composed into a
@@ -58,7 +58,12 @@ readonly BLOCKING_TOP_N=10
 # exit status without suppressing the view, so a caller is told what a reader
 # cannot see for itself.
 STALE_VIEW=0
-readonly STATUS_TOKENS=(open closed)
+# The three lifecycle states, in lifecycle order: not started, underway,
+# finished. This list is the single source for the `list` filter's accepted
+# status tokens, for the default view's hide rule, and for the order status
+# groups render in — so a state absent from it is one that passes the filter
+# and then vanishes at grouping time.
+readonly STATUS_TOKENS=(open active closed)
 readonly PRIORITY_TOKENS=(critical high medium low)
 readonly COL_TOKENS=(num date priority status slug labels title)
 
@@ -570,10 +575,13 @@ render_issue_file() {
   local f="$dir/$slug.md"
   [[ -f "$f" ]] || { printf 'no issue file for `%s`.\n' "$slug"; return 0; }
   local fm num title status prio labels origin created
+  local type filed_by claimed_by outcome
   fm="$(awk '/^---$/{c++; if(c==2) exit; if(c==1) next} c==1{print}' "$f")"
   field() { printf '%s\n' "$fm" | grep -E "^$1:" | head -n1 | sed -E "s/^$1:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"; }
   num="$(field num)"; title="$(field title)"; status="$(field status)"
   prio="$(field priority)"; labels="$(field labels)"; origin="$(field origin)"; created="$(field created)"
+  type="$(field type)"; filed_by="$(field filed-by)"
+  claimed_by="$(field claimed-by)"; outcome="$(field outcome)"
   # A provisional ordinal is never rendered as a settled #N (spec 010 AC 9).
   if [[ "$num" == P-* ]]; then
     printf '%s (provisional) · %s\n' "$num" "$slug"
@@ -582,6 +590,13 @@ render_issue_file() {
   fi
   printf '%s\n' "${title}"
   printf '  status: %s   priority: %s\n' "${status:-open}" "${prio:--}"
+  [[ -n "$type" ]] && printf '  type: %s\n' "$type"
+  # Shown only when set. An unheld issue and one with no outcome are the
+  # ordinary cases, and printing an empty field for each would push the states
+  # that do carry a value out of a reader's eye.
+  [[ -n "$filed_by" ]]   && printf '  filed-by: %s\n' "$filed_by"
+  [[ -n "$claimed_by" ]] && printf '  claimed-by: %s\n' "$claimed_by"
+  [[ -n "$outcome" ]]    && printf '  outcome: %s\n' "$outcome"
   [[ -n "$labels" ]] && printf '  labels: %s\n' "$labels"
   [[ -n "$origin" ]] && printf '  origin: %s\n' "$origin"
   [[ -n "$created" ]] && printf '  created: %s\n' "$created"
@@ -665,7 +680,9 @@ cmd_insights_graph() {
   local slug num status prio created labels title origin
   while IFS=$'\t' read -r slug num status prio created labels title origin; do
     [[ -z "$slug" ]] && continue
-    [[ "$status" == "open" ]] && is_open[$slug]=1
+    # Unfinished, not merely not-started: an underway issue is live work and
+    # belongs in the isolation report exactly as a not-started one does.
+    [[ "$status" != "closed" ]] && is_open[$slug]=1
   done < <(read_issue_rows "$index_file")
 
   # blocks / depends-on edges → endpoints (non-isolated) + blocking out-degree.

@@ -4073,6 +4073,80 @@ TEAMMATE
     "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
 }
 
+# ─── Section: render.sh — the new fields and the third lifecycle state ──────
+
+# AC: a developer can see who filed an issue, and an issue's holder is
+# distinct from its lifecycle state.
+case_render_show_displays_the_new_fields() {
+  local dir
+  dir=$(empty_dir render_show_fields)
+  write_issue "$dir" "20260101-shown" 'num: 7
+title: "Shown"
+status: active
+priority: high
+type: issue
+filed-by: "filer@example.test"
+claimed-by: "holder@example.test"
+outcome: ""'
+  run_render show 20260101-shown "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "kind"   'type: issue'                 "$OUT"
+  assert_match "filer"  'filed-by: filer@example.test' "$OUT"
+  assert_match "holder" 'claimed-by: holder@example.test' "$OUT"
+}
+
+# AC: an issue that has ever been finished carries an outcome — show surfaces
+# it, so a reopened issue reads as one rather than as untouched work.
+case_render_show_displays_the_outcome_of_a_reopened_issue() {
+  local dir
+  dir=$(empty_dir render_show_reopened)
+  write_issue "$dir" "20260101-again" 'num: 8
+title: "Again"
+status: open
+priority: low
+type: issue
+filed-by: "filer@example.test"
+claimed-by: ""
+outcome: wontfix'
+  run_render show 20260101-again "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "outcome shown" 'outcome: wontfix' "$OUT"
+}
+
+# AC: an issue can be in one of three states: not started, underway, or
+# finished. The underway state is selectable like the other two.
+case_render_list_accepts_active_as_a_filter() {
+  local dir
+  dir=$(empty_dir render_list_active)
+  write_issue "$dir" "20260101-underway" 'num: 1
+title: "Underway"
+status: active
+priority: high'
+  write_issue "$dir" "20260101-idle" 'num: 2
+title: "Idle"
+status: open
+priority: low'
+  run_render list active "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the underway issue is listed" 'Underway' "$OUT"
+  assert_eq "the not-started issue is not" "no" \
+    "$(printf '%s' "$OUT" | grep -q 'Idle' && echo yes || echo no)"
+}
+
+# AC: an underway issue is unfinished work, so the default view — which hides
+# only finished issues — shows it.
+case_render_default_list_shows_an_underway_issue() {
+  local dir
+  dir=$(empty_dir render_list_default_active)
+  write_issue "$dir" "20260101-underway2" 'num: 1
+title: "Underway"
+status: active
+priority: high'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "listed by default" 'Underway' "$OUT"
+}
+
 # ─── Section: index.sh — schema integrity warnings ──────────────────────────
 
 # AC: the collection index reports any finished issue carrying no outcome.
