@@ -352,12 +352,12 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
     conversion, and a validation checklist reflecting the three-state lifecycle.
     **Verify:** `bash tests/docsurfaces.sh`
 
-14. [ ] Preview the conversion against the real collection and confirm it reports
+14. [x] Preview the conversion against the real collection and confirm it reports
     zero underivable filers. Preview only — nothing is applied.
     Depends on task 12.
     **Verify:** `bash skills/issue/scripts/migrate.sh schema`
 
-15. [ ] Full suite green.
+15. [x] Full suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
 
 ## Requirements Coverage Summary
