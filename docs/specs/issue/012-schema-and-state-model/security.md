@@ -270,10 +270,11 @@ rather than defects in either alone.*
 **Checked and aligned.** Two spec-phase findings are resolved by the plan rather
 than misaligned with it: the integrity-warning sanitizer (Finding 4) is required
 explicitly by Task 5, and the conversion's recoverability (Finding 5) is
-satisfied by Design Decision 1's shared drift guard plus per-file atomic writes.
-The drift guard's refusal path is covered by the existing suite, so the plan's
-"existing tests are the contract" mitigation for that extraction is load-bearing
-rather than aspirational.
+satisfied by Design Decision 1 placing the conversion on the migration surface's
+existing drift guard, plus per-file atomic writes. The guard is reused where it
+already sits rather than moved, so the refusal path the existing suite covers is
+the same one the conversion runs through — the mitigation is load-bearing rather
+than aspirational, and no safety code is copied to a second place.
 
 ## Routing Recommendations
 

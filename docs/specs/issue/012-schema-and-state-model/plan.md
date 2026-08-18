@@ -11,33 +11,52 @@ status: approved
 
 Add five frontmatter fields and a third lifecycle state to the issue schema,
 introduce one script that performs every state transition through the existing
-placement door, and convert the existing collection behind a preview gate built
-on machinery shared with the current transform migration.
+placement door, and convert the existing collection through a new subcommand of
+the migration surface that already owns previewed, gated rewrites.
 
 ## Design Decisions
 
-### 1. Shared preview machinery rather than a second copy
+### 1. The conversion is a migration, not a backfill
 
-- **Chosen:** Extract the read-only preview, `--apply` gate, and plan-hash drift
-  guard out of `migrate.sh` into a sourced library, `previewlib.sh`, consumed by
-  both `migrate.sh prefix` and the new `backfill.sh schema` subcommand.
-- **Why:** The spec requires a preview; only `migrate.sh` has one. The developer
-  expects further schema changes and more backfill-shaped migrations, so a
-  preview on the fills-missing-data side is a recurring need, not a one-off.
-  Duplicating a drift guard puts *safety* logic in two places, which is the
-  worst category to fork — and this group already carries one such fork (the two
-  frontmatter parsers) as a tracked issue.
-- **Rejected:** *Host the conversion in `migrate.sh`* — solves today's spec but
-  leaves the next backfill facing the same question, and files a
-  mostly-missing-data job under the transform tool.
-- **Rejected:** *Build a second preview inside `backfill.sh`* — contradicts that
-  script's stated design and forks the drift guard.
-- **Rejected:** *A standalone script* — a third migration surface, and it would
-  copy from `migrate.sh` regardless.
-- **Risk and mitigation:** This touches a working, security-sensitive script.
-  `migrate.sh` is covered by `tests/issues.sh`; the extraction is complete only
-  when that suite passes unchanged, which task 8 verifies before the new
-  subcommand is built on top.
+- **Chosen:** Host the conversion as a new `schema` subcommand of `migrate.sh`,
+  beside `prefix`, reusing that script's plan hash, `--expect` drift guard and
+  recoverability note in place. No library is extracted and `backfill.sh` is not
+  touched.
+- **Why:** The line that predicts which conversions need a preview is not
+  missing-versus-existing data — that is a coincidence of `backfill.sh`'s first
+  two jobs. It is **derived versus constant values**. This conversion derives
+  `filed-by` from version-control history and `outcome` from existing status,
+  and derivation is exactly what an operator should see before it is written
+  350 times. Constant fills need no preview and stay where they are.
+  - The drift guard is not duplicated, because it is not moved: the new
+    subcommand calls the same `plan_hash` and the same `--expect` refusal, in
+    the same file, already covered by the existing suite.
+  - `migrate.sh` already routes a preview read-only under a branch placement
+    and an apply under the `migrate` verb. `backfill.sh` states the opposite of
+    itself — both its subcommands write, so it has no read-only route — and
+    giving it one means new code in the placement-routing layer, which is where
+    the gate-before-git invariant lives.
+  - Smallest touch to a security-sensitive script: a subcommand added beside an
+    existing one, rather than four functions lifted out of it and re-sourced.
+- **Rejected:** *Extract a `previewlib.sh` shared by both surfaces* — the
+  shareable surface is far smaller than it appears. The renderer is written
+  around the prefix migration's four action names and its row tuple is a
+  rename's `old → new`, neither of which a schema conversion has. What remains
+  generic is a hash, a comparison and a note; restructuring a working script to
+  deduplicate those, while still owing `backfill.sh` a new read-only placement
+  path, spends risk where the duplication was not.
+- **Rejected:** *A shared renderer taking a caller-supplied formatter* — the
+  same cost as above, plus function-name indirection for two callers that print
+  different things.
+- **Rejected:** *A second preview and drift guard inside `backfill.sh`* — forks
+  safety logic, the one category worth avoiding, and this group already carries
+  such a fork (the two frontmatter parsers) as a tracked issue.
+- **Rejected:** *A standalone script* — a third migration surface for one job.
+- **Consequence, accepted:** the collection's conversions are now split by risk
+  rather than by era — a future constant-only fill belongs in `backfill.sh`,
+  a future derivation-bearing one here. That is the distinction worth having,
+  but it does mean the two scripts are no longer separable by their names alone,
+  and each states its own criterion in its header.
 
 ### 2. Identity is validated and refused, not encoded
 
@@ -128,9 +147,9 @@ on machinery shared with the current transform migration.
 | :--- | :--- | :--- |
 | Bash + POSIX only; no third-party dependencies | Yes | `git`, `awk`, `sed`, `grep` only — all already used in this group |
 | `set -uo pipefail`, never `set -e` | Yes | New scripts follow the group preamble |
-| Inter-script composition via `BASH_SOURCE`-relative paths | Yes | `previewlib.sh` and `identity.sh` are sourced that way |
+| Inter-script composition via `BASH_SOURCE`-relative paths | Yes | `identity.sh` is resolved that way from `new.sh` and `transition.sh` |
 | No spec IDs or artifact citations in script comments | Yes | Comments state behavior only |
-| Never `source`/`eval` user-supplied data | Yes | Issue files parsed line-orientedly; `previewlib.sh` is jim's own code, not data |
+| Never `source`/`eval` user-supplied data | Yes | Issue files parsed line-orientedly throughout |
 | `single-emitter` — only `new.sh` creates issue files | Yes | `transition.sh` mutates existing files; it creates none |
 | `untrusted-body-never-shell` | Yes | No body content reaches a shell argument |
 | `id-gate-before-path` | Yes | `transition.sh` validates the id before composing any path |
@@ -148,13 +167,11 @@ unchanged and no new edge enters the contract graph.
 | :--- | :--- | :--- | :--- |
 | Schema template | `skills/issue/assets/issue-template.md` | Update | Five new fields; `active` in the status comment |
 | Identity helper | `skills/issue/scripts/identity.sh` | Create | Resolve + validate ambient identity; one refusal path |
-| Preview library | `skills/issue/scripts/previewlib.sh` | Create | Preview render, plan hash, `--apply` gate — extracted from `migrate.sh` |
 | Transition verbs | `skills/issue/scripts/transition.sh` | Create | claim / release / start / close / reopen |
 | Emitter | `skills/issue/scripts/new.sh` | Update | Populate `filed-by`; default `type`; refuse on absent/invalid identity |
 | Index | `skills/issue/scripts/index.sh` | Update | Keyed field extraction; three new integrity warnings |
 | Read views | `skills/issue/scripts/render.sh` | Update | Parse and display the new fields |
-| Conversion | `skills/issue/scripts/backfill.sh` | Update | New `schema` subcommand on `previewlib.sh` |
-| Transform migration | `skills/issue/scripts/migrate.sh` | Update | Consume `previewlib.sh` instead of its inline copy |
+| Conversion | `skills/issue/scripts/migrate.sh` | Update | New `schema` subcommand beside `prefix`, reusing its plan hash and drift guard |
 | Placement door | `skills/issue/scripts/place.sh` | Update | Four new entries in `PLACE_VERBS` |
 | Skill surface | `skills/issue/SKILL.md` | Update | Document the five verbs and the schema |
 | Group tests | `tests/issues.sh` | Update | Schema, identity, transitions, conversion, integrity |
@@ -201,10 +218,10 @@ identity.sh resolve              # -> <identity> on stdout; rc 1 unresolvable, r
 transition.sh <verb> <id> [--as <outcome>] [--force]
     verb ∈ claim | release | start | close | reopen
     rc 0 ok · 1 io · 2 usage · 3 placement conflict · 5 already held (claim)
-backfill.sh schema [<dir>]               # preview, mutates nothing
-backfill.sh schema [<dir>] --apply [--expect <hash>]
-previewlib.sh                             # sourced only; never executed directly
-    pv_render_plan <rows> · pv_plan_hash <rows> · pv_gate_apply <expect> <hash>
+migrate.sh schema [<dir>]                # preview, mutates nothing
+migrate.sh schema [<dir>] --apply [--expect <hash>]
+    rc 0 ok · 1 io · 2 usage · 3 drift — the same codes `prefix` returns,
+    from the same guard
 ```
 
 ## Data Flow
@@ -222,12 +239,12 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    P[backfill.sh schema] --> Q[scan collection]
+    P[migrate.sh schema] --> Q[scan collection]
     Q --> S[derive filer from creating commit, mapping-aware]
     S -->|any underivable| T[report every one, refuse]
-    S --> U[previewlib: render plan + hash]
+    S --> U[render plan + plan_hash]
     U -->|no --apply| V[stop, nothing written]
-    U -->|--apply| W[pv_gate_apply on drift]
+    U -->|--apply| W[existing --expect drift guard]
     W --> X[per-file tmp+mv]
     X --> Y[index.sh regenerate]
 ```
@@ -274,11 +291,13 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
    and to its usage text.
    **Verify:** `bash tests/place.sh`
 
-8. [ ] Create `skills/issue/scripts/previewlib.sh` by extracting the preview
-   render, plan hash, and `--apply` / `--expect` gate out of `migrate.sh`, and
-   change `migrate.sh prefix` to source it. Behavior must not change — the
-   existing migrate tests are the contract and must pass unmodified.
-   **Verify:** `bash skills/meta-test/scripts/run.sh`
+8. [ ] Add the `schema` subcommand's read-only half to `migrate.sh`: build the
+   conversion plan — derive each issue's filer from its creating commit using
+   the mapping-aware author field, set `type: issue`, set `outcome: done` on
+   already-closed issues, leave `claimed-by` and `part-of` empty — and render it
+   with the plan hash and recoverability note. Mutates nothing; `prefix`'s
+   behavior must not change, and its existing tests must pass unmodified.
+   **Verify:** `bash tests/issues.sh`
 
 9. [ ] Create `skills/issue/scripts/transition.sh` with its dispatch and shared
    path only — resolve identity, validate the id against the indexed set, open
@@ -317,14 +336,13 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
     construction rather than by evidence. Depends on tasks 7, 10.
     **Verify:** `bash tests/issues.sh`
 
-11. [ ] Add the `schema` subcommand to `backfill.sh` on `previewlib.sh` — derive
-    each issue's filer from its creating commit using the mapping-aware author
-    field, set `type: issue`, set `outcome: done` on already-closed issues, leave
-    `claimed-by` and `part-of` empty. Preview by default; mutate only under
-    `--apply`. Depends on task 8.
+11. [ ] Add the `schema` subcommand's write half: under `--apply`, pass the
+    freshly-recomputed plan through the same `--expect` drift guard `prefix`
+    uses, write each file with a per-file atomic tmp+mv, and regenerate the
+    index. Without `--apply` nothing is written. Depends on task 8.
     **Verify:** `bash tests/issues.sh`
 
-12. [ ] Make `backfill.sh schema` collect every issue whose filer cannot be
+12. [ ] Make `migrate.sh schema` collect every issue whose filer cannot be
     derived, report all of them, and refuse the whole run rather than writing a
     placeholder for any. Depends on task 11.
     **Verify:** `bash tests/issues.sh`
@@ -337,7 +355,7 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
 14. [ ] Preview the conversion against the real collection and confirm it reports
     zero underivable filers. Preview only — nothing is applied.
     Depends on task 12.
-    **Verify:** `bash skills/issue/scripts/backfill.sh schema`
+    **Verify:** `bash skills/issue/scripts/migrate.sh schema`
 
 15. [ ] Full suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh`
@@ -369,11 +387,11 @@ the verify throughout. Tests live in `tests/issues.sh` unless named otherwise.
 | Refusal is a fixed reason carrying no issue content | 2, 3 |
 | Identity can never introduce additional fields | 2 |
 | Identity form is one documented choice | 2, 13 |
-| Existing collection carries the new fields | 11 |
-| Filer recovered from history, not assigned | 11 |
+| Existing collection carries the new fields | 8, 11 |
+| Filer recovered from history, not assigned | 8 |
 | Conversion previews before changing anything | 8, 11, 14 |
 | Underivable filer reports all and refuses | 12 |
-| Existing finished issues recorded as completed | 11 |
+| Existing finished issues recorded as completed | 8, 11 |
 | Index reports finished-with-no-outcome | 5 |
 | Index reports unrecognized outcome | 5 |
 | Index reports unrecognized kind or umbrella reference | 5 |
@@ -400,8 +418,8 @@ markers.
 
 ## Open Questions
 
-- [x] ~Where does the previewed conversion live?~ → A shared library consumed by
-      both migration surfaces; see Design Decision 1.
+- [x] ~Where does the previewed conversion live?~ → Beside `prefix`, as a second
+      subcommand of the migration surface; see Design Decision 1.
 - [x] ~Encode or validate the ambient identity?~ → Validate and refuse; see
       Design Decision 2.
 - [x] ~Positional or keyed field extraction?~ → Keyed; see Design Decision 4.
