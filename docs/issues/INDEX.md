@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 118
-- Closed: 232
+- Open: 119
+- Closed: 233
 
 ## Issues
 
@@ -357,6 +357,8 @@
 - `20260813-provisional-slug-charset-is-wider-than-the-move-verb-accepts` — Provisional slug charset is wider than the move verb accepts · status: open · num: 348 · priority: medium · created: 2026-08-13T10:59:41Z · labels: [platform, allocator, grammar] · origin: 20260804-b-prime-completion-handoff.md (retired; see 5e712bf)
 - `20260813-six-deliberately-unfiled-items-from-the-c-prime-fix-round` — Six deliberately-unfiled items from the C-prime fix round · status: open · num: 349 · priority: low · created: 2026-08-13T11:00:24Z · labels: [docs, correctness, cleanup] · origin: 20260801-c-prime-fix-handoff.md (retired; see 5e712bf)
 - `20260813-verify-grades-a-violation-by-its-rule-not-by-its-breach` — verify grades a violation by its rule not by its breach · status: open · num: 350 · priority: high · created: 2026-08-13T11:36:55Z · labels: [verify, triage, noise] · origin: docs/specs/jim/000-blueprint/spec.md
+- `20260817-add-a-redaction-or-aliasing-path-for-contributor-identity` — Add a redaction or aliasing path for contributor identity · status: closed · num: 352 · priority: medium · created: 2026-08-17T23:49:43Z · labels: [linddun-linking, privacy, issue] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
+- `20260817-unify-the-two-issue-frontmatter-parsers` — Unify the two issue frontmatter parsers · status: open · num: 351 · priority: medium · created: 2026-08-17T23:16:40Z · labels: [issue, refactor, parser] · origin: docs/specs/issue/012-schema-and-state-model/research.md
 
 ## Graph
 
@@ -486,6 +488,7 @@
 - `20260808-render-sh-swallows-a-regeneration-failure-and-serves-a-stale-ind` --related-to--> `20260808-placed-reads-hard-fail-where-the-group-read-path-is-tolerant`
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` --related-to--> `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn`
 - `20260812-jimconf-value-form-refusal-covers-one-of-three-read-doors` --related-to--> `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg`
+- `20260817-unify-the-two-issue-frontmatter-parsers` --related-to--> `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and`
 
 ## Integrity Warnings
 
