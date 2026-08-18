@@ -350,3 +350,5 @@ issue allocate 349 20260813-six-deliberately-unfiled-items-from-the-c-prime-fix-
 issue allocate 350 20260813-verify-grades-a-violation-by-its-rule-not-by-its-breach 20260813 jrko
 issue allocate 351 20260817-unify-the-two-issue-frontmatter-parsers 20260817 jrko
 issue allocate 352 20260817-add-a-redaction-or-aliasing-path-for-contributor-identity 20260817 jrko
+issue allocate 353 20260818-filer-derivation-cannot-reach-a-centralized-collection-s-history 20260818 jrko
+issue allocate 354 20260818-transition-verbs-silently-ignore-as-when-it-does-not-apply 20260818 jrko
