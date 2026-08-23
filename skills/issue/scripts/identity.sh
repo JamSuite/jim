@@ -63,6 +63,11 @@ IDENTITY_MAX=254
 # everything the one before it records, plus one further extraction.
 IDENTITY_SCHEMES=(email github local)
 
+# The accepted set for the organization domain, stated positively for the same
+# reason the identity set is: the value reaches a shell pattern match, so a
+# character nobody anticipated must fail closed rather than widen the match.
+DOMAIN_CHARS='A-Za-z0-9.-'
+
 # The one forge relay service recognized. Matched as an exact tail, so an
 # address that merely contains it — as a subdomain, or with a real domain
 # appended after it — is not a relay address.
@@ -176,13 +181,46 @@ extract_relay() {
 
 # domain — print the project's configured organization domain, folded to lower
 #   case so every comparison against it ignores case by construction.
+#
+#   Reached only by the form that uses it. The gates below are what stop a
+#   setting from widening the extraction it drives:
+#
+#   - Absent. The form cannot be applied at all, so every operation that would
+#     record an identity is refused rather than warned about. A project told
+#     only in a message goes on recording under a form it cannot apply.
+#   - Several domains. Extraction across a union nobody has checked for
+#     uniqueness is exactly where one person's account becomes another's, so a
+#     value naming more than one is refused rather than partially honored.
+#   - Outside the enumerated set. The value reaches a shell pattern match, and
+#     stating the accepted set positively is what makes an unanticipated
+#     character fail closed rather than survive a list someone thought to name.
+#
+#   Every refusal names the setting and none carries its value.
 domain() {
   local value
   value="$(jc get identity_domain 2>/dev/null)" || {
     echo "error: identity_domain could not be resolved from the project config" >&2
     return 2
   }
-  printf '%s' "${value,,}"
+  value="${value,,}"
+
+  if [[ -z "$value" ]]; then
+    echo "error: identity_scheme is 'local' but identity_domain is not set;" \
+         "set identity_domain to the organization's domain" >&2
+    return 2
+  fi
+
+  if [[ "$value" == *[[:space:],\;]* ]]; then
+    echo "error: identity_domain names exactly one domain" >&2
+    return 2
+  fi
+
+  if [[ "$value" == *[!$DOMAIN_CHARS]* ]]; then
+    echo "error: identity_domain is not a domain" >&2
+    return 2
+  fi
+
+  printf '%s' "$value"
 }
 
 # extract_local <value> <domain> — the account part of an address inside

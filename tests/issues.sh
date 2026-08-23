@@ -5462,6 +5462,85 @@ case_identity_normalize_local_extraction_is_absent_from_lower_forms() {
   assert_eq "kept whole" "alice@company.example" "$OUT"
 }
 
+# ─── Section: identity.sh — the domain setting ──────────────────────────────
+
+# AC: selecting the organization-local form without configuring a domain
+# refuses every operation that would record an identity, and the refusal names
+# the setting to supply. A warning would be the weaker choice — a project would
+# go on recording under a form it cannot apply.
+case_identity_domain_absent_under_local_refuses() {
+  local repo
+  repo="$(identity_repo identity_domain_absent 'dev@example.com')"
+  printf 'identity_scheme = "local"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_match "names the setting to supply" 'identity_domain' "$ERR"
+}
+
+# AC: the domain setting names exactly one domain. A value naming several is
+# refused rather than partially honored — extracting across a union nobody has
+# checked for uniqueness is where one person's account silently becomes
+# another's.
+case_identity_domain_naming_several_refuses() {
+  local repo
+  repo="$(identity_repo identity_domain_several 'dev@example.com')"
+  printf 'identity_scheme = "local"\nidentity_domain = "a.example,b.example"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@a.example'
+  assert_exit "comma-separated rc" 2 "$RC"
+  assert_match "names the setting" 'identity_domain' "$ERR"
+  printf 'identity_scheme = "local"\nidentity_domain = "a.example b.example"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@a.example'
+  assert_exit "space-separated rc" 2 "$RC"
+}
+
+# AC: the configured domain clears a positively enumerated character set before
+# it is used for anything. A setting carrying pattern characters must never
+# widen what the form extracts — the domain reaches a shell match, so a glob
+# would otherwise make every address inside it.
+case_identity_domain_outside_the_charset_refuses() {
+  local repo
+  repo="$(identity_repo identity_domain_charset 'dev@example.com')"
+  printf 'identity_scheme = "local"\nidentity_domain = "*.example"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@anything.example'
+  assert_exit "glob rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example/../x"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "slash rc" 2 "$RC"
+}
+
+# AC: a refusal caused by a setting names the setting, never the value it
+# carried.
+case_identity_domain_refusal_withholds_the_value() {
+  local repo
+  repo="$(identity_repo identity_domain_quiet 'dev@example.com')"
+  printf 'identity_scheme = "local"\nidentity_domain = "secret-corp.example*"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "a reason was given" "$ERR"
+  assert_eq "the rejected value is not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
+}
+
+# AC: the domain clears its gate before it is used for anything — and the forms
+# below organization-local never use it, so a project that has not selected
+# that form is not refused over a setting that has no effect on it.
+case_identity_domain_is_unused_by_the_lower_forms() {
+  local repo
+  repo="$(identity_repo identity_domain_unused 'dev@example.com')"
+  printf 'identity_scheme = "github"\nidentity_domain = "*.example"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize '1234+dev@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account name" "dev" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
