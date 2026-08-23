@@ -281,7 +281,7 @@ flowchart LR
 
 ## Task Breakdown
 
-1. [ ] Register `identity_scheme` and `identity_domain` in `jimconf.sh` — add both
+1. [x] Register `identity_scheme` and `identity_domain` in `jimconf.sh` — add both
    to `KEYS`, add defaults (`github`, empty) to `default_for`, and add an
    `identity_*` arm to the bare-name branch. Document both in
    `jimconf.toml.example`, which is the reference a user reads to discover a key
@@ -290,96 +290,96 @@ flowchart LR
    assertion in the config tests, which breaks whenever `KEYS` grows.
    **Verify:** `bash tests/jimconf.sh identity`
 
-2. [ ] Add `-c <config>` parsing and a `jc` helper to `identity.sh`; read
+2. [x] Add `-c <config>` parsing and a `jc` helper to `identity.sh`; read
    `identity_scheme`, validating it against the closed set and **refusing**
    anything outside it, naming the setting. An absent key takes the default; an
    unrecognized value is a refusal, not a fallback — the same call the spec made
    for a form that cannot be applied.
    **Verify:** `bash tests/issues.sh identity_scheme`
 
-3. [ ] Add the `normalize` verb performing lower-casing only, under every form.
+3. [x] Add the `normalize` verb performing lower-casing only, under every form.
    Depends on task 2.
    **Verify:** `bash tests/issues.sh identity_normalize_case`
 
-4. [ ] Extend `normalize` with relay extraction: strip the exact service suffix,
+4. [x] Extend `normalize` with relay extraction: strip the exact service suffix,
    then an optional leading `<digits>+`. Both forge forms yield the same account
    name; an address merely carrying a tag is untouched; an empty result yields
    the original. Depends on task 3.
    **Verify:** `bash tests/issues.sh identity_normalize_relay`
 
-5. [ ] Extend `normalize` with the organization-local form: inside
+5. [x] Extend `normalize` with the organization-local form: inside
    `identity_domain`, take the part before the domain and drop any `+tag`;
    outside it, fall through to the relay rule. Domain comparison is
    case-insensitive. Depends on task 4.
    **Verify:** `bash tests/issues.sh identity_normalize_local`
 
-6. [ ] Gate `identity_domain`: refuse a value outside the accepted charset,
+6. [x] Gate `identity_domain`: refuse a value outside the accepted charset,
    refuse a value naming several domains, and refuse every identity-recording
    operation when the form is `local` and no domain is set — each naming the
    setting, never a value. Depends on task 5.
    **Verify:** `bash tests/issues.sh identity_domain`
 
-7. [ ] Insert alias resolution ahead of extraction in `normalize`, after the
+7. [x] Insert alias resolution ahead of extraction in `normalize`, after the
    length bound and before the charset gate, per the Data Flow order. The value
    is passed after an end-of-options separator (`git check-mailmap -- "<value>"`)
    so an option-shaped identity is read as data — see Decision 2.
    Depends on task 6.
    **Verify:** `bash tests/issues.sh identity_mailmap`
 
-7a. [ ] Add regression cases for option-shaped identities — at minimum `--help`,
+7a. [x] Add regression cases for option-shaped identities — at minimum `--help`,
     `-x` and `--stdin` — asserting each is treated as a value and none reaches
     git as an option. The charset admits leading hyphens by design, so this is a
     permanent property to pin rather than a one-off fix. Depends on task 7.
     **Verify:** `bash tests/issues.sh identity_option_shaped`
 
-8. [ ] Route `resolve` through the full pipeline so the environment path and the
+8. [x] Route `resolve` through the full pipeline so the environment path and the
    already-have-a-value path share one definition. Depends on task 7.
    **Verify:** `bash tests/issues.sh identity_resolve`
 
-9. [ ] Correct the two existing identity case comments that assert the reversed
+9. [x] Correct the two existing identity case comments that assert the reversed
    stance ("the form … is the contributor's own configuration decision, not
    jim's"), and add a case using a real `users.noreply.github.com` address —
    every current fixture uses `example.com`/`example.test`, so the new default is
    inert against them and the real suffix is untested.
    **Verify:** `bash tests/issues.sh identity_`
 
-10. [ ] Forward `-c` from `migrate.sh` to `identity.sh`, and change the schema
+10. [x] Forward `-c` from `migrate.sh` to `identity.sh`, and change the schema
     conversion to record the normalized form rather than the validated raw value.
     Depends on task 8.
     **Verify:** `bash tests/issues.sh migrate_schema`
 
-11. [ ] Add the `identity` subcommand skeleton to `migrate.sh` — argument
+11. [x] Add the `identity` subcommand skeleton to `migrate.sh` — argument
     parsing, mode exclusivity (neither or both exits 2), `usage()` entry, and the
     `route_placement` token.
     **Verify:** `bash tests/issues.sh migrate_identity_usage`
 
-12. [ ] Implement the re-normalization plan builder and preview, including the
+12. [x] Implement the re-normalization plan builder and preview, including the
     disclosure of whether an alias mapping was found and how many records it
     altered. Depends on tasks 10, 11.
     **Verify:** `bash tests/issues.sh migrate_identity_renormalize`
 
-13. [ ] Implement the remap mode (`--from`/`--to`), covering both `filed-by` and
+13. [x] Implement the remap mode (`--from`/`--to`), covering both `filed-by` and
     `claimed-by`. Depends on task 12.
     **Verify:** `bash tests/issues.sh migrate_identity_remap`
 
-14. [ ] Add the ambiguity check over the built plan: two distinct source values
+14. [x] Add the ambiguity check over the built plan: two distinct source values
     normalizing to one identity refuse the whole run, naming the colliding
     records and the single produced value — never the two source addresses.
     Depends on task 13.
     **Verify:** `bash tests/issues.sh migrate_identity_ambiguous`
 
-15. [ ] Implement the apply path: `gate_apply` drift refusal, per-file atomic
+15. [x] Implement the apply path: `gate_apply` drift refusal, per-file atomic
     tmp+mv, then index regeneration whose failure is surfaced and carried rather
     than discarded. Depends on task 14.
     **Verify:** `bash tests/issues.sh migrate_identity_apply`
 
-16. [ ] Fix the two pre-existing twins that discard `index.sh`'s exit status and
+16. [x] Fix the two pre-existing twins that discard `index.sh`'s exit status and
     then report success — `apply_plan` (`:331`) and `apply_schema_plan` (`:519`) —
     following `transition.sh:280`. See Decision 9: authorized previously, not
     from this spec's ACs.
     **Verify:** `bash tests/issues.sh migrate_index_failure`
 
-17. [ ] Add the configured-form mismatch warning to `index.sh`, normalizing
+17. [x] Add the configured-form mismatch warning to `index.sh`, normalizing
     distinct recorded values only, naming affected records and their count with a
     bounded list and a counted tail, and never naming an identity value. Slugs
     compose through `index.sh`'s existing row sanitizer, like every other value
@@ -388,16 +388,16 @@ flowchart LR
     configuration silences it — see Decision 6. Depends on task 8.
     **Verify:** `bash tests/issues.sh index_identity_mismatch`
 
-18. [ ] Add a case proving a colliding pair present in the collection blocks
+18. [x] Add a case proving a colliding pair present in the collection blocks
     neither a filing nor a transition — the single-record write paths are judged
     only against the identity being written. Depends on task 17.
     **Verify:** `bash tests/issues.sh identity_collision_does_not_block`
 
-19. [ ] Add a case proving a read shows the stored value verbatim and triggers no
+19. [x] Add a case proving a read shows the stored value verbatim and triggers no
     normalization, mapping or re-derivation at display time.
     **Verify:** `bash tests/issues.sh render_identity_verbatim`
 
-20. [ ] Full suite green.
+20. [x] Full suite green.
     **Verify:** `bash tests/issues.sh && bash tests/jimconf.sh && bash tests/scripthygiene.sh`
 
 ## Requirements Coverage Summary
