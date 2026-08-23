@@ -3,9 +3,14 @@
 # skills/issue/scripts/migrate.sh — one-shot, opt-in migrations that TRANSFORM
 # existing issue data (vs backfill.sh, which fills in MISSING data). Subcommand:
 #
-#   prefix — re-derive every issue id to the active issue_id_prefix scheme
-#            (spec 023), renaming files and rewriting inbound references behind
-#            a read-only preview + explicit --apply gate.
+#   prefix   — re-derive every issue id to the active issue_id_prefix scheme,
+#              renaming files and rewriting inbound references behind a
+#              read-only preview + explicit --apply gate.
+#   schema   — give every issue the identity, kind and outcome fields,
+#              recovering each filer from the commit that created its file.
+#   identity — rewrite recorded identities: re-apply the project's current form
+#              to a collection recorded under a previous one, or replace one
+#              identity with another explicitly.
 #
 # CLI SUMMARY
 #   bash migrate.sh
@@ -560,6 +565,120 @@ cmd_schema() {
   fi
 }
 
+# ─── Section: identity rewrites ──────────────────────────────────────────────
+
+# build_identity_plan <dir> <mode> <from> <to> — emit one TAB row per issue
+# field that records an identity:
+#   <action>\t<slug>\t<field>\t<old>\t<new>
+#     action ∈ rewrite | unchanged | ambiguous
+# Pure read: derives and classifies, mutates nothing.
+build_identity_plan() {
+  :
+}
+
+# Set together by split_identity_row; the five fields of the identity row last
+# read. A rewrite names one field of one issue, because an issue can record two
+# identities and they move independently.
+ID_ACTION="" ID_SLUG="" ID_FIELD="" ID_OLD="" ID_NEW=""
+
+split_identity_row() {
+  local row="$1"
+  ID_ACTION="${row%%$'\t'*}"; row="${row#*$'\t'}"
+  ID_SLUG="${row%%$'\t'*}";   row="${row#*$'\t'}"
+  ID_FIELD="${row%%$'\t'*}";  row="${row#*$'\t'}"
+  ID_OLD="${row%%$'\t'*}";    ID_NEW="${row#*$'\t'}"
+}
+
+# render_identity_plan <plan-rows> — human preview + summary counts.
+render_identity_plan() {
+  local plan="$1" rewrites=0 unchanged=0 ambiguous=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    case "$ID_ACTION" in
+      rewrite)
+        printf '  rewrite    %s\n               %-11s %s -> %s\n' \
+          "$ID_SLUG" "$ID_FIELD" "$ID_OLD" "$ID_NEW"
+        rewrites=$((rewrites+1)) ;;
+      unchanged)
+        printf '  unchanged  %s\n' "$ID_SLUG"
+        unchanged=$((unchanged+1)) ;;
+      ambiguous)
+        ambiguous=$((ambiguous+1)) ;;
+    esac
+  done <<<"$plan"
+  printf '\n  %d to rewrite · %d unchanged · %d ambiguous\n' \
+    "$rewrites" "$unchanged" "$ambiguous"
+}
+
+# apply_identity_plan <dir> <plan> [<expect>] — write every rewrite the plan
+# names. Per-file atomic tmp+mv, behind the same drift refusal every migration
+# here shares.
+apply_identity_plan() {
+  local dir="$1" plan="$2" expect="${3:-}"
+  gate_apply "$expect" "$plan" || return 3
+  printf 'Nothing to rewrite.\n'
+}
+
+# cmd_identity — rewrite recorded identities across the collection, in one of
+# two modes. They differ only in where the new value comes from: supplied for a
+# remap, computed for a re-normalization. Everything else — the row shape, the
+# plan hash, the drift refusal, the atomic write, the index regeneration — is
+# the same, which is why this is one verb with two argument shapes rather than
+# two verbs each growing its own copy of that machinery.
+cmd_identity() {
+  local dir="" apply=0 expect="" renormalize=0 from="" to=""
+  while (( $# )); do
+    case "$1" in
+      --apply)       apply=1; shift ;;
+      --expect)      expect="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      --renormalize) renormalize=1; shift ;;
+      --from)        from="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      --to)          to="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      *)             dir="$1"; shift ;;
+    esac
+  done
+
+  # The mode is settled before anything is read, so a run that cannot say which
+  # rewrite it means stops without having looked at the collection. Guessing is
+  # the one thing a destructive whole-collection operation must not do.
+  local remap=0
+  [[ -n "$from" || -n "$to" ]] && remap=1
+  if (( renormalize && remap )); then
+    echo "error: choose one of --renormalize or --from/--to, not both" >&2
+    return 2
+  fi
+  if (( ! renormalize && ! remap )); then
+    echo "error: identity requires --renormalize, or --from <old> --to <new>" >&2
+    return 2
+  fi
+  if (( remap )); then
+    [[ -n "$from" ]] || { echo "error: --to given without --from" >&2; return 2; }
+    [[ -n "$to" ]]   || { echo "error: --from given without --to" >&2; return 2; }
+  fi
+
+  local mode="remap"
+  (( renormalize )) && mode="renormalize"
+
+  dir="$(resolve_dir "$dir")" || return $?
+  [[ -d "$dir" ]] || { echo "error: not a directory: $dir" >&2; return 1; }
+
+  local plan; plan="$(build_identity_plan "$dir" "$mode" "$from" "$to")"
+  if (( apply )); then
+    apply_identity_plan "$dir" "$plan" "$expect"
+  else
+    if [[ "$mode" == "renormalize" ]]; then
+      printf 'Identity re-normalization plan — %s\n\n' "$dir"
+    else
+      printf 'Identity remap plan — %s\n\n' "$dir"
+      printf '  from  %s\n  to    %s\n\n' "$from" "$to"
+    fi
+    render_identity_plan "$plan"
+    printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
+    git_note "$dir"
+  fi
+}
+
 cmd_prefix() {
   local dir="" apply=0 expect=""
   while (( $# )); do
@@ -686,6 +805,17 @@ usage() {
     '  bash migrate.sh schema [<issues_dir>] --apply [--expect <hash>]' \
     '      Apply the conversion: write the fields + regenerate INDEX.' \
     '' \
+    '  bash migrate.sh identity [<issues_dir>] --renormalize' \
+    '      Preview (read-only): re-apply the project'"'"'s current identity form to' \
+    '      every recorded identity, supplying no mapping.' \
+    '' \
+    '  bash migrate.sh identity [<issues_dir>] --from <old> --to <new>' \
+    '      Preview (read-only): replace one recorded identity with another,' \
+    '      covering every field that records one.' \
+    '' \
+    '  bash migrate.sh identity [<issues_dir>] <mode> --apply [--expect <hash>]' \
+    '      Apply the rewrite: write the fields + regenerate INDEX.' \
+    '' \
     '  issues_dir default: jimconf.sh get issues'
 }
 
@@ -702,8 +832,8 @@ route_placement() {
     if (( skip_next )); then skip_next=0; continue; fi
     case "$arg" in
       --apply)          apply=1 ;;
-      --expect|-c)      skip_next=1 ;;
-      prefix|schema|rewrite|-*) ;;
+      --expect|-c|--from|--to) skip_next=1 ;;
+      prefix|schema|identity|rewrite|-*) ;;
       *)                dir="$arg" ;;
     esac
   done
@@ -733,10 +863,11 @@ main() {
   case "${1:-}" in
     prefix)            shift; cmd_prefix "$@" ;;
     schema)            shift; cmd_schema "$@" ;;
+    identity)          shift; cmd_identity "$@" ;;
     rewrite)           shift; cmd_rewrite "$@" ;;
     ""|-h|--help|help) usage ;;
     *)
-      echo "error: unknown subcommand '$1' (expected: prefix, schema)" >&2
+      echo "error: unknown subcommand '$1' (expected: prefix, schema, identity)" >&2
       usage >&2
       return 2
       ;;

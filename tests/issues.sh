@@ -5084,6 +5084,68 @@ case_new_identity_refusal_carries_no_issue_content() {
     "$(printf '%s' "$ERR" | grep -q 'Confidential' && echo yes || echo no)"
 }
 
+# ─── Section: migrate.sh identity — argument surface ────────────────────────
+
+# AC: the two rewrite operations differ only in where the new value comes from,
+# so one verb carries both. Neither mode named is a usage error, not a default:
+# guessing which rewrite an operator meant is the one thing a destructive
+# whole-collection operation must never do.
+case_migrate_identity_usage_requires_a_mode() {
+  local repo
+  repo="$(schema_repo migrate_identity_nomode)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the modes it accepts" 'renormalize' "$ERR"
+}
+
+# AC: both modes named is a usage error too — a remap and a re-normalization
+# compute the new value differently, so a run asking for both has no answer.
+case_migrate_identity_usage_refuses_both_modes() {
+  local repo
+  repo="$(schema_repo migrate_identity_bothmodes)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the conflict" 'renormalize' "$ERR"
+}
+
+# AC: an explicit replacement supplies the old and new values together. Half a
+# mapping cannot be applied, and applying it as though the missing half were
+# empty would rewrite every identity in the collection.
+case_migrate_identity_usage_requires_both_halves_of_a_remap() {
+  local repo
+  repo="$(schema_repo migrate_identity_halfremap)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from 'old@example.test'
+  assert_exit "from-only rc" 2 "$RC"
+  assert_match "names the missing half" '\-\-to' "$ERR"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --to 'new@example.test'
+  assert_exit "to-only rc" 2 "$RC"
+  assert_match "names the missing half" '\-\-from' "$ERR"
+}
+
+# AC: a usage error writes nothing.
+case_migrate_identity_usage_error_writes_nothing() {
+  local repo before after
+  repo="$(schema_repo migrate_identity_nowrite)"
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 2 "$RC"
+  assert_eq "collection untouched" "$before" "$after"
+}
+
+# AC: the verb is discoverable from the script's own help.
+case_migrate_identity_usage_is_documented_in_help() {
+  run_migrate help
+  assert_exit "rc" 0 "$RC"
+  assert_match "identity verb documented" 'migrate\.sh identity' "$OUT"
+  assert_match "renormalize mode documented" 'renormalize' "$OUT"
+  assert_match "remap mode documented" 'from' "$OUT"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one
