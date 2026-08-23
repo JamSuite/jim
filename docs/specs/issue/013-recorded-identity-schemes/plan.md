@@ -191,6 +191,7 @@ apply gate and drift guard the existing migrations already share.
 | :--- | :--- | :--- | :--- |
 | Recordable identity | `skills/issue/scripts/identity.sh` | Update | `normalize` verb, config read, mailmap resolution, `-c` forwarding |
 | Config resolver | `skills/conf/scripts/jimconf.sh` | Update | `identity_scheme` / `identity_domain` in `KEYS`, `default_for`, new `identity_*` bare-name arm |
+| Config reference | `jimconf.toml.example` | Update | Commented block documenting both new keys |
 | Migrations | `skills/issue/scripts/migrate.sh` | Update | `identity` subcommand, `-c` forwarding to `identity.sh`, conversion records the normalized form, two index-status fixes |
 | Index generation | `skills/issue/scripts/index.sh` | Update | Configured-form mismatch warning |
 | Issue tests | `tests/issues.sh` | Update | New identity-form, mailmap, rewrite and mismatch cases; two existing comments corrected |
@@ -282,7 +283,11 @@ flowchart LR
 
 1. [ ] Register `identity_scheme` and `identity_domain` in `jimconf.sh` — add both
    to `KEYS`, add defaults (`github`, empty) to `default_for`, and add an
-   `identity_*` arm to the bare-name branch.
+   `identity_*` arm to the bare-name branch. Document both in
+   `jimconf.toml.example`, which is the reference a user reads to discover a key
+   exists; a key that resolves and changes how every identity is recorded but
+   appears in no reference is a key nobody finds. Update the exact-key-list
+   assertion in the config tests, which breaks whenever `KEYS` grows.
    **Verify:** `bash tests/jimconf.sh identity`
 
 2. [ ] Add `-c <config>` parsing and a `jc` helper to `identity.sh`; read
