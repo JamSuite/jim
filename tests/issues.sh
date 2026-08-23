@@ -5615,6 +5615,42 @@ case_identity_mailmap_result_clears_the_charset_gate() {
   assert_eq "nothing on stdout" "" "$OUT"
 }
 
+# ─── Section: identity.sh — option-shaped identities ────────────────────────
+
+# AC: an identity that looks like a command-line option is a value. The
+# accepted character set admits a leading hyphen deliberately, because real
+# addresses carry one, so the gate is not what keeps such a value from being
+# read as an option — nothing downstream can be assumed to do it either. This
+# is a permanent property of the alias-resolution call rather than a defect
+# fixed once: the door reopens every time that call is touched.
+case_identity_option_shaped_values_are_read_as_data() {
+  local repo v
+  repo="$(github_repo identity_option_shaped)"
+  for v in '--help' '-x' '--stdin' '-'; do
+    run_identity "$repo" normalize "$v"
+    assert_exit "rc for $v" 0 "$RC"
+    assert_eq "value carried through: $v" "$v" "$OUT"
+  done
+  # An option-shaped value carrying a character the set does not admit is
+  # refused by the gate, as any other unrecordable value is. The two mechanisms
+  # are complementary: the gate refuses what it can, and carrying the value as
+  # data covers what the gate must admit.
+  run_identity "$repo" normalize '--exec=id'
+  assert_exit "rc for --exec=id" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: an option-shaped identity resolves through the mapping like any other
+# value — carried as data means reaching the lookup, not bypassing it.
+case_identity_option_shaped_value_still_resolves_through_the_mapping() {
+  local repo
+  repo="$(github_repo identity_option_shaped_mapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <-x>\n' > "$repo/.mailmap"
+  run_identity "$repo" normalize '-x'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "recorded as the mapped form" "dev" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
