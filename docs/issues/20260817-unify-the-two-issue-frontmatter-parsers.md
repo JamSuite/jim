@@ -24,15 +24,25 @@ origin: "docs/specs/issue/012-schema-and-state-model/research.md"
 
 ## Context
 
-The `issue` group parses issue frontmatter in **two independent places**, with
+The `issue` group parses issue frontmatter in **four independent places**, with
 different field sets and different output encodings, and nothing enforces that
 they agree:
 
 - `skills/issue/scripts/index.sh` — `parse_scalar_fields`, one awk pass over a
   hard-coded allowlist (`status`, `priority`, `title`, `origin`, `labels`,
-  `created`, `num`), returning the values **positionally, one per line**.
+  `created`, `num`, `type`, `filed-by`, `claimed-by`, `outcome`), returning the
+  values **positionally, one per line**.
 - `skills/issue/scripts/render.sh` — a separate inline awk parser over a
   *different* field subset, emitting TSV.
+- `skills/issue/scripts/migrate.sh` — a `frontmatter()` / `fm_field()` pair, a
+  fence-bounded extract plus a `grep`/`sed` field read.
+- `skills/issue/scripts/transition.sh` — the same pair again. The two are
+  **byte-identical** (cksum `889574657`, 86 bytes), so they are already a
+  duplication rather than two designs that happened to converge.
+
+The last two were added by the schema conversion and the lifecycle verbs. They
+are the cheapest to unify, because unlike the first two they need no
+reconciliation of differing field sets — they are the same function twice.
 
 ## Why it matters
 
