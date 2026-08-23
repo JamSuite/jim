@@ -5217,6 +5217,67 @@ case_identity_scheme_honors_an_explicit_config() {
   assert_match "names the setting" 'identity_scheme' "$ERR"
 }
 
+# ─── Section: identity.sh — normalize ───────────────────────────────────────
+
+# AC: every recorded identity is lower case, under every form — including the
+# form that extracts nothing. A form is defined by what it extracts, not by
+# whether it transforms, and leaving one path where case survives re-opens the
+# identity split the whole family exists to close.
+case_identity_normalize_case_folds_under_every_form() {
+  local repo
+  repo="$(identity_repo identity_norm_case 'dev@example.com')"
+  printf 'identity_scheme = "email"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'Dev@Example.COM'
+  assert_exit "email rc" 0 "$RC"
+  assert_eq "email lower-cased" "dev@example.com" "$OUT"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'Dev@Example.COM'
+  assert_exit "github rc" 0 "$RC"
+  assert_eq "github lower-cased" "dev@example.com" "$OUT"
+}
+
+# AC: an already-lower-case value is carried through unchanged.
+case_identity_normalize_case_leaves_a_lower_value_alone() {
+  local repo
+  repo="$(identity_repo identity_norm_case_noop 'dev@example.com')"
+  run_identity "$repo" normalize 'dev@example.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unchanged" "dev@example.com" "$OUT"
+}
+
+# AC: an empty value is absent, not malformed — there is no identity to record
+# either way, matching what resolve reports for the same condition.
+case_identity_normalize_case_treats_empty_as_absent() {
+  local repo
+  repo="$(identity_repo identity_norm_case_empty 'dev@example.com')"
+  run_identity "$repo" normalize ''
+  assert_exit "rc" 1 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: an identity that cannot be recorded safely is refused here exactly as it
+# is when read from the environment — normalization is a transformation on a
+# recordable value, never a way around the gate.
+case_identity_normalize_case_refuses_an_unrecordable_value() {
+  local repo
+  repo="$(identity_repo identity_norm_case_bad 'dev@example.com')"
+  run_identity "$repo" normalize "$(printf 'dev@example.com\nstatus: closed')"
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: the form governs normalization too, so a configuration that cannot select
+# one refuses rather than transforming under a form nobody chose.
+case_identity_normalize_case_refuses_an_unrecognized_form() {
+  local repo
+  repo="$(identity_repo identity_norm_case_form 'dev@example.com')"
+  printf 'identity_scheme = "gitlab"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'Dev@Example.COM'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_match "names the setting" 'identity_scheme' "$ERR"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

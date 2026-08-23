@@ -24,6 +24,7 @@
 # USAGE
 #   bash identity.sh resolve            # read the environment's identity
 #   bash identity.sh validate <value>   # judge one already-obtained identity
+#   bash identity.sh normalize <value>  # apply the project's form to one value
 #
 #   A leading `-c <config>` overrides the config the form is read from, the way
 #   the migrations do. Production callers do not pass it; tests and a conversion
@@ -72,6 +73,7 @@ jc() { if [[ -n "$CFG" ]]; then bash "$JIMCONF" -c "$CFG" "$@"; else bash "$JIMC
 usage() {
   echo "usage: identity.sh [-c <config>] resolve" >&2
   echo "       identity.sh [-c <config>] validate <value>" >&2
+  echo "       identity.sh [-c <config>] normalize <value>" >&2
 }
 
 # scheme — print the project's configured form, or refuse.
@@ -131,6 +133,37 @@ validate() {
   return 0
 }
 
+# normalize <value> — print the value in the project's configured form.
+#   The form is settled first, so a configuration that cannot select one refuses
+#   rather than transforming under a form nobody chose.
+#
+#   The value clears the charset gate before anything transforms it, and the
+#   result clears it again afterwards. Case folding only ever rewrites bytes the
+#   set already admits, so the second check costs one comparison and removes the
+#   need for anyone to re-derive that proof later.
+#
+#   Every form lower-cases, including the one that extracts nothing: a form is
+#   defined by what it extracts, not by whether it transforms, and one path
+#   where case survives splits a contributor who typed their own address two
+#   ways.
+normalize() {
+  local value="$1"
+
+  scheme >/dev/null || return 2
+
+  if [[ -z "$value" ]]; then
+    return 1
+  fi
+
+  validate "$value" >/dev/null || return $?
+
+  # Byte-exact under LC_ALL=C, and the value has already cleared a set holding
+  # nothing outside ASCII.
+  value="${value,,}"
+
+  validate "$value"
+}
+
 # resolve — print the environment's configured identity, or refuse.
 #   The form is settled before the environment is read, so a project whose
 #   configuration cannot select one refuses rather than recording under a form
@@ -166,6 +199,11 @@ main() {
       shift
       if [[ $# -ne 1 ]]; then usage; return 2; fi
       validate "$1"
+      ;;
+    normalize)
+      shift
+      if [[ $# -ne 1 ]]; then usage; return 2; fi
+      normalize "$1"
       ;;
     *)
       usage
