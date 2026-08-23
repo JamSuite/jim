@@ -143,6 +143,44 @@ validate() {
   return 0
 }
 
+# map_alias <value> — the address the project's version control maps this one
+#   to, or the value unchanged when it maps nothing.
+#
+#   The mapping is the project's, read wherever version control resolves it
+#   from — not from one file at a known path. jim reads it; it does not create
+#   one, write to one, or define its format.
+#
+#   The value crosses into a command here, and the hyphen is a member of the
+#   accepted identity set, so an identity that looks like an option is a value
+#   this script must still carry: it is passed after an end-of-options separator
+#   so it is read as data. Without the separator the value would cross from data
+#   into control, and the charset gate would not stop it — the gate admits the
+#   hyphen deliberately, because real addresses carry one.
+#
+#   Anything other than a well-formed answer leaves the value alone: no
+#   repository, no mapping, or output this does not recognize all mean nothing
+#   was mapped. The result is judged as a recordable identity in its own right
+#   afterwards, so the mapping is a source of identities and not a way past the
+#   gate.
+map_alias() {
+  local value="$1" out address
+  out="$(git check-mailmap -- "<$value>" 2>/dev/null)" || { printf '%s' "$value"; return 0; }
+  case "$out" in
+    *"<"*">"*)
+      # Either `<address>` or `Name <address>`; take what the final angle
+      # brackets hold. Only the address is recorded — a display name is not an
+      # identity.
+      address="${out##*<}"
+      address="${address%>*}"
+      if [[ -n "$address" ]]; then
+        printf '%s' "$address"
+        return 0
+      fi
+      ;;
+  esac
+  printf '%s' "$value"
+}
+
 # extract_relay <value> — the account name a forge relay address carries, or
 #   the value unchanged when it is not one.
 #
@@ -276,6 +314,18 @@ normalize() {
   if [[ -z "$value" ]]; then
     return 1
   fi
+
+  # The length bound comes first because it is the only thing standing between
+  # an unbounded value and the command the mapping lookup runs.
+  if (( ${#value} > IDENTITY_MAX )); then
+    echo "error: identity is not recordable" >&2
+    return 2
+  fi
+
+  # Alias resolution precedes the charset gate, not only extraction. A mapping
+  # is the project telling us how to read an address, so refusing one before
+  # consulting it would refuse a value the project has explicitly answered for.
+  value="$(map_alias "$value")"
 
   validate "$value" >/dev/null || return $?
 

@@ -5541,6 +5541,80 @@ case_identity_domain_is_unused_by_the_lower_forms() {
   assert_eq "account name" "dev" "$OUT"
 }
 
+# ─── Section: identity.sh — alias resolution ────────────────────────────────
+
+# AC: an address the project's version control maps to another is recorded as
+# the form of the address it maps to, not the form of the address that was
+# written — so a mapping reaches every form, including those that extract.
+case_identity_mailmap_records_the_form_of_the_mapped_address() {
+  local repo
+  repo="$(github_repo identity_mailmap_mapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize 'old@personal.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "recorded as the mapped form" "dev" "$OUT"
+}
+
+# AC: alias resolution runs before extraction. A mapping is keyed on addresses,
+# so extracting first leaves nothing for it to match — a mapping keyed on a
+# relay address would never fire, and the contributor it exists to merge would
+# stay split.
+case_identity_mailmap_resolves_before_extraction() {
+  local repo
+  repo="$(github_repo identity_mailmap_ordering)"
+  printf 'Alice <alice@company.example> <1234+olduser@users.noreply.github.com>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize '1234+olduser@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "mapped, not extracted" "alice@company.example" "$OUT"
+}
+
+# AC: an address the mapping does not name is carried through unchanged.
+case_identity_mailmap_carries_an_unmapped_address_through() {
+  local repo
+  repo="$(github_repo identity_mailmap_unmapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize 'someone@example.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unchanged" "someone@example.com" "$OUT"
+}
+
+# AC: a contributor is never refused, or split, for having typed their own
+# address two ways — the mapping lookup ignores case.
+case_identity_mailmap_matches_without_case() {
+  local repo
+  repo="$(github_repo identity_mailmap_case)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize 'OLD@Personal.Example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "recorded as the mapped form" "dev" "$OUT"
+}
+
+# AC: a project that carries no mapping is unaffected — resolution composes as
+# an unconditional filter rather than a present/absent branch.
+case_identity_mailmap_absent_mapping_changes_nothing() {
+  local repo
+  repo="$(github_repo identity_mailmap_none)"
+  run_identity "$repo" normalize 'Dev@Example.COM'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "lower-cased only" "dev@example.com" "$OUT"
+}
+
+# AC: a mapped address is judged as a recordable identity in its own right —
+# the mapping is a source of identities, not a way around the gate.
+case_identity_mailmap_result_clears_the_charset_gate() {
+  local repo
+  repo="$(github_repo identity_mailmap_gate)"
+  printf 'Dev <dev%s@example.com> <old@personal.example>\n' "$LINE_SEP" \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize 'old@personal.example'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
