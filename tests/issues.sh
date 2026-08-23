@@ -5375,6 +5375,93 @@ case_identity_normalize_relay_is_inert_under_the_no_extraction_form() {
     "1234+dev@users.noreply.github.com" "$OUT"
 }
 
+# ─── Section: identity.sh — organization-local extraction ───────────────────
+
+# local_repo <name> <domain> — an identity fixture whose project selects the
+# organization-local form over <domain>.
+local_repo() {
+  local d
+  d="$(identity_repo "$1" 'dev@example.com')"
+  printf 'identity_scheme = "local"\nidentity_domain = "%s"\n' "$2" \
+    > "$d/jimconf.toml"
+  printf '%s' "$d"
+}
+
+# AC: under the organization-local form, an address inside the project's
+# configured domain is recorded as the account part preceding that domain.
+case_identity_normalize_local_extracts_the_account_part() {
+  local repo
+  repo="$(local_repo identity_local_inside company.example)"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account part" "alice" "$OUT"
+}
+
+# AC: a tag appended to a mailbox is not part of the recorded account, so one
+# mailbox is one identity. This is the opposite half of the address from the
+# one the relay rule discards — same character, two meanings.
+case_identity_normalize_local_drops_a_mailbox_tag() {
+  local repo
+  repo="$(local_repo identity_local_tag company.example)"
+  run_identity "$repo" normalize 'alice+deploys@company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "tag dropped" "alice" "$OUT"
+}
+
+# AC: domain comparison ignores case, so an address is inside the configured
+# domain regardless of how either was typed.
+case_identity_normalize_local_compares_the_domain_without_case() {
+  local repo
+  repo="$(local_repo identity_local_case COMPANY.Example)"
+  run_identity "$repo" normalize 'Alice@Company.EXAMPLE'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account part" "alice" "$OUT"
+}
+
+# AC: an address outside the configured domain is recorded as the form below
+# would record it — so an organization member who also commits through a forge's
+# web interface does not split into two identities.
+case_identity_normalize_local_falls_through_to_the_relay_rule() {
+  local repo
+  repo="$(local_repo identity_local_outside company.example)"
+  run_identity "$repo" normalize '1234+alice@users.noreply.github.com'
+  assert_exit "relay rc" 0 "$RC"
+  assert_eq "relay account name" "alice" "$OUT"
+  run_identity "$repo" normalize 'alice@other.example'
+  assert_exit "unrelated rc" 0 "$RC"
+  assert_eq "unrelated address kept whole" "alice@other.example" "$OUT"
+}
+
+# AC: the configured domain names exactly one domain, so an address in a
+# subdomain of it is outside it and records as the form below would.
+case_identity_normalize_local_treats_a_subdomain_as_outside() {
+  local repo
+  repo="$(local_repo identity_local_subdomain company.example)"
+  run_identity "$repo" normalize 'alice@eu.company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "kept whole" "alice@eu.company.example" "$OUT"
+}
+
+# AC: an address that yields no account part is recorded unchanged, never as an
+# empty identity — the same rule the relay form applies.
+case_identity_normalize_local_keeps_an_address_yielding_no_account() {
+  local repo
+  repo="$(local_repo identity_local_empty company.example)"
+  run_identity "$repo" normalize '+deploys@company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address kept whole" "+deploys@company.example" "$OUT"
+}
+
+# AC: the form below extracts nothing from an internal address — organization-
+# local extraction is what this form adds, and the forms below it do not.
+case_identity_normalize_local_extraction_is_absent_from_lower_forms() {
+  local repo
+  repo="$(github_repo identity_local_not_in_github)"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "kept whole" "alice@company.example" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

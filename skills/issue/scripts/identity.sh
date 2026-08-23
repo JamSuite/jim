@@ -174,6 +174,49 @@ extract_relay() {
   printf '%s' "$value"
 }
 
+# domain — print the project's configured organization domain, folded to lower
+#   case so every comparison against it ignores case by construction.
+domain() {
+  local value
+  value="$(jc get identity_domain 2>/dev/null)" || {
+    echo "error: identity_domain could not be resolved from the project config" >&2
+    return 2
+  }
+  printf '%s' "${value,,}"
+}
+
+# extract_local <value> <domain> — the account part of an address inside
+#   <domain>, printed on stdout.
+#
+#   Returns 0 when the address is inside the domain and 1 when it is not, so the
+#   caller can fall through to the form below rather than inspecting the result.
+#   Membership is the deciding fact, not whether anything was extracted.
+#
+#   The domain is matched exactly: a subdomain of the configured one is a
+#   different domain, and treating it as the same would collapse accounts across
+#   a set nobody has checked for uniqueness.
+#
+#   A trailing tag is discarded, because within one organization's domain a
+#   tagged address is the same mailbox and therefore the same person. An address
+#   yielding no account part is returned whole, as the relay rule does.
+extract_local() {
+  local value="$1" org="$2" account
+  case "$value" in
+    *"@$org")
+      account="${value%"@$org"}"
+      account="${account%%+*}"
+      if [[ -n "$account" ]]; then
+        printf '%s' "$account"
+      else
+        printf '%s' "$value"
+      fi
+      return 0
+      ;;
+  esac
+  printf '%s' "$value"
+  return 1
+}
+
 # normalize <value> — print the value in the project's configured form.
 #   The form is settled first, so a configuration that cannot select one refuses
 #   rather than transforming under a form nobody chose.
@@ -204,8 +247,22 @@ normalize() {
   # outside ASCII.
   value="${value,,}"
 
+  # The forms are nested: each applies its own extraction and otherwise falls
+  # through to the one below it, so a contributor who commits several ways
+  # still records as one identity.
+  local org extracted
   case "$form" in
-    github|local) value="$(extract_relay "$value")" ;;
+    local)
+      org="$(domain)" || return 2
+      if extracted="$(extract_local "$value" "$org")"; then
+        value="$extracted"
+      else
+        value="$(extract_relay "$value")"
+      fi
+      ;;
+    github)
+      value="$(extract_relay "$value")"
+      ;;
   esac
 
   validate "$value"
