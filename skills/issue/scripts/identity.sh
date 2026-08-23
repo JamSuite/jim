@@ -63,6 +63,11 @@ IDENTITY_MAX=254
 # everything the one before it records, plus one further extraction.
 IDENTITY_SCHEMES=(email github local)
 
+# The one forge relay service recognized. Matched as an exact tail, so an
+# address that merely contains it — as a subdomain, or with a real domain
+# appended after it — is not a relay address.
+RELAY_SUFFIX='@users.noreply.github.com'
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 CFG=""   # optional jimconf override path, forwarded to jimconf
@@ -133,6 +138,42 @@ validate() {
   return 0
 }
 
+# extract_relay <value> — the account name a forge relay address carries, or
+#   the value unchanged when it is not one.
+#
+#   The service issues two forms: one carrying a numeric account id ahead of the
+#   name, an older one carrying the name alone with no separator at all. Both
+#   are the same person, so the id is optional rather than required — requiring
+#   it would record every pre-cutoff contributor as a full address while
+#   everyone else got a handle, which is the split this form exists to close.
+#
+#   Recognition keys on the service, never on the separator. That character is
+#   ordinary in real mail, where it marks a tag on a mailbox, so keying on it
+#   would rewrite an unrelated address into whatever followed it. Note the
+#   deliberate asymmetry with the organization-local form, which discards a
+#   trailing tag: within one domain a tagged address is the same mailbox and so
+#   the same person, whereas here the same character separates an account id
+#   from an account name. Same character, opposite halves.
+#
+#   An address yielding no account name is returned whole. Recording an empty
+#   identity would be worse than recording a long one.
+extract_relay() {
+  local value="$1" account
+  case "$value" in
+    *"$RELAY_SUFFIX")
+      account="${value%"$RELAY_SUFFIX"}"
+      if [[ "$account" =~ ^[0-9]+\+(.*)$ ]]; then
+        account="${BASH_REMATCH[1]}"
+      fi
+      if [[ -n "$account" ]]; then
+        printf '%s' "$account"
+        return 0
+      fi
+      ;;
+  esac
+  printf '%s' "$value"
+}
+
 # normalize <value> — print the value in the project's configured form.
 #   The form is settled first, so a configuration that cannot select one refuses
 #   rather than transforming under a form nobody chose.
@@ -147,9 +188,9 @@ validate() {
 #   where case survives splits a contributor who typed their own address two
 #   ways.
 normalize() {
-  local value="$1"
+  local value="$1" form
 
-  scheme >/dev/null || return 2
+  form="$(scheme)" || return 2
 
   if [[ -z "$value" ]]; then
     return 1
@@ -157,9 +198,15 @@ normalize() {
 
   validate "$value" >/dev/null || return $?
 
-  # Byte-exact under LC_ALL=C, and the value has already cleared a set holding
-  # nothing outside ASCII.
+  # Case folds before anything is compared, so every comparison below is
+  # case-insensitive by construction rather than by remembering to be. Byte-exact
+  # under LC_ALL=C, and the value has already cleared a set holding nothing
+  # outside ASCII.
   value="${value,,}"
+
+  case "$form" in
+    github|local) value="$(extract_relay "$value")" ;;
+  esac
 
   validate "$value"
 }

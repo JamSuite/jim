@@ -5278,6 +5278,103 @@ case_identity_normalize_case_refuses_an_unrecognized_form() {
   assert_match "names the setting" 'identity_scheme' "$ERR"
 }
 
+# ─── Section: identity.sh — forge relay extraction ──────────────────────────
+
+# github_repo <name> — an identity fixture whose project selects the default
+# forge-relay form explicitly, so a case reads as a statement about that form
+# rather than about whichever default happens to be current.
+github_repo() {
+  local d
+  d="$(identity_repo "$1" 'dev@example.com')"
+  printf 'identity_scheme = "github"\n' > "$d/jimconf.toml"
+  printf '%s' "$d"
+}
+
+# AC: an address issued by a forge's private-relay service is recorded as the
+# account name it carries, not as the full address.
+case_identity_normalize_relay_extracts_the_account_name() {
+  local repo
+  repo="$(github_repo identity_relay_modern)"
+  run_identity "$repo" normalize '1234+dev@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account name" "dev" "$OUT"
+}
+
+# AC: every relay form the forge issues records as the same account name. The
+# older form carries the account name alone with no numeric id and no separator
+# at all, so a contributor whose account predates the id-bearing form is not
+# recorded differently from anyone else.
+case_identity_normalize_relay_extracts_both_forge_forms_alike() {
+  local repo modern legacy
+  repo="$(github_repo identity_relay_both)"
+  run_identity "$repo" normalize '1234+dev@users.noreply.github.com'
+  modern="$OUT"
+  run_identity "$repo" normalize 'dev@users.noreply.github.com'
+  legacy="$OUT"
+  assert_exit "legacy rc" 0 "$RC"
+  assert_eq "legacy account name" "dev" "$legacy"
+  assert_eq "both forms agree"    "$modern" "$legacy"
+}
+
+# AC: a relay address is recognized however it was typed — the same address in
+# mixed case is the same address, and recording it as a full address while the
+# lower-case spelling records as a handle is the split this form exists to close.
+case_identity_normalize_relay_recognizes_a_mixed_case_address() {
+  local repo
+  repo="$(github_repo identity_relay_mixedcase)"
+  run_identity "$repo" normalize '1234+Dev@Users.NoReply.GitHub.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account name" "dev" "$OUT"
+}
+
+# AC: ordinary mail that merely resembles a relay address — an address carrying
+# a tag on its mailbox — is recorded unchanged. Keying on the separator rather
+# than the service would rewrite an unrelated address into whatever followed it.
+case_identity_normalize_relay_leaves_ordinary_tagged_mail_alone() {
+  local repo
+  repo="$(github_repo identity_relay_tagged)"
+  run_identity "$repo" normalize '1234+dev@example.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unchanged" "1234+dev@example.com" "$OUT"
+}
+
+# AC: only addresses actually issued by the relay service are extracted. The
+# service suffix is matched exactly, so an address that merely contains it —
+# as a subdomain, or with the real domain appended after it — is not a relay
+# address and is recorded whole.
+case_identity_normalize_relay_matches_the_service_suffix_exactly() {
+  local repo
+  repo="$(github_repo identity_relay_suffix)"
+  run_identity "$repo" normalize 'dev@users.noreply.github.com.example.com'
+  assert_exit "trailing-domain rc" 0 "$RC"
+  assert_eq "trailing domain unchanged" \
+    "dev@users.noreply.github.com.example.com" "$OUT"
+  run_identity "$repo" normalize 'dev@sub.users.noreply.github.com'
+  assert_eq "subdomain unchanged" "dev@sub.users.noreply.github.com" "$OUT"
+}
+
+# AC: a relay address that yields no account name is recorded unchanged, never
+# as an empty identity.
+case_identity_normalize_relay_keeps_an_address_yielding_no_account() {
+  local repo
+  repo="$(github_repo identity_relay_empty)"
+  run_identity "$repo" normalize '1234+@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address kept whole" "1234+@users.noreply.github.com" "$OUT"
+}
+
+# AC: one form applies no extraction at all, recording the whole address rather
+# than a part of it — a relay address included.
+case_identity_normalize_relay_is_inert_under_the_no_extraction_form() {
+  local repo
+  repo="$(identity_repo identity_relay_email 'dev@example.com')"
+  printf 'identity_scheme = "email"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize '1234+Dev@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "whole address, lower-cased" \
+    "1234+dev@users.noreply.github.com" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
