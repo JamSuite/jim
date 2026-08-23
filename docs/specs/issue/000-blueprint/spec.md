@@ -73,12 +73,18 @@ face after the platform CLIs.
   keeps the outcome, which is what makes a reopen legible from the record alone.
   The door commits under the verb matching the subcommand, so a centralized
   collection's history is self-describing.
-- `identity.sh` **recordable identity** — `resolve` (the environment's) and
-  `validate` (one already obtained). Guarantee: one positively enumerated
+- `identity.sh` **recordable identity** — `resolve` (the environment's),
+  `validate` (one already obtained), `normalize` (one carried into the
+  project's configured form) and `map` (one resolved through the project's
+  alias mapping, with no form applied). Guarantee: one positively enumerated
   character set decides what can be recorded, so an unanticipated value fails
   closed rather than surviving a list of characters someone thought to name; a
   value that cannot be recorded is refused exactly as an absent one; refusals
   are fixed reasons carrying neither the rejected value nor issue content. The
+  form a recorded identity takes is the project's choice rather than each
+  contributor's, and an address resolves through whatever alias mapping version
+  control carries before any extraction, so one contributor's several addresses
+  collapse to one identity. The
   same definition governs every recorded identity — the emitter's filer, the
   transition verbs' holder, and the filer the conversion recovers from history.
 - **§ 7a candidate-batch contract** — the canonical definition of the fileable
@@ -104,11 +110,15 @@ face after the platform CLIs.
   partition surface holds `mode`, `begin --read` and `abort` alone — no publish
   verb — for the re-points it discloses rather than applies.
 - `backfill.sh` / `migrate.sh` / `reconcile.sh` **migrations** — opt-in,
-  preview-gated one-shot transforms (num / timestamp; prefix and schema; and
-  realizing provisional ordinals into real coordinated ones). The two surfaces
+  preview-gated one-shot transforms (num / timestamp; prefix, schema and
+  recorded identity; and realizing provisional ordinals into real coordinated
+  ones). The two surfaces
   divide by risk rather than era: `backfill.sh` fills constant values that need
   no preview, `migrate.sh` writes derived ones behind a preview, an explicit
-  apply gate and a plan-hash drift guard. Internal surface, low contract weight.
+  apply gate and a plan-hash drift guard. The identity rewrite carries one
+  further refusal of its own: a run that would record two distinct contributors
+  as one identity refuses whole rather than merging them.
+  Internal surface, low contract weight.
 - `@jim:issue-analyst` **insights persona** — read-only synthesis over the
   collection; capability-narrowed (Read plus one `render.sh` invocation).
 - `issue-template.md` — the schema shape the emitter materializes: identity
