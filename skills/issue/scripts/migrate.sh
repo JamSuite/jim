@@ -572,8 +572,116 @@ cmd_schema() {
 #   <action>\t<slug>\t<field>\t<old>\t<new>
 #     action ∈ rewrite | unchanged | ambiguous
 # Pure read: derives and classifies, mutates nothing.
+# The frontmatter fields that record an identity. The holder is here for the
+# reason the remap mode exists at all: no derivation can recover it, because a
+# claim leaves no trace in the file's creation history.
+IDENTITY_FIELDS=(filed-by claimed-by)
+
 build_identity_plan() {
-  :
+  local dir="$1" mode="$2" from="$3" to="$4"
+  local f base slug fm field old new changed
+  # One issue records at most two identities and a collection holds a handful of
+  # distinct ones, so the form is computed once per distinct value rather than
+  # once per field. Same reasoning as the mismatch surface: the transformation
+  # is a subprocess, and the collection is not.
+  local -A form=()
+  for f in "$dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ "$base" == "$INDEX_FILENAME" ]] && continue
+    [[ "$base" == .* ]] && continue
+    slug="${base%.md}"
+    fm="$(frontmatter "$f")"
+    changed=0
+    for field in "${IDENTITY_FIELDS[@]}"; do
+      old="$(fm_field "$fm" "$field")"
+      [[ -n "$old" ]] || continue
+      if [[ "$mode" == "renormalize" ]]; then
+        if [[ -z "${form[$old]+set}" ]]; then
+          form["$old"]="$(jid normalize "$old" 2>/dev/null)" || form["$old"]=""
+        fi
+        new="${form[$old]}"
+      else
+        new=""
+        [[ "$old" == "$from" ]] && new="$to"
+      fi
+      # A value the form cannot produce is left where it is. The rewrite is not
+      # the place to discover an unrecordable identity, and dropping the field
+      # would lose an attribution nothing else can recover.
+      [[ -n "$new" ]] || continue
+      if [[ "$new" != "$old" ]]; then
+        printf 'rewrite\t%s\t%s\t%s\t%s\n' "$slug" "$field" "$old" "$new"
+        changed=1
+      fi
+    done
+    (( changed )) || printf 'unchanged\t%s\t\t\t\n' "$slug"
+  done
+}
+
+# alias_source <dir> — name the mapping the project's version control resolves,
+# or nothing. Located, never read: the disclosure states whether one is in play,
+# and version control is what reads it.
+alias_source() {
+  local dir="$1" top
+  top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || return 1
+  if [[ -n "$(git -C "$dir" config --get mailmap.file 2>/dev/null)" ]]; then
+    printf 'mailmap.file'; return 0
+  fi
+  if [[ -n "$(git -C "$dir" config --get mailmap.blob 2>/dev/null)" ]]; then
+    printf 'mailmap.blob'; return 0
+  fi
+  [[ -f "$top/.mailmap" ]] && { printf '.mailmap'; return 0; }
+  return 1
+}
+
+# alias_altered <dir> <plan> — how many plan rows hold a value the mapping
+# renames. Measured once per distinct value, like the form is.
+#
+#   This asks the mapping directly rather than decomposing a normalized result,
+#   because a normalized value cannot say which of the two steps moved it. The
+#   answer feeds a count in the disclosure and nothing else — no recorded value
+#   passes through here — so the recording path keeps its single definition.
+#   The value is still wrapped and passed after an end-of-options separator, for
+#   the reason it is everywhere else: the accepted identity set admits a leading
+#   hyphen, so an option-shaped value has to be handed over as data.
+alias_altered() {
+  local dir="$1" plan="$2" __row mapped address n=0
+  local -A seen=()
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    [[ -n "$ID_OLD" ]] || continue
+    if [[ -z "${seen[$ID_OLD]+set}" ]]; then
+      mapped="$(git -C "$dir" check-mailmap -- "<$ID_OLD>" 2>/dev/null)" || mapped=""
+      address=""
+      case "$mapped" in
+        *"<"*">"*) address="${mapped##*<}"; address="${address%>*}" ;;
+      esac
+      if [[ -n "$address" && "$address" != "$ID_OLD" ]]; then
+        seen["$ID_OLD"]=1
+      else
+        seen["$ID_OLD"]=0
+      fi
+    fi
+    (( seen[$ID_OLD] )) && n=$((n+1))
+  done <<<"$plan"
+  printf '%d' "$n"
+}
+
+# render_alias_disclosure <dir> <plan> — state what the alias mapping did before
+# the operator approves the plan, rather than leaving them to infer it from the
+# result. Which mapping version control resolved is its own fact: repository
+# configuration can redirect it, so "the project's mapping" is not necessarily a
+# file at a known path.
+render_alias_disclosure() {
+  local dir="$1" plan="$2" src
+  if src="$(alias_source "$dir")"; then
+    printf '\n  Alias mapping (%s): identities resolve through it before the form\n' "$src"
+    printf '  is applied — %s record(s) altered by the mapping.\n' \
+      "$(alias_altered "$dir" "$plan")"
+  else
+    printf '\n  Alias mapping: none found — identities resolve through the form alone.\n'
+  fi
 }
 
 # Set together by split_identity_row; the five fields of the identity row last
@@ -674,6 +782,10 @@ cmd_identity() {
       printf '  from  %s\n  to    %s\n\n' "$from" "$to"
     fi
     render_identity_plan "$plan"
+    # Only the re-normalization resolves identities through the mapping; a remap
+    # replaces the value the operator named with the one they supplied, so there
+    # is no transform to disclose.
+    [[ "$mode" == "renormalize" ]] && render_alias_disclosure "$dir" "$plan"
     printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
     git_note "$dir"
   fi

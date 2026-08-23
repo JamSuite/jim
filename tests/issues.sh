@@ -5146,6 +5146,107 @@ case_migrate_identity_usage_is_documented_in_help() {
   assert_match "remap mode documented" 'from' "$OUT"
 }
 
+# ─── Section: migrate.sh identity — re-normalization ────────────────────────
+
+# identity_collection <name> — a git repo holding a converted collection, so
+# every issue already records the two identity fields the rewrites operate on.
+identity_collection() {
+  local d
+  d="$(schema_repo "$1")"
+  printf '%s' "$d"
+}
+
+# recorded_issue <repo> <slug> <filed-by> <claimed-by> — one converted issue.
+recorded_issue() {
+  local repo="$1" slug="$2" filer="$3" holder="${4:-}"
+  write_issue "$repo/docs/issues" "$slug" "title: \"$slug\"
+status: open
+priority: low
+type: issue
+filed-by: \"$filer\"
+claimed-by: \"$holder\"
+outcome: \"\"
+labels: []"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "file $slug" >/dev/null 2>&1
+}
+
+# AC: an operator can re-apply the project's current form to identities
+# recorded under a previous one, without supplying any mapping.
+case_migrate_identity_renormalize_plans_the_current_form() {
+  local repo
+  repo="$(identity_collection migrate_identity_renorm)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "the record is planned" '20260101-one' "$OUT"
+  assert_match "the field is named"    'filed-by' "$OUT"
+  assert_match "the new value is shown" '> dev' "$OUT"
+  assert_match "counted as a rewrite"  '1 to rewrite' "$OUT"
+}
+
+# AC: a record the current form already agrees with is left alone.
+case_migrate_identity_renormalize_leaves_a_conforming_record_alone() {
+  local repo
+  repo="$(identity_collection migrate_identity_renorm_noop)"
+  recorded_issue "$repo" "20260101-two" 'dev'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "reported unchanged" 'unchanged  20260101-two' "$OUT"
+  assert_match "counted as unchanged" '0 to rewrite · 1 unchanged' "$OUT"
+}
+
+# AC: the rewrite covers every field that records an identity, including the
+# holder — which no derivation can recover.
+case_migrate_identity_renormalize_covers_the_holder_field() {
+  local repo
+  repo="$(identity_collection migrate_identity_renorm_holder)"
+  recorded_issue "$repo" "20260101-held" 'dev' '5678+Alice@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "the holder field is named" 'claimed-by' "$OUT"
+  assert_match "the holder's new value" '> alice' "$OUT"
+}
+
+# AC: the operation shows what it would change and writes nothing until the
+# operator explicitly applies it.
+case_migrate_identity_renormalize_preview_writes_nothing() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_renorm_readonly)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "collection untouched" "$before" "$after"
+  assert_match "a plan hash is offered" 'PLAN-HASH: [0-9]+' "$OUT"
+}
+
+# AC: a preview that resolves identities through the alias mapping discloses
+# that it did so, whether a mapping was found at all, and how many records it
+# altered — so an operator sees the transform before approving it rather than
+# inferring it from the result afterwards.
+case_migrate_identity_renormalize_discloses_the_alias_mapping() {
+  local repo
+  repo="$(identity_collection migrate_identity_renorm_disclose)"
+  recorded_issue "$repo" "20260101-one" 'old@personal.example'
+  recorded_issue "$repo" "20260101-two" 'someone@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "no-mapping rc" 0 "$RC"
+  assert_match "says a mapping resolves identities" '[Aa]lias mapping' "$OUT"
+  assert_match "says none was found" 'none found' "$OUT"
+
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "map" >/dev/null 2>&1
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "mapping rc" 0 "$RC"
+  assert_match "names the mapping in play" 'Alias mapping \(\.mailmap\)' "$OUT"
+  assert_match "counts the records it altered" '1 record' "$OUT"
+  assert_match "the mapped record takes the mapped form" '> dev' "$OUT"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one
