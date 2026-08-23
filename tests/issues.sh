@@ -5413,6 +5413,110 @@ case_migrate_identity_ambiguous_an_already_recorded_form_is_not_a_collision() {
   assert_match "none is ambiguous" '0 ambiguous' "$OUT"
 }
 
+# ─── Section: migrate.sh identity — the apply path ──────────────────────────
+
+# AC: both operations write nothing until the operator explicitly applies them,
+# and the apply writes what the preview showed.
+case_migrate_identity_apply_writes_the_new_values() {
+  local repo
+  repo="$(identity_collection migrate_identity_apply)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "the new value is recorded" '^filed-by: "dev"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: the rewrite covers every field that records an identity, including the
+# holder.
+case_migrate_identity_apply_covers_the_holder_field() {
+  local repo file
+  repo="$(identity_collection migrate_identity_apply_holder)"
+  recorded_issue "$repo" "20260101-held" '1234+dev@users.noreply.github.com' \
+    '5678+Alice@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "rc" 0 "$RC"
+  file="$(cat "$repo/docs/issues/20260101-held.md")"
+  assert_match "the filer is rewritten"  '^filed-by: "dev"$'     "$file"
+  assert_match "the holder is rewritten" '^claimed-by: "alice"$' "$file"
+}
+
+# AC: an apply is refused when the collection has changed since the preview the
+# operator approved.
+case_migrate_identity_apply_refuses_a_stale_plan() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_apply_stale)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply \
+    --expect 0000000000
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 3 "$RC"
+  assert_eq "collection untouched" "$before" "$after"
+  assert_match "names the drift" 'PLAN-HASH' "$ERR"
+}
+
+# AC: the hash the preview printed is what authorizes the write.
+case_migrate_identity_apply_accepts_the_previewed_hash() {
+  local repo hash
+  repo="$(identity_collection migrate_identity_apply_hash)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  hash="$(printf '%s' "$OUT" | sed -n 's/^PLAN-HASH: //p')"
+  assert_nonempty "a hash was printed" "$hash"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply \
+    --expect "$hash"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the new value is recorded" '^filed-by: "dev"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: the generated index reflects the collection after a rewrite, so a
+# by-person view is not left describing identities the files no longer hold.
+case_migrate_identity_apply_regenerates_the_index() {
+  local repo
+  repo="$(identity_collection migrate_identity_apply_index)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the index exists" "yes" \
+    "$([[ -f "$repo/docs/issues/INDEX.md" ]] && echo yes || echo no)"
+}
+
+# AC: a regeneration that failed is surfaced and carried, never discarded under
+# a success message. The files are already rewritten at that point, so a run
+# reporting success over a stale index is the one outcome that cannot be
+# noticed from the output.
+case_migrate_identity_apply_surfaces_an_index_failure() {
+  local repo
+  repo="$(identity_collection migrate_identity_apply_indexfail)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  # An unwritable directory where INDEX.md belongs: the rename cannot land.
+  mkdir -p "$repo/docs/issues/INDEX.md"
+  chmod 500 "$repo/docs/issues/INDEX.md"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  chmod 700 "$repo/docs/issues/INDEX.md"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure is named" 'index' "$ERR"
+  assert_match "the rewrite still landed" '^filed-by: "dev"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: re-applying is a no-op — a value already in the current form produces no
+# rewrite, so an interrupted run is finished by a retry.
+case_migrate_identity_apply_is_idempotent() {
+  local repo first
+  repo="$(identity_collection migrate_identity_apply_again)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "first rc" 0 "$RC"
+  first="$(cat "$repo/docs/issues/20260101-one.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "second rc" 0 "$RC"
+  assert_eq "unchanged by the second run" "$first" \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one

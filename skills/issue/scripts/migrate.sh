@@ -803,7 +803,65 @@ render_identity_plan() {
 apply_identity_plan() {
   local dir="$1" plan="$2" expect="${3:-}"
   gate_apply "$expect" "$plan" || return 3
-  printf 'Nothing to rewrite.\n'
+
+  local __row slug field
+  local -A changes=()
+  local -a slugs=()
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    [[ "$ID_ACTION" == rewrite ]] || continue
+    [[ -z "${changes[$ID_SLUG]+set}" ]] && slugs+=("$ID_SLUG")
+    changes["$ID_SLUG"]=1
+    changes["$ID_SLUG|$ID_FIELD"]="$ID_NEW"
+  done <<<"$plan"
+
+  if (( ${#slugs[@]} == 0 )); then
+    printf 'Nothing to rewrite — every recorded identity already matches.\n'
+    return 0
+  fi
+
+  # One file at a time, each written whole into a tmp and moved into place, so
+  # an interrupted run leaves every issue either untouched or wholly rewritten.
+  # A retry finishes the rest, because a value already in its target form
+  # produces no rewrite the second time.
+  local f tmp filed claimed rewritten=0
+  for slug in "${slugs[@]}"; do
+    f="$dir/$slug.md"
+    [[ -f "$f" ]] || {
+      echo "error: $slug is no longer in the collection; nothing written for it" >&2
+      return 1; }
+    filed="${changes[$slug|filed-by]:-}"
+    claimed="${changes[$slug|claimed-by]:-}"
+    tmp="$(mktemp "$dir/.identity.tmp.XXXXXX")" || {
+      echo "error: cannot create tmp in $dir" >&2; return 1; }
+    awk -v filed="$filed" -v claimed="$claimed" '
+      /^---$/ { fence++ }
+      fence == 1 && filed   != "" && /^filed-by:/   { print "filed-by: \"" filed "\""; next }
+      fence == 1 && claimed != "" && /^claimed-by:/ { print "claimed-by: \"" claimed "\""; next }
+      { print }
+    ' "$f" > "$tmp" || {
+      rm -f "$tmp"
+      echo "error: rewrite failed for $slug; nothing written for it" >&2
+      return 1
+    }
+    mv "$tmp" "$f" || {
+      rm -f "$tmp"; echo "error: atomic rename failed for $slug" >&2; return 1; }
+    rewritten=$((rewritten+1))
+  done
+
+  # The files are already rewritten by this point, so a regeneration that failed
+  # cannot be reported as success: an index describing identities the files no
+  # longer hold is exactly the kind of staleness nothing else would surface.
+  local rc=0
+  if ! bash "$HERE/index.sh" "$dir" >/dev/null 2>&1; then
+    echo "error: identities were rewritten but the index could not be regenerated;" \
+         "re-run index.sh before reading a by-person view" >&2
+    rc=1
+  fi
+
+  printf 'Rewrote recorded identities in %d issue(s).\n' "$rewritten"
+  return $rc
 }
 
 # cmd_identity — rewrite recorded identities across the collection, in one of
