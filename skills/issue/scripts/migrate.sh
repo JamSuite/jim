@@ -643,8 +643,14 @@ build_identity_plan() {
 # turned into an ambiguous row.
 #
 #   A collision is two rewrites landing on one value from source addresses that
-#   are genuinely different — compared case-folded, because a contributor who
-#   typed their own address two ways is one contributor, not two.
+#   are genuinely different — compared **after alias resolution** and
+#   case-folded. Two addresses the project's mapping already unifies are one
+#   contributor by the project's own declaration, so their landing on one
+#   identity is the feature working rather than a merge to refuse; comparing raw
+#   sources instead would disable re-normalization for exactly the projects that
+#   keep a mapping. What survives is the merge that matters: two addresses the
+#   mapping says nothing about, converging only because the form extracts from
+#   both.
 #
 #   Only rewrites are compared. A record already carrying the value another one
 #   is about to reach produces no rewrite at all, and it is not a second person
@@ -657,12 +663,17 @@ build_identity_plan() {
 #   can open them, decides.
 mark_ambiguous() {
   local plan="$1" __row key folded
-  local -A distinct=() sources=()
+  local -A distinct=() sources=() mapped=()
   while IFS= read -r __row; do
     [[ -n "$__row" ]] || continue
     split_identity_row "$__row"
     [[ "$ID_ACTION" == rewrite ]] || continue
-    key="$ID_NEW"; folded="${ID_OLD,,}"
+    # Resolved once per distinct source, like the form is.
+    if [[ -z "${mapped[$ID_OLD]+set}" ]]; then
+      mapped["$ID_OLD"]="$(jid map "$ID_OLD" 2>/dev/null)" || mapped["$ID_OLD"]="$ID_OLD"
+      [[ -n "${mapped[$ID_OLD]}" ]] || mapped["$ID_OLD"]="$ID_OLD"
+    fi
+    key="$ID_NEW"; folded="${mapped[$ID_OLD],,}"
     if [[ "${sources[$key]:-}" != *"|$folded|"* ]]; then
       sources["$key"]="${sources[$key]:-}|$folded|"
       distinct["$key"]=$(( ${distinct[$key]:-0} + 1 ))
@@ -730,29 +741,22 @@ alias_source() {
   return 1
 }
 
-# alias_altered <dir> <plan> — how many plan rows hold a value the mapping
-# renames. Measured once per distinct value, like the form is.
+# alias_altered <plan> — how many plan rows hold a value the mapping renames.
+# Measured once per distinct value, like the form is.
 #
-#   This asks the mapping directly rather than decomposing a normalized result,
-#   because a normalized value cannot say which of the two steps moved it. The
-#   answer feeds a count in the disclosure and nothing else — no recorded value
-#   passes through here — so the recording path keeps its single definition.
-#   The value is still wrapped and passed after an end-of-options separator, for
-#   the reason it is everywhere else: the accepted identity set admits a leading
-#   hyphen, so an option-shaped value has to be handed over as data.
+#   Asked through the same verb the collision check uses, so the disclosure
+#   describes the mapping that actually applied rather than one this script
+#   resolved for itself. That also keeps the lookup — and the end-of-options
+#   discipline guarding it — in one place.
 alias_altered() {
-  local dir="$1" plan="$2" __row mapped address n=0
+  local plan="$1" __row address n=0
   local -A seen=()
   while IFS= read -r __row; do
     [[ -n "$__row" ]] || continue
     split_identity_row "$__row"
     [[ -n "$ID_OLD" ]] || continue
     if [[ -z "${seen[$ID_OLD]+set}" ]]; then
-      mapped="$(git -C "$dir" check-mailmap -- "<$ID_OLD>" 2>/dev/null)" || mapped=""
-      address=""
-      case "$mapped" in
-        *"<"*">"*) address="${mapped##*<}"; address="${address%>*}" ;;
-      esac
+      address="$(jid map "$ID_OLD" 2>/dev/null)" || address=""
       if [[ -n "$address" && "$address" != "$ID_OLD" ]]; then
         seen["$ID_OLD"]=1
       else
@@ -774,7 +778,7 @@ render_alias_disclosure() {
   if src="$(alias_source "$dir")"; then
     printf '\n  Alias mapping (%s): identities resolve through it before the form\n' "$src"
     printf '  is applied — %s record(s) altered by the mapping.\n' \
-      "$(alias_altered "$dir" "$plan")"
+      "$(alias_altered "$plan")"
   else
     printf '\n  Alias mapping: none found — identities resolve through the form alone.\n'
   fi

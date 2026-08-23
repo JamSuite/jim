@@ -5384,6 +5384,49 @@ case_migrate_identity_ambiguous_writes_nothing() {
   assert_eq "collection untouched" "$before" "$after"
 }
 
+# AC: one contributor's several addresses resolve to a single recorded
+# identity. Two addresses the project's alias mapping already unifies are one
+# contributor by the project's own declaration, so their landing on one
+# identity is the feature working — refusing it would disable re-normalization
+# for exactly the projects that keep a mapping.
+case_migrate_identity_ambiguous_mapping_unified_addresses_do_not_collide() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_mapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m map >/dev/null 2>&1
+  recorded_issue "$repo" "20260101-one" 'old@personal.example'
+  recorded_issue "$repo" "20260101-two" '1234+dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "both are planned"  '2 to rewrite' "$OUT"
+  assert_match "none is ambiguous" '0 ambiguous'  "$OUT"
+}
+
+# AC: the collision that matters survives. Two addresses the mapping does NOT
+# unify, which converge only because the form extracts from both, are two
+# contributors the project never declared identical — the merge this refusal
+# exists to catch.
+case_migrate_identity_ambiguous_extraction_merged_addresses_still_collide() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_extracted)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  # A mapping exists, and deliberately says nothing about either address: the
+  # exclusion is "the mapping unified them", never "a mapping is present".
+  printf 'Dev <1234+dev@users.noreply.github.com> <unrelated@personal.example>\n' \
+    > "$repo/.mailmap"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m map >/dev/null 2>&1
+  recorded_issue "$repo" "20260101-one" 'alice@company.example'
+  recorded_issue "$repo" "20260101-two" 'alice+ops@company.example'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the first record"  '20260101-one' "$ERR"
+  assert_match "names the second record" '20260101-two' "$ERR"
+}
+
 # AC: two source addresses differing only in case are one address, not a
 # collision — a contributor is never refused for having typed their own address
 # two ways.
@@ -6385,6 +6428,68 @@ case_identity_mailmap_result_clears_the_charset_gate() {
   run_identity "$repo" normalize 'old@personal.example'
   assert_exit "rc" 2 "$RC"
   assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# ─── Section: identity.sh — the mapping step on its own ─────────────────────
+
+# AC: alias resolution is available as its own answer, not only folded into a
+# normalized result. A normalized value cannot say which of the two steps moved
+# it, so a caller asking "are these two addresses one contributor?" has no way
+# to decompose one — and the alternative is a second copy of the lookup.
+case_identity_map_reports_the_mapped_address() {
+  local repo
+  repo="$(github_repo identity_map_mapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" map 'old@personal.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the address it maps to" \
+    "1234+dev@users.noreply.github.com" "$OUT"
+}
+
+# AC: the mapping step stops at the mapping — no form is applied, so the answer
+# is what version control says rather than what the project would record.
+case_identity_map_applies_no_form() {
+  local repo
+  repo="$(github_repo identity_map_noform)"
+  run_identity "$repo" map '1234+Dev@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "neither extracted nor folded" \
+    "1234+Dev@users.noreply.github.com" "$OUT"
+}
+
+# AC: an address the mapping does not name is carried through unchanged.
+case_identity_map_carries_an_unmapped_address_through() {
+  local repo
+  repo="$(github_repo identity_map_unmapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" map 'someone@example.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unchanged" "someone@example.com" "$OUT"
+}
+
+# AC: the result is judged as a recordable identity in its own right, exactly
+# as it is inside the full pipeline — the mapping is a source of identities and
+# not a way past the gate, whichever verb reaches it.
+case_identity_map_refuses_an_unrecordable_result() {
+  local repo
+  repo="$(github_repo identity_map_gate)"
+  printf 'Dev <dev%s@example.com> <old@personal.example>\n' "$LINE_SEP" \
+    > "$repo/.mailmap"
+  run_identity "$repo" map 'old@personal.example'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: an option-shaped identity is data here too — the verb is a second door
+# onto the same lookup, so it carries the same discipline.
+case_identity_map_reads_option_shaped_values_as_data() {
+  local repo
+  repo="$(github_repo identity_map_option)"
+  run_identity "$repo" map '--help'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "carried through" "--help" "$OUT"
 }
 
 # ─── Section: identity.sh — option-shaped identities ────────────────────────

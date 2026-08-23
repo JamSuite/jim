@@ -26,6 +26,7 @@
 #   bash identity.sh resolve            # read the environment's identity
 #   bash identity.sh validate <value>   # judge one already-obtained identity
 #   bash identity.sh normalize <value>  # apply the project's form to one value
+#   bash identity.sh map <value>        # resolve one value through the mapping
 #
 #   A leading `-c <config>` overrides the config the form is read from, the way
 #   the migrations do. Production callers do not pass it; tests and a conversion
@@ -85,6 +86,7 @@ usage() {
   echo "usage: identity.sh [-c <config>] resolve" >&2
   echo "       identity.sh [-c <config>] validate <value>" >&2
   echo "       identity.sh [-c <config>] normalize <value>" >&2
+  echo "       identity.sh [-c <config>] map <value>" >&2
 }
 
 # scheme — print the project's configured form, or refuse.
@@ -294,6 +296,33 @@ extract_local() {
   return 1
 }
 
+# map <value> — print the address the project's mapping resolves this one to,
+#   with no form applied.
+#
+#   The pipeline's own prefix, exposed on its own: the length bound, the
+#   mapping, and the gate the result must clear. It stops before the form
+#   because its question is the one a normalized value cannot answer — whether
+#   two addresses are one contributor. A normalized value has lost which of the
+#   two steps moved it, so a caller comparing them either gets this answer here
+#   or grows a second copy of the lookup, and a second copy is how the
+#   end-of-options discipline ends up in one place and not the other.
+map() {
+  local value="$1"
+
+  if [[ -z "$value" ]]; then
+    return 1
+  fi
+
+  if (( ${#value} > IDENTITY_MAX )); then
+    echo "error: identity is not recordable" >&2
+    return 2
+  fi
+
+  value="$(map_alias "$value")"
+
+  validate "$value"
+}
+
 # normalize <value> — print the value in the project's configured form.
 #   The form is settled first, so a configuration that cannot select one refuses
 #   rather than transforming under a form nobody chose.
@@ -400,6 +429,11 @@ main() {
       shift
       if [[ $# -ne 1 ]]; then usage; return 2; fi
       normalize "$1"
+      ;;
+    map)
+      shift
+      if [[ $# -ne 1 ]]; then usage; return 2; fi
+      map "$1"
       ;;
     *)
       usage
