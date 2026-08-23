@@ -41,6 +41,11 @@ CFG=""   # optional jimconf override path, forwarded to jimfile/jimconf
 jf() { if [[ -n "$CFG" ]]; then bash "$JIMFILE" -c "$CFG" "$@"; else bash "$JIMFILE" "$@"; fi; }
 jc() { if [[ -n "$CFG" ]]; then bash "$JIMCONF" -c "$CFG" "$@"; else bash "$JIMCONF" "$@"; fi; }
 
+# jid <args...> — invoke identity.sh, forwarding -c when set. The recorded form
+# is configuration, so a conversion handed a config must read the form from it
+# rather than from whichever project the run happens to stand in.
+jid() { if [[ -n "$CFG" ]]; then bash "$IDENTITY" -c "$CFG" "$@"; else bash "$IDENTITY" "$@"; fi; }
+
 # resolve_dir <arg> — arg if non-empty, else jimconf default; strip trailing /.
 resolve_dir() {
   local dir="${1:-}"
@@ -410,9 +415,12 @@ build_schema_plan() {
     [[ "$status" == "closed" ]] && outcome="done"
 
     # A filer recovered from history is a recorded identity like any other, so
-    # it clears the same gate the emitter's does. One that cannot is not
-    # recoverable — reported, never replaced with a placeholder.
-    filer="$(bash "$IDENTITY" validate "$(derive_filer "$f")" 2>/dev/null)" || filer=""
+    # it goes through the same definition the emitter's does — the same gate and
+    # the same form. Recording the raw address here while a newly filed issue
+    # records a form of it would split one contributor across the collection
+    # permanently, since this conversion runs once. One that cannot be recorded
+    # is not recoverable — reported, never replaced with a placeholder.
+    filer="$(jid normalize "$(derive_filer "$f")" 2>/dev/null)" || filer=""
     if [[ -z "$filer" ]]; then
       printf 'unresolved\t%s\t\t\n' "$slug"
       continue

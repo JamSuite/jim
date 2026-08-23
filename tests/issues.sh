@@ -4480,6 +4480,40 @@ priority: low'
   assert_match "filer recovered" 'filer@example\.test' "$OUT"
 }
 
+# AC: recovering historical filers records them in the project's current form,
+# so a converted issue and a newly filed one agree about who someone is. The
+# conversion is one-shot over the whole collection, so a form applied to only
+# one of the two write paths would be baked in permanently.
+case_migrate_schema_records_the_configured_form() {
+  local repo
+  repo="$(schema_repo migrate_schema_form)"
+  git -C "$repo" config user.email '1234+Dev@users.noreply.github.com'
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "recorded as the account name" '(^|[^.@])dev([^a-z]|$)' "$OUT"
+  assert_eq "not the raw relay address" "no" \
+    "$(printf '%s' "$OUT" | grep -q 'users\.noreply' && echo yes || echo no)"
+}
+
+# AC: a conversion running under an explicit config reads that config's form,
+# not the ambient project's — the recovered filer is a recorded identity like
+# any other and resolves through the same configuration.
+case_migrate_schema_honors_an_explicit_config_for_the_form() {
+  local repo cfg
+  repo="$(schema_repo migrate_schema_form_cfg)"
+  git -C "$repo" config user.email '1234+dev@users.noreply.github.com'
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low'
+  cfg=$(fixture migrate-identity-email.toml 'identity_scheme = "email"')
+  run_in "$repo" "$SCRIPT_MIGRATE" -c "$cfg" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "the whole address is recorded" 'users\.noreply\.github\.com' "$OUT"
+}
+
 # AC: existing finished issues are recorded as completed.
 case_migrate_schema_records_closed_issues_as_done() {
   local repo
