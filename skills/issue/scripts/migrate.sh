@@ -621,6 +621,81 @@ build_identity_plan() {
   done
 }
 
+# mark_ambiguous <plan-rows> — re-emit the plan with every colliding rewrite
+# turned into an ambiguous row.
+#
+#   A collision is two rewrites landing on one value from source addresses that
+#   are genuinely different — compared case-folded, because a contributor who
+#   typed their own address two ways is one contributor, not two.
+#
+#   Only rewrites are compared. A record already carrying the value another one
+#   is about to reach produces no rewrite at all, and it is not a second person
+#   colliding: it is the same value one step further along. A collection part-way
+#   through a form change holds exactly that pair, and treating it as a collision
+#   would make re-normalization impossible in the situation it exists for.
+#
+#   Whether two addresses that really do collapse belong to two people is not
+#   something jim can know. It refuses and names the records; the operator, who
+#   can open them, decides.
+mark_ambiguous() {
+  local plan="$1" __row key folded
+  local -A distinct=() sources=()
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    [[ "$ID_ACTION" == rewrite ]] || continue
+    key="$ID_NEW"; folded="${ID_OLD,,}"
+    if [[ "${sources[$key]:-}" != *"|$folded|"* ]]; then
+      sources["$key"]="${sources[$key]:-}|$folded|"
+      distinct["$key"]=$(( ${distinct[$key]:-0} + 1 ))
+    fi
+  done <<<"$plan"
+
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    if [[ "$ID_ACTION" == rewrite ]] && (( ${distinct[$ID_NEW]:-0} > 1 )); then
+      printf 'ambiguous\t%s\t%s\t%s\t%s\n' "$ID_SLUG" "$ID_FIELD" "$ID_OLD" "$ID_NEW"
+    else
+      printf '%s\n' "$__row"
+    fi
+  done <<<"$plan"
+}
+
+# refuse_ambiguous <plan-rows> — report every collision and refuse, or return 0
+# when there is none. Names the records and the single value they would share;
+# never the addresses they hold. The refusal stays actionable because each named
+# record carries its own address, and an issue collection's audience is not
+# necessarily the audience of a terminal log.
+refuse_ambiguous() {
+  local plan="$1" __row value found=0
+  local -A groups=()
+  local -a order=()
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    [[ "$ID_ACTION" == ambiguous ]] || continue
+    if [[ -z "${groups[$ID_NEW]:-}" ]]; then order+=("$ID_NEW"); fi
+    case "${groups[$ID_NEW]:-}" in
+      *"  $ID_SLUG"$'\n'*) ;;
+      *) groups["$ID_NEW"]="${groups[$ID_NEW]:-}  $ID_SLUG"$'\n' ;;
+    esac
+    found=1
+  done <<<"$plan"
+  (( found )) || return 0
+
+  for value in "${order[@]}"; do
+    {
+      printf 'error: these records hold addresses that become the same identity\n'
+      printf '       under the current form:\n'
+      printf '%s' "${groups[$value]}"
+      printf '       all record as: %s\n' "$value"
+    } >&2
+  done
+  echo "error: nothing was written; open any named record to see the address it holds" >&2
+  return 2
+}
+
 # alias_source <dir> — name the mapping the project's version control resolves,
 # or nothing. Located, never read: the disclosure states whether one is in play,
 # and version control is what reads it.
@@ -793,6 +868,13 @@ cmd_identity() {
   [[ -d "$dir" ]] || { echo "error: not a directory: $dir" >&2; return 1; }
 
   local plan; plan="$(build_identity_plan "$dir" "$mode" "$from" "$to")"
+  plan="$(mark_ambiguous "$plan")"
+
+  # The refusal comes before the preview as well as before the apply. A plan an
+  # operator cannot approve is not one to render a hash for — the hash is the
+  # token that authorizes the write.
+  refuse_ambiguous "$plan" || return $?
+
   if (( apply )); then
     apply_identity_plan "$dir" "$plan" "$expect"
   else

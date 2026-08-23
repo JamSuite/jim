@@ -5331,6 +5331,88 @@ case_migrate_identity_remap_records_the_replacement_lower_cased() {
   assert_match "lower-cased" '> new@example\.test' "$OUT"
 }
 
+# ─── Section: migrate.sh identity — ambiguity ───────────────────────────────
+
+# AC: an operation that plans a change across the whole collection refuses the
+# entire run when two distinct source addresses within it would record as the
+# same identity. Discovering the merge months later in a by-person view that
+# looks perfectly plausible is the alternative.
+case_migrate_identity_ambiguous_refuses_the_whole_run() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  recorded_issue "$repo" "20260101-one" 'alice@company.example'
+  recorded_issue "$repo" "20260101-two" 'alice+ops@company.example'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the first record"  '20260101-one' "$ERR"
+  assert_match "names the second record" '20260101-two' "$ERR"
+  assert_match "names the value they would share" 'alice' "$ERR"
+}
+
+# AC: an ambiguity refusal names the colliding records and the single value
+# they would both produce, rather than the two source addresses. It stays
+# actionable, because each named record carries its own address — without
+# copying contributor addresses into a channel whose audience may be wider than
+# the collection's.
+case_migrate_identity_ambiguous_refusal_withholds_the_source_addresses() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_quiet)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  recorded_issue "$repo" "20260101-one" 'alice@company.example'
+  recorded_issue "$repo" "20260101-two" 'alice+ops@company.example'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 2 "$RC"
+  assert_eq "the source addresses are not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'company\.example' && echo yes || echo no)"
+}
+
+# AC: the refusal is of the entire run — nothing is written.
+case_migrate_identity_ambiguous_writes_nothing() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_ambig_nowrite)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  recorded_issue "$repo" "20260101-one" 'alice@company.example'
+  recorded_issue "$repo" "20260101-two" 'alice+ops@company.example'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 2 "$RC"
+  assert_eq "collection untouched" "$before" "$after"
+}
+
+# AC: two source addresses differing only in case are one address, not a
+# collision — a contributor is never refused for having typed their own address
+# two ways.
+case_migrate_identity_ambiguous_case_only_difference_is_not_a_collision() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_case)"
+  recorded_issue "$repo" "20260101-one" 'Dev@Example.Test'
+  recorded_issue "$repo" "20260101-two" 'DEV@EXAMPLE.TEST'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "both are planned" '2 to rewrite' "$OUT"
+  assert_match "none is ambiguous" '0 ambiguous' "$OUT"
+}
+
+# AC: a record already recorded in the current form is not a second person
+# colliding with the record that is about to reach it. A collection part-way
+# through a form change holds exactly that pair, and refusing it would make
+# re-normalization impossible in the one situation it exists for.
+case_migrate_identity_ambiguous_an_already_recorded_form_is_not_a_collision() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_partial)"
+  recorded_issue "$repo" "20260101-one" '1234+dev@users.noreply.github.com'
+  recorded_issue "$repo" "20260101-two" 'dev'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "one rewrite, one unchanged" '1 to rewrite · 1 unchanged' "$OUT"
+  assert_match "none is ambiguous" '0 ambiguous' "$OUT"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one
