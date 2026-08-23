@@ -121,3 +121,5 @@
 1787472869	2026-08-23T08:14:29Z	blueprint	started	tier=project;op=reconcile
 1787473002	2026-08-23T08:16:42Z	blueprint	finished	tier=project;op=reconcile;edges=25;leaks=1;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=780;faces=22;faces_max=9;faces_max_group=issue;fanin_group=issue,platform
 1787479815	2026-08-23T10:10:15Z	spec	realized	moved=issue/P-20260823-recorded-identity-schemes:issue/013
+1787527917	2026-08-23T23:31:57Z	blueprint	started	tier=project;op=reconcile
+1787527995	2026-08-23T23:33:15Z	blueprint	finished	tier=project;op=reconcile;edges=25;leaks=1;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=789;faces=22;faces_max=9;faces_max_group=issue;fanin_group=issue,platform
