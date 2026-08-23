@@ -5723,6 +5723,55 @@ case_identity_collision_does_not_block_a_transition() {
     "$(cat "$dir/20260101-target.md")"
 }
 
+# ─── Section: render.sh — identity is read, never re-derived ────────────────
+
+# AC: the identity shown in any view is the identity recorded in the file, so a
+# contributor reads as one identity everywhere without a view having to
+# resolve, map, or re-derive anything at display time. The values below are
+# exactly the ones the configured form would rewrite, so a read that applied
+# the form would be visible here.
+case_render_identity_verbatim_shows_the_stored_value() {
+  local dir
+  dir=$(empty_dir render_identity_verbatim)
+  write_issue "$dir" "20260101-shown" 'num: 7
+title: "Shown"
+status: active
+priority: high
+type: issue
+filed-by: "1234+Dev@users.noreply.github.com"
+claimed-by: "OLD@Personal.Example"
+outcome: ""'
+  run_render show 20260101-shown "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the filer is shown as stored" \
+    'filed-by: 1234\+Dev@users\.noreply\.github\.com' "$OUT"
+  assert_match "the holder is shown as stored" \
+    'claimed-by: OLD@Personal\.Example' "$OUT"
+}
+
+# AC: a mapping the project carries is not consulted at display time either —
+# resolution happens where an identity is recorded, not where it is read.
+case_render_identity_verbatim_ignores_the_alias_mapping() {
+  local repo
+  repo="$(schema_repo render_identity_verbatim_map)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  write_issue "$repo/docs/issues" "20260101-mapped" 'num: 8
+title: "Mapped"
+status: open
+priority: low
+type: issue
+filed-by: "old@personal.example"
+claimed-by: ""
+outcome: ""'
+  run_in "$repo" "$SCRIPT_RENDER" show 20260101-mapped docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "the stored value is shown" \
+    'filed-by: old@personal\.example' "$OUT"
+  assert_eq "the mapped form is not substituted" "no" \
+    "$(printf '%s' "$OUT" | grep -q 'users\.noreply' && echo yes || echo no)"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one
