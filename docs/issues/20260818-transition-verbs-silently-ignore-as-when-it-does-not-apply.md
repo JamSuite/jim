@@ -5,7 +5,7 @@ title: "Transition verbs silently ignore --as when it does not apply"
 status: open
 priority: medium
 type: issue
-filed-by: "git@jrko.org"
+filed-by: "jrko"
 claimed-by: ""
 outcome: ""
 labels: [issue, cli, correctness]

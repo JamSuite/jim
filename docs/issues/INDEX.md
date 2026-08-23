@@ -500,4 +500,3 @@
 - `20260812-index-sh-warnings-and-row-set-escape-the-sanitizer-discipline`: malformed wikilink `[[ -z "$fm" ]]` ignored.
 - `20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0`: malformed wikilink `[[ "$action" == rename ]]` ignored.
 - `20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish`: malformed wikilink `[[ -n "$st" ]]` ignored.
-- 3 record(s) hold an identity the configured form would record differently: `20260818-filer-derivation-cannot-reach-a-centralized-collection-s-history`, `20260818-transition-verbs-silently-ignore-as-when-it-does-not-apply`, `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read`. Re-apply the current form with `migrate.sh identity --renormalize`.

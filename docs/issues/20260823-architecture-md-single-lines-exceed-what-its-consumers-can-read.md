@@ -5,7 +5,7 @@ title: "ARCHITECTURE.md single lines exceed what its consumers can read"
 status: open
 priority: high
 type: issue
-filed-by: "31940806+jrko@users.noreply.github.com"
+filed-by: "jrko"
 claimed-by: ""
 outcome: ""
 labels: [arch, sdlc, readability]

@@ -5,7 +5,7 @@ title: "Filer derivation cannot reach a centralized collection's history"
 status: open
 priority: high
 type: issue
-filed-by: "git@jrko.org"
+filed-by: "jrko"
 claimed-by: ""
 outcome: ""
 labels: [issue, migration, placement, attribution]
