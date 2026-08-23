@@ -602,8 +602,11 @@ build_identity_plan() {
         fi
         new="${form[$old]}"
       else
+        # Case is normalized before anything is compared, here as everywhere
+        # else, so an operator is never asked to guess how a value was typed
+        # when it was recorded.
         new=""
-        [[ "$old" == "$from" ]] && new="$to"
+        [[ "${old,,}" == "$from" ]] && new="$to"
       fi
       # A value the form cannot produce is left where it is. The rewrite is not
       # the place to discover an unrecordable identity, and dropping the field
@@ -763,6 +766,24 @@ cmd_identity() {
   if (( remap )); then
     [[ -n "$from" ]] || { echo "error: --to given without --from" >&2; return 2; }
     [[ -n "$to" ]]   || { echo "error: --from given without --to" >&2; return 2; }
+    # Both halves are recorded identities: the one being replaced has to be
+    # comparable against what the collection holds, and the replacement is
+    # written into frontmatter, so it clears the same gate every other recorded
+    # identity does. The refusal names neither value.
+    if ! jid validate "$from" >/dev/null 2>&1; then
+      echo "error: the identity given to --from is not recordable" >&2
+      return 2
+    fi
+    if ! jid validate "$to" >/dev/null 2>&1; then
+      echo "error: the identity given to --to is not recordable" >&2
+      return 2
+    fi
+    # Lower-cased on both sides. A replacement is supplied rather than derived,
+    # so no form is applied to it — but every recorded identity is lower case
+    # whichever path wrote it, and the value being matched has to be folded the
+    # same way to compare against one.
+    from="${from,,}"
+    to="${to,,}"
   fi
 
   local mode="remap"

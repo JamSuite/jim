@@ -5247,6 +5247,90 @@ case_migrate_identity_renormalize_discloses_the_alias_mapping() {
   assert_match "the mapped record takes the mapped form" '> dev' "$OUT"
 }
 
+# ─── Section: migrate.sh identity — explicit remap ──────────────────────────
+
+# AC: an operator can replace one recorded identity with another across the
+# whole collection, supplying the old and new values explicitly.
+case_migrate_identity_remap_plans_the_supplied_replacement() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap)"
+  recorded_issue "$repo" "20260101-one" 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "the supplied mapping is shown" 'from  old@example\.test' "$OUT"
+  assert_match "the record is planned" '20260101-one' "$OUT"
+  assert_match "the new value is shown" '> new@example\.test' "$OUT"
+  assert_match "counted as a rewrite" '1 to rewrite' "$OUT"
+}
+
+# AC: the replacement covers every field that records an identity, including
+# the holder — which no derivation can recover, and which is therefore the
+# reason an explicit mapping is required rather than a re-derivation.
+case_migrate_identity_remap_covers_the_holder_field() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_holder)"
+  recorded_issue "$repo" "20260101-held" 'old@example.test' 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "the filer field is named"  'filed-by' "$OUT"
+  assert_match "the holder field is named" 'claimed-by' "$OUT"
+  assert_match "both fields counted" '2 to rewrite' "$OUT"
+}
+
+# AC: only the named identity is replaced — a remap is a mapping the operator
+# supplied, not a rewrite of everyone.
+case_migrate_identity_remap_leaves_other_identities_alone() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_others)"
+  recorded_issue "$repo" "20260101-one"   'old@example.test'
+  recorded_issue "$repo" "20260101-other" 'someone@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "the other record is untouched" 'unchanged  20260101-other' "$OUT"
+  assert_match "one rewrite, one unchanged" '1 to rewrite · 1 unchanged' "$OUT"
+}
+
+# AC: two addresses differing only in case are one address, so an operator is
+# not asked to guess how a value was typed when it was recorded.
+case_migrate_identity_remap_matches_without_case() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_case)"
+  recorded_issue "$repo" "20260101-one" 'Old@Example.Test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "the record is planned" '1 to rewrite' "$OUT"
+}
+
+# AC: a value that cannot be recorded is refused before anything is planned,
+# and the refusal names neither the value nor any issue content.
+case_migrate_identity_remap_refuses_an_unrecordable_replacement() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_bad)"
+  recorded_issue "$repo" "20260101-one" 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to "new${LINE_SEP}@secret-corp.example"
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "a reason was given" "$ERR"
+  assert_eq "the rejected value is not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
+}
+
+# AC: every recorded identity is lower case, whichever path wrote it — an
+# explicit replacement is still a recorded identity.
+case_migrate_identity_remap_records_the_replacement_lower_cased() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_lower)"
+  recorded_issue "$repo" "20260101-one" 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'New@Example.Test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "lower-cased" '> new@example\.test' "$OUT"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one
