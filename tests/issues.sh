@@ -5154,6 +5154,69 @@ case_identity_resolve_refusal_withholds_the_rejected_value() {
     "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
 }
 
+# ─── Section: identity.sh — the configured form ─────────────────────────────
+
+# AC: a project selects one of three forms, and the selection belongs to the
+# project. An absent setting takes the documented default, which is what keeps
+# every zero-config project working without configuring anything.
+case_identity_scheme_absent_takes_the_default() {
+  local repo
+  repo="$(identity_repo identity_scheme_absent 'dev@example.com')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address on stdout" "dev@example.com" "$OUT"
+}
+
+# AC: each form in the closed set is selectable.
+case_identity_scheme_recognized_values_are_accepted() {
+  local repo
+  repo="$(identity_repo identity_scheme_ok 'dev@example.com')"
+  printf 'identity_scheme = "email"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "email rc" 0 "$RC"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "github rc" 0 "$RC"
+}
+
+# AC: an unrecognized form is refused rather than quietly treated as the
+# default. A mistyped setting would otherwise record every identity in the
+# collection under a form the project did not choose, on the strength of a
+# message nobody has to read.
+case_identity_scheme_unrecognized_value_refuses() {
+  local repo
+  repo="$(identity_repo identity_scheme_bad 'dev@example.com')"
+  printf 'identity_scheme = "gitlab"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_match "names the setting" 'identity_scheme' "$ERR"
+}
+
+# AC: the refusal names the setting to supply, so it is actionable without
+# reading the source. It carries no identity value.
+case_identity_scheme_refusal_names_the_accepted_forms() {
+  local repo
+  repo="$(identity_repo identity_scheme_quiet 'dev@secret-corp.example')"
+  printf 'identity_scheme = "gitlab"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the accepted forms" 'email' "$ERR"
+  assert_eq "no identity in the refusal" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
+}
+
+# AC: the form is read through the project's own resolver, so a run under an
+# explicit config reads that config's form rather than the ambient project's.
+case_identity_scheme_honors_an_explicit_config() {
+  local repo cfg
+  repo="$(identity_repo identity_scheme_cfg 'dev@example.com')"
+  cfg=$(fixture identity-scheme.toml 'identity_scheme = "gitlab"')
+  run_identity "$repo" -c "$cfg" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the setting" 'identity_scheme' "$ERR"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

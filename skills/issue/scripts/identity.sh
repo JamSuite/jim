@@ -5,9 +5,9 @@
 #   issue's filer, and the transition verbs record it as an issue's holder, so
 #   this is the one place that decides what counts as a recordable identity.
 #
-#   The value is stored as version control supplies it — not normalized,
-#   truncated, or mapped through a table. Which form it takes is each
-#   contributor's own configuration decision.
+#   The form the value takes is the project's decision, not each contributor's:
+#   `identity_scheme` selects it, and one collection therefore never holds
+#   identities recorded under different rules.
 #
 # SECURITY MODEL
 #   - The configured identity accepts embedded newlines and arbitrary bytes, so
@@ -25,6 +25,11 @@
 #   bash identity.sh resolve            # read the environment's identity
 #   bash identity.sh validate <value>   # judge one already-obtained identity
 #
+#   A leading `-c <config>` overrides the config the form is read from, the way
+#   the migrations do. Production callers do not pass it; tests and a conversion
+#   running under an explicit config do, so a run never reads the ambient
+#   project's form when it was handed one.
+#
 #   `validate` exists because the environment is not the only source of a
 #   recorded identity: the collection conversion recovers a historical filer
 #   out of version-control history, and a value read from there is a recorded
@@ -34,7 +39,8 @@
 # EXIT CODES
 #   0  resolved or accepted — the identity is on stdout
 #   1  none configured, or an empty value to validate — nothing on stdout
-#   2  present but not recordable, or a usage error — nothing on stdout
+#   2  present but not recordable, a usage error, or a configuration that
+#      cannot select a form — nothing on stdout
 
 set -uo pipefail
 
@@ -52,8 +58,50 @@ IDENTITY_CHARS='A-Za-z0-9._%+@-'
 # Longest address the mail standards admit; a value beyond it is not one.
 IDENTITY_MAX=254
 
+# The closed set of forms. Ordered from least to most extracting: each records
+# everything the one before it records, plus one further extraction.
+IDENTITY_SCHEMES=(email github local)
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
+CFG=""   # optional jimconf override path, forwarded to jimconf
+
+# jc <args...> — invoke jimconf.sh, forwarding -c when set.
+jc() { if [[ -n "$CFG" ]]; then bash "$JIMCONF" -c "$CFG" "$@"; else bash "$JIMCONF" "$@"; fi; }
+
 usage() {
-  echo "usage: identity.sh resolve | identity.sh validate <value>" >&2
+  echo "usage: identity.sh [-c <config>] resolve" >&2
+  echo "       identity.sh [-c <config>] validate <value>" >&2
+}
+
+# scheme — print the project's configured form, or refuse.
+#   An absent setting takes the documented default, so a project that has
+#   configured nothing still records identities. A value outside the closed set
+#   is refused rather than treated as the default: a mistyped setting would
+#   otherwise record every identity in the collection under a form the project
+#   did not choose, on the strength of a message nobody has to read. A
+#   resolution that failed rather than being absent is refused for the same
+#   reason — a fabricated default is indistinguishable from a chosen one.
+#
+#   The refusal names the setting and the forms it accepts. It never carries an
+#   identity value, and it does not echo the rejected setting either: naming
+#   what is accepted is what makes it actionable.
+scheme() {
+  local value rc s
+  value="$(jc get identity_scheme 2>/dev/null)"
+  rc=$?
+  if (( rc != 0 )); then
+    echo "error: identity_scheme could not be resolved from the project config" >&2
+    return 2
+  fi
+  for s in "${IDENTITY_SCHEMES[@]}"; do
+    if [[ "$value" == "$s" ]]; then
+      printf '%s\n' "$value"
+      return 0
+    fi
+  done
+  echo "error: identity_scheme must be one of: ${IDENTITY_SCHEMES[*]}" >&2
+  return 2
 }
 
 # validate <value> — print the value when it is recordable, else refuse.
@@ -84,8 +132,13 @@ validate() {
 }
 
 # resolve — print the environment's configured identity, or refuse.
+#   The form is settled before the environment is read, so a project whose
+#   configuration cannot select one refuses rather than recording under a form
+#   it did not choose.
 resolve() {
   local value rc
+  scheme >/dev/null || return 2
+
   value="$(git config --get user.email 2>/dev/null)" || value=""
 
   if [[ -z "$value" ]]; then
@@ -98,21 +151,28 @@ resolve() {
   return $rc
 }
 
-case "${1:-}" in
-  resolve)
-    shift
-    if [[ $# -ne 0 ]]; then usage; exit 2; fi
-    resolve
-    exit $?
-    ;;
-  validate)
-    shift
-    if [[ $# -ne 1 ]]; then usage; exit 2; fi
-    validate "$1"
-    exit $?
-    ;;
-  *)
-    usage
-    exit 2
-    ;;
-esac
+main() {
+  if [[ "${1:-}" == "-c" ]]; then
+    [[ -n "${2:-}" ]] || { echo "error: -c requires a path argument" >&2; return 2; }
+    CFG="$2"; shift 2
+  fi
+  case "${1:-}" in
+    resolve)
+      shift
+      if [[ $# -ne 0 ]]; then usage; return 2; fi
+      resolve
+      ;;
+    validate)
+      shift
+      if [[ $# -ne 1 ]]; then usage; return 2; fi
+      validate "$1"
+      ;;
+    *)
+      usage
+      return 2
+      ;;
+  esac
+}
+
+main "$@"
+exit $?
