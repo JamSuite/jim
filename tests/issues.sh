@@ -5517,6 +5517,59 @@ case_migrate_identity_apply_is_idempotent() {
     "$(cat "$repo/docs/issues/20260101-one.md")"
 }
 
+# ─── Section: migrate.sh — index regeneration failures ──────────────────────
+
+# AC: a regeneration that failed is surfaced and carried, never discarded under
+# a success message. Both apply paths write the collection first, so an index
+# still describing the state before the migration is exactly the staleness
+# nothing downstream would report.
+case_migrate_index_failure_is_surfaced_by_the_prefix_apply() {
+  local repo
+  repo="$(schema_repo migrate_index_failure_prefix)"
+  printf 'issue_id_prefix = "sequential"\n' > "$repo/jimconf.toml"
+  write_issue "$repo/docs/issues" "20260101-alpha" 'title: "Alpha"
+status: open
+priority: low
+num: 3'
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "file alpha" >/dev/null 2>&1
+  mkdir -p "$repo/docs/issues/INDEX.md"
+  chmod 500 "$repo/docs/issues/INDEX.md"
+  run_in "$repo" "$SCRIPT_MIGRATE" prefix docs/issues --apply
+  chmod 700 "$repo/docs/issues/INDEX.md"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure is named" 'index' "$ERR"
+  assert_eq "the rename still landed" "yes" \
+    "$([[ -f "$repo/docs/issues/0003-alpha.md" ]] && echo yes || echo no)"
+}
+
+# AC: the same holds for the schema conversion, which writes every issue in the
+# collection before the index is regenerated.
+case_migrate_index_failure_is_surfaced_by_the_schema_apply() {
+  local repo
+  repo="$(schema_repo migrate_index_failure_schema)"
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  mkdir -p "$repo/docs/issues/INDEX.md"
+  chmod 500 "$repo/docs/issues/INDEX.md"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  chmod 700 "$repo/docs/issues/INDEX.md"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure is named" 'index' "$ERR"
+  assert_match "the conversion still landed" '^type: issue$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one

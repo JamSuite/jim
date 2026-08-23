@@ -338,7 +338,15 @@ apply_plan() {
   done
   rm -f "$mapfile"
 
-  bash "$HERE/index.sh" "$dir" >/dev/null 2>&1
+  # The renames have landed by this point, so a regeneration that failed cannot
+  # be reported as success: the index would go on naming files under names that
+  # no longer exist, and nothing downstream would say so.
+  local rc=0
+  if ! bash "$HERE/index.sh" "$dir" >/dev/null 2>&1; then
+    echo "error: the renames landed but the index could not be regenerated;" \
+         "re-run index.sh before reading the collection" >&2
+    rc=1
+  fi
 
   local renamed=0 skipped=0 collisions=0 __row
   while IFS= read -r __row; do
@@ -353,6 +361,7 @@ apply_plan() {
   done <<<"$plan"
   printf 'Re-derived to the active scheme: %d renamed (%d collision-resolved), %d skipped.\n' \
     "$renamed" "$collisions" "$skipped"
+  return $rc
 }
 
 # ─── Section: schema conversion ──────────────────────────────────────────────
@@ -529,9 +538,18 @@ apply_schema_plan() {
     converted=$((converted+1))
   done <<<"$plan"
 
-  bash "$HERE/index.sh" "$dir" >/dev/null 2>&1
+  # Every converted issue is already written, so a regeneration that failed is
+  # carried into the exit status rather than discarded: the index would go on
+  # describing a collection that has since gained the identity fields.
+  local rc=0
+  if ! bash "$HERE/index.sh" "$dir" >/dev/null 2>&1; then
+    echo "error: the conversion landed but the index could not be regenerated;" \
+         "re-run index.sh before reading the collection" >&2
+    rc=1
+  fi
 
   printf 'Converted %d issue(s); %d already carried the fields.\n' "$converted" "$skipped"
+  return $rc
 }
 
 cmd_schema() {
