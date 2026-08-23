@@ -5154,6 +5154,53 @@ case_identity_resolve_refusal_withholds_the_rejected_value() {
     "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
 }
 
+# AC: alias resolution applies everywhere an identity is recorded. The
+# environment's identity is read through the same definition as an
+# already-obtained one, so the path that files an issue and the path that
+# recovers a historical filer cannot disagree about who someone is.
+case_identity_resolve_applies_the_configured_form() {
+  local repo
+  repo="$(identity_repo identity_resolve_form '1234+Dev@users.noreply.github.com')"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account name" "dev" "$OUT"
+}
+
+# AC: an address the mapping names resolves through it when read from the
+# environment, not only when supplied.
+case_identity_resolve_reads_through_the_mapping() {
+  local repo
+  repo="$(identity_repo identity_resolve_mapped 'old@personal.example')"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "recorded as the mapped form" "dev" "$OUT"
+}
+
+# AC: every recorded identity is lower case, whatever the environment supplied.
+case_identity_resolve_lower_cases_the_environment_value() {
+  local repo
+  repo="$(identity_repo identity_resolve_case 'Dev@Example.COM')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "lower-cased" "dev@example.com" "$OUT"
+}
+
+# AC: a form that cannot be applied refuses every operation that would record
+# an identity — filing included, not only a supplied value.
+case_identity_resolve_refuses_a_form_it_cannot_apply() {
+  local repo
+  repo="$(identity_repo identity_resolve_nodomain 'alice@company.example')"
+  printf 'identity_scheme = "local"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_match "names the setting to supply" 'identity_domain' "$ERR"
+}
+
 # ─── Section: identity.sh — the configured form ─────────────────────────────
 
 # AC: a project selects one of three forms, and the selection belongs to the

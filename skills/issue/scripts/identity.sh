@@ -357,13 +357,16 @@ normalize() {
 }
 
 # resolve — print the environment's configured identity, or refuse.
-#   The form is settled before the environment is read, so a project whose
-#   configuration cannot select one refuses rather than recording under a form
-#   it did not choose.
+#   The environment is one source of an identity among several, so it goes
+#   through the same definition as a value supplied from anywhere else. That is
+#   what stops a newly filed issue and a converted one from disagreeing about
+#   who someone is.
+#
+#   An absent identity is reported as absent whatever form is configured: there
+#   is nothing to record either way, and "set user.email" is the answer the
+#   caller can act on.
 resolve() {
   local value rc
-  scheme >/dev/null || return 2
-
   value="$(git config --get user.email 2>/dev/null)" || value=""
 
   if [[ -z "$value" ]]; then
@@ -371,7 +374,7 @@ resolve() {
     return 1
   fi
 
-  validate "$value"
+  normalize "$value"
   rc=$?
   return $rc
 }
