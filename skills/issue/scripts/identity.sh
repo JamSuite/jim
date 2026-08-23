@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #
-# skills/issue/scripts/identity.sh — Resolve the contributor identity the
-#   environment supplies, or refuse. The emitter records the result as an
-#   issue's filer, and the transition verbs record it as an issue's holder, so
-#   this is the one place that decides what counts as a recordable identity.
+# skills/issue/scripts/identity.sh — Decide what a recordable contributor
+#   identity is and what form it takes. The emitter records the result as an
+#   issue's filer, the transition verbs record it as an issue's holder, and the
+#   collection conversion records a filer recovered from history, so this is the
+#   one place all three agree about.
 #
 #   The form the value takes is the project's decision, not each contributor's:
 #   `identity_scheme` selects it, and one collection therefore never holds
