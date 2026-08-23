@@ -363,3 +363,9 @@ issue allocate 362 20260823-six-identity-tests-do-not-discriminate-a-wrong-imple
 issue allocate 363 20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc 20260823 jrko
 issue allocate 364 20260823-user-facing-docs-omit-the-recorded-identity-feature 20260823 jrko
 issue allocate 365 20260823-values-carrying-angle-brackets-bypass-the-recorded-identity-char 20260823 jrko
+issue allocate 366 20260823-conversion-preview-cannot-predict-a-structural-apply-failure 20260823 jrko
+issue allocate 367 20260823-issue-face-does-not-declare-the-validator-lockstep-contract 20260823 jrko
+issue allocate 368 20260823-issue-skill-instructs-two-scripts-its-tool-grant-does-not-permit 20260823 jrko
+issue allocate 369 20260823-render-sh-help-tells-users-to-close-an-issue-by-hand 20260823 jrko
+issue allocate 370 20260823-schema-spec-integrity-mockup-diverges-from-the-emitted-report 20260823 jrko
+issue allocate 371 20260823-transition-sh-degrades-quietly-on-two-failure-paths 20260823 jrko
