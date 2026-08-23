@@ -5089,9 +5089,12 @@ case_identity_resolve_reports_the_configured_address() {
   assert_eq "address on stdout" "dev@example.com" "$OUT"
 }
 
-# AC: a forge noreply address resolves like any other — the form the identity
-# takes is the contributor's own configuration decision, not jim's.
-case_identity_resolve_accepts_a_noreply_address() {
+# AC: only addresses actually issued by the relay service are extracted. This
+# address wears the shape of one — a numeric id, a separator, a noreply
+# host — without being issued by the service the project recognizes, so it is
+# recorded whole. Recognition is a statement about the service, not about the
+# shape of an address.
+case_identity_resolve_records_a_relay_lookalike_whole() {
   local repo
   repo="$(identity_repo identity_noreply '1234+dev@users.noreply.example.com')"
   run_identity "$repo" resolve
