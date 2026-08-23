@@ -2,7 +2,7 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-08-12"
+updated: "2026-08-23"
 last_full_generate: "2026-08-12T20:31:41Z"
 ---
 
@@ -63,6 +63,24 @@ face after the platform CLIs.
   view served from an index that could not be rebuilt is named on stderr and
   carries a non-zero status, so no reader is handed a stale view reported as a
   current one.
+- `transition.sh` **lifecycle verbs** — `claim` / `release` / `start` / `close`
+  / `reopen`, one command per transition. Guarantee: the id clears the validator
+  and the outcome clears its enum before the placement door opens; each
+  transition publishes every field it changes, plus the refreshed stamp, in one
+  atomic write, so a record is never observed finished with no outcome; a claim
+  or release on an issue another holds refuses naming the holder and takes
+  `--force` to override; closing preserves the holder record, and reopening
+  keeps the outcome, which is what makes a reopen legible from the record alone.
+  The door commits under the verb matching the subcommand, so a centralized
+  collection's history is self-describing.
+- `identity.sh` **recordable identity** — `resolve` (the environment's) and
+  `validate` (one already obtained). Guarantee: one positively enumerated
+  character set decides what can be recorded, so an unanticipated value fails
+  closed rather than surviving a list of characters someone thought to name; a
+  value that cannot be recorded is refused exactly as an absent one; refusals
+  are fixed reasons carrying neither the rejected value nor issue content. The
+  same definition governs every recorded identity — the emitter's filer, the
+  transition verbs' holder, and the filer the conversion recovers from history.
 - **§ 7a candidate-batch contract** — the canonical definition of the fileable
   bar (resolution, actionability, pipeline-ownership) and the emitter call
   shape, defined once in this group's `SKILL.md`. Guarantee: surfacing skills
@@ -86,12 +104,17 @@ face after the platform CLIs.
   partition surface holds `mode`, `begin --read` and `abort` alone — no publish
   verb — for the re-points it discloses rather than applies.
 - `backfill.sh` / `migrate.sh` / `reconcile.sh` **migrations** — opt-in,
-  preview-gated one-shot transforms (num / timestamp / prefix; and realizing
-  provisional ordinals into real coordinated ones). Internal surface, low
-  contract weight.
+  preview-gated one-shot transforms (num / timestamp; prefix and schema; and
+  realizing provisional ordinals into real coordinated ones). The two surfaces
+  divide by risk rather than era: `backfill.sh` fills constant values that need
+  no preview, `migrate.sh` writes derived ones behind a preview, an explicit
+  apply gate and a plan-hash drift guard. Internal surface, low contract weight.
 - `@jim:issue-analyst` **insights persona** — read-only synthesis over the
   collection; capability-narrowed (Read plus one `render.sh` invocation).
-- `issue-template.md` — the schema shape the emitter materializes.
+- `issue-template.md` — the schema shape the emitter materializes: identity
+  (`filed-by` / `claimed-by`), lifecycle (`status` across not-started, underway
+  and finished, with `outcome` non-empty once an issue has ever been finished),
+  and grouping (`type`, and `part-of` recorded on the member side only).
 
 ## Requires
 
@@ -117,11 +140,13 @@ face after the platform CLIs.
 ## Structure
 
 - `skills/issue/` — `SKILL.md` (subcommand routing, § 7a contract, § Step-7
-  wrapping discipline), `assets/issue-template.md`, and seven scripts:
+  wrapping discipline), `assets/issue-template.md`, and nine scripts:
   `new.sh` (emitter), `index.sh` (index), `render.sh` (views), `backfill.sh` /
-  `migrate.sh` (migrations), `reconcile.sh` (realize provisional ordinals), and
-  `place.sh` — the seam between an on-branch collection and one centralized on a
-  designated branch, which the other six route themselves through. It also
+  `migrate.sh` (migrations), `reconcile.sh` (realize provisional ordinals),
+  `identity.sh` (the recordable-identity definition), `transition.sh` (the
+  lifecycle verbs), and `place.sh` — the seam between an on-branch collection
+  and one centralized on a designated branch, which the six re-exec themselves
+  through; `transition.sh` drives its two-phase handle directly instead. It also
   carries a face: the spec group's citation sweep and the partition surface
   invoke it directly, script to script, for mutations that have no single
   command to wrap.
@@ -145,3 +170,4 @@ face after the platform CLIs.
 | placement-gate-before-git | The destination branch name clears a validity gate and the coordination-branch refusal before it reaches any git argument. A configured value that fails, and a configuration read that fails, both refuse — neither falls back to the working branch, and an unresolvable setting is never read as an unset one | critical | judge |
 | materialization-contained | Every entry extracted from destination-branch content is a regular file with a plain name resolving inside the collection directory, and its bytes are read by object name, never by tree path; the first violation aborts the extraction before the wrapped command runs | critical | judge |
 | insights-capability-boundary | Insights synthesis happens only in the issue-analyst subagent, which holds no write, edit or agent capability; its one granted read verb regenerates an index as a side effect and can author no content. The main agent reads no issue bodies during insights. The runtime enforcement rides the allowed-tools permission channel, which no mechanical check here models — judged from the prompt surface | high | judge |
+| identity-validated-before-record | Every recorded identity — supplied by the environment or recovered from version-control history — clears one positively enumerated character set before it is written, and a value outside it is refused exactly as an absent one. The refusal carries neither the rejected value nor issue content | critical | judge |
