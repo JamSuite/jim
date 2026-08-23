@@ -5570,6 +5570,112 @@ origin: "conversation"'
     "$(cat "$repo/docs/issues/20260101-one.md")"
 }
 
+# ─── Section: index.sh — the configured-form mismatch ───────────────────────
+
+# indexed_issue <dir> <slug> <filed-by> [<claimed-by>] — one converted issue.
+indexed_issue() {
+  local dir="$1" slug="$2" filer="$3" holder="${4:-}"
+  write_issue "$dir" "$slug" "title: \"$slug\"
+status: open
+priority: low
+type: issue
+filed-by: \"$filer\"
+claimed-by: \"$holder\"
+outcome: \"\"
+labels: []"
+}
+
+# AC: when the collection holds identities the project's current form would
+# record differently, that mismatch is surfaced without the operator having to
+# run a rewrite to discover it. A form whose effect is invisible until someone
+# reads a by-person view and mistrusts it is a setting nobody can rely on.
+case_index_identity_mismatch_names_the_affected_records() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch)
+  indexed_issue "$dir" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the record is named" '20260101-one' "$idx"
+  assert_match "the count is given"  '1 record'     "$idx"
+}
+
+# AC: the surface names the affected records and their count, never the
+# identity values — it is written into generated content the project publishes,
+# and each named record already carries its own value.
+case_index_identity_mismatch_never_names_the_value() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch_quiet)
+  indexed_issue "$dir" "20260101-one" '1234+secretperson@users.noreply.github.com'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the record is named" '20260101-one' "$idx"
+  assert_eq "no identity value in the index" "no" \
+    "$(printf '%s' "$idx" | grep -q 'secretperson' && echo yes || echo no)"
+}
+
+# AC: a collection already matching the configured form produces no warning —
+# the signal has an exit condition, which is what makes it a prompt to finish a
+# migration rather than a permanent nag.
+case_index_identity_mismatch_is_silent_when_the_collection_matches() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch_clean)
+  indexed_issue "$dir" "20260101-one" 'dev'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_eq "no mismatch warning" "no" \
+    "$(printf '%s' "$idx" | grep -qi 'configured form' && echo yes || echo no)"
+}
+
+# AC: the surface covers every field that records an identity, and an issue
+# whose two fields both mismatch is one affected record, not two.
+case_index_identity_mismatch_covers_the_holder_field() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch_holder)
+  indexed_issue "$dir" "20260101-held" 'dev' '5678+Alice@users.noreply.github.com'
+  indexed_issue "$dir" "20260101-both" '1234+Dev@users.noreply.github.com' \
+    '5678+Alice@users.noreply.github.com'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the holder-only record is named" '20260101-held' "$idx"
+  assert_match "counted once per record" '2 record' "$idx"
+}
+
+# AC: the list is bounded and carries a counted tail, so a collection where
+# every record mismatches does not turn the index into a list of itself.
+case_index_identity_mismatch_bounds_the_list_with_a_counted_tail() {
+  local dir idx i
+  dir=$(empty_dir index_identity_mismatch_many)
+  for i in 01 02 03 04 05 06 07 08 09 10 11 12; do
+    indexed_issue "$dir" "202601$i-x" "1234+Dev$i@users.noreply.github.com"
+  done
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the count is given" '12 record' "$idx"
+  assert_match "the list is bounded" 'more' "$idx"
+}
+
+# AC: a form that cannot be resolved omits the check and says so, rather than
+# computing it under a form nobody chose. An index claiming a check it did not
+# perform is the failure this project already refuses elsewhere.
+case_index_identity_mismatch_omits_the_check_when_the_form_is_unusable() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch_unusable)
+  git init -q "$dir"
+  printf 'identity_scheme = "gitlab"\n' > "$dir/jimconf.toml"
+  indexed_issue "$dir" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$dir" "$SCRIPT_INDEX" .
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the omission is stated" 'not checked' "$idx"
+  assert_eq "no mismatch is claimed" "no" \
+    "$(printf '%s' "$idx" | grep -q 'record(s) hold an identity' && echo yes || echo no)"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one

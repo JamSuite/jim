@@ -58,6 +58,7 @@ export LC_ALL=C
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
+IDENTITY="$HERE/identity.sh"
 
 readonly INDEX_FILENAME="INDEX.md"
 
@@ -382,7 +383,7 @@ main() {
 
   # Build per-issue map: slug → "<status>\t<priority>\t<title>\t<origin>".
   declare -A meta_status meta_priority meta_title meta_origin meta_labels meta_created meta_num
-  declare -A meta_type meta_outcome
+  declare -A meta_type meta_outcome meta_filed_by meta_claimed_by
   # Adjacency maps: slug → "<type>:<target> <type>:<target> ..." (space-separated).
   #   outgoing_fm  — frontmatter relations only (drives bidirectional check).
   #   outgoing_all — frontmatter + body wikilinks, deduped per
@@ -426,7 +427,7 @@ main() {
     # Read by key, not by position: a field the file omits produces no line at
     # all, so every target starts empty and only a present field overwrites it.
     local status="" priority="" title="" origin="" labels="" created="" num=""
-    local type="" outcome=""
+    local type="" outcome="" filed_by="" claimed_by=""
     local _fline _fkey _fval
     while IFS= read -r _fline; do
       [[ "$_fline" == *$'\t'* ]] || continue
@@ -440,8 +441,10 @@ main() {
         labels)   labels="$_fval" ;;
         created)  created="$_fval" ;;
         num)      num="$_fval" ;;
-        type)     type="$_fval" ;;
-        outcome)  outcome="$_fval" ;;
+        type)       type="$_fval" ;;
+        outcome)    outcome="$_fval" ;;
+        filed-by)   filed_by="$_fval" ;;
+        claimed-by) claimed_by="$_fval" ;;
       esac
     done < <(parse_scalar_fields "$fm")
     [[ -z "$status" ]] && status="open"
@@ -468,6 +471,8 @@ main() {
     meta_num[$slug]="$num"
     meta_type[$slug]="$type"
     meta_outcome[$slug]="$outcome"
+    meta_filed_by[$slug]="$filed_by"
+    meta_claimed_by[$slug]="$claimed_by"
 
     # Schema integrity. An issue that has ever been finished carries an
     # outcome, and both enumerated fields carry a recognized value.
@@ -566,6 +571,66 @@ main() {
   # somebody else's; keying on the arm would keep the flapping and only move the
   # seam. The skip is stated rather than silent: a check that cannot be grounded
   # says so.
+  # Configured-form mismatch. A form that can be changed with no signal that
+  # several hundred records now disagree with it is a setting whose effect stays
+  # invisible until someone reads a by-person view and mistrusts it.
+  #
+  #   Distinct values, not records. A collection holds hundreds of records and a
+  #   handful of identities, and this path runs on every write — so the form is
+  #   applied once per distinct value rather than once per field. Re-deriving the
+  #   rule here instead would be a second copy of it on the most-travelled path
+  #   in the collection.
+  #
+  #   The probe settles whether the form can be applied at all before any value
+  #   is judged by it. A configuration that cannot select one omits the check and
+  #   says so: computing the comparison under a guessed form would write a wrong
+  #   warning into content the project publishes, and an index claiming a check
+  #   it did not perform is the failure the origin lint already refuses.
+  #
+  #   No configuration silences this. A signal that can be switched off stops
+  #   being a signal, and the repetition objection does not survive inspection —
+  #   the warning has an exit condition, so it prompts an operator to finish a
+  #   migration rather than nagging forever.
+  local ident_probe="probe@example.invalid"
+  local ident_value ident_form s2
+  local -a mismatched=()
+  if ! bash "$IDENTITY" normalize "$ident_probe" >/dev/null 2>&1; then
+    warnings_section+="- recorded identities not checked against the configured form: identity_scheme could not be applied."$'\n'
+  else
+    declare -A ident_seen=()
+    for s2 in "${slugs_seen[@]}"; do
+      local mismatch=0
+      for ident_value in "${meta_filed_by[$s2]-}" "${meta_claimed_by[$s2]-}"; do
+        [[ -n "$ident_value" ]] || continue
+        if [[ -z "${ident_seen[$ident_value]+set}" ]]; then
+          ident_form="$(bash "$IDENTITY" normalize "$ident_value" 2>/dev/null)" \
+            || ident_form="$ident_value"
+          if [[ "$ident_form" != "$ident_value" ]]; then
+            ident_seen["$ident_value"]=1
+          else
+            ident_seen["$ident_value"]=0
+          fi
+        fi
+        (( ident_seen[$ident_value] )) && mismatch=1
+      done
+      (( mismatch )) && mismatched+=("$s2")
+    done
+    if (( ${#mismatched[@]} )); then
+      # The slugs cleared the id gate above, and they clear the display
+      # sanitizer here for the same reason every other row value does.
+      local ident_list="" ident_i=0 ident_cap=10
+      for s2 in "${mismatched[@]}"; do
+        (( ident_i >= ident_cap )) && break
+        ident_list+="${ident_list:+, }\`$(row_safe "$s2" | tr -d '`')\`"
+        ident_i=$((ident_i+1))
+      done
+      if (( ${#mismatched[@]} > ident_cap )); then
+        ident_list+=", … and $(( ${#mismatched[@]} - ident_cap )) more"
+      fi
+      warnings_section+="- ${#mismatched[@]} record(s) hold an identity the configured form would record differently: ${ident_list}. Re-apply the current form with \`migrate.sh identity --renormalize\`."$'\n'
+    fi
+  fi
+
   local placement placement_shown origin_value origin_created prc
   # The resolver's own status decides this, not its output. An empty result read
   # as `branch` means a failed resolve *runs* the lint and the index then claims
