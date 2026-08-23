@@ -4,12 +4,17 @@ num: 76
 title: "Align nothing-to-reconcile face counters with ledger int-typing"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [reconcile, ledger]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-13T07:15:20Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/017-reconcile-face-counters/review.md

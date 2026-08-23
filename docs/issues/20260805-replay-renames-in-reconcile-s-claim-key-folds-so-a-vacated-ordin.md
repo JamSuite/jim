@@ -4,12 +4,17 @@ num: 248
 title: "Replay renames in reconcile's claim-key folds so a vacated ordinal is never returned as have"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, alloc, registry]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T22:20:08Z
 updated: 2026-08-13T11:01:21Z
 origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"

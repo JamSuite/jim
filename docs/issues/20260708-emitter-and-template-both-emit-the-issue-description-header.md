@@ -4,12 +4,17 @@ num: 69
 title: "Emitter and template both emit the issue Description header"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issues-system, emitter, template]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-08T20:37:32Z
 updated: 2026-07-29T20:09:12Z
 origin: conversation

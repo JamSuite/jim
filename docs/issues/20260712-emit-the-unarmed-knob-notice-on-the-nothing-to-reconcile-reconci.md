@@ -4,12 +4,17 @@ num: 75
 title: "Emit the unarmed-knob notice on the nothing-to-reconcile reconcile"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, partition, health]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-12T10:12:32Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/016-partition-health/review.md

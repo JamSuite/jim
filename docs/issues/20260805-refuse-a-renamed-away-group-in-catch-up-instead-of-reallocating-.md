@@ -4,12 +4,17 @@ num: 247
 title: "Refuse a renamed-away group in catch-up instead of reallocating it"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, registry, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T09:50:22Z
 updated: 2026-08-05T10:21:33Z
 origin: "20260728-id-coordination-issue-grouping.md (retired; see 5e712bf)"

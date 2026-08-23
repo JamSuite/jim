@@ -4,12 +4,17 @@ num: 31
 title: "Add ledger-only commit-blueprint belt test"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [jimledger, tests]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-02T09:30:16Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/003-blueprint-update-guard/review.md

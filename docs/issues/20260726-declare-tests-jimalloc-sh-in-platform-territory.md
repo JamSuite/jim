@@ -4,12 +4,17 @@ num: 120
 title: "Declare tests/jimalloc.sh in platform territory"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition, blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T22:39:36Z
 updated: 2026-08-02T06:52:07Z
 origin: docs/specs/platform/007-id-coordination-allocator/review.md

@@ -1,6 +1,6 @@
 ---
 id: 20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read
-num: P-20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read
+num: 355
 title: "ARCHITECTURE.md single lines exceed what its consumers can read"
 status: open
 priority: high

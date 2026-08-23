@@ -4,12 +4,17 @@ id: 20260531-wikilink-parser-skips-fenced-code-blocks
 title: "Wikilink Parser Should Skip Fenced Code Blocks"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issues-system, index-graph, parser, refinement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-05-31T00:00:00Z
 updated: 2026-05-31T00:00:00Z
 origin: conversation

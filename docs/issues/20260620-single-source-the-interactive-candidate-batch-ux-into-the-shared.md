@@ -4,12 +4,17 @@ num: 11
 title: "Single-source the interactive candidate-batch UX into the shared contract"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [refactor, candidate-batch, consistency]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-20T23:31:27Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/issue/009-issue-candidate-batch-extraction/plan.md

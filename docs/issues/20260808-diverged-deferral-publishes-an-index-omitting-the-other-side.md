@@ -4,12 +4,17 @@ num: 284
 title: "Diverged deferral publishes an index omitting the other side"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-08T18:39:48Z
 updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md

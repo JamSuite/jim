@@ -4,12 +4,17 @@ num: 108
 title: "Neutralize pathspec magic in jimledger commit-* pathspec calls"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [platform, security]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T05:56:09Z
 updated: 2026-07-26T05:56:09Z
 origin: docs/specs/platform/005-ledger-literal-pathspecs/review.md

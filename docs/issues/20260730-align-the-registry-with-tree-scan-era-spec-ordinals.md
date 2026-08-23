@@ -4,12 +4,17 @@ num: 144
 title: "Align the registry with tree-scan-era spec ordinals"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, registry]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T10:32:41Z
 updated: 2026-07-31T06:38:04Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md

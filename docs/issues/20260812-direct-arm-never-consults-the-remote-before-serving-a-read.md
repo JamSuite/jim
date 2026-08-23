@@ -4,12 +4,17 @@ num: 305
 title: "Direct arm never consults the remote before serving a read"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:42:06Z
 updated: 2026-08-12T07:32:50Z
 origin: docs/specs/issue/011-issue-placement/review.md

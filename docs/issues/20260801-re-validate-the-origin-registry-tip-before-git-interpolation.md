@@ -4,12 +4,17 @@ num: 185
 title: "Re-validate the origin registry tip before git interpolation"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [platform, scripts, id-coordination, security]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T00:22:45Z
 updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/000-blueprint/spec.md

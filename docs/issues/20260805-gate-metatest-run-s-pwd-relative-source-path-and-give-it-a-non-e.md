@@ -4,12 +4,17 @@ num: 239
 title: "Gate metatest run's PWD-relative source path and give it a non-empty corpus floor"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [meta-test, security, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T22:20:34Z
 updated: 2026-08-06T08:05:57Z
 origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"

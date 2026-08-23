@@ -4,12 +4,17 @@ num: 92
 title: "Extend present-tense rule to spec-id and version refs"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, present-tense]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-23T20:23:16Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/jim/000-blueprint/spec.md

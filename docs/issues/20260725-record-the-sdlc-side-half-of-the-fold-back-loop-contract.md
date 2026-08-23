@@ -4,12 +4,17 @@ num: 101
 title: "record the sdlc-side half of the fold-back-loop contract"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:44Z
 updated: 2026-07-25T18:44:18Z
 origin: BLUEPRINT.md

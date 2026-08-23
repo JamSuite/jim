@@ -4,12 +4,17 @@ num: 119
 title: "Retry the unreachable-detection path and generalize the exhaustion message"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T22:39:35Z
 updated: 2026-07-26T22:39:35Z
 origin: docs/specs/platform/007-id-coordination-allocator/review.md

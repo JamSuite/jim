@@ -4,12 +4,17 @@ num: 203
 title: "Halt one identity, not the batch, on a contradicted realize key"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [allocator, reconcile, registry]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-02T00:47:12Z
 updated: 2026-08-02T06:52:07Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/review.md

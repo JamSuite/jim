@@ -4,12 +4,17 @@ num: 270
 title: "Placeholder substitution corrupts issue titles and durable ids"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, data-integrity]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T11:43:20Z
 updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

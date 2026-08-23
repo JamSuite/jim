@@ -4,12 +4,17 @@ num: 208
 title: "Make the blueprint pending-provisional disclosure enumerable and bounded"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, id-coordination]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-02T21:35:13Z
 updated: 2026-08-05T12:55:00Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md

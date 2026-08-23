@@ -4,12 +4,17 @@ num: 66
 title: "spell out the superseded-group set derivation for --retire"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-07T11:03:54Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/010-partition-migration/review.md

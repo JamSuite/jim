@@ -4,12 +4,17 @@ num: 179
 title: "Move the explanatory comment off the spec template id line"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [spec, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T12:39:09Z
 updated: 2026-07-31T21:28:44Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md

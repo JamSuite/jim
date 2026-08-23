@@ -4,12 +4,17 @@ num: 33
 title: "Cache per-issue analysis"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issues-system, insights, performance]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-02T10:54:12Z
 updated: 2026-07-02T10:54:12Z
 origin: conversation

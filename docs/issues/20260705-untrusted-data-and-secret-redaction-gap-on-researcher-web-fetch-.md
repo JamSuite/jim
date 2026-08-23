@@ -4,12 +4,17 @@ num: 53
 title: "untrusted-data and secret-redaction gap on researcher web-fetch path"
 status: open
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [000-blueprint, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-05T00:28:53Z
 updated: 2026-07-05T00:28:53Z
 origin: docs/specs/jim/000-blueprint/spec.md

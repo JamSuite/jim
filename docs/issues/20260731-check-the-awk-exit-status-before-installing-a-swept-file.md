@@ -4,12 +4,17 @@ num: 177
 title: "Check the awk exit status before installing a swept file"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [spec, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T12:38:54Z
 updated: 2026-07-31T20:28:56Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md

@@ -4,12 +4,17 @@ num: 117
 title: "Guard coordination_branch relocation with a moved-to tombstone"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, config]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T19:02:02Z
 updated: 2026-07-26T19:02:02Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md

@@ -4,12 +4,17 @@ num: 51
 title: "Harden the verify floor: path-param whitespace, dashes-only Id, mkdir grant"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [verify, hardening]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T23:53:21Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/007-verify-engine/review.md

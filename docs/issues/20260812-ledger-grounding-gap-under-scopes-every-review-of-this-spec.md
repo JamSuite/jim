@@ -4,12 +4,17 @@ num: 335
 title: "Ledger grounding gap under-scopes every review of this spec"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [sdlc, ledger, review]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:44Z
 updated: 2026-08-12T21:53:44Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

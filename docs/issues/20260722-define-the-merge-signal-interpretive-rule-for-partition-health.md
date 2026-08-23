@@ -4,12 +4,17 @@ num: 86
 title: "Define the merge-signal interpretive rule for partition health"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [partition, health]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-22T22:24:13Z
 updated: 2026-07-23T03:35:54Z
 origin: docs/brainstorms/20260722-partition-merge.md

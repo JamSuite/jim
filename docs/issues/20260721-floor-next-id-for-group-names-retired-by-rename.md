@@ -4,12 +4,17 @@ num: 84
 title: "Floor next-id for group names retired by rename"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition, rename, ledger]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-21T18:50:19Z
 updated: 2026-08-03T05:46:40Z
 origin: docs/specs/blueprint/019-partition-split/spec.md

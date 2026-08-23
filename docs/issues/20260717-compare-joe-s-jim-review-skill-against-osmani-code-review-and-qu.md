@@ -4,12 +4,17 @@ num: 78
 title: "Compare Joe's jim:review skill against Osmani code-review-and-quality blueprint"
 status: open
 priority: high
+type: issue
+filed-by: "dorsma"
+claimed-by: ""
+outcome: ""
 labels: [review, skill, prior-art]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-17T20:53:35Z
 updated: 2026-07-18T20:50:49Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md

@@ -4,12 +4,17 @@ id: 20260620-commit-planning-artifacts-before-the-build-phase
 title: "Commit planning artifacts before the build phase"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [workflow, enhancement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-20T11:07:00Z
 updated: 2026-06-20T11:07:00Z
 origin: conversation

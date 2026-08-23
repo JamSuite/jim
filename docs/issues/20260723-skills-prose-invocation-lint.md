@@ -4,12 +4,17 @@ num: 90
 title: "Generalize the prose-pin pattern into a skills-prose invocation lint"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [meta-test, partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-23T18:43:32Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/023-partition-ref-sweep/plan.md

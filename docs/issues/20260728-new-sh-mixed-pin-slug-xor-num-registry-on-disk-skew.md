@@ -4,12 +4,17 @@ num: 132
 title: "new.sh mixed-pin (--slug XOR --num) registry/on-disk skew"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T21:39:38Z
 updated: 2026-07-28T21:39:38Z
 origin: docs/specs/issue/010-ordinal-coordination/review.md

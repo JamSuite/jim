@@ -4,12 +4,17 @@ num: 110
 title: "Declare tests/scripthygiene.sh in platform territory"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition, blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T08:40:11Z
 updated: 2026-08-02T07:23:52Z
 origin: docs/specs/platform/006-script-preamble-conformance/plan.md

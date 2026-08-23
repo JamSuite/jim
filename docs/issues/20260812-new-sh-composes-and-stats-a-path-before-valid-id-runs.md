@@ -4,12 +4,17 @@ num: 320
 title: "new.sh composes and stats a path before valid-id runs"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, verify, issue]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T04:09:10Z
 updated: 2026-08-12T08:31:52Z
 origin: docs/specs/issue/000-blueprint/spec.md

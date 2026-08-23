@@ -4,12 +4,17 @@ num: 83
 title: "Fill rewrite-identity guard and negative-branch test gaps"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [046, test-coverage]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-21T05:45:36Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/018-spec-migration/review.md

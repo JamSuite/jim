@@ -4,12 +4,17 @@ num: 80
 title: "Post-approval correction/evolution flow: edit approved plans and propagate fixes to code and migrations"
 status: open
 priority: high
+type: issue
+filed-by: "dorsma"
+claimed-by: ""
+outcome: ""
 labels: [skill, plan, correction, lifecycle, workflow]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-17T22:21:05Z
 updated: 2026-07-17T22:21:05Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md

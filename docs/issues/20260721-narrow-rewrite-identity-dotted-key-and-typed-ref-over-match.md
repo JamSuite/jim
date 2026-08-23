@@ -4,12 +4,17 @@ num: 82
 title: "Narrow rewrite-identity dotted-key and typed-ref over-match"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [046, rewrite-identity, hardening]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-21T05:45:35Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/018-spec-migration/review.md

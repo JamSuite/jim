@@ -4,12 +4,17 @@ num: 140
 title: "Fixture the allocate spec acknowledgment path"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, test-coverage]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T01:09:07Z
 updated: 2026-07-30T01:09:07Z
 origin: docs/specs/platform/011-rename-path-correctness/review.md

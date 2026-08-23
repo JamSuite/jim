@@ -4,12 +4,17 @@ num: 25
 title: "Align blueprint-update adapter docs (arg-order and Step-1 cross-ref)"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, review, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-01T21:48:41Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/002-blueprint-update/review.md

@@ -4,12 +4,17 @@ num: 135
 title: "allocate spec under provisional mints an unrealizable identity"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, provisional]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-29T21:02:34Z
 updated: 2026-07-31T05:51:48Z
 origin: docs/specs/platform/011-rename-path-correctness/spec.md

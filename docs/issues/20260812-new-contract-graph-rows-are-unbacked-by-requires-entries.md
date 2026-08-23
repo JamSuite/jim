@@ -4,12 +4,17 @@ num: 338
 title: "New contract graph rows are unbacked by Requires entries"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, contracts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:44Z
 updated: 2026-08-13T05:51:45Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

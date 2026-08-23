@@ -4,12 +4,17 @@ num: 243
 title: "Purge artifact citations from script comments and docs, and sweep for them"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [scripts, hygiene, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T12:22:53Z
 updated: 2026-08-15T08:14:02Z
 origin: "20260728-id-coordination-issue-grouping.md (retired; see 5e712bf)"

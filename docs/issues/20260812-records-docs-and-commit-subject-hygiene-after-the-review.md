@@ -4,12 +4,17 @@ num: 342
 title: "Records docs and commit subject hygiene after the review"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [docs, records, hygiene]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:54:00Z
 updated: 2026-08-13T10:39:07Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

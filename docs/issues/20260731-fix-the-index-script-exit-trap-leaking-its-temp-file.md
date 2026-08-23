@@ -4,12 +4,17 @@ num: 170
 title: "Fix the index script EXIT trap leaking its temp file"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T12:08:22Z
 updated: 2026-07-31T20:41:03Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md

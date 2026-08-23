@@ -4,12 +4,17 @@ num: 346
 title: "jim:arch has no present-tense or provenance scan"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [docs, architecture, consistency]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-13T11:00:01Z
 updated: 2026-08-13T11:00:01Z
 origin: "20260805-b-double-prime-exit-handoff.md (retired; see 5e712bf)"

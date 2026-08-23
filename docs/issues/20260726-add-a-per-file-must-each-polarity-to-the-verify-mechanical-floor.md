@@ -4,12 +4,17 @@ num: 109
 title: "Add a per-file must-each polarity to the verify mechanical floor"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [verify, blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T07:09:09Z
 updated: 2026-07-26T07:09:09Z
 origin: docs/specs/platform/006-script-preamble-conformance/spec.md

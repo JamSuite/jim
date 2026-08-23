@@ -4,12 +4,17 @@ num: 18
 title: "Read-verb list creates a stray directory from a non-filter arg"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, cli]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-27T05:13:33Z
 updated: 2026-08-12T19:28:27Z
 origin: conversation

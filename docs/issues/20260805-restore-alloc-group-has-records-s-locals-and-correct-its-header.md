@@ -4,12 +4,17 @@ num: 230
 title: "Restore alloc_group_has_records's locals and correct its header"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, registry, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T01:53:47Z
 updated: 2026-08-05T10:21:33Z
 origin: "20260805-b-prime-review.md (retired; see 5e712bf)"

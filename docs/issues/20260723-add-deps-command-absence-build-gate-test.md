@@ -4,12 +4,17 @@ num: 91
 title: "Add deps_command absence build-gate test"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [partition, meta-test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-23T19:29:53Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/023-partition-ref-sweep/plan.md

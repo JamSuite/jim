@@ -4,12 +4,17 @@ num: 327
 title: "Citation sweep leaks a handle and misreports its own failure"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [spec, placement, hygiene]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:56Z
 updated: 2026-08-13T09:44:19Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

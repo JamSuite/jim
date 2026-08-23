@@ -4,12 +4,17 @@ num: 324
 title: "A tab in created re-splits the migration sort record"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, security, migration]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:33Z
 updated: 2026-08-12T21:53:33Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

@@ -4,12 +4,17 @@ num: 88
 title: "Single-source the 000-blueprint directory name in jimpartition.sh"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [verify, partition, refactor]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-23T06:09:14Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/021-contracts-check-hardening/review.md

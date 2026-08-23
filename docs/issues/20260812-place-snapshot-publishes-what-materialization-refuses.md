@@ -4,12 +4,17 @@ num: 322
 title: "place_snapshot publishes what materialization refuses"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, correctness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T07:44:30Z
 updated: 2026-08-12T07:44:39Z
 origin: docs/specs/issue/011-issue-placement/review.md

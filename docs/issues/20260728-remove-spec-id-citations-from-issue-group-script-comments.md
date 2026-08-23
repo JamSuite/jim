@@ -4,12 +4,17 @@ num: 131
 title: "Remove spec-ID citations from issue-group script comments"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [test, convention]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T21:39:32Z
 updated: 2026-07-28T21:39:32Z
 origin: docs/specs/issue/010-ordinal-coordination/review.md

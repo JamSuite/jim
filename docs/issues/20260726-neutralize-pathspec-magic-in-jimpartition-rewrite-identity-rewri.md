@@ -4,12 +4,17 @@ num: 107
 title: "Neutralize pathspec magic in jimpartition rewrite-identity/rewrite-refs"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [partition, security]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T04:46:06Z
 updated: 2026-07-26T04:46:06Z
 origin: docs/specs/platform/005-ledger-literal-pathspecs/research.md

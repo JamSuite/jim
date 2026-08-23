@@ -4,12 +4,17 @@ num: 19
 title: "Build intelligence for context-aware spec-group definition"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [spec-groups, context-boundary, architecture, 000-blueprint]
 relations:
   blocks: [20260630-add-the-cross-group-contract-graph-and-blast-radius, 20260703-build-the-partition-migration-skill]
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-30T11:07:07Z
 updated: 2026-07-04T00:34:02Z
 origin: docs/brainstorms/20260630-000-current-spec.md

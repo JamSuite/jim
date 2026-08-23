@@ -4,12 +4,17 @@ num: 249
 title: "Resolve the discovery-root refusal physically and measure its other three cells"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [meta-test, test, security, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T22:20:09Z
 updated: 2026-08-05T22:20:09Z
 origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"

@@ -4,12 +4,17 @@ num: 318
 title: "Two-argument read shape bypasses placement and creates a stray directory"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, correctness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:33Z
 updated: 2026-08-12T09:34:16Z
 origin: docs/specs/issue/011-issue-placement/review.md

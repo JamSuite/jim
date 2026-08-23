@@ -4,12 +4,17 @@ num: 32
 title: "Instrument the pipeline with token-usage metrics"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [jimledger, metrics, profiling]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-02T10:26:11Z
 updated: 2026-07-02T10:26:11Z
 origin: conversation

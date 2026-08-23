@@ -4,12 +4,17 @@ num: 87
 title: "fix ripple-engine sweep order for renumbered self-refs"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition, ripple-engine]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-23T03:21:43Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/020-partition-merge/review.md

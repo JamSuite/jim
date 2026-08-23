@@ -4,12 +4,17 @@ num: 38
 title: "Strengthen commit-map containment or amend DD 4"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [security, review]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T00:22:58Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/005-context-map/review.md

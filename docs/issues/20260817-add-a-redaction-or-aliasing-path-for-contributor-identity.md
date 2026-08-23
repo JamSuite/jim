@@ -4,12 +4,17 @@ num: 352
 title: "Add a redaction or aliasing path for contributor identity"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [linddun-linking, privacy, issue]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-17T23:49:43Z
 updated: 2026-08-18T06:39:28Z
 origin: "docs/specs/issue/012-schema-and-state-model/spec.md"

@@ -4,12 +4,17 @@ num: 347
 title: "Nine review findings that were never filed"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [review, records, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-13T11:00:48Z
 updated: 2026-08-13T11:00:48Z
 origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"

@@ -4,12 +4,17 @@ num: 30
 title: "Tighten update-guard wording and checklist gates"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, fold-back]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-02T09:30:15Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/003-blueprint-update-guard/review.md

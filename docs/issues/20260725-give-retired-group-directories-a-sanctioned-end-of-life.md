@@ -4,12 +4,17 @@ num: 106
 title: "give retired group directories a sanctioned end-of-life"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:22:51Z
 updated: 2026-07-26T06:49:23Z
 origin: docs/specs/jim/000-blueprint/spec.md

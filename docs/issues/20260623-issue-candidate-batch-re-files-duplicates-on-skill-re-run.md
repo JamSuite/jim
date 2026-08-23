@@ -4,12 +4,17 @@ num: 14
 title: "Issue-candidate batch re-files duplicates on skill re-run"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [candidate-batch, consistency, dedup]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-23T10:43:52Z
 updated: 2026-06-23T10:43:52Z
 origin: conversation

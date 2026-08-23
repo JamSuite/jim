@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 119
+- Open: 122
 - Closed: 233
 
 ## Issues
@@ -359,6 +359,9 @@
 - `20260813-verify-grades-a-violation-by-its-rule-not-by-its-breach` — verify grades a violation by its rule not by its breach · status: open · num: 350 · priority: high · created: 2026-08-13T11:36:55Z · labels: [verify, triage, noise] · origin: docs/specs/jim/000-blueprint/spec.md
 - `20260817-add-a-redaction-or-aliasing-path-for-contributor-identity` — Add a redaction or aliasing path for contributor identity · status: closed · num: 352 · priority: medium · created: 2026-08-17T23:49:43Z · labels: [linddun-linking, privacy, issue] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260817-unify-the-two-issue-frontmatter-parsers` — Unify the two issue frontmatter parsers · status: open · num: 351 · priority: medium · created: 2026-08-17T23:16:40Z · labels: [issue, refactor, parser] · origin: docs/specs/issue/012-schema-and-state-model/research.md
+- `20260818-filer-derivation-cannot-reach-a-centralized-collection-s-history` — Filer derivation cannot reach a centralized collection's history · status: open · num: 353 · priority: high · created: 2026-08-18T22:03:32Z · labels: [issue, migration, placement, attribution] · origin: docs/specs/issue/012-schema-and-state-model/plan.md
+- `20260818-transition-verbs-silently-ignore-as-when-it-does-not-apply` — Transition verbs silently ignore --as when it does not apply · status: open · num: 354 · priority: medium · created: 2026-08-18T22:03:41Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/012-schema-and-state-model/plan.md
+- `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read` — ARCHITECTURE.md single lines exceed what its consumers can read · status: open · num: 355 · priority: high · created: 2026-08-23T19:47:45Z · labels: [arch, sdlc, readability] · origin: ARCHITECTURE.md
 
 ## Graph
 
@@ -497,3 +500,4 @@
 - `20260812-index-sh-warnings-and-row-set-escape-the-sanitizer-discipline`: malformed wikilink `[[ -z "$fm" ]]` ignored.
 - `20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0`: malformed wikilink `[[ "$action" == rename ]]` ignored.
 - `20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish`: malformed wikilink `[[ -n "$st" ]]` ignored.
+- 3 record(s) hold an identity the configured form would record differently: `20260818-filer-derivation-cannot-reach-a-centralized-collection-s-history`, `20260818-transition-verbs-silently-ignore-as-when-it-does-not-apply`, `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read`. Re-apply the current form with `migrate.sh identity --renormalize`.

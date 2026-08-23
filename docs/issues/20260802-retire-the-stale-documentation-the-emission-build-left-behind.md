@@ -4,12 +4,17 @@ num: 211
 title: "Retire the stale documentation the emission build left behind"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [docs, id-coordination]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-02T21:35:12Z
 updated: 2026-08-05T12:55:00Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md

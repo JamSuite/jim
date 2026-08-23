@@ -4,12 +4,17 @@ num: 312
 title: "Last-seen state prefers a ref only a publish advances"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:35Z
 updated: 2026-08-12T06:30:53Z
 origin: docs/specs/issue/011-issue-placement/review.md

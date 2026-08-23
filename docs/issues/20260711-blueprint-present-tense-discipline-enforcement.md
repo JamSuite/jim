@@ -4,12 +4,17 @@ num: 70
 title: "Enforce present-tense discipline at /jim:blueprint draft composition"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, doctrine, drafting]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-11T07:57:56Z
 updated: 2026-07-25T07:49:14Z
 origin: conversation

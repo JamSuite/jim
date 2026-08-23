@@ -4,12 +4,17 @@ num: 330
 title: "docsurfaces sweeps are directory-scoped and one-directional"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [test, docsurfaces]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:46Z
 updated: 2026-08-12T21:53:46Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

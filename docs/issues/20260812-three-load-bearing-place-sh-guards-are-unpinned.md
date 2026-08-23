@@ -4,12 +4,17 @@ num: 343
 title: "Three load-bearing place.sh guards are unpinned"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [test, integrity]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:45Z
 updated: 2026-08-13T10:28:26Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

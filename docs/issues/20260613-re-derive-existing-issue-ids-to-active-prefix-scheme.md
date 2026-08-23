@@ -4,12 +4,17 @@ num: 7
 title: "Re-derive existing issue ids to the active prefix scheme"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, migration, tooling]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-13T00:00:00Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/issue/005-issue-id-prefix/spec.md

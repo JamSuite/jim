@@ -4,12 +4,17 @@ num: 313
 title: "migrate.sh failure handler is not rename-chain aware"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, correctness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:47Z
 updated: 2026-08-12T18:58:07Z
 origin: docs/specs/issue/011-issue-placement/review.md

@@ -4,12 +4,17 @@ num: 79
 title: "Automate the external-research refresh as a jim skill"
 status: open
 priority: high
+type: issue
+filed-by: "dorsma"
+claimed-by: ""
+outcome: ""
 labels: [skill, research, prior-art, workflow, meta]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-17T22:09:46Z
 updated: 2026-07-24T11:27:11Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md

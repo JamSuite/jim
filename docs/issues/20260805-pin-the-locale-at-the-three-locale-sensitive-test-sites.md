@@ -4,12 +4,17 @@ num: 227
 title: "Pin the locale at the three locale-sensitive test sites"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, verify, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T02:19:10Z
 updated: 2026-08-05T10:21:33Z
 origin: docs/specs/platform/000-blueprint/spec.md

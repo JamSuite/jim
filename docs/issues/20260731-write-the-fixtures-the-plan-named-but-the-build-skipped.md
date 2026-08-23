@@ -4,12 +4,17 @@ num: 178
 title: "Write the fixtures the plan named but the build skipped"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [spec, issue, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T12:39:02Z
 updated: 2026-07-31T20:58:29Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md

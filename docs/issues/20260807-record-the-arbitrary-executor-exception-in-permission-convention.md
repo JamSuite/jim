@@ -4,12 +4,17 @@ num: 275
 title: "Record the arbitrary-executor exception in permission conventions"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [docs, architecture, permissions]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T11:43:59Z
 updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

@@ -4,12 +4,17 @@ num: 127
 title: "Spec batch-CAS candidate-batch allocation (§7a rework)"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, candidate-batch, cross-group]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T06:59:35Z
 updated: 2026-07-28T06:59:35Z
 origin: docs/specs/issue/010-ordinal-coordination/plan.md

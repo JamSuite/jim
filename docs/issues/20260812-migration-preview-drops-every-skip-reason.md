@@ -4,12 +4,17 @@ num: 337
 title: "Migration preview drops every skip reason"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, migrate, correctness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T08:07:42Z
 updated: 2026-08-12T08:31:52Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

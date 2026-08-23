@@ -4,12 +4,17 @@ num: 29
 title: "Derive appropriately sized issue slugs instead of relying on truncation"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue-tracking, jimfile]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-02T07:25:25Z
 updated: 2026-07-02T07:25:25Z
 origin: conversation

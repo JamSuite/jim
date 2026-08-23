@@ -4,12 +4,17 @@ num: 349
 title: "Six deliberately-unfiled items from the C-prime fix round"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [docs, correctness, cleanup]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-13T11:00:24Z
 updated: 2026-08-13T11:00:24Z
 origin: "20260801-c-prime-fix-handoff.md (retired; see 5e712bf)"

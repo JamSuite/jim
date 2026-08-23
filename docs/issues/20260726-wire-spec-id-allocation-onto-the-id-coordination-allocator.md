@@ -4,12 +4,17 @@ num: 112
 title: "Wire spec-ID allocation onto the id-coordination allocator"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, spec]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T19:01:56Z
 updated: 2026-07-31T05:51:48Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md

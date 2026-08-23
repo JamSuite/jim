@@ -4,12 +4,17 @@ num: 188
 title: "Surface a suppressed agent fan-out as a named degradation"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [sdlc, blueprint, review, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T00:22:55Z
 updated: 2026-08-05T08:25:18Z
 origin: conversation

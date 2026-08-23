@@ -4,12 +4,17 @@ num: 183
 title: "Retire the mv-spec prose now that it has no callers"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T12:39:39Z
 updated: 2026-07-31T23:45:13Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md

@@ -4,12 +4,17 @@ num: 250
 title: "Route the twelve proven unsanitized sites and sweep the class corpus-wide"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [scripts, security, test-coverage]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T22:20:13Z
 updated: 2026-08-05T22:20:13Z
 origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"

@@ -4,12 +4,17 @@ num: 52
 title: "allowed-tools exactness drift in issue, partition, and meta-matrix skills"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [000-blueprint, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-05T00:28:45Z
 updated: 2026-08-13T11:36:20Z
 origin: docs/specs/jim/000-blueprint/spec.md

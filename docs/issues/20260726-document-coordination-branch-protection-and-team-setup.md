@@ -4,12 +4,17 @@ num: 118
 title: "Document coordination-branch protection and team setup"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T19:02:03Z
 updated: 2026-07-26T19:02:03Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md

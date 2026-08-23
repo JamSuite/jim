@@ -4,12 +4,17 @@ num: 46
 title: "Add fable to review_model's validated model list"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [review, config]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T22:05:36Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/007-verify-engine/plan.md

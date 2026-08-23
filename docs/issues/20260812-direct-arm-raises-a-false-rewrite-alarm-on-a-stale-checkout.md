@@ -4,12 +4,17 @@ num: 306
 title: "Direct arm raises a false rewrite alarm on a stale checkout"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:51Z
 updated: 2026-08-12T07:32:50Z
 origin: docs/specs/issue/011-issue-placement/review.md

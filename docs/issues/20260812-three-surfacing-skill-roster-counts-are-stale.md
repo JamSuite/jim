@@ -4,12 +4,17 @@ num: 317
 title: "Three surfacing-skill roster counts are stale"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:42:11Z
 updated: 2026-08-12T20:22:35Z
 origin: docs/specs/issue/011-issue-placement/review.md

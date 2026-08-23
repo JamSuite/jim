@@ -4,12 +4,17 @@ num: 175
 title: "Fixture or revert the ordinal width narrowing in canonicalization"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [file, scripts, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T12:38:40Z
 updated: 2026-07-31T21:09:14Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md

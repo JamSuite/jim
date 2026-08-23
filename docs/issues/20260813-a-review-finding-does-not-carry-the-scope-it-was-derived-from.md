@@ -4,12 +4,17 @@ num: 344
 title: "A review finding does not carry the scope it was derived from"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [sdlc, review, coverage]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-13T11:01:06Z
 updated: 2026-08-13T11:01:06Z
 origin: "20260728-id-coordination-issue-grouping.md (retired; see 5e712bf)"

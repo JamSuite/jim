@@ -4,12 +4,17 @@ num: 351
 title: "Unify the two issue frontmatter parsers"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, refactor, parser]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-17T23:16:40Z
 updated: 2026-08-18T05:15:56Z
 origin: "docs/specs/issue/012-schema-and-state-model/research.md"

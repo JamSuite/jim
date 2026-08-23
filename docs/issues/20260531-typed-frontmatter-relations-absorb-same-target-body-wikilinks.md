@@ -4,12 +4,17 @@ id: 20260531-typed-frontmatter-relations-absorb-same-target-body-wikilinks
 title: "Typed Frontmatter Relations Absorb Same-Target Body Wikilinks"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issues-system, index-graph, refinement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-05-31T00:00:00Z
 updated: 2026-05-31T00:00:00Z
 origin: conversation

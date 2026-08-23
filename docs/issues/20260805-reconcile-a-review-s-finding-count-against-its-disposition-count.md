@@ -4,12 +4,17 @@ num: 245
 title: "Reconcile a review's finding count against its disposition count"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [sdlc, review, ledger]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T12:01:51Z
 updated: 2026-08-05T12:01:51Z
 origin: "20260728-id-coordination-issue-grouping.md (retired; see 5e712bf)"

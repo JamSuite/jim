@@ -4,12 +4,17 @@ num: 301
 title: "backfill.sh injects frontmatter through awk -v escape expansion"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, security]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:36Z
 updated: 2026-08-12T18:58:07Z
 origin: docs/specs/issue/011-issue-placement/review.md

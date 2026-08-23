@@ -4,12 +4,17 @@ num: 261
 title: "Test suite wall-clock exceeds a single foreground run"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [testing, performance]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T10:59:37Z
 updated: 2026-08-07T10:59:37Z
 origin: docs/specs/issue/011-issue-placement/plan.md

@@ -4,12 +4,17 @@ num: 13
 title: "Configurable commit convention for git-dependent skills"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [git, config, commit-convention, architecture]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-23T08:35:27Z
 updated: 2026-06-23T08:35:27Z
 origin: conversation

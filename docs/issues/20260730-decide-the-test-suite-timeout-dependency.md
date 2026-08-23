@@ -4,12 +4,17 @@ num: 139
 title: "Decide the test suite timeout dependency"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [testing, portability]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T01:09:09Z
 updated: 2026-07-30T01:09:09Z
 origin: docs/specs/platform/011-rename-path-correctness/review.md

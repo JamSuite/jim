@@ -4,12 +4,17 @@ num: 134
 title: "reconcile.sh swallows the index-regen exit code"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T21:39:49Z
 updated: 2026-07-31T20:41:26Z
 origin: docs/specs/issue/010-ordinal-coordination/review.md

@@ -4,12 +4,17 @@ num: 221
 title: "Detect a stray test file instead of silently not running it"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, verify, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T02:19:12Z
 updated: 2026-08-05T10:21:33Z
 origin: docs/specs/platform/000-blueprint/spec.md

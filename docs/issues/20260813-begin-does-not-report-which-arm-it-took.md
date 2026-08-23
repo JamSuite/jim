@@ -4,12 +4,17 @@ num: 345
 title: "begin does not report which arm it took"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, placement, contracts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-13T09:40:47Z
 updated: 2026-08-13T09:40:47Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

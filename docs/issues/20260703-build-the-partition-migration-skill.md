@@ -4,12 +4,17 @@ num: 34
 title: "Build the partition migration skill"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [migration, spec-groups, 000-blueprint]
 relations:
   blocks: []
   depends-on: [20260630-build-intelligence-for-context-aware-spec-group-definition, 20260707-compute-graph-health-metrics-in-the-reconcile-pass]
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-03T20:08:37Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md

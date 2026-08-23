@@ -4,12 +4,17 @@ num: 97
 title: "cross-group enforcement of plugin-wide convention invariants"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:39Z
 updated: 2026-07-25T08:04:39Z
 origin: BLUEPRINT.md

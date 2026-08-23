@@ -4,12 +4,17 @@ num: 123
 title: "Fix jimfile.sh next-id group/kind collision for a group named issue"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [platform, id-coordination, partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-27T07:20:53Z
 updated: 2026-08-03T05:46:40Z
 origin: docs/specs/platform/009-provisional-reconcile/spec.md

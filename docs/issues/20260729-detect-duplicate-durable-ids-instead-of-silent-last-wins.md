@@ -4,12 +4,17 @@ num: 136
 title: "Detect duplicate durable ids instead of silent last-wins"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-29T21:02:33Z
 updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/011-rename-path-correctness/spec.md

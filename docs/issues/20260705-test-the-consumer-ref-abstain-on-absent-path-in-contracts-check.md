@@ -4,12 +4,17 @@ num: 58
 title: "Test the consumer-ref abstain-on-absent path in contracts-check"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [verify, contract-graph, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-05T22:44:11Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/009-verify-contracts/review.md

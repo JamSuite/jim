@@ -4,12 +4,17 @@ num: 24
 title: "Fix absent-blueprint ledger pairing in /jim:blueprint update mode"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, ledger, 000-blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-01T21:48:41Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/002-blueprint-update/review.md

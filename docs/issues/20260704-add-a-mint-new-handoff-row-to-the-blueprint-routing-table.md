@@ -4,12 +4,17 @@ num: 37
 title: "Add a mint-new handoff row to the blueprint routing table"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, spec-groups]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T00:22:58Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/005-context-map/review.md

@@ -4,12 +4,17 @@ num: 23
 title: "Prefix jimconf test cases so run.sh jimconf covers them"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [test-infra, meta-test, jimconf]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-01T06:28:22Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/001-blueprint-spec/plan.md

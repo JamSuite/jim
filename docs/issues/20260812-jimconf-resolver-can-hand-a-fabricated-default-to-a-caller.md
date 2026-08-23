@@ -4,12 +4,17 @@ num: 311
 title: "jimconf resolver can hand a fabricated default to a caller"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [conf, correctness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:42:09Z
 updated: 2026-08-12T19:28:27Z
 origin: docs/specs/issue/011-issue-placement/review.md

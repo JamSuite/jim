@@ -4,12 +4,17 @@ num: 228
 title: "Reconcile the partition protocol's 999 cap with the widened ordinal bound"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, partition, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T01:53:41Z
 updated: 2026-08-05T10:21:33Z
 origin: "20260805-b-prime-review.md (retired; see 5e712bf)"

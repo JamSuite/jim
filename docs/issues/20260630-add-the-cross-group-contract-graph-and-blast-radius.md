@@ -4,12 +4,17 @@ num: 21
 title: "Add the cross-group contract graph and blast-radius"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, cross-group, architecture]
 relations:
   blocks: [20260704-add-a-plan-time-blast-radius-advisory-to-jim-plan, 20260704-derive-the-map-relations-column-from-the-contract-graph, 20260704-add-partition-health-sensors-split-merge-signals]
   depends-on: [20260630-build-intelligence-for-context-aware-spec-group-definition]
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-30T20:35:19Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/001-blueprint-spec/spec.md

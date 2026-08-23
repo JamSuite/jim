@@ -4,12 +4,17 @@ num: 35
 title: "Build a bottom-up onboarding partitioner for existing codebases"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [spec-groups, onboarding]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-03T20:48:04Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/005-context-map/spec.md
