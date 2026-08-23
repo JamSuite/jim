@@ -47,7 +47,7 @@ export LC_ALL=C
 # ─── Section: Constants ──────────────────────────────────────────────────────
 
 # Valid CLI keys (short names). `get <key>`, `keys`, and `list` use these.
-readonly KEYS=(specs architecture vision roadmap brainstorms debug blueprint pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback auto_blueprint require_blueprint blueprint_regen_threshold group_axis group_territory require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project issue_placement issue_placement_ack verify_appetite verify_fanout_cap verify_model verify_registry_timeout require_health auto_health health_threshold_cycles health_threshold_fanin health_threshold_uncovered health_threshold_faces_max health_threshold_breaking_runs spec_migration id_coordination_mechanism id_coordination_branch id_coordination_unreachable)
+readonly KEYS=(specs architecture vision roadmap brainstorms debug blueprint pre_commit pre_completion require_pre_commit require_pre_completion auto_arch_feedback auto_blueprint require_blueprint blueprint_regen_threshold group_axis group_territory require_security auto_security require_review auto_review review_depth review_model review_fanout_cap require_security_loop require_security_loop_sev auto_security_loop_limit security_adhoc issues issue_capture auto_issue_file issue_list_group issue_list_sort issue_list_cols issue_list_order issue_list_closed issue_id_prefix issue_id_project issue_placement issue_placement_ack verify_appetite verify_fanout_cap verify_model verify_registry_timeout require_health auto_health health_threshold_cycles health_threshold_fanin health_threshold_uncovered health_threshold_faces_max health_threshold_breaking_runs spec_migration id_coordination_mechanism id_coordination_branch id_coordination_unreachable identity_scheme identity_domain)
 
 # default_for <cli-key>
 #   Print the documented default for <cli-key>, or return 1 if the key is
@@ -110,6 +110,8 @@ default_for() {
     id_coordination_mechanism)      echo "git" ;;
     id_coordination_branch)         echo "jim/registry" ;;
     id_coordination_unreachable)    echo "fail" ;;
+    identity_scheme)                echo "github" ;;
+    identity_domain)                echo "" ;;
     *) return 1 ;;
   esac
 }
@@ -234,7 +236,7 @@ resolve() {
       return 0
       ;;
   esac
-  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* || "$cli_key" == issue_id_* || "$cli_key" == "issue_placement" || "$cli_key" == "issue_placement_ack" || "$cli_key" == review_* || "$cli_key" == group_* || "$cli_key" == verify_* || "$cli_key" == health_* || "$cli_key" == "blueprint_regen_threshold" || "$cli_key" == "spec_migration" || "$cli_key" == id_coordination_* ]]; then
+  if [[ "$cli_key" == require_* || "$cli_key" == auto_* || "$cli_key" == "issue_capture" || "$cli_key" == issue_list_* || "$cli_key" == issue_id_* || "$cli_key" == "issue_placement" || "$cli_key" == "issue_placement_ack" || "$cli_key" == review_* || "$cli_key" == group_* || "$cli_key" == verify_* || "$cli_key" == health_* || "$cli_key" == "blueprint_regen_threshold" || "$cli_key" == "spec_migration" || "$cli_key" == id_coordination_* || "$cli_key" == identity_* ]]; then
     # Bare-name keys (no _path suffix). The auto_*/require_* prefixes signal
     # automated/mandatory behaviors; issue_capture is a human-in-the-loop
     # feature flag (spec 018 DD #1); the issue_list_* family configures the
@@ -256,7 +258,10 @@ resolve() {
     # (spec 046) is the bare identity-on-move preference knob
     # (rewrite|forward|immutable); the id_coordination_* family (mechanism /
     # branch / unreachable) are the bare ID-allocator coordination knobs read
-    # from the current branch so a team's scheme is versioned. All resolve to
+    # from the current branch so a team's scheme is versioned; the identity_*
+    # family (identity_scheme / identity_domain) selects the form a recorded
+    # contributor identity takes — a scheme names one of a closed set of forms
+    # and a domain is a mail domain, so neither is a path. All resolve to
     # their bare TOML name.
     toml_key="$cli_key"
   else
