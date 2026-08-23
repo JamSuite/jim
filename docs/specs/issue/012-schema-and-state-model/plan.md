@@ -2,7 +2,7 @@
 title: "Schema and state model"
 spec: "docs/specs/issue/012-schema-and-state-model/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Schema and state model — Plan
