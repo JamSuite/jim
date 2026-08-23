@@ -5676,6 +5676,53 @@ case_index_identity_mismatch_omits_the_check_when_the_form_is_unusable() {
     "$(printf '%s' "$idx" | grep -q 'record(s) hold an identity' && echo yes || echo no)"
 }
 
+# ─── Section: a collision never blocks a single-identity write ──────────────
+
+# AC: an operation that records a single identity is judged only against the
+# identity it is writing, so one colliding pair somewhere in the collection can
+# never block capture or a transition. The whole-collection refusal and this
+# one are different questions, and conflating them would let two records
+# elsewhere in the collection silence the tool entirely.
+case_identity_collision_does_not_block_a_filing() {
+  local repo body
+  repo="$(new_repo identity_collision_filing)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  mkdir -p "$repo/docs/issues"
+  indexed_issue "$repo/docs/issues" "20260101-one" 'alice@company.example'
+  indexed_issue "$repo/docs/issues" "20260101-two" 'alice+ops@company.example'
+  # The pair really does collide, so the failure this case guards against is
+  # reachable rather than hypothetical.
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m collection >/dev/null 2>&1
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "the collection is genuinely ambiguous" 2 "$RC"
+
+  body="$(fixture identity_collision_body.md 'body')"
+  run_new_in "$repo" --reviewed --dir "$repo/docs/issues" \
+    --slug 20260102-new --num 9 \
+    --created 2026-01-02T00:00:00Z --updated 2026-01-02T00:00:00Z \
+    --title "New capture" --priority low --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "the filing still lands" 0 "$RC"
+  assert_eq "the issue was written" "yes" \
+    "$([[ -f "$repo/docs/issues/20260102-new.md" ]] && echo yes || echo no)"
+}
+
+# AC: the same holds for a transition, which records the holder.
+case_identity_collision_does_not_block_a_transition() {
+  local dir
+  dir="$(transition_dir identity_collision_transition)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$dir/jimconf.toml"
+  indexed_issue "$dir" "20260101-one" 'alice@company.example'
+  indexed_issue "$dir" "20260101-two" 'alice+ops@company.example'
+  run_transition start 20260101-target --dir "$dir"
+  assert_exit "the transition still lands" 0 "$RC"
+  assert_match "the holder was recorded" '^claimed-by: "' \
+    "$(cat "$dir/20260101-target.md")"
+}
+
 # ─── Section: identity.sh — ambient identity resolution ─────────────────────
 
 # identity_repo <name> [email] — a git repo with user.email set only when one
