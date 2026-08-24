@@ -106,6 +106,25 @@ fixture**. Where a case depends on the system reaching one input before another,
 the ordering is part of the fixture's contract: state it in the case's comment, or
 a later reader tidying a filename will silently disarm the case.
 
+**One kind of case may legitimately stand without going red against the unfixed
+code: the one pinning a guard's boundary rather than the guard.** A parser fix
+refused an operand equal to one of the verb's own flag names, deliberately *not*
+refusing every operand with a leading hyphen — the recordable-identity set admits
+one because real addresses carry it. The case asserting that `--from -x` still
+works cannot fail against the old parser, which accepted everything.
+
+From the outside that is indistinguishable from the failure this section
+describes, so it has to be told apart on purpose: **find what the case does
+discriminate against, and write that in its comment.** This one goes red against
+the *stricter* reading — the obvious tightening a later reader reaches for, which
+would silently break every address wearing a hyphen. A case whose discriminating
+mutation is a plausible **wrong fix** rather than the **absent fix** is worth
+keeping; a case with no discriminating mutation at all is the finding.
+
+The difference is one experiment. Skip it and you either delete a real guard or
+keep a case reporting coverage it does not have — and this section, read
+literally, tells you to delete it.
+
 ### The reach of a proof
 
 **Neuter-and-verify proves a fix. It says nothing about what the edit is now
@@ -400,6 +419,27 @@ rule names a call, that census is the mechanical form of this whole section —
 count the guard per site and expect a uniform number. **A census that disagrees
 with itself is the finding**, and it costs one `awk` pass over the function
 ranges. Prefer it to re-reading the issue.
+
+A fourth instance, on the very next task, showed the census works prospectively
+— and showed a second way a `## Scope` section defeats it. This one named no
+sibling. It named the *question*: "the swallow pattern is shared with `--expect`
+elsewhere in the same file, so a fix should consider whether to harden the idiom
+generally." A deferred enumeration reads as diligence, and it is one, but the
+deferral is only honoured if the fixer actually runs it — and it is the easiest
+line in an issue to read as background rather than as work.
+
+Run here, the census was a grep for the *idiom* rather than a count of guards:
+five sites across three parsers, where the issue demonstrated two. The three it
+had not demonstrated included the worst — a value-less `--expect` consumed the
+flag authorizing a destructive whole-collection write and left the drift guard
+unarmed, because an empty expectation is indistinguishable from asking for no
+check. The reported cases were the mild ones.
+
+So the census has two forms and both cost one command: **count a named guard per
+site** where the rule names a call, and **grep the idiom** where the rule is a
+shape. Either way the number should come out uniform. A Scope section that
+raises the question without answering it is the strongest signal there is to run
+one.
 
 This is the sibling of *By file, not by issue* below, at a different moment: that
 one governs reading a whole function while editing it, this one governs
