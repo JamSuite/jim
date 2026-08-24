@@ -9,9 +9,9 @@ approved, and the sequencing is a recommendation.
 > two that blocked, the fail-open pair, the documentation set bar one, and the
 > test-quality pair. § *Progress* at the end records what landed, where this
 > analysis under-scoped the work — five more times after the first batch — and
-> what remains. The
-> diagnostic sections below are left as they were written: they describe the
-> defects as found, and the issues' own resolution notes cite them.
+> what remains. The diagnostic sections below are left as they were written:
+> they describe the defects as found, and the issues' own resolution notes cite
+> them.
 
 ## Where we stand
 
@@ -240,7 +240,9 @@ else.
 | `#362` non-discriminating cases | closed | `2275999` |
 | `#357` coverage gaps | closed | `5e79803` |
 
-Both were audited by mutation before being fixed: twenty-three mutants over
+Both were audited by **mutation testing** — the established technique,
+applied by hand because no generated implementation exists for shell — before
+being fixed: twenty-three mutants over
 `identity.sh`, `migrate.sh identity` and the configured default, the identity
 subset run against each, the cases that went red recorded. A case its own mutant
 does not kill is the finding, and the whole census costs about twenty seconds per

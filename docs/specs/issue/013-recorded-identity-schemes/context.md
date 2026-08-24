@@ -310,13 +310,14 @@ instance, and it is much better evidenced now than when it was filed: five of
 the six fixes closed since carry sites a mechanical sweep would have caught.
 
 There is also a method now worth reusing before it is forgotten. The
-test-quality pair was audited by **mutating the surface** — one behaviour removed
-per mutant, the subset run against each, the cases that go red recorded — which
-cost about twenty seconds per mutant and found three defects nobody had
-reported. `docs/notes/process-improvements.md` § *Audit the surface, not the
-case* has the method and the two ways it silently reports a false negative. The
-harness itself was scratch and is gone; it is a dozen lines and worth rebuilding
-rather than looking for.
+test-quality pair was audited by **mutation testing** — the established
+technique, applied by hand because no generated implementation exists for shell.
+One behaviour removed per mutant, the subset run against each, the cases that go
+red recorded; twenty-three mutants at about twenty seconds each found three
+defects nobody had reported. `docs/notes/process-improvements.md` § *Audit the
+surface, not the case* has the method, the field's vocabulary, and the two ways
+it silently reports a false negative. The harness itself was scratch and is
+gone; it is a dozen lines and worth rebuilding rather than hunting for.
 
 Whatever you take, the closing move is the same each time: a `## Resolution`
 note on the issue naming the commits and the case that pins the fix, and
