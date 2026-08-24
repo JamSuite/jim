@@ -42,10 +42,11 @@ Two frontmatter values look wrong and are not:
 
 ### What the remediation has closed
 
-Eight of the seventeen issues, in two batches. First the two that blocked —
+Ten of the seventeen issues, in three batches. First the two that blocked —
 `#365`, the bracket bypass past the recorded-identity charset gate, and `#360`,
 a path composed from an unvalidated slug — then the fail-open pair (`#358`,
-`#361`), then the documentation set (`#368`, `#364`, `#369`, `#370`).
+`#361`), then the documentation set (`#368`, `#364`, `#369`, `#370`), then the
+test-quality pair (`#362`, `#357`).
 
 Both blueprint violations are cleared. `/jim:verify issue` returned
 `identity-validated-before-record` and `id-gate-before-path` as `holds` under
@@ -53,15 +54,15 @@ judges reading the code without being told what changed, and the group ledger
 carries both records — `violated=1`, then `violated=0` — so the trajectory is
 visible rather than amended away.
 
-Nine remain and none is critical: `#355` (ARCHITECTURE.md line lengths),
-`#362` and `#357` (test quality), `#367` and `#363` (structural), `#356`,
-`#359`, `#366` and `#371` (small correctness). `#53` is open and critical, and
-predates this increment.
+Seven remain and none is critical: `#355` (ARCHITECTURE.md line lengths),
+`#367` and `#363` (structural), and `#356`, `#359`, `#366` and `#371` (small
+correctness). `#53` is open and critical, and predates this increment.
 
 **Read `remediation.md` § *Where this analysis under-scoped the work* before
 touching any of them.** Every issue closed so far reached more sites than it
-named, and the section says how each extra site was found. That is the single
-most transferable thing this cycle produced.
+named — ten for ten — and the section says how each extra site was found. Not
+one was found by re-reading the issue. That is the single most transferable
+thing this cycle produced, and it kept recurring after it had been written down.
 
 ---
 
@@ -263,6 +264,13 @@ with `/jim:issue reconcile`. All ordinals in this increment are realized —
 
 **Git push is restricted to the host.**
 
+**A filtered subset is much cheaper than the suite.** `bash tests/issues.sh
+identity` runs 107 cases in about twenty seconds, against roughly four minutes
+for the file and fifteen for everything. Filter while iterating — but a filter
+named after one surface silently excludes every case named after another, so
+confirm the case you care about was selected before reading its silence as a
+result.
+
 **The full test suite takes 10–15 minutes** and exceeds a foreground timeout.
 Run it backgrounded and poll for `^Ran `. Never run two concurrently, and count
 subagent fan-out as concurrency — a fan-out running alongside the suite
@@ -298,9 +306,17 @@ deliberately left out of the documentation pass so that decision would not be
 buried in a diff about something else.
 
 **`#363` is the only one that prevents recurrence** rather than fixing an
-instance, and it is better evidenced now than when it was filed: three of the
-four documentation fixes just closed were sites a mechanical sweep would have
-caught.
+instance, and it is much better evidenced now than when it was filed: five of
+the six fixes closed since carry sites a mechanical sweep would have caught.
+
+There is also a method now worth reusing before it is forgotten. The
+test-quality pair was audited by **mutating the surface** — one behaviour removed
+per mutant, the subset run against each, the cases that go red recorded — which
+cost about twenty seconds per mutant and found three defects nobody had
+reported. `docs/notes/process-improvements.md` § *Audit the surface, not the
+case* has the method and the two ways it silently reports a false negative. The
+harness itself was scratch and is gone; it is a dozen lines and worth rebuilding
+rather than looking for.
 
 Whatever you take, the closing move is the same each time: a `## Resolution`
 note on the issue naming the commits and the case that pins the fix, and
