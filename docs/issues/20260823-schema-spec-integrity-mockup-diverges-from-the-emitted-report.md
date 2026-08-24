@@ -2,12 +2,12 @@
 id: 20260823-schema-spec-integrity-mockup-diverges-from-the-emitted-report
 num: 370
 title: "Schema spec integrity mockup diverges from the emitted report"
-status: open
+status: closed
 priority: low
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [issue, docs]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-23T23:45:30Z
-updated: 2026-08-23T23:45:30Z
+updated: 2026-08-24T19:26:55Z
 origin: "docs/specs/issue/012-schema-and-state-model/spec.md"
 ---
 
@@ -64,3 +64,21 @@ or spends time working out which one is authoritative.
 ## Direction
 
 Update the mockup to the shape the index actually emits. No code change.
+
+## Resolution (2026-08-24)
+
+Fixed in `627c761`.
+
+The mockup is now byte-identical to what `index.sh` writes for those three
+records. It was produced by running the index against a fixture collection
+holding one record of each class, not transcribed from the code — the
+difference matters here, since transcribing is how the original diverged.
+
+**The fourth line was dropped rather than corrected.** A close naming no
+superseding issue never reaches the index: `transition.sh` refuses `--as
+duplicate` at exit 2 unless the record already names the superseding issue in
+its `duplicates` relation, so there is no warning of that shape to mock up. The
+spec now says that in place, because a line vanishing from a mockup is itself a
+thing the next reader has to work out.
+
+The direction proposed above is what landed.
