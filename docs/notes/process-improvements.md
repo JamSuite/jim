@@ -377,6 +377,30 @@ defect class, because the defects lived in *verb × rule*: which verbs read the
 structure without going through the classifier at all. The matrix was right; its
 axes were not. Ask what the rule is, then what touches the rule.
 
+The third instance adds the trap that makes this rule hard to follow: **an issue
+that names a sibling site looks like it has already done the enumeration.** One
+issue reported an ungated path composition and carried a `## Scope` section
+naming one sibling of the same shape — "both are the same one-line fix and belong
+together". Both were fixed, the suite was green at 1,551 across both commits, and
+the issue closed with a resolution naming the pair. There were three. The third
+was the same rule's fallback arm in a function neither the issue nor the fix pass
+had looked at.
+
+A partial enumeration suppresses the independent one. An issue naming no sibling
+prompts the question; an issue naming one *answers* it — and the answer is the
+more trustworthy for having been written by whoever found the defect. Read a
+`## Scope` section as the reporter's hypothesis about reach, which is the status
+*A stated scope is a claim, not a measurement* already gives every other stated
+scope.
+
+What caught it was the axis. The invariant engine's judge was asked whether the
+rule held, not whether the issue was fixed, so it enumerated every site composing
+a path and counted guards: **0 / 1 / 1** across three sibling functions. Where a
+rule names a call, that census is the mechanical form of this whole section —
+count the guard per site and expect a uniform number. **A census that disagrees
+with itself is the finding**, and it costs one `awk` pass over the function
+ranges. Prefer it to re-reading the issue.
+
 This is the sibling of *By file, not by issue* below, at a different moment: that
 one governs reading a whole function while editing it, this one governs
 enumerating a rule's reach before declaring it held.
