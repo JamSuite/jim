@@ -341,6 +341,36 @@ case_docsurfaces_workflow_close_flow_survives_a_placement() {
   assert_match "and points at the flow that works" '6a'          "$line"
 }
 
+# A skill's grant and its body are one document read by two readers. The body
+# prescribed the lifecycle verbs and the collection conversions; the grant named
+# neither script, so every documented step ended at a permission prompt for a
+# script the skill itself had just told the developer to run. Swept rather than
+# listed, so a call site added later is covered without anyone remembering to.
+#
+# The withheld half is load-bearing too. `migrate.sh prefix --apply` renames every
+# file in the collection and rewrites its inbound references, and this body never
+# instructs it — so the grant enumerates the two subcommands the body does use
+# rather than taking the script whole.
+case_docsurfaces_issue_grant_covers_the_scripts_it_instructs() {
+  local s="$REPO_ROOT/skills/issue/SKILL.md" tools body scr n=0 missing=""
+  assert_eq "the skill is present" "yes" \
+    "$([[ -r "$s" ]] && echo yes || echo no)"
+  tools="$(sed -n '/^allowed-tools:/p' "$s")"
+  body="$(awk 'NR==1 && $0 == "---" { fm=1; next }
+               fm && $0 == "---"    { fm=0; rest=1; next }
+               rest' "$s")"
+  for scr in $(printf '%s\n' "$body" | grep -o 'scripts/[a-z]*\.sh' | sort -u); do
+    n=$(( n + 1 ))
+    grep -qF "$scr" <<< "$tools" || missing="$missing ${scr#scripts/}"
+  done
+  assert_eq "the body names call sites at all" "yes" \
+    "$([[ $n -gt 0 ]] && echo yes || echo no)"
+  assert_eq "every script the body invokes is granted" "" "${missing# }"
+  # The collection-wide rename is the verb this skill deliberately does not hold.
+  assert_eq "and the collection-wide rename is not" "" \
+    "$(grep -oE 'migrate\.sh prefix' <<< "$tools")"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
