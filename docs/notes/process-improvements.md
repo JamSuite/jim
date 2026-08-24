@@ -125,6 +125,57 @@ The difference is one experiment. Skip it and you either delete a real guard or
 keep a case reporting coverage it does not have — and this section, read
 literally, tells you to delete it.
 
+### Audit the surface, not the case
+
+*Neuter the guard* proves one fix at the moment it lands. It cannot find the
+cases that were already standing when you arrived, because nothing prompts you
+to question a case you are not touching. For that, invert it: mutate the
+**surface** — one behaviour removed per mutant — run the subset against each,
+and record which cases go red. A case no mutant kills is the finding.
+
+One pass over an identity surface cost twenty mutants at about twenty seconds
+each. It confirmed six reported non-discriminating cases and found three nobody
+had reported, in cases nobody was editing.
+
+**All three were one shape: an assertion matching a substring that two branches
+share.** Remove the several-domains guard on a config value and the charset gate
+refuses the same input; both messages name the setting, which is all the case
+matched. Remove the both-halves-of-a-remap guard and the recordability check
+refuses the empty half; its message names the same flag. The shape is
+searchable — **where a guard's refusal shares vocabulary with the guard behind
+it, matching the shared words pins the outcome and not the guard.** Match the
+phrase only this branch can produce.
+
+A fourth cause of a case that cannot go red belongs beside the three above:
+**a symmetric property asserted from one side.** Case-insensitive matching
+between an operand and a stored value was driven with a lower-case operand
+against a mixed-case record, so the fold on the operand's side was pinned by
+nothing. Where a property is symmetric, one direction is half a case.
+
+**Pairing is a third remedy, and the only one that recovers coverage rather than
+documenting its absence.** Some cases cannot discriminate alone: an address the
+alias mapping does not mention comes back unchanged whether the lookup ran or
+was deleted outright, and no assertion separates those. Adding a *mapped*
+address to the same fixture does — the pair says a lookup happened and left this
+one alone. Reach for it before *fold it into the case that does go red* or
+*record what it cannot prove*.
+
+**Two ways the census lies, both silent, both false negatives.** They cost three
+re-runs here, and both read exactly like a verdict.
+
+- **The mutant did not apply.** A replacement requiring a unique match no-ops
+  when the pattern occurs three times — and a subcommand's index-regeneration
+  call usually does. Make the harness die loudly on any match count but one, and
+  do not discard its stderr, which is where it says so.
+- **The case did not run.** Running each mutant against a *filtered* subset is
+  what makes the census cheap, and a filter named after the surface excludes
+  every case named after something else. Three cases read as non-discriminating
+  for a whole round because the filter never selected them.
+
+Assert the case was *selected* before believing it survived. This is trap 1 of
+*Neuter the guard* at a larger scale: an experiment that did not run is
+indistinguishable from one that found nothing.
+
 ### The reach of a proof
 
 **Neuter-and-verify proves a fix. It says nothing about what the edit is now
