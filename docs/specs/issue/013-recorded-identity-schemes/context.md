@@ -24,11 +24,13 @@ finished**.
 | `plan.md` | `approved`, 21/21 tasks `[x]` |
 | `security.md` | `Needs Plan Review` — 16 findings, all applied |
 | `review.md` | **`major-drift`** — 14 findings |
-| `remediation.md` | the analysis and the suggested fix order |
+| `remediation.md` | the analysis, the fix order, and what has executed against it |
 
-`plan.md` is deliberately **not** `status: complete`. Two critical issues from
-the review are open and unfixed; marking it complete would make the plan's
-status contradict its own review. That gate is the developer's to close.
+`plan.md` is deliberately **not** `status: complete`. It stayed `approved`
+because two critical issues from the review were open and unfixed, and marking
+it complete would have made the plan's status contradict its own review. Both
+are now closed, so that reason no longer holds — but the gate is still the
+developer's to close, and nobody has closed it.
 
 Two frontmatter values look wrong and are not:
 
@@ -38,19 +40,28 @@ Two frontmatter values look wrong and are not:
 - **`research.md` is `Active`** because its status gates whether planning
   proceeds. Different field, different semantics.
 
-### The two that block
+### What the remediation has closed
 
-- **`#365` — values carrying `<` or `>` bypass the recorded-identity charset
-  gate.** A regression this build introduced. Read `remediation.md` § *The two
-  that block* for the mechanism; it is reproducible in one command.
-- **`#360` — the identity rewrite composes a path from an unvalidated slug.**
+Eight of the seventeen issues, in two batches. First the two that blocked —
+`#365`, the bracket bypass past the recorded-identity charset gate, and `#360`,
+a path composed from an unvalidated slug — then the fail-open pair (`#358`,
+`#361`), then the documentation set (`#368`, `#364`, `#369`, `#370`).
 
-Both are `in-change` violations of `critical` blueprint invariants, and both
-were resolved **`fix`** at the blueprint fork — meaning the blueprint still
-declares the properties the code must return to. **Do not fold either
-invariant to match the current code.** That was decided explicitly.
+Both blueprint violations are cleared. `/jim:verify issue` returned
+`identity-validated-before-record` and `id-gate-before-path` as `holds` under
+judges reading the code without being told what changed, and the group ledger
+carries both records — `violated=1`, then `violated=0` — so the trajectory is
+visible rather than amended away.
 
-`#53` and `#368` are also open and critical but predate this increment.
+Nine remain and none is critical: `#355` (ARCHITECTURE.md line lengths),
+`#362` and `#357` (test quality), `#367` and `#363` (structural), `#356`,
+`#359`, `#366` and `#371` (small correctness). `#53` is open and critical, and
+predates this increment.
+
+**Read `remediation.md` § *Where this analysis under-scoped the work* before
+touching any of them.** Every issue closed so far reached more sites than it
+named, and the section says how each extra site was found. That is the single
+most transferable thing this cycle produced.
 
 ---
 
@@ -67,16 +78,16 @@ uphold**, each with a criticality and a verification method. It is the document
 that decides whether a change to this group is correct, and it is what
 `/jim:verify` judges the code against.
 
-Two of those invariants are currently violated by this increment
-(`identity-validated-before-record`, `id-gate-before-path`). You cannot
-evaluate a fix for `#365` or `#360` without having read what they actually say
-— the invariant text is the specification of the fix, and both are more
-demanding than the issue titles suggest.
+Two of those invariants were violated by this increment
+(`identity-validated-before-record`, `id-gate-before-path`) and now hold again.
+Read them anyway before changing this code: the invariant text is what both
+fixes were written against, and in both cases it reached further than the issue
+titles suggested — `id-gate-before-path` turned out to cover four composition
+sites where the issue named two.
 
-Note especially that the `identity.sh` **Provides** entry was updated by this
-increment and now declares four verbs and the form/mapping behaviour, while
-still asserting the refusal guarantee the code currently breaks. That tension
-is deliberate and is the point of resolving `fix`.
+The `identity.sh` **Provides** entry declares four verbs and the form/mapping
+behaviour, and asserts a refusal guarantee the code now honours. The tension
+that made it worth flagging is resolved.
 
 ### Second — `BLUEPRINT.md` (the project context map)
 
@@ -252,10 +263,16 @@ with `/jim:issue reconcile`. All ordinals in this increment are realized —
 
 **Git push is restricted to the host.**
 
-**The full test suite takes ~9 minutes** and exceeds a foreground timeout. Run
-it backgrounded and poll for `^Ran `. Never run two concurrently, and count
+**The full test suite takes 10–15 minutes** and exceeds a foreground timeout.
+Run it backgrounded and poll for `^Ran `. Never run two concurrently, and count
 subagent fan-out as concurrency — a fan-out running alongside the suite
-collapses throughput.
+collapses throughput. Redirect the whole output to a file rather than piping it
+through `tail`: the aggregate prints one `Ran N tests` line at the very end, and
+a `tail -40` keeps that line while discarding the `FAIL` that explains it.
+
+**A green per-file run does not mean the suite is green.** Corpus rules over
+`tests/*.sh` live in `scripthygiene.sh`, so a new case can pass in its own file
+and fail the suite — an unpinned `sort -u` did exactly that here.
 
 **No real contributor addresses in specs, plans, research, security docs or
 mockups.** Use `alice@company.com` / `you@example.com`. Issue *files*
@@ -267,19 +284,24 @@ research and the previous one's. Do not re-raise it as new.
 
 ---
 
-## 6. If you are here to fix `#365`
+## 6. If you are picking up what remains
 
-Read `remediation.md` first — it has the suggested approach and the reasoning
-for the order. Then the `identity-validated-before-record` invariant in the
-group blueprint, because that text is the specification of what "fixed" means.
+Read `remediation.md` first — the analysis, the order, and § *Progress*, which
+records what each fix actually did rather than what its issue asked for.
 
-The shape of the fix is not "sanitize harder". The gate must judge the value
-the caller supplied, not only the value the mapping handed back — the mapping
-legitimately runs first, and an out-of-set value must still be refused. No test
-currently exercises a bracket-bearing value through any verb, so the regression
-case is new work.
+Two of the nine are not what their one-line titles suggest.
 
-When it lands, three things should follow in the same pass: the two documents
-that currently assert the broken property (`identity.sh`'s SECURITY MODEL
-header, and `ARCHITECTURE.md` § Recorded identity via `/jim:arch`), and a
-`## Resolution` note on the issue naming the commit and the case that pins it.
+**`#355` is not a document fix.** It wants a decision about whether `/jim:arch`
+wraps its generated prose on every refresh — an authoring-convention change —
+plus a rewrap of a 204 KB file whose unit of oversize *is* the line. It was
+deliberately left out of the documentation pass so that decision would not be
+buried in a diff about something else.
+
+**`#363` is the only one that prevents recurrence** rather than fixing an
+instance, and it is better evidenced now than when it was filed: three of the
+four documentation fixes just closed were sites a mechanical sweep would have
+caught.
+
+Whatever you take, the closing move is the same each time: a `## Resolution`
+note on the issue naming the commits and the case that pins the fix, and
+`transition.sh close <id> --as done` rather than an edit to `status:`.
