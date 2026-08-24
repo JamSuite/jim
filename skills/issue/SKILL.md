@@ -86,6 +86,24 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/migrate.sh schema --apply [--exp
 
 Each issue's filer is recovered from the commit that created its file. If any issue has no recordable filer, the whole run refuses and names every one of them rather than substituting a placeholder — so re-run the preview and resolve them before applying. Passing the preview's hash to `--apply` refuses if the collection changed in between.
 
+**What a recorded identity looks like.** `identity_scheme` decides the form for the whole collection rather than per contributor, so one collection never holds identities recorded under different rules. `email` records the whole address; `github` (the default) also records a forge private-relay address as the account name it carries; `local` also records an address inside `identity_domain` as the account part in front of that domain. Each form records everything the one below it does plus one further extraction, every form lower-cases what it records, and an address resolves through whatever alias mapping version control carries before any form applies — which is what collapses one contributor's several addresses to one identity. An **unrecognized** `identity_scheme` refuses every operation that would record an identity; an **absent** one takes the default, so a zero-config project is unaffected.
+
+**Re-recording a collection under a changed form.** Changing `identity_scheme` rewrites nothing already recorded. The index reports the divergence instead — one warning naming the records the current form would record differently, and a second naming any the form cannot judge — and the identity rewrite is what clears them. Preview first; it writes nothing and prints a `PLAN-HASH`:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/migrate.sh identity --renormalize
+bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/migrate.sh identity --renormalize --apply [--expect <hash>]
+```
+
+Re-normalization re-applies the current form to every recorded identity and supplies no mapping of its own. It **skips** a record whose identity the form cannot judge, which is why that class is warned separately: those are repaired by naming both values explicitly, the rewrite's second mode. It covers every field that records an identity, not just the filer:
+
+```
+bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/migrate.sh identity --from <old> --to <new>
+bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/migrate.sh identity --from <old> --to <new> --apply [--expect <hash>]
+```
+
+`--to` is recorded as given (lower-cased), not put through the configured form: an operator who names a value gets that value, and the mismatch warning is what tells them if it disagrees with the form. Both modes preview by default and mutate only behind `--apply`, and both refuse a `--expect` hash that no longer matches the collection.
+
 ### Actionability gate — judge before drafting (capture only)
 
 Before reading strategic context or drafting anything, judge whether the surfaced finding represents **pending, unresolved work**. This gate precedes step 2 — do not spend work framing or drafting an issue that should not exist.
