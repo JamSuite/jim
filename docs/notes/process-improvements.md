@@ -58,6 +58,22 @@ have bitten:
    proof that the hole is closed is not a proof that the guard you wrote is what
    closes it.**
 
+   The harder variant is two mechanisms that produce the *same* outcome, where
+   there is no distinguishing outcome to assert. A plan called an end-of-options
+   separator "the whole fix" for option-shaped values reaching `git
+   check-mailmap`. It is not: the value is also wrapped in angle brackets,
+   because that is the input form the command accepts, and the wrapping alone
+   neutralizes option shape — `git check-mailmap "<--help>"` with no separator
+   returns `<--help>` as data. Removing either mechanism leaves the case green.
+
+   Neither is redundant enough to delete, and no case can isolate one. Say so at
+   the case: record which property is pinned and that the individual mechanism is
+   not. Otherwise the comment claims a proof the case cannot deliver, which is
+   the same false confidence as an overstated rationale. Two independent routes
+   reached this correction in one increment — hand-verification during the build,
+   and a test-discrimination audit afterwards — which is what makes it worth
+   writing down rather than fixing quietly.
+
 ### A case that cannot go red is a finding
 
 If removing the shipped guard leaves the case green, the case is pinning
@@ -164,12 +180,55 @@ Treat "tests pass" as a precondition and **say nothing further about it in a
 gate**. A gate that cites the suite as evidence of correctness is citing the one
 artifact structurally incapable of reporting its own gaps.
 
+### Fixtures inherit the author's blind spot — run it against real data
+
+The two worst defects of one increment were found the same way, and neither by
+the 78 cases written alongside the code.
+
+A new verb shipped with 30 passing cases and was broken for its primary use.
+The collision check compared raw source addresses, so two spellings of **one**
+contributor — unified by the project's own alias mapping — were refused as a
+merge of two people, disabling the whole feature for exactly the projects a
+mapping exists to serve. It surfaced on the verb's first run against the real
+collection, which held precisely that pair. Every fixture had used addresses the
+mapping said nothing about.
+
+The second was a charset gate that had stopped refusing: an alias step inserted
+ahead of it reduced malformed values to a clean substring instead of rejecting
+them. Found by adversarial reading. No fixture carried a bracket-bearing value.
+
+The suite was not too small. **The fixtures were drawn from the same model of
+the problem as the code, so they systematically avoided the shapes the code
+mishandles.** More cases from the same author reproduce the same blind spot; a
+different kind of input does not.
+
+The practice: before believing a suite about a new verb, **run the verb against
+production data once**. It is the one input nobody designed, and it costs a
+single invocation. Where the data is a collection you can preview against, the
+preview is free — the first real preview of this verb was what caught the design
+bug.
+
 ### Reproduce a finding before believing it
 
 A fan-out reported three criticals; one was refuted by a thirty-second shell
 experiment, after **two** investigators had independently reasoned it into
 existence from bash subscript semantics. That was the second consecutive build
 where a reasoned-from-source finding died on contact with a shell.
+
+The third build made the pattern impossible to dismiss: **three** of fourteen
+findings were refuted, each by one command. One was an attribution hijack that
+depended on git returning the *last* parseable contact from a malformed
+argument — it returns the first. One was a false-negative in a collision
+fallback that a second investigator, reading more carefully, showed was
+fail-safe. And one was the arithmetic-subscript claim **again** — a different
+investigator, a different build, the same inference from the same bash
+semantics, refuted the same way.
+
+That recurrence is the useful part. These are not random errors; a particular
+kind of plausible-but-wrong reasoning about shell semantics regenerates itself
+across independent readers. When a finding turns on what bash or git does with
+an unusual input, the cost of checking is one command and the prior is that it
+is wrong.
 
 Reading generates findings; running confirms them. A review reporting an
 unreproduced critical is reporting a **hypothesis** and should label it one. The
@@ -531,6 +590,33 @@ blueprints, and nothing forced the fold until the sensor ran — after the gate.
 The fold-back loop's value is not the report it writes. It is the contradiction
 it refuses to let pass silently, and it can only refuse before the gate closes.
 
+### A verdict is a measurement — amend it when the evidence lands late
+
+The review records `review finished alignment=…` **before** composing
+`review.md`, so the artifact can report its own metrics; and the living-intent
+sensor runs after that, by design, so its outcomes can never set the verdict.
+Those two orderings interact badly on one path: evidence that genuinely bears on
+alignment can arrive after the verdict is already on the ledger.
+
+One review recorded `minor-drift` over 31-of-33 criteria and a clean task
+breakdown. The sensor then reported a `critical` invariant violated; verifying
+that claim by hand showed the build had introduced a regression falsifying both
+the script's own security-model header and the `ARCHITECTURE.md` paragraph
+refreshed during the same build. That is drift against an alignment ground
+truth, found late. The verdict was amended to `major-drift` and both lines stand
+on the append-only ledger.
+
+Hold the distinction precisely, because it is the thing that could be abused:
+**the sensor's outcome must not move the verdict; evidence surfaced while
+verifying that outcome is ordinary evidence and must.** The test is whether the
+new fact bears on a ground truth the verdict already answers — spec criteria,
+plan tasks, architecture conventions. "An invariant is violated" does not
+qualify. "The code contradicts a document this build wrote" does.
+
+Amending is cheap and the trajectory is what the append-only ledger is for.
+Rationalizing the first verdict to avoid a second line is the failure — it
+produces an artifact that is wrong in the one direction nobody re-reads.
+
 ### Convergence is a confidence signal worth recording
 
 When two or three investigators on *different* assignments reach the same defect
@@ -590,6 +676,16 @@ did); an interactive batch is always the reviewed case. Regenerate `INDEX.md`
 
 **Slugs cap at 64 characters and truncate mid-word.** Keep issue titles short
 enough to survive it.
+
+**A filing batch inherits the collection's integrity state.** Filing regenerates
+`INDEX.md`, which re-derives every warning from the collection as it currently
+stands. With a schema migration pending, that wrote 233 "closed but records no
+outcome" lines into a tracked artifact — noise that had nothing to do with the
+issues being filed, and that vanished the moment the conversion ran. Sequence a
+pending data migration **before** a filing batch, or the batch's own commit
+carries the migration's backlog. The same reasoning applies to any operator
+action that regenerates a derived artifact: it publishes whatever is true at
+that moment, not whatever the action was about.
 
 **Config path keys are `<key>_path` in TOML.** `brainstorms_path`, `specs_path`,
 `issues_path` — the bare names are for the behavior knobs (`issue_placement`,
