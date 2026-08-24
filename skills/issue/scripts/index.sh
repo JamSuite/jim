@@ -302,6 +302,23 @@ row_safe() {
   printf '%s' "$1" | tr -d '\000-\037\177' | sed 's/·//g' | cut -c1-512
 }
 
+# slug_list <slug>... — the slugs as one capped, display-safe inline list.
+#   The slugs reaching this have cleared the id gate; they clear the display
+#   sanitizer too, for the same reason every other row value does. The cap keeps
+#   one warning from becoming the whole warnings block, and the remainder is
+#   counted rather than dropped, so the line never reads as exhaustive when it
+#   is not.
+slug_list() {
+  local out="" i=0 cap=10 s total=$#
+  for s in "$@"; do
+    (( i >= cap )) && break
+    out+="${out:+, }\`$(row_safe "$s" | tr -d '`')\`"
+    i=$((i+1))
+  done
+  (( total > cap )) && out+=", … and $(( total - cap )) more"
+  printf '%s' "$out"
+}
+
 # resolve_dir <arg>
 #   Determine the issues directory: arg if non-empty, else jimconf default.
 #   Errors with rc=2 if the result is empty or whitespace-only.
@@ -593,41 +610,46 @@ main() {
   #   migration rather than nagging forever.
   local ident_probe="probe@example.invalid"
   local ident_value ident_form s2
-  local -a mismatched=()
+  local -a mismatched=() unjudgeable=()
   if ! bash "$IDENTITY" normalize "$ident_probe" >/dev/null 2>&1; then
     warnings_section+="- recorded identities not checked against the configured form: identity_scheme could not be applied."$'\n'
   else
     declare -A ident_seen=()
     for s2 in "${slugs_seen[@]}"; do
-      local mismatch=0
+      local mismatch=0 unjudged=0
       for ident_value in "${meta_filed_by[$s2]-}" "${meta_claimed_by[$s2]-}"; do
         [[ -n "$ident_value" ]] || continue
         if [[ -z "${ident_seen[$ident_value]+set}" ]]; then
-          ident_form="$(bash "$IDENTITY" normalize "$ident_value" 2>/dev/null)" \
-            || ident_form="$ident_value"
-          if [[ "$ident_form" != "$ident_value" ]]; then
+          # Three outcomes, not two. A value the form cannot produce is not
+          # conforming — nothing that fails the definition of a recordable
+          # identity can equal what the form would record — and it is not an
+          # ordinary mismatch either, because the re-normalization skips exactly
+          # these. Filing it under a remedy that cannot clear it would leave the
+          # warning standing after the operator did what it asked, and a signal
+          # with no exit condition is the nag this surface is built not to be.
+          if ! ident_form="$(bash "$IDENTITY" normalize "$ident_value" 2>/dev/null)"; then
+            ident_seen["$ident_value"]=2
+          elif [[ "$ident_form" != "$ident_value" ]]; then
             ident_seen["$ident_value"]=1
           else
             ident_seen["$ident_value"]=0
           fi
         fi
-        (( ident_seen[$ident_value] )) && mismatch=1
+        case "${ident_seen[$ident_value]}" in
+          1) mismatch=1 ;;
+          2) unjudged=1 ;;
+        esac
       done
+      # A record can hold one of each across its two identity fields, and both
+      # facts are true of it, so the classes are not exclusive.
       (( mismatch )) && mismatched+=("$s2")
+      (( unjudged )) && unjudgeable+=("$s2")
     done
     if (( ${#mismatched[@]} )); then
-      # The slugs cleared the id gate above, and they clear the display
-      # sanitizer here for the same reason every other row value does.
-      local ident_list="" ident_i=0 ident_cap=10
-      for s2 in "${mismatched[@]}"; do
-        (( ident_i >= ident_cap )) && break
-        ident_list+="${ident_list:+, }\`$(row_safe "$s2" | tr -d '`')\`"
-        ident_i=$((ident_i+1))
-      done
-      if (( ${#mismatched[@]} > ident_cap )); then
-        ident_list+=", … and $(( ${#mismatched[@]} - ident_cap )) more"
-      fi
-      warnings_section+="- ${#mismatched[@]} record(s) hold an identity the configured form would record differently: ${ident_list}. Re-apply the current form with \`migrate.sh identity --renormalize\`."$'\n'
+      warnings_section+="- ${#mismatched[@]} record(s) hold an identity the configured form would record differently: $(slug_list "${mismatched[@]}"). Re-apply the current form with \`migrate.sh identity --renormalize\`."$'\n'
+    fi
+    if (( ${#unjudgeable[@]} )); then
+      warnings_section+="- ${#unjudgeable[@]} record(s) hold an identity the configured form cannot judge: $(slug_list "${unjudgeable[@]}"). The re-normalization skips these; repair them with \`migrate.sh identity --from <old> --to <new>\`."$'\n'
     fi
   fi
 

@@ -5801,6 +5801,46 @@ case_index_identity_mismatch_names_the_affected_records() {
   assert_match "the count is given"  '1 record'     "$idx"
 }
 
+# AC: a value the form cannot judge is surfaced, not passed over. Nothing that
+# fails the definition of a recordable identity can equal what the form would
+# record, so reading a failed normalization as agreement stays silent about
+# exactly the records an operator running a form migration needs to see —
+# pre-conversion and hand-edited records being the realistic source.
+case_index_identity_unjudgeable_values_are_surfaced() {
+  local dir idx
+  dir=$(empty_dir index_identity_unjudgeable)
+  indexed_issue "$dir" "20260101-bracket" 'bob]smith@example.test'
+  indexed_issue "$dir" "20260101-space"   'has space@example.test'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "both records are named" '20260101-bracket' "$idx"
+  assert_match "both records are named" '20260101-space'   "$idx"
+  assert_match "counted as its own class" '2 record\(s\) hold an identity the configured form cannot judge' "$idx"
+}
+
+# AC: the two classes are reported separately, each with a remedy that works on
+# it. The re-normalization skips a value it cannot produce, so filing one under
+# the other's remedy would leave the warning standing after the operator did
+# what it asked — and a signal with no exit condition is the nag this surface is
+# built not to be.
+case_index_identity_classes_carry_remedies_that_apply_to_them() {
+  local dir idx
+  dir=$(empty_dir index_identity_two_classes)
+  indexed_issue "$dir" "20260101-relay"  '1234+Dev@users.noreply.github.com'
+  indexed_issue "$dir" "20260101-broken" 'has space@example.test'
+  indexed_issue "$dir" "20260101-clean"  'dev'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the normalizable one keeps --renormalize" \
+    '1 record\(s\) hold an identity the configured form would record differently: `20260101-relay`. Re-apply the current form with `migrate.sh identity --renormalize`' "$idx"
+  assert_match "the unjudgeable one gets --from/--to" \
+    '1 record\(s\) hold an identity the configured form cannot judge: `20260101-broken`. The re-normalization skips these' "$idx"
+  assert_eq "the conforming record is named in neither" "no" \
+    "$(printf '%s' "$idx" | grep -E 'record\(s\) hold an identity' | grep -q '20260101-clean' && echo yes || echo no)"
+}
+
 # AC: the surface names the affected records and their count, never the
 # identity values — it is written into generated content the project publishes,
 # and each named record already carries its own value.
