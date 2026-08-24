@@ -2,12 +2,12 @@
 id: 20260823-values-carrying-angle-brackets-bypass-the-recorded-identity-char
 num: 365
 title: "Values carrying angle brackets bypass the recorded-identity charset gate"
-status: open
+status: closed
 priority: critical
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [issue, identity, security, regression]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-23T23:37:25Z
-updated: 2026-08-23T23:37:25Z
+updated: 2026-08-24T07:29:54Z
 origin: "docs/specs/issue/000-blueprint/spec.md"
 ---
 
@@ -79,3 +79,34 @@ currently exercises a bracket-bearing value through any verb.
 
 Origin: `docs/specs/issue/013-recorded-identity-schemes/review.md` — Finding 1,
 and the living-intent violation resolved `fix` at the blueprint fork.
+
+## Resolution (2026-08-24)
+
+Fixed in `2da3693`.
+
+The gate runs at the top of `map_alias`, ahead of the composition, rather than
+in the two callers. That is where the bracket assumption is actually made:
+`map_alias` is what wraps the value as `<$value>`, so the requirement travels
+with the argument it protects and a caller reaching the lookup by another route
+later cannot reopen the door. It also subsumed the standalone `IDENTITY_MAX`
+check `map` and `normalize` each carried, whose only job was bounding what
+reached that same command.
+
+The direction proposed above is what landed; only its placement differs.
+
+**A capability was deliberately narrowed.** A mapping keyed on a value the
+accepted set does not admit can no longer fire, because the value is refused
+before the lookup is consulted. That is what "refused exactly as an absent one"
+requires, and the alternative is the mapping deciding what is recordable.
+`case_identity_a_mapping_cannot_admit_an_unrecordable_value` pins it, so the
+narrowing is not read as a defect and restored.
+
+Pinned by `case_identity_bracket_bearing_values_are_refused_whole` — every
+bracket position through `validate`, `map` and `normalize` — and
+`case_identity_resolve_refuses_a_bracket_bearing_environment_identity`, the
+ambient path a filing and a transition both take. Both were run against the
+unfixed script first and fail there.
+
+The two documents named above are corrected: `identity.sh`'s SECURITY MODEL
+header in the same commit, and `ARCHITECTURE.md` § Security Considerations →
+Recorded identity in `b00ad3d` via `/jim:arch`.

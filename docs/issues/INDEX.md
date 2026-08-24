@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 138
-- Closed: 233
+- Open: 136
+- Closed: 235
 
 ## Issues
 
@@ -367,7 +367,7 @@
 - `20260823-coverage-gaps-in-the-identity-write-path` — Coverage gaps in the identity write path · status: open · num: 357 · priority: medium · created: 2026-08-23T23:21:50Z · labels: [testing, migration] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-argument-parser-accepts-contradictory-and-malformed-inv` — identity argument parser accepts contradictory and malformed invocations · status: open · num: 358 · priority: high · created: 2026-08-23T23:21:46Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-domain-with-a-leading-dot-silently-no-ops` — identity_domain with a leading dot silently no-ops · status: open · num: 359 · priority: low · created: 2026-08-23T23:21:51Z · labels: [issue, conf] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
-- `20260823-identity-rewrite-composes-a-path-from-an-unvalidated-slug` — Identity rewrite composes a path from an unvalidated slug · status: open · num: 360 · priority: critical · created: 2026-08-23T23:37:26Z · labels: [issue, migration, correctness] · origin: docs/specs/issue/000-blueprint/spec.md
+- `20260823-identity-rewrite-composes-a-path-from-an-unvalidated-slug` — Identity rewrite composes a path from an unvalidated slug · status: closed · num: 360 · priority: critical · created: 2026-08-23T23:37:26Z · labels: [issue, migration, correctness] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260823-issue-face-does-not-declare-the-validator-lockstep-contract` — issue face does not declare the validator-lockstep contract · status: open · num: 367 · priority: medium · created: 2026-08-23T23:45:32Z · labels: [issue, blueprint, contract] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-issue-skill-instructs-two-scripts-its-tool-grant-does-not-permit` — Issue skill instructs two scripts its tool grant does not permit · status: open · num: 368 · priority: critical · created: 2026-08-23T23:45:27Z · labels: [issue, sdlc, tooling] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-mismatch-surface-reports-unnormalizable-identities-as-conforming` — Mismatch surface reports unnormalizable identities as conforming · status: open · num: 361 · priority: high · created: 2026-08-23T23:21:45Z · labels: [issue, index, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
@@ -377,7 +377,7 @@
 - `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc` — Sweep config keys and migrate subcommands against their references · status: open · num: 363 · priority: medium · created: 2026-08-23T23:21:48Z · labels: [tooling, docs, testing] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-transition-sh-degrades-quietly-on-two-failure-paths` — transition.sh degrades quietly on two failure paths · status: open · num: 371 · priority: low · created: 2026-08-23T23:45:31Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-user-facing-docs-omit-the-recorded-identity-feature` — User-facing docs omit the recorded-identity feature · status: open · num: 364 · priority: high · created: 2026-08-23T23:21:47Z · labels: [docs, readability] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
-- `20260823-values-carrying-angle-brackets-bypass-the-recorded-identity-char` — Values carrying angle brackets bypass the recorded-identity charset gate · status: open · num: 365 · priority: critical · created: 2026-08-23T23:37:25Z · labels: [issue, identity, security, regression] · origin: docs/specs/issue/000-blueprint/spec.md
+- `20260823-values-carrying-angle-brackets-bypass-the-recorded-identity-char` — Values carrying angle brackets bypass the recorded-identity charset gate · status: closed · num: 365 · priority: critical · created: 2026-08-23T23:37:25Z · labels: [issue, identity, security, regression] · origin: docs/specs/issue/000-blueprint/spec.md
 
 ## Graph
 

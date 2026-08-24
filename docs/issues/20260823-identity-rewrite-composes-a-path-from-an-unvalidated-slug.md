@@ -2,12 +2,12 @@
 id: 20260823-identity-rewrite-composes-a-path-from-an-unvalidated-slug
 num: 360
 title: "Identity rewrite composes a path from an unvalidated slug"
-status: open
+status: closed
 priority: critical
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [issue, migration, correctness]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-23T23:37:26Z
-updated: 2026-08-23T23:37:26Z
+updated: 2026-08-24T07:30:25Z
 origin: "docs/specs/issue/000-blueprint/spec.md"
 ---
 
@@ -60,3 +60,20 @@ and predates this change. Both are the same one-line fix and belong together.
 
 Origin: `docs/specs/issue/013-recorded-identity-schemes/review.md` — Finding 2,
 and the living-intent violation resolved `fix` at the blueprint fork.
+
+## Resolution (2026-08-24)
+
+Fixed in `2536459`.
+
+`jf valid-id` runs before the path composition in `apply_identity_plan` and in
+the sibling `apply_schema_plan`, as the Scope section above asked — fixing only
+the first would have left the wrong shape for the next reader to copy.
+
+Nothing reachable changes: each slug is still a byte-identical reconstruction
+of an entry the same run globbed. What changes is that the boundary is the
+validator call rather than an argument about where the value came from.
+
+Pinned by `case_migrate_identity_apply_gates_the_id_before_composing_a_path`,
+which places a `..`-bearing entry in the collection and asserts the run refuses
+whole with nothing written. It was run against the unfixed script first and
+fails there.
