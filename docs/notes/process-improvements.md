@@ -441,6 +441,33 @@ shape. Either way the number should come out uniform. A Scope section that
 raises the question without answering it is the strongest signal there is to run
 one.
 
+The fifth instance is worth the most, because it happened *after* everything
+above was written down. A documentation pass — four issues, no code among them —
+reproduced the pattern three times running, one pass after this section gained
+the census. **A rule stated in prose does not fire on its own.** Whoever is
+fixing an issue is reading the issue, and the issue is where the partial
+enumeration lives; a notes file is not in that path.
+
+It also moved the rule off code. Every instance above is a guard, a composition
+or a parser idiom. These were documents. One issue named two surfaces carrying
+an instruction that had gone wrong, and the instruction was wrong in four. One
+asked for four frontmatter fields to reach an example block when no document
+named a verb that moved any of them, so the fields could not be documented
+without the verbs. One asked for a tool grant to be scoped, which turned out to
+require the written convention the grant was scoped against to move with it.
+Prose drifts from code exactly the way a sibling function drifts from its
+guarded twin, and it is enumerable the same way.
+
+That gives the census a third form, and it is the best of the three because it
+survives the pass that ran it: **derive the expectation from the authority and
+diff the copy against it.** Where a document enumerates what an array
+enumerates, do not compare the two lists by eye, and do not write the expected
+list into the test either — read the array and assert the document mentions each
+element. Two such checks landed in that pass: one deriving a script's documented
+verb enum from the array it dispatches on, one deriving a skill's granted
+scripts from the call sites in its own body. Counting a guard and grepping an
+idiom are things you run; this one is a thing that stays run.
+
 This is the sibling of *By file, not by issue* below, at a different moment: that
 one governs reading a whole function while editing it, this one governs
 enumerating a rule's reach before declaring it held.
