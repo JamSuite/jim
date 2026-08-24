@@ -2486,6 +2486,48 @@ issue_id_prefix = \"timestamp\"")
   assert_match "INDEX clean" '_None' "$(cat "$dir/INDEX.md")"
 }
 
+# AC: the prefix migration gates the id it composes a destination path from,
+# on both arms. A rename target cleared the validator when the plan was built,
+# but an entry the plan could not migrate falls back to the raw directory name,
+# which cleared nothing — and the boundary is the validator call rather than
+# where the value came from. A run holding an id it cannot vouch for stages
+# nothing and refuses whole.
+case_issues_migrate_prefix_apply_gates_the_id_before_composing_a_path() {
+  local dir cfg before after
+  dir=$(empty_dir migrate_prefix_idgate)
+  write_issue "$dir" "20260613-aaa" 'title: "A"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T09:00:00Z'
+  # No `-` delimiter, so the plan cannot re-derive it: this entry takes the
+  # ungated fallback arm.
+  write_issue "$dir" "bad..name" 'title: "B"
+status: open
+num: 2
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z'
+  cfg=$(fixture migrate-prefix-idgate.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  before="$(find "$dir" -type f | sort | xargs cksum 2>/dev/null)"
+  run_migrate -c "$cfg" prefix --apply
+  after="$(find "$dir" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit  "rc" 1 "$RC"
+  assert_match "the refusal names the gate" 'invalid issue id' "$ERR"
+  assert_eq    "the collection is untouched" "$before" "$after"
+  assert_eq    "no tmp was left behind" "0" \
+    "$(find "$dir" -name '.migrate.tmp.*' | wc -l)"
+}
+
 # AC: a failure part-way through the commit loses no issue. Every staged file is
 # put in place before any old name is retired, so the worst a mid-commit failure
 # can leave is an issue present under both names — never one present under

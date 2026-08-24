@@ -267,6 +267,13 @@ apply_plan() {
     id="${base%.md}"
     finalid="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' "$mapfile")"
     [[ -n "$finalid" ]] || finalid="$id"
+    # The map's own targets cleared the validator when the plan was built, but
+    # the fallback here is the raw directory entry, which cleared nothing. The
+    # boundary is the validator call rather than where the value came from, so
+    # both arms are checked at the site that composes the path.
+    jf valid-id "$finalid" >/dev/null 2>&1 || {
+      rm -f ${s_tmp[@]+"${s_tmp[@]}"} "$mapfile"
+      echo "error: invalid issue id — no changes made; safe to re-run" >&2; return 1; }
     tmp="$(mktemp "$dir/.migrate.tmp.XXXXXX")" || {
       rm -f ${s_tmp[@]+"${s_tmp[@]}"} "$mapfile"
       echo "error: cannot create tmp in $dir — no changes made; safe to re-run" >&2; return 1; }
