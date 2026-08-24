@@ -51,7 +51,7 @@ Jim can also develop itself — skills and agents for the plugin are specs like 
 | `/jim:review` | Post-build review — drift vs spec/plan/architecture, code + process metrics, security regressions, living-intent sensing against the group blueprint; produces `review.md` |
 | `/jim:verify` | Check a group's code against its `000-blueprint` invariants (mechanical floor → operator registry → read-only judges); `--contracts` checks contract-graph edges against code |
 | `/jim:brainstorm` | Freeform ideation and exploratory notes |
-| `/jim:issue` | Capture a discovery (`add <subject>`) or review the collection (`list` / `stats` / `show` / `insights`) — `insights` is an LLM analysis (convergence, sequencing, parallel-work) run by a read-only subagent |
+| `/jim:issue` | Capture a discovery (`add <subject>`), move one through its lifecycle (`claim` / `release` / `start` / `close` / `reopen`), or review the collection (`list` / `stats` / `show` / `insights`) — `insights` is an LLM analysis (convergence, sequencing, parallel-work) run by a read-only subagent |
 | `/jim:conf` | Inspect resolved jim configuration paths |
 | `/jim:file` | Inspect jim's file/path resolver (existence, slug, date, now, next-id, next-num, path, glob) |
 | `/jim:ledger` | Inspect a spec/blueprint dir's ledger — recorded stage events, latest review metrics, reconcile trend (read-only) |

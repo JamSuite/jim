@@ -9,18 +9,19 @@ Issues are where Jim captures what was noticed but not acted upon. Every stage o
 2. [The issue file](#the-issue-file)
     * [Metadata](#metadata)
     * [Body](#body)
-3. [Issue capture](#issue-capture)
+3. [The lifecycle](#the-lifecycle)
+4. [Issue capture](#issue-capture)
     * [Interactive capture](#interactive-capture)
     * [Pipeline capture](#pipeline-capture)
-4. [The collection](#the-collection)
+5. [The collection](#the-collection)
     * [Read views](#read-views)
     * [The index](#the-index)
     * [Insights](#insights)
-5. [ID coordination](#id-coordination)
-6. [Issue placement](#issue-placement)
-7. [Migrations](#migrations)
-8. [Trust and safety](#trust-and-safety)
-9. [Configuration](#configuration)
+6. [ID coordination](#id-coordination)
+7. [Issue placement](#issue-placement)
+8. [Migrations](#migrations)
+9. [Trust and safety](#trust-and-safety)
+10. [Configuration](#configuration)
 
 ---
 [Jump to configuration](#configuration)
@@ -34,6 +35,13 @@ Issues are where Jim captures what was noticed but not acted upon. Every stage o
 /jim:issue show 53           # one issue, by ordinal / slug / unique slug prefix
 /jim:issue stats             # counts, clusters, blocking ranking
 /jim:issue insights          # LLM analysis: convergence, sequencing, parallel work
+
+/jim:issue claim 53          # take it (--force takes over one held)
+/jim:issue release 53        # give it up
+/jim:issue start 53          # mark it underway, claiming it when unheld
+/jim:issue close 53 --as done   # finish it, recording how
+/jim:issue reopen 53         # back to not-started, keeping the outcome
+
 /jim:issue reconcile         # realize ordinals bound while offline
 ```
 
@@ -52,14 +60,19 @@ YAML frontmatter:
 id: 20260813-foo-widget-lacks-input-validation
 num: 350
 title: "Foo widget lacks input validation"
-status: open                 # open | closed — the whole lifecycle
+status: open                 # open (not started) | active (underway) | closed
 priority: critical           # low | medium | high | critical
+type: issue                  # issue | epic (an umbrella others belong to)
+filed-by: "you@example.com"  # resolved by the emitter, never written by hand
+claimed-by: ""               # the current holder; empty when unheld
+outcome: ""                  # done | wontfix | duplicate | obsolete, once closed
 labels: [foo, widget]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []                # umbrella slugs, stored on the member only
 created: 2026-08-13T04:12:07Z
 updated: 2026-08-13T04:12:07Z
 origin: docs/specs/foo/042-widget/spec.md
@@ -72,11 +85,41 @@ origin: docs/specs/foo/042-widget/spec.md
 
 **`origin`** records the artifact the discovery surfaced from — a spec, plan, research, review or brainstorm path — or the sentinel `conversation` for a free-form capture.
 
-**`relations`** are the structural channel: the four typed buckets above. Body `[[wikilinks]]` are the prose channel and alias to `related-to`. Both become edges in the index graph, deduped per `(source, type, target)`, so writing both about the same target produces one edge, not two.
+**`status`, `claimed-by` and `outcome`** are moved by the lifecycle verbs, never by hand — see [The lifecycle](#the-lifecycle).
+
+**`relations`** are the structural channel: the five typed buckets above. Body `[[wikilinks]]` are the prose channel and alias to `related-to`. Both become edges in the index graph, deduped per `(source, type, target)`, so writing both about the same target produces one edge, not two.
 
 ### Body
 
 Prose, under a `## Description` heading. Cross-references other issues as `[[other-issue-slug]]`.
+
+## The lifecycle
+
+An issue is `open` (not started), `active` (underway) or `closed` (finished). Beside that it records who filed it, who currently holds it, what kind of record it is, which umbrellas it belongs to, and — once it has been finished at least once — the outcome of the most recent finish.
+
+Five verbs move it, and they are the supported path. Each writes every field the move implies, refreshes `updated`, and regenerates the index; a state change written by hand is what leaves `outcome` empty on a close, which the index then reports as an integrity warning.
+
+| Verb | What it does |
+| :--- | :--- |
+| `claim <id>` | Take the issue. One held by someone else is refused, naming the holder; `--force` takes it over |
+| `release <id>` | Give it up. Gated exactly as claiming is — otherwise release-then-claim would be a takeover with no override in it |
+| `start <id>` | Mark it underway, claiming it first when it is unheld |
+| `close <id> [--as <outcome>]` | Finish it. `--as` takes `done`, `wontfix`, `duplicate` or `obsolete`; a bare close records `done` |
+| `reopen <id>` | Return it to not-started and **keep** the outcome |
+
+Any developer may close any issue, and `claimed-by` survives the close — the field says who *held* the issue, not who finished it. Closing `--as duplicate` requires the superseding issue to be named in the record's `duplicates` relation.
+
+Three readings are **derived** and never stored, so no field can contradict them:
+
+| Reading | Derived from |
+| :--- | :--- |
+| held | `claimed-by` is non-empty |
+| blocked | some `depends-on` target is not `closed` |
+| reopened | `status` is not `closed` **and** `outcome` is non-empty |
+
+`outcome` is non-empty exactly when the issue has **ever** been closed, not when it is closed now — so `outcome: done` alone does not mean finished; pair it with `status` to ask that question. That is what makes a reopen legible: an open issue carrying an outcome was finished before, and the outcome names how.
+
+Outside an agent session, `bash skills/issue/scripts/transition.sh <verb> <id>` is the same operation, and routes to a configured destination branch on its own.
 
 ## Issue capture
 
@@ -124,7 +167,7 @@ The issue collection defaults to `docs/issues/` — one file per issue plus a ge
 
 `list`, `show`, and `stats` are deterministic bash, and their output is presented verbatim.
 
-**`list [open|closed|critical|high|medium|low]`** — the terse view, grouped by status. It shows open work by default: `list` and the priority filters hide closed issues unless you ask for them with `list closed` or set `issue_list_closed = "true"`. Grouping, sort key, columns and direction are configurable (`issue_list_group` / `_sort` / `_cols` / `_order`), and an explicit filter always overrides the configured default.
+**`list [open|active|closed|critical|high|medium|low]`** — the terse view, grouped by status. It shows open work by default: `list` and the priority filters hide closed issues unless you ask for them with `list closed` or set `issue_list_closed = "true"`. Grouping, sort key, columns and direction are configurable (`issue_list_group` / `_sort` / `_cols` / `_order`), and an explicit filter always overrides the configured default.
 
 **`show <id>`** — resolves an ordinal, an exact id or slug, or a unique slug prefix, against the indexed set only.
 
