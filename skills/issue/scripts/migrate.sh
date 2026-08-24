@@ -500,6 +500,11 @@ apply_schema_plan() {
       skipped=$((skipped+1))
       continue
     fi
+    # Checked for the same reason the identity rewrite checks its own: the
+    # validator call is the boundary, not where the value came from.
+    jf valid-id "$SCHEMA_SLUG" >/dev/null 2>&1 || {
+      echo "error: invalid issue id; nothing written for it" >&2
+      return 1; }
     f="$dir/$SCHEMA_SLUG.md"
     # An outcome is written bare when set and as an empty scalar when not,
     # matching how the emitter and the transition verbs write the same field.
@@ -849,6 +854,14 @@ apply_identity_plan() {
   # produces no rewrite the second time.
   local f tmp filed claimed rewritten=0
   for slug in "${slugs[@]}"; do
+    # The slug reconstructs a directory entry this run globbed, so nothing here
+    # is expected to fail. It is checked anyway, because the boundary is the
+    # validator call and not the provenance of the value: every other site that
+    # composes a path from an id checks one, and an id whose origin argues it is
+    # safe is exactly the one that stops being checked when the origin changes.
+    jf valid-id "$slug" >/dev/null 2>&1 || {
+      echo "error: invalid issue id; nothing written for it" >&2
+      return 1; }
     f="$dir/$slug.md"
     [[ -f "$f" ]] || {
       echo "error: $slug is no longer in the collection; nothing written for it" >&2

@@ -5560,6 +5560,23 @@ case_migrate_identity_apply_is_idempotent() {
     "$(cat "$repo/docs/issues/20260101-one.md")"
 }
 
+# AC: the id a rewrite composes a path from clears the validator first. The
+# slug reconstructs an entry this run globbed, so the check is not expected to
+# fire — the boundary is the validator call rather than the provenance of the
+# value, and a run holding an id it cannot vouch for writes nothing instead of
+# composing a path from it.
+case_migrate_identity_apply_gates_the_id_before_composing_a_path() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_apply_idgate)"
+  recorded_issue "$repo" "20260101-one..two" '1234+Dev@users.noreply.github.com'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the refusal names the gate" 'invalid issue id' "$ERR"
+  assert_eq "the collection is untouched" "$before" "$after"
+}
+
 # ─── Section: migrate.sh — index regeneration failures ──────────────────────
 
 # AC: a regeneration that failed is surfaced and carried, never discarded under
