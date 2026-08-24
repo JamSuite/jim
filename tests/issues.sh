@@ -4091,6 +4091,56 @@ case_issues_placement_migrate_lands_renames_as_one_commit() {
     "$(git -C "$repo" rev-list --count "$before..refs/heads/jim/issues")"
 }
 
+
+# AC: the identity rewrite reaches a destination branch like every other
+# mutation. Placement routing was covered for the prefix migration and never
+# for the two conversions that shipped after it, so a subcommand with flags of
+# its own had never been driven through the routing loop end to end.
+case_issues_placement_migrate_identity_lands_at_the_destination() {
+  local repo body dest_file
+  repo="$(placement_repo issues_place_identity jim/issues)"
+  body="$(fixture issues_place_identity_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-alpha --num 3 \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity \
+    --from "$TEST_IDENTITY" --to 'someone@example.test' --apply
+  assert_exit "migrate rc" 0 "$RC"
+  assert_eq "nothing landed on the working branch" "no" \
+    "$([[ -e "$repo/docs/issues/20260101-alpha.md" ]] && echo yes || echo no)"
+  dest_file="$(git -C "$repo" cat-file -p \
+    refs/heads/jim/issues:docs/issues/20260101-alpha.md 2>/dev/null)"
+  assert_match "the rewrite reached the destination" \
+    '^filed-by: "someone@example\.test"$' "$dest_file"
+  assert_match "under the migrate verb" 'migrate' \
+    "$(git -C "$repo" log -1 --format='%s' refs/heads/jim/issues)"
+}
+
+# AC: the schema conversion routes to the destination and then refuses there,
+# naming why. It recovers each filer from the commit that created its file, and
+# a materialized collection is outside any work tree, so there is no history to
+# read — the refusal is the fail-closed half of a gap that is tracked
+# separately. Pinned because it is the current contract: closing that gap has to
+# change this assertion deliberately rather than silently.
+case_issues_placement_migrate_schema_refuses_at_the_destination() {
+  local repo body before
+  repo="$(placement_repo issues_place_schema jim/issues)"
+  body="$(fixture issues_place_schema_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-alpha --num 3 \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema --apply
+  assert_exit "migrate rc" 1 "$RC"
+  # The message proves the run reached the materialized collection rather than
+  # failing before routing: the path it names is the temporary one.
+  assert_match "names the cause" 'not inside a work tree' "$ERR"
+  assert_eq "the destination did not move" "$before" \
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+}
+
 # AC: a rename that loses a push race grafts as a delete plus a create. Carrying
 # only the create would leave one issue under two filenames and an index holding
 # two entries for it — at rc 0 (security Finding 8).
@@ -4426,6 +4476,27 @@ case_transition_lands_at_a_configured_destination() {
 
   subject="$(git -C "$repo" log -1 --format='%s' refs/heads/jim/issues)"
   assert_match "the commit names the verb" 'claim' "$subject"
+}
+
+
+# AC: a transition whose index cannot be regenerated is surfaced, never
+# reported as success. It is the pattern the two migration applies were modelled
+# on and the only one of the three that had no case of its own — so the
+# behaviour they were checked against was itself unchecked.
+case_transition_surfaces_an_index_failure() {
+  local dir
+  dir="$(transition_dir transition_index_failure)"
+  mkdir -p "$dir/INDEX.md"
+  chmod 500 "$dir/INDEX.md"
+  run_transition close 42 --dir "$dir"
+  chmod 700 "$dir/INDEX.md"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure is named" 'index' "$ERR"
+  # The file is written before the index runs, so the transition itself landed.
+  # Reporting success over an index that no longer describes it is the outcome
+  # this refuses; discarding the write is not the alternative.
+  assert_match "the transition still landed" '^status: closed$' \
+    "$(cat "$dir/20260101-target.md" 2>/dev/null || true)"
 }
 
 # AC: a developer can claim, release, start, close and reopen an issue through
@@ -5813,6 +5884,74 @@ origin: "conversation"'
   assert_exit "rc" 1 "$RC"
   assert_match "the failure is named" 'index' "$ERR"
   assert_match "the conversion still landed" '^type: issue$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+
+# AC: the remap mode persists the operator's value as supplied. Every other
+# apply case drives `--renormalize`, so the one behaviour particular to remap —
+# a value recorded because it was typed rather than derived — reached no written
+# file. The replacement here is one the configured form would extract, so a
+# regression putting `--to` through the form changes what lands.
+case_migrate_identity_remap_apply_records_the_supplied_value() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_apply)"
+  recorded_issue "$repo" "20260101-one" 'old@example.test' 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to '9999+someone@users.noreply.github.com' --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "the filer holds the supplied value" \
+    '^filed-by: "9999\+someone@users\.noreply\.github\.com"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+  assert_match "and so does the holder" \
+    '^claimed-by: "9999\+someone@users\.noreply\.github\.com"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: a staging failure mid-rewrite leaves the collection untouched and says so.
+# Driven by making the directory unwritable rather than by a fault-injection
+# seam: the branch is reachable from outside, so a seam here would be production
+# code that exists only to be tested. The prefix migration carries seams because
+# its failure points are inside git plumbing, which is not reachable that way.
+case_migrate_identity_apply_refuses_when_it_cannot_stage() {
+  local repo before
+  repo="$(identity_collection migrate_identity_apply_nostage)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  before="$(cat "$repo/docs/issues/20260101-one.md")"
+  chmod 500 "$repo/docs/issues"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  chmod 700 "$repo/docs/issues"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure names the staging" 'cannot create tmp' "$ERR"
+  assert_eq "the record is untouched" "$before" \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: the same branch in the sibling conversion. Named by no issue — the gap was
+# reported against the identity rewrite alone, and the two applies are the same
+# shape with the same absence.
+case_migrate_schema_apply_refuses_when_it_cannot_stage() {
+  local repo before
+  repo="$(schema_repo migrate_schema_apply_nostage)"
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  before="$(cat "$repo/docs/issues/20260101-one.md")"
+  chmod 500 "$repo/docs/issues"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  chmod 700 "$repo/docs/issues"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure names the staging" 'cannot create tmp' "$ERR"
+  assert_eq "the record is untouched" "$before" \
     "$(cat "$repo/docs/issues/20260101-one.md")"
 }
 
