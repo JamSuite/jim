@@ -5,10 +5,11 @@ the increment actually stands, what the open issues have in common, and the
 order I would fix them in. It is analysis, not a plan: nothing here has been
 approved, and the sequencing is a recommendation.
 
-> **Partly executed as of 2026-08-24.** Eight of the seventeen are closed — the
-> two that blocked, the fail-open pair, and the documentation set bar one.
-> § *Progress* at the end records what landed, where this analysis under-scoped
-> the work — three more times in the second batch — and what remains. The
+> **Partly executed as of 2026-08-24.** Ten of the seventeen are closed — the
+> two that blocked, the fail-open pair, the documentation set bar one, and the
+> test-quality pair. § *Progress* at the end records what landed, where this
+> analysis under-scoped the work — five more times after the first batch — and
+> what remains. The
 > diagnostic sections below are left as they were written: they describe the
 > defects as found, and the issues' own resolution notes cite them.
 
@@ -155,8 +156,8 @@ belongs with it: the identity documentation was deferred so it would land with
 that grant fix rather than scatter. *(`#355` was held back — see § Progress.)*
 
 **`#362` and `#357` are worth doing before the next increment builds on this
-code**, not after. Six non-discriminating tests is a coverage figure that reads
-better than it is.
+code**, not after. ✓ Six non-discriminating tests is a coverage figure that reads
+better than it is. *(It was nine — see § Progress.)*
 
 **`#363` last, and deliberately.** It is the only issue that prevents recurrence
 rather than fixing an instance. The same missing sweep let `migrate.sh schema`
@@ -194,9 +195,9 @@ Verifying a claim before recording it is cheap; recording a wrong one is not.
 
 ## Progress — 2026-08-24
 
-Eight issues closed across twenty-three commits (`2da3693`..`8647e34`). The suite
-is green at **1,562** across 16 files; fifteen cases were added, each run against
-the unfixed code first and confirmed to fail there.
+Ten issues closed across thirty commits (`2da3693`..`b516c0d`). The suite is
+green at **1,568** across 16 files; twenty-one cases were added or strengthened,
+each confirmed to fail against an implementation missing the behaviour it names.
 
 ### The two that blocked, and the fail-open pair
 
@@ -231,6 +232,25 @@ about whether `/jim:arch` wraps its generated prose on every refresh, and a
 rewrap of a 204 KB file whose oversize unit *is* the line. Doing it inside a
 documentation pass would have buried that decision in a diff about something
 else.
+
+### Test quality
+
+| issue | | commits |
+| :--- | :--- | :--- |
+| `#362` non-discriminating cases | closed | `2275999` |
+| `#357` coverage gaps | closed | `5e79803` |
+
+Both were audited by mutation before being fixed: twenty mutants over
+`identity.sh`, `migrate.sh identity` and the configured default, the identity
+subset run against each, the cases that went red recorded. A case its own mutant
+does not kill is the finding, and the whole census costs about twenty seconds per
+mutant. Every one of the twenty-one cases added or strengthened was then checked
+the same way — the mutant it exists to catch, applied, and the case confirmed to
+go red.
+
+The method is written up in `docs/notes/process-improvements.md` § *Audit the
+surface, not the case* (`1e794a5`), together with the two silent false negatives
+it produces: a mutant that did not apply, and a case the filter never selected.
 
 ### Where this analysis under-scoped the work
 
@@ -283,6 +303,25 @@ therefore meant the document stopped describing the code, so the rule was
 generalized to cover a destructive whole-collection write alongside an
 executor.
 
+**`#362` under-reported by half, and `#357` named one site of two.** The six
+non-discriminating cases were six of nine; the three nobody reported are the same
+shape as the six, an assertion matching a substring two branches share. `#357`
+named `apply_identity_plan` for both its structural gaps, and a count across the
+three applies put fault coverage at 2/0/0 and placement routing at 1/0/0 — the
+sibling conversion had the same two absences.
+
+Neither was found by reading the issues. The first came out of mutating the
+surface and recording which cases went red; the second out of counting the guard
+per sibling site, which is the census this section already names. **A reported
+count is a lower bound.**
+
+**One of `#357`'s asks was declined rather than met.** It wanted a
+fault-injection seam matching the prefix migration's. Both branches turned out
+reachable from outside — an unwritable directory fails the `mktemp` for real — so
+the cases drive the real failure and the seam was not added. The sibling carries
+seams because its failure points sit inside git plumbing, which nothing external
+can reach; the asymmetry is justified rather than a gap.
+
 This is § *The pattern underneath them* seen from the other side: **an analysis
 naming where a rule is broken is not an enumeration of where the rule applies.**
 Every one of them was found by asking what the rule covers, never by re-reading
@@ -296,27 +335,25 @@ rather than the guard.
 
 ### What remains
 
-Nine of the seventeen, in the order above:
+Seven of the seventeen:
 
 | group | issues |
 | :--- | :--- |
 | Documentation | `#355` |
-| Test quality | `#362`, `#357` |
 | Structural | `#367`, `#363` |
 | Small correctness | `#356`, `#359`, `#366`, `#371` |
 
 None of them is critical. `#53` is open and critical, and predates this
 increment.
 
-`#362` and `#357` are the ones worth doing before the next increment builds on
-this code, for the reason given above: six non-discriminating tests is a
-coverage figure that reads better than it is. The documentation pass produced a
-small instance of the same thing and caught it only in the writing — a
-help-text assertion matching bare `close` and `start` would have passed against
-the very text it was written to replace, because both words already occurred in
-the surrounding prose.
+`#363` is still worth last, and is now much better evidenced than when it was
+filed. Five of the six fixes closed since carry sites a mechanical sweep would
+have caught: a subcommand missing from the Migrations table, config keys missing
+from two config tables, a grant that did not cover its own body, a script header
+enumerating eight of twelve verbs, and a field the conversion stopped writing
+under the name its own usage still gives.
 
-`#363` is still worth last, and is now better evidenced than when it was filed.
-Three of the four fixes just closed were sites a mechanical sweep would have
-caught: a subcommand missing from the Migrations table, config keys missing
-from two config tables, and a grant that did not cover its own body.
+`#367` is the other structural one and is unchanged. `#356`, `#359`, `#366` and
+`#371` remain small and real; the note above about not bundling them into
+critical work no longer applies, since there is no critical work left in this
+batch to obscure.
