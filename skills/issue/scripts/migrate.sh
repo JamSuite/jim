@@ -6,7 +6,7 @@
 #   prefix   — re-derive every issue id to the active issue_id_prefix scheme,
 #              renaming files and rewriting inbound references behind a
 #              read-only preview + explicit --apply gate.
-#   schema   — give every issue the identity, kind and outcome fields,
+#   schema   — give every issue the identity, type and outcome fields,
 #              recovering each filer from the commit that created its file.
 #   identity — rewrite recorded identities: re-apply the project's current form
 #              to a collection recorded under a previous one, or replace one
@@ -459,7 +459,7 @@ build_schema_plan() {
     slug="${base%.md}"
     fm="$(frontmatter "$f")"
 
-    # An issue already carrying the kind field has been through this once.
+    # An issue already carrying the type field has been through this once.
     if [[ -n "$(fm_field "$fm" type)" ]]; then
       printf 'skip-converted\t%s\t\t\n' "$slug"
       continue
@@ -1155,7 +1155,7 @@ usage() {
     '      Apply the plan: rename files + rewrite inbound refs + regenerate INDEX.' \
     '' \
     '  bash migrate.sh schema [<issues_dir>]' \
-    '      Preview (read-only): give every issue the identity, kind and outcome' \
+    '      Preview (read-only): give every issue the identity, type and outcome' \
     '      fields, recovering each filer from the commit that created its file.' \
     '' \
     '  bash migrate.sh schema [<issues_dir>] --apply [--expect <hash>]' \
