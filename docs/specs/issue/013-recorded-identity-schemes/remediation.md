@@ -240,7 +240,7 @@ else.
 | `#362` non-discriminating cases | closed | `2275999` |
 | `#357` coverage gaps | closed | `5e79803` |
 
-Both were audited by mutation before being fixed: twenty mutants over
+Both were audited by mutation before being fixed: twenty-three mutants over
 `identity.sh`, `migrate.sh identity` and the configured default, the identity
 subset run against each, the cases that went red recorded. A case its own mutant
 does not kill is the finding, and the whole census costs about twenty seconds per

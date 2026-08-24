@@ -81,9 +81,10 @@ Fixed in `2275999`. All six are confirmed and corrected, and the census that
 confirmed them found three more.
 
 **How they were confirmed.** Not by reading the cases — by mutating the surface.
-Twenty mutants across `identity.sh`, `migrate.sh`'s identity subcommand and the
-configured default, each applied to the real script, the identity subset run
-against it, and the set of cases that went red recorded. A case its own mutant
+Twenty-three mutants across `identity.sh`, `migrate.sh`'s identity subcommand
+and the configured default, each applied to the real script, the identity subset
+run against it, and the set of cases that went red recorded. Six more were
+written afterwards to check the fixes, twenty-nine in all. A case its own mutant
 does not kill is the finding. The whole census costs about twenty seconds per
 mutant.
 
