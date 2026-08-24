@@ -5202,7 +5202,11 @@ case_migrate_identity_usage_refuses_both_modes() {
   run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize \
     --from 'old@example.test' --to 'new@example.test'
   assert_exit "rc" 2 "$RC"
-  assert_match "names the conflict" 'renormalize' "$ERR"
+  # `renormalize` occurs in both mode refusals — this one and the no-mode-given
+  # one — so matching it cannot say which fired. A regression collapsing the two
+  # into one generic message would keep the word and lose the distinction. The
+  # phrase unique to this branch is what pins the branch.
+  assert_match "names the conflict" 'not both' "$ERR"
 }
 
 # AC: an explicit replacement supplies the old and new values together. Half a
@@ -5213,10 +5217,14 @@ case_migrate_identity_usage_requires_both_halves_of_a_remap() {
   repo="$(schema_repo migrate_identity_halfremap)"
   run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from 'old@example.test'
   assert_exit "from-only rc" 2 "$RC"
-  assert_match "names the missing half" '\-\-to' "$ERR"
+  # The flag name alone does not pin this guard. Removing it leaves the
+  # recordability check downstream refusing the empty half, and its message
+  # names the same flag — so both branches match `--to` and the assertion
+  # cannot say which refused. The phrase belongs to this guard only.
+  assert_match "names the missing half" 'from given without' "$ERR"
   run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --to 'new@example.test'
   assert_exit "to-only rc" 2 "$RC"
-  assert_match "names the missing half" '\-\-from' "$ERR"
+  assert_match "names the missing half" 'to given without' "$ERR"
 }
 
 # AC: a flag that requires a value refuses when the next token is one of this
@@ -5463,6 +5471,14 @@ case_migrate_identity_remap_matches_without_case() {
     --from 'old@example.test' --to 'new@example.test'
   assert_exit "rc" 0 "$RC"
   assert_match "the record is planned" '1 to rewrite' "$OUT"
+  # The run above folds the record's side only; a `--from` that was never folded
+  # would still match it. The property is symmetric, so the case has to drive
+  # both directions — a mixed-case `--from` against a record already lower.
+  recorded_issue "$repo" "20260102-two" 'other@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'Other@Example.TEST' --to 'new@example.test'
+  assert_exit "rc for a mixed-case --from" 0 "$RC"
+  assert_match "that record is planned too" '1 to rewrite' "$OUT"
 }
 
 # AC: a value that cannot be recorded is refused before anything is planned,
@@ -5680,10 +5696,20 @@ case_migrate_identity_apply_regenerates_the_index() {
   local repo
   repo="$(identity_collection migrate_identity_apply_index)"
   recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  # The warning before and its absence after is the assertion. A file existing
+  # afterwards says nothing: an index regenerated from stale state, from the
+  # wrong directory, or before the rewrite landed leaves one there just the same.
+  run_index "$repo/docs/issues"
+  assert_exit "rc for the index before" 0 "$RC"
+  assert_match "the mismatch is reported before" 'record\(s\) hold an identity' \
+    "$(cat "$repo/docs/issues/INDEX.md")"
   run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
   assert_exit "rc" 0 "$RC"
   assert_eq "the index exists" "yes" \
     "$([[ -f "$repo/docs/issues/INDEX.md" ]] && echo yes || echo no)"
+  assert_eq "and no longer reports a mismatch" "no" \
+    "$(grep -qF 'record(s) hold an identity' "$repo/docs/issues/INDEX.md" \
+       && echo yes || echo no)"
 }
 
 # AC: a regeneration that failed is surfaced and carried, never discarded under
@@ -6193,10 +6219,14 @@ case_identity_resolve_refuses_a_form_it_cannot_apply() {
 # every zero-config project working without configuring anything.
 case_identity_scheme_absent_takes_the_default() {
   local repo
-  repo="$(identity_repo identity_scheme_absent 'dev@example.com')"
+  repo="$(identity_repo identity_scheme_absent '1234+Dev@users.noreply.github.com')"
   run_identity "$repo" resolve
   assert_exit "rc" 0 "$RC"
-  assert_eq "address on stdout" "dev@example.com" "$OUT"
+  # An ordinary address is a no-op under both `email` and `github`, so asserting
+  # one comes back unchanged rules out a default of `local` and nothing else. A
+  # relay address is what separates the documented default from the form below
+  # it: only `github` and above extract the account name.
+  assert_eq "the relay account name" "dev" "$OUT"
 }
 
 # AC: each form in the closed set is selectable.
@@ -6275,6 +6305,13 @@ case_identity_normalize_case_leaves_a_lower_value_alone() {
   run_identity "$repo" normalize 'dev@example.com'
   assert_exit "rc" 0 "$RC"
   assert_eq "unchanged" "dev@example.com" "$OUT"
+  # A `normalize` that folded nothing — or transformed nothing at all — passes
+  # the assertion above, because the value was already in its final form. The
+  # pair is what carries the claim: same config, a value that does need work.
+  # Together they say the fold ran and this value needed nothing from it.
+  run_identity "$repo" normalize 'DEV@Example.COM'
+  assert_exit "rc for the mixed-case value" 0 "$RC"
+  assert_eq "folded to the same identity" "dev@example.com" "$OUT"
 }
 
 # AC: an empty value is absent, not malformed — there is no identity to record
@@ -6521,7 +6558,12 @@ case_identity_domain_naming_several_refuses() {
     > "$repo/jimconf.toml"
   run_identity "$repo" normalize 'alice@a.example'
   assert_exit "comma-separated rc" 2 "$RC"
-  assert_match "names the setting" 'identity_domain' "$ERR"
+  # `identity_domain` appears in every refusal this function makes, including
+  # the charset one — and a comma is outside the domain set, so dropping this
+  # guard entirely leaves the charset gate refusing the same input under a
+  # different message. Matching the message unique to this guard is what pins
+  # the guard rather than the outcome.
+  assert_match "names the guard" 'exactly one domain' "$ERR"
   printf 'identity_scheme = "local"\nidentity_domain = "a.example b.example"\n' \
     > "$repo/jimconf.toml"
   run_identity "$repo" normalize 'alice@a.example'
@@ -6611,6 +6653,13 @@ case_identity_mailmap_carries_an_unmapped_address_through() {
   run_identity "$repo" normalize 'someone@example.com'
   assert_exit "rc" 0 "$RC"
   assert_eq "unchanged" "someone@example.com" "$OUT"
+  # An unmapped address comes back unchanged whether the lookup ran, was
+  # stubbed, or was deleted outright, so the pass above discriminates nothing on
+  # its own. The mapped address in the same repo is what says a lookup happened
+  # at all — the pair is the assertion, not either half.
+  run_identity "$repo" normalize 'old@personal.example'
+  assert_exit "rc for the mapped address" 0 "$RC"
+  assert_eq "the mapped address moves" "dev" "$OUT"
 }
 
 # AC: a contributor is never refused, or split, for having typed their own
@@ -6684,6 +6733,13 @@ case_identity_map_carries_an_unmapped_address_through() {
   run_identity "$repo" map 'someone@example.com'
   assert_exit "rc" 0 "$RC"
   assert_eq "unchanged" "someone@example.com" "$OUT"
+  # Paired for the same reason as the normalize case above: unchanged is what an
+  # absent lookup returns too. `map` applies no form, so the mapped address
+  # arrives whole rather than extracted, which is the second thing this pins.
+  run_identity "$repo" map 'old@personal.example'
+  assert_exit "rc for the mapped address" 0 "$RC"
+  assert_eq "the mapped address moves, unextracted" \
+    "1234+dev@users.noreply.github.com" "$OUT"
 }
 
 # AC: the result is judged as a recordable identity in its own right, exactly
@@ -6729,6 +6785,13 @@ case_identity_option_shaped_values_are_read_as_data() {
   # refused by the gate, as any other unrecordable value is. The two mechanisms
   # are complementary: the gate refuses what it can, and carrying the value as
   # data covers what the gate must admit.
+  #
+  # What this case does not prove: that the end-of-options separator is what
+  # carries the value as data. The value is wrapped in angle brackets before it
+  # reaches the lookup, and the wrapping alone neutralizes option shape — so
+  # removing the separator leaves every assertion here green. Both mechanisms
+  # are in place and neither is individually provable from the outside; this
+  # pins the property, not either mechanism.
   run_identity "$repo" normalize '--exec=id'
   assert_exit "rc for --exec=id" 2 "$RC"
   assert_eq "nothing on stdout" "" "$OUT"
