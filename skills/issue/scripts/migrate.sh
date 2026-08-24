@@ -51,6 +51,40 @@ jc() { if [[ -n "$CFG" ]]; then bash "$JIMCONF" -c "$CFG" "$@"; else bash "$JIMC
 # rather than from whichever project the run happens to stand in.
 jid() { if [[ -n "$CFG" ]]; then bash "$IDENTITY" -c "$CFG" "$@"; else bash "$IDENTITY" "$@"; fi; }
 
+# The option names this file's parsers accept. An operand equal to one of these
+# is a flag that landed where a value belongs, which is a typo rather than a
+# value — see need_operand.
+MIGRATE_OPTIONS=(--apply --expect --renormalize --from --to)
+
+# need_operand <flag> <argc> <operand> — the value <flag> requires, or refuse.
+#   <argc> is the argument count remaining at the flag, so a flag standing last
+#   in the argv is one with nothing to take.
+#
+#   Absent, empty, and flag-shaped operands all refuse. Swallowing one costs
+#   twice over: the flag that was consumed goes unapplied, and the value it
+#   became is one nobody typed. Both halves are silent, and one of the flags
+#   this can swallow is the gate authorizing a destructive whole-collection
+#   write — an --expect with nothing after it disarms the drift guard, because
+#   an empty expectation is indistinguishable from asking for no check.
+#
+#   Only this file's own option names are refused. A value that merely looks
+#   option-shaped is carried through, because the recordable-identity set admits
+#   a leading hyphen deliberately and a real address can wear one.
+need_operand() {
+  local flag="$1" argc="$2" operand="$3" known
+  if (( argc < 2 )) || [[ -z "$operand" ]]; then
+    echo "error: $flag requires a value" >&2
+    return 2
+  fi
+  for known in "${MIGRATE_OPTIONS[@]}"; do
+    if [[ "$operand" == "$known" ]]; then
+      echo "error: $flag requires a value, but $known followed it" >&2
+      return 2
+    fi
+  done
+  printf '%s' "$operand"
+}
+
 # resolve_dir <arg> — arg if non-empty, else jimconf default; strip trailing /.
 resolve_dir() {
   local dir="${1:-}"
@@ -569,7 +603,7 @@ cmd_schema() {
   while (( $# )); do
     case "$1" in
       --apply)  apply=1; shift ;;
-      --expect) expect="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      --expect) expect="$(need_operand --expect $# "${2:-}")" || return 2; shift 2 ;;
       *)        dir="$1"; shift ;;
     esac
   done
@@ -914,13 +948,14 @@ apply_identity_plan() {
 # two verbs each growing its own copy of that machinery.
 cmd_identity() {
   local dir="" apply=0 expect="" renormalize=0 from="" to=""
+  local from_given=0 to_given=0
   while (( $# )); do
     case "$1" in
       --apply)       apply=1; shift ;;
-      --expect)      expect="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      --expect)      expect="$(need_operand --expect $# "${2:-}")" || return 2; shift 2 ;;
       --renormalize) renormalize=1; shift ;;
-      --from)        from="${2:-}"; shift 2 2>/dev/null || shift $# ;;
-      --to)          to="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      --from)        from="$(need_operand --from $# "${2:-}")" || return 2; from_given=1; shift 2 ;;
+      --to)          to="$(need_operand --to $# "${2:-}")" || return 2; to_given=1; shift 2 ;;
       *)             dir="$1"; shift ;;
     esac
   done
@@ -928,8 +963,14 @@ cmd_identity() {
   # The mode is settled before anything is read, so a run that cannot say which
   # rewrite it means stops without having looked at the collection. Guessing is
   # the one thing a destructive whole-collection operation must not do.
+  #
+  # It is settled from what was typed rather than from what the values came out
+  # as. Reading the mode off a non-empty value couples this check to the parser
+  # succeeding: a flag whose operand went missing left its value empty, the mode
+  # went unset, and the exclusivity test below had nothing to compare — so two
+  # contradictory modes passed as one.
   local remap=0
-  [[ -n "$from" || -n "$to" ]] && remap=1
+  (( from_given || to_given )) && remap=1
   if (( renormalize && remap )); then
     echo "error: choose one of --renormalize or --from/--to, not both" >&2
     return 2
@@ -939,8 +980,8 @@ cmd_identity() {
     return 2
   fi
   if (( remap )); then
-    [[ -n "$from" ]] || { echo "error: --to given without --from" >&2; return 2; }
-    [[ -n "$to" ]]   || { echo "error: --from given without --to" >&2; return 2; }
+    (( from_given )) || { echo "error: --to given without --from" >&2; return 2; }
+    (( to_given ))   || { echo "error: --from given without --to" >&2; return 2; }
     # Both halves are recorded identities: the one being replaced has to be
     # comparable against what the collection holds, and the replacement is
     # written into frontmatter, so it clears the same gate every other recorded
@@ -999,7 +1040,7 @@ cmd_prefix() {
   while (( $# )); do
     case "$1" in
       --apply)  apply=1; shift ;;
-      --expect) expect="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      --expect) expect="$(need_operand --expect $# "${2:-}")" || return 2; shift 2 ;;
       *)        dir="$1"; shift ;;
     esac
   done

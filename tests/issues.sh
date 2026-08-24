@@ -5200,6 +5200,70 @@ case_migrate_identity_usage_requires_both_halves_of_a_remap() {
   assert_match "names the missing half" '\-\-from' "$ERR"
 }
 
+# AC: a flag that requires a value refuses when the next token is one of this
+# verb's own flags. Swallowing it costs twice: the swallowed flag goes
+# unapplied, and the value it becomes is one nobody typed — and the accepted
+# identity set admits a hyphen, so a swallowed flag clears validation cleanly
+# and the run proceeds on an intent that was never expressed.
+case_migrate_identity_usage_refuses_a_flag_where_a_value_belongs() {
+  local repo
+  repo="$(schema_repo migrate_identity_swallow)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from --apply --to 'new@example.test'
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the flag that landed there" '\-\-apply' "$ERR"
+}
+
+# AC: a flag standing last, or given an empty value, refuses rather than
+# recording an empty one. The mode is read from what was typed, so a half-typed
+# remap can no longer slip past the both-modes check by leaving its value empty
+# — which is how two contradictory modes were accepted as one.
+case_migrate_identity_usage_refuses_a_valueless_flag() {
+  local repo
+  repo="$(schema_repo migrate_identity_valueless)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --from
+  assert_exit "trailing flag rc" 2 "$RC"
+  assert_match "names the flag" '\-\-from' "$ERR"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from '' --to 'new@example.test'
+  assert_exit "empty value rc" 2 "$RC"
+  assert_match "names the flag" '\-\-from' "$ERR"
+}
+
+# AC: a value-less --expect refuses instead of disarming the drift guard. An
+# empty expectation is indistinguishable from asking for no check, so the flag
+# that authorizes a destructive whole-collection write would otherwise be
+# consumed and the write proceed unguarded.
+case_migrate_identity_valueless_expect_does_not_disarm_the_guard() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_expectless)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  before="$(cat "$repo/docs/issues/20260101-one.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply --expect
+  after="$(cat "$repo/docs/issues/20260101-one.md")"
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the flag" '\-\-expect' "$ERR"
+  assert_eq "nothing was rewritten" "$before" "$after"
+}
+
+# AC: a value that merely looks option-shaped is still carried. The accepted
+# identity set admits a leading hyphen deliberately, because real addresses
+# carry one, so only this verb's own option names are refused — the guard
+# distinguishes a mistyped flag from an unusual value rather than refusing both.
+#
+# This case pins the guard's BOUNDARY, not the guard: it does not go red against
+# the unswallowed parser, which accepted these along with everything else. What
+# it goes red against is the stricter reading — refusing any operand with a
+# leading hyphen — which is the obvious tightening a later reader reaches for
+# and which would silently break every address that wears one.
+case_migrate_identity_option_shaped_values_are_still_accepted() {
+  local repo
+  repo="$(identity_collection migrate_identity_optionshaped)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from '-x' --to 'dev@example.test'
+  assert_exit "hyphen value rc" 0 "$RC"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from '--help' --to 'dev@example.test'
+  assert_exit "option-shaped value rc" 0 "$RC"
+}
+
 # AC: a usage error writes nothing.
 case_migrate_identity_usage_error_writes_nothing() {
   local repo before after
