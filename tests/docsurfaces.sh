@@ -368,7 +368,7 @@ case_docsurfaces_issue_grant_covers_the_scripts_it_instructs() {
   body="$(awk 'NR==1 && $0 == "---" { fm=1; next }
                fm && $0 == "---"    { fm=0; rest=1; next }
                rest' "$s")"
-  for scr in $(printf '%s\n' "$body" | grep -o 'scripts/[a-z]*\.sh' | sort -u); do
+  for scr in $(printf '%s\n' "$body" | grep -o 'scripts/[a-z]*\.sh' | LC_ALL=C sort -u); do
     n=$(( n + 1 ))
     grep -qF "$scr" <<< "$tools" || missing="$missing ${scr#scripts/}"
   done
