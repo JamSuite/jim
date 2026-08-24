@@ -162,6 +162,8 @@ Supported keys (all optional — omitted keys keep their defaults):
 | `issue_list_closed` | `"false"` | `/jim:issue list` — when `"false"`, the default and priority-filtered views hide closed issues (use `list closed` to see them); `"true"` includes closed in every view |
 | `issue_id_prefix` | `"date"` | `/jim:issue add` — issue-id prefix scheme (`date` / `timestamp` / `sequential` / `project`, or a `{date:…}`/`{seq:…}` template); forward-only — converge existing ids with `migrate.sh prefix` |
 | `issue_id_project` | `""` (empty) | `/jim:issue add` — static project tag prepended when `issue_id_prefix = "project"` |
+| `identity_scheme` | `"github"` | `/jim:issue` — the form every recorded filer and holder takes, for the whole collection (`email` the whole address; `github` also a forge private-relay address as the account name it carries; `local` also an address inside `identity_domain` as the account part before it). Every form lower-cases what it records, and an unrecognized value is refused rather than quietly defaulted; forward-only — re-record an existing collection with `migrate.sh identity --renormalize` |
+| `identity_domain` | `""` (empty) | `/jim:issue` — the organization's mail domain, used only by the `"local"` form; exactly one domain, and selecting `local` without setting it refuses every operation that would record an identity |
 | `verify_appetite` | `"low"` | `/jim:verify` — criticality threshold at which the judge rung runs (`critical` / `high` / `medium` / `low`); the mechanical floor always runs; `"low"` is the thorough default (every criticality judged) and the knob only ever raises the bar; a per-run `--appetite` flag overrides it |
 | `verify_appetite_<group>` | — (unset) | `/jim:verify` — per-group appetite override (e.g. `verify_appetite_auth = "critical"`); precedence: `--appetite` flag > per-group > global |
 | `verify_fanout_cap` | `"10"` | `/jim:verify` — maximum judge subagents per run, highest criticality first; any remainder is named in the report |
@@ -205,7 +207,7 @@ Path-and-name resolution only — the script never reads, writes, or deletes fil
 
 Spec ordinals, group names, and issue ids are allocated from an append-only registry on a shared branch, so separate clones never mint the same one. The `id_coordination_*` keys above configure it; `jimalloc.sh seed` bootstraps it for an existing project, and the three verbs listed under [Commands](#commands) keep it honest afterwards.
 
-See [`docs/features/id-coordination.md`](docs/features/id-coordination.md) for the registry, offline filing and the reconcile verbs, and the integrity verbs in full — and [`docs/features/issues.md`](docs/features/issues.md) for the issue collection, including the one-shot `migrate.sh prefix`.
+See [`docs/features/id-coordination.md`](docs/features/id-coordination.md) for the registry, offline filing and the reconcile verbs, and the integrity verbs in full — and [`docs/features/issues.md`](docs/features/issues.md) for the issue collection, including the recorded-identity form and the one-shot migrations.
 
 ## Permissions
 

@@ -10,18 +10,19 @@ Issues are where Jim captures what was noticed but not acted upon. Every stage o
     * [Metadata](#metadata)
     * [Body](#body)
 3. [The lifecycle](#the-lifecycle)
-4. [Issue capture](#issue-capture)
+4. [Recorded identity](#recorded-identity)
+5. [Issue capture](#issue-capture)
     * [Interactive capture](#interactive-capture)
     * [Pipeline capture](#pipeline-capture)
-5. [The collection](#the-collection)
+6. [The collection](#the-collection)
     * [Read views](#read-views)
     * [The index](#the-index)
     * [Insights](#insights)
-6. [ID coordination](#id-coordination)
-7. [Issue placement](#issue-placement)
-8. [Migrations](#migrations)
-9. [Trust and safety](#trust-and-safety)
-10. [Configuration](#configuration)
+7. [ID coordination](#id-coordination)
+8. [Issue placement](#issue-placement)
+9. [Migrations](#migrations)
+10. [Trust and safety](#trust-and-safety)
+11. [Configuration](#configuration)
 
 ---
 [Jump to configuration](#configuration)
@@ -121,6 +122,38 @@ Three readings are **derived** and never stored, so no field can contradict them
 
 Outside an agent session, `bash skills/issue/scripts/transition.sh <verb> <id>` is the same operation, and routes to a configured destination branch on its own.
 
+## Recorded identity
+
+`filed-by` and `claimed-by` hold a contributor identity, and `identity_scheme` decides what form it takes. The choice belongs to the project rather than to each contributor, so one collection never holds identities recorded under different rules.
+
+| Form | What it records |
+| :--- | :--- |
+| `email` | The whole address, extracting nothing |
+| `github` (default) | Also a forge private-relay address as the account name it carries, leaving every other address alone |
+| `local` | Also an address inside `identity_domain` as the account part in front of that domain; anything outside it falls to the rule above |
+
+The forms are ordered — each records everything the one below it records, plus one further extraction — so a contributor who commits several ways still reads as one identity. Every form lower-cases what it records, including `email`: case variance in one person's address would otherwise split them in two. Before any form applies, the address resolves through whatever alias mapping version control carries, which is what collapses one person's several addresses onto one identity. Jim reads that mapping; it neither creates nor requires one.
+
+An **unrecognized** `identity_scheme` refuses every operation that would record an identity rather than quietly falling back to the default — a typo would otherwise record a whole collection under a form the project never chose. An **absent** one takes the default, so a zero-config project is unaffected. Selecting `local` without setting `identity_domain` refuses the same way, for the same reason.
+
+**Changing the form rewrites nothing already recorded.** The index reports the divergence instead — one warning naming the records the current form would record differently, and a second naming any the form cannot judge — and the identity rewrite is what clears them:
+
+```bash
+bash skills/issue/scripts/migrate.sh identity --renormalize           # preview (read-only)
+bash skills/issue/scripts/migrate.sh identity --renormalize --apply   # re-record
+```
+
+Re-normalization re-applies the current form to every recorded identity and supplies no mapping of its own. It **skips** a record whose identity the form cannot judge, which is why the index warns about that class separately: those are repaired by naming both values, the rewrite's other mode.
+
+```bash
+bash skills/issue/scripts/migrate.sh identity --from <old> --to <new>
+bash skills/issue/scripts/migrate.sh identity --from <old> --to <new> --apply
+```
+
+That mode covers every field recording an identity, not only the filer, and records `--to` as given (lower-cased) rather than through the configured form — an operator who names a value gets that value, and the mismatch warning is what tells them if it disagrees with the form.
+
+The warning has no suppression knob, deliberately. It has an exit condition: running the rewrite clears it, so it is a finite prompt to finish a migration rather than a setting to switch off.
+
 ## Issue capture
 
 Two paths, one writer. Every issue file in the collection is produced by a single emitter script; no skill or agent composes one by hand. That is what keeps the schema, the encoding, the identity reservation and the atomic write in exactly one place.
@@ -184,7 +217,14 @@ The issue collection defaults to `docs/issues/` — one file per issue plus a ge
 | **Graph** | Every typed edge — `A --blocks--> B` — from frontmatter relations and body wikilinks |
 | **Integrity Warnings** | What the scan could not reconcile |
 
-The warnings are the collection's self-check, and they never block a write: a malformed frontmatter block, an invalid relation target, a malformed wikilink, an `origin:` path that no longer resolves, and — the substantive one — a **bidirectional mismatch**, where one issue asserts `blocks` and the target carries no reciprocal `depends-on`. Wikilinks are one-way "see also" pointers, so they neither trigger nor satisfy that check.
+The warnings are the collection's self-check, and they never block a write. They fall into four groups:
+
+- **Records that will not parse** — a filename that is not a valid id, a missing or malformed frontmatter block, a `created` stamp that is not a date or timestamp.
+- **Fields outside their enum** — an unrecognized `outcome` or `type`, and a record that is closed but records no outcome (what a close written by hand leaves behind).
+- **References that do not resolve** — an invalid relation target, a malformed wikilink, an `origin:` path that no longer exists, a `part-of` naming an umbrella the collection does not hold, and — the substantive one — a **bidirectional mismatch**, where one issue asserts `blocks` and the target carries no reciprocal `depends-on`. Wikilinks are one-way "see also" pointers, so they neither trigger nor satisfy that check.
+- **Recorded identities that disagree with the configured form** — counted and named, with the rewrite that clears each class; see [Recorded identity](#recorded-identity).
+
+Two groups can also report that a check did **not run** rather than that it failed: origin paths go unchecked under a placement, since a path there would resolve against whichever checkout wrote last rather than against the collection, and identities go unchecked when the configured form cannot be applied at all.
 
 ### Insights
 
@@ -228,11 +268,13 @@ Changing `issue_placement` on an existing project moves where issues live but do
 
 ## Migrations
 
-Four one-shot, opt-in commands, none of them wired into normal use. Each writes atomically per file, is idempotent under a retry, and regenerates the index once at the end. The two that rewrite existing identity preview first and mutate only behind `--apply`; the two backfills only fill in absent fields, so they apply directly.
+Six one-shot, opt-in commands, none of them wired into normal use. Each writes atomically per file, is idempotent under a retry, and regenerates the index once at the end. The four that rewrite what a record already holds preview first and mutate only behind `--apply`; the two backfills only fill in absent fields, so they apply directly.
 
 | Command | What it does |
 | :--- | :--- |
 | `migrate.sh prefix [--apply]` | Converge existing ids on the active `issue_id_prefix` scheme |
+| `migrate.sh schema [--apply]` | Give every issue the identity, type and outcome fields, recovering each filer from the commit that created its file |
+| `migrate.sh identity [--apply]` | Re-record contributor identities — re-apply the configured form, or replace one identity with another (see [Recorded identity](#recorded-identity)) |
 | `reconcile.sh [--apply]` | Realize provisional ordinals — the script behind `/jim:issue reconcile` |
 | `backfill.sh num` | Assign display ordinals to legacy issues filed before ordinals existed |
 | `backfill.sh timestamp` | Normalize date-only `created`/`updated` to second-resolution day-start values |
@@ -276,6 +318,8 @@ All keys are optional; zero-config defaults apply throughout.
 | `issue_list_closed` | `"false"` | Include closed issues in the default and priority-filtered views |
 | `issue_id_prefix` | `"date"` | Id prefix scheme (`date` / `timestamp` / `sequential` / `project`, or a `{date:…}`/`{seq:…}` template); forward-only |
 | `issue_id_project` | `""` | Static tag prepended when `issue_id_prefix = "project"` |
+| `identity_scheme` | `"github"` | The form every recorded filer and holder takes (`email` / `github` / `local`); forward-only — see [Recorded identity](#recorded-identity) |
+| `identity_domain` | `""` | The organization's mail domain, used only by the `"local"` form; exactly one domain |
 | `id_coordination_mechanism` | `"git"` | How ids are coordinated between clones; `git` uses the append-only registry |
 | `id_coordination_branch` | `"jim/registry"` | The branch holding the registry logs — never project content |
 | `id_coordination_unreachable` | `"fail"` | Offline behavior: `fail` issues no identity, `provisional` binds a local `P-<id>` for `/jim:issue reconcile` |
