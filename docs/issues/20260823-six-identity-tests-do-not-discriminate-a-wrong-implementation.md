@@ -2,12 +2,12 @@
 id: 20260823-six-identity-tests-do-not-discriminate-a-wrong-implementation
 num: 362
 title: "Six identity tests do not discriminate a wrong implementation"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [testing]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-23T23:21:50Z
-updated: 2026-08-23T23:21:50Z
+updated: 2026-08-24T21:33:49Z
 origin: "docs/specs/issue/013-recorded-identity-schemes/review.md"
 ---
 

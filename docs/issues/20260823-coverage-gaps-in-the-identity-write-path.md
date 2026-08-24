@@ -2,12 +2,12 @@
 id: 20260823-coverage-gaps-in-the-identity-write-path
 num: 357
 title: "Coverage gaps in the identity write path"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [testing, migration]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-23T23:21:50Z
-updated: 2026-08-23T23:21:50Z
+updated: 2026-08-24T21:34:19Z
 origin: "docs/specs/issue/013-recorded-identity-schemes/review.md"
 ---
 
