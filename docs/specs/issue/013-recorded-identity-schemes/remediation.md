@@ -5,9 +5,10 @@ the increment actually stands, what the open issues have in common, and the
 order I would fix them in. It is analysis, not a plan: nothing here has been
 approved, and the sequencing is a recommendation.
 
-> **Partly executed as of 2026-08-24.** Four of the seventeen are closed — the
-> two that blocked, plus the fail-open pair. § *Progress* at the end records what
-> landed, where this analysis under-scoped the work, and what remains. The
+> **Partly executed as of 2026-08-24.** Eight of the seventeen are closed — the
+> two that blocked, the fail-open pair, and the documentation set bar one.
+> § *Progress* at the end records what landed, where this analysis under-scoped
+> the work — three more times in the second batch — and what remains. The
 > diagnostic sections below are left as they were written: they describe the
 > defects as found, and the issues' own resolution notes cite them.
 
@@ -107,8 +108,9 @@ it invites the fifth.
 **Documentation the increment left behind** — `#364` (README and the feature doc
 omit the feature), `#369` (help text tells users to close an issue by hand),
 `#370` (a spec mockup diverging from the emitted report), `#368` (the skill
-instructs two scripts its grant does not permit), `#355` (ARCHITECTURE.md lines
-too long for its own consumers to read).
+instructs two scripts its grant does not permit) — *all four closed
+2026-08-24* — and `#355` (ARCHITECTURE.md lines too long for its own consumers
+to read), which is not a document fix and is still open.
 
 **Test quality** — `#362` (six cases that pass against a wrong implementation),
 `#357` (the remap apply path, fault injection, and placement routing all
@@ -124,8 +126,9 @@ checks that a config key or subcommand reaches its reference).
 
 ### Order
 
-*(The first three steps below are done. They are left as written — the reasoning
-is what the resolution notes answer, and § Progress records where it fell short.)*
+*(Every step below but the last two is done. They are left as written — the
+reasoning is what the resolution notes answer, and § Progress records where it
+fell short.)*
 
 **First, `#365`.** ✓ It is the only issue that makes a shipped document false, and
 it is small. The gate needs to judge the value the caller supplied, not only
@@ -146,10 +149,10 @@ honestly.
 parser and the mismatch surface. Worth fixing together so the shared cause is
 visible in one diff.
 
-**Then the documentation set** — *next up* — of which `#368` is the one users actually hit —
+**Then the documentation set**, ✓ of which `#368` is the one users actually hit —
 the skill instructs `transition.sh` and `migrate.sh` and grants neither. `#364`
 belongs with it: the identity documentation was deferred so it would land with
-that grant fix rather than scatter.
+that grant fix rather than scatter. *(`#355` was held back — see § Progress.)*
 
 **`#362` and `#357` are worth doing before the next increment builds on this
 code**, not after. Six non-discriminating tests is a coverage figure that reads
@@ -191,9 +194,11 @@ Verifying a claim before recording it is cheap; recording a wrong one is not.
 
 ## Progress — 2026-08-24
 
-Four issues closed across fourteen commits (`2da3693`..`b1a13fb`). The suite is
-green at **1,559** across 16 files; twelve cases were added in this pass, each
-run against the unfixed code first and confirmed to fail there.
+Eight issues closed across twenty-three commits (`2da3693`..`8647e34`). The suite
+is green at **1,562** across 16 files; fifteen cases were added, each run against
+the unfixed code first and confirmed to fail there.
+
+### The two that blocked, and the fail-open pair
 
 | issue | | commits |
 | :--- | :--- | :--- |
@@ -210,6 +215,22 @@ amended line, so the trajectory survives.
 
 One fix here belongs to no issue: `d74039e`, a fourth `id-gate-before-path` site
 in `transition.sh`, found by the verify judge and fixed in the same pass.
+
+
+### The documentation set
+
+| issue | | commits |
+| :--- | :--- | :--- |
+| `#368` skill tool grant | closed | `5978e1d`, `136a2a5`, `006c430`, `74dd602` (`ARCHITECTURE.md` via `/jim:arch`) |
+| `#364` user-facing docs | closed | `136a2a5`, `dafb06d`, `b84a523` |
+| `#369` close-by-hand help | closed | `a9235e6`, `fc943fd` |
+| `#370` integrity mockup | closed | `627c761` |
+
+`#355` was deliberately left out. It is not a document fix: it wants a decision
+about whether `/jim:arch` wraps its generated prose on every refresh, and a
+rewrap of a 204 KB file whose oversize unit *is* the line. Doing it inside a
+documentation pass would have buried that decision in a diff about something
+else.
 
 ### Where this analysis under-scoped the work
 
@@ -235,24 +256,67 @@ unnormalizable value as an ordinary mismatch points the operator at
 The warning would never clear — the permanent nag the surface is designed not to
 be. It became a third class with its own remedy instead.
 
+**`#364` could not be fixed as scoped, for a structural reason.** It asks for
+four frontmatter fields to reach the feature doc's example block. No
+user-facing document named a verb that moves any of them, so filling the block
+in would have shown `claimed-by` and `outcome` with nothing saying what writes
+them. The lifecycle went in with the fields — README command table,
+`WORKFLOW.md` subcommand list, a new feature-doc section — and two further
+enumerations in those same documents turned out stale from the same increment:
+the `list` filter set, missing `active`, and the typed relation buckets,
+missing `part-of`.
+
+**`#369` named two sites and its claim was true of four.** `WORKFLOW.md`
+carried the identical close-by-hand instruction and is the surface a user is
+likelier to reach than a script's `help`; `migrate.sh`'s header and usage call
+the `type` field `kind`. Both found by sweeping what the issue asserted, not by
+re-reading the issue. The help had also fallen behind the surface it exists to
+enumerate — five lifecycle verbs and `reconcile` absent from a listing of
+subcommands.
+
+**`#368` moved the convention rather than only the grant.** Its Direction asked
+for verb scoping, and `ARCHITECTURE.md` § Permission Conventions said a
+multi-verb consumer keeps the script-level clause unless an executor is among
+the withheld verbs. `migrate.sh` carries no executor; what it carries is a
+subcommand that renames every file in the collection. Taking the tighter grant
+therefore meant the document stopped describing the code, so the rule was
+generalized to cover a destructive whole-collection write alongside an
+executor.
+
 This is § *The pattern underneath them* seen from the other side: **an analysis
 naming where a rule is broken is not an enumeration of where the rule applies.**
-Both under-scopings were found by asking what the rule covers, never by
-re-reading the issue. Two rules were added to
-`docs/notes/process-improvements.md` from it (`42c11be`, `b1a13fb`) — one on
-partial enumerations, one correcting what that file said to do with a case that
-pins a guard's boundary rather than the guard.
+Every one of them was found by asking what the rule covers, never by re-reading
+the issue — and the documentation set repeated the pattern after that lesson had
+been named and written down, which is worth knowing about how much a written
+rule protects you. Two rules were added to `docs/notes/process-improvements.md`
+from the first batch (`42c11be`, `b1a13fb`) — one on partial enumerations, one
+correcting what that file said to do with a case that pins a guard's boundary
+rather than the guard.
+
 
 ### What remains
 
-Thirteen of the seventeen, in the order above:
+Nine of the seventeen, in the order above:
 
 | group | issues |
 | :--- | :--- |
-| Documentation | `#368` **(critical)**, `#364`, `#369`, `#370`, `#355` |
+| Documentation | `#355` |
 | Test quality | `#362`, `#357` |
 | Structural | `#367`, `#363` |
 | Small correctness | `#356`, `#359`, `#366`, `#371` |
 
-`#368` is the only critical left in this batch and the one users actually hit.
-`#53` is also open and critical, and predates this increment.
+None of them is critical. `#53` is open and critical, and predates this
+increment.
+
+`#362` and `#357` are the ones worth doing before the next increment builds on
+this code, for the reason given above: six non-discriminating tests is a
+coverage figure that reads better than it is. The documentation pass produced a
+small instance of the same thing and caught it only in the writing — a
+help-text assertion matching bare `close` and `start` would have passed against
+the very text it was written to replace, because both words already occurred in
+the surrounding prose.
+
+`#363` is still worth last, and is now better evidenced than when it was filed.
+Three of the four fixes just closed were sites a mechanical sweep would have
+caught: a subcommand missing from the Migrations table, config keys missing
+from two config tables, and a grant that did not cover its own body.
