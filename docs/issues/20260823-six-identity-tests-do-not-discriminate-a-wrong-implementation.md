@@ -74,3 +74,55 @@ build and deleted — it asserted the git manual page never appears, and passed
 even when the value was reaching git as an option. These six are the same class.
 
 Origin: `docs/specs/issue/013-recorded-identity-schemes/review.md` — Finding 8.
+
+## Resolution (2026-08-24)
+
+Fixed in `2275999`. All six are confirmed and corrected, and the census that
+confirmed them found three more.
+
+**How they were confirmed.** Not by reading the cases — by mutating the surface.
+Twenty mutants across `identity.sh`, `migrate.sh`'s identity subcommand and the
+configured default, each applied to the real script, the identity subset run
+against it, and the set of cases that went red recorded. A case its own mutant
+does not kill is the finding. The whole census costs about twenty seconds per
+mutant.
+
+Five of the six were confirmed exactly as described. The sixth was confirmed
+only against the mutant this issue actually names: the index **not** regenerated
+does kill the case, because the fixture has no prior `INDEX.md`; the index
+regenerated **before the rewrite lands** does not. The wording above is precise
+and the first mutant tried was the wrong one.
+
+**Three more of the same class, reported by nobody.**
+
+- `case_identity_domain_naming_several_refuses` — remove the several-domains
+  guard and the charset gate refuses the same input, because a comma and a space
+  are both outside the domain set. Both messages say `identity_domain`, which is
+  all the case matched.
+- `case_migrate_identity_usage_requires_both_halves_of_a_remap` — remove the
+  both-halves guard and the recordability check refuses the empty half. Its
+  message names the same flag the case matched.
+- `case_migrate_identity_remap_matches_without_case` — folds the record's side
+  and never the operand's, so removing `from="${from,,}"` changes nothing it
+  asserts. The property is symmetric; the case drove one direction.
+
+All three are one shape: **an assertion matching a substring that two branches
+share.** That is what the six have in common too, and it is searchable — where a
+guard's refusal shares vocabulary with the guard after it, matching the shared
+words pins the outcome rather than the guard.
+
+**Two could not be made to discriminate and are paired instead.** An unmapped
+address comes back unchanged whether the lookup ran, was stubbed, or was deleted
+— there is no assertion that separates those. The mapped address in the same
+fixture is what says a lookup happened at all, so the pair is the case now. That
+recovers the coverage rather than recording its absence, which is the remedy the
+notes had for this shape.
+
+`case_identity_option_shaped_values_are_read_as_data` keeps its note, as the
+Related section asked: the bracket wrapping neutralizes option shape on its own,
+so neither mechanism is provable from outside and the case pins the property.
+
+**What the census does not cover.** Its mutants target `identity.sh`,
+`migrate.sh identity` and the configured default. Cases reaching the identity
+surface through `new.sh`, `transition.sh`, `render.sh` or `index.sh` were run but
+had no mutant aimed at them, so their silence is untested rather than clean.

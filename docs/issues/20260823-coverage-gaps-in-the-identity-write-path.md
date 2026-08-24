@@ -58,3 +58,45 @@ the blind spot between them. These four gaps are the same shape: regions where
 the fixtures do not reach.
 
 Origin: `docs/specs/issue/013-recorded-identity-schemes/review.md` — Finding 13.
+
+## Resolution (2026-08-24)
+
+Fixed in `5e79803`. Six cases for the four gaps, and each was checked by
+mutating the region it covers and confirming the case goes red.
+
+**Two of the four gaps were true of the sibling conversion as well.** This issue
+named `apply_identity_plan` in both, and a census of all three applies settled
+which of them the rule actually reaches:
+
+| | index-failure case | fault coverage | placement routing |
+| :--- | :--- | :--- | :--- |
+| `apply_plan` (prefix) | 1 | 2 | 1 |
+| `apply_schema_plan` | 1 | **0** | **0** |
+| `apply_identity_plan` | 1 | **0** | **0** |
+
+So `schema` gained a staging-failure case and a placement case beside
+`identity`'s. Counting the guard per sibling site is what surfaced it — the same
+census form that found the third path-composition site earlier in this
+remediation.
+
+**The seams were not added.** This issue asks for a fault-injection seam
+matching `apply_plan`'s. Both branches are reachable from outside: making the
+issues directory unwritable fails the `mktemp` for real. `apply_plan` carries
+seams because its failure points sit inside git plumbing, where nothing external
+can reach them — so the asymmetry is justified rather than a gap, and a seam
+here would be production code whose only purpose is being tested. The `mv`
+failure branch is still unproven; it needs a write the unprivileged user cannot
+arrange.
+
+**The remap apply gap was the real one, and worse than described.** No test
+persisted a remapped value at all, and mutation confirms it: putting `--to`
+through the configured form — which is precisely what remap must not do — killed
+no case in the suite. It does now.
+
+**The placement case for `schema` pins a refusal, not a success.** Driving it
+through the routing loop surfaced that the conversion refuses at the
+destination: it recovers each filer from the commit that created its file, and a
+materialized collection is outside any work tree. That is already tracked as its
+own issue and is fail-closed rather than wrong, so the case pins the current
+contract — closing that gap has to change this assertion deliberately rather
+than have a green suite hide the change.
