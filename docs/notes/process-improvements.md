@@ -133,9 +133,19 @@ to question a case you are not touching. For that, invert it: mutate the
 **surface** — one behaviour removed per mutant — run the subset against each,
 and record which cases go red. A case no mutant kills is the finding.
 
-One pass over an identity surface cost twenty mutants at about twenty seconds
-each. It confirmed six reported non-discriminating cases and found three nobody
-had reported, in cases nobody was editing.
+This is **mutation testing**, applied by hand rather than by a tool, and knowing
+the name is worth more than the method here — the field has the vocabulary and
+the known costs already. A seeded variant is a *mutant*; a test that fails
+against it *kills* it; one nothing kills is a *surviving* mutant; killed over
+total is the *mutation score*. Its expensive problem is the *equivalent mutant*
+— a change no test can possibly detect, which is undecidable in general.
+Generated implementations exist for most languages (`pitest`, Stryker,
+`mutmut`, `cargo-mutants`) and for none of the shells, which is why this was
+hand-rolled.
+
+One pass over an identity surface cost twenty-three mutants at about twenty
+seconds each. It confirmed six reported non-discriminating cases and found three
+nobody had reported, in cases nobody was editing.
 
 **All three were one shape: an assertion matching a substring that two branches
 share.** Remove the several-domains guard on a config value and the charset gate
