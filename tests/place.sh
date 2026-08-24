@@ -215,6 +215,26 @@ case_place_accepts_the_transition_verbs() {
   done
 }
 
+# The commit-subject enum and the header that documents it are two copies of one
+# list, and the four lifecycle verbs reached only the array. Derived from the
+# array rather than listed here, so the next verb added is covered without
+# anyone remembering that the header is a second place to edit.
+case_place_header_enumerates_every_commit_verb() {
+  local v enum n=0 missing=""
+  enum="$(sed -n '/^#   verb enum:/,/commit message\./p' "$SCRIPT_place")"
+  assert_eq "the header enum was located" "yes" \
+    "$([[ -n "$enum" ]] && echo yes || echo no)"
+  for v in $(sed -n '/^readonly PLACE_VERBS=(/,/)/p' "$SCRIPT_place" \
+               | sed -e 's/.*PLACE_VERBS=(//' -e 's/).*//' \
+               | tr ' ' '\n' | grep -oE '^[a-z]+$'); do
+    n=$(( n + 1 ))
+    grep -qw "$v" <<< "$enum" || missing="$missing $v"
+  done
+  assert_eq "the array was enumerated" "yes" \
+    "$([[ $n -gt 0 ]] && echo yes || echo no)"
+  assert_eq "every commit verb is documented" "" "${missing# }"
+}
+
 # AC: an issues_path that is not a safe repo-relative path refuses before it can
 # be mirrored onto a destination branch — it becomes a tree prefix and a
 # pathspec, so it clears the boundary first (spec AC #10).

@@ -62,8 +62,9 @@
 #     Discard a handle, publishing nothing.
 #
 #   verb enum: file | edit | close | rename | realize | reindex | backfill |
-#   migrate. Commit subjects are composed from the enum plus an optional
-#   validated id, so no free text ever reaches a commit message.
+#   migrate | claim | release | start | reopen. Commit subjects are composed
+#   from the enum plus an optional validated id, so no free text ever reaches a
+#   commit message.
 #
 # EXIT CODES
 #   0  Success (stderr may carry degradation notes).

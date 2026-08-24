@@ -1382,6 +1382,25 @@ case_issues_render_help_lists_subcommands() {
   assert_match "lists show"  'show'  "$OUT"
 }
 
+# Help is the surface a user reaches when they are already unsure, and it told
+# them to close an issue by editing `status:` directly. That leaves `outcome`
+# empty, which the index then reports as "closed but records no outcome" — help
+# text teaching the collection's own integrity check to fire. The verbs are
+# matched with their operand so the assertions discriminate: bare `close` and
+# `start` both already occur in the surrounding prose.
+case_issues_render_help_points_at_the_lifecycle_verbs() {
+  run_render help
+  assert_exit "rc" 0 "$RC"
+  assert_match "lists claim"     'claim <id>'   "$OUT"
+  assert_match "lists release"   'release <id>' "$OUT"
+  assert_match "lists start"     'start <id>'   "$OUT"
+  assert_match "lists close"     'close <id>'   "$OUT"
+  assert_match "lists reopen"    'reopen <id>'  "$OUT"
+  assert_match "lists reconcile" 'reconcile'    "$OUT"
+  assert_eq "sends nobody to a hand edit" "" \
+    "$(grep -o 'editing its' <<< "$OUT")"
+}
+
 # AC: `render.sh stats` includes a by-priority breakdown (spec 019)
 case_issues_render_stats_by_priority() {
   local dir

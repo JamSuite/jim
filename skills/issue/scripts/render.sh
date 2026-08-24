@@ -208,8 +208,18 @@ jim issue — capture & review discovery artifacts
   show <id>               view a single issue (by number, slug, or prefix)
   insights                LLM analysis: convergence, sequencing, parallel work
 
-  Issues live in the configured issues directory. Close one by editing its
-  `status:` field directly.
+  claim <id>              take the issue (--force takes over one held)
+  release <id>            give it up
+  start <id>              mark it underway, claiming it when unheld
+  close <id> [--as <o>]   finish it; <o> is done | wontfix | duplicate |
+                          obsolete, and done is what a bare close records
+  reopen <id>             return it to not-started, keeping the outcome
+
+  reconcile               realize ordinals bound while offline
+
+  Issues live in the configured issues directory. The verbs above are how one
+  moves: a close written by hand leaves `outcome` empty, and the index reports
+  that record as closed with no outcome recorded.
 
   By default `list` hides closed issues; use `list closed` to see them, or set
   `issue_list_closed = "true"` in jimconf.toml to include them in every view.

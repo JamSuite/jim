@@ -327,18 +327,27 @@ case_docsurfaces_analyst_reads_the_directory_it_is_handed() {
 }
 
 # The same reasoning reaches past the skill. WORKFLOW.md is where a user is told
-# how to close an issue, and it said to edit the file directly — which under a
-# placement edits something that is not the collection. Sweeping only the skill
-# left the one sentence a user actually follows outside the guard.
+# how to close an issue, and it said to edit `status:` directly — which leaves
+# `outcome` empty for the collection's own integrity check to report, and which
+# under a placement edits something that is not the collection at all. Sweeping
+# only the skill left the one sentence a user actually follows outside both
+# guards. Scoped to the section rather than to one line, because the correction
+# splits what was one sentence into a verb and a content-edit caveat.
 case_docsurfaces_workflow_close_flow_survives_a_placement() {
-  local wf="$REPO_ROOT/WORKFLOW.md" line
+  local wf="$REPO_ROOT/WORKFLOW.md" sec
   assert_eq "the workflow doc is present" "yes" \
     "$([[ -r "$wf" ]] && echo yes || echo no)"
-  line="$(grep -n 'Close an issue' "$wf")"
-  assert_eq "the close instruction was located" "yes" \
-    "$([[ -n "$line" ]] && echo yes || echo no)"
-  assert_match "it qualifies the direct edit" 'issue_placement' "$line"
-  assert_match "and points at the flow that works" '6a'          "$line"
+  sec="$(awk '/^### Discovery capture/ { s=1; next }
+              s && (/^## / || /^### /) { s=0 }
+              s' "$wf")"
+  assert_nonempty "the capture section was located" "$sec"
+  assert_match "closing goes through the verb"     'close <id>'      "$sec"
+  assert_match "which is what records the outcome" 'outcome'         "$sec"
+  assert_match "the placement caveat survives"     'issue_placement' "$sec"
+  assert_match "and points at the flow that works" '6a'              "$sec"
+  # The instruction this replaced is what produced the record the index reports.
+  assert_eq "nobody is sent to a hand-written close" "" \
+    "$(grep -oE 'editing its .status:. field' <<< "$sec")"
 }
 
 # A skill's grant and its body are one document read by two readers. The body
