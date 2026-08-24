@@ -186,16 +186,21 @@ outcome names how it was finished last time:
   open     (none)     never finished
 ```
 
-Integrity reporting in the collection index:
+Integrity reporting in the collection index. Records are named by slug rather
+than by ordinal: the slug is what the file is called, and it survives an
+ordinal being reassigned.
 
 ```
-## Integrity
+## Integrity Warnings
 
-- #63  status is `closed` but no outcome recorded
-- #88  outcome `duplicate` names no superseding issue
-- #94  unrecognized outcome: `donw`
-- #96  unrecognized kind: `epik`
+- `20260101-example` is closed but records no outcome.
+- `20260102-example` unrecognized outcome: donw.
+- `20260103-example` unrecognized type: epik.
 ```
+
+A close naming no superseding issue is not in that list because it never
+reaches the index: `--as duplicate` is refused at the transition unless the
+record already names the superseding issue in its `duplicates` relation.
 
 ## Data Flow
 
