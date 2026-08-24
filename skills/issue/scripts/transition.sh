@@ -254,6 +254,18 @@ main() {
     return 1
   fi
 
+  # The caller's id cleared the validator above, but only one of resolve_slug's
+  # three branches answers with that id. An ordinal or a prefix answers with a
+  # name read off the directory, whose remaining bytes nothing here chose — and
+  # the collection can arrive from a destination branch whose entry gate admits
+  # names this one refuses. So the value that actually names the file is checked
+  # at the site composing the path, the way the migrations check theirs.
+  bash "$JIMFILE" valid-id "$slug" >/dev/null 2>&1 || {
+    echo "error: invalid issue id" >&2
+    [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
+    return 1
+  }
+
   local file="$work/$slug.md"
 
   local changes

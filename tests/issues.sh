@@ -4438,6 +4438,41 @@ case_transition_refuses_an_invalid_id() {
   assert_nonempty "explains" "$ERR"
 }
 
+# AC: the name a transition composes its path from clears the validator, not
+# only the id the caller supplied. Resolution by ordinal or by prefix answers
+# with a name read off the directory rather than with the caller's id, and a
+# collection materialized from a destination branch can hold names whose entry
+# gate is weaker than this one — a plain basename bounded to the collection, but
+# outside what an id may be. The verb refuses rather than reading and rewriting
+# a file the id boundary would have rejected.
+case_transition_gates_the_resolved_name_not_only_the_given_id() {
+  local dir before after
+  dir="$(transition_dir transition_resolved_name)"
+  write_issue "$dir" "a..b" 'num: 77
+title: "Arrived from a branch"
+status: open
+priority: low
+type: issue
+filed-by: "filer@example.test"
+claimed-by: ""
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  before="$(cksum < "$dir/a..b.md")"
+  run_transition close 77 --dir "$dir"
+  after="$(cksum < "$dir/a..b.md")"
+  assert_exit "rc" 1 "$RC"
+  assert_match "names the gate" 'invalid issue id' "$ERR"
+  assert_eq "the file is untouched" "$before" "$after"
+}
+
 # AC: an id naming no issue in the collection is refused rather than created.
 case_transition_refuses_an_unknown_issue() {
   local dir
