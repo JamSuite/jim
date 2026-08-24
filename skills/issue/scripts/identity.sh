@@ -18,6 +18,12 @@
 #     refused. Stating the set positively is what makes unanticipated input —
 #     a Unicode line separator, a stray control byte — fail closed rather than
 #     survive a list of characters someone thought to name.
+#   - The set judges the value as supplied, not only the value the alias mapping
+#     hands back. The mapping lookup composes its argument out of the value, so
+#     a value gated only afterwards can return as a fragment of itself that is
+#     recordable on its own merits — a refusal silently turned into a
+#     truncation. Every step that composes the value into something else sits
+#     behind the gate, not in front of it.
 #   - A refused value never appears in the refusal. Reasons are fixed strings,
 #     so a terminal log cannot be made to carry the value that was rejected.
 #   - The value is compared, never sourced or evaluated.
@@ -160,6 +166,22 @@ validate() {
 #   into control, and the charset gate would not stop it — the gate admits the
 #   hyphen deliberately, because real addresses carry one.
 #
+#   The value is also composed into the lookup argument, wrapped in angle
+#   brackets, so it clears the charset gate before that composition happens. The
+#   accepted set admits neither bracket: a value already carrying one builds
+#   bracket structure the extraction below — which reads what the final brackets
+#   hold — reads as an address, returning a fragment of the value rather than a
+#   mapped one. That fragment can be recordable on its own merits, with nothing
+#   left to say what it came from was not, which turns a refusal into a
+#   truncation. The gate lives here rather than in the callers because the
+#   requirement belongs to the composition; a caller reaching the lookup by
+#   another route would otherwise reopen the door. It bounds the value's length
+#   as well as its content, so the command never receives an unbounded argument.
+#
+#   A value the set does not admit is therefore refused before the mapping is
+#   consulted, exactly as an absent one is. A mapping keyed on such a value
+#   cannot fire — the same answer the gate gives everywhere else.
+#
 #   Anything other than a well-formed answer leaves the value alone: no
 #   repository, no mapping, or output this does not recognize all mean nothing
 #   was mapped. The result is judged as a recordable identity in its own right
@@ -167,6 +189,7 @@ validate() {
 #   gate.
 map_alias() {
   local value="$1" out address
+  validate "$value" >/dev/null || return $?
   out="$(git check-mailmap -- "<$value>" 2>/dev/null)" || { printf '%s' "$value"; return 0; }
   case "$out" in
     *"<"*">"*)
@@ -313,12 +336,7 @@ map() {
     return 1
   fi
 
-  if (( ${#value} > IDENTITY_MAX )); then
-    echo "error: identity is not recordable" >&2
-    return 2
-  fi
-
-  value="$(map_alias "$value")"
+  value="$(map_alias "$value")" || return $?
 
   validate "$value"
 }
@@ -345,17 +363,12 @@ normalize() {
     return 1
   fi
 
-  # The length bound comes first because it is the only thing standing between
-  # an unbounded value and the command the mapping lookup runs.
-  if (( ${#value} > IDENTITY_MAX )); then
-    echo "error: identity is not recordable" >&2
-    return 2
-  fi
-
-  # Alias resolution precedes the charset gate, not only extraction. A mapping
-  # is the project telling us how to read an address, so refusing one before
-  # consulting it would refuse a value the project has explicitly answered for.
-  value="$(map_alias "$value")"
+  # Alias resolution precedes extraction. A mapping is keyed on addresses, so
+  # extracting first would leave it nothing to match and the contributor it
+  # exists to merge would stay split. It does not precede the charset gate: the
+  # lookup gates its own argument, so a value outside the accepted set is
+  # refused before the mapping is consulted.
+  value="$(map_alias "$value")" || return $?
 
   validate "$value" >/dev/null || return $?
 

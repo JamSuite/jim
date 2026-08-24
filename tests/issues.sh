@@ -6528,6 +6528,63 @@ case_identity_option_shaped_value_still_resolves_through_the_mapping() {
   assert_eq "recorded as the mapped form" "dev" "$OUT"
 }
 
+# ─── Section: identity.sh — the gate ahead of the mapping lookup ────────────
+
+# AC: a value outside the accepted set is refused, and refused as itself rather
+# than reduced to a part of itself that the set does admit. The mapping lookup
+# composes its argument by wrapping the value in angle brackets, so a value
+# already carrying one builds bracket structure the answer's extraction reads
+# as an address — handing back a fragment of the value with nothing left to say
+# what it came from was unrecordable. Gating the value as supplied is what
+# makes that fragment unreachable, so every verb reporting the same refusal for
+# every position a bracket can take is the property under test, not the
+# individual strings.
+case_identity_bracket_bearing_values_are_refused_whole() {
+  local repo v
+  repo="$(github_repo identity_bracket_gate)"
+  for v in 'junk<attacker@evil.example' 'a<b' 'a>b' '<dev@example.com>'; do
+    run_identity "$repo" validate "$v"
+    assert_exit "validate rc for $v" 2 "$RC"
+    assert_eq "validate wrote nothing for $v" "" "$OUT"
+    run_identity "$repo" map "$v"
+    assert_exit "map rc for $v" 2 "$RC"
+    assert_eq "map wrote nothing for $v" "" "$OUT"
+    run_identity "$repo" normalize "$v"
+    assert_exit "normalize rc for $v" 2 "$RC"
+    assert_eq "normalize wrote nothing for $v" "" "$OUT"
+  done
+  assert_match "the fixed reason" 'identity is not recordable' "$ERR"
+  assert_eq "the refusal does not echo the value" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'dev@example.com' && echo yes || echo no)"
+}
+
+# AC: the environment is judged by the same gate as any other source, so an
+# ambient identity carrying a bracket is refused rather than recorded as the
+# fragment following it. This is the path a filing and a transition both take.
+case_identity_resolve_refuses_a_bracket_bearing_environment_identity() {
+  local repo
+  repo="$(identity_repo identity_bracket_resolve 'junk<attacker@evil.example')"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_eq "the refusal does not echo the value" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'attacker' && echo yes || echo no)"
+}
+
+# AC: a mapping keyed on a value the set does not admit cannot fire. The gate
+# stands ahead of the lookup, so such a value is refused exactly as an absent
+# one — deliberately, because the alternative is the mapping deciding what is
+# recordable.
+case_identity_a_mapping_cannot_admit_an_unrecordable_value() {
+  local repo
+  repo="$(github_repo identity_bracket_mapping)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <a<b>\n' > "$repo/.mailmap"
+  run_identity "$repo" normalize 'a<b'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
