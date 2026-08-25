@@ -936,6 +936,25 @@ cmd_insights_graph() {
 
 # ─── Section: Dispatch ───────────────────────────────────────────────────────
 
+# named_collection <args...>
+#   Exit 0 when the invocation names a collection directory under the filter
+#   grammar — the trailing word, left unclassified, and a directory.
+#
+#   Routing and binding have to read argv the same way. Routing decides *which*
+#   collection a read serves and is settled before any verb runs, so a grammar
+#   it alone gets wrong does not produce an error: it produces a plausible
+#   answer over the wrong data. The arms below answered on argument shape, and
+#   a flag's operand wears the same shape as a directory.
+#
+#   A query the parser refuses names no collection either, but there is nothing
+#   to route it to: report a collection so the verb runs here and refuses
+#   immediately, rather than materializing a destination for a query that
+#   cannot run against it.
+named_collection() {
+  parse_filters "$@" 2>/dev/null || return 0
+  (( ${#FILTER_RESIDUE[@]} == 1 )) && [[ -d "${FILTER_RESIDUE[0]}" ]]
+}
+
 # dir_given <sub> <args...>
 #   Exit 0 when the invocation already names a collection directory. Each verb
 #   spells its optional directory differently, so the shapes are read here
@@ -943,25 +962,16 @@ cmd_insights_graph() {
 #   it is also what keeps the placement re-exec from recursing.
 dir_given() {
   local sub="$1"; shift
-  # In every shape, an argument is a directory only if it *is* one. Answering on
-  # argument count alone let a second filter token — `list open high`, which the
-  # skill substitutes whole — read as a collection: routing was declined, a
-  # directory of that name was created in the checkout by a read verb, and the
-  # destination went unread behind an empty view at rc 0.
-  #
-  # `stats` and `show` stay on count. Their operand is a directory or it is
-  # nothing — there is no filter to confuse it with — so a bad one is a usage
-  # error, and each verb refuses it. Routing instead would be worse than the
-  # bypass: the re-exec appends the real collection as a trailing argument, and
-  # those verbs read their directory positionally, so the bad token would bind
-  # as the collection and the real one be ignored.
+  # `insights-graph` and `show` stay on count. Neither takes a filter, so their
+  # operand is a directory or it is nothing and a bad one is a usage error each
+  # verb refuses. Routing instead would be worse than the bypass: the re-exec
+  # appends the real collection as a trailing argument, and both read their
+  # directory positionally, so the bad token would bind as the collection and
+  # the real one be ignored.
   case "$sub" in
-    stats|insights-graph) (( $# >= 1 )) ;;
-    show)                 (( $# >= 2 )) ;;
-    list)
-      (( $# >= 2 )) && [[ -d "$2" ]] && return 0
-      (( $# == 1 )) && ! is_filter_token "$1" && [[ -d "$1" ]]
-      ;;
+    stats|list)     named_collection "$@" ;;
+    insights-graph) (( $# >= 1 )) ;;
+    show)           (( $# >= 2 )) ;;
     *) return 1 ;;
   esac
 }

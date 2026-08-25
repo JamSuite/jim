@@ -7552,6 +7552,60 @@ created: 2026-01-02'
     "$(ls "$work/open" | grep -c .)"
 }
 
+# ─── Section: render.sh — routing reads the same grammar as binding ──────────
+
+# AC: statistics accepts the same filters as the list view. The routing
+# decision is taken before any verb runs, so a grammar it alone gets wrong
+# serves a correct-looking answer over the wrong collection.
+case_issues_render_routing_survives_filters() {
+  local dir
+  dir=$(empty_dir render_routing)
+
+  # A flag whose operand names an existing directory. It is an operand, not a
+  # collection, so the invocation names none and the read must route.
+  run_render_fn dir_given list --label "$dir"
+  assert_exit "a flag operand is not a named collection" 1 "$RC"
+
+  # Any filtered stats invocation. The arm answered on argument count alone,
+  # justified by there being no filter to confuse an operand with.
+  run_render_fn dir_given stats --spec issue/011
+  assert_exit "a filtered stats names no collection" 1 "$RC"
+
+  # Two bare filters name no collection either.
+  run_render_fn dir_given list open high
+  assert_exit "two filters name no collection" 1 "$RC"
+
+  # A genuinely named collection is still honoured, in every shape — this is
+  # also what stops the placement re-exec from recursing.
+  run_render_fn dir_given list "$dir"
+  assert_exit "a lone directory is named"          0 "$RC"
+  run_render_fn dir_given stats "$dir"
+  assert_exit "stats with a directory is named"    0 "$RC"
+  run_render_fn dir_given list open "$dir"
+  assert_exit "filter then directory is named"     0 "$RC"
+  run_render_fn dir_given list --label auth "$dir"
+  assert_exit "flag, operand, then directory"      0 "$RC"
+}
+
+# AC: reads serve the collection at the configured placement rather than a
+# branch-local copy — including when a filter's operand names a directory that
+# happens to exist in the checkout
+case_issues_placement_filter_operand_still_routes() {
+  local repo body
+  repo="$(placement_repo issues_place_filter_operand jim/issues)"
+  body="$(fixture issues_place_filter_operand_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels auth \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  # A directory in the checkout named exactly like the label being filtered on.
+  mkdir -p "$repo/auth"
+  run_in "$repo" "$SCRIPT_RENDER" list --label auth
+  assert_exit  "rc" 0 "$RC"
+  assert_match "read the destination, not the checkout" 'Alpha bug' "$OUT"
+  assert_eq    "nothing written into the operand" "0" \
+    "$(ls "$repo/auth" | grep -c .)"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
