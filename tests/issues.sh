@@ -7606,6 +7606,50 @@ case_issues_placement_filter_operand_still_routes() {
     "$(ls "$repo/auth" | grep -c .)"
 }
 
+# ─── Section: render.sh — a refused read touches nothing ─────────────────────
+
+# AC: an unrecognized filter token is refused and the query fails without
+# writing anything to disk. Two observables, and the second is the stronger:
+# ensure_index declines to *create* a directory but does regenerate an index
+# inside one that already exists, so a retarget writes even where it cannot
+# mkdir.
+case_issues_render_read_verb_writes_nothing() {
+  local coll work verb entries
+  local -a query
+  coll=$(empty_dir read_writes_nothing_coll)
+  write_issue "$coll" "20260101-a" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+labels: [auth]'
+  run_index "$coll"
+  work=$(empty_dir read_writes_nothing_work)
+  printf 'issues_path = "%s"\n' "$coll" > "$work/jimconf.toml"
+
+  for verb in list stats; do
+    for spec in "bogus17" "--nosuchflag|x" "--label" "--cols|num,bogus"; do
+      IFS='|' read -ra query <<< "$spec"
+      OUT="$(cd "$work" && bash "$SCRIPT_RENDER" "$verb" "${query[@]}" 2>/dev/null)"
+      RC=$?
+      assert_exit "$verb ${query[*]} refuses" 1 "$RC"
+      entries="$(ls -A "$work" | grep -v '^jimconf.toml$' | grep -c .)"
+      assert_eq "$verb ${query[*]} created nothing" "0" "$entries"
+    done
+  done
+
+  # A filter whose operand names an existing directory filters on that value
+  # instead of retargeting the read — and leaves no index behind in it. The
+  # distinction is the whole point: a read regenerates the index of a
+  # collection it was *told* to read, and must not write one into a directory
+  # it merely mistook for one.
+  mkdir -p "$work/auth"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list --label auth 2>/dev/null)"
+  RC=$?
+  assert_exit "the filtered read succeeds"        0 "$RC"
+  assert_eq   "no INDEX.md written into the operand" "0" \
+    "$(ls -A "$work/auth" | grep -c .)"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
