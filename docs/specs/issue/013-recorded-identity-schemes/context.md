@@ -42,13 +42,13 @@ Two frontmatter values look wrong and are not:
 
 ### What the remediation has closed
 
-Sixteen of the seventeen issues, in seven batches. First the two that blocked —
-`#365`, the bracket bypass past the recorded-identity charset gate, and `#360`,
-a path composed from an unvalidated slug — then the fail-open pair (`#358`,
-`#361`), then the documentation set (`#368`, `#364`, `#369`, `#370`), then the
-test-quality pair (`#362`, `#357`), then the contract declaration (`#367`), then
-the small-correctness batch (`#359`, `#356`, `#371`, `#366`), then the
-mechanical sweep (`#363`).
+**All seventeen**, in eight batches. First the two that blocked — `#365`, the
+bracket bypass past the recorded-identity charset gate, and `#360`, a path
+composed from an unvalidated slug — then the fail-open pair (`#358`, `#361`),
+the documentation set (`#368`, `#364`, `#369`, `#370`), the test-quality pair
+(`#362`, `#357`), the contract declaration (`#367`), the small-correctness batch
+(`#359`, `#356`, `#371`, `#366`), the mechanical sweep (`#363`), and the
+line-length convention (`#355`).
 
 Both blueprint violations are cleared. `/jim:verify issue` returned
 `identity-validated-before-record` and `id-gate-before-path` as `holds` under
@@ -56,17 +56,20 @@ judges reading the code without being told what changed, and the group ledger
 carries both records — `violated=1`, then `violated=0` — so the trajectory is
 visible rather than amended away.
 
-**One remains: `#355`, and it is waiting on a decision rather than on work** —
-whether `/jim:arch` wraps its generated prose on every refresh, which is a
-change to how generated output is authored. `remediation.md` § *What remains*
-states the three options and the argument that separates them. `#53` is open and
-critical, and predates this increment.
+`#53` is open and critical, and predates this increment.
 
-Six issues were filed *by* the remediation rather than fixed by it — `#372`,
+**`plan.md` still reads `status: approved`, and the reason it stayed that way is
+gone.** It was held because two critical issues from the review were open, and
+marking the plan complete would have contradicted its own review. Every issue
+that review raised is now closed. Closing the gate is the developer's call.
+
+Seven issues were filed *by* the remediation rather than fixed by it — `#372`,
 `#373`, `#374` out of the contract-declaration pass, `#377` and `#376` out of
-the census behind them, and `#375` out of the mechanical sweep. None is part of
-the seventeen. Three cannot be closed from this group at all, because the
-undeclared halves belong to `platform`'s and `sdlc`'s faces.
+the census behind them, `#375` out of the mechanical sweep, and
+`20260825-plugin-conventions-is-half-the-architecture-document` out of the
+line-length one. None is part of the seventeen. Three cannot be closed from this
+group at all, because the undeclared halves belong to `platform`'s and `sdlc`'s
+faces.
 
 `#377` is the root the other contract-graph issues are instances of: no
 `Requires` token on any face resolves to any `Provides` entry, because the two
@@ -76,24 +79,31 @@ decided by reading prose as a result. It is a larger piece of work than anything
 in the seventeen and was deliberately not folded into them.
 
 **Read `remediation.md` § *Where this analysis under-scoped the work* before
-touching any of them.** Every issue closed so far reached further than it named
-— sixteen for sixteen — and the section says how each extra site was found. Not
-one was found by re-reading the issue. That is the single most transferable
+touching any of them.** Every issue closed reached further than it named —
+seventeen for seventeen — and the section says how each extra site was found.
+Not one was found by re-reading the issue. That is the single most transferable
 thing this cycle produced, and it kept recurring after it had been written down.
 
-Two of those are worth knowing about before the rest. The sharpest is the one
-where the wrong census looked right: asked whether any other group face had
-`#367`'s gap, enumerating the *declared* contract edges answered "exactly one" —
-and could not have answered otherwise, since it searched only edges someone had
+Three of those are worth knowing before the rest. The sharpest is the one where
+the wrong census looked right: asked whether any other group face had `#367`'s
+gap, enumerating the *declared* contract edges answered "exactly one" — and
+could not have answered otherwise, since it searched only edges someone had
 already declared. Censusing the code's sync markers instead found three
 couplings where the issue named one. **Census the rule's mechanism, not the
 registry of things already recorded.**
 
-The other runs the opposite way. `#371` reported two quiet failure paths as one
+The second runs the opposite way. `#371` reported two quiet failure paths as one
 inconsistency; the second turned out to be deliberate, and "fixing" it would
 have discarded a developer's edits to make the code look symmetrical. A census
 can widen an issue and it can also cut one in half, and the second only happens
 if you check whether the thing that looks wrong is actually wrong.
+
+The third is that the fix for a symptom is not always the fix for the problem.
+`#355` reported line lengths and wrapping is what it asked for — but wrapping
+alone would have left `/jim:arch`'s own instruction to read the document *fully*
+exactly as unfollowable, because reflowing a file does not shrink it. What was
+left after the rewrap was a different problem wearing the same symptom, and it
+is filed rather than folded in.
 
 ---
 
@@ -277,11 +287,22 @@ declared.
 
 ## 5. Traps and environment
 
-**`ARCHITECTURE.md` has enormous lines.** The longest is ~23,000 characters; a
-four-line read costs ~16,000 tokens and a whole-file read is refused. Use
-`Read` with a small `limit`, or `grep -o` with bounded context — but note
-`grep -o` with wide context on this file has been OOM-killed; prefer `awk` or
-`sed -n` by line number. This is tracked as `#355`.
+**`ARCHITECTURE.md` is wrapped now, but still too big to read whole.** Its lines
+were up to ~23,000 characters and are wrapped at 80 as of `fb9844c`, so a
+bounded read finally costs what it asks for — a forty-line window at the worst
+paragraph went from 94 KB to 3 KB. The file itself is unchanged in size: 214 KB,
+and a whole-file read is still refused. Read it by `##` section, and by `###`
+subsection inside `Plugin Conventions`, which is half the document on its own.
+`grep -o` with wide context on this file has been OOM-killed in the past; prefer
+`awk` or `sed -n` by line number.
+
+**Reflowing markdown can silently open blocks.** A wrap that puts a word at the
+start of a line turns that word into markup if it is `#`, a lone `-`/`*`/`+`, a
+`1.`, a `>`, a `|`, or a fence. Prose *about* markdown is where this bites: a
+paragraph naming a fenced block produced a line starting with ``` and flipped
+fence parity for the rest of the file. The reflow used for `ARCHITECTURE.md`
+carries such a word onto the previous line instead, over budget, and eight lines
+sit 82–85 characters wide as a result.
 
 **Never hand-edit `ARCHITECTURE.md` or any blueprint.** Use `/jim:arch` and
 `/jim:blueprint`. A surgical edit bypasses the skill's grading, its
@@ -361,33 +382,24 @@ research and the previous one's. Do not re-raise it as new.
 
 ---
 
-## 6. If you are picking up what remains
+## 6. If you are picking up what is left
 
-Read `remediation.md` first — the analysis, the order, and § *Progress*, which
-records what each fix actually did rather than what its issue asked for.
+The seventeen are done. What remains is the seven this remediation *filed*, plus
+`#53`, plus the gate on `plan.md` that is the developer's to close.
 
-**`#355` is not a document fix, and it is the only one of the seventeen left.**
-It wants a decision about whether `/jim:arch` wraps its generated prose on every
-refresh — an authoring-convention change — plus a rewrap of a 204 KB file whose
-unit of oversize *is* the line. It was deliberately left out of the
-documentation pass so that decision would not be buried in a diff about
-something else, and it is still outstanding for the same reason: it is a
-decision, not a task.
+Read `remediation.md` first — the analysis, and § *Progress*, which records what
+each fix actually did rather than what its issue asked for.
 
-The argument for it is stronger than "consumers cannot read it": **`/jim:arch`
-cannot read the file it maintains.** Its own differential-update step instructs
-reading the existing document fully, and the whole-file read is refused at ~51k
-tokens, so the update that corrected the test-corpus roster ran off bounded
-`awk` reads instead. The skill that owns the document cannot follow its own
-process on it.
+**Take `#377` before the other contract-graph issues.** `#372`, `#373`, `#374`,
+`#376` and `#377` all come out of one root: the two halves of every group face
+are named in disjoint vocabularies, so no `Requires` token resolves to any
+`Provides` entry and three of the reconcile pass's six finding classes are
+decided by reading prose. Fixing an instance under the current naming adds an
+entry that only judgment can match, which is the state the instance was filed
+about. `#372`, `#374` and `#375` are closable from this group; `#373`, `#376`
+and `#377` need `platform`'s and `sdlc`'s faces.
 
-Everything else open here was filed *by* the remediation. `#372`, `#374` and
-`#375` are closable from this group. `#373`, `#376` and `#377` are not — they
-need `platform`'s and `sdlc`'s faces, and `#377` needs all four. Take `#377`
-first if you take any of them: the other two are instances of it, and fixing an
-instance under the current naming adds an entry that only judgment can match.
-
-Three methods from this cycle are worth reusing before they are forgotten.
+Four methods from this cycle are worth reusing before they are forgotten.
 
 **Mutation testing**, which audited the test-quality pair — the established
 technique, applied by hand because no generated implementation exists for shell.
@@ -419,6 +431,16 @@ is in the same file: the allocator's sweep carries its verbs in an array, and a
 verb that shipped without reaching the documentation went unnoticed by it. When
 the population cannot be derived, that is a finding about the script, not a
 reason to hand-write the list.
+
+**Verifying a mechanical transform structurally rather than by reading it.** The
+`ARCHITECTURE.md` rewrap was checked two ways before it was installed: both
+versions collapse to identical text under whitespace normalization, and every
+block-structure count matches across them — fences, headings, bullets, quotes,
+table rows, blank lines. The second check is the one that earned its keep. A
+wrapped line beginning with ``` flipped fence parity and silently reclassified
+several hundred lines as code, which a 2,700-line diff will not show you and the
+first check cannot see. Any transform over a structured document deserves a
+count of its structures on both sides.
 
 Whatever you take, the closing move is the same each time: a `## Resolution`
 note on the issue naming the commits and the case that pins the fix, and

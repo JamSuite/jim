@@ -5,14 +5,14 @@ the increment actually stands, what the open issues have in common, and the
 order I would fix them in. It is analysis, not a plan: nothing here has been
 approved, and the sequencing is a recommendation.
 
-> **Partly executed as of 2026-08-25.** Sixteen of the seventeen are closed —
-> the two that blocked, the fail-open pair, the documentation set bar one, the
-> test-quality pair, the contract declaration, the small-correctness batch, and
-> the mechanical sweep. Only `#355` is left, and it is waiting on a decision
-> rather than on work. § *Progress* at the end records what landed, where this
-> analysis under-scoped the work — nine more times after the first batch — and
-> what remains. Every issue closed so far reached further than it named, in one
-> case by finding that half of it was already right: sixteen for sixteen.
+> **Executed as of 2026-08-25.** All seventeen are closed — the two that
+> blocked, the fail-open pair, the documentation set, the test-quality pair, the
+> contract declaration, the small-correctness batch, the mechanical sweep, and
+> the line-length convention. § *Progress* at the end records what landed, where
+> this analysis under-scoped the work — ten more times after the first batch —
+> and what the remediation filed rather than fixed. Every issue closed reached
+> further than it named, in one case by finding that half of it was already
+> right: seventeen for seventeen.
 > The diagnostic sections below are left as they were written:
 > they describe the defects as found, and the issues' own resolution notes cite
 > them.
@@ -199,7 +199,7 @@ Verifying a claim before recording it is cheap; recording a wrong one is not.
 
 ## Progress — 2026-08-25
 
-Sixteen issues closed across fifty-eight commits (`2da3693`..`4eaa5c8`). The
+Seventeen issues closed across sixty-three commits (`2da3693`..`2c14c5a`). The
 suite is green at **1,575** across 16 files; twenty-eight cases were added or
 strengthened, each confirmed to fail against an implementation missing the
 behaviour it names.
@@ -330,6 +330,38 @@ documents five keys at once.
 Each direction was mutation-checked rather than assumed: dropping a table row,
 adding a row for a subcommand that does not exist, and dropping a key from
 README each turn the relevant case red.
+
+### The line-length convention
+
+| issue | | commits |
+| :--- | :--- | :--- |
+| `#355` unreadable line lengths | closed | `be1ac8a` (the rule), `fb9844c` (the rewrap), `2c14c5a` |
+
+Held back from the documentation pass on purpose, because it was a decision
+about generated output rather than a document fix, and it stayed last for the
+same reason: the other sixteen were work, and this one was a fork.
+
+`/jim:arch` now hard-wraps every paragraph and list item it writes at 80
+columns, and names what it must never wrap — table rows, fenced blocks, the
+Mermaid diagram, headings, and a URL longer than the budget. The
+differential-update step changed with it: it had instructed reading the existing
+document *fully*, which is precisely what the document had outgrown, so the
+skill could not follow its own process on the file it maintains. It reads by
+section now, which is worth doing only because wrapping makes a bounded read
+cost what was asked for.
+
+The rewrap was applied as a mechanical reflow and **verified as
+whitespace-only** rather than asserted: both versions collapse to identical text
+under whitespace normalization, and every block-structure count matches across
+them. A forty-line window at the worst paragraph fell from 94 KB to 3 KB.
+
+One hazard is worth carrying forward. Breaking a line before a word that opens a
+markdown block turns prose into a heading, a list item, or — in a document that
+discusses fenced code — a fence. The first attempt did exactly that: a paragraph
+naming ``` produced a line beginning with it, flipping fence parity for every
+line after and silently reclassifying hundreds. It was caught by the structural
+check rather than by reading the diff, which is the argument for running that
+check at all.
 
 ### Where this analysis under-scoped the work
 
@@ -462,6 +494,16 @@ filed as `#375` rather than bodged. And the evidence that it matters was sitting
 right there: `lift` had shipped without reaching `jimalloc.sh`'s own header
 roster, which enumerated the commands and stopped at `catch-up`. Nothing caught
 it, because nothing could.
+
+**`#355` was a decision, and the decision was not the whole fix.** It reported
+line lengths, and wrapping is what it asked for — but wrapping alone would have
+left the skill's own instruction to read the document *fully* just as
+unfollowable as before, since reflowing a file does not shrink it. The fix that
+landed changes both: the rule for what `/jim:arch` writes, and the step that
+says how it reads what is already there. And the remaining obstacle turned out
+to be a different problem wearing the same symptom — one section is half the
+document, which no formatting rule addresses, filed as
+`20260825-plugin-conventions-is-half-the-architecture-document`.
 the issue — and the documentation set repeated the pattern after that lesson had
 been named and written down, which is worth knowing about how much a written
 rule protects you. Two rules were added to `docs/notes/process-improvements.md`
@@ -469,26 +511,12 @@ from the first batch (`42c11be`, `b1a13fb`) — one on partial enumerations, one
 correcting what that file said to do with a case that pins a guard's boundary
 rather than the guard.
 
-### What remains
+### What the remediation left behind
 
-One of the seventeen: `#355`, the `ARCHITECTURE.md` line lengths.
+Nothing of the seventeen. `#53` is open and critical, and predates this
+increment.
 
-It is not waiting on work. It is waiting on a decision about whether `/jim:arch`
-wraps its generated prose on every refresh — an authoring-convention change to
-generated output — after which the 204 KB file needs one rewrap. The
-alternatives are a one-time rewrap that the next long paragraph undoes, or
-closing it and recording bounded reads as the working convention.
-
-The strongest argument for the convention change is the one this cycle produced:
-**`/jim:arch` cannot read the file it maintains.** Its own differential-update
-step instructs reading the existing document fully, and the whole-file read is
-refused at roughly 51k tokens, so the update that corrected the test-corpus
-roster ran off bounded `awk` reads instead. Every other option leaves the skill
-that owns the document unable to follow its own process on it.
-
-`#53` is open and critical, and predates this increment.
-
-Six issues were filed *by* this remediation rather than fixed by it, and none is
+Seven issues were filed *by* this remediation rather than fixed by it. None is
 part of the seventeen or this increment's debt:
 
 | issue | what it is | closable here? |
@@ -499,10 +527,22 @@ part of the seventeen or this increment's debt:
 | `#375` | the allocator's verb sweep is hand-listed, not derived | yes |
 | `#376` | the prov-token grammar crosses into `sdlc`, undeclared | no — two faces |
 | `#377` | no requires token resolves to any provides entry | no — all four faces |
+| plugin-conventions | one section is half the architecture document | yes |
 
-The last is the root the contract-graph three are instances of: the two halves
-of every face are written in disjoint vocabularies, so `leak`, `dead-surface`
-and `breaking` are decided by reading prose rather than by a join. Fixing it is
-a naming pass across four group blueprints plus a mechanical check, which is a
-larger piece of work than anything in the seventeen and deliberately not folded
-into them.
+The last is provisional until the coordination point is reachable. `#377` is the
+root the other contract-graph issues are instances of: the two halves of every
+face are named in disjoint vocabularies — the artifact on one side, the
+capability on the other — so `leak`, `dead-surface` and `breaking` are decided
+by reading prose rather than by a join. Fixing it is a naming pass across four
+group blueprints plus a mechanical check, which is a larger piece of work than
+anything in the seventeen and was deliberately not folded into them.
+
+### The gate that is left
+
+`plan.md` still reads `status: approved`. It stayed that way because two
+critical issues from the review were open and unfixed, and marking it complete
+would have made the plan's status contradict its own review. That reason is
+gone: every issue the review raised is closed, both blueprint violations hold
+again under judges reading the code cold, and the suite is green.
+
+Closing that gate is the developer's call, not this document's.
