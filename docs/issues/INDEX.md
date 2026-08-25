@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 129
-- Closed: 250
+- Open: 134
+- Closed: 251
 
 ## Issues
 
@@ -24,7 +24,7 @@
 - `20260626-add-frontmatter-body-count-consistency-check-to-jim-review-valid` — Add frontmatter-body count consistency check to /jim:review validation · status: closed · num: 17 · priority: low · created: 2026-06-26T06:43:41Z · labels: [review] · origin: docs/specs/sdlc/015-review-depth/spec.md
 - `20260626-add-spec-column-to-review-template-duration-and-interruption-row` — Add spec column to review-template duration and interruption rows · status: closed · num: 16 · priority: low · created: 2026-06-26T06:43:40Z · labels: [review, template] · origin: docs/specs/sdlc/015-review-depth/spec.md
 - `20260626-instrument-jim-review-as-a-ledger-stage-and-preserve-verdict-his` — Instrument /jim:review as a ledger stage and preserve verdict history · status: closed · num: 15 · priority: medium · created: 2026-06-26T06:43:40Z · labels: [review, ledger] · origin: docs/specs/sdlc/015-review-depth/spec.md
-- `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg` — Read-verb list creates a stray directory from a non-filter arg · status: open · num: 18 · priority: low · created: 2026-06-27T05:13:33Z · labels: [issue, cli] · origin: conversation
+- `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg` — Read-verb list creates a stray directory from a non-filter arg · status: closed · num: 18 · priority: low · created: 2026-06-27T05:13:33Z · labels: [issue, cli] · origin: conversation
 - `20260630-add-the-cross-group-contract-graph-and-blast-radius` — Add the cross-group contract graph and blast-radius · status: closed · num: 21 · priority: medium · created: 2026-06-30T20:35:19Z · labels: [000-blueprint, cross-group, architecture] · origin: docs/specs/blueprint/001-blueprint-spec/spec.md
 - `20260630-build-intelligence-for-context-aware-spec-group-definition` — Build intelligence for context-aware spec-group definition · status: closed · num: 19 · priority: high · created: 2026-06-30T11:07:07Z · labels: [spec-groups, context-boundary, architecture, 000-blueprint] · origin: docs/brainstorms/20260630-000-current-spec.md
 - `20260630-build-the-invariant-verification-engine` — Build the invariant verification engine · status: closed · num: 22 · priority: medium · created: 2026-06-30T20:35:19Z · labels: [000-blueprint, verification] · origin: docs/specs/blueprint/001-blueprint-spec/spec.md
@@ -379,12 +379,18 @@
 - `20260823-user-facing-docs-omit-the-recorded-identity-feature` — User-facing docs omit the recorded-identity feature · status: closed · num: 364 · priority: high · created: 2026-08-23T23:21:47Z · labels: [docs, readability] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-values-carrying-angle-brackets-bypass-the-recorded-identity-char` — Values carrying angle brackets bypass the recorded-identity charset gate · status: closed · num: 365 · priority: critical · created: 2026-08-23T23:37:25Z · labels: [issue, identity, security, regression] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260825-allocator-verb-sweep-is-hand-listed-not-derived` — Allocator verb sweep is hand-listed, not derived · status: open · num: 375 · priority: medium · created: 2026-08-25T07:15:45Z · labels: [testing, docs, scripts] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
+- `20260825-amend-vision-md-team-coordination-non-goal` — Amend VISION.md team-coordination non-goal · status: open · num: 380 · priority: medium · created: 2026-08-25T10:50:59Z · labels: [vision, strategy] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md
 - `20260825-blueprint-generate-mode-has-no-commit-verb` — Blueprint generate mode has no commit verb · status: open · num: 379 · priority: medium · created: 2026-08-25T08:31:09Z · labels: [blueprint, ledger, skills] · origin: skills/blueprint/SKILL.md
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` — Declare platform's mirrored branch-name gate or sever the mirror · status: open · num: 373 · priority: medium · created: 2026-08-25T05:21:53Z · labels: [000-blueprint, contract-graph, leak] · origin: BLUEPRINT.md
 - `20260825-faces-verb-skips-bold-first-provides-entries` — faces verb skips bold-first Provides entries · status: open · num: 374 · priority: medium · created: 2026-08-25T05:21:54Z · labels: [verify, 000-blueprint, scripts] · origin: docs/specs/issue/000-blueprint/spec.md
+- `20260825-graph-edge-readers-narrow-slugs-below-what-is-valid-id-allows` — Graph-edge readers narrow slugs below what is_valid_id allows · status: open · num: 381 · priority: medium · created: 2026-08-25T11:06:36Z · labels: [issues-system, read-views, latent] · origin: docs/specs/issue/014-read-view-filter-composition/research.md
+- `20260825-negation-in-read-view-filters` — Negation in read-view filters · status: open · num: 382 · priority: low · created: 2026-08-25T10:51:05Z · labels: [issues-system, read-views] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md
 - `20260825-plugin-conventions-is-half-the-architecture-document` — Plugin Conventions is half the architecture document · status: open · num: 378 · priority: medium · created: 2026-08-25T07:53:40Z · labels: [docs, arch] · origin: ARCHITECTURE.md
 - `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` — Provisional-token grammar crosses into sdlc undeclared · status: open · num: 376 · priority: medium · created: 2026-08-25T06:40:40Z · labels: [000-blueprint, contract-graph, scripts] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` — Requires tokens resolve to no Provides entry on any face · status: open · num: 377 · priority: high · created: 2026-08-25T06:40:35Z · labels: [000-blueprint, contract-graph, verify] · origin: BLUEPRINT.md
+- `20260825-restore-origin-grouping-in-the-list-view` — Restore origin grouping in the list view · status: open · num: 383 · priority: medium · created: 2026-08-25T10:50:58Z · labels: [issues-system, read-views] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md
+- `20260825-roadmap-md-has-not-been-refreshed-since-2026-03-16` — ROADMAP.md has not been refreshed since 2026-03-16 · status: open · num: 384 · priority: low · created: 2026-08-25T10:51:06Z · labels: [docs, strategy] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md
+- `20260825-sort-and-group-read-views-by-the-newly-indexed-fields` — Sort and group read views by the newly indexed fields · status: open · num: 385 · priority: low · created: 2026-08-25T10:51:05Z · labels: [issues-system, read-views] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md
 - `20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test` — Timestamp-shape sync marker in jimfile.sh is compared by no test · status: open · num: 372 · priority: medium · created: 2026-08-25T05:00:25Z · labels: [test, scripts, platform] · origin: docs/specs/issue/000-blueprint/spec.md
 
 ## Graph
