@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 129
-- Closed: 243
+- Open: 128
+- Closed: 244
 
 ## Issues
 
@@ -368,7 +368,7 @@
 - `20260823-identity-argument-parser-accepts-contradictory-and-malformed-inv` — identity argument parser accepts contradictory and malformed invocations · status: closed · num: 358 · priority: high · created: 2026-08-23T23:21:46Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-domain-with-a-leading-dot-silently-no-ops` — identity_domain with a leading dot silently no-ops · status: open · num: 359 · priority: low · created: 2026-08-23T23:21:51Z · labels: [issue, conf] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-rewrite-composes-a-path-from-an-unvalidated-slug` — Identity rewrite composes a path from an unvalidated slug · status: closed · num: 360 · priority: critical · created: 2026-08-23T23:37:26Z · labels: [issue, migration, correctness] · origin: docs/specs/issue/000-blueprint/spec.md
-- `20260823-issue-face-does-not-declare-the-validator-lockstep-contract` — issue face does not declare the validator-lockstep contract · status: active · num: 367 · priority: medium · created: 2026-08-23T23:45:32Z · labels: [issue, blueprint, contract] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
+- `20260823-issue-face-does-not-declare-the-validator-lockstep-contract` — issue face does not declare the validator-lockstep contract · status: closed · num: 367 · priority: medium · created: 2026-08-23T23:45:32Z · labels: [issue, blueprint, contract] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-issue-skill-instructs-two-scripts-its-tool-grant-does-not-permit` — Issue skill instructs two scripts its tool grant does not permit · status: closed · num: 368 · priority: critical · created: 2026-08-23T23:45:27Z · labels: [issue, sdlc, tooling] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-mismatch-surface-reports-unnormalizable-identities-as-conforming` — Mismatch surface reports unnormalizable identities as conforming · status: closed · num: 361 · priority: high · created: 2026-08-23T23:21:45Z · labels: [issue, index, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-render-sh-help-tells-users-to-close-an-issue-by-hand` — render.sh help tells users to close an issue by hand · status: closed · num: 369 · priority: high · created: 2026-08-23T23:45:28Z · labels: [issue, docs, correctness] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
