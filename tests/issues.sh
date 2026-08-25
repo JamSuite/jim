@@ -8321,6 +8321,112 @@ case_issues_render_list_hide_closed_discloses() {
     "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
 }
 
+# ─── Section: render.sh — statistics under a filter ──────────────────────────
+
+# stats_fixture <dir> — records spanning two labels, both lifecycle ends, and
+# one blocking edge out of a labelled record.
+stats_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+priority: high
+created: 2026-01-01
+type: issue
+labels: [auth]
+origin: "docs/specs/issue/011-issue-placement/spec.md"
+relations:
+  blocks: [20260104-delta]'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: closed
+num: 2
+priority: low
+created: 2026-01-02
+type: issue
+outcome: done
+labels: [auth]
+origin: "docs/specs/issue/011-issue-placement/plan.md"'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: open
+num: 3
+priority: medium
+created: 2026-01-03
+type: issue
+labels: [archive]
+origin: "docs/brainstorms/x.md"
+relations:
+  blocks: [20260104-delta]'
+  write_issue "$dir" "20260104-delta" 'title: "Delta"
+status: open
+num: 4
+priority: low
+created: 2026-01-04
+type: issue
+labels: [archive]
+relations:
+  depends-on: [20260101-alpha, 20260103-charlie]'
+}
+
+# AC: the statistics view accepts the same filters as the list view under the
+# same rules, discloses what it was scoped to, and never hides finished issues
+case_issues_render_stats_scoped_by_filter() {
+  local dir
+  dir=$(empty_dir render_stats_scoped)
+  stats_fixture "$dir"
+  run_index "$dir"
+
+  # Unfiltered, it covers everything and says nothing about scope.
+  run_render stats "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "whole collection" 'Open: 3 · Closed: 1' "$OUT"
+  assert_eq    "no scope line" "0" "$(printf '%s' "$OUT" | grep -c 'scope:')"
+
+  # Filtered, the counts cover the matching records only — and a finished one
+  # is counted rather than hidden: a census reporting a closed count cannot
+  # also conceal one.
+  run_render stats --label auth "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "scoped counts"  'Open: 1 · Closed: 1' "$OUT"
+  assert_match "and it says so" 'scope: label=auth'   "$OUT"
+
+  # Clusters are scoped too. The comparison is against everything above the
+  # integrity warnings: those describe the collection's health rather than the
+  # queried subset, so scoping them would hide real problems.
+  local body
+  body="$(printf '%s\n' "$OUT" | awk '/^== Integrity Warnings ==$/ { exit } { print }')"
+  assert_eq "the other label is gone" "0" "$(printf '%s' "$body" | grep -c 'archive')"
+  assert_match "the matching origin stays" 'docs/specs/issue/011-issue-placement/spec\.md' "$body"
+  assert_eq "the non-matching origin is gone" "0" \
+    "$(printf '%s' "$body" | grep -c 'docs/brainstorms')"
+
+  # So is the blocking rollup: Alpha blocks Delta and matches; Charlie blocks
+  # Delta and does not.
+  assert_match "the matching blocker"  '20260101-alpha'   "$body"
+  assert_eq "the non-matching blocker is gone" "0" \
+    "$(printf '%s' "$body" | grep -c '20260103-charlie')"
+
+  # The warnings themselves stay whole — a scoped census still reports what is
+  # wrong with the collection it is reading.
+  assert_match "warnings are not scoped" '20260103-charlie' "$OUT"
+
+  # Several axes conjoin, exactly as in the list view.
+  run_render stats --spec issue/011 --priority high "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "one record"   'Open: 1 · Closed: 0' "$OUT"
+  assert_match "scope names both axes" 'priority=high' "$OUT"
+  assert_match "and the other"         'spec=issue/011' "$OUT"
+
+  # A lifecycle filter narrows the census like any other axis.
+  run_render stats closed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "only the finished one" 'Open: 0 · Closed: 1' "$OUT"
+
+  # A refusal here is the list view's refusal, in the same order.
+  run_render stats bogus17 "$dir"
+  assert_exit  "refused" 1 "$RC"
+  assert_match "names the token" 'unrecognized filter token: bogus17' "$ERR"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

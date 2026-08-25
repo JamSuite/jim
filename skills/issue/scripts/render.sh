@@ -474,36 +474,52 @@ named_dir_exists() {
 
 cmd_stats() {
   local dir
-  named_dir_exists "${1:-}" || return 1
-  dir="$(resolve_dir "${1:-}")"
+  # The same grammar, in the same order, as the list view: every argument is
+  # classified before the collection binds, so a refusal here touches nothing
+  # either.
+  parse_filters "$@"  || return 1
+  bind_collection     || return 1
+  resolve_person_axes || return 1
+  dir="$(resolve_dir "$FILTER_DIR")"
   if [[ -z "$dir" ]]; then
     echo "Issue Collection — (unconfigured)"
     return 0
   fi
   ensure_index "$dir"
   local index_file="$dir/$INDEX_FILENAME"
+  local specs_root
+  specs_root="$(bash "$JIMCONF" get specs 2>/dev/null)"
+  : "${specs_root:=docs/specs}"
   printf 'Issue Collection — %s\n\n' "$dir"
   if [[ ! -f "$index_file" ]]; then
     printf '  Open: 0 · Closed: 0\n\n_No INDEX.md present._\n'
     return 0
   fi
 
-  local open_count closed_count
-  open_count=$(grep -E '^- Open: [0-9]+$'   "$index_file" | head -n 1 | sed -E 's/^- Open: //')
-  closed_count=$(grep -E '^- Closed: [0-9]+$' "$index_file" | head -n 1 | sed -E 's/^- Closed: //')
-  : "${open_count:=0}"; : "${closed_count:=0}"
-  printf '  Open: %s · Closed: %s\n\n' "$open_count" "$closed_count"
-
-  printf '== Clusters ==\n\n'
-  declare -A origin_count label_count priority_count
+  # Clusters, counts and the blocking rollup all describe the same set of
+  # records, so the set is settled once. A census never hides finished
+  # records: one that reports a closed count cannot also conceal one.
+  declare -A origin_count label_count priority_count matching
   origin_count[__s__]=0;   unset 'origin_count[__s__]'
   label_count[__s__]=0;    unset 'label_count[__s__]'
   priority_count[__s__]=0; unset 'priority_count[__s__]'
+  matching[__s__]=0;       unset 'matching[__s__]'
+  local open_count=0 closed_count=0
   local slug num status prio created labels title origin
   local type filed_by claimed_by outcome
+  if [[ -n "${FILTER_AXIS[blocked]:-}" || -n "${FILTER_AXIS[epic]:-}" ]]; then
+    build_derived_axes "$index_file"
+  fi
   while IFS=$'\t' read -r slug num status prio created labels title origin \
       type filed_by claimed_by outcome; do
     [[ -z "$slug" ]] && continue
+    row_matches || continue
+    matching[$slug]=1
+    if [[ "$status" == "closed" ]]; then
+      closed_count=$(( closed_count + 1 ))
+    else
+      open_count=$(( open_count + 1 ))
+    fi
     [[ "$origin" == "-" || -z "$origin" ]] && origin="(unattributed)"
     origin_count[$origin]=$(( ${origin_count[$origin]:-0} + 1 ))
     if [[ "$prio" != "-" && -n "$prio" ]]; then
@@ -519,6 +535,10 @@ cmd_stats() {
       done
     fi
   done < <(read_issue_rows "$index_file")
+
+  scope_line
+  printf '  Open: %s · Closed: %s\n\n' "$open_count" "$closed_count"
+  printf '== Clusters ==\n\n'
 
   printf '  By priority\n'
   if (( ${#priority_count[@]} == 0 )); then
@@ -557,6 +577,7 @@ cmd_stats() {
   local edge_src edge_tgt
   while IFS=$'\t' read -r edge_src edge_tgt; do
     [[ -n "$edge_src" ]] || continue
+    [[ -n "${matching[$edge_src]:-}" ]] || continue
     blocks_out[$edge_src]=$(( ${blocks_out[$edge_src]:-0} + 1 ))
     blocks_targets[$edge_src]="${blocks_targets[$edge_src]:-} $edge_tgt"
   done < <(read_graph_edges "$index_file" blocks)
@@ -765,6 +786,39 @@ disclose_hidden_closed() {
   printf '  (closed hidden — add `closed` to include them)\n'
 }
 
+# scope_line — what a filtered run was scoped to.
+#   A rollup is read as a statement about the collection unless it says
+#   otherwise, so a scoped one has to name its scope or it reports something
+#   true about part of the collection as though it were true of all of it.
+scope_line() {
+  (( ${#FILTER_AXIS[@]} > 0 )) || return 0
+  local axis parts="" alt vals
+  for axis in $(printf '%s\n' "${!FILTER_AXIS[@]}" | sort); do
+    vals=""
+    while IFS= read -r alt; do vals="${vals:+$vals,}$alt"; done <<< "${FILTER_AXIS[$axis]}"
+    parts="${parts:+$parts · }$axis=$vals"
+  done
+  printf '  scope: %s\n' "$parts"
+}
+
+# row_matches — every axis, applied to the row variables already in scope.
+#   The two read verbs ask the same question of a row, so they ask it in one
+#   place: a second copy is a second place for the combining rules to drift.
+row_matches() {
+  axis_matches status   "$status" || return 1
+  axis_matches priority "$prio"   || return 1
+  axis_matches type     "$type"   || return 1
+  label_matches         "$labels" || return 1
+  person_matches filed-by   "$filed_by"   || return 1
+  person_matches claimed-by "$claimed_by" || return 1
+  prefix_axis origin "$origin" ""            || return 1
+  prefix_axis spec   "$origin" "$specs_root" || return 1
+  held_matches    "$claimed_by" || return 1
+  blocked_matches "$slug"       || return 1
+  epic_matches    "$slug"       || return 1
+  return 0
+}
+
 # epic_matches <slug> — is this record a member of a named umbrella?
 #   Membership is recorded on the member's side only, so the edge points from
 #   the member to the umbrella and the umbrella itself never satisfies it.
@@ -945,17 +999,7 @@ cmd_list() {
     [[ -z "$slug" ]] && continue
     (( seen_rows++ ))
     [[ "$type" != "-" ]] && saw_type=1
-    axis_matches status   "$status" || continue
-    axis_matches priority "$prio"   || continue
-    axis_matches type     "$type"   || continue
-    label_matches         "$labels" || continue
-    person_matches filed-by   "$filed_by"   || continue
-    person_matches claimed-by "$claimed_by" || continue
-    prefix_axis origin "$origin" ""            || continue
-    prefix_axis spec   "$origin" "$specs_root" || continue
-    held_matches    "$claimed_by" || continue
-    blocked_matches "$slug"       || continue
-    epic_matches    "$slug"       || continue
+    row_matches || continue
     # Last, so that only a record the query would otherwise have matched counts
     # as hidden. A finished record excluded on some other axis was not hidden by
     # this default and disclosing it would report a narrowing that never happened.
