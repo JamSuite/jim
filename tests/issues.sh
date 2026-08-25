@@ -7185,6 +7185,55 @@ outcome: done'
   assert_match "outcome in row"    'outcome: done'                 "$row"
 }
 
+# AC: an index entry omits a field the record does not carry, so an unheld
+# issue and one that has never been finished add nothing to the row
+case_issues_index_row_omits_absent() {
+  local dir row
+  dir=$(empty_dir index_row_omits)
+  write_issue "$dir" "20260101-bare" 'title: "Bare"
+status: open
+num: 3
+type: issue
+filed-by: filer@example.test
+claimed-by: ""
+outcome: ""'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  row="$(grep -F '`20260101-bare`' "$dir/INDEX.md" | head -n1)"
+  assert_match "carried fields present" 'type: issue'   "$row"
+  assert_eq "no holder key"  "0" "$(printf '%s' "$row" | grep -c 'claimed-by')"
+  assert_eq "no outcome key" "0" "$(printf '%s' "$row" | grep -c 'outcome')"
+}
+
+# AC: a record's own field values can never corrupt the structure of the index
+# that carries them — the row separator and control characters are stripped
+case_issues_index_row_new_scalars_are_sanitized() {
+  local dir row
+  dir=$(empty_dir index_row_sanitized)
+  write_issue "$dir" "20260101-evil" "title: \"Evil\"
+status: open
+num: 4
+type: \"issue · status: closed\"
+filed-by: \"a$(printf '\033')[31mb@example.test\"
+outcome: \"done · num: 999\""
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  row="$(grep -F '`20260101-evil`' "$dir/INDEX.md" | head -n1)"
+  # Five separators — status, num, type, filed-by, outcome. A value carrying
+  # one of its own would raise the count and split into a field the record
+  # never declared. The forged text survives as inert characters inside the
+  # value it was written in, which is what the sanitizer is for: it deletes
+  # the separator rather than the words around it.
+  assert_eq "no forged separator" "5" "$(printf '%s' "$row" | grep -o ' · ' | grep -c .)"
+  assert_eq "no control byte"     "0" "$(printf '%s' "$row" | grep -c $'\033')"
+  # And the reader agrees: `status: closed` inside the type value is text,
+  # not a field, so the record is still open to every view that reads it.
+  run_render list open "$dir"
+  assert_match "reads as open" 'Evil' "$OUT"
+  run_render list closed "$dir"
+  assert_eq "does not read as closed" "0" "$(printf '%s' "$OUT" | grep -c 'Evil')"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
