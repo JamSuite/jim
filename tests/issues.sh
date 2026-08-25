@@ -7310,6 +7310,42 @@ outcome: ""'
     '^ +docs/specs/x/spec\.md +1$' "$OUT"
 }
 
+# ─── Section: render.sh — the unified Graph-edge parse ───────────────────────
+
+# AC: the graph readers match the ids the collection actually accepts. Both
+# copies matched [a-z0-9-]+ while is_valid_id allows uppercase and dots, so a
+# project on a `project` id prefix had every prefixed edge silently dropped
+# from the blocking rollup and the insights graph alike.
+case_issues_render_graph_edges_match_id_charset() {
+  local dir
+  dir=$(empty_dir render_graph_charset)
+  write_issue "$dir" "JIM-0001.a" 'title: "Mega"
+status: open
+relations:
+  blocks: [JIM-0002.b]
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "JIM-0002.b" 'title: "Target"
+status: open
+relations:
+  blocks: []
+  depends-on: [JIM-0001.a]
+  related-to: []
+  duplicates: []'
+  run_index "$dir"
+  assert_exit "index rc" 0 "$RC"
+  run_render stats "$dir"
+  assert_exit "stats rc" 0 "$RC"
+  assert_match "blocking rollup sees the edge" 'JIM-0001\.a' "$OUT"
+  assert_match "and names its target"          'JIM-0002\.b' "$OUT"
+  run_render insights-graph "$dir"
+  assert_exit "insights rc" 0 "$RC"
+  assert_match "insights graph sees it too" '^BLOCKING 1 JIM-0001\.a$' "$OUT"
+  assert_eq "neither endpoint reads as isolated" "0" \
+    "$(printf '%s' "$OUT" | grep -c '^ISOLATED')"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

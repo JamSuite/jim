@@ -206,6 +206,42 @@ read_issue_rows() {
   ' "$1"
 }
 
+# read_graph_edges <index_file> <type>
+#   Emit "<source>\t<target>" for every edge of one relation type in the
+#   index's Graph section.
+#
+#   The slug pattern is is_valid_id's character class and only that. That
+#   function's emptiness check, its 128-character cap and its explicit `..`
+#   rejection are applied before its regex and are not reproduced here, so this
+#   is the laxer of the two. It is the right laxness for this path: an edge
+#   slug is only ever compared against a row slug — never composed into a path
+#   and never opened — so the gate those extra rules exist for is not in play.
+#   What matching the class buys is agreement with the ids the collection
+#   accepts. A narrower pattern drops every edge touching an uppercase or
+#   dotted id and says nothing about it.
+#
+#   The awk program is a literal and takes no value from the caller; the type
+#   is compared in shell over what it emits.
+read_graph_edges() {
+  local index_file="$1" want="$2" etype esrc etgt
+  while IFS=$'\t' read -r etype esrc etgt; do
+    [[ "$etype" == "$want" ]] || continue
+    printf '%s\t%s\n' "$esrc" "$etgt"
+  done < <(awk '
+    /^## Graph$/ { insec = 1; next }
+    /^## / && insec { insec = 0 }
+    insec && /^- `[A-Za-z0-9][A-Za-z0-9._-]*` --[a-z][a-z-]*--> `[A-Za-z0-9][A-Za-z0-9._-]*`$/ {
+      line = $0
+      sub(/^- `/, "", line)
+      src = line; sub(/`.*$/, "", src)
+      rest = line; sub(/^[^`]*` --/, "", rest)
+      etype = rest; sub(/-->.*$/, "", etype)
+      tgt = rest; sub(/^[^>]*> `/, "", tgt); sub(/`$/, "", tgt)
+      printf "%s\t%s\t%s\n", etype, src, tgt
+    }
+  ' "$index_file")
+}
+
 # ─── Section: help ───────────────────────────────────────────────────────────
 
 cmd_help() {
@@ -331,17 +367,12 @@ cmd_stats() {
   declare -A blocks_out blocks_targets
   blocks_out[__s__]=0;     unset 'blocks_out[__s__]'
   blocks_targets[__s__]=""; unset 'blocks_targets[__s__]'
-  local row edge_src edge_tgt
-  while IFS= read -r row; do
-    [[ "$row" =~ ^-\ \`([a-z0-9-]+)\`\ --blocks--\>\ \`([a-z0-9-]+)\`$ ]] || continue
-    edge_src="${BASH_REMATCH[1]}"; edge_tgt="${BASH_REMATCH[2]}"
+  local edge_src edge_tgt
+  while IFS=$'\t' read -r edge_src edge_tgt; do
+    [[ -n "$edge_src" ]] || continue
     blocks_out[$edge_src]=$(( ${blocks_out[$edge_src]:-0} + 1 ))
     blocks_targets[$edge_src]="${blocks_targets[$edge_src]:-} $edge_tgt"
-  done < <(awk '
-    /^## Graph$/ { insec=1; next }
-    /^## / && insec { insec=0 }
-    insec && /^- `/ { print }
-  ' "$index_file")
+  done < <(read_graph_edges "$index_file" blocks)
 
   if (( ${#blocks_out[@]} == 0 )); then
     printf '  _No blocking edges._\n\n'
@@ -714,17 +745,16 @@ cmd_insights_graph() {
   # blocks / depends-on edges → endpoints (non-isolated) + blocking out-degree.
   # related-to and duplicates are ordering-neutral and ignored (spec 020 AC5).
   declare -A related blocks_out
-  local row etype esrc etgt
-  while IFS= read -r row; do
-    [[ "$row" =~ ^-\ \`([a-z0-9-]+)\`\ --(blocks|depends-on)--\>\ \`([a-z0-9-]+)\`$ ]] || continue
-    esrc="${BASH_REMATCH[1]}"; etype="${BASH_REMATCH[2]}"; etgt="${BASH_REMATCH[3]}"
+  local esrc etgt
+  while IFS=$'\t' read -r esrc etgt; do
+    [[ -n "$esrc" ]] || continue
     related[$esrc]=1; related[$etgt]=1
-    [[ "$etype" == "blocks" ]] && blocks_out[$esrc]=$(( ${blocks_out[$esrc]:-0} + 1 ))
-  done < <(awk '
-    /^## Graph$/ { insec=1; next }
-    /^## / && insec { insec=0 }
-    insec && /^- `/ { print }
-  ' "$index_file")
+    blocks_out[$esrc]=$(( ${blocks_out[$esrc]:-0} + 1 ))
+  done < <(read_graph_edges "$index_file" blocks)
+  while IFS=$'\t' read -r esrc etgt; do
+    [[ -n "$esrc" ]] || continue
+    related[$esrc]=1; related[$etgt]=1
+  done < <(read_graph_edges "$index_file" depends-on)
 
   local s
   for s in "${!is_open[@]}"; do
