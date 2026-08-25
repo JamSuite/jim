@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 130
+- Open: 132
 - Closed: 244
 
 ## Issues
@@ -380,6 +380,8 @@
 - `20260823-values-carrying-angle-brackets-bypass-the-recorded-identity-char` — Values carrying angle brackets bypass the recorded-identity charset gate · status: closed · num: 365 · priority: critical · created: 2026-08-23T23:37:25Z · labels: [issue, identity, security, regression] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` — Declare platform's mirrored branch-name gate or sever the mirror · status: open · num: 373 · priority: medium · created: 2026-08-25T05:21:53Z · labels: [000-blueprint, contract-graph, leak] · origin: BLUEPRINT.md
 - `20260825-faces-verb-skips-bold-first-provides-entries` — faces verb skips bold-first Provides entries · status: open · num: 374 · priority: medium · created: 2026-08-25T05:21:54Z · labels: [verify, 000-blueprint, scripts] · origin: docs/specs/issue/000-blueprint/spec.md
+- `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` — Provisional-token grammar crosses into sdlc undeclared · status: open · num: P-20260825-provisional-token-grammar-crosses-into-sdlc-undeclared · priority: medium · created: 2026-08-25T06:40:40Z · labels: [000-blueprint, contract-graph, scripts] · origin: docs/specs/platform/000-blueprint/spec.md
+- `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` — Requires tokens resolve to no Provides entry on any face · status: open · num: P-20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face · priority: high · created: 2026-08-25T06:40:35Z · labels: [000-blueprint, contract-graph, verify] · origin: BLUEPRINT.md
 - `20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test` — Timestamp-shape sync marker in jimfile.sh is compared by no test · status: open · num: 372 · priority: medium · created: 2026-08-25T05:00:25Z · labels: [test, scripts, platform] · origin: docs/specs/issue/000-blueprint/spec.md
 
 ## Graph
@@ -511,6 +513,14 @@
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` --related-to--> `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn`
 - `20260812-jimconf-value-form-refusal-covers-one-of-three-read-doors` --related-to--> `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg`
 - `20260817-unify-the-two-issue-frontmatter-parsers` --related-to--> `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and`
+- `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --related-to--> `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared`
+- `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
+- `20260825-faces-verb-skips-bold-first-provides-entries` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
+- `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
+- `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
+- `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` --related-to--> `20260825-faces-verb-skips-bold-first-provides-entries`
+- `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
+- `20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
 
 ## Integrity Warnings
 

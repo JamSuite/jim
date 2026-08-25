@@ -16,11 +16,9 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-25T05:21:53Z
-updated: 2026-08-25T05:21:53Z
+updated: 2026-08-25T06:41:36Z
 origin: "BLUEPRINT.md"
 ---
-
-## Description
 
 ## Description
 
@@ -71,3 +69,34 @@ Note the deliberate non-mirror nearby: the `write-contained` rule in the same
 file is the tighter of two related rules and its own marker says so. Whatever is
 done here should leave that asymmetry stated rather than blurring the two into
 one convention.
+
+## Census (2026-08-25)
+
+This is one of **three** undeclared halves, not the only one. Censusing the
+byte-identity markers rather than the declared edges finds four families:
+
+| family | groups | declared |
+| :--- | :--- | :--- |
+| `is_valid_id` | platform ↔ issue | both faces |
+| `is_prov_token` | platform ↔ sdlc | neither face |
+| `ts-shape` | issue ↔ platform | consumer only |
+| `valid-branch` | issue ↔ platform | consumer only — this issue |
+
+`ts-shape` sits in the same position as this one: the `issue` face records the
+reliance inside its `platform.jimfile-cli` entry, and `platform`'s face states
+no byte-identity guarantee for the timestamp grammar it produces. Because that
+reliance is folded into an entry whose token *does* exist, it derives no leak —
+the gap is invisible to the pass rather than reported by it. Declaring the
+branch shape without declaring the timestamp shape leaves the quieter of the
+two open.
+
+The third is a boundary neither face mentions at all:
+[[20260825-provisional-token-grammar-crosses-into-sdlc-undeclared]].
+
+One thing the leak classification does not mean: this edge was reported while
+fourteen others were not, and that is judgment rather than measurement — no
+requires token on any face resolves to a provides entry today
+([[20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face]]).
+Declaring the surface here is still right, and the name it is declared under
+should be the one the `issue` face already requires, so the entry resolves once
+the join exists.

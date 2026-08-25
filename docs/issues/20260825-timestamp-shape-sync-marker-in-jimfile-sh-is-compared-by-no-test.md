@@ -16,11 +16,9 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-25T05:00:25Z
-updated: 2026-08-25T05:00:25Z
+updated: 2026-08-25T06:41:44Z
 origin: "docs/specs/issue/000-blueprint/spec.md"
 ---
-
-## Description
 
 ## Description
 
@@ -64,3 +62,24 @@ case is the alternative. Either way the case name should stop saying three.
 
 Surfaced while regenerating the `issue` group's blueprint, which records the
 byte-identity rule these markers implement as an invariant.
+
+## Census (2026-08-25)
+
+A sweep of every byte-identity marker confirms this instance *is* the rule on
+the test dimension. Four families exist; three are compared in full:
+
+| family | copies | compared |
+| :--- | ---: | :--- |
+| `is_valid_id` | 3 | all three (`tests/jimfile.sh`) |
+| `is_prov_token` | 3 | all three (`tests/jimfile.sh`) |
+| `valid-branch` | 2 | both (`tests/place.sh`) |
+| `ts-shape` | 4 | three of four — this issue |
+
+`write-contained` (`place.sh:868`) is a fifth marker with nothing to compare
+against: it records a deliberate asymmetry rather than a copy, which is what a
+marker should look like when the difference is intended.
+
+So the fourth `ts-shape` copy is the only guard in the project carrying a sync
+marker that no test holds to it. The declaration side of these couplings is a
+separate gap and much wider —
+[[20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror]].
