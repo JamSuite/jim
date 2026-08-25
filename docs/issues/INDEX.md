@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 129
-- Closed: 247
+- Open: 128
+- Closed: 248
 
 ## Issues
 
@@ -363,7 +363,7 @@
 - `20260818-transition-verbs-silently-ignore-as-when-it-does-not-apply` — Transition verbs silently ignore --as when it does not apply · status: open · num: 354 · priority: medium · created: 2026-08-18T22:03:41Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/012-schema-and-state-model/plan.md
 - `20260823-alias-source-and-the-applied-mapping-resolve-from-different-root` — alias_source and the applied mapping resolve from different roots · status: closed · num: 356 · priority: medium · created: 2026-08-23T23:21:49Z · labels: [issue, migration, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read` — ARCHITECTURE.md single lines exceed what its consumers can read · status: open · num: 355 · priority: high · created: 2026-08-23T19:47:45Z · labels: [arch, sdlc, readability] · origin: ARCHITECTURE.md
-- `20260823-conversion-preview-cannot-predict-a-structural-apply-failure` — Conversion preview cannot predict a structural apply failure · status: open · num: 366 · priority: low · created: 2026-08-23T23:45:29Z · labels: [issue, migration] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
+- `20260823-conversion-preview-cannot-predict-a-structural-apply-failure` — Conversion preview cannot predict a structural apply failure · status: closed · num: 366 · priority: low · created: 2026-08-23T23:45:29Z · labels: [issue, migration] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-coverage-gaps-in-the-identity-write-path` — Coverage gaps in the identity write path · status: closed · num: 357 · priority: medium · created: 2026-08-23T23:21:50Z · labels: [testing, migration] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-argument-parser-accepts-contradictory-and-malformed-inv` — identity argument parser accepts contradictory and malformed invocations · status: closed · num: 358 · priority: high · created: 2026-08-23T23:21:46Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-domain-with-a-leading-dot-silently-no-ops` — identity_domain with a leading dot silently no-ops · status: closed · num: 359 · priority: low · created: 2026-08-23T23:21:51Z · labels: [issue, conf] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
