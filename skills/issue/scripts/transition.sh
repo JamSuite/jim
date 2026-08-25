@@ -246,7 +246,8 @@ main() {
     work="${handle#*$'\t'}"
   fi
 
-  # From here every exit unwinds the door rather than leaving a handle open.
+  # From here every exit unwinds the door rather than leaving a handle open —
+  # every exit but the publish itself, which the door keeps on purpose.
   local slug rc=0
   if ! slug="$(resolve_slug "$work" "$id")" || [[ -z "$slug" ]]; then
     echo "error: no single issue matches '$id'" >&2
@@ -277,10 +278,18 @@ main() {
   fi
 
   # The stamp rides with the verb's own changes so the whole transition is one
-  # publish rather than a field change followed by a separate stamp.
+  # publish rather than a field change followed by a separate stamp. A stamp
+  # that cannot be resolved refuses the move: `updated` is the one field a
+  # transition guarantees is wrong afterwards, so recording the move without it
+  # publishes a record stale in exactly the respect the run was for. The
+  # refusal lands before any write, leaving the issue as it was.
   local now
-  now="$(bash "$JIMFILE" now)" || now=""
-  [[ -n "$now" ]] && changes+=$'\n'"updated"$'\t'"$now"
+  if ! now="$(bash "$JIMFILE" now)" || [[ -z "$now" ]]; then
+    echo "error: could not resolve the transition timestamp" >&2
+    [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
+    return 1
+  fi
+  changes+=$'\n'"updated"$'\t'"$now"
 
   if [[ -n "$changes" ]]; then
     set_fields "$file" "$changes" || {
@@ -296,6 +305,11 @@ main() {
   }
 
   if [[ -n "$token" ]]; then
+    # The one exit that does not unwind the door, and deliberately: a refused
+    # publish keeps the handle and the edits inside it, so a destination that
+    # moved underneath is re-applied and committed again rather than retyped.
+    # Aborting here would discard the developer's work to tidy up state the
+    # door is holding on purpose.
     bash "$PLACE" commit "$token" --verb "$verb" --id "$slug" >/dev/null || return $?
   fi
 

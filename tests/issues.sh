@@ -4245,6 +4245,36 @@ updated: 2026-01-01T00:00:00Z
 origin: \"conversation\""
 }
 
+
+# failing_date_shim <name> — a PATH entry whose `date` refuses, so the
+# deterministic timestamp helper every jim write stamps from cannot answer.
+failing_date_shim() {
+  local dir
+  dir=$(empty_dir "$1")
+  printf '#!/usr/bin/env bash\nexit 1\n' > "$dir/date"
+  chmod +x "$dir/date"
+  printf '%s' "$dir"
+}
+
+# AC: a transition whose timestamp cannot be resolved refuses rather than
+# moving the issue without one. For a transition `updated` is the single field
+# guaranteed to be wrong afterwards, so skipping it quietly publishes a record
+# stale in exactly the respect the command was run to change — while reporting
+# success. The refusal lands before anything is written, so the issue is left
+# as it was rather than half-moved.
+case_transition_refuses_when_the_timestamp_cannot_be_resolved() {
+  local dir shim oldpath before
+  dir=$(empty_dir transition_no_now)
+  transition_issue "$dir" 20260101-e 5 open "" ""
+  before="$(cat "$dir/20260101-e.md")"
+  shim=$(failing_date_shim transition_now_shim)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_transition claim 20260101-e --dir "$dir"
+  PATH="$oldpath"
+  assert_exit "rc" 1 "$RC"
+  assert_match "names the cause" 'timestamp' "$ERR"
+  assert_eq "the record is untouched" "$before" "$(cat "$dir/20260101-e.md")"
+}
 # AC: starting an unheld issue also claims it for the developer starting it.
 case_transition_start_claims_an_unheld_issue() {
   local dir out
