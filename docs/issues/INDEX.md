@@ -3,7 +3,7 @@
 ## Summary
 
 - Open: 128
-- Closed: 248
+- Closed: 249
 
 ## Issues
 
@@ -374,10 +374,11 @@
 - `20260823-render-sh-help-tells-users-to-close-an-issue-by-hand` — render.sh help tells users to close an issue by hand · status: closed · num: 369 · priority: high · created: 2026-08-23T23:45:28Z · labels: [issue, docs, correctness] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-schema-spec-integrity-mockup-diverges-from-the-emitted-report` — Schema spec integrity mockup diverges from the emitted report · status: closed · num: 370 · priority: low · created: 2026-08-23T23:45:30Z · labels: [issue, docs] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-six-identity-tests-do-not-discriminate-a-wrong-implementation` — Six identity tests do not discriminate a wrong implementation · status: closed · num: 362 · priority: medium · created: 2026-08-23T23:21:50Z · labels: [testing] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
-- `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc` — Sweep config keys and migrate subcommands against their references · status: open · num: 363 · priority: medium · created: 2026-08-23T23:21:48Z · labels: [tooling, docs, testing] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
+- `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc` — Sweep config keys and migrate subcommands against their references · status: closed · num: 363 · priority: medium · created: 2026-08-23T23:21:48Z · labels: [tooling, docs, testing] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-transition-sh-degrades-quietly-on-two-failure-paths` — transition.sh degrades quietly on two failure paths · status: closed · num: 371 · priority: low · created: 2026-08-23T23:45:31Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-user-facing-docs-omit-the-recorded-identity-feature` — User-facing docs omit the recorded-identity feature · status: closed · num: 364 · priority: high · created: 2026-08-23T23:21:47Z · labels: [docs, readability] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-values-carrying-angle-brackets-bypass-the-recorded-identity-char` — Values carrying angle brackets bypass the recorded-identity charset gate · status: closed · num: 365 · priority: critical · created: 2026-08-23T23:37:25Z · labels: [issue, identity, security, regression] · origin: docs/specs/issue/000-blueprint/spec.md
+- `20260825-allocator-verb-sweep-is-hand-listed-not-derived` — Allocator verb sweep is hand-listed, not derived · status: open · num: P-20260825-allocator-verb-sweep-is-hand-listed-not-derived · priority: medium · created: 2026-08-25T07:15:45Z · labels: [testing, docs, scripts] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` — Declare platform's mirrored branch-name gate or sever the mirror · status: open · num: 373 · priority: medium · created: 2026-08-25T05:21:53Z · labels: [000-blueprint, contract-graph, leak] · origin: BLUEPRINT.md
 - `20260825-faces-verb-skips-bold-first-provides-entries` — faces verb skips bold-first Provides entries · status: open · num: 374 · priority: medium · created: 2026-08-25T05:21:54Z · labels: [verify, 000-blueprint, scripts] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` — Provisional-token grammar crosses into sdlc undeclared · status: open · num: P-20260825-provisional-token-grammar-crosses-into-sdlc-undeclared · priority: medium · created: 2026-08-25T06:40:40Z · labels: [000-blueprint, contract-graph, scripts] · origin: docs/specs/platform/000-blueprint/spec.md
@@ -513,6 +514,8 @@
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` --related-to--> `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn`
 - `20260812-jimconf-value-form-refusal-covers-one-of-three-read-doors` --related-to--> `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg`
 - `20260817-unify-the-two-issue-frontmatter-parsers` --related-to--> `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and`
+- `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc` --related-to--> `20260825-allocator-verb-sweep-is-hand-listed-not-derived`
+- `20260825-allocator-verb-sweep-is-hand-listed-not-derived` --related-to--> `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc`
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --related-to--> `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared`
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
 - `20260825-faces-verb-skips-bold-first-provides-entries` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
