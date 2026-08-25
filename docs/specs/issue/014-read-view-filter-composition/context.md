@@ -26,8 +26,12 @@ Everything before the build is done. Nothing is committed.
 | `ledger.md` | spec → research → sec → spec finished → plan → sec → plan finished |
 
 **Next action:** `/jim:build docs/specs/issue/014-read-view-filter-composition`.
-No gate blocks it — `require_security` and `auto_security` are both `false`, and
-plan-phase security has already run.
+No gate blocks it, but the reason is no longer the one this doc first recorded.
+`require_security` and `auto_security` are now `true`, so the build's Step-2
+gate is live — it passes only because `security.md`'s `reviewed_phases` already
+includes `plan`. `require_review` and `auto_review` are `true` as well, which
+makes `/jim:review` a blocking completion phase: the plan cannot be marked
+`complete` until that review produces a `review.md`.
 
 Two frontmatter values look wrong and are not — the same trap 013's handoff
 records:
@@ -175,9 +179,10 @@ and widens an existing guard rather than creating one.
 - **`issue_placement=branch` with `issue_placement_ack=false`**, so `new.sh`
   requires `--reviewed` and the candidate batch always takes the interactive
   path. `--auto` exits 4.
-- **No agent fan-out was authorized this session.** `/jim:plan` step 3 would
-  auto-spawn the researcher when `research.md` is missing; it was not missing.
-  If the build wants delegation, ask first.
+- **Agent fan-out is authorized for this session** — the developer granted it at
+  the build's start. The review and verify surfaces fan out on `sonnet` with a
+  cap of 20 (`review_model` / `review_fanout_cap`, `verify_model` /
+  `verify_fanout_cap`). The grant is per-session rather than standing.
 - **Never hand-edit `ARCHITECTURE.md`** — it is refreshed by the build-completion
   gate via `/jim:arch`.
 - **Do not push.** Git push is host-only from this sandbox.
