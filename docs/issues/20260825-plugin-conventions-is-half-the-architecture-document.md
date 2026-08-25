@@ -1,6 +1,6 @@
 ---
 id: 20260825-plugin-conventions-is-half-the-architecture-document
-num: P-20260825-plugin-conventions-is-half-the-architecture-document
+num: 378
 title: "Plugin Conventions is half the architecture document"
 status: open
 priority: medium
