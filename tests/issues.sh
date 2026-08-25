@@ -7234,6 +7234,82 @@ outcome: \"done · num: 999\""
   assert_eq "does not read as closed" "0" "$(printf '%s' "$OUT" | grep -c 'Evil')"
 }
 
+# ─── Section: render.sh — the widened row reader ─────────────────────────────
+
+# run_render_rows <index-file> — call read_issue_rows in isolation, so a case
+# can assert the TSV contract rather than a rendered view built on top of it.
+run_render_rows() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(bash -c 'source "$1" 2>/dev/null; read_issue_rows "$2"' _ \
+    "$SCRIPT_RENDER" "$1" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: the row reader carries every field a filter can name, so the views act
+# on the same facts the index records
+case_issues_render_rows_carry_new_scalars() {
+  local dir fields
+  dir=$(empty_dir render_rows_new_scalars)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: closed
+num: 7
+priority: high
+created: 2026-01-01
+type: epic
+filed-by: filer@example.test
+claimed-by: holder@example.test
+outcome: done'
+  run_index "$dir"
+  assert_exit "index rc" 0 "$RC"
+  run_render_rows "$dir/INDEX.md"
+  assert_eq "twelve fields" "12" "$(printf '%s' "$OUT" | awk -F'\t' '{print NF}')"
+  IFS=$'\t' read -ra fields <<< "$OUT"
+  assert_eq "type"       "epic"                 "${fields[8]:-}"
+  assert_eq "filed-by"   "filer@example.test"   "${fields[9]:-}"
+  assert_eq "claimed-by" "holder@example.test"  "${fields[10]:-}"
+  assert_eq "outcome"    "done"                 "${fields[11]:-}"
+}
+
+# AC: an absent field renders as "-", exactly as the existing five do
+case_issues_render_rows_absent_scalars_dash() {
+  local dir fields
+  dir=$(empty_dir render_rows_absent)
+  write_issue "$dir" "20260101-bare" 'title: "Bare"
+status: open
+num: 3'
+  run_index "$dir"
+  run_render_rows "$dir/INDEX.md"
+  assert_eq "twelve fields" "12" "$(printf '%s' "$OUT" | awk -F'\t' '{print NF}')"
+  IFS=$'\t' read -ra fields <<< "$OUT"
+  assert_eq "type dash"       "-" "${fields[8]:-}"
+  assert_eq "filed-by dash"   "-" "${fields[9]:-}"
+  assert_eq "claimed-by dash" "-" "${fields[10]:-}"
+  assert_eq "outcome dash"    "-" "${fields[11]:-}"
+}
+
+# AC: a row consumer reads the whole TSV, not a prefix of it. `read` assigns
+# every field past the last variable to that variable, delimiters included, so
+# a consumer one variable short reports its final column with the rest of the
+# row glued to it.
+case_issues_render_rows_consumer_reads_every_field() {
+  local dir
+  dir=$(empty_dir render_rows_consumer)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+origin: docs/specs/x/spec.md
+type: issue
+filed-by: dev@example.test
+claimed-by: holder@example.test
+outcome: ""'
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "origin cluster is the origin alone" \
+    '^ +docs/specs/x/spec\.md +1$' "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

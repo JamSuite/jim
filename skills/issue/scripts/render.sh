@@ -156,8 +156,11 @@ cfg_validated() {
 }
 
 # read_issue_rows <index_file>
-#   Emit TSV per issue: slug \t num \t status \t priority \t created \t labels \t title \t origin
-#   ("-" for any empty field). Parses the INDEX.md ## Issues section only.
+#   Emit TSV per issue, twelve TAB-separated fields ("-" for any empty one):
+#     slug num status priority created labels title origin
+#     type filed-by claimed-by outcome
+#   Parses the INDEX.md ## Issues section only. Unknown keys in a row are
+#   ignored, so an index written by a newer emitter still reads here.
 read_issue_rows() {
   awk '
     /^## Issues$/ { insec = 1; next }
@@ -167,6 +170,7 @@ read_issue_rows() {
       slug = line; sub(/^- `/, "", slug); sub(/`.*/, "", slug)
       title = line; sub(/^- `[^`]*` — /, "", title); sub(/ · .*/, "", title)
       num = ""; status = ""; prio = ""; created = ""; labels = ""; origin = ""
+      type = ""; filed_by = ""; claimed_by = ""; outcome = ""
       n = split(line, parts, / · /)
       for (i = 2; i <= n; i++) {
         kv = parts[i]; key = kv; sub(/:.*/, "", key)
@@ -176,6 +180,10 @@ read_issue_rows() {
         else if (key == "priority") prio = val
         else if (key == "created") created = val
         else if (key == "origin") origin = val
+        else if (key == "type") type = val
+        else if (key == "filed-by") filed_by = val
+        else if (key == "claimed-by") claimed_by = val
+        else if (key == "outcome") outcome = val
         else if (key == "labels") { gsub(/^\[|\]$/, "", val); labels = val }
       }
       # SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
@@ -188,10 +196,12 @@ read_issue_rows() {
         else
           created = ""
       }
-      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
         slug, (num == "" ? "-" : num), (status == "" ? "open" : status),
         (prio == "" ? "-" : prio), (created == "" ? "-" : created),
-        (labels == "" ? "-" : labels), title, (origin == "" ? "-" : origin)
+        (labels == "" ? "-" : labels), title, (origin == "" ? "-" : origin),
+        (type == "" ? "-" : type), (filed_by == "" ? "-" : filed_by),
+        (claimed_by == "" ? "-" : claimed_by), (outcome == "" ? "-" : outcome)
     }
   ' "$1"
 }
@@ -267,7 +277,9 @@ cmd_stats() {
   label_count[__s__]=0;    unset 'label_count[__s__]'
   priority_count[__s__]=0; unset 'priority_count[__s__]'
   local slug num status prio created labels title origin
-  while IFS=$'\t' read -r slug num status prio created labels title origin; do
+  local type filed_by claimed_by outcome
+  while IFS=$'\t' read -r slug num status prio created labels title origin \
+      type filed_by claimed_by outcome; do
     [[ -z "$slug" ]] && continue
     [[ "$origin" == "-" || -z "$origin" ]] && origin="(unattributed)"
     origin_count[$origin]=$(( ${origin_count[$origin]:-0} + 1 ))
@@ -464,7 +476,9 @@ cmd_list() {
 
   # Load rows, applying the filter.
   local rows=() slug num status prio created labels title origin
-  while IFS=$'\t' read -r slug num status prio created labels title origin; do
+  local type filed_by claimed_by outcome
+  while IFS=$'\t' read -r slug num status prio created labels title origin \
+      type filed_by claimed_by outcome; do
     [[ -z "$slug" ]] && continue
     [[ "$hide_closed" == 1 && "$status" == "closed" ]] && continue
     if [[ -n "$filter" ]]; then
@@ -688,7 +702,9 @@ cmd_insights_graph() {
 
   declare -A is_open
   local slug num status prio created labels title origin
-  while IFS=$'\t' read -r slug num status prio created labels title origin; do
+  local type filed_by claimed_by outcome
+  while IFS=$'\t' read -r slug num status prio created labels title origin \
+      type filed_by claimed_by outcome; do
     [[ -z "$slug" ]] && continue
     # Unfinished, not merely not-started: an underway issue is live work and
     # belongs in the isolation report exactly as a not-started one does.
