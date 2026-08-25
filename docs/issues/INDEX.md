@@ -3,7 +3,7 @@
 ## Summary
 
 - Open: 128
-- Closed: 249
+- Closed: 250
 
 ## Issues
 
@@ -362,7 +362,7 @@
 - `20260818-filer-derivation-cannot-reach-a-centralized-collection-s-history` — Filer derivation cannot reach a centralized collection's history · status: open · num: 353 · priority: high · created: 2026-08-18T22:03:32Z · labels: [issue, migration, placement, attribution] · origin: docs/specs/issue/012-schema-and-state-model/plan.md
 - `20260818-transition-verbs-silently-ignore-as-when-it-does-not-apply` — Transition verbs silently ignore --as when it does not apply · status: open · num: 354 · priority: medium · created: 2026-08-18T22:03:41Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/012-schema-and-state-model/plan.md
 - `20260823-alias-source-and-the-applied-mapping-resolve-from-different-root` — alias_source and the applied mapping resolve from different roots · status: closed · num: 356 · priority: medium · created: 2026-08-23T23:21:49Z · labels: [issue, migration, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
-- `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read` — ARCHITECTURE.md single lines exceed what its consumers can read · status: open · num: 355 · priority: high · created: 2026-08-23T19:47:45Z · labels: [arch, sdlc, readability] · origin: ARCHITECTURE.md
+- `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read` — ARCHITECTURE.md single lines exceed what its consumers can read · status: closed · num: 355 · priority: high · created: 2026-08-23T19:47:45Z · labels: [arch, sdlc, readability] · origin: ARCHITECTURE.md
 - `20260823-conversion-preview-cannot-predict-a-structural-apply-failure` — Conversion preview cannot predict a structural apply failure · status: closed · num: 366 · priority: low · created: 2026-08-23T23:45:29Z · labels: [issue, migration] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-coverage-gaps-in-the-identity-write-path` — Coverage gaps in the identity write path · status: closed · num: 357 · priority: medium · created: 2026-08-23T23:21:50Z · labels: [testing, migration] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-argument-parser-accepts-contradictory-and-malformed-inv` — identity argument parser accepts contradictory and malformed invocations · status: closed · num: 358 · priority: high · created: 2026-08-23T23:21:46Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
@@ -381,6 +381,7 @@
 - `20260825-allocator-verb-sweep-is-hand-listed-not-derived` — Allocator verb sweep is hand-listed, not derived · status: open · num: 375 · priority: medium · created: 2026-08-25T07:15:45Z · labels: [testing, docs, scripts] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` — Declare platform's mirrored branch-name gate or sever the mirror · status: open · num: 373 · priority: medium · created: 2026-08-25T05:21:53Z · labels: [000-blueprint, contract-graph, leak] · origin: BLUEPRINT.md
 - `20260825-faces-verb-skips-bold-first-provides-entries` — faces verb skips bold-first Provides entries · status: open · num: 374 · priority: medium · created: 2026-08-25T05:21:54Z · labels: [verify, 000-blueprint, scripts] · origin: docs/specs/issue/000-blueprint/spec.md
+- `20260825-plugin-conventions-is-half-the-architecture-document` — Plugin Conventions is half the architecture document · status: open · num: P-20260825-plugin-conventions-is-half-the-architecture-document · priority: medium · created: 2026-08-25T07:53:40Z · labels: [docs, arch] · origin: ARCHITECTURE.md
 - `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` — Provisional-token grammar crosses into sdlc undeclared · status: open · num: 376 · priority: medium · created: 2026-08-25T06:40:40Z · labels: [000-blueprint, contract-graph, scripts] · origin: docs/specs/platform/000-blueprint/spec.md
 - `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` — Requires tokens resolve to no Provides entry on any face · status: open · num: 377 · priority: high · created: 2026-08-25T06:40:35Z · labels: [000-blueprint, contract-graph, verify] · origin: BLUEPRINT.md
 - `20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test` — Timestamp-shape sync marker in jimfile.sh is compared by no test · status: open · num: 372 · priority: medium · created: 2026-08-25T05:00:25Z · labels: [test, scripts, platform] · origin: docs/specs/issue/000-blueprint/spec.md
@@ -514,11 +515,13 @@
 - `20260811-compute-checkout-dependent-index-warnings-at-read-time` --related-to--> `20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn`
 - `20260812-jimconf-value-form-refusal-covers-one-of-three-read-doors` --related-to--> `20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg`
 - `20260817-unify-the-two-issue-frontmatter-parsers` --related-to--> `20260725-formalize-the-is-valid-id-lockstep-contract-between-platform-and`
+- `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read` --related-to--> `20260825-plugin-conventions-is-half-the-architecture-document`
 - `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc` --related-to--> `20260825-allocator-verb-sweep-is-hand-listed-not-derived`
 - `20260825-allocator-verb-sweep-is-hand-listed-not-derived` --related-to--> `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc`
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --related-to--> `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared`
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
 - `20260825-faces-verb-skips-bold-first-provides-entries` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
+- `20260825-plugin-conventions-is-half-the-architecture-document` --related-to--> `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read`
 - `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
 - `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
 - `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` --related-to--> `20260825-faces-verb-skips-bold-first-provides-entries`

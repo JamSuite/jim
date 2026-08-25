@@ -2,12 +2,12 @@
 id: 20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read
 num: 355
 title: "ARCHITECTURE.md single lines exceed what its consumers can read"
-status: open
+status: closed
 priority: high
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [arch, sdlc, readability]
 relations:
   blocks: []
@@ -16,14 +16,13 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-23T19:47:45Z
-updated: 2026-08-23T19:47:45Z
+updated: 2026-08-25T07:53:58Z
 origin: "ARCHITECTURE.md"
 ---
 
 ## Description
 
 ## Context
-
 `ARCHITECTURE.md` is a locked constraint: `/jim:plan`, `/jim:sec`,
 `/jim:research`, `/jim:blueprint` and `/jim:build` all read it before reasoning,
 and several treat its contents as non-negotiable. It is also generated and
@@ -117,3 +116,48 @@ readable in sections again without changing anything it asserts.
 
 Worth deciding at the same time whether `/jim:arch` should wrap on every
 refresh, so the property holds going forward rather than being restored once.
+
+## Resolution (2026-08-25)
+
+The convention first, then the file aligned to it — `be1ac8a` and `fb9844c`.
+
+**`/jim:arch` wraps what it writes.** A new § 5a instructs hard-wrapping every
+paragraph and list item at 80 columns, and names what is never wrapped: table
+rows, fenced blocks including the Mermaid diagram, headings, link definitions,
+and a URL longer than the budget. It binds a differential update as much as a
+fresh generate, so a refresh converges the document rather than reflowing lines
+it had no reason to visit. The validation checklist carries the matching item.
+
+**The step that could not be followed now can be.** Step 3 instructed reading
+the existing document *fully*, which is exactly what this document had outgrown.
+It reads by section now, with the `##` headings as the boundaries — a change
+worth making only because wrapping is what makes a bounded read cost what was
+asked for rather than what the surrounding paragraph weighs.
+
+**The rewrap is whitespace-only, and was verified as such** rather than
+asserted. Both versions collapse to identical text under whitespace
+normalization, and every block-structure count matches across them: fences,
+headings, bullets, quotes, table rows and blank lines. 134 lines gained breaks;
+every line already within budget is byte-identical.
+
+**One hazard was real and is worth recording.** Breaking a line before a word
+that opens a markdown block turns prose into a heading, a list item, or — in a
+document that discusses fenced code — a fence. The first attempt did exactly
+that: a paragraph naming ``` produced a line starting with it, which flipped
+fence parity for every line after it and silently reclassified hundreds. The
+reflow carries such a word onto the previous line instead. Eight lines sit
+82–85 characters wide as a result, which is the right trade.
+
+## What it bought
+
+A 40-line window at the worst paragraph went from **94,325 bytes to 3,187** — a
+bounded read now costs what was asked for. The longest line outside a fence is a
+table row.
+
+## What it did not buy
+
+Wrapping does not shrink a document. `## Plugin Conventions` is still roughly
+124 KB of a 214 KB file, so section-by-section reading works for six of the
+seven top-level sections and that one needs subsection ranges. That is a
+different problem in kind and is filed as
+[[20260825-plugin-conventions-is-half-the-architecture-document]].
