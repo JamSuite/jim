@@ -370,3 +370,5 @@ issue allocate 369 20260823-render-sh-help-tells-users-to-close-an-issue-by-hand
 issue allocate 370 20260823-schema-spec-integrity-mockup-diverges-from-the-emitted-report 20260823 jrko
 issue allocate 371 20260823-transition-sh-degrades-quietly-on-two-failure-paths 20260823 jrko
 issue allocate 372 20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test 20260824 jrko
+issue allocate 373 20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror 20260824 jrko
+issue allocate 374 20260825-faces-verb-skips-bold-first-provides-entries 20260824 jrko
