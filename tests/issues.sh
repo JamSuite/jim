@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# tests/issues.sh — Tests for skills/issue/scripts/index.sh and render.sh
+# tests/issues.sh — Tests for skills/issue/scripts/ (place.sh has its own file)
 #
 # Conventions: see skills/meta-test/scripts/testlib.sh header (canonical).
 #

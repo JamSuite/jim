@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-08-24*
+*Last updated: 2026-08-25*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill to preserve consistency.
 
@@ -109,14 +109,23 @@ jim/
 │           ├── testlib.sh          # Shared framework: globals, asserts, fixtures, reporter
 │           ├── run.sh              # Aggregate runner: sources testlib + every tests/*.sh
 │           └── metatest.sh         # Dispatcher: scaffold/add/run subcommands
-├── tests/                   # Developer-only; not loaded by Claude Code (per-script test files only)
-│   ├── jimconf.sh           # Per-script tests for skills/conf/scripts/jimconf.sh (executable)
-│   ├── jimfile.sh           # Per-script tests for skills/file/scripts/jimfile.sh (executable)
-│   ├── issues.sh            # Per-script tests for skills/issue/scripts/{index,render,backfill,migrate,new,identity,transition}.sh (executable)
-│   ├── jimledger.sh         # Per-script tests for skills/ledger/scripts/jimledger.sh (executable)
-│   ├── jimverify.sh         # Per-script tests for skills/verify/scripts/jimverify.sh (executable)
-│   ├── jimpartition.sh      # Per-script tests for skills/partition/scripts/jimpartition.sh (executable)
-│   └── metatest.sh          # Per-script tests for skills/meta-test/scripts/metatest.sh (executable)
+├── tests/                   # Developer-only; not loaded by Claude Code (executable)
+│   ├── issues.sh            # Per-script tests for skills/issue/scripts/ (place.sh has its own file)
+│   ├── place.sh             # Per-script tests for skills/issue/scripts/place.sh
+│   ├── jimconf.sh           # Per-script tests for skills/conf/scripts/jimconf.sh
+│   ├── jimfile.sh           # Per-script tests for skills/file/scripts/jimfile.sh
+│   ├── jimalloc.sh          # Per-script tests for skills/file/scripts/jimalloc.sh
+│   ├── jimledger.sh         # Per-script tests for skills/ledger/scripts/jimledger.sh
+│   ├── jimverify.sh         # Per-script tests for skills/verify/scripts/jimverify.sh
+│   ├── jimpartition.sh      # Per-script tests for skills/partition/scripts/jimpartition.sh
+│   ├── metatest.sh          # Per-script tests for skills/meta-test/scripts/metatest.sh
+│   ├── specreconcile.sh     # Per-script tests for skills/spec/scripts/reconcile.sh
+│   ├── docsurfaces.sh       # Corpus rule: textual invariants over the hand-authored doc surfaces
+│   ├── scripthygiene.sh     # Corpus rule: script-preamble conformance across skills/ and tests/
+│   ├── presenttense.sh      # Corpus rule: present-tense discipline wiring
+│   ├── provenance.sh        # Corpus rule: provenance discipline wiring
+│   ├── gatepresentation.sh  # Corpus rule: gate-presentation rule wiring
+│   └── fanoutdisclosure.sh  # Corpus rule: fan-out disclosure rule wiring
 ├── docs/
 │   ├── specs/               # Spec groups with numbered spec dirs — partition declared in BLUEPRINT.md
 │   ├── issues/              # Discovery-artifact capture (per spec 017)
