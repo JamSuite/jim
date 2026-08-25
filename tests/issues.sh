@@ -6727,6 +6727,41 @@ case_identity_domain_outside_the_charset_refuses() {
   assert_exit "slash rc" 2 "$RC"
 }
 
+# AC: a domain whose label structure can never appear in an address is refused
+# rather than applied. Each shape below clears the charset and single-domain
+# gates and then makes the form a permanent no-op: no address ends in
+# `@.company.example`, so every value falls through to the form beneath it and
+# the project records identities under a form it did not choose, with no
+# refusal and no warning. A setting that cannot be applied is refused, the way
+# an absent one already is.
+case_identity_domain_that_cannot_match_refuses() {
+  local repo d
+  repo="$(identity_repo identity_domain_unmatchable 'dev@example.com')"
+  for d in '.company.example' 'company.example.' 'company..example' \
+           '-company.example' 'company.example-' 'company.-example' \
+           'company-.example' '.' '-'; do
+    printf 'identity_scheme = "local"\nidentity_domain = "%s"\n' "$d" \
+      > "$repo/jimconf.toml"
+    run_identity "$repo" normalize 'alice@company.example'
+    assert_exit "rc for $d" 2 "$RC"
+    # The message unique to this guard, not merely a refusal: the charset gate
+    # accepts every shape above, so matching any refusal would leave the guard
+    # removable with the case still green.
+    assert_match "names the guard for $d" 'cannot match an address' "$ERR"
+  done
+}
+
+# AC: the guard above refuses shapes that can never appear in an address, not
+# every domain without a dot. A single-label domain is matchable and stays
+# accepted.
+case_identity_domain_single_label_is_accepted() {
+  local repo
+  repo="$(local_repo identity_domain_single localhost)"
+  run_identity "$repo" normalize 'alice@localhost'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account part" "alice" "$OUT"
+}
+
 # AC: a refusal caused by a setting names the setting, never the value it
 # carried.
 case_identity_domain_refusal_withholds_the_value() {

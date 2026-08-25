@@ -258,6 +258,11 @@ extract_relay() {
 #   - Outside the enumerated set. The value reaches a shell pattern match, and
 #     stating the accepted set positively is what makes an unanticipated
 #     character fail closed rather than survive a list someone thought to name.
+#   - Shaped so no address can be inside it. A label that is empty or edged
+#     with a hyphen cannot appear in an address, so the extraction matches
+#     nothing and every value falls through to the form below — the project
+#     goes on recording under a form it did not choose, with nothing said. A
+#     setting that cannot be applied is refused, as an absent one is.
 #
 #   Every refusal names the setting and none carries its value.
 domain() {
@@ -281,6 +286,14 @@ domain() {
 
   if [[ "$value" == *[!$DOMAIN_CHARS]* ]]; then
     echo "error: identity_domain is not a domain" >&2
+    return 2
+  fi
+
+  if [[ "$value" == .* || "$value" == *. || "$value" == *..* \
+     || "$value" == -* || "$value" == *- \
+     || "$value" == *.-* || "$value" == *-.* ]]; then
+    echo "error: identity_domain cannot match an address;" \
+         "a label is empty or edged with a hyphen" >&2
     return 2
   fi
 
