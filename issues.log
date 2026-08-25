@@ -377,3 +377,9 @@ issue allocate 376 20260825-provisional-token-grammar-crosses-into-sdlc-undeclar
 issue allocate 377 20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face 20260825 jrko
 issue allocate 378 20260825-plugin-conventions-is-half-the-architecture-document 20260825 jrko
 issue allocate 379 20260825-blueprint-generate-mode-has-no-commit-verb 20260825 jrko
+issue allocate 380 20260825-amend-vision-md-team-coordination-non-goal 20260825 jrko
+issue allocate 381 20260825-graph-edge-readers-narrow-slugs-below-what-is-valid-id-allows 20260825 jrko
+issue allocate 382 20260825-negation-in-read-view-filters 20260825 jrko
+issue allocate 383 20260825-restore-origin-grouping-in-the-list-view 20260825 jrko
+issue allocate 384 20260825-roadmap-md-has-not-been-refreshed-since-2026-03-16 20260825 jrko
+issue allocate 385 20260825-sort-and-group-read-views-by-the-newly-indexed-fields 20260825 jrko
