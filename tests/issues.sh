@@ -7346,6 +7346,46 @@ relations:
     "$(printf '%s' "$OUT" | grep -c '^ISOLATED')"
 }
 
+# ─── Section: render.sh — the flag-operand guard ─────────────────────────────
+
+# run_render_fn <function> <args...> — call one render.sh function in
+# isolation, for contracts a rendered view sits on top of rather than exposes.
+run_render_fn() {
+  local fn="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(bash -c 'source "$1" 2>/dev/null; fn="$2"; shift 2; "$fn" "$@"' _ \
+    "$SCRIPT_RENDER" "$fn" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: a flag given with no value, or with a value that is another flag, is
+# refused rather than treated as absent
+case_issues_render_flag_requires_operand() {
+  # A flag standing last in the argv has nothing to take.
+  run_render_fn need_operand --label 1 ""
+  assert_exit     "missing operand refuses" 2 "$RC"
+  assert_eq       "nothing on stdout"       "" "$OUT"
+  assert_match    "names the flag"          '[-]-label requires a value' "$ERR"
+
+  # An operand that is another of this file's own flags is a typo, not a value.
+  run_render_fn need_operand --label 2 --priority
+  assert_exit  "flag-shaped operand refuses" 2 "$RC"
+  assert_eq    "nothing on stdout"           "" "$OUT"
+  assert_match "names what followed"         '[-]-priority followed it' "$ERR"
+
+  # An ordinary value passes straight through.
+  run_render_fn need_operand --label 2 auth
+  assert_exit "accepts a value" 0    "$RC"
+  assert_eq   "emits it"        "auth" "$OUT"
+
+  # A value that merely looks option-shaped is carried through: this guard
+  # refuses only the option names this file itself accepts.
+  run_render_fn need_operand --claimed-by 2 -dev@example.test
+  assert_exit "option-shaped value passes" 0 "$RC"
+  assert_eq   "emits it"  "-dev@example.test" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

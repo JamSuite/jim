@@ -142,6 +142,47 @@ is_filter_token() {
   in_list "$1" "${STATUS_TOKENS[@]}" "${PRIORITY_TOKENS[@]}"
 }
 
+# The option names this file's filter parser accepts. An operand equal to one
+# of these is a flag that landed where a value belongs — a typo rather than a
+# value. See need_operand.
+readonly RENDER_OPTIONS=(--status --priority --type --label --epic
+                         --filed-by --claimed-by --spec --origin --cols)
+
+# need_operand <flag> <argc> <operand> — the value <flag> requires, or refuse.
+#   <argc> is the argument count remaining at the flag, so a flag standing last
+#   in the argv is one with nothing to take.
+#
+#   Absent, empty, and flag-shaped operands all refuse. Swallowing one costs
+#   twice over: the flag that was consumed goes unapplied, and the value it
+#   became is one nobody typed — and on a read surface both halves are silent,
+#   because a narrower query and a query that matched little look the same.
+#
+#   Only this file's own option names are refused. A value that merely looks
+#   option-shaped is carried through, because the recordable-identity set
+#   admits a leading hyphen deliberately and a real address can wear one.
+#
+#   SYNC(need-operand): a shape sibling of need_operand in
+#   skills/issue/scripts/migrate.sh, deliberately NOT byte-identical — each
+#   script refuses its own option list, and the two lists are disjoint. What
+#   the two share is the rule, not the text: absent, empty and own-flag
+#   operands refuse at status 2 having written nothing to stdout. A
+#   byte-agreement fixture would assert a falsehood here, so there is none;
+#   this note is what keeps the difference from reading as drift.
+need_operand() {
+  local flag="$1" argc="$2" operand="$3" known
+  if (( argc < 2 )) || [[ -z "$operand" ]]; then
+    echo "error: $flag requires a value" >&2
+    return 2
+  fi
+  for known in "${RENDER_OPTIONS[@]}"; do
+    if [[ "$operand" == "$known" ]]; then
+      echo "error: $flag requires a value, but $known followed it" >&2
+      return 2
+    fi
+  done
+  printf '%s' "$operand"
+}
+
 # cfg_validated <value> <default> <allowed...>
 #   Return <value> if it is a member of the allowed set, otherwise fall back
 #   to <default> (security 019 Finding 5). The caller resolves <value> from
