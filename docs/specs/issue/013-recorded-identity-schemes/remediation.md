@@ -5,12 +5,14 @@ the increment actually stands, what the open issues have in common, and the
 order I would fix them in. It is analysis, not a plan: nothing here has been
 approved, and the sequencing is a recommendation.
 
-> **Partly executed as of 2026-08-25.** Eleven of the seventeen are closed — the
-> two that blocked, the fail-open pair, the documentation set bar one, the
-> test-quality pair, and the contract declaration. § *Progress* at the end
-> records what landed, where this analysis under-scoped the work — six more
-> times after the first batch — and what remains. Every issue closed so far
-> reached further than it named: eleven for eleven.
+> **Partly executed as of 2026-08-25.** Sixteen of the seventeen are closed —
+> the two that blocked, the fail-open pair, the documentation set bar one, the
+> test-quality pair, the contract declaration, the small-correctness batch, and
+> the mechanical sweep. Only `#355` is left, and it is waiting on a decision
+> rather than on work. § *Progress* at the end records what landed, where this
+> analysis under-scoped the work — nine more times after the first batch — and
+> what remains. Every issue closed so far reached further than it named, in one
+> case by finding that half of it was already right: sixteen for sixteen.
 > The diagnostic sections below are left as they were written:
 > they describe the defects as found, and the issues' own resolution notes cite
 > them.
@@ -197,8 +199,8 @@ Verifying a claim before recording it is cheap; recording a wrong one is not.
 
 ## Progress — 2026-08-25
 
-Eleven issues closed across thirty-six commits (`2da3693`..`4bb25ec`). The suite
-is green at **1,568** across 16 files; twenty-one cases were added or
+Sixteen issues closed across fifty-eight commits (`2da3693`..`4eaa5c8`). The
+suite is green at **1,575** across 16 files; twenty-eight cases were added or
 strengthened, each confirmed to fail against an implementation missing the
 behaviour it names.
 
@@ -285,6 +287,49 @@ already upheld with nothing declaring them.
 tests where six are corpus rules. Its entry for a directory's own tests now
 names the directory rather than its members, which retires the rot rather than
 refreshing it.
+
+### The small-correctness batch
+
+| issue | | commits |
+| :--- | :--- | :--- |
+| `#359` unmatchable `identity_domain` | closed | `d0bc02d` (guard + README), `d4e09a9` |
+| `#356` misrooted alias disclosure | closed | `6eefd6e`, `72ac702` |
+| `#371` quiet degradation pair | closed | `13b35b5`, `ba86f8c` |
+| `#366` unpredictable apply | closed | `73acbdb` (guard + `SKILL.md`), `73870a3` |
+
+Four issues that had been carried since the review as "small and real". Each was
+censused against its own mechanism before being fixed, and three of the four
+reached further than the issue named — the fourth reached *less*, which is its
+own kind of finding.
+
+`#356` is the one where the census confirmed the instance was the whole rule:
+every version-control call in the group's identity path splits the same way, a
+fact about the collection rooted at the collection directory and a fact about
+identity resolution rooted at the process. Exactly one site sat on the wrong
+side of that line.
+
+### The mechanical sweep
+
+| issue | | commits |
+| :--- | :--- | :--- |
+| `#363` hand-enumerated rosters | closed | `16f6815` (both sweeps), `ec97331` (allocator header), `e27b4ea` |
+
+Held to last on purpose, and worth it: by the time it ran, the drift it was
+filed about had already been repaired by the documentation pass, so both sweeps
+went in as regression guards over a corpus that was already correct. That is the
+right shape for a check whose purpose is to stop a class recurring.
+
+Both sweeps derive their expectations from code rather than restating them.
+The migration half reads each script's own usage text — not its dispatch table,
+which also carries an internal primitive the script deliberately does not
+advertise — and checks both directions: a subcommand with no row, and a row
+outliving its subcommand. The config half walks `jimconf.sh keys` and accepts
+the three shapes the tables actually use, including the family row that
+documents five keys at once.
+
+Each direction was mutation-checked rather than assumed: dropping a table row,
+adding a row for a subcommand that does not exist, and dropping a key from
+README each turn the relevant case red.
 
 ### Where this analysis under-scoped the work
 
@@ -376,6 +421,47 @@ in that shape.
 This is § *The pattern underneath them* seen from the other side: **an analysis
 naming where a rule is broken is not an enumeration of where the rule applies.**
 Every one of them was found by asking what the rule covers, never by re-reading
+
+**`#359` named a typo; the rule is label validity.** The issue reported a
+leading dot in `identity_domain` clearing every gate and then matching no
+address. A leading dot is one of several shapes that do that — a trailing dot,
+consecutive dots, a leading or trailing hyphen, a hyphen on either side of a dot
+— and each is the same unusable configuration reached by a different slip. The
+guard that landed is label-boundary validity, and the case pins nine values. The
+opposite edge needed pinning too: a single-label domain like `localhost` is
+matchable and stays accepted, so the guard refuses what can never match rather
+than everything without a dot.
+
+**`#371` was half a defect, and the other half was already right.** Its two
+paths looked like one inconsistency: a timestamp failure that degraded quietly,
+and a publish failure that returned without unwinding the door while every other
+exit aborted. The first was real and now refuses before writing. The second
+turned out to be deliberate — `place.sh` frees a handle only after a successful
+publish, so a refused commit keeps the edits for a retry, and adding the
+"missing" abort would have destroyed the developer's work to make the code look
+symmetrical. The issue itself asked for this to be *determined* rather than
+inferred, which is the reason it did not get fixed into a bug. Both the guard
+and the comment above it now say why the asymmetry is correct.
+
+**`#366` reached the fixtures, not just the preview.** Adding the anchor check
+turned four existing cases red — and each of them described a legacy issue as
+`title`, `status` and `priority` alone, a record the conversion could never have
+completed, standing in for the ordinary case. The fixtures were wrong before the
+check existed and nothing could see it. They now share a `schema_legacy` helper
+carrying the shape the real corpus has, and the unanchored form appears only in
+the case that is about it. This is the *Fixtures inherit the author's blind
+spot* note from this cycle, landing a second time.
+
+**`#363` found two more of its own rule.** Its Direction named two sweeps and a
+third candidate already covered. Censusing for hand-enumerated rosters instead
+found a fourth: the allocator's operator verbs reach the documentation through a
+list written into the test, so a *new* verb is invisible to the check meant to
+catch exactly that. It is not derivable the way the others are — the script does
+not distinguish its hand-run verbs from the ones other scripts call — so it is
+filed as `#375` rather than bodged. And the evidence that it matters was sitting
+right there: `lift` had shipped without reaching `jimalloc.sh`'s own header
+roster, which enumerated the commands and stopped at `catch-up`. Nothing caught
+it, because nothing could.
 the issue — and the documentation set repeated the pattern after that lesson had
 been named and written down, which is worth knowing about how much a written
 rule protects you. Two rules were added to `docs/notes/process-improvements.md`
@@ -383,35 +469,40 @@ from the first batch (`42c11be`, `b1a13fb`) — one on partial enumerations, one
 correcting what that file said to do with a case that pins a guard's boundary
 rather than the guard.
 
-
 ### What remains
 
-Six of the seventeen:
+One of the seventeen: `#355`, the `ARCHITECTURE.md` line lengths.
 
-| group | issues |
-| :--- | :--- |
-| Documentation | `#355` |
-| Structural | `#363` |
-| Small correctness | `#356`, `#359`, `#366`, `#371` |
+It is not waiting on work. It is waiting on a decision about whether `/jim:arch`
+wraps its generated prose on every refresh — an authoring-convention change to
+generated output — after which the 204 KB file needs one rewrap. The
+alternatives are a one-time rewrap that the next long paragraph undoes, or
+closing it and recording bounded reads as the working convention.
 
-None of them is critical. `#53` is open and critical, and predates this
-increment.
+The strongest argument for the convention change is the one this cycle produced:
+**`/jim:arch` cannot read the file it maintains.** Its own differential-update
+step instructs reading the existing document fully, and the whole-file read is
+refused at roughly 51k tokens, so the update that corrected the test-corpus
+roster ran off bounded `awk` reads instead. Every other option leaves the skill
+that owns the document unable to follow its own process on it.
 
-`#363` is still worth last, and the case for it keeps growing. Eight of the
-fixes closed since carry sites a mechanical sweep would have caught: a
-subcommand missing from the Migrations table, config keys missing from two
-config tables, a grant that did not cover its own body, a script header
-enumerating eight of twelve verbs, a field the conversion stopped writing under
-the name its own usage still gives, a face crediting a CLI with two verbs the
-group no longer calls, a test-corpus roster naming seven of sixteen files, and
-the same roster stale a second time inside one of those files' own headers.
+`#53` is open and critical, and predates this increment.
 
-`#356`, `#359`, `#366` and `#371` remain small and real; the note above about
-not bundling them into critical work no longer applies, since there is no
-critical work left in this batch to obscure.
+Six issues were filed *by* this remediation rather than fixed by it, and none is
+part of the seventeen or this increment's debt:
 
-Three issues were filed *by* this remediation rather than fixed by it — `#372`,
-`#373`, `#374`, all from the contract-declaration pass. They are not part of the
-seventeen and are not this increment's debt; `#373` in particular cannot be
-closed from the `issue` group at all, since the half that is missing belongs to
-`platform`'s face.
+| issue | what it is | closable here? |
+| :--- | :--- | :--- |
+| `#372` | the fourth `ts-shape` copy no test compares | yes |
+| `#373` | platform's undeclared half of the branch-gate mirror | no — `platform`'s face |
+| `#374` | the faces verb drops nine entries across four faces | yes |
+| `#375` | the allocator's verb sweep is hand-listed, not derived | yes |
+| `#376` | the prov-token grammar crosses into `sdlc`, undeclared | no — two faces |
+| `#377` | no requires token resolves to any provides entry | no — all four faces |
+
+The last is the root the contract-graph three are instances of: the two halves
+of every face are written in disjoint vocabularies, so `leak`, `dead-surface`
+and `breaking` are decided by reading prose rather than by a join. Fixing it is
+a naming pass across four group blueprints plus a mechanical check, which is a
+larger piece of work than anything in the seventeen and deliberately not folded
+into them.

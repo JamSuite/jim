@@ -42,11 +42,13 @@ Two frontmatter values look wrong and are not:
 
 ### What the remediation has closed
 
-Eleven of the seventeen issues, in five batches. First the two that blocked —
+Sixteen of the seventeen issues, in seven batches. First the two that blocked —
 `#365`, the bracket bypass past the recorded-identity charset gate, and `#360`,
 a path composed from an unvalidated slug — then the fail-open pair (`#358`,
 `#361`), then the documentation set (`#368`, `#364`, `#369`, `#370`), then the
-test-quality pair (`#362`, `#357`), then the contract declaration (`#367`).
+test-quality pair (`#362`, `#357`), then the contract declaration (`#367`), then
+the small-correctness batch (`#359`, `#356`, `#371`, `#366`), then the
+mechanical sweep (`#363`).
 
 Both blueprint violations are cleared. `/jim:verify issue` returned
 `identity-validated-before-record` and `id-gate-before-path` as `holds` under
@@ -54,27 +56,44 @@ judges reading the code without being told what changed, and the group ledger
 carries both records — `violated=1`, then `violated=0` — so the trajectory is
 visible rather than amended away.
 
-Six remain and none is critical: `#355` (ARCHITECTURE.md line lengths), `#363`
-(structural), and `#356`, `#359`, `#366` and `#371` (small correctness). `#53`
-is open and critical, and predates this increment.
+**One remains: `#355`, and it is waiting on a decision rather than on work** —
+whether `/jim:arch` wraps its generated prose on every refresh, which is a
+change to how generated output is authored. `remediation.md` § *What remains*
+states the three options and the argument that separates them. `#53` is open and
+critical, and predates this increment.
 
-Three issues were filed *by* the remediation rather than fixed by it — `#372`,
-`#373`, `#374`, all out of the contract-declaration pass. They are not part of
-the seventeen. `#373` cannot be closed from this group at all: the undeclared
-half of that coupling belongs to `platform`'s face.
+Six issues were filed *by* the remediation rather than fixed by it — `#372`,
+`#373`, `#374` out of the contract-declaration pass, `#377` and `#376` out of
+the census behind them, and `#375` out of the mechanical sweep. None is part of
+the seventeen. Three cannot be closed from this group at all, because the
+undeclared halves belong to `platform`'s and `sdlc`'s faces.
+
+`#377` is the root the other contract-graph issues are instances of: no
+`Requires` token on any face resolves to any `Provides` entry, because the two
+halves are named in disjoint vocabularies — the artifact on one side, the
+capability on the other. Three of the reconcile pass's six finding classes are
+decided by reading prose as a result. It is a larger piece of work than anything
+in the seventeen and was deliberately not folded into them.
 
 **Read `remediation.md` § *Where this analysis under-scoped the work* before
-touching any of them.** Every issue closed so far reached more sites than it
-named — eleven for eleven — and the section says how each extra site was found.
-Not one was found by re-reading the issue. That is the single most transferable
+touching any of them.** Every issue closed so far reached further than it named
+— sixteen for sixteen — and the section says how each extra site was found. Not
+one was found by re-reading the issue. That is the single most transferable
 thing this cycle produced, and it kept recurring after it had been written down.
 
-The last one is the sharpest version, because the wrong census looked right.
-Asked whether any other group face had `#367`'s gap, enumerating the *declared*
-contract edges answered "exactly one" — and could not have answered otherwise,
-since it searched only edges someone had already declared. Censusing the code's
-sync markers instead found three couplings where the issue named one. **Census
-the rule's mechanism, not the registry of things already recorded.**
+Two of those are worth knowing about before the rest. The sharpest is the one
+where the wrong census looked right: asked whether any other group face had
+`#367`'s gap, enumerating the *declared* contract edges answered "exactly one" —
+and could not have answered otherwise, since it searched only edges someone had
+already declared. Censusing the code's sync markers instead found three
+couplings where the issue named one. **Census the rule's mechanism, not the
+registry of things already recorded.**
+
+The other runs the opposite way. `#371` reported two quiet failure paths as one
+inconsistency; the second turned out to be deliberate, and "fixing" it would
+have discarded a developer's edits to make the code look symmetrical. A census
+can widen an issue and it can also cut one in half, and the second only happens
+if you check whether the thing that looks wrong is actually wrong.
 
 ---
 
@@ -276,10 +295,26 @@ declares this convention, which is why it is here; it is filed as `#374`. Check
 a new entry with `jimverify.sh faces <blueprint>` and confirm it appears before
 believing the declaration landed.
 
+**A config key's CLI name is not the name it wears in the file.**
+`jimconf.sh keys` prints `specs`, `architecture`, `issues`; the `jimconf.toml`
+those resolve against spells them `specs_path`, `architecture_path`,
+`issues_path`. The resolver appends `_path` to every key outside the bare-name
+families its own comment enumerates. So a sweep comparing the CLI names against
+a document's table reports every path key as undocumented — a false alarm that
+looks exactly like the real one, and one that reads as "README is missing ten
+keys" until you check the resolver.
+
+**A doc table can document several keys in one row.** README documents the five
+`health_threshold_*` knobs as a single `health_threshold_<signal>` row naming
+each signal, which is the better document and invisible to a row-per-key check.
+The sweep added for `#363` reads family prefixes out of the document rather than
+splitting the key, because two of those five carry an underscore in their own
+suffix.
+
 **The ID coordination registry is unreachable from the sandbox VM.**
 `id_coordination_unreachable = provisional`, so every filing returns a `P-`
 provisional ordinal. This is the designed degradation. The host realizes them
-with `/jim:issue reconcile`. All ordinals are realized — 355 through 374 — with
+with `/jim:issue reconcile`. All ordinals are realized — 355 through 377 — with
 none provisional at the time of writing.
 
 **A reconcile can rewrite a file between your read and your commit.** The host
@@ -331,46 +366,59 @@ research and the previous one's. Do not re-raise it as new.
 Read `remediation.md` first — the analysis, the order, and § *Progress*, which
 records what each fix actually did rather than what its issue asked for.
 
-Two of the six are not what their one-line titles suggest.
+**`#355` is not a document fix, and it is the only one of the seventeen left.**
+It wants a decision about whether `/jim:arch` wraps its generated prose on every
+refresh — an authoring-convention change — plus a rewrap of a 204 KB file whose
+unit of oversize *is* the line. It was deliberately left out of the
+documentation pass so that decision would not be buried in a diff about
+something else, and it is still outstanding for the same reason: it is a
+decision, not a task.
 
-**`#355` is not a document fix.** It wants a decision about whether `/jim:arch`
-wraps its generated prose on every refresh — an authoring-convention change —
-plus a rewrap of a 204 KB file whose unit of oversize *is* the line. It was
-deliberately left out of the documentation pass so that decision would not be
-buried in a diff about something else.
+The argument for it is stronger than "consumers cannot read it": **`/jim:arch`
+cannot read the file it maintains.** Its own differential-update step instructs
+reading the existing document fully, and the whole-file read is refused at ~51k
+tokens, so the update that corrected the test-corpus roster ran off bounded
+`awk` reads instead. The skill that owns the document cannot follow its own
+process on it.
 
-There is now a much better argument for it than "consumers cannot read it":
-**`/jim:arch` cannot read the file it maintains.** Its own differential-update
-step instructs reading the existing document fully, and the whole-file read is
-refused at ~51k tokens, so the update that corrected the test-corpus roster ran
-off bounded `awk` reads instead. The skill that owns the document cannot follow
-its own process on it.
+Everything else open here was filed *by* the remediation. `#372`, `#374` and
+`#375` are closable from this group. `#373`, `#376` and `#377` are not — they
+need `platform`'s and `sdlc`'s faces, and `#377` needs all four. Take `#377`
+first if you take any of them: the other two are instances of it, and fixing an
+instance under the current naming adds an entry that only judgment can match.
 
-**`#363` is the only one that prevents recurrence** rather than fixing an
-instance, and the evidence keeps accumulating: eight of the fixes closed since
-carry sites a mechanical sweep would have caught, the most recent being a face
-crediting a CLI with two verbs the group no longer calls and a test-corpus
-roster stale in two files at once.
+Three methods from this cycle are worth reusing before they are forgotten.
 
-There is also a method now worth reusing before it is forgotten. The
-test-quality pair was audited by **mutation testing** — the established
+**Mutation testing**, which audited the test-quality pair — the established
 technique, applied by hand because no generated implementation exists for shell.
 One behaviour removed per mutant, the subset run against each, the cases that go
 red recorded; twenty-three mutants at about twenty seconds each found three
 defects nobody had reported. `docs/notes/process-improvements.md` § *Audit the
 surface, not the case* has the method, the field's vocabulary, and the two ways
 it silently reports a false negative. The harness itself was scratch and is
-gone; it is a dozen lines and worth rebuilding rather than hunting for.
+gone; it is a dozen lines and worth rebuilding rather than hunting for. It is
+also worth applying to a *new* guard and not only to an audit: every case added
+in the last two batches was confirmed red against the code without its guard,
+which is a thirty-second check that says whether the case tests the guard or
+merely the outcome.
 
-A second method is worth keeping for the same reason. A **full** group-blueprint
-regeneration is affordable if the evidence gathering fans out: twenty read-only
-Sonnet agents, one per spec, one per script cluster, plus the skill surface,
-`ARCHITECTURE.md` and the test files, each returning a fixed structured report
-rather than prose. Judgment — what the face should say — stays with the caller;
-the agents only supply grounded facts. That is what turned a one-entry edit into
-a regeneration that caught a stale Requires claim, missing config keys and three
-undeclared invariants. Fan-out is a per-session grant, so ask before assuming
-it. Do not run it alongside the suite.
+**A full group-blueprint regeneration**, which is affordable if the evidence
+gathering fans out: twenty read-only Sonnet agents, one per spec, one per script
+cluster, plus the skill surface, `ARCHITECTURE.md` and the test files, each
+returning a fixed structured report rather than prose. Judgment — what the face
+should say — stays with the caller; the agents only supply grounded facts. That
+is what turned a one-entry edit into a regeneration that caught a stale Requires
+claim, missing config keys and three undeclared invariants. Fan-out is a
+per-session grant, so ask before assuming it. Do not run it alongside the suite.
+
+**Deriving a doc check from code rather than restating the roster in the test.**
+Both sweeps added for `#363` read their expectations out of the scripts —
+`jimconf.sh keys`, and each migration script's own usage text — so a new key or
+subcommand fails the check without anyone maintaining a list. The counter-example
+is in the same file: the allocator's sweep carries its verbs in an array, and a
+verb that shipped without reaching the documentation went unnoticed by it. When
+the population cannot be derived, that is a finding about the script, not a
+reason to hand-write the list.
 
 Whatever you take, the closing move is the same each time: a `## Resolution`
 note on the issue naming the commits and the case that pins the fix, and
