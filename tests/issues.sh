@@ -6146,15 +6146,20 @@ case_index_identity_classes_carry_remedies_that_apply_to_them() {
 # identity values — it is written into generated content the project publishes,
 # and each named record already carries its own value.
 case_index_identity_mismatch_never_names_the_value() {
-  local dir idx
+  local dir idx warnings
   dir=$(empty_dir index_identity_mismatch_quiet)
   indexed_issue "$dir" "20260101-one" '1234+secretperson@users.noreply.github.com'
   run_index "$dir"
   assert_exit "rc" 0 "$RC"
   idx="$(cat "$dir/INDEX.md")"
-  assert_match "the record is named" '20260101-one' "$idx"
-  assert_eq "no identity value in the index" "no" \
-    "$(printf '%s' "$idx" | grep -q 'secretperson' && echo yes || echo no)"
+  # The property is about the warning surface, not the whole file. An Issues
+  # row records every field a filter can name and `filed-by` is one of them,
+  # so the value is in the index by design — beside the record that already
+  # carries it. What the warning must not do is repeat it.
+  warnings="$(printf '%s\n' "$idx" | awk '/^## Integrity Warnings$/,EOF')"
+  assert_match "the record is named" '20260101-one' "$warnings"
+  assert_eq "no identity value in the warning" "no" \
+    "$(printf '%s' "$warnings" | grep -q 'secretperson' && echo yes || echo no)"
 }
 
 # AC: a collection already matching the configured form produces no warning —
@@ -7154,6 +7159,30 @@ case_identity_a_mapping_cannot_admit_an_unrecordable_value() {
   run_identity "$repo" normalize 'a<b'
   assert_exit "rc" 2 "$RC"
   assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# ─── Section: index.sh — the widened Issues row ──────────────────────────────
+
+# AC: the index describes each record with every field a filter can name
+case_issues_index_row_carries_new_scalars() {
+  local dir row
+  dir=$(empty_dir index_row_new_scalars)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: closed
+num: 7
+priority: high
+created: 2026-01-01
+type: epic
+filed-by: filer@example.test
+claimed-by: holder@example.test
+outcome: done'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  row="$(grep -F '`20260101-alpha`' "$dir/INDEX.md" | head -n1)"
+  assert_match "type in row"       'type: epic'                    "$row"
+  assert_match "filed-by in row"   'filed-by: filer@example\.test' "$row"
+  assert_match "claimed-by in row" 'claimed-by: holder@example\.test' "$row"
+  assert_match "outcome in row"    'outcome: done'                 "$row"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

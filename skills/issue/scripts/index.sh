@@ -740,11 +740,15 @@ main() {
   for s in "${slugs_seen[@]}"; do
     local row
     row="- \`$s\` — $(row_safe "${meta_title[$s]:-(untitled)}") · status: $(row_safe "${meta_status[$s]:-open}")"
-    [[ -n "${meta_num[$s]:-}" ]]      && row+=" · num: $(row_safe "${meta_num[$s]}")"
-    [[ -n "${meta_priority[$s]:-}" ]] && row+=" · priority: $(row_safe "${meta_priority[$s]}")"
-    [[ -n "${meta_created[$s]:-}" ]]  && row+=" · created: $(row_safe "${meta_created[$s]}")"
-    [[ -n "${meta_labels[$s]:-}" ]]   && row+=" · labels: $(row_safe "${meta_labels[$s]}")"
-    [[ -n "${meta_origin[$s]:-}" ]]   && row+=" · origin: $(row_safe "${meta_origin[$s]}")"
+    [[ -n "${meta_num[$s]:-}" ]]        && row+=" · num: $(row_safe "${meta_num[$s]}")"
+    [[ -n "${meta_priority[$s]:-}" ]]   && row+=" · priority: $(row_safe "${meta_priority[$s]}")"
+    [[ -n "${meta_created[$s]:-}" ]]    && row+=" · created: $(row_safe "${meta_created[$s]}")"
+    [[ -n "${meta_labels[$s]:-}" ]]     && row+=" · labels: $(row_safe "${meta_labels[$s]}")"
+    [[ -n "${meta_origin[$s]:-}" ]]     && row+=" · origin: $(row_safe "${meta_origin[$s]}")"
+    [[ -n "${meta_type[$s]:-}" ]]       && row+=" · type: $(row_safe "${meta_type[$s]}")"
+    [[ -n "${meta_filed_by[$s]:-}" ]]   && row+=" · filed-by: $(row_safe "${meta_filed_by[$s]}")"
+    [[ -n "${meta_claimed_by[$s]:-}" ]] && row+=" · claimed-by: $(row_safe "${meta_claimed_by[$s]}")"
+    [[ -n "${meta_outcome[$s]:-}" ]]    && row+=" · outcome: $(row_safe "${meta_outcome[$s]}")"
     issues_section+="$row"$'\n'
   done
 
