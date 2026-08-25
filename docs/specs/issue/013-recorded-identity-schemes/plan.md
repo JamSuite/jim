@@ -2,7 +2,7 @@
 title: "Recorded identity schemes"
 spec: "docs/specs/issue/013-recorded-identity-schemes/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Recorded identity schemes — Plan

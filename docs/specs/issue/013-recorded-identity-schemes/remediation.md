@@ -31,19 +31,19 @@ reading the code rather than by running the tests.
 | artifact | state |
 | :--- | :--- |
 | `spec.md` | approved — 33 ACs |
-| `plan.md` | approved — 21/21 tasks complete |
+| `plan.md` | `complete` — 21/21 tasks, 17/17 review issues |
 | `security.md` | `Needs Plan Review` — 16 findings, all applied |
 | `review.md` | **`major-drift`** — 14 findings, `undelegated=0` |
-| plan `status:` | **still `approved`** — deliberately not marked complete |
+| plan `status:` | `complete` — closed 2026-08-25, after all seventeen |
 | collection | converted; 5 integrity warnings, all pre-existing wikilink noise |
 
-The plan is not marked complete because a build whose own review records a
-`major-drift` verdict and an open security regression should not carry a status
-that says otherwise.
+The plan was held at `approved` while it was true that a build whose own review
+recorded a `major-drift` verdict and an open security regression should not
+carry a status saying otherwise.
 
-*The security regression is now fixed and both blueprint violations are cleared
-(§ Progress). `plan.md` still reads `approved`: the reason recorded above no
-longer holds, and the gate is the developer's to close.*
+*It reads `complete` as of 2026-08-25. Every issue the review raised is closed,
+the security regression is fixed, and both blueprint violations hold again
+(§ Progress).*
 
 ## What the open issues have in common
 
@@ -502,8 +502,11 @@ unfollowable as before, since reflowing a file does not shrink it. The fix that
 landed changes both: the rule for what `/jim:arch` writes, and the step that
 says how it reads what is already there. And the remaining obstacle turned out
 to be a different problem wearing the same symptom — one section is half the
-document, which no formatting rule addresses, filed as
-`20260825-plugin-conventions-is-half-the-architecture-document`.
+document, which no formatting rule addresses, filed as `#378`.
+
+This is § *The pattern underneath them* seen from the other side: **an analysis
+naming where a rule is broken is not an enumeration of where the rule applies.**
+Every one of them was found by asking what the rule covers, never by re-reading
 the issue — and the documentation set repeated the pattern after that lesson had
 been named and written down, which is worth knowing about how much a written
 rule protects you. Two rules were added to `docs/notes/process-improvements.md`
@@ -527,22 +530,19 @@ part of the seventeen or this increment's debt:
 | `#375` | the allocator's verb sweep is hand-listed, not derived | yes |
 | `#376` | the prov-token grammar crosses into `sdlc`, undeclared | no — two faces |
 | `#377` | no requires token resolves to any provides entry | no — all four faces |
-| plugin-conventions | one section is half the architecture document | yes |
+| `#378` | one section is half the architecture document | yes |
 
-The last is provisional until the coordination point is reachable. `#377` is the
-root the other contract-graph issues are instances of: the two halves of every
-face are named in disjoint vocabularies — the artifact on one side, the
-capability on the other — so `leak`, `dead-surface` and `breaking` are decided
-by reading prose rather than by a join. Fixing it is a naming pass across four
-group blueprints plus a mechanical check, which is a larger piece of work than
-anything in the seventeen and was deliberately not folded into them.
+`#377` is the root the other contract-graph issues are instances of: the two
+halves of every face are named in disjoint vocabularies — the artifact on one
+side, the capability on the other — so `leak`, `dead-surface` and `breaking` are
+decided by reading prose rather than by a join. Fixing it is a naming pass
+across four group blueprints plus a mechanical check, which is a larger piece of
+work than anything in the seventeen and was deliberately not folded into them.
 
-### The gate that is left
+### The gate that closed
 
-`plan.md` still reads `status: approved`. It stayed that way because two
-critical issues from the review were open and unfixed, and marking it complete
-would have made the plan's status contradict its own review. That reason is
-gone: every issue the review raised is closed, both blueprint violations hold
-again under judges reading the code cold, and the suite is green.
-
-Closing that gate is the developer's call, not this document's.
+`plan.md` reads `status: complete` as of 2026-08-25. It had been held at
+`approved` because two critical issues from the review were open and unfixed,
+and marking it complete would have made the plan's status contradict its own
+review. All seventeen are closed, both blueprint violations hold again under
+judges reading the code cold, and the suite is green at 1,575.

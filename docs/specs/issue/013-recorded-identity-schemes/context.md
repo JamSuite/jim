@@ -14,23 +14,22 @@ repeated.
 
 ## 1. Where this stands
 
-The feature is built, the collection is converted, and the increment is **not
-finished**.
+The feature is built, the collection is converted, and the increment is
+**finished**.
 
 | artifact | state |
 | :--- | :--- |
 | `spec.md` | `approved` — 33 acceptance criteria |
 | `research.md` | `Active` |
-| `plan.md` | `approved`, 21/21 tasks `[x]` |
+| `plan.md` | `complete` — 21/21 tasks `[x]`, 17/17 review issues |
 | `security.md` | `Needs Plan Review` — 16 findings, all applied |
 | `review.md` | **`major-drift`** — 14 findings |
 | `remediation.md` | the analysis, the fix order, and what has executed against it |
 
-`plan.md` is deliberately **not** `status: complete`. It stayed `approved`
-because two critical issues from the review were open and unfixed, and marking
-it complete would have made the plan's status contradict its own review. Both
-are now closed, so that reason no longer holds — but the gate is still the
-developer's to close, and nobody has closed it.
+`plan.md` reads `status: complete` as of 2026-08-25. It had been held at
+`approved` because two critical issues from the review were open and unfixed,
+and marking it complete would have made the plan's status contradict its own
+review. All seventeen are closed, so the gate closed with them.
 
 Two frontmatter values look wrong and are not:
 
@@ -58,18 +57,12 @@ visible rather than amended away.
 
 `#53` is open and critical, and predates this increment.
 
-**`plan.md` still reads `status: approved`, and the reason it stayed that way is
-gone.** It was held because two critical issues from the review were open, and
-marking the plan complete would have contradicted its own review. Every issue
-that review raised is now closed. Closing the gate is the developer's call.
-
 Seven issues were filed *by* the remediation rather than fixed by it — `#372`,
 `#373`, `#374` out of the contract-declaration pass, `#377` and `#376` out of
 the census behind them, `#375` out of the mechanical sweep, and
-`20260825-plugin-conventions-is-half-the-architecture-document` out of the
-line-length one. None is part of the seventeen. Three cannot be closed from this
-group at all, because the undeclared halves belong to `platform`'s and `sdlc`'s
-faces.
+`#378` out of the line-length one. None is part of the seventeen. Three cannot
+be closed from this group at all, because the undeclared halves belong to
+`platform`'s and `sdlc`'s faces.
 
 `#377` is the root the other contract-graph issues are instances of: no
 `Requires` token on any face resolves to any `Provides` entry, because the two
@@ -384,8 +377,8 @@ research and the previous one's. Do not re-raise it as new.
 
 ## 6. If you are picking up what is left
 
-The seventeen are done. What remains is the seven this remediation *filed*, plus
-`#53`, plus the gate on `plan.md` that is the developer's to close.
+The seventeen are done and `plan.md` is `complete`. What remains is the seven
+this remediation *filed*, plus `#53`.
 
 Read `remediation.md` first — the analysis, and § *Progress*, which records what
 each fix actually did rather than what its issue asked for.
