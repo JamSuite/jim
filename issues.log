@@ -372,3 +372,6 @@ issue allocate 371 20260823-transition-sh-degrades-quietly-on-two-failure-paths 
 issue allocate 372 20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test 20260824 jrko
 issue allocate 373 20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror 20260824 jrko
 issue allocate 374 20260825-faces-verb-skips-bold-first-provides-entries 20260824 jrko
+issue allocate 375 20260825-allocator-verb-sweep-is-hand-listed-not-derived 20260825 jrko
+issue allocate 376 20260825-provisional-token-grammar-crosses-into-sdlc-undeclared 20260825 jrko
+issue allocate 377 20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face 20260825 jrko
