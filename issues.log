@@ -376,3 +376,4 @@ issue allocate 375 20260825-allocator-verb-sweep-is-hand-listed-not-derived 2026
 issue allocate 376 20260825-provisional-token-grammar-crosses-into-sdlc-undeclared 20260825 jrko
 issue allocate 377 20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face 20260825 jrko
 issue allocate 378 20260825-plugin-conventions-is-half-the-architecture-document 20260825 jrko
+issue allocate 379 20260825-blueprint-generate-mode-has-no-commit-verb 20260825 jrko
