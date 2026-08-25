@@ -125,3 +125,4 @@
 1787527995	2026-08-23T23:33:15Z	blueprint	finished	tier=project;op=reconcile;edges=25;leaks=1;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=789;faces=22;faces_max=9;faces_max_group=issue;fanin_group=issue,platform
 1787634818	2026-08-25T05:13:38Z	blueprint	started	tier=project;op=reconcile
 1787634935	2026-08-25T05:15:35Z	blueprint	finished	tier=project;op=reconcile;edges=26;leaks=1;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=807;faces=23;faces_max=10;faces_max_group=issue;fanin_group=issue,platform
+1787656666	2026-08-25T11:17:46Z	spec	realized	moved=issue/P-20260825-read-view-filter-composition:issue/014
