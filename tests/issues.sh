@@ -5486,6 +5486,42 @@ case_migrate_identity_renormalize_discloses_the_alias_mapping() {
   assert_match "the mapped record takes the mapped form" '> dev' "$OUT"
 }
 
+
+# AC: the disclosure describes the mapping that will actually apply. Presence
+# and application resolve from one root, so a collection directory the
+# repository does not contain cannot leave the preview announcing that no
+# mapping is in play while every value is being mapped through one. A
+# disclosure exists to be relied on, which is what makes a confidently wrong
+# one worse than none.
+case_migrate_identity_disclosure_and_lookup_share_a_root() {
+  local repo outside
+  repo="$(identity_collection migrate_identity_disclose_root)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "map" >/dev/null 2>&1
+
+  # A collection the operand names and the repository does not hold — the shape
+  # a routed placement materializes, which carries no `.git` of its own while
+  # the lookup goes on reading the working directory's repository.
+  outside="$TMP_BASE/migrate_identity_disclose_outside"
+  mkdir -p "$outside"
+  write_issue "$outside" "20260101-one" "title: \"one\"
+status: open
+priority: low
+type: issue
+filed-by: \"old@personal.example\"
+claimed-by: \"\"
+outcome: \"\"
+labels: []"
+
+  run_in "$repo" "$SCRIPT_MIGRATE" identity "$outside" --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_eq "does not announce a mapping that is in play as absent" "no" \
+    "$(printf '%s' "$OUT" | grep -q 'none found' && echo yes || echo no)"
+  assert_match "names the mapping that applies" 'Alias mapping \(\.mailmap\)' "$OUT"
+  assert_match "counts the record it altered" '1 record' "$OUT"
+}
 # ─── Section: migrate.sh identity — explicit remap ──────────────────────────
 
 # AC: an operator can replace one recorded identity with another across the

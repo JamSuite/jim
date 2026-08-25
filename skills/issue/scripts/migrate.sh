@@ -771,16 +771,25 @@ refuse_ambiguous() {
   return 2
 }
 
-# alias_source <dir> — name the mapping the project's version control resolves,
-# or nothing. Located, never read: the disclosure states whether one is in play,
+# alias_source — name the mapping the project's version control resolves, or
+# nothing. Located, never read: the disclosure states whether one is in play,
 # and version control is what reads it.
+#
+#   Resolved from this process's own working directory, because that is the
+#   root the lookup applies from — `map_alias` invokes version control with no
+#   directory of its own. Anchoring presence on the collection directory
+#   instead lets the two disagree: a routed placement hands over a materialized
+#   copy carrying no repository at all, and the preview then reports no mapping
+#   while every value is being resolved through the developer's own. A
+#   disclosure exists to be relied on, so one that can be confidently wrong is
+#   worse than none.
 alias_source() {
-  local dir="$1" top
-  top="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || return 1
-  if [[ -n "$(git -C "$dir" config --get mailmap.file 2>/dev/null)" ]]; then
+  local top
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || return 1
+  if [[ -n "$(git config --get mailmap.file 2>/dev/null)" ]]; then
     printf 'mailmap.file'; return 0
   fi
-  if [[ -n "$(git -C "$dir" config --get mailmap.blob 2>/dev/null)" ]]; then
+  if [[ -n "$(git config --get mailmap.blob 2>/dev/null)" ]]; then
     printf 'mailmap.blob'; return 0
   fi
   [[ -f "$top/.mailmap" ]] && { printf '.mailmap'; return 0; }
@@ -814,14 +823,14 @@ alias_altered() {
   printf '%d' "$n"
 }
 
-# render_alias_disclosure <dir> <plan> — state what the alias mapping did before
-# the operator approves the plan, rather than leaving them to infer it from the
+# render_alias_disclosure <plan> — state what the alias mapping did before the
+# operator approves the plan, rather than leaving them to infer it from the
 # result. Which mapping version control resolved is its own fact: repository
 # configuration can redirect it, so "the project's mapping" is not necessarily a
 # file at a known path.
 render_alias_disclosure() {
-  local dir="$1" plan="$2" src
-  if src="$(alias_source "$dir")"; then
+  local plan="$1" src
+  if src="$(alias_source)"; then
     printf '\n  Alias mapping (%s): identities resolve through it before the form\n' "$src"
     printf '  is applied — %s record(s) altered by the mapping.\n' \
       "$(alias_altered "$plan")"
@@ -1029,7 +1038,7 @@ cmd_identity() {
     # Only the re-normalization resolves identities through the mapping; a remap
     # replaces the value the operator named with the one they supplied, so there
     # is no transform to disclose.
-    [[ "$mode" == "renormalize" ]] && render_alias_disclosure "$dir" "$plan"
+    [[ "$mode" == "renormalize" ]] && render_alias_disclosure "$plan"
     printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
     git_note "$dir"
   fi
