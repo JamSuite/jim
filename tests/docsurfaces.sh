@@ -63,6 +63,42 @@ ledger_verbs() {
     | sed -n 's/^    \([a-z][a-z-]*\)).*/\1/p'
 }
 
+# migration_subcommands <script> — every subcommand the script advertises in its
+# own usage text, one per line.
+#
+#   Read from usage() rather than the dispatch table on purpose. The dispatch
+#   also carries an internal primitive the script deliberately does not
+#   advertise, and what an operator is told exists is exactly what the feature
+#   doc owes a row — so an unadvertised primitive is correctly outside this set,
+#   and adding it to usage() pulls it in without anyone editing this list.
+migration_subcommands() {
+  local base; base="$(basename "$1")"
+  sed -n "s/^ *'  bash $base \([a-z][a-z-]*\).*/\1/p" "$1" | LC_ALL=C sort -u
+}
+
+# conf_documented <key> <file> — 0 when <file>'s tables name <key>.
+#
+#   Three shapes are accepted, because all three are how the tables are actually
+#   written: the CLI name as a row, the TOML name (`<key>_path`, the suffix the
+#   resolver adds for path-valued keys) as a row, and a family row such as
+#   `health_threshold_<signal>` whose text names this key's own suffix in
+#   backticks. Demanding a row per key would ask the tables to stop documenting
+#   a five-key family in one line, which is a worse document, not a better one.
+conf_documented() {
+  local key="$1" file="$2" prefix suffix
+  grep -qE "^\| \`($key|${key}_path)\`" "$file" && return 0
+  # A family row documents several keys at once: its first cell carries a
+  # `<placeholder>` tail and its text names each member's own suffix. The
+  # prefixes are read out of the document rather than guessed by splitting the
+  # key, because a member's suffix can itself carry an underscore.
+  while IFS= read -r prefix; do
+    [[ "$key" == "$prefix"_* ]] || continue
+    suffix="${key#"${prefix}_"}"
+    grep -qE "^\| \`${prefix}_<[a-z]+>\`.*\`$suffix\`" "$file" && return 0
+  done < <(sed -n 's/^| `\([a-z_]*\)_<[a-z]*>`.*/\1/p' "$file" | LC_ALL=C sort -u)
+  return 1
+}
+
 # gh_anchor <heading-text> — the GitHub in-page anchor for a heading: lowercase,
 # drop every byte that is not a letter, digit, space or hyphen, then spaces to
 # hyphens. A space-surrounded dropped character therefore yields a double hyphen,
@@ -380,6 +416,61 @@ case_docsurfaces_issue_grant_covers_the_scripts_it_instructs() {
     "$(grep -oE 'migrate\.sh prefix' <<< "$tools")"
 }
 
+
+# INTRODUCTION, migrations half. A migration subcommand the scripts advertise is
+# a row in the doc that enumerates them, and every row names a subcommand that
+# exists. Both directions, because they fail independently and neither sees the
+# other: a shipped subcommand with no row, and a row outliving the subcommand it
+# describes. Two subcommands shipped without reaching this table before the
+# check existed.
+case_docsurfaces_migration_commands_are_documented() {
+  local doc="$REPO_ROOT/docs/features/issues.md"
+  local script base sub n=0 missing="" stale=""
+  for script in "$REPO_ROOT/skills/issue/scripts/migrate.sh" \
+                "$REPO_ROOT/skills/issue/scripts/backfill.sh"; do
+    base="$(basename "$script")"
+    while IFS= read -r sub; do
+      [[ -n "$sub" ]] || continue
+      n=$((n + 1))
+      grep -qE "^\| \`$base $sub" "$doc" || missing="$missing$base $sub, "
+    done < <(migration_subcommands "$script")
+    while IFS= read -r sub; do
+      [[ -n "$sub" ]] || continue
+      migration_subcommands "$script" | grep -qx -- "$sub" \
+        || stale="$stale$base $sub, "
+    done < <(sed -n "s/^| \`$base \([a-z][a-z-]*\).*/\1/p" "$doc" | LC_ALL=C sort -u)
+  done
+  assert_eq "both usage blocks were read (>= 5 subcommands, got $n)" "yes" \
+    "$([[ "$n" -ge 5 ]] && echo yes || echo no)"
+  assert_eq "every advertised migration subcommand has a row" "" "${missing%, }"
+  assert_eq "every migration row names a subcommand that exists" "" "${stale%, }"
+}
+
+# INTRODUCTION, config half. Every key the resolver knows is named where keys are
+# enumerated: both operator surfaces, and — for the two families the issue
+# feature owns — its feature doc as well. A key shipped and reachable from a
+# jimconf.toml nobody documents is configuration only its author knows about,
+# which is how two of them shipped.
+case_docsurfaces_config_keys_are_documented() {
+  local k n=0 no_readme="" no_example="" no_feature=""
+  while IFS= read -r k; do
+    [[ -n "$k" ]] || continue
+    n=$((n + 1))
+    conf_documented "$k" "$REPO_ROOT/README.md" || no_readme="$no_readme$k "
+    grep -qE "^#? *($k|${k}_path) *=" "$REPO_ROOT/jimconf.toml.example" \
+      || no_example="$no_example$k "
+    case "$k" in
+      issue*|identity*)
+        conf_documented "$k" "$REPO_ROOT/docs/features/issues.md" \
+          || no_feature="$no_feature$k " ;;
+    esac
+  done < <(bash "$REPO_ROOT/skills/conf/scripts/jimconf.sh" keys)
+  assert_eq "the key list was read (>= 40 keys, got $n)" "yes" \
+    "$([[ "$n" -ge 40 ]] && echo yes || echo no)"
+  assert_eq "every key reaches README's tables"          "" "${no_readme% }"
+  assert_eq "every key reaches jimconf.toml.example"     "" "${no_example% }"
+  assert_eq "every issue key reaches its feature doc"    "" "${no_feature% }"
+}
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
