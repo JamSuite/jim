@@ -66,7 +66,8 @@ STALE_VIEW=0
 # and then vanishes at grouping time.
 readonly STATUS_TOKENS=(open active closed)
 readonly PRIORITY_TOKENS=(critical high medium low)
-readonly COL_TOKENS=(num date priority status slug labels title)
+readonly COL_TOKENS=(num date priority status slug labels title
+                     type filed-by claimed-by outcome)
 readonly TYPE_TOKENS=(issue epic)
 readonly HELD_TOKENS=(claimed unclaimed)
 readonly BLOCKED_TOKENS=(blocked unblocked)
@@ -586,12 +587,14 @@ cmd_stats() {
 
 # ─── Section: list ───────────────────────────────────────────────────────────
 
-# format_row <cols-csv> <slug> <num> <status> <priority> <created> <labels> <title>
+# format_row <cols-csv> <slug> <num> <status> <priority> <created> <labels> \
+#            <title> <type> <filed-by> <claimed-by> <outcome>
 #   Fixed-width columns are formatted with `printf -v` (into a scratch var)
 #   rather than `out+=$(printf …)` — the latter forks a subshell per column per
 #   row, which dominates list cost on larger collections.
 format_row() {
   local cols="$1" slug="$2" num="$3" status="$4" prio="$5" created="$6" labels="$7" title="$8"
+  local type="${9:--}" filed_by="${10:--}" claimed_by="${11:--}" outcome="${12:--}"
   local out="" c pad
   local -a _cols=()
   IFS=',' read -ra _cols <<< "$cols"
@@ -611,6 +614,13 @@ format_row() {
       date)     printf -v pad '%-12s' "${created:0:10}"; out+=$pad ;;
       priority) printf -v pad '%-9s' "$prio";     out+=$pad ;;
       status)   printf -v pad '%-8s' "$status";   out+=$pad ;;
+      type)     printf -v pad '%-6s' "$type";     out+=$pad ;;
+      outcome)  printf -v pad '%-9s' "$outcome";  out+=$pad ;;
+      # Identities are wider than the enumerated fields and vary in length, so
+      # they are padded to the widest form the recordable set commonly holds
+      # rather than truncated — a clipped address is a wrong one.
+      filed-by)   printf -v pad '%-22s' "$filed_by";   out+=$pad ;;
+      claimed-by) printf -v pad '%-22s' "$claimed_by"; out+=$pad ;;
       slug)     out+="$slug " ;;
       title)    out+="$title " ;;
       labels)   out+="[$labels] " ;;
@@ -898,6 +908,13 @@ cmd_list() {
   IFS=',' read -ra _carr <<< "$cols"
   for _c in "${_carr[@]}"; do in_list "$_c" "${COL_TOKENS[@]}" || _ok=0; done
   [[ "$_ok" == 1 && -n "$cols" ]] || cols="num,date,priority,title"
+  # A selection made for this invocation wins over the configured default, and
+  # replaces it rather than merging with it — a query naming its columns is
+  # naming all of them. It has already cleared the column vocabulary at parse
+  # time, which is why the two fail differently: a flag is this run's explicit
+  # ask and refuses, while a standing setting degrades so a typo in it never
+  # makes the collection unreadable.
+  [[ -n "$FILTER_COLS" ]] && cols="$FILTER_COLS"
 
   # Load rows, applying the filter.
   local rows=() slug num status prio created labels title origin
@@ -924,7 +941,7 @@ cmd_list() {
     held_matches    "$claimed_by" || continue
     blocked_matches "$slug"       || continue
     epic_matches    "$slug"       || continue
-    rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title")
+    rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title"$'\t'"$type"$'\t'"$filed_by"$'\t'"$claimed_by"$'\t'"$outcome")
   done < <(read_issue_rows "$index_file")
 
   # An index written before the row carried these fields can be newer than
@@ -1013,9 +1030,11 @@ cmd_list() {
     fi
     local sorted
     sorted="$(printf '%s\n' "${group_rows[@]}" | sort_rows)"
-    while IFS=$'\t' read -r slug num status prio created labels title; do
+    while IFS=$'\t' read -r slug num status prio created labels title \
+        type filed_by claimed_by outcome; do
       [[ -z "$slug" ]] && continue
-      format_row "$cols" "$slug" "$num" "$status" "$prio" "$created" "$labels" "$title"
+      format_row "$cols" "$slug" "$num" "$status" "$prio" "$created" "$labels" \
+        "$title" "$type" "$filed_by" "$claimed_by" "$outcome"
     done <<< "$sorted"
     printf '\n'
     printed_any=1

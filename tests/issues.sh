@@ -8177,6 +8177,65 @@ case_issues_render_list_derived_predicates() {
   assert_eq    "not the blocked one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
 }
 
+# ─── Section: render.sh — choosing columns ───────────────────────────────────
+
+# AC: the list view can display a record's kind, filer, holder and outcome
+# alongside the columns it already offers, and the choice can be made for a
+# single query without changing the project's configured default
+case_issues_render_list_cols_flag() {
+  local dir work
+  dir=$(empty_dir render_cols)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: closed
+num: 1
+priority: high
+created: 2026-01-01
+type: epic
+filed-by: "dev@example.test"
+claimed-by: "holder@example.test"
+outcome: wontfix'
+  run_index "$dir"
+
+  run_render list closed --cols num,filed-by,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the filer shows"   'dev@example\.test' "$OUT"
+  assert_match "beside the title"  'Alpha'             "$OUT"
+  assert_eq    "and the priority does not" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'high')"
+
+  run_render list closed --cols type,claimed-by,outcome,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "kind"    'epic'                 "$OUT"
+  assert_match "holder"  'holder@example\.test' "$OUT"
+  assert_match "outcome" 'wontfix'              "$OUT"
+
+  # An unrecognized ad-hoc column is refused and the refusal names the set.
+  run_render list closed --cols num,bogus "$dir"
+  assert_exit  "refused"          1 "$RC"
+  assert_match "names the token"  'unrecognized column: bogus' "$ERR"
+  assert_match "names the set"    'filed-by'                   "$ERR"
+
+  # A mistyped standing setting degrades to the default set instead, so a
+  # formatting mistake never makes the collection unreadable.
+  work=$(empty_dir render_cols_cfg)
+  printf 'issues_path = "%s"\nissue_list_cols = "bogus"\nissue_list_closed = "true"\n' \
+    "$dir" > "$work/jimconf.toml"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list 2>/dev/null)"
+  RC=$?
+  assert_exit  "still readable" 0 "$RC"
+  assert_match "on the default columns" '#1' "$OUT"
+
+  # And a flag chosen for one query leaves that setting alone.
+  printf 'issues_path = "%s"\nissue_list_cols = "num,title"\nissue_list_closed = "true"\n' \
+    "$dir" > "$work/jimconf.toml"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list --cols outcome,title 2>/dev/null)"
+  assert_match "the flag wins for this query" 'wontfix' "$OUT"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list 2>/dev/null)"
+  assert_eq "and the next query is the configured default again" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'wontfix')"
+  assert_match "which still lists it" 'Alpha' "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
