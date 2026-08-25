@@ -7650,6 +7650,116 @@ labels: [auth]'
     "$(ls -A "$work/auth" | grep -c .)"
 }
 
+# ─── Section: render.sh — the scalar axes ────────────────────────────────────
+
+# axes_fixture <dir> — four open issues spanning kind, priority and labels.
+axes_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+priority: high
+created: 2026-01-01
+type: issue
+labels: [auth, api]'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+priority: critical
+created: 2026-01-02
+type: epic
+labels: [auth]'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: active
+num: 3
+priority: low
+created: 2026-01-03
+type: issue
+labels: [open]'
+  write_issue "$dir" "20260104-delta" 'title: "Delta"
+status: open
+num: 4
+priority: medium
+created: 2026-01-04
+type: issue
+labels: []'
+}
+
+# AC: values naming the same axis combine as alternatives; filters naming
+# different axes combine as conjunction; and a bare word and a flag feeding one
+# axis widen it rather than displacing each other
+case_issues_render_list_axes_or_within_and_across() {
+  local dir
+  dir=$(empty_dir render_axes)
+  axes_fixture "$dir"
+  run_index "$dir"
+
+  # Conjunction across axes: open AND high is Alpha alone.
+  run_render list open high "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "Alpha matches"      'Alpha'   "$OUT"
+  assert_eq    "Bravo excluded"   "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq    "Charlie excluded" "0" "$(printf '%s' "$OUT" | grep -c 'Charlie')"
+
+  # Alternatives within one axis, given as one comma-separated flag value.
+  run_render list --priority high,critical "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "Alpha matches" 'Alpha' "$OUT"
+  assert_match "Bravo matches" 'Bravo' "$OUT"
+  assert_eq    "Delta excluded" "0" "$(printf '%s' "$OUT" | grep -c 'Delta')"
+
+  # The same axis named through both spellings widens it.
+  run_render list high --priority critical "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the bare word survives" 'Alpha' "$OUT"
+  assert_match "and so does the flag"   'Bravo' "$OUT"
+  assert_eq    "nothing else"  "0" "$(printf '%s' "$OUT" | grep -c 'Delta')"
+
+  # Kind is an axis of its own.
+  run_render list --type epic "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the epic"      'Bravo' "$OUT"
+  assert_eq    "not the issues" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # A label is a membership test: the row carries a list.
+  run_render list --label api "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "carries api"    'Alpha' "$OUT"
+  assert_eq    "Bravo has only auth" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  # Conjunction again, this time across a label and a priority.
+  run_render list --label auth --priority critical "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "both hold"      'Bravo' "$OUT"
+  assert_eq    "only priority holds" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+}
+
+# AC: a value that is both a reserved word and a label remains reachable as a
+# label, so each of the two meanings has exactly one spelling that reaches it
+case_issues_render_list_reserved_word_reachable_as_a_label() {
+  local dir
+  dir=$(empty_dir render_axes_reserved_label)
+  axes_fixture "$dir"
+  run_index "$dir"
+  run_render list --label open "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the labelled one"  'Charlie' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+}
+
+# AC: a query that matches no record reports that it matched nothing and
+# succeeds — matching nothing is an answer, not a failure
+case_issues_render_list_empty_match_succeeds() {
+  local dir
+  dir=$(empty_dir render_axes_empty)
+  axes_fixture "$dir"
+  run_index "$dir"
+  run_render list --label auth --type epic --priority low "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "says so" '_No matching issues\._' "$OUT"
+  assert_eq    "nothing on stderr" "" "$ERR"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

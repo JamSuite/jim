@@ -632,6 +632,24 @@ axis_matches() {
   return 1
 }
 
+# label_matches <labels-csv> — the label axis, which is a membership test
+#   rather than an equality one: a row carries a list, and an alternative
+#   matches when the list holds it.
+label_matches() {
+  local labels="$1" alt lab
+  local -a larr=()
+  [[ -n "${FILTER_AXIS[label]:-}" ]] || return 0
+  [[ "$labels" == "-" || -z "$labels" ]] && return 1
+  IFS=',' read -ra larr <<< "$labels"
+  while IFS= read -r alt; do
+    for lab in "${larr[@]}"; do
+      lab="${lab#"${lab%%[![:space:]]*}"}"; lab="${lab%"${lab##*[![:space:]]}"}"
+      [[ "$lab" == "$alt" ]] && return 0
+    done
+  done <<< "${FILTER_AXIS[label]}"
+  return 1
+}
+
 cmd_list() {
   local dir=""
   # Classification runs before anything can bind, so a flag's operand never
@@ -686,6 +704,8 @@ cmd_list() {
     [[ "$hide_closed" == 1 && "$status" == "closed" ]] && continue
     axis_matches status   "$status" || continue
     axis_matches priority "$prio"   || continue
+    axis_matches type     "$type"   || continue
+    label_matches         "$labels" || continue
     rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title")
   done < <(read_issue_rows "$index_file")
 
