@@ -42,11 +42,11 @@ Two frontmatter values look wrong and are not:
 
 ### What the remediation has closed
 
-Ten of the seventeen issues, in three batches. First the two that blocked —
+Eleven of the seventeen issues, in five batches. First the two that blocked —
 `#365`, the bracket bypass past the recorded-identity charset gate, and `#360`,
 a path composed from an unvalidated slug — then the fail-open pair (`#358`,
 `#361`), then the documentation set (`#368`, `#364`, `#369`, `#370`), then the
-test-quality pair (`#362`, `#357`).
+test-quality pair (`#362`, `#357`), then the contract declaration (`#367`).
 
 Both blueprint violations are cleared. `/jim:verify issue` returned
 `identity-validated-before-record` and `id-gate-before-path` as `holds` under
@@ -54,15 +54,27 @@ judges reading the code without being told what changed, and the group ledger
 carries both records — `violated=1`, then `violated=0` — so the trajectory is
 visible rather than amended away.
 
-Seven remain and none is critical: `#355` (ARCHITECTURE.md line lengths),
-`#367` and `#363` (structural), and `#356`, `#359`, `#366` and `#371` (small
-correctness). `#53` is open and critical, and predates this increment.
+Six remain and none is critical: `#355` (ARCHITECTURE.md line lengths), `#363`
+(structural), and `#356`, `#359`, `#366` and `#371` (small correctness). `#53`
+is open and critical, and predates this increment.
+
+Three issues were filed *by* the remediation rather than fixed by it — `#372`,
+`#373`, `#374`, all out of the contract-declaration pass. They are not part of
+the seventeen. `#373` cannot be closed from this group at all: the undeclared
+half of that coupling belongs to `platform`'s face.
 
 **Read `remediation.md` § *Where this analysis under-scoped the work* before
 touching any of them.** Every issue closed so far reached more sites than it
-named — ten for ten — and the section says how each extra site was found. Not
-one was found by re-reading the issue. That is the single most transferable
+named — eleven for eleven — and the section says how each extra site was found.
+Not one was found by re-reading the issue. That is the single most transferable
 thing this cycle produced, and it kept recurring after it had been written down.
+
+The last one is the sharpest version, because the wrong census looked right.
+Asked whether any other group face had `#367`'s gap, enumerating the *declared*
+contract edges answered "exactly one" — and could not have answered otherwise,
+since it searched only edges someone had already declared. Censusing the code's
+sync markers instead found three couplings where the issue named one. **Census
+the rule's mechanism, not the registry of things already recorded.**
 
 ---
 
@@ -74,7 +86,7 @@ order; the two blueprints are not optional.
 ### First — `docs/specs/issue/000-blueprint/spec.md` (the group's blueprint)
 
 This is the `issue` group's current-state specification: what it is
-responsible for, the surface it exposes, and the **ten invariants its code must
+responsible for, the surface it exposes, and the **thirteen invariants its code must
 uphold**, each with a criticality and a verification method. It is the document
 that decides whether a change to this group is correct, and it is what
 `/jim:verify` judges the code against.
@@ -256,11 +268,27 @@ four-line read costs ~16,000 tokens and a whole-file read is refused. Use
 `/jim:blueprint`. A surgical edit bypasses the skill's grading, its
 present-tense and provenance scans, and its `Last updated` stamp.
 
+**A blueprint `Provides` entry must lead with a backticked token.**
+`jimverify.sh faces` keys each entry off that token and emits nothing for an
+entry that leads with bold, so a bold-first entry is readable by a person and
+invisible to the face counters and the mechanical contract floor alike. Nothing
+declares this convention, which is why it is here; it is filed as `#374`. Check
+a new entry with `jimverify.sh faces <blueprint>` and confirm it appears before
+believing the declaration landed.
+
 **The ID coordination registry is unreachable from the sandbox VM.**
 `id_coordination_unreachable = provisional`, so every filing returns a `P-`
 provisional ordinal. This is the designed degradation. The host realizes them
-with `/jim:issue reconcile`. All ordinals in this increment are realized —
-355 through 371 — with none provisional at the time of writing.
+with `/jim:issue reconcile`. All ordinals are realized — 355 through 374 — with
+none provisional at the time of writing.
+
+**A reconcile can rewrite a file between your read and your commit.** The host
+runs it out of band, and `/mnt/src/<project>` is the live workspace, so a
+freshly filed issue you just verified as `P-…` can be `num: <n>` by the time you
+`git add` it. Harmless when it happens, but the commit then carries someone
+else's realization and says nothing about it. If a `num:` looks wrong against
+what you saw, check the reflog before concluding history was rewritten — it
+probably was not.
 
 **Git push is restricted to the host.**
 
@@ -277,6 +305,12 @@ subagent fan-out as concurrency — a fan-out running alongside the suite
 collapses throughput. Redirect the whole output to a file rather than piping it
 through `tail`: the aggregate prints one `Ran N tests` line at the very end, and
 a `tail -40` keeps that line while discarding the `FAIL` that explains it.
+
+**Do not end a suite-running command with `grep -c`.** `grep -c` exits 1 when
+the count is zero, so `… ; grep -c '^FAIL' log` reports a perfectly green run as
+a failed command. It is the mirror of the `tail` trap above: one hides a real
+failure, this one invents a fake one. Read the aggregate line, not the chain's
+exit status.
 
 **A green per-file run does not mean the suite is green.** Corpus rules over
 `tests/*.sh` live in `scripthygiene.sh`, so a new case can pass in its own file
@@ -297,7 +331,7 @@ research and the previous one's. Do not re-raise it as new.
 Read `remediation.md` first — the analysis, the order, and § *Progress*, which
 records what each fix actually did rather than what its issue asked for.
 
-Two of the nine are not what their one-line titles suggest.
+Two of the six are not what their one-line titles suggest.
 
 **`#355` is not a document fix.** It wants a decision about whether `/jim:arch`
 wraps its generated prose on every refresh — an authoring-convention change —
@@ -305,9 +339,18 @@ plus a rewrap of a 204 KB file whose unit of oversize *is* the line. It was
 deliberately left out of the documentation pass so that decision would not be
 buried in a diff about something else.
 
+There is now a much better argument for it than "consumers cannot read it":
+**`/jim:arch` cannot read the file it maintains.** Its own differential-update
+step instructs reading the existing document fully, and the whole-file read is
+refused at ~51k tokens, so the update that corrected the test-corpus roster ran
+off bounded `awk` reads instead. The skill that owns the document cannot follow
+its own process on it.
+
 **`#363` is the only one that prevents recurrence** rather than fixing an
-instance, and it is much better evidenced now than when it was filed: five of
-the six fixes closed since carry sites a mechanical sweep would have caught.
+instance, and the evidence keeps accumulating: eight of the fixes closed since
+carry sites a mechanical sweep would have caught, the most recent being a face
+crediting a CLI with two verbs the group no longer calls and a test-corpus
+roster stale in two files at once.
 
 There is also a method now worth reusing before it is forgotten. The
 test-quality pair was audited by **mutation testing** — the established
@@ -318,6 +361,16 @@ defects nobody had reported. `docs/notes/process-improvements.md` § *Audit the
 surface, not the case* has the method, the field's vocabulary, and the two ways
 it silently reports a false negative. The harness itself was scratch and is
 gone; it is a dozen lines and worth rebuilding rather than hunting for.
+
+A second method is worth keeping for the same reason. A **full** group-blueprint
+regeneration is affordable if the evidence gathering fans out: twenty read-only
+Sonnet agents, one per spec, one per script cluster, plus the skill surface,
+`ARCHITECTURE.md` and the test files, each returning a fixed structured report
+rather than prose. Judgment — what the face should say — stays with the caller;
+the agents only supply grounded facts. That is what turned a one-entry edit into
+a regeneration that caught a stale Requires claim, missing config keys and three
+undeclared invariants. Fan-out is a per-session grant, so ask before assuming
+it. Do not run it alongside the suite.
 
 Whatever you take, the closing move is the same each time: a `## Resolution`
 note on the issue naming the commits and the case that pins the fix, and

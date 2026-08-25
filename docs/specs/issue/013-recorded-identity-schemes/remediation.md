@@ -5,11 +5,13 @@ the increment actually stands, what the open issues have in common, and the
 order I would fix them in. It is analysis, not a plan: nothing here has been
 approved, and the sequencing is a recommendation.
 
-> **Partly executed as of 2026-08-24.** Ten of the seventeen are closed — the
-> two that blocked, the fail-open pair, the documentation set bar one, and the
-> test-quality pair. § *Progress* at the end records what landed, where this
-> analysis under-scoped the work — five more times after the first batch — and
-> what remains. The diagnostic sections below are left as they were written:
+> **Partly executed as of 2026-08-25.** Eleven of the seventeen are closed — the
+> two that blocked, the fail-open pair, the documentation set bar one, the
+> test-quality pair, and the contract declaration. § *Progress* at the end
+> records what landed, where this analysis under-scoped the work — six more
+> times after the first batch — and what remains. Every issue closed so far
+> reached further than it named: eleven for eleven.
+> The diagnostic sections below are left as they were written:
 > they describe the defects as found, and the issues' own resolution notes cite
 > them.
 
@@ -193,11 +195,12 @@ command each — an attribution hijack, an arithmetic-subscript leak, and a
 false-negative in the collision fallback. All three were confidently argued.
 Verifying a claim before recording it is cheap; recording a wrong one is not.
 
-## Progress — 2026-08-24
+## Progress — 2026-08-25
 
-Ten issues closed across thirty commits (`2da3693`..`b516c0d`). The suite is
-green at **1,568** across 16 files; twenty-one cases were added or strengthened,
-each confirmed to fail against an implementation missing the behaviour it names.
+Eleven issues closed across thirty-six commits (`2da3693`..`4bb25ec`). The suite
+is green at **1,568** across 16 files; twenty-one cases were added or
+strengthened, each confirmed to fail against an implementation missing the
+behaviour it names.
 
 ### The two that blocked, and the fail-open pair
 
@@ -253,6 +256,35 @@ go red.
 The method is written up in `docs/notes/process-improvements.md` § *Audit the
 surface, not the case* (`1e794a5`), together with the two silent false negatives
 it produces: a mutant that did not apply, and a case the filter never selected.
+
+### The contract declaration
+
+| issue | | commits |
+| :--- | :--- | :--- |
+| `#367` validator-lockstep undeclared | closed | `a353589` (the face), `649485c` (the derived graph) |
+
+Done as a **full regeneration** of the group's blueprint rather than the
+one-entry edit the issue describes, and the difference is the whole story: the
+targeted edit would have satisfied the issue's literal text while leaving four
+other things wrong, including the new entry itself.
+
+The regeneration ran as a twenty-agent fan-out over the group's thirteen specs,
+its nine scripts, the skill surface, `ARCHITECTURE.md` and both test files — the
+evidence gathering is what a full generate is for, and it is not affordable by
+hand. `ARCHITECTURE.md` needed bounded `awk` reads throughout; the whole-file
+read its own skill instructs is refused.
+
+Beyond the declaration, the regenerated face corrected a stale Requires claim
+(`platform.jimfile-cli` credited with `next-id`/`next-num`, which the group no
+longer calls — minting moved to the allocator), added the recorded-identity
+config keys missing since that increment, and gained three invariants the code
+already upheld with nothing declaring them.
+
+`ARCHITECTURE.md`'s test-corpus roster was corrected in the same pass
+(`2bccec6`): it named seven of sixteen files and called them all per-script
+tests where six are corpus rules. Its entry for a directory's own tests now
+names the directory rather than its members, which retires the rot rather than
+refreshing it.
 
 ### Where this analysis under-scoped the work
 
@@ -324,6 +356,23 @@ the cases drive the real failure and the seam was not added. The sibling carries
 seams because its failure points sit inside git plumbing, which nothing external
 can reach; the asymmetry is justified rather than a gap.
 
+**`#367` named one coupling and the rule reached three.** A first census said
+"exactly one gap" — and was wrong in an instructive way: it enumerated the
+*declared* edges, so it could only ever find gaps in edges someone had already
+declared. Censusing the sync markers in the code instead found three
+byte-identity couplings crossing the `issue`/`platform` boundary — `is_valid_id`
+(declared by one face), `valid-branch` and `ts-shape` (declared by neither) —
+and a fourth marker that is deliberately asymmetric and says so, which recording
+as lockstep would have made false. Closing the named leak opened an undeclared
+one, correctly: the coupling became visible.
+
+The same issue then supplied its own sharpest instance. Written in the obvious
+shape the new face entry was invisible to `jimverify.sh faces`, which reads only
+entries leading with a backticked token — a declaration a person could read and
+no tool could see, which is precisely the failure `#367` exists to fix. Two
+long-standing entries, the § 7a candidate-batch contract among them, are still
+in that shape.
+
 This is § *The pattern underneath them* seen from the other side: **an analysis
 naming where a rule is broken is not an enumeration of where the rule applies.**
 Every one of them was found by asking what the rule covers, never by re-reading
@@ -337,25 +386,32 @@ rather than the guard.
 
 ### What remains
 
-Seven of the seventeen:
+Six of the seventeen:
 
 | group | issues |
 | :--- | :--- |
 | Documentation | `#355` |
-| Structural | `#367`, `#363` |
+| Structural | `#363` |
 | Small correctness | `#356`, `#359`, `#366`, `#371` |
 
 None of them is critical. `#53` is open and critical, and predates this
 increment.
 
-`#363` is still worth last, and is now much better evidenced than when it was
-filed. Five of the six fixes closed since carry sites a mechanical sweep would
-have caught: a subcommand missing from the Migrations table, config keys missing
-from two config tables, a grant that did not cover its own body, a script header
-enumerating eight of twelve verbs, and a field the conversion stopped writing
-under the name its own usage still gives.
+`#363` is still worth last, and the case for it keeps growing. Eight of the
+fixes closed since carry sites a mechanical sweep would have caught: a
+subcommand missing from the Migrations table, config keys missing from two
+config tables, a grant that did not cover its own body, a script header
+enumerating eight of twelve verbs, a field the conversion stopped writing under
+the name its own usage still gives, a face crediting a CLI with two verbs the
+group no longer calls, a test-corpus roster naming seven of sixteen files, and
+the same roster stale a second time inside one of those files' own headers.
 
-`#367` is the other structural one and is unchanged. `#356`, `#359`, `#366` and
-`#371` remain small and real; the note above about not bundling them into
-critical work no longer applies, since there is no critical work left in this
-batch to obscure.
+`#356`, `#359`, `#366` and `#371` remain small and real; the note above about
+not bundling them into critical work no longer applies, since there is no
+critical work left in this batch to obscure.
+
+Three issues were filed *by* this remediation rather than fixed by it — `#372`,
+`#373`, `#374`, all from the contract-declaration pass. They are not part of the
+seventeen and are not this increment's debt; `#373` in particular cannot be
+closed from the `issue` group at all, since the half that is missing belongs to
+`platform`'s face.
