@@ -304,6 +304,29 @@ parse_filters() {
   return 0
 }
 
+# bind_collection — settle which collection to read, from what parse_filters
+#   left behind. Sets FILTER_DIR to the named directory, or to empty when the
+#   collection comes from configuration.
+#
+#   The residue holds at most the trailing word, because that is the only
+#   position a collection is ever named in. If it is a directory it is the
+#   collection. If it is anything else the caller named something that is
+#   neither a filter nor a collection, and both readings were genuinely open —
+#   which is the difference between "you mistyped a filter" and "there is no
+#   such collection", two different answers to two different questions.
+bind_collection() {
+  FILTER_DIR=""
+  (( ${#FILTER_RESIDUE[@]} == 0 )) && return 0
+  local named="${FILTER_RESIDUE[0]}"
+  if [[ -d "$named" ]]; then
+    FILTER_DIR="$named"
+    return 0
+  fi
+  echo "error: $(token_safe "$named") is neither a filter nor an existing directory" >&2
+  bare_word_help
+  return 1
+}
+
 # cfg_validated <value> <default> <allowed...>
 #   Return <value> if it is a member of the allowed set, otherwise fall back
 #   to <default> (security 019 Finding 5). The caller resolves <value> from
@@ -596,41 +619,27 @@ format_row() {
   printf '  %s\n' "$out"
 }
 
+# axis_matches <axis> <value> — does one row value satisfy one axis?
+#   An axis nobody named matches everything. An axis that was named matches
+#   when the value equals any of its alternatives: alternatives within an axis
+#   are alternatives, and the caller conjoins the axes.
+axis_matches() {
+  local axis="$1" value="$2" alt
+  [[ -n "${FILTER_AXIS[$axis]:-}" ]] || return 0
+  while IFS= read -r alt; do
+    [[ "$value" == "$alt" ]] && return 0
+  done <<< "${FILTER_AXIS[$axis]}"
+  return 1
+}
+
 cmd_list() {
-  local filter="" dir=""
-  # Read by shape, not by count. A collection is the trailing argument and only
-  # when it is a directory — which is the form the placement re-exec appends,
-  # and the form a caller naming one uses. Everything before it has to be a
-  # filter: counting instead let `list open high` read `high` as a collection,
-  # decline routing, and have a directory created for it by a read verb.
-  if (( $# )) && [[ -d "${!#}" ]]; then
-    dir="${!#}"
-    set -- "${@:1:$#-1}"
-  fi
-  # What a leftover token can have meant depends on whether the collection is
-  # already settled. With a trailing directory taken it can only have been a
-  # filter; without one, both readings were open and the message says so —
-  # which is the difference between "you mistyped a filter" and "there is no
-  # such collection", two different answers to two different questions.
-  local stray=""
-  (( $# > 1 )) && stray="$2"
-  (( $# == 1 )) && ! is_filter_token "$1" && stray="$1"
-  if [[ -n "$stray" ]]; then
-    if [[ -n "$dir" ]]; then
-      echo "error: unknown filter '$stray'" \
-           "(valid: ${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]})" >&2
-    else
-      # Neither a filter nor a collection. Taking it for a directory anyway is
-      # how a mistyped filter got one created for it, by a read verb, in the
-      # developer's checkout.
-      echo "error: '$stray' is neither a filter" \
-           "(${STATUS_TOKENS[*]} ${PRIORITY_TOKENS[*]}) nor an existing directory" >&2
-    fi
-    return 1
-  fi
-  # Only a token that already cleared is_filter_token reaches here.
-  (( $# == 1 )) && filter="$1"
-  dir="$(resolve_dir "$dir")"
+  local dir=""
+  # Classification runs before anything can bind, so a flag's operand never
+  # reaches the collection question and a reserved word never leaves the
+  # filter vocabulary.
+  parse_filters "$@" || return 1
+  bind_collection   || return 1
+  dir="$(resolve_dir "$FILTER_DIR")"
   ensure_index "$dir"
   local index_file="$dir/$INDEX_FILENAME"
   printf 'Issues — %s\n\n' "$dir"
@@ -653,12 +662,13 @@ cmd_list() {
   show_closed="$(cfg_validated "${_cfg[issue_list_closed]:-}" false false true)"
   cols="${_cfg[issue_list_cols]:-}"
 
-  # Hide closed issues from the default and priority-filtered views unless the
-  # issue_list_closed toggle opts them in. An explicit status filter
-  # (`list open` / `list closed`) is the user being deliberate about status, so
-  # it always overrides the toggle — `list closed` is the ad-hoc closed view.
+  # Hide closed issues from the default and every non-lifecycle-filtered view
+  # unless the issue_list_closed toggle opts them in. A filter naming lifecycle
+  # state is the user being deliberate about it, so it always overrides the
+  # toggle — `list closed` is the ad-hoc closed view. Every other axis leaves
+  # the default in place.
   local hide_closed=0
-  if ! in_list "$filter" "${STATUS_TOKENS[@]}" && [[ "$show_closed" != "true" ]]; then
+  if [[ -z "${FILTER_AXIS[status]:-}" && "$show_closed" != "true" ]]; then
     hide_closed=1
   fi
   # Validate every column token; fall back to the default set on any unknown.
@@ -674,13 +684,8 @@ cmd_list() {
       type filed_by claimed_by outcome; do
     [[ -z "$slug" ]] && continue
     [[ "$hide_closed" == 1 && "$status" == "closed" ]] && continue
-    if [[ -n "$filter" ]]; then
-      if in_list "$filter" "${STATUS_TOKENS[@]}"; then
-        [[ "$status" == "$filter" ]] || continue
-      else
-        [[ "$prio" == "$filter" ]] || continue
-      fi
-    fi
+    axis_matches status   "$status" || continue
+    axis_matches priority "$prio"   || continue
     rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title")
   done < <(read_issue_rows "$index_file")
 

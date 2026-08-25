@@ -3961,7 +3961,7 @@ case_issues_placement_list_typo_does_not_litter() {
   # collection. Classifying it as a directory instead declines routing, and the
   # refusal then comes from the working tree having no such collection, which is
   # a different answer to a different question.
-  assert_match "routed rather than read as a collection" 'unknown filter' "$ERR"
+  assert_match "routed rather than read as a collection" 'unrecognized filter token' "$ERR"
 }
 
 # AC: the two-argument shape is classified the same way. `dir_given` answered on
@@ -3969,7 +3969,11 @@ case_issues_placement_list_typo_does_not_litter() {
 # `/jim:issue list open high` — two valid filters, which the skill substitutes
 # whole into `render.sh list` — declined routing, adopted `high` as the
 # collection, had a directory created for it in the checkout and served an empty
-# view at rc 0 while the destination went unread (spec AC #5).
+# view at rc 0 while the destination went unread.
+#
+# Composing several filters in one query is now the ordinary case rather than an
+# error, so what this asserts is the routing half: both words stay filters, the
+# destination is what gets read, and the checkout gains nothing.
 case_issues_placement_two_filters_do_not_bypass_placement() {
   local repo body
   repo="$(placement_repo issues_place_two_filters jim/issues)"
@@ -3977,12 +3981,17 @@ case_issues_placement_two_filters_do_not_bypass_placement() {
   run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
-  run_in "$repo" "$SCRIPT_RENDER" list open high
+  run_in "$repo" "$SCRIPT_RENDER" list open medium
   assert_eq "no directory was created for the second filter" "no" \
-    "$([[ -e "$repo/high" ]] && echo yes || echo no)"
-  assert_eq "and it did not serve an empty view as success" "no" \
-    "$([[ "$RC" == 0 ]] && echo yes || echo no)"
-  assert_match "it says what is wrong" 'high' "$ERR"
+    "$([[ -e "$repo/medium" ]] && echo yes || echo no)"
+  assert_exit  "the composed query succeeds" 0 "$RC"
+  assert_match "and it read the destination"  'Alpha bug' "$OUT"
+  # A filter that excludes it proves both words were applied, not just the
+  # first — an empty result here is the query working.
+  run_in "$repo" "$SCRIPT_RENDER" list open critical
+  assert_exit "still succeeds" 0 "$RC"
+  assert_eq   "the second filter narrowed it" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Alpha bug')"
 }
 
 # AC: a read verb never brings a collection into being. index.sh mkdir -p's
@@ -7485,6 +7494,62 @@ case_issues_render_parse_filters_does_not_split_on_space() {
   run_parse_filters --origin "docs/a b"
   assert_exit  "rc" 0 "$RC"
   assert_match "one alternative, space intact" '^axis origin = docs/a b$' "$OUT"
+}
+
+# ─── Section: render.sh — binding the collection ─────────────────────────────
+
+# AC: a flag's operand can never be read as the collection directory. The
+# collection is identified by shape — the trailing argument, when it is a
+# directory — and a flag's operand can land in that position.
+case_issues_render_list_label_operand_is_not_a_collection() {
+  local dir work err
+  dir=$(empty_dir render_list_operand)
+  write_issue "$dir" "20260101-a" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+labels: [auth]'
+  run_index "$dir"
+  # A directory named exactly like the label being filtered on, sitting where
+  # the command runs. The operand has to feed the filter, not retarget the read.
+  work=$(empty_dir render_list_operand_cwd)
+  printf 'issues_path = "%s"\n' "$dir" > "$work/jimconf.toml"
+  mkdir -p "$work/auth"
+  err="$TMP_BASE/.err"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list --label auth 2> "$err")"
+  RC=$?
+  ERR="$(cat "$err")"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "serves the configured collection" "Issues — $dir" "$OUT"
+  assert_eq    "no index written into the operand" "0" \
+    "$(ls "$work/auth" | grep -c .)"
+}
+
+# AC: a reserved word always reads as a filter and never as a collection, so
+# each of the two meanings has exactly one spelling that reaches it
+case_issues_render_list_reserved_word_never_binds_a_collection() {
+  local dir work err
+  dir=$(empty_dir render_list_reserved)
+  write_issue "$dir" "20260101-a" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-b" 'title: "Bravo"
+status: closed
+num: 2
+created: 2026-01-02'
+  run_index "$dir"
+  work=$(empty_dir render_list_reserved_cwd)
+  printf 'issues_path = "%s"\n' "$dir" > "$work/jimconf.toml"
+  mkdir -p "$work/open"
+  err="$TMP_BASE/.err"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list open 2> "$err")"
+  RC=$?
+  assert_exit  "rc" 0 "$RC"
+  assert_match "filtered, not retargeted" 'Alpha' "$OUT"
+  assert_eq    "closed still hidden" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq    "nothing written into the collision" "0" \
+    "$(ls "$work/open" | grep -c .)"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
