@@ -66,6 +66,9 @@ STALE_VIEW=0
 readonly STATUS_TOKENS=(open active closed)
 readonly PRIORITY_TOKENS=(critical high medium low)
 readonly COL_TOKENS=(num date priority status slug labels title)
+readonly TYPE_TOKENS=(issue epic)
+readonly HELD_TOKENS=(claimed unclaimed)
+readonly BLOCKED_TOKENS=(blocked unblocked)
 
 # ─── Section: Shared helpers ─────────────────────────────────────────────────
 
@@ -139,7 +142,8 @@ in_list() {
 }
 
 is_filter_token() {
-  in_list "$1" "${STATUS_TOKENS[@]}" "${PRIORITY_TOKENS[@]}"
+  in_list "$1" "${STATUS_TOKENS[@]}" "${PRIORITY_TOKENS[@]}" \
+               "${TYPE_TOKENS[@]}" "${HELD_TOKENS[@]}" "${BLOCKED_TOKENS[@]}"
 }
 
 # The option names this file's filter parser accepts. An operand equal to one
@@ -181,6 +185,123 @@ need_operand() {
     fi
   done
   printf '%s' "$operand"
+}
+
+# ─── Section: The filter grammar ─────────────────────────────────────────────
+
+# token_safe <token> — an operator token bounded and stripped, for stderr.
+#   The discipline row_safe applies to a value written into the index, applied
+#   to the other surface that renders untrusted-shaped text. A token arriving
+#   through argv is no safer than one arriving through a file, and a terminal
+#   is a terminal either way. The separator deletion row_safe also does is
+#   absent here on purpose — nothing parses a refusal — so the two functions
+#   are siblings in intent rather than copies, and neither claims the other.
+token_safe() {
+  printf '%s' "$1" | tr -d '\000-\037\177' | cut -c1-64
+}
+
+# bare_word_help — the reserved vocabularies, as a refusal's second half.
+bare_word_help() {
+  echo "       bare words are one of:" >&2
+  echo "         ${STATUS_TOKENS[*]} · ${PRIORITY_TOKENS[*]} · ${TYPE_TOKENS[*]}" >&2
+  echo "         ${HELD_TOKENS[*]} · ${BLOCKED_TOKENS[*]}" >&2
+}
+
+# filter_axis_add <axis> <csv> — record one flag's or bare word's alternatives.
+#   The comma is the operator's own separator, so it is the only one applied.
+#   Alternatives are stored newline-separated: a value can legitimately carry a
+#   space — an origin prefix is free text — and splitting on one would widen a
+#   query the operator narrowed, which is the failure quoting the prefix
+#   comparison exists to prevent, arriving one step earlier.
+filter_axis_add() {
+  local axis="$1" csv="$2" v
+  local -a vals=()
+  IFS=',' read -ra vals <<< "$csv"
+  for v in "${vals[@]}"; do
+    v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
+    [[ -z "$v" ]] || FILTER_AXIS[$axis]="${FILTER_AXIS[$axis]:+${FILTER_AXIS[$axis]}$'\n'}$v"
+  done
+}
+
+# parse_filters <args...>
+#   Classify every argument before any of them can mean anything else, and
+#   leave what is left for the caller. Populates three globals:
+#
+#     FILTER_AXIS[<axis>]  newline-separated alternatives, one entry per axis
+#                          named: status priority type label epic filed-by
+#                          claimed-by spec origin held blocked
+#     FILTER_COLS          the ad-hoc column selection, or empty
+#     FILTER_RESIDUE       what is not a filter — at most one word, and only
+#                          ever the trailing one, which is where a collection
+#                          is named
+#
+#   Returns 0 on success; 1 on any refusal, having written nothing anywhere.
+#   That ordering is the load-bearing part: the collection positional binds
+#   only after every argument has been classified, so a flag's operand can
+#   never be read as a directory and a mistyped filter never reaches one.
+#
+#   Precedence is stated rather than emergent: a reserved word always reads as
+#   a filter and never as a collection. The corollary is deliberate — a
+#   directory whose name collides with a reserved word can no longer be passed
+#   as the collection.
+parse_filters() {
+  declare -gA FILTER_AXIS=()
+  declare -ga FILTER_RESIDUE=()
+  FILTER_COLS=""
+  local a v c
+  local -a carr=()
+  while (( $# )); do
+    a="$1"
+    case "$a" in
+      --status|--priority|--type|--label|--epic|--filed-by|--claimed-by|--spec|--origin)
+        v="$(need_operand "$a" "$#" "${2:-}")" || return 1
+        filter_axis_add "${a#--}" "$v"
+        shift 2
+        ;;
+      --cols)
+        v="$(need_operand "$a" "$#" "${2:-}")" || return 1
+        IFS=',' read -ra carr <<< "$v"
+        for c in "${carr[@]}"; do
+          if ! in_list "$c" "${COL_TOKENS[@]}"; then
+            echo "error: unrecognized column: $(token_safe "$c")" >&2
+            echo "       columns are one of: ${COL_TOKENS[*]}" >&2
+            return 1
+          fi
+        done
+        FILTER_COLS="$v"
+        shift 2
+        ;;
+      --*)
+        echo "error: unknown filter flag: $(token_safe "$a")" >&2
+        echo "       flags are one of: ${RENDER_OPTIONS[*]}" >&2
+        return 1
+        ;;
+      *)
+        if   in_list "$a" "${STATUS_TOKENS[@]}";   then filter_axis_add status   "$a"
+        elif in_list "$a" "${PRIORITY_TOKENS[@]}"; then filter_axis_add priority "$a"
+        elif in_list "$a" "${TYPE_TOKENS[@]}";     then filter_axis_add type     "$a"
+        elif in_list "$a" "${HELD_TOKENS[@]}";     then filter_axis_add held     "$a"
+        elif in_list "$a" "${BLOCKED_TOKENS[@]}";  then filter_axis_add blocked  "$a"
+        elif (( $# == 1 )); then
+          # The trailing word is the one position a collection is named in, so
+          # this is the only word the parser cannot judge alone. The caller
+          # answers it, and owns the message either way.
+          FILTER_RESIDUE+=("$a")
+        else
+          echo "error: unrecognized filter token: $(token_safe "$a")" >&2
+          bare_word_help
+          if [[ -d "$a" ]]; then
+            echo "       a collection is named as the trailing argument" >&2
+          else
+            echo "       to open an issue by id: /jim:issue show $(token_safe "$a")" >&2
+          fi
+          return 1
+        fi
+        shift
+        ;;
+    esac
+  done
+  return 0
 }
 
 # cfg_validated <value> <default> <allowed...>

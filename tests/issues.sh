@@ -7386,6 +7386,107 @@ case_issues_render_flag_requires_operand() {
   assert_eq   "emits it"  "-dev@example.test" "$OUT"
 }
 
+# ─── Section: render.sh — the filter parser ──────────────────────────────────
+
+# run_parse_filters <args...> — classify one argument list and report what the
+# parser bound, so a case can assert the grammar rather than a rendered view.
+run_parse_filters() {
+  local helper err_file="$TMP_BASE/.err"
+  helper="$(fixture parse_filters_probe.sh 'set -uo pipefail
+render="$1"; shift
+args=("$@")
+set --
+source "$render" >/dev/null 2>&1
+parse_filters "${args[@]+"${args[@]}"}" || exit $?
+for k in "${!FILTER_AXIS[@]}"; do
+  printf "axis %s = %s\n" "$k" "$(printf "%s" "${FILTER_AXIS[$k]}" | tr "\n" " ")"
+done | sort
+printf "cols = %s\n" "$FILTER_COLS"
+printf "residue = %s\n" "${FILTER_RESIDUE[*]:-}"')"
+  OUT="$(bash "$helper" "$SCRIPT_RENDER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: an unrecognized bare word is refused, the refusal names the words that
+# are recognized, and the query fails without writing anything to disk
+case_issues_render_parse_filters_refuses_unknown() {
+  # A bare word that is not reserved and is not in trailing position cannot
+  # have been the collection, so it can only have been a mistyped filter.
+  run_parse_filters bogus high
+  assert_exit  "rc"                1 "$RC"
+  assert_eq    "nothing on stdout" "" "$OUT"
+  assert_match "names the token"   'unrecognized filter token: bogus' "$ERR"
+  assert_match "names the status words"   'open active closed'   "$ERR"
+  assert_match "names the priority words" 'critical high medium' "$ERR"
+  assert_match "names the kind words"     'issue epic'           "$ERR"
+  assert_match "names the derived words"  'claimed unclaimed'    "$ERR"
+
+  # An unknown flag is refused on its own terms.
+  run_parse_filters --nosuchflag x
+  assert_exit  "rc"              1 "$RC"
+  assert_match "names the flag"  "unknown filter flag: [-]-nosuchflag" "$ERR"
+
+  # A flag with nothing after it takes the operand guard's refusal.
+  run_parse_filters open --label
+  assert_exit  "rc"             1 "$RC"
+  assert_match "operand guard"  '[-]-label requires a value' "$ERR"
+
+  # An ad-hoc column selection refuses an unrecognized token and names the set.
+  run_parse_filters --cols num,bogus
+  assert_exit  "rc"                 1 "$RC"
+  assert_match "names the token"    'unrecognized column: bogus' "$ERR"
+  assert_match "names the set"      'num'                        "$ERR"
+}
+
+# AC: a refusal quoting an operator token renders it under the same discipline
+# a value written into the index gets — stripped of control characters and
+# bounded — because stderr is a rendered surface too
+case_issues_render_parse_filters_sanitizes_the_echoed_token() {
+  run_parse_filters "$(printf 'ev\033[31mil')" high
+  assert_exit "rc" 1 "$RC"
+  assert_eq   "no control byte in the refusal" "0" \
+    "$(printf '%s' "$ERR" | grep -c $'\033')"
+  assert_match "the printable text survives" 'ev.31mil' "$ERR"
+  # A very long token is bounded rather than echoed whole.
+  run_parse_filters "$(printf 'x%.0s' $(seq 1 400))" high
+  assert_exit "rc" 1 "$RC"
+  assert_eq "bounded" "1" \
+    "$(printf '%s' "$ERR" | awk '{ if (length($0) < 200) n++ } END { print (n > 0) ? 1 : 0 }')"
+}
+
+# AC: a read view accepts several filters in one query, given in any order;
+# values naming the same axis combine as alternatives, and a bare word and a
+# flag naming one axis widen it rather than displacing each other
+case_issues_render_parse_filters_binds_axes() {
+  run_parse_filters open high --priority critical,low --label auth,api --claimed-by me unblocked
+  assert_exit  "rc" 0 "$RC"
+  assert_eq    "nothing on stderr" "" "$ERR"
+  assert_match "status axis"     '^axis status = open$'                "$OUT"
+  assert_match "priority unions" '^axis priority = high critical low$' "$OUT"
+  assert_match "label splits"    '^axis label = auth api$'             "$OUT"
+  assert_match "person axis"     '^axis claimed-by = me$'              "$OUT"
+  assert_match "derived axis"    '^axis blocked = unblocked$'          "$OUT"
+  assert_match "no residue"      '^residue = $'                         "$OUT"
+}
+
+# AC: a trailing word that is not reserved is left for the caller to judge —
+# it is the one thing it could still be, the collection
+case_issues_render_parse_filters_leaves_the_trailing_word() {
+  run_parse_filters --label auth some-collection
+  assert_exit  "rc" 0 "$RC"
+  assert_match "label bound"      '^axis label = auth$'        "$OUT"
+  assert_match "residue carried"  '^residue = some-collection$' "$OUT"
+}
+
+# AC: an alternative is never split on anything but the comma the operator
+# typed, so a value carrying a space narrows the query rather than widening it
+case_issues_render_parse_filters_does_not_split_on_space() {
+  run_parse_filters --origin "docs/a b"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "one alternative, space intact" '^axis origin = docs/a b$' "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
