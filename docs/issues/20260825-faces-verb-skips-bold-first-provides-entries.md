@@ -1,6 +1,6 @@
 ---
 id: 20260825-faces-verb-skips-bold-first-provides-entries
-num: P-20260825-faces-verb-skips-bold-first-provides-entries
+num: 374
 title: "faces verb skips bold-first Provides entries"
 status: open
 priority: medium

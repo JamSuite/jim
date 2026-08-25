@@ -1,6 +1,6 @@
 ---
 id: 20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror
-num: P-20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror
+num: 373
 title: "Declare platform's mirrored branch-name gate or sever the mirror"
 status: open
 priority: medium
