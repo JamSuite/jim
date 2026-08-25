@@ -651,6 +651,32 @@ label_matches() {
   return 1
 }
 
+# prefix_axis <axis> <origin> <root> — an axis whose alternatives are literal
+#   path prefixes of the row's recorded origin, each resolved under <root>
+#   first when one is given.
+#
+#   A prefix rather than an equality, so naming a spec's directory reaches
+#   every artifact filed from it — a review, a plan, a research pass — and not
+#   only the spec document. Naming a group and an ordinal reaches the directory
+#   without spelling the rest of its name, which matters because a spec's
+#   ordinal is not stable: the rename and split verbs renumber directories and
+#   sweep the citations, so the filter matches whatever origin currently
+#   records rather than any resolution held anywhere.
+#
+#   The pattern operand is quoted. Unquoted it is a glob, and a value carrying
+#   `*`, `?` or `[` would then silently widen a query the developer narrowed.
+prefix_axis() {
+  local axis="$1" origin="$2" root="$3" alt pfx
+  [[ -n "${FILTER_AXIS[$axis]:-}" ]] || return 0
+  [[ "$origin" == "-" || -z "$origin" ]] && return 1
+  root="${root%/}"
+  while IFS= read -r alt; do
+    pfx="${root:+$root/}$alt"
+    [[ "$origin" == "$pfx"* ]] && return 0
+  done <<< "${FILTER_AXIS[$axis]}"
+  return 1
+}
+
 # The project's form applied to one value, memoized per distinct value.
 # `identity.sh normalize` is a subprocess, and a collection holds a handful of
 # distinct contributors across hundreds of records — the same reasoning, and
@@ -779,6 +805,7 @@ cmd_list() {
   local show_closed
   show_closed="$(cfg_validated "${_cfg[issue_list_closed]:-}" false false true)"
   cols="${_cfg[issue_list_cols]:-}"
+  local specs_root="${_cfg[specs]:-docs/specs}"
 
   # Hide closed issues from the default and every non-lifecycle-filtered view
   # unless the issue_list_closed toggle opts them in. A filter naming lifecycle
@@ -811,6 +838,8 @@ cmd_list() {
     label_matches         "$labels" || continue
     person_matches filed-by   "$filed_by"   || continue
     person_matches claimed-by "$claimed_by" || continue
+    prefix_axis origin "$origin" ""            || continue
+    prefix_axis spec   "$origin" "$specs_root" || continue
     rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title")
   done < <(read_issue_rows "$index_file")
 

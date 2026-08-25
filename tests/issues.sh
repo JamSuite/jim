@@ -8000,6 +8000,87 @@ case_issues_render_list_refuses_unanswerable_axis() {
   assert_match "the record"  'Alpha' "$OUT"
 }
 
+# ─── Section: render.sh — the origin axes ────────────────────────────────────
+
+# origin_fixture <dir> — issues whose origins span a spec's several artifacts,
+# a second spec, a non-spec document, and a value carrying glob metacharacters.
+origin_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+origin: "docs/specs/issue/011-issue-placement/spec.md"'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+origin: "docs/specs/issue/011-issue-placement/review.md"'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: open
+num: 3
+created: 2026-01-03
+type: issue
+origin: "docs/specs/issue/012-schema-and-state-model/plan.md"'
+  write_issue "$dir" "20260104-delta" 'title: "Delta"
+status: open
+num: 4
+created: 2026-01-04
+type: issue
+origin: "docs/brainstorms/20260817-epics.md"'
+  write_issue "$dir" "20260105-echo" 'title: "Echo"
+status: open
+num: 5
+created: 2026-01-05
+type: issue
+origin: "docs/notes/a*b.md"'
+}
+
+# AC: an origin match is a path prefix, and the prefix is literal — a value
+# carrying a glob metacharacter matches itself rather than widening the query
+case_issues_render_list_origin_prefix_is_literal() {
+  local dir
+  dir=$(empty_dir render_origin)
+  origin_fixture "$dir"
+  run_index "$dir"
+
+  # A prefix reaches every artifact under it, not only the document named.
+  run_render list --spec issue/011-issue-placement "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the spec document"  'Alpha' "$OUT"
+  assert_match "and the review"     'Bravo' "$OUT"
+  assert_eq    "not the other spec" "0" "$(printf '%s' "$OUT" | grep -c 'Charlie')"
+
+  # Group and ordinal reach it without naming the rest of the directory.
+  run_render list --spec issue/011 "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "still reaches it" 'Alpha' "$OUT"
+  assert_eq    "and still excludes the other" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Charlie')"
+
+  # The general origin filter reaches origins that are not specs.
+  run_render list --origin docs/brainstorms "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the brainstorm"  'Delta' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # A metacharacter in the value is a character, not a pattern. `docs/notes/a*`
+  # as a glob would reach every note; as a literal prefix it reaches one.
+  run_render list --origin 'docs/notes/a*b' "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the literal match" 'Echo' "$OUT"
+  run_render list --origin 'docs/*' "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "a glob matches nothing" '_No matching issues\._' "$OUT"
+
+  # The two origin axes conjoin with everything else.
+  run_render list --spec issue/011 --priority high "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "no record satisfies both" '_No matching issues\._' "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
