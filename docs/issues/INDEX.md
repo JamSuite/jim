@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 128
+- Open: 129
 - Closed: 250
 
 ## Issues
@@ -379,6 +379,7 @@
 - `20260823-user-facing-docs-omit-the-recorded-identity-feature` — User-facing docs omit the recorded-identity feature · status: closed · num: 364 · priority: high · created: 2026-08-23T23:21:47Z · labels: [docs, readability] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-values-carrying-angle-brackets-bypass-the-recorded-identity-char` — Values carrying angle brackets bypass the recorded-identity charset gate · status: closed · num: 365 · priority: critical · created: 2026-08-23T23:37:25Z · labels: [issue, identity, security, regression] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260825-allocator-verb-sweep-is-hand-listed-not-derived` — Allocator verb sweep is hand-listed, not derived · status: open · num: 375 · priority: medium · created: 2026-08-25T07:15:45Z · labels: [testing, docs, scripts] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
+- `20260825-blueprint-generate-mode-has-no-commit-verb` — Blueprint generate mode has no commit verb · status: open · num: 379 · priority: medium · created: 2026-08-25T08:31:09Z · labels: [blueprint, ledger, skills] · origin: skills/blueprint/SKILL.md
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` — Declare platform's mirrored branch-name gate or sever the mirror · status: open · num: 373 · priority: medium · created: 2026-08-25T05:21:53Z · labels: [000-blueprint, contract-graph, leak] · origin: BLUEPRINT.md
 - `20260825-faces-verb-skips-bold-first-provides-entries` — faces verb skips bold-first Provides entries · status: open · num: 374 · priority: medium · created: 2026-08-25T05:21:54Z · labels: [verify, 000-blueprint, scripts] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260825-plugin-conventions-is-half-the-architecture-document` — Plugin Conventions is half the architecture document · status: open · num: 378 · priority: medium · created: 2026-08-25T07:53:40Z · labels: [docs, arch] · origin: ARCHITECTURE.md
