@@ -749,6 +749,22 @@ blocked_matches() {
   fi
 }
 
+# disclose_hidden_closed <hidden> — say so when a filtered view dropped
+#   finished records by the standing default.
+#
+#   A view that narrowed by one axis and then quietly dropped finished records
+#   by another rule reports a match that is not the whole match. It matters
+#   most where the result is empty: without this line, "nothing matched" and
+#   "everything that matched was hidden" read identically.
+#
+#   The unfiltered default keeps hiding them silently, as it always has —
+#   there is no filter for the result to be mistaken against.
+disclose_hidden_closed() {
+  (( $1 )) || return 0
+  (( ${#FILTER_AXIS[@]} > 0 )) || return 0
+  printf '  (closed hidden — add `closed` to include them)\n'
+}
+
 # epic_matches <slug> — is this record a member of a named umbrella?
 #   Membership is recorded on the member's side only, so the edge points from
 #   the member to the umbrella and the umbrella itself never satisfies it.
@@ -922,14 +938,13 @@ cmd_list() {
   if [[ -n "${FILTER_AXIS[blocked]:-}" || -n "${FILTER_AXIS[epic]:-}" ]]; then
     build_derived_axes "$index_file"
   fi
-  local seen_rows=0 saw_type=0
+  local seen_rows=0 saw_type=0 hidden_closed=0
   local type filed_by claimed_by outcome
   while IFS=$'\t' read -r slug num status prio created labels title origin \
       type filed_by claimed_by outcome; do
     [[ -z "$slug" ]] && continue
     (( seen_rows++ ))
     [[ "$type" != "-" ]] && saw_type=1
-    [[ "$hide_closed" == 1 && "$status" == "closed" ]] && continue
     axis_matches status   "$status" || continue
     axis_matches priority "$prio"   || continue
     axis_matches type     "$type"   || continue
@@ -941,6 +956,13 @@ cmd_list() {
     held_matches    "$claimed_by" || continue
     blocked_matches "$slug"       || continue
     epic_matches    "$slug"       || continue
+    # Last, so that only a record the query would otherwise have matched counts
+    # as hidden. A finished record excluded on some other axis was not hidden by
+    # this default and disclosing it would report a narrowing that never happened.
+    if [[ "$hide_closed" == 1 && "$status" == "closed" ]]; then
+      hidden_closed=1
+      continue
+    fi
     rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title"$'\t'"$type"$'\t'"$filed_by"$'\t'"$claimed_by"$'\t'"$outcome")
   done < <(read_issue_rows "$index_file")
 
@@ -970,6 +992,7 @@ cmd_list() {
 
   if (( ${#rows[@]} == 0 )); then
     printf '_No matching issues._\n'
+    disclose_hidden_closed "$hidden_closed"
     return 0
   fi
 
@@ -1040,6 +1063,7 @@ cmd_list() {
     printed_any=1
   done
   (( printed_any == 0 )) && printf '_No matching issues._\n'
+  disclose_hidden_closed "$hidden_closed"
   return 0
 }
 

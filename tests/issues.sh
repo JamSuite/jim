@@ -8236,6 +8236,91 @@ outcome: wontfix'
   assert_match "which still lists it" 'Alpha' "$OUT"
 }
 
+# ─── Section: render.sh — the closed-issue default and its disclosure ────────
+
+# hide_fixture <dir> — one open and two closed issues sharing a label.
+hide_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+priority: high
+created: 2026-01-01
+type: issue
+labels: [auth]'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: closed
+num: 2
+priority: high
+created: 2026-01-02
+type: issue
+outcome: done
+labels: [auth]'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: closed
+num: 3
+priority: low
+created: 2026-01-03
+type: issue
+outcome: done
+labels: [archive]'
+}
+
+# AC: the work-queue view keeps hiding finished issues, only a lifecycle-state
+# filter overrides that, and a view that hid them while filtering says so
+case_issues_render_list_hide_closed_discloses() {
+  local dir work
+  dir=$(empty_dir render_hide)
+  hide_fixture "$dir"
+  run_index "$dir"
+
+  # A filter on any other axis leaves the default in place — and says so,
+  # because a narrowed result must not be mistaken for the whole match.
+  run_render list --label auth "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the open one"    'Alpha' "$OUT"
+  assert_eq    "the closed one hidden" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_match "and the view says so" 'closed hidden' "$OUT"
+
+  # A filter naming lifecycle state is the user being deliberate about it, so
+  # nothing is hidden and there is nothing to disclose.
+  run_render list closed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the closed ones" 'Bravo' "$OUT"
+  assert_eq    "no disclosure" "0" "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # The unfiltered default has hidden closed issues since before this, quietly.
+  run_render list "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the open one"   'Alpha' "$OUT"
+  assert_eq    "still hidden" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq    "and quietly"  "0" "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # An empty result is where the disclosure matters most: without it, "nothing
+  # matched" and "everything that matched was hidden" read the same.
+  run_render list --label archive "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reports no matches" '_No matching issues\._' "$OUT"
+  assert_match "and why"            'closed hidden'          "$OUT"
+
+  # Nothing is hidden when the toggle opts closed issues in, so nothing is
+  # disclosed either.
+  work=$(empty_dir render_hide_cfg)
+  printf 'issues_path = "%s"\nissue_list_closed = "true"\n' "$dir" > "$work/jimconf.toml"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list --label auth 2>/dev/null)"
+  RC=$?
+  assert_exit  "rc" 0 "$RC"
+  assert_match "both shown" 'Bravo' "$OUT"
+  assert_eq    "no disclosure" "0" "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # A filter that excludes the closed records on another axis hides nothing, so
+  # it discloses nothing.
+  run_render list --priority low --label auth "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "nothing was hidden by the default" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
