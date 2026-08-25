@@ -1,6 +1,6 @@
 ---
 id: 20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face
-num: P-20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face
+num: 377
 title: "Requires tokens resolve to no Provides entry on any face"
 status: open
 priority: high

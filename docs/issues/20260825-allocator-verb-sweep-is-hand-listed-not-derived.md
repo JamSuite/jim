@@ -1,6 +1,6 @@
 ---
 id: 20260825-allocator-verb-sweep-is-hand-listed-not-derived
-num: P-20260825-allocator-verb-sweep-is-hand-listed-not-derived
+num: 375
 title: "Allocator verb sweep is hand-listed, not derived"
 status: open
 priority: medium
