@@ -677,6 +677,83 @@ prefix_axis() {
   return 1
 }
 
+# The derived predicates, computed from what the collection already holds.
+# Neither is recorded, so no record can disagree with either — there is no
+# second copy to fall out of step.
+declare -A DERIVED_BLOCKED=()
+declare -A DERIVED_EPIC=()
+
+# build_derived_axes <index_file> — populate the two maps above.
+#   Both read the Graph section the index already renders, so the umbrella and
+#   dependency axes need no row column of their own.
+#
+#   Blocked is one hop and keys on the target being unfinished rather than on
+#   the target being blocked. Those two agree — an issue depending on a blocked
+#   issue is already blocked by that dependency's own unfinished state — but
+#   only under this keying; keying it on blocked-ness would make them diverge
+#   and demand a traversal.
+build_derived_axes() {
+  local index_file="$1" slug status src tgt rest
+  local -A unfinished=()
+  while IFS=$'\t' read -r slug _ status rest; do
+    [[ -z "$slug" ]] && continue
+    [[ "$status" != "closed" ]] && unfinished[$slug]=1
+  done < <(read_issue_rows "$index_file")
+  while IFS=$'\t' read -r src tgt; do
+    [[ -n "${unfinished[$tgt]:-}" ]] && DERIVED_BLOCKED[$src]=1
+  done < <(read_graph_edges "$index_file" depends-on)
+  while IFS=$'\t' read -r src tgt; do
+    DERIVED_EPIC[$src]="${DERIVED_EPIC[$src]:+${DERIVED_EPIC[$src]}$'\n'}$tgt"
+  done < <(read_graph_edges "$index_file" part-of)
+}
+
+# state_matches <axis> <state> — a derived axis, whose alternatives are the two
+#   directions of one predicate.
+state_matches() {
+  local axis="$1" state="$2" alt
+  [[ -n "${FILTER_AXIS[$axis]:-}" ]] || return 0
+  while IFS= read -r alt; do
+    [[ "$alt" == "$state" ]] && return 0
+  done <<< "${FILTER_AXIS[$axis]}"
+  return 1
+}
+
+# held_matches <recorded-holder> — the held axis. Emptiness is the whole test:
+#   an issue is held when a holder is recorded on it and unheld when none is.
+held_matches() {
+  [[ -n "${FILTER_AXIS[held]:-}" ]] || return 0
+  if [[ "$1" == "-" || -z "$1" ]]; then
+    state_matches held unclaimed
+  else
+    state_matches held claimed
+  fi
+}
+
+# blocked_matches <slug> — the blocked axis, read from the map built above.
+blocked_matches() {
+  [[ -n "${FILTER_AXIS[blocked]:-}" ]] || return 0
+  if [[ -n "${DERIVED_BLOCKED[$1]:-}" ]]; then
+    state_matches blocked blocked
+  else
+    state_matches blocked unblocked
+  fi
+}
+
+# epic_matches <slug> — is this record a member of a named umbrella?
+#   Membership is recorded on the member's side only, so the edge points from
+#   the member to the umbrella and the umbrella itself never satisfies it.
+epic_matches() {
+  local slug="$1" alt tgt
+  [[ -n "${FILTER_AXIS[epic]:-}" ]] || return 0
+  [[ -n "${DERIVED_EPIC[$slug]:-}" ]] || return 1
+  while IFS= read -r alt; do
+    while IFS= read -r tgt; do
+      [[ "$tgt" == "$alt" ]] && return 0
+    done <<< "${DERIVED_EPIC[$slug]}"
+  done <<< "${FILTER_AXIS[epic]}"
+  return 1
+}
+
 # The project's form applied to one value, memoized per distinct value.
 # `identity.sh normalize` is a subprocess, and a collection holds a handful of
 # distinct contributors across hundreds of records — the same reasoning, and
@@ -824,6 +901,10 @@ cmd_list() {
 
   # Load rows, applying the filter.
   local rows=() slug num status prio created labels title origin
+  # Only when an axis needs them: both walk the index a second time.
+  if [[ -n "${FILTER_AXIS[blocked]:-}" || -n "${FILTER_AXIS[epic]:-}" ]]; then
+    build_derived_axes "$index_file"
+  fi
   local seen_rows=0 saw_type=0
   local type filed_by claimed_by outcome
   while IFS=$'\t' read -r slug num status prio created labels title origin \
@@ -840,6 +921,9 @@ cmd_list() {
     person_matches claimed-by "$claimed_by" || continue
     prefix_axis origin "$origin" ""            || continue
     prefix_axis spec   "$origin" "$specs_root" || continue
+    held_matches    "$claimed_by" || continue
+    blocked_matches "$slug"       || continue
+    epic_matches    "$slug"       || continue
     rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title")
   done < <(read_issue_rows "$index_file")
 

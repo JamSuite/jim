@@ -8081,6 +8081,102 @@ case_issues_render_list_origin_prefix_is_literal() {
   assert_match "no record satisfies both" '_No matching issues\._' "$OUT"
 }
 
+# ─── Section: render.sh — the derived predicates ─────────────────────────────
+
+# derived_fixture <dir> — an umbrella with two members, a live dependency, a
+# finished one, and a record in neither relation.
+derived_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-epicone" 'title: "EpicOne"
+status: open
+num: 1
+created: 2026-01-01
+type: epic'
+  write_issue "$dir" "20260102-memberone" 'title: "MemberOne"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+claimed-by: "dev@example.test"
+relations:
+  part-of: [20260101-epicone]
+  depends-on: [20260104-livedep]'
+  write_issue "$dir" "20260103-membertwo" 'title: "MemberTwo"
+status: open
+num: 3
+created: 2026-01-03
+type: issue
+relations:
+  part-of: [20260101-epicone]'
+  write_issue "$dir" "20260104-livedep" 'title: "LiveDep"
+status: active
+num: 4
+created: 2026-01-04
+type: issue'
+  write_issue "$dir" "20260105-donedep" 'title: "DoneDep"
+status: closed
+num: 5
+created: 2026-01-05
+type: issue
+outcome: done'
+  write_issue "$dir" "20260106-settled" 'title: "Settled"
+status: open
+num: 6
+created: 2026-01-06
+type: issue
+relations:
+  depends-on: [20260105-donedep]'
+}
+
+# AC: whether an issue is held is filterable without naming a person, in both
+# directions; whether it is blocked is filterable in both directions; and
+# neither predicate is stored, so no record can disagree with either
+case_issues_render_list_derived_predicates() {
+  local dir
+  dir=$(empty_dir render_derived)
+  derived_fixture "$dir"
+  run_index "$dir"
+
+  run_render list claimed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the held one"  'MemberOne' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'MemberTwo')"
+
+  run_render list unclaimed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "an unheld one"     'MemberTwo' "$OUT"
+  assert_match "and the umbrella"  'EpicOne'   "$OUT"
+  assert_eq    "not the held one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
+
+  # Blocked is one hop, and it keys on the target not being finished.
+  run_render list blocked "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "depends on live work" 'MemberOne' "$OUT"
+  assert_eq    "not the settled one" "0" "$(printf '%s' "$OUT" | grep -c 'Settled')"
+
+  run_render list unblocked "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "its dependency is finished" 'Settled'   "$OUT"
+  assert_match "and one with no dependency" 'MemberTwo' "$OUT"
+  assert_eq    "not the blocked one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
+
+  # Umbrella membership reads the same graph the index already renders.
+  run_render list --epic 20260101-epicone "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the first member"  'MemberOne' "$OUT"
+  assert_match "the second member" 'MemberTwo' "$OUT"
+  assert_eq    "not the umbrella itself" "0" "$(printf '%s' "$OUT" | grep -c 'EpicOne')"
+
+  # The derived axes conjoin with each other and with the stored ones.
+  run_render list blocked unclaimed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the one blocked record is held" '_No matching issues\._' "$OUT"
+  run_render list --epic 20260101-epicone unblocked "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the unblocked member" 'MemberTwo' "$OUT"
+  assert_eq    "not the blocked one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
