@@ -2,8 +2,8 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-08-23"
-last_full_generate: "2026-08-12T20:31:41Z"
+updated: "2026-08-25"
+last_full_generate: "2026-08-25T05:10:57Z"
 ---
 
 # issue — blueprint
@@ -17,11 +17,15 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `issue` group is jim's discovery-capture vertical: actionable findings
 surfaced mid-conversation become structured, indexed, analyzable issue files
-under `docs/issues/`. It owns the capture flow (`/jim:issue add`), the read
-views (`list`/`stats`/`show`/`insights`), the collection's index, one-shot
-migrations, and the read-only insights persona. Every other group's skills emit
-into it through its single emitter; it is the project's widest-fan-in provides
-face after the platform CLIs.
+under `docs/issues/`. It owns the capture flow (`/jim:issue add`), the lifecycle
+verbs that move a record through it, the read views
+(`list`/`stats`/`show`/`insights`), the collection's index, the definition of a
+recordable contributor identity, one-shot migrations, and the read-only insights
+persona. It also owns where the collection lives: a project may keep it on the
+working branch or centralize it on a designated one, and this group's own door
+decides which. Every other group's skills emit into it through its single
+emitter; it is the project's widest-fan-in provides face after the platform
+CLIs.
 
 ## Provides
 
@@ -53,7 +57,8 @@ face after the platform CLIs.
 - `index.sh` **index generation** — frontmatter scan → `INDEX.md`
   (summary, issues, relation graph, integrity warnings). Guarantee:
   line-oriented parse only; atomic write — a failed run leaves the previous
-  index untouched.
+  index untouched; a placement it cannot resolve refuses rather than publishing
+  an index whose origin lint silently did not run.
 - `render.sh` **read views** — `stats`/`list`/`show`/`insights-graph`/`help`.
   Guarantee: staleness-gated index reuse in the working tree, where mtimes
   answer the question, and an unconditional rebuild on a materialized copy,
@@ -87,6 +92,16 @@ face after the platform CLIs.
   collapse to one identity. The
   same definition governs every recorded identity — the emitter's filer, the
   transition verbs' holder, and the filer the conversion recovers from history.
+- `is_valid_id` **validator lockstep** — the two copies of the id validator
+  this group carries, in `index.sh` and `render.sh`. Guarantee: both stay
+  byte-identical to the platform CLI's own definition in `jimfile.sh`, so the
+  ids the substrate accepts and the ids this group accepts are one set rather
+  than three that merely coincide. Each copy carries a marker naming the other
+  two and a test compares all three, so a drifting copy fails rather than
+  quietly narrowing what one surface will open. The validator is a cross-group
+  contract rather than a local helper — the platform group requires these
+  copies to hold the line — so a change to any one of the three is a change to
+  all three.
 - **§ 7a candidate-batch contract** — the canonical definition of the fileable
   bar (resolution, actionability, pipeline-ownership) and the emitter call
   shape, defined once in this group's `SKILL.md`. Guarantee: surfacing skills
@@ -128,22 +143,36 @@ face after the platform CLIs.
 
 ## Requires
 
-- `platform.jimfile-cli` — id minting (`next-id`/`next-num`), timestamps
-  (`now`), path resolution (`path issue`), and id validation, from the skill
-  flow and script-to-script (`new.sh`, `migrate.sh`).
+- `platform.jimfile-cli` — id validation (`valid-id`, this group's most-used
+  cross-group call), timestamps (`now`), path resolution (`path issue`),
+  relative-path containment (`valid-relpath`), and the prefix migration's
+  re-derivation (`prefix-from`), from the skill flow and script-to-script. The
+  shape `now` emits is a second coupling: the group's three timestamp guards
+  carry marked copies of the pattern that must match the one in `jimfile.sh`, so
+  a change to the emitted format is a change to every guard that reads it.
+  Ordinal minting is not here — that is the allocator's, below.
 - `platform.jimalloc` — coordinated issue identity: the emitter reserves the
-  display ordinal + durable id via `allocate issue` (durable-before-write), and
-  `reconcile.sh` realizes pending provisional ordinals via `reconcile issue`.
-- `platform.jimconf-cli` — the `issue_list_*`, `issue_id_*` and
-  `issue_placement` / `issue_placement_ack` key contract, from the skill flow
-  and script-to-script (`index.sh`, `render.sh`, `backfill.sh`, `migrate.sh`,
-  `place.sh`). `place.sh` additionally reads `id_coordination_branch`, the one
-  key this group consumes that another group owns the meaning of — it is the
-  branch placement refuses to write the collection to. The resolver
-  distinguishes an unset key from a failed resolution, which is what lets the
-  placement gate's refusal hold: a configuration it cannot read, a value form it
-  cannot parse, and a run started below the project root each refuse rather than
-  yielding the key's default.
+  display ordinal + durable id via `allocate issue` (durable-before-write),
+  `peek issue` supplies the capture flow's advisory preview, and `reconcile.sh`
+  realizes pending provisional ordinals via `reconcile issue`.
+- `platform.valid-branch-shape` — `place.sh`'s branch-name gate is a
+  byte-identical mirror of the allocator's own, marked on both sides and
+  compared by a test. The two agree because a branch the allocator would refuse
+  must not be one the placement door accepts. A sibling containment rule is
+  deliberately *not* mirrored: the door's is the tighter of the two, and its
+  marker says so rather than leaving the difference to look like drift.
+- `platform.jimconf-cli` — the `issues` path, the `issue_list_*` and
+  `issue_id_*` families, `issue_placement` / `issue_placement_ack`,
+  `auto_issue_file`, and the recorded-identity pair `identity_scheme` /
+  `identity_domain`, from the skill flow and script-to-script (`index.sh`,
+  `render.sh`, `backfill.sh`, `migrate.sh`, `place.sh`, `identity.sh`,
+  `new.sh`). `place.sh` additionally reads `id_coordination_branch`, the one key
+  this group consumes that another group owns the meaning of — it is the branch
+  placement refuses to write the collection to. The resolver distinguishes an
+  unset key from a failed resolution, which is what lets the placement gate's
+  refusal hold: a configuration it cannot read, a value form it cannot parse,
+  and a run started below the project root each refuse rather than yielding the
+  key's default.
 - `platform.testlib` — `tests/issues.sh` and `tests/place.sh` run under the
   shared framework.
 
@@ -161,7 +190,9 @@ face after the platform CLIs.
   invoke it directly, script to script, for mutations that have no single
   command to wrap.
 - `agents/issue-analyst.md` — the read-only insights subagent.
-- `tests/issues.sh` and `tests/place.sh` — the group's test files.
+- `tests/issues.sh` and `tests/place.sh` — the group's test files. The validator
+  triplicate is asserted from `tests/jimfile.sh` instead, the platform group's
+  file, because one of the three copies is platform's own.
 - **Data store** (owned, not territory): `docs/issues/` + `INDEX.md` — one
   markdown file per issue, index regenerated on every write. The directory is
   the collection's path within a branch; which branch holds it is
@@ -181,3 +212,6 @@ face after the platform CLIs.
 | materialization-contained | Every entry extracted from destination-branch content is a regular file with a plain name resolving inside the collection directory, and its bytes are read by object name, never by tree path; the first violation aborts the extraction before the wrapped command runs | critical | judge |
 | insights-capability-boundary | Insights synthesis happens only in the issue-analyst subagent, which holds no write, edit or agent capability; its one granted read verb regenerates an index as a side effect and can author no content. The main agent reads no issue bodies during insights. The runtime enforcement rides the allowed-tools permission channel, which no mechanical check here models — judged from the prompt surface | high | judge |
 | identity-validated-before-record | Every recorded identity — supplied by the environment or recovered from version-control history — clears one positively enumerated character set before it is written, and a value outside it is refused exactly as an absent one. The refusal carries neither the rejected value nor issue content | critical | judge |
+| cross-copy-lockstep | Every guard carrying a sync marker stays byte-identical to the other copies of that marker, whether the marker names them or names only the shared pattern. A copy deliberately *not* identical declares the difference in its own marker, so an intended asymmetry never reads as drift and drift never reads as intent | high | judge |
+| issue-file-never-sourced | No script sources or evaluates an issue file; frontmatter and body are read line-oriented with grep, sed and awk only — on every read path, including the ones recovering values from version-control history | critical | judge |
+| collection-rewrite-preview-gated | Every collection-wide rewrite previews by default and mutates only under an explicit apply flag, and a plan hash supplied with that flag refuses a run whose collection drifted since the preview it names | critical | judge |
