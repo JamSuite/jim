@@ -433,6 +433,18 @@ fm_field() {
     | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
 }
 
+# schema_anchored <frontmatter> — 0 when the conversion has somewhere to write.
+#   The rewrite needs two anchors: a top-level `labels:` line, ahead of which
+#   the four scalars go, and the `duplicates:` relations child the membership
+#   entry follows. Read from the same region the rewrite writes, so the preview
+#   cannot promise a conversion the apply refuses — the discipline the
+#   provisional realizer already keeps between its detection and its rewrite.
+schema_anchored() {
+  printf '%s\n' "$1" | grep -q '^labels:'      || return 1
+  printf '%s\n' "$1" | grep -q '^  duplicates:' || return 1
+  return 0
+}
+
 # derive_filer <file> — the address of the commit that ADDED <file>, resolved
 # through the project's alias mapping where it has one, empty where the file
 # has no creating commit in reach.
@@ -481,13 +493,21 @@ build_schema_plan() {
       continue
     fi
 
+    # The anchors are read here rather than discovered mid-apply. An issue the
+    # rewrite has no place to write into is reported before the operator
+    # approves anything, in the same pass that already parsed its frontmatter.
+    if ! schema_anchored "$fm"; then
+      printf 'unconvertible\t%s\t\t\n' "$slug"
+      continue
+    fi
+
     printf 'convert\t%s\t%s\t%s\n' "$slug" "$filer" "$outcome"
   done
 }
 
 # render_schema_plan <plan-rows> — human preview + summary counts.
 render_schema_plan() {
-  local plan="$1" converts=0 skips=0 unresolved=0 __row
+  local plan="$1" converts=0 skips=0 unresolved=0 unconvertible=0 __row
   while IFS= read -r __row; do
     [[ -n "$__row" ]] || continue
     split_schema_row "$__row"
@@ -502,10 +522,14 @@ render_schema_plan() {
       unresolved)
         printf '  unresolved  %s  (no recordable filer in history)\n' "$SCHEMA_SLUG"
         unresolved=$((unresolved+1)) ;;
+      unconvertible)
+        printf '  unconvertible  %s  (no labels: line or relations: duplicates: entry to write into)\n' \
+          "$SCHEMA_SLUG"
+        unconvertible=$((unconvertible+1)) ;;
     esac
   done <<<"$plan"
-  printf '\n  %d to convert · %d to skip · %d unresolved\n' \
-    "$converts" "$skips" "$unresolved"
+  printf '\n  %d to convert · %d to skip · %d unresolved · %d unconvertible\n' \
+    "$converts" "$skips" "$unresolved" "$unconvertible"
 }
 
 # apply_schema_plan <dir> <plan> [<expect>] — write the new fields into every
@@ -516,21 +540,30 @@ apply_schema_plan() {
   local dir="$1" plan="$2" expect="${3:-}" converted=0 skipped=0 __row f tmp outcome
   gate_apply "$expect" "$plan" || return 3
 
-  # A filer that cannot be recovered refuses the WHOLE run, before any file is
-  # touched. Converting the recoverable ones and leaving the rest would attribute
-  # half a collection and make the remainder look like work already done; a
-  # placeholder would be worse still, since it reads as a real attribution.
-  # Every such issue is named at once — fixing them one run at a time would take
-  # as many runs as there are problems.
-  local unresolved=""
+  # An issue the conversion cannot complete refuses the WHOLE run, before any
+  # file is touched — whether the obstacle is a filer that cannot be recovered
+  # or a record with no place to put the fields. Converting the sound ones and
+  # leaving the rest would attribute half a collection and make the remainder
+  # look like work already done; a placeholder filer would be worse still,
+  # since it reads as a real attribution. Both classes are named together and
+  # in full: fixing them one run at a time would take as many runs as there are
+  # problems.
+  local unresolved="" unconvertible=""
   while IFS= read -r __row; do
     [[ -n "$__row" ]] || continue
     split_schema_row "$__row"
-    [[ "$SCHEMA_ACTION" == unresolved ]] && unresolved+="  $SCHEMA_SLUG"$'\n'
+    case "$SCHEMA_ACTION" in
+      unresolved)    unresolved+="  $SCHEMA_SLUG"$'\n' ;;
+      unconvertible) unconvertible+="  $SCHEMA_SLUG"$'\n' ;;
+    esac
   done <<<"$plan"
-  if [[ -n "$unresolved" ]]; then
-    printf 'error: no recordable filer in history for:\n%s' "$unresolved" >&2
-    echo "error: nothing was written; the conversion needs a filer for every issue" >&2
+  if [[ -n "$unresolved" || -n "$unconvertible" ]]; then
+    [[ -n "$unresolved" ]] && \
+      printf 'error: no recordable filer in history for:\n%s' "$unresolved" >&2
+    [[ -n "$unconvertible" ]] && \
+      printf 'error: no place to put the new fields in:\n%s' "$unconvertible" >&2
+    echo "error: nothing was written; the conversion needs a filer for every" \
+         "issue and somewhere to write its fields" >&2
     return 1
   fi
 

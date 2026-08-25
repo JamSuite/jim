@@ -4664,14 +4664,31 @@ schema_commit() {
   git -C "$repo" commit -q -m "file $slug" >/dev/null 2>&1
 }
 
+# schema_legacy <repo> <slug> <status> — one pre-conversion issue shaped the way
+# the real corpus carries them: the fields the conversion adds are absent, and
+# the two anchors it writes them against are present. A record missing those
+# anchors is a case of its own below, not the ordinary shape.
+schema_legacy() {
+  schema_commit "$1" "$2" "title: \"$2\"
+status: $3
+priority: low
+labels: []
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: \"conversation\""
+}
+
 # AC: the filer of an existing issue is recovered from the collection's own
 # history rather than assigned by default.
 case_migrate_schema_recovers_the_filer_from_history() {
   local repo
   repo="$(schema_repo migrate_schema_filer)"
-  schema_commit "$repo" "20260101-one" 'title: "One"
-status: open
-priority: low'
+  schema_legacy "$repo" "20260101-one" open
   run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
   assert_exit "rc" 0 "$RC"
   assert_match "filer recovered" 'filer@example\.test' "$OUT"
@@ -4685,9 +4702,7 @@ case_migrate_schema_records_the_configured_form() {
   local repo
   repo="$(schema_repo migrate_schema_form)"
   git -C "$repo" config user.email '1234+Dev@users.noreply.github.com'
-  schema_commit "$repo" "20260101-one" 'title: "One"
-status: open
-priority: low'
+  schema_legacy "$repo" "20260101-one" open
   run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
   assert_exit "rc" 0 "$RC"
   assert_match "recorded as the account name" '(^|[^.@])dev([^a-z]|$)' "$OUT"
@@ -4702,9 +4717,7 @@ case_migrate_schema_honors_an_explicit_config_for_the_form() {
   local repo cfg
   repo="$(schema_repo migrate_schema_form_cfg)"
   git -C "$repo" config user.email '1234+dev@users.noreply.github.com'
-  schema_commit "$repo" "20260101-one" 'title: "One"
-status: open
-priority: low'
+  schema_legacy "$repo" "20260101-one" open
   cfg=$(fixture migrate-identity-email.toml 'identity_scheme = "email"')
   run_in "$repo" "$SCRIPT_MIGRATE" -c "$cfg" schema docs/issues
   assert_exit "rc" 0 "$RC"
@@ -4715,12 +4728,8 @@ priority: low'
 case_migrate_schema_records_closed_issues_as_done() {
   local repo
   repo="$(schema_repo migrate_schema_done)"
-  schema_commit "$repo" "20260101-shut" 'title: "Shut"
-status: closed
-priority: low'
-  schema_commit "$repo" "20260101-live" 'title: "Live"
-status: open
-priority: low'
+  schema_legacy "$repo" "20260101-shut" closed
+  schema_legacy "$repo" "20260101-live" open
   run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
   assert_exit "rc" 0 "$RC"
   assert_match "the finished issue gains an outcome" '20260101-shut.*done' "$OUT"
@@ -4790,6 +4799,48 @@ priority: low'
   assert_match "not treated as recoverable" 'unresolved' "$OUT"
   assert_eq "the unrecordable value is not echoed back" "no" \
     "$(printf '%s' "$OUT" | grep -q "$LINE_SEP" && echo yes || echo no)"
+}
+
+# AC: the preview classifies a record the rewrite has nowhere to write into,
+# instead of calling it convertible and failing part-way through the apply. Both
+# anchors sit in the frontmatter the preview already parses, so a run that
+# cannot finish is knowable before the operator approves it — and both obstacle
+# classes are named in one refusal, since fixing them a run at a time takes as
+# many runs as there are problems.
+case_migrate_schema_preview_names_an_unconvertible_record() {
+  local repo before
+  repo="$(schema_repo migrate_schema_unanchored)"
+  schema_legacy "$repo" "20260101-sound" open
+  # No `labels:` line and no `relations:` block — the two the conversion writes
+  # its fields against.
+  schema_commit "$repo" "20260101-bare" 'title: "Bare"
+status: open
+priority: low'
+  # Shaped like the corpus but never committed, so no filer can be recovered:
+  # the obstacle class the preview already reported.
+  write_issue "$repo/docs/issues" "20260101-orphan" 'title: "Orphan"
+status: open
+priority: low
+labels: []
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []'
+
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "preview rc" 0 "$RC"
+  assert_match "the unanchored record is named"  '20260101-bare' "$OUT"
+  assert_match "and classified"                  'unconvertible' "$OUT"
+  assert_match "the filerless one still is too"  '20260101-orphan' "$OUT"
+
+  before="$(cat "$repo/docs/issues/20260101-sound.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "apply rc" 1 "$RC"
+  assert_match "the refusal names the unanchored record" '20260101-bare' "$ERR"
+  assert_match "and the filerless one, in the same run" '20260101-orphan' "$ERR"
+  assert_eq "the convertible issue is untouched" "$before" \
+    "$(cat "$repo/docs/issues/20260101-sound.md")"
 }
 
 # AC: every issue in the existing collection carries the new fields after a
