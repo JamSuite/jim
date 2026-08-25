@@ -7781,27 +7781,32 @@ person_fixture() {
 status: open
 num: 1
 created: 2026-01-01
+type: issue
 filed-by: "dev@example.test"'
   write_issue "$dir" "20260102-bravo" 'title: "Bravo"
 status: open
 num: 2
 created: 2026-01-02
+type: issue
 filed-by: "1234+alice@users.noreply.github.com"
 claimed-by: "dev@example.test"'
   write_issue "$dir" "20260103-charlie" 'title: "Charlie"
 status: open
 num: 3
 created: 2026-01-03
+type: issue
 filed-by: "Dev@Example.Test"'
   write_issue "$dir" "20260104-delta" 'title: "Delta"
 status: open
 num: 4
 created: 2026-01-04
+type: issue
 filed-by: "not a recordable value"'
   write_issue "$dir" "20260105-echo" 'title: "Echo"
 status: open
 num: 5
 created: 2026-01-05
+type: issue
 filed-by: "someone@else.test"
 claimed-by: "tester@example.test"'
 }
@@ -7940,6 +7945,59 @@ case_issues_render_list_person_refusal_writes_nothing() {
   assert_exit "refused" 1 "$RC"
   assert_eq   "created nothing" "0" \
     "$(ls -A "$work" | grep -v '^jimconf.toml$' | grep -c .)"
+}
+
+# ─── Section: render.sh — an axis the index cannot answer ────────────────────
+
+# strip_new_scalars <index-file> — rewrite the Issues rows as an emitter that
+# predates the widened row would have written them, then make the result the
+# newest thing in the directory so the staleness gate reuses it.
+strip_new_scalars() {
+  local idx="$1" tmp="$1.stripped"
+  awk -F ' · ' 'BEGIN { OFS = " · " }
+    /^- `/ {
+      out = $1
+      for (i = 2; i <= NF; i++)
+        if ($i !~ /^(type|filed-by|claimed-by|outcome):/) out = out OFS $i
+      print out; next
+    }
+    { print }' "$idx" > "$tmp" && mv "$tmp" "$idx"
+  touch "$idx"
+}
+
+# AC: when a filter names an axis the collection's index does not describe, the
+# view says so and fails, rather than reporting that nothing matched. An empty
+# result means nothing matched — it never means the view could not look.
+case_issues_render_list_refuses_unanswerable_axis() {
+  local dir
+  dir=$(empty_dir render_unanswerable)
+  person_fixture "$dir"
+  run_index "$dir"
+  strip_new_scalars "$dir/INDEX.md"
+
+  run_render list --filed-by dev@example.test "$dir"
+  assert_exit  "refused"             1 "$RC"
+  assert_match "names the axis"      'filed-by'      "$ERR"
+  assert_match "names the condition" 'does not describe' "$ERR"
+  assert_match "names the remedy"    'index\.sh'     "$ERR"
+  assert_eq    "no empty view served as an answer" "0" \
+    "$(printf '%s' "$OUT" | grep -c '_No matching issues\._')"
+
+  # The kind axis reads the same field and answers the same way.
+  run_render list --type issue "$dir"
+  assert_exit  "refused"        1 "$RC"
+  assert_match "names the axis" 'type' "$ERR"
+
+  # An axis the older index does describe still answers normally.
+  run_render list open "$dir"
+  assert_exit  "still answers" 0 "$RC"
+  assert_match "and lists"     'Alpha' "$OUT"
+
+  # And once the index is rebuilt, the axis answers.
+  run_index "$dir"
+  run_render list --filed-by dev@example.test "$dir"
+  assert_exit  "answers after a regeneration" 0 "$RC"
+  assert_match "the record"  'Alpha' "$OUT"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

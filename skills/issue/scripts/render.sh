@@ -797,10 +797,13 @@ cmd_list() {
 
   # Load rows, applying the filter.
   local rows=() slug num status prio created labels title origin
+  local seen_rows=0 saw_type=0
   local type filed_by claimed_by outcome
   while IFS=$'\t' read -r slug num status prio created labels title origin \
       type filed_by claimed_by outcome; do
     [[ -z "$slug" ]] && continue
+    (( seen_rows++ ))
+    [[ "$type" != "-" ]] && saw_type=1
     [[ "$hide_closed" == 1 && "$status" == "closed" ]] && continue
     axis_matches status   "$status" || continue
     axis_matches priority "$prio"   || continue
@@ -810,6 +813,30 @@ cmd_list() {
     person_matches claimed-by "$claimed_by" || continue
     rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title")
   done < <(read_issue_rows "$index_file")
+
+  # An index written before the row carried these fields can be newer than
+  # every issue file, so the staleness gate reuses it and every axis reading
+  # them matches nothing. That is a true statement about the index and a false
+  # one about the collection, and the two are indistinguishable to a reader.
+  #
+  # The condition needs no schema stamp and no version marker: `type` is
+  # non-empty on every record the current schema produces, so rows that exist
+  # while none carries one identify the older index on their own. The repair is
+  # a single regeneration.
+  if (( seen_rows > 0 && saw_type == 0 )); then
+    local -a unanswerable=()
+    local ax
+    for ax in type filed-by claimed-by; do
+      [[ -n "${FILTER_AXIS[$ax]:-}" ]] && unanswerable+=("$ax")
+    done
+    if (( ${#unanswerable[@]} )); then
+      echo "error: the index for '$dir' does not describe: ${unanswerable[*]}" >&2
+      echo "       it was written before those fields were recorded" >&2
+      echo "       regenerate it with: bash $INDEX_SCRIPT '$dir'" >&2
+      echo "       if the records themselves predate the schema, convert them first" >&2
+      return 1
+    fi
+  fi
 
   if (( ${#rows[@]} == 0 )); then
     printf '_No matching issues._\n'
