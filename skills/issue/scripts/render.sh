@@ -699,8 +699,16 @@ person_matches() {
 #   An empty result is not an answer. Returning nothing matched would be
 #   indistinguishable from genuinely holding nothing, which is the
 #   stale-view-reported-as-current failure this group refuses everywhere else.
+#
+#   Two conditions, two remedies, told apart by the resolver's own status
+#   rather than by its output: an environment carrying no identity is fixed by
+#   configuring one, and an identity the project's form cannot record is fixed
+#   by changing the form or the address. Collapsing them would send an operator
+#   to the wrong setting. Neither message carries the value — the operator did
+#   not supply it, so echoing it discloses something they did not choose to
+#   put on their terminal.
 resolve_person_axes() {
-  local axis alt out resolved="" resolved_done=0
+  local axis alt out resolved="" resolved_rc=0 resolved_done=0
   for axis in filed-by claimed-by; do
     [[ -n "${FILTER_AXIS[$axis]:-}" ]] || continue
     out=""
@@ -708,11 +716,12 @@ resolve_person_axes() {
       if [[ "$alt" == "me" ]]; then
         if (( ! resolved_done )); then
           resolved="$(bash "$IDENTITY_SCRIPT" resolve 2>/dev/null)"
+          resolved_rc=$?
           resolved_done=1
         fi
-        if [[ -z "$resolved" ]]; then
-          echo "error: cannot resolve 'me': no contributor identity is configured" >&2
-          echo "       set one with: git config user.email <address>" >&2
+        if (( resolved_rc != 0 )); then
+          echo "error: cannot resolve 'me': $(person_refusal_reason "$resolved_rc")" >&2
+          person_refusal_remedy "$resolved_rc"
           return 1
         fi
         alt="$resolved"
@@ -722,6 +731,22 @@ resolve_person_axes() {
     FILTER_AXIS[$axis]="$out"
   done
   return 0
+}
+
+# person_refusal_reason <rc> / person_refusal_remedy <rc> — the two halves of
+#   the refusal, keyed on which condition the resolver reported.
+person_refusal_reason() {
+  case "$1" in
+    1) printf 'no contributor identity is configured' ;;
+    *) printf 'the identity this environment carries is not one the project can record' ;;
+  esac
+}
+
+person_refusal_remedy() {
+  case "$1" in
+    1) echo "       set one with: git config user.email <address>" >&2 ;;
+    *) echo "       the form is identity_scheme in jimconf.toml; the address is the one git reports" >&2 ;;
+  esac
 }
 
 cmd_list() {

@@ -7879,6 +7879,69 @@ case_issues_render_list_no_bare_word_means_mine() {
   assert_match "names what it could not be" 'unrecognized filter token: me' "$ERR"
 }
 
+# ─── Section: render.sh — the person-axis refusals ───────────────────────────
+
+# run_render_unidentified <args...> — a read with no contributor identity
+# reachable at all: the machine's own git config is neutralized and the run
+# stands outside any repository, so this is the genuine absent case rather
+# than a repository that merely overrides one.
+run_render_unidentified() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$TMP_BASE" && env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    GIT_CONFIG_COUNT=0 bash "$SCRIPT_RENDER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: when the environment's identity cannot be resolved, a query naming the
+# developer is refused, names what is missing, and fails without writing
+# anything
+case_issues_render_list_person_axis_refuses() {
+  local dir work
+  dir=$(empty_dir render_person_refuse)
+  person_fixture "$dir"
+  run_index "$dir"
+
+  run_render_unidentified list --claimed-by me "$dir"
+  assert_exit  "refused"              1 "$RC"
+  assert_eq    "no view served"       "" "$OUT"
+  assert_match "names the condition"  "cannot resolve 'me'" "$ERR"
+  assert_match "names what is missing" 'no contributor identity is configured' "$ERR"
+  assert_match "names the setting to correct" 'git config user.email' "$ERR"
+
+  # An identity the environment does supply but the configured form cannot
+  # record is a different condition, and takes a different remedy. The refusal
+  # names neither the value it rejected nor any issue content.
+  run_render_as "not a recordable value" list --filed-by me "$dir"
+  assert_exit  "refused"             1 "$RC"
+  assert_eq    "no view served"      "" "$OUT"
+  assert_match "names the condition" "cannot resolve 'me'" "$ERR"
+  assert_match "names the form"      'identity_scheme'     "$ERR"
+  assert_match "and not the other remedy" 'the address is the one git reports' "$ERR"
+  assert_eq    "never the value" "0" \
+    "$(printf '%s' "$ERR" | grep -c 'not a recordable value')"
+  assert_eq    "and no issue content" "0" \
+    "$(printf '%s' "$ERR" | grep -cE 'Alpha|Bravo|Charlie|Delta|Echo')"
+}
+
+# AC: a refusal over a value the view resolved rather than the operator
+# supplied writes nothing to disk, exactly as an unrecognized token does
+case_issues_render_list_person_refusal_writes_nothing() {
+  local coll work
+  coll=$(empty_dir render_person_refuse_write_coll)
+  person_fixture "$coll"
+  run_index "$coll"
+  work=$(empty_dir render_person_refuse_write)
+  printf 'issues_path = "%s"\n' "$coll" > "$work/jimconf.toml"
+  OUT="$(cd "$work" && env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    GIT_CONFIG_COUNT=0 HOME="$TMP_BASE/no_such_home" \
+    bash "$SCRIPT_RENDER" list --filed-by me 2>/dev/null)"
+  RC=$?
+  assert_exit "refused" 1 "$RC"
+  assert_eq   "created nothing" "0" \
+    "$(ls -A "$work" | grep -v '^jimconf.toml$' | grep -c .)"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
