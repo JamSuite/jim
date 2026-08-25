@@ -235,6 +235,40 @@ the single exception, an embedded newline, which turned out to be the attack the
 fix existed to stop. The check cost one command and upgraded the fix's rationale
 from plausible to demonstrated.
 
+### Count the structures, not the bytes
+
+A mechanical transform over a structured document needs a check the transform
+cannot pass by accident, and text equality is not it.
+
+Rewrapping a 214 KB `ARCHITECTURE.md` at 80 columns was verified two ways before
+it was installed: both versions collapse to identical text under whitespace
+normalization, and every block-structure count matches across them — fences,
+headings, bullets, quotes, table rows, blank lines. The first check is the
+obvious one, and it passed on an output that was **wrong**. A wrapped line had
+come out beginning with three backticks, because the document discusses fenced
+code and the wrap put that word first; markdown read it as a fence, parity
+flipped, and several hundred lines after it were silently reclassified as code.
+Whitespace normalization cannot see that — every word is still present and in
+order — and neither can a person reading a 2,700-line diff.
+
+**Where a transform preserves content but can alter structure, count the
+structures on both sides.** It is one `awk` pass, it is the only check that
+fails on the failure mode that matters, and it generalizes past markdown: the
+same shape catches a YAML reindent that changes nesting or a table rewrite that
+changes column count.
+
+The reflow gained a rule from what the check found. A break that puts a word at
+the start of a line turns that word into markup if it is `#`, a lone `-`/`*`/`+`,
+a `1.`, a `>`, a `|`, or a fence — and prose *about* markup is exactly where that
+fires. Carry such a word onto the previous line and let it run over budget; eight
+lines of that file sit 82–85 characters wide, which is the right price.
+
+The same session lost three lines of a notes file to a `head -N` / `tail -n +N`
+splice with an off-by-three boundary, and did not notice for two commits: the
+paragraph simply began mid-sentence, and a splice looks like an insertion in a
+diff. When you assemble a file from slices, diff the result against its input for
+lines you did not intend to touch.
+
 ### An ordering can be load-bearing and held by nothing
 
 A sanitizer ran `tr` (strip control characters), then `sed` (strip the row
@@ -287,6 +321,17 @@ production data once**. It is the one input nobody designed, and it costs a
 single invocation. Where the data is a collection you can preview against, the
 preview is free — the first real preview of this verb was what caught the design
 bug.
+
+The rule landed a second time on the same increment, from the other direction. A
+migration preview gained a check for the two structural anchors its apply step
+writes against, and four standing cases went red — each describing a legacy
+record as title, status and priority alone, a shape the conversion could never
+have completed, standing in for the ordinary case. The fixtures had been wrong
+since before the check existed and nothing could see it, because every case using
+them asserted something else. **A fixture that cannot survive the operation under
+test is a defect the suite is structurally unable to report.** They now share a
+named helper carrying the shape the real corpus has, and the impossible shape
+appears only in the case that is about it.
 
 ### Reproduce a finding before believing it
 
@@ -372,6 +417,23 @@ narrow to matter, because the case that goes red is scoped to the same narrow
 corpus. Mutation testing proves a guard **discriminates**. It cannot tell you the
 set was too small.
 
+The counter-example is worth as much as the pattern, and it arrived in a file
+that already held two derived sweeps. A third sweep beside them carries its verbs
+in an array written into the test, under a comment claiming "a fourth verb, or a
+fourth surface, has to be added everywhere or fail here". The surfaces are
+looped, so a fourth surface would. A fourth verb would not — and one had already
+shipped without reaching even the script's own header roster, unnoticed by the
+check whose entire purpose was that class. **A sweep that carries its own list
+has the defect it exists to catch, one level up.**
+
+That one resisted derivation, and the reason is the useful part: the script's
+verbs are not one population. Some are called by other scripts and belong in no
+operator table; some are hand-run and belong in all of them; nothing in the
+script separates the two, so a sweep reading its dispatch would demand rows for
+verbs that should have none. **When a population cannot be derived, that is a
+finding about the code, not a licence to hand-write the list.** It was filed
+rather than bodged.
+
 ### Fixture the caller, not just the function
 
 Two of the worst defects in one build lived in code whose tests call the function
@@ -440,6 +502,77 @@ whose index would need regenerating.
 look identical in a diff, and a reader checking the issue's item list against the
 change will otherwise find an item with no matching edit and no explanation. The
 same note is what stops a later round re-fixing a symptom whose cause is gone.
+
+### An inconsistency is evidence, not a verdict
+
+An issue reported two quiet failure paths in one script as a single defect: a
+timestamp resolver that emptied its value and let the run report success, and a
+publish call that returned without unwinding the door every other exit in the
+function unwinds. The first was real. The second was correct, and "fixing" it
+would have destroyed work — the placement door frees a handle only after a
+successful publish, so a refused commit deliberately keeps the developer's edits
+for a retry, and adding the missing abort would have discarded them to make the
+code look symmetrical.
+
+Every other rule in this file widens a fix. This one narrows one: **an asymmetry
+is evidence that something differs, not evidence that something is wrong.**
+Establish which before changing it, particularly when the symmetry argument is
+the whole case for the change.
+
+The issue itself asked for exactly that — "worth determining rather than leaving
+to inference from an inconsistency" — and that is the shape to copy when filing.
+A reporter who cannot tell an oversight from a deliberate difference should say
+so; it is the line that stopped this one being fixed into a bug.
+
+The answer then belongs at the asymmetry. It read as an oversight because nothing
+at the site said otherwise, and it would have read that way again to the next
+person. The fix for this class is usually a sentence rather than a change.
+
+### Check the remedy against the goal, not the symptom
+
+An issue titled "single lines exceed what its consumers can read" asked for one
+thing: wrap the document. Its strongest evidence was something else — the skill
+that maintains the file cannot read it, because its own differential-update step
+instructs reading the document fully and the whole-file read is refused for size.
+
+Wrapping alone would have satisfied the title and left the evidence untouched.
+Reflowing a file does not shrink it: the bytes are identical and the read is
+refused exactly as before. The fix that shipped had to change the reading step
+too — by section rather than whole — which is worth doing only because wrapping
+makes a bounded read cost what it asks for rather than whatever the surrounding
+paragraph weighs.
+
+**Where an issue states a symptom and a goal, check the proposed remedy against
+the goal.** The two agree often enough that the habit is easy to skip, and the
+gap is invisible at review: every criterion the title names is met.
+
+What remained afterwards was a different problem wearing the same symptom — one
+section is more than half that document, which no formatting rule addresses. It
+was filed rather than folded in, which is the other half of the discipline: a
+remedy that does not reach the goal is either extended or its remainder is
+tracked, never quietly declared sufficient.
+
+### A census that outgrows the task is a filing
+
+Censusing the mechanism sometimes finds a root much larger than the task in
+flight. Asked to fix three issues so a set of blueprints would be correct, a
+census found that no `Requires` token on any group face resolved to any
+`Provides` entry: the two halves are named in disjoint vocabularies — the
+artifact on one side, the capability on the other — so three of the reconcile
+pass's six finding classes are decided by reading prose rather than by a join.
+Repairing that is a naming pass across four blueprints plus a mechanical check.
+
+The instinct is to re-plan around the root. Don't: **file it, widen the issues
+that understate their own rule, and finish the track already in flight.** The
+committed batch has a known end and the root does not, so trading one for the
+other turns a finishable pass into an open one — and the census survives in the
+record either way. Three issues were widened and three filed in a single commit;
+the remediation then closed its remaining six.
+
+File the root as its own issue and have the instances point at it. Without that,
+the next person fixes an instance under the naming that caused it, which for this
+one means adding a face entry only judgment can match — the exact state the
+instance was filed about.
 
 ### A contract names a site; a site is not a class
 
@@ -528,6 +661,25 @@ element. Two such checks landed in that pass: one deriving a script's documented
 verb enum from the array it dispatches on, one deriving a skill's granted
 scripts from the call sites in its own body. Counting a guard and grepping an
 idiom are things you run; this one is a thing that stays run.
+
+The sixth instance looked more like diligence than any of the others, and it is
+the sharpest form of the whole section: **an enumeration of what has been
+recorded is not a census of the rule.** Asked whether any other group face
+carried the gap one issue described, the obvious census was the project's
+declared cross-group contract edges — a real enumeration, mechanically derived,
+over the authoritative artifact. It answered "exactly one", and it could not have
+answered anything else: it searched only the couplings somebody had already
+declared, and an undeclared coupling was the entire subject of the issue.
+
+Censusing the *mechanism* instead — every byte-identity marker in the code —
+found four coupling families across three group boundaries, three of them
+undeclared on at least one side. The registry knew about one.
+
+So before running a census, ask what the population is made of. **If the set you
+are about to enumerate is itself a record of the thing you are looking for, the
+census is circular** and will confirm whatever the record already says, with all
+the authority of a mechanical count. Census the mechanism — the markers, the call
+sites, the code that would exist whether or not anyone wrote it down.
 
 This is the sibling of *By file, not by issue* below, at a different moment: that
 one governs reading a whole function while editing it, this one governs
@@ -846,6 +998,16 @@ so a fixture writing the bare name for a path key gets **the default, silently**
 That is a case passing for the wrong reason with no error anywhere: the run does
 exactly what it would have without the config line. Assert the resolver's answer
 (`jimconf.sh get <key>`) when a fixture's whole point is a non-default root.
+
+The same suffix defeats a *sweep* the other way round. A check comparing
+`jimconf.sh keys` against a documentation table reports every path key as
+undocumented — ten false alarms indistinguishable from real ones, and they read
+as "README is missing ten keys" until you go and look at the resolver. A
+roster sweep has to accept both spellings. It also has to accept a family row: a
+table may legitimately document five keys in one line (`health_threshold_<signal>`
+naming each signal in its text), which is the better document and invisible to a
+check demanding a row each. Read family prefixes out of the document rather than
+splitting the key — two of those five carry an underscore in their own suffix.
 
 **Commit subjects** are ≤50 characters, lowercase, imperative, with IDs in
 trailers only. This one is honoured in the breach — 74 of 140 subjects in one
