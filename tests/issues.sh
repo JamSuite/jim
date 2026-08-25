@@ -7760,6 +7760,125 @@ case_issues_render_list_empty_match_succeeds() {
   assert_eq    "nothing on stderr" "" "$ERR"
 }
 
+# ─── Section: render.sh — the person axes ────────────────────────────────────
+
+# run_render_as <identity> <args...> — a read whose environment carries one
+# fixed contributor address, so `me` resolves to a known value.
+run_render_as() {
+  local ident="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.email GIT_CONFIG_VALUE_0="$ident" \
+    bash "$SCRIPT_RENDER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# person_fixture <dir> — five open issues spanning the ways one contributor
+# can be spelled, plus a value the configured form cannot judge.
+person_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+filed-by: "dev@example.test"'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+filed-by: "1234+alice@users.noreply.github.com"
+claimed-by: "dev@example.test"'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: open
+num: 3
+created: 2026-01-03
+filed-by: "Dev@Example.Test"'
+  write_issue "$dir" "20260104-delta" 'title: "Delta"
+status: open
+num: 4
+created: 2026-01-04
+filed-by: "not a recordable value"'
+  write_issue "$dir" "20260105-echo" 'title: "Echo"
+status: open
+num: 5
+created: 2026-01-05
+filed-by: "someone@else.test"
+claimed-by: "tester@example.test"'
+}
+
+# AC: a record is filterable by who filed it and, separately, by who holds it;
+# the query and the record match under the project's configured form, so a
+# query need not be spelled the way the collection happens to have recorded it
+case_issues_render_list_person_axis_matches() {
+  local dir
+  dir=$(empty_dir render_person)
+  person_fixture "$dir"
+  run_index "$dir"
+
+  # Two spellings of one contributor, matched under the configured form.
+  run_render list --filed-by dev@example.test "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the plain spelling"     'Alpha'   "$OUT"
+  assert_match "and the cased one"      'Charlie' "$OUT"
+  assert_eq    "not the other filer" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  # A forge relay address is recorded as the account it names, and the account
+  # is what a query spells.
+  run_render list --filed-by alice "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the relay filer"  'Bravo' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # Who holds an issue is a separate question from who filed it.
+  run_render list --claimed-by dev@example.test "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the holder's issue"  'Bravo' "$OUT"
+  assert_eq    "not the ones they filed" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # An unheld issue satisfies no holder query.
+  run_render list --claimed-by alice "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "nothing holds" '_No matching issues\._' "$OUT"
+
+  # A value the form cannot judge stays reachable by naming it exactly.
+  run_render list --filed-by "not a recordable value" "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reachable literally" 'Delta' "$OUT"
+}
+
+# AC: a developer can name themselves rather than an address, so the query does
+# not depend on which of their addresses this machine commits under
+case_issues_render_list_person_axis_resolves_me() {
+  local dir
+  dir=$(empty_dir render_person_me)
+  person_fixture "$dir"
+  run_index "$dir"
+  run_render_as "tester@example.test" list --claimed-by me "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the issue they hold" 'Echo' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  # The same address written out reaches the same record.
+  run_render list --claimed-by tester@example.test "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "spelled out" 'Echo' "$OUT"
+  # And a relay address resolves to the account the collection records.
+  run_render_as "1234+alice@users.noreply.github.com" list --filed-by me "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "resolved through the form" 'Bravo' "$OUT"
+}
+
+# AC: there is no single word meaning "mine" — who filed an issue and who holds
+# it are separate questions, so each takes its own filter
+case_issues_render_list_no_bare_word_means_mine() {
+  local dir
+  dir=$(empty_dir render_person_mine)
+  person_fixture "$dir"
+  run_index "$dir"
+  run_render_as "tester@example.test" list me "$dir"
+  assert_exit  "refused"    1 "$RC"
+  assert_match "names what it could not be" 'unrecognized filter token: me' "$ERR"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

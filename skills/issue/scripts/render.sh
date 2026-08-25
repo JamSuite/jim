@@ -50,6 +50,7 @@ export LC_ALL=C
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INDEX_SCRIPT="$HERE/index.sh"
+IDENTITY_SCRIPT="$HERE/identity.sh"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 
 readonly INDEX_FILENAME="INDEX.md"
@@ -650,6 +651,79 @@ label_matches() {
   return 1
 }
 
+# The project's form applied to one value, memoized per distinct value.
+# `identity.sh normalize` is a subprocess, and a collection holds a handful of
+# distinct contributors across hundreds of records — the same reasoning, and
+# the same shape, as index.sh's own ident_seen.
+declare -A IDENT_FORM=()
+
+# ident_form <value> — <value> under the project's configured form, or <value>
+#   unchanged when the form cannot judge it.
+#
+#   Falling back rather than refusing is what keeps the records the
+#   re-normalization skips reachable. Refusing on that class would make exactly
+#   the records the index's drift warning asks an operator to go fix
+#   unfilterable, which is the opposite of what that warning is for.
+ident_form() {
+  local v="$1" n
+  if [[ -z "${IDENT_FORM[$v]+set}" ]]; then
+    if n="$(bash "$IDENTITY_SCRIPT" normalize "$v" 2>/dev/null)"; then
+      IDENT_FORM["$v"]="$n"
+    else
+      IDENT_FORM["$v"]="$v"
+    fi
+  fi
+  printf '%s' "${IDENT_FORM[$v]}"
+}
+
+# person_matches <axis> <recorded> — does this record's contributor satisfy the
+#   axis? Both sides go through the same definition the write paths use, so a
+#   filter and a capture cannot disagree about who someone is.
+person_matches() {
+  local axis="$1" recorded="$2" alt rec
+  [[ -n "${FILTER_AXIS[$axis]:-}" ]] || return 0
+  [[ "$recorded" == "-" || -z "$recorded" ]] && return 1
+  rec="$(ident_form "$recorded")"
+  while IFS= read -r alt; do
+    [[ "$(ident_form "$alt")" == "$rec" ]] && return 0
+  done <<< "${FILTER_AXIS[$axis]}"
+  return 1
+}
+
+# resolve_person_axes — replace `me` with the environment's own identity.
+#   A developer names themselves rather than an address, so a query does not
+#   depend on which of their addresses this machine commits under. Resolution
+#   happens once, before any row is read and before any index is built, so a
+#   refusal here writes nothing.
+#
+#   An empty result is not an answer. Returning nothing matched would be
+#   indistinguishable from genuinely holding nothing, which is the
+#   stale-view-reported-as-current failure this group refuses everywhere else.
+resolve_person_axes() {
+  local axis alt out resolved="" resolved_done=0
+  for axis in filed-by claimed-by; do
+    [[ -n "${FILTER_AXIS[$axis]:-}" ]] || continue
+    out=""
+    while IFS= read -r alt; do
+      if [[ "$alt" == "me" ]]; then
+        if (( ! resolved_done )); then
+          resolved="$(bash "$IDENTITY_SCRIPT" resolve 2>/dev/null)"
+          resolved_done=1
+        fi
+        if [[ -z "$resolved" ]]; then
+          echo "error: cannot resolve 'me': no contributor identity is configured" >&2
+          echo "       set one with: git config user.email <address>" >&2
+          return 1
+        fi
+        alt="$resolved"
+      fi
+      out="${out:+$out$'\n'}$alt"
+    done <<< "${FILTER_AXIS[$axis]}"
+    FILTER_AXIS[$axis]="$out"
+  done
+  return 0
+}
+
 cmd_list() {
   local dir=""
   # Classification runs before anything can bind, so a flag's operand never
@@ -657,6 +731,7 @@ cmd_list() {
   # filter vocabulary.
   parse_filters "$@" || return 1
   bind_collection   || return 1
+  resolve_person_axes || return 1
   dir="$(resolve_dir "$FILTER_DIR")"
   ensure_index "$dir"
   local index_file="$dir/$INDEX_FILENAME"
@@ -706,6 +781,8 @@ cmd_list() {
     axis_matches priority "$prio"   || continue
     axis_matches type     "$type"   || continue
     label_matches         "$labels" || continue
+    person_matches filed-by   "$filed_by"   || continue
+    person_matches claimed-by "$claimed_by" || continue
     rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title")
   done < <(read_issue_rows "$index_file")
 
