@@ -2,12 +2,12 @@
 id: 20260823-alias-source-and-the-applied-mapping-resolve-from-different-root
 num: 356
 title: "alias_source and the applied mapping resolve from different roots"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [issue, migration, correctness]
 relations:
   blocks: []
@@ -16,11 +16,9 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-23T23:21:49Z
-updated: 2026-08-23T23:21:49Z
+updated: 2026-08-25T06:52:54Z
 origin: "docs/specs/issue/013-recorded-identity-schemes/review.md"
 ---
-
-## Description
 
 ## Description
 
@@ -74,3 +72,30 @@ choice is worth making deliberately rather than by which function was edited
 last.
 
 Origin: `docs/specs/issue/013-recorded-identity-schemes/review.md` — Finding 9.
+
+## Resolution (2026-08-25)
+
+Anchored on the application side, in `6eefd6e`.
+
+`alias_source` resolves the mapping from this process's own working directory —
+the root `map_alias` already applies from, since the lookup is invoked with no
+directory of its own. Its `<dir>` parameter is gone rather than left unused,
+and `render_alias_disclosure` loses the parameter it existed to forward.
+
+**The choice, made deliberately.** The application side decides what gets
+recorded, so a disclosure that disagrees with it is the half that is wrong. The
+alternative — rooting the lookup at the collection — would have made the
+recorded identity depend on which directory a collection was materialized into,
+which is the same defect facing the other way.
+
+**Census.** Every version-control call in the group's identity path was checked
+for the same split. The rule holds everywhere else: a fact about the collection
+(`git status` for the recovery note, the work-tree gate the filer recovery
+needs) is rooted at the collection directory, and a fact about identity
+resolution (`check-mailmap`, the configured `user.email`) answers from the
+process root. This was the one site on the wrong side of that line.
+
+`case_migrate_identity_disclosure_and_lookup_share_a_root` pins it with a
+collection the repository does not contain — the shape a routed placement
+materializes. Before the fix, the plan printed `old@personal.example -> dev`
+directly above the line "Alias mapping: none found".
