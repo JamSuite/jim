@@ -46,7 +46,17 @@ If absent, proceed without it. Note its absence in the Overview if you generate 
 SET arch_doc = !`bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh get architecture`
 
 IF arch_doc != "NOT_FOUND" THEN
-  This is a differential update. Read the existing document fully. Summarize proposed changes to the user — which sections will be updated, which will be preserved — before writing anything. Use Edit, not Write. (When `$ARGUMENTS` is a directory, the target is `{$ARGUMENTS}/<filename portion of arch_doc>`; the differential-update treatment still applies if a file exists at the target.)
+  This is a differential update. Read the existing document before changing it —
+  whole, or section by section once a whole-file read is refused for size, which
+  is what a long-lived architecture document becomes. The `##` headings are the
+  read boundaries: locate them first, then read the ranges you intend to touch
+  plus any you will report as preserved. Wrapping (§ 5a) is what makes a bounded
+  read worth taking — in an unwrapped document a few lines can cost whatever its
+  longest paragraph weighs. Summarize proposed changes to the user — which
+  sections will be updated, which will be preserved — before writing anything.
+  Use Edit, not Write. (When `$ARGUMENTS` is a directory, the target is
+  `{$ARGUMENTS}/<filename portion of arch_doc>`; the differential-update
+  treatment still applies if a file exists at the target.)
 ELSE
   Generate a new document from `assets/architecture-template.md`.
 ENDIF
@@ -79,6 +89,37 @@ Fill each section from scan findings:
 - If a section has no findings (e.g., no external integrations), write "*None identified.*" rather than removing the section. This signals completeness, not omission.
 - If VISION.md flagged a tension between vision and implementation, note it in Security Considerations or a brief "Architecture Notes" at the end.
 
+
+### 5a. Wrap the prose you write
+
+Hard-wrap every paragraph and list item you write at **80 columns**.
+
+This document is read in fragments — by a person reading a diff, and by tooling
+that reads a bounded range of lines, including this skill on its next
+differential update. An unwrapped paragraph is one line thousands of characters
+wide: a one-word change renders as a whole-line replacement, and a bounded read
+costs whatever that paragraph happens to weigh rather than what was asked for.
+Wrapping is what keeps both affordable.
+
+Wrap:
+
+- **paragraphs** — break at the last space that leaves the line within 80
+  columns.
+- **list items** — continuation lines indent to the item's text rather than to
+  its marker, so a bullet stays visually distinct from its own body.
+
+Never wrap:
+
+- **table rows.** A wrapped `|` row stops being a table.
+- **fenced blocks**, the Mermaid diagram included. Fenced content is verbatim.
+- **headings and link definitions.** One line each by construction.
+- a **URL or path longer than the budget.** Leave it whole and over-long on its
+  own line; breaking it makes it wrong rather than merely wide.
+
+This applies to a differential update exactly as it does to a fresh generate: a
+section you rewrite comes out wrapped, and a section you do not touch keeps the
+wrapping it has. A refresh therefore converges the document instead of reflowing
+lines it had no reason to visit.
 ### 6. Present and stop
 
 Show the completed document (or summarize changes for a differential update). List which sections changed and which sections had no findings.
@@ -104,3 +145,4 @@ Before presenting, confirm:
 - [ ] VISION.md was checked and any tensions are noted
 - [ ] Differential update used Edit, not Write
 - [ ] File paths in Component sections include actual line-range anchors where relevant
+- [ ] Every paragraph and list item written or rewritten wraps at 80 columns; tables, fenced blocks and the diagram are left unwrapped
