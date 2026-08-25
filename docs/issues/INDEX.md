@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 132
-- Closed: 244
+- Open: 131
+- Closed: 245
 
 ## Issues
 
@@ -366,7 +366,7 @@
 - `20260823-conversion-preview-cannot-predict-a-structural-apply-failure` — Conversion preview cannot predict a structural apply failure · status: open · num: 366 · priority: low · created: 2026-08-23T23:45:29Z · labels: [issue, migration] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-coverage-gaps-in-the-identity-write-path` — Coverage gaps in the identity write path · status: closed · num: 357 · priority: medium · created: 2026-08-23T23:21:50Z · labels: [testing, migration] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-argument-parser-accepts-contradictory-and-malformed-inv` — identity argument parser accepts contradictory and malformed invocations · status: closed · num: 358 · priority: high · created: 2026-08-23T23:21:46Z · labels: [issue, cli, correctness] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
-- `20260823-identity-domain-with-a-leading-dot-silently-no-ops` — identity_domain with a leading dot silently no-ops · status: open · num: 359 · priority: low · created: 2026-08-23T23:21:51Z · labels: [issue, conf] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
+- `20260823-identity-domain-with-a-leading-dot-silently-no-ops` — identity_domain with a leading dot silently no-ops · status: closed · num: 359 · priority: low · created: 2026-08-23T23:21:51Z · labels: [issue, conf] · origin: docs/specs/issue/013-recorded-identity-schemes/review.md
 - `20260823-identity-rewrite-composes-a-path-from-an-unvalidated-slug` — Identity rewrite composes a path from an unvalidated slug · status: closed · num: 360 · priority: critical · created: 2026-08-23T23:37:26Z · labels: [issue, migration, correctness] · origin: docs/specs/issue/000-blueprint/spec.md
 - `20260823-issue-face-does-not-declare-the-validator-lockstep-contract` — issue face does not declare the validator-lockstep contract · status: closed · num: 367 · priority: medium · created: 2026-08-23T23:45:32Z · labels: [issue, blueprint, contract] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
 - `20260823-issue-skill-instructs-two-scripts-its-tool-grant-does-not-permit` — Issue skill instructs two scripts its tool grant does not permit · status: closed · num: 368 · priority: critical · created: 2026-08-23T23:45:27Z · labels: [issue, sdlc, tooling] · origin: docs/specs/issue/012-schema-and-state-model/spec.md
