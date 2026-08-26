@@ -13,9 +13,9 @@
 #                              frontmatter; invalid wikilink content
 #
 #   Line-oriented parsing only — never `source` or `eval` issue files
-#   (spec 017 AC-S1, CLAUDE.md → Bash scripts). Frontmatter is bounded by
-#   the first two ^---$ lines; nested `relations:` is parsed via awk with
-#   2-space indent tracking (DD #11). Atomic write via tmp + mv (DD #12).
+#   (CLAUDE.md → Bash scripts). Frontmatter is bounded by the first two
+#   ^---$ lines; nested `relations:` is parsed via awk with 2-space indent
+#   tracking. Atomic write via tmp + mv.
 #
 #   Edge provenance is tracked via two parallel maps:
 #     outgoing_fm[$slug]  — edges asserted in the frontmatter relations:
@@ -90,7 +90,7 @@ in_list() {
 # ─── Section: Id validator (mirrors jimfile.sh is_valid_id) ─────────────────
 
 # is_valid_id <id>
-#   Bounded allowlist for a full issue id / prefix (spec 021 AC #7, AC #11).
+#   Bounded allowlist for a full issue id / prefix.
 #   SYNC: the function body below is byte-identical to the copies in
 #   skills/file/scripts/jimfile.sh and skills/issue/scripts/render.sh — a
 #   tests/jimfile.sh case asserts the three agree. Keep them in lockstep.
@@ -172,7 +172,7 @@ parse_scalar_fields() {
 
 # parse_relations <frontmatter-content>
 #   Emit lines: <type>\t<slug>  for each entry inside the `relations:` block.
-#   DD #11 parser: scan top-level `relations:`; child lines at exactly 2-space
+#   The parser scans top-level `relations:`; child lines at exactly 2-space
 #   indent and matching `<type>: [<slugs>]`. Anything deeper or non-conforming
 #   is ignored (the caller surfaces malformed-relations as Integrity Warnings).
 parse_relations() {
@@ -209,7 +209,7 @@ parse_relations() {
 # parse_wikilinks_from_body <file>
 #   Read the body (everything after the second ^---$ line); extract candidate
 #   wikilinks via grep regex; emit one slug per line for each VALID candidate.
-#   Invalid candidates are silently dropped (treated as prose per AC-I4).
+#   Invalid candidates are silently dropped (treated as prose).
 #
 #   Fenced code blocks are excluded from extraction — tokens like `[[B]]` in
 #   a ```bash example or shell conditionals like `[[ "$x" != "y" ]]` are
@@ -471,7 +471,7 @@ main() {
     # SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
     # Degrade a non-conforming created so a malformed value never lands raw in an
     # INDEX.md row (tab/garbage): keep the day-start date prefix when present,
-    # else empty, and surface an Integrity Warning. Spec 022 AC #8 / Finding F6.
+    # else empty, and surface an Integrity Warning.
     if [[ -n "$created" && ! "$created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$ ]]; then
       if [[ "$created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
         created="${BASH_REMATCH[0]}"
@@ -565,7 +565,7 @@ main() {
     outgoing_all[$slug]="${edges_all% }"
   done
 
-  # Origin-lint second pass (spec 018 OL-1, OL-2, OL-3).
+  # Origin-lint second pass.
   # For each indexed slug whose origin field is path-shaped (contains '/'),
   # validate that the path resolves against the script's invoking CWD (PWD-
   # relative resolution; matches the rest of jim's bash conventions and
@@ -577,7 +577,7 @@ main() {
   # Under `set -u`, access meta_origin via ${meta_origin[$slug]-} and
   # continue when the value is empty — issues without an `origin:` field
   # are common (early adoption, hand-authored fixtures) and the lint pass
-  # must not crash on them. (Spec 018 security review Finding 9.)
+  # must not crash on them.
   #
   # The pass is skipped when the collection lives on a designated branch. An
   # origin resolves or not according to the checkout the run happens to be
@@ -695,7 +695,7 @@ main() {
     done
   fi
 
-  # Bidirectional integrity check (DD #7).
+  # Bidirectional integrity check.
   # For each FRONTMATTER outgoing edge A --type--> B, if type has an inverse,
   # check that B has an inverse FRONTMATTER edge back to A. Wikilinks do not
   # participate on either side: a wikilink does not trigger a warning, and a
@@ -764,7 +764,7 @@ main() {
     done
   done
 
-  # Atomic write via tmp + mv (DD #12).
+  # Atomic write via tmp + mv.
   local tmpfile
   tmpfile="$(mktemp "$dir/.${INDEX_FILENAME}.tmp.XXXXXX")" || {
     echo "error: cannot create tmp file in '$dir'" >&2

@@ -9,7 +9,7 @@
 #   for `show`, the resolved issue file) and emits a human-friendly view to
 #   stdout. A fresh index is reused as-is, so a read over an unchanged
 #   collection costs a stat-based staleness check rather than a full rescan.
-#   Read-only with respect to issue content (AC-R3) — only index.sh's regen
+#   Read-only with respect to issue content — only index.sh's regen
 #   writes, and it writes INDEX.md, not issue files.
 #
 #   When the regeneration fails, the prior index is still served — a
@@ -379,8 +379,8 @@ bind_collection() {
 
 # cfg_validated <value> <default> <allowed...>
 #   Return <value> if it is a member of the allowed set, otherwise fall back
-#   to <default> (security 019 Finding 5). The caller resolves <value> from
-#   the single config blob (see cmd_list) — this validates, it does not fetch.
+#   to <default>. The caller resolves <value> from the single config blob
+#   (see cmd_list) — this validates, it does not fetch.
 cfg_validated() {
   local val="$1" def="$2"; shift 2
   if in_list "$val" "$@"; then
@@ -1221,7 +1221,7 @@ cmd_list() {
 # ─── Section: show ───────────────────────────────────────────────────────────
 
 # is_valid_id <id>
-#   Bounded allowlist for a full issue id (spec 021 AC #7, AC #11).
+#   Bounded allowlist for a full issue id.
 #   SYNC: the function body below is byte-identical to the copies in
 #   skills/file/scripts/jimfile.sh and skills/issue/scripts/index.sh — a
 #   tests/jimfile.sh case asserts the three agree. Keep them in lockstep.
@@ -1260,7 +1260,7 @@ render_issue_file() {
   prio="$(field priority)"; labels="$(field labels)"; origin="$(field origin)"; created="$(field created)"
   type="$(field type)"; filed_by="$(field filed-by)"
   claimed_by="$(field claimed-by)"; outcome="$(field outcome)"
-  # A provisional ordinal is never rendered as a settled #N (spec 010 AC 9).
+  # A provisional ordinal is never rendered as a settled #N.
   if [[ "$num" == P-* ]]; then
     printf '%s (provisional) · %s\n' "$num" "$slug"
   else
@@ -1338,7 +1338,7 @@ cmd_show() {
 # ─── Section: insights-graph ─────────────────────────────────────────────────
 
 # cmd_insights_graph [<dir>] — deterministic graph facts for the issue-analyst
-# subagent (spec 020). Emits to stdout (LC_ALL=C stable ordering):
+# subagent. Emits to stdout (LC_ALL=C stable ordering):
 #   ISOLATED <slug>          one per OPEN issue in no blocks/depends-on edge
 #   BLOCKING <count> <slug>  blocking out-degree per source, count desc then slug
 # Read-only, and degrades to empty output on an absent or empty index. Exits
@@ -1366,7 +1366,7 @@ cmd_insights_graph() {
   done < <(read_issue_rows "$index_file")
 
   # blocks / depends-on edges → endpoints (non-isolated) + blocking out-degree.
-  # related-to and duplicates are ordering-neutral and ignored (spec 020 AC5).
+  # related-to and duplicates are ordering-neutral and ignored.
   declare -A related blocks_out
   local esrc etgt
   while IFS=$'\t' read -r esrc etgt; do

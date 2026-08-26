@@ -100,9 +100,9 @@ field_value() {
 # <durable-id>\t<file>. A file's num: field marks it pending when it starts
 # with "P-"; the durable id is then read from that SAME file's own id:
 # frontmatter field and revalidated through jimfile.sh's id boundary before
-# it is ever fed to jimalloc.sh or used as a path component (security
-# Finding 5) — a file whose frontmatter id fails that check is skipped with
-# a warning, never included in the pending set.
+# it is ever fed to jimalloc.sh or used as a path component — a file whose
+# frontmatter id fails that check is skipped with a warning, never included
+# in the pending set.
 scan_pending() {
   local dir="$1" f base num id
   for f in "$dir"/*.md; do

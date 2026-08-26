@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
 # skills/issue/scripts/backfill.sh — one-shot, opt-in migrations that fill in
-# missing issue data: `num` display ordinals (spec 019) and `created`/`updated`
-# second-resolution timestamps (spec 022). Subcommands: `num`, `timestamp`.
+# missing issue data: `num` display ordinals and `created`/`updated`
+# second-resolution timestamps. Subcommands: `num`, `timestamp`.
 #
 # PURPOSE
 #   Assign a `num:` display ordinal to every issue file that lacks one,
 #   in `created:`-ascending order, continuing from the collection's current
-#   max ordinal. This is a ONE-TIME migration for the spec 019 `num:` field
+#   max ordinal. This is a ONE-TIME migration for the `num:` field
 #   change — it is NOT wired into the /jim:issue verb flow. New issues get
 #   their ordinal at creation (jimfile.sh next-num issue); this script only
 #   numbers the legacy collection, once, up-front (before normal use), so
@@ -25,12 +25,12 @@
 #   bash backfill.sh num [<issues_dir>]
 #     Assign a `num:` display ordinal to every issue lacking one, in
 #     created-ascending order. Prints "Assigned display numbers to N issue(s)."
-#     iff N>0; otherwise silent (idempotent no-op). (spec 019)
+#     iff N>0; otherwise silent (idempotent no-op).
 #   bash backfill.sh timestamp [<issues_dir>]
 #     Rewrite date-only created/updated to YYYY-MM-DDT00:00:00Z (a day-start
 #     placeholder, not a recovered time), atomically per file. Idempotent —
 #     already-timestamped values untouched; malformed values skipped with a
-#     warning. Prints "Normalized N issue(s) ..." iff N>0; else silent. (spec 022)
+#     warning. Prints "Normalized N issue(s) ..." iff N>0; else silent.
 #   issues_dir default: jimconf.sh get issues
 #
 # EXIT CODES

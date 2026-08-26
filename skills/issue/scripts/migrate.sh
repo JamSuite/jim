@@ -137,7 +137,7 @@ split_row() {
 # order): <action>\t<old_id>\t<new_id>\t<reason>
 #   action ∈ rename | collision-resolved | skip-conforming | skip-unmigratable
 # Pure read: classifies and resolves collisions; mutates nothing. The slug is
-# the id after its first '-' (every preset prefix is dash-free, DD 3); the new
+# the id after its first '-' (every preset prefix is dash-free); the new
 # id and any -2/-3 discriminator pass jimfile's valid-id (the security boundary).
 build_plan() {
   local dir="$1" f base id created num newpfx rc slug newid
@@ -175,7 +175,7 @@ build_plan() {
 
   # Collision resolution. Reserve every unchanged id (skipped + conforming keep
   # their current id), then assign rename targets in order — a target already
-  # taken gets the -2/-3 discriminator (spec 021 AC #6, reused not reinvented).
+  # taken gets the -2/-3 discriminator, reused rather than reinvented.
   local -A taken=()
   local row action old new reason
   for row in "${rows[@]}"; do
@@ -261,7 +261,7 @@ plan_hash() {
 
 # git_note <dir> — read-only VCS recoverability note for the preview. The
 # migration is destructive and recovery is via the developer's version control
-# (git ops stay out of scope, spec 023). Flags an uncommitted collection when
+# (git ops stay out of scope). Flags an uncommitted collection when
 # detectable, via a read-only `git status` — never a write.
 git_note() {
   local dir="$1" st
@@ -294,7 +294,7 @@ apply_plan() {
   done <<<"$plan"
 
   # Idempotent no-op: nothing to rename means the collection already matches
-  # the active scheme, so touch nothing (AC #5).
+  # the active scheme, so touch nothing.
   if [[ ! -s "$mapfile" ]]; then
     rm -f "$mapfile"
     printf 'Nothing to migrate — every issue already matches the active scheme.\n'
@@ -327,7 +327,7 @@ apply_plan() {
     fi
     s_tmp+=("$tmp"); s_old+=("$f"); s_new+=("$dir/$finalid.md")
     # Test seam: simulate a mid-staging crash. Staging is non-destructive, so
-    # this leaves the collection untouched and a retry converges (AC #10).
+    # this leaves the collection untouched and a retry converges.
     # Never set in production.
     if [[ -n "${MIGRATE_FAIL_STAGING:-}" ]]; then
       rm -f "${s_tmp[@]}" "$mapfile"
@@ -1115,7 +1115,7 @@ cmd_prefix() {
 # buckets and body [[wikilinks]] outside fenced code / inline backticks — by
 # EXACT id match. Never a substring/global replace: origin: paths, prose
 # mentions, code-fenced links, and prefix-overlapping ids are left untouched
-# (security F2; mirrors index.sh parse_relations + parse_wikilinks_from_body).
+# (mirrors index.sh parse_relations + parse_wikilinks_from_body).
 rewrite_refs() {
   local mapfile="$1" file="$2"
   awk -v MAP="$mapfile" '

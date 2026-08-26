@@ -2,27 +2,26 @@
 #
 # skills/issue/scripts/new.sh — Write one issue file from fields. The single
 #   issue-file emitter: every skill that files through the candidate-batch
-#   contract and /jim:issue add file through here, so the spec-017 template is
-#   materialized in exactly one place (spec 025 AC1–AC3). The consumer set is
-#   defined by the grant, never by a count kept here — it accrues.
+#   contract and /jim:issue add file through here, so the issue template is
+#   materialized in exactly one place. The consumer set is defined by the
+#   grant, never by a count kept here — it accrues.
 #
-# SECURITY MODEL (spec 025 security.md)
+# SECURITY MODEL
 #   - Untrusted body never reaches a shell command line. The caller writes the
 #     body to a temp file with the Write tool and passes --body-file; this
 #     script appends those bytes verbatim with `cat` (file→file copy). Body is
-#     never interpolated, `source`d, or `eval`d (AC4, Finding 5).
+#     never interpolated, `source`d, or `eval`d.
 #   - Scalar fields are YAML-encoded so an untrusted --title/--labels/--origin
-#     cannot inject or alter frontmatter or cross the frontmatter/body boundary
-#     (AC4, Findings 1, 6): --title and --origin are each escaped into a
-#     double-quoted scalar, each --labels token is reduced to the slug charset,
-#     newlines are stripped.
+#     cannot inject or alter frontmatter or cross the frontmatter/body
+#     boundary: --title and --origin are each escaped into a double-quoted
+#     scalar, each --labels token is reduced to the slug charset, newlines
+#     are stripped.
 #   - The target path is derived only through the validated id resolver: the id
 #     is checked with `jimfile.sh valid-id` before any path is composed from it —
 #     a stat included — so untrusted input cannot direct the write outside the
-#     issues directory, nor use a composed path to answer a question about one
-#     (AC5, Finding 2).
+#     issues directory, nor use a composed path to answer a question about one.
 #   - stdout is exactly "<slug>\t<path>"; failures go to stderr as fixed reason
-#     codes — never raw --title/--body content (Finding 4).
+#     codes — never raw --title/--body content.
 #
 # USAGE
 #   bash new.sh --title <s> --priority <low|medium|high|critical> \
@@ -260,7 +259,7 @@ issues_dir="${issues_dir%/}"
 # ordinal. A real ordinal is already registry-disambiguated, so a local
 # filename collision here is tree/registry drift — refused, never overwritten.
 # Always validate the id through the single security boundary before composing a
-# path — even a caller-supplied --slug, and even an allocator-derived one (AC5).
+# path — even a caller-supplied --slug, and even an allocator-derived one.
 #
 # Before, not after: a stat composes a path too. It answers a question about the
 # filesystem, which is exactly the read the boundary governs, and an
