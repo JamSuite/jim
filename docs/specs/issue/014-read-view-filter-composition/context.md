@@ -50,7 +50,7 @@ Fifteen commits, `0e55946..HEAD`. The load-bearing ones:
 | `b22b68b` `ff1cd5c` `15d0556` | issues filed, ordinals realized, five closed |
 | `da7bd34` `0d7c820` | `#391` deleted; `#393` swept across the whole group |
 | `c768186` `a3b9b94` | two closed with resolutions, `#401` filed and realized |
-| *(this one)* | `remediation.md`'s steps-1+2 claim corrected |
+| `0197d67` | `remediation.md`'s steps-1+2 claim corrected |
 
 **Closed:** `#386`, `#387`, `#388`, `#390`, `#391`, `#393`, `#397`. Each carries
 a resolution note that says what fixed it, what pins it, and — for `#387` and
@@ -101,14 +101,14 @@ Reading this document is not enough. Ground it in the artifacts, in this order
 — the first three are short and change how the rest reads.
 
 1. **`remediation.md`** § *Suggested remediation* → *Order*, and § *What not to
-   do*. Steps 1–3 are done; the rest of the order stands. **One claim in it is
-   wrong** — see § 4.
+   do*. Steps 1–4 are done; the rest of the order stands. Its steps-1+2 claim
+   was wrong and is now corrected — § 4 records what it said and how.
 2. **`retrospective.md`** § *Root cause: one set, three enumerations* — the
    single most useful page here, and the reason the fixes took the shape they
    did.
-3. **The five closed issues' Resolution sections** — `#386`, `#387`, `#388`,
-   `#390`, `#397`. Written to be read after the fact rather than to justify a
-   commit; they carry the reproduction evidence.
+3. **The seven closed issues' Resolution sections** — `#386`, `#387`, `#388`,
+   `#390`, `#391`, `#393`, `#397`. Written to be read after the fact rather
+   than to justify a commit; they carry the reproduction evidence.
 4. **`docs/specs/issue/000-blueprint/spec.md`** — the group's invariants. Two
    changed this session (§ 4). This is the specification the code answers to.
 5. **`BLUEPRINT.md`** — the project map: the four groups, their territories,
