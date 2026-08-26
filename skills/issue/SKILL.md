@@ -42,12 +42,16 @@ Read the **first whitespace-delimited token** of `$ARGUMENTS` as the subcommand.
   - `reopen` returns it to not-started and **keeps** the outcome, which is what makes a reopen legible: an open issue carrying an outcome was finished before, and the outcome names how.
 
   Present the script's output, then stop. Do not edit the issue file yourself and do not regenerate the index separately.
-- **`list`** → run, substituting the remaining argument string (an optional `open|active|closed|critical|high|medium|low` filter):
+- **`list`** → run, substituting the remaining argument string (any number of filters, in any order):
   ```
   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/render.sh list <remaining-args>
   ```
-  By default this view hides closed issues — `list` (no filter) and the priority filters show open work only. `list closed` is the ad-hoc closed view, and the `issue_list_closed` config key (default `false`) opts closed issues back into the default view when set to `true`. Present stdout verbatim, then stop.
-- **`stats`** → run `render.sh stats`; present stdout verbatim, then stop.
+  Filters compose: values naming one axis are alternatives, and different axes must all hold. Bare words are `open|active|closed` (lifecycle state), `critical|high|medium|low` (priority), `issue|epic` (kind), `claimed|unclaimed`, and `blocked|unblocked`. The flags are `--status`, `--priority`, `--type`, `--label`, `--filed-by`, `--claimed-by`, `--spec`, `--origin`, `--epic`, and `--cols`; each takes a comma-separated value list, and a flag naming an axis a bare word already named widens that axis rather than replacing it. Either person filter accepts `me` for the identity the environment carries — there is no word meaning "mine", because who filed an issue and who holds it are separate questions. `--cols` chooses columns for one query without touching `issue_list_cols`.
+
+  A bare word outside those vocabularies is refused and nothing is written. Pass the developer's filter string through unchanged — do not translate a word into a flag or a flag into a word, and do not drop one you do not recognize; the script owns the vocabulary and its refusal is the answer.
+
+  By default this view hides closed issues — `list` (no filter) and every filter that does not name lifecycle state show open work only. `list closed` is the ad-hoc closed view, and the `issue_list_closed` config key (default `false`) opts closed issues back into the default view when set to `true`. A filtered view that hid closed issues says so on its last line. Present stdout verbatim, then stop.
+- **`stats`** → run `render.sh stats <remaining-args>`. It accepts the same filters as `list`, under the same rules, and reports what it was scoped to. Unlike `list` it never hides closed issues: a census that reports a closed count cannot also conceal one. Present stdout verbatim, then stop.
 - **`show`** → the remaining token is the `<id>` (an ordinal number, a slug, or a slug prefix). Run `render.sh show <id>`; present stdout verbatim, then stop.
 - **`reconcile`** → realize pending provisional issues (offline-filed ordinals) into real, coordinated ones. This is a previewed, *mutating* verb — not a read view. Run the preview:
   ```
