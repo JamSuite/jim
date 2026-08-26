@@ -93,5 +93,4 @@ two other groups still carry ~58 citations — `jimverify.sh` (46, mostly its
 usage header), `jimconf.sh` (11) and `jimalloc.sh` (1). Nothing checks any of
 this, which is how they accumulated. The sweep and the missing check are
 filed together as
-[[20260826-spec-and-finding-ids-in-comments-outside-the-issue-group]] — its
-ordinal is provisional until the coordination point is reachable.
+[[20260826-spec-and-finding-ids-in-comments-outside-the-issue-group]] (#401).

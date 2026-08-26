@@ -1,6 +1,6 @@
 ---
 id: 20260826-spec-and-finding-ids-in-comments-outside-the-issue-group
-num: P-20260826-spec-and-finding-ids-in-comments-outside-the-issue-group
+num: 401
 title: "spec and finding ids in comments outside the issue group"
 status: open
 priority: medium
