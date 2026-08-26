@@ -1,6 +1,6 @@
 ---
 id: 20260826-schema-gate-misses-a-partly-converted-collection
-num: P-20260826-schema-gate-misses-a-partly-converted-collection
+num: 399
 title: "Schema gate misses a partly converted collection"
 status: open
 priority: medium

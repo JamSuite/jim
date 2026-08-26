@@ -1,6 +1,6 @@
 ---
 id: 20260826-skill-md-inlines-title-and-origin-into-the-emitter-command-line
-num: P-20260826-skill-md-inlines-title-and-origin-into-the-emitter-command-line
+num: 400
 title: "SKILL.md inlines title and origin into the emitter command line"
 status: open
 priority: critical
