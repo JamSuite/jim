@@ -311,12 +311,13 @@ Two more worth recording, both about the review itself:
 
 ## What running it settled
 
-The order above was executed through step 4, plus the first of step 5. Eight
-issues are closed: `#386`, `#387`, `#388`, `#390`, `#391`, `#393`, `#395`,
-`#397`. The suite moved 1,608 → 1,620. Both blueprint violations resolved
-`fix`, never `fold`, as § What not to do asked. The plan's gate is satisfied:
-review and sensor have both come back against the fixes rather than the
-original build, so the hold this document describes is discharged.
+The order above was executed in full — steps 1 through 5, in the sequence
+given. Ten issues are closed: `#386`, `#387`, `#388`, `#389`, `#390`, `#391`,
+`#392`, `#393`, `#395`, `#397`. The suite moved 1,608 → 1,623. Both blueprint
+violations resolved `fix`, never `fold`, as § What not to do asked. The plan's
+gate is satisfied: review and sensor have both come back against the fixes
+rather than the original build, so the hold this document describes is
+discharged.
 
 | step | issues | commit |
 | :--- | :--- | :--- |
@@ -324,11 +325,11 @@ original build, so the hold this document describes is discharged.
 | 2 | `#390` + `#397` | `95d56cc` |
 | 3 | `#386` | `9cc6185` |
 | 4 | `#391`, `#393` | `da7bd34`, `0d7c820` |
-| 5 (part) | `#395` | `74a91d2` |
+| 5 | `#395`, `#392`, `#389` | `74a91d2`, `d63357d` + `2a22a21`, `52d071e` |
 
 ### Where this analysis was short
 
-Four places, each worth more than the fix it misjudged.
+Five places, each worth more than the fix it misjudged.
 
 **The steps-1+2 claim was wrong twice** and contradicted the paragraph two lines
 below it. Corrected in place; the sentence now says what steps 1+2 actually
@@ -349,14 +350,29 @@ warned `unrecognized type: issue`. One rule computed from two values at three
 points, which is the retrospective's shape again, in a defect this document
 grouped as a correctness edge.
 
-**`#392`'s "neatest fix" collides with step 2.** Trimming around the delimiters
-rather than the whole value does keep `high, critical` working and `" alice"`
-intact, as recommended — but the edge trim is also what makes step 2's
-yields-no-alternative refusal work. Remove it and `'   '` becomes a recordable
-alternative that matches nothing instead of refusing, quietly undoing half of
-`#390`. `case_issues_render_operand_naming_no_alternative_refuses` fails on it.
-What a whitespace-only operand means has to be decided explicitly before `#392`
-is touched; this document treated the two fixes as independent and they are not.
+**`#392`'s "neatest fix" collides with step 2 — and aims at the wrong input.**
+The collision is real, and naming it was this document's best call: trimming
+around the delimiters does keep `high, critical` working, but the edge trim is
+also what makes step 2's yields-no-alternative refusal work. Remove it and
+`'   '` becomes a recordable alternative matching nothing instead of refusing,
+and `case_issues_render_operand_naming_no_alternative_refuses` fails on it.
+
+What this document, the review finding and the issue all had wrong is *which*
+values were unreachable. `" alice"` — the example all three reached for — was
+already reachable, by `alice` and by `" alice"` alike, because the row reader
+ate leading whitespace and the query's own trim landed on the same string. Two
+trims were cancelling. The unreachable class was **trailing** whitespace, and
+it was unfilterable by every spelling rather than by all but the exact one. So
+the fix was two seams, not one: the query side, and the row reader trimming
+underneath it. Fixing only the recommended half would have left the index
+contradicting its own readers.
+
+**`#389` was filed with a fallback that does not exist.** Grouping it as a
+correctness edge was right. Its issue offered leaving it to "the index's
+dangling-edge warning, which already fires" — but that warning reports missing
+reciprocity, not a missing target, and fires identically for a dependency that
+resolves perfectly well. Nothing reported the absence on any surface. An option
+written down as the status quo turned out not to be one.
 
 ### What it did not anticipate at all
 
@@ -373,9 +389,20 @@ verb loses a provides entry that does not lead with a backticked token, and one
 dotted key per requires bullet. A reconcile over a changed face now has to
 choose between a stale graph and a fabricated leak.
 
+Step 5 added two more, both found by probing rather than by the sensor.
+`index.sh` warns `names an umbrella not in the collection` when a `part-of`
+target is missing and has no analogue for `depends-on`, so the collection
+already has the shape of that check for one relation type and not the other.
+And the blueprint's `row-shape-is-the-writers` is stated writer-side only —
+the row reader now upholds its read-side half, which the invariant does not
+yet say.
+
 ### What still stands
 
-Everything from `#392` onward, in the order given: `#392` and `#389`, then
-`#396` as the surrounding code is touched, then `#394` and `#398`. § What not
-to do stands unchanged — its two rules about not folding invariants and not
-splitting the same-rule pairs were both borne out.
+`#396` next, as the surrounding code is touched — except its fifth item, which
+is worth doing on its own — then `#394` and `#398` last, and deliberately.
+
+§ What not to do stands unchanged. Its two rules were both borne out, and step 5
+supplied a third instance of the same lesson from a different direction: not two
+issues that had to be fixed together, but one issue whose fix had to reach two
+seams, because the trim it named was applied at both and cancelling.

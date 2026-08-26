@@ -12,10 +12,10 @@ the setting.
 
 ## 1. Where this stands
 
-The feature is **built, reviewed, and remediated through step 5's first
-issue**. The three issues that gated the plan are fixed, verified and closed.
-The plan is still held at `approved` — closing it is a single decision,
-described in § 6.
+The feature is **built, reviewed, and remediated through step 5** — the whole
+of `remediation.md`'s order except the three it deliberately deferred. The
+three issues that gated the plan are fixed, verified and closed. The plan is
+still held at `approved` — closing it is a single decision, described in § 6.
 
 | artifact | state |
 | :--- | :--- |
@@ -24,10 +24,10 @@ described in § 6.
 | `security.md` | `Needs Plan Review` — 12 findings, all routed and applied |
 | `plan.md` | `approved` — 21/21 tasks `[x]`, **held**, and now closeable |
 | `review.md` | `minor-drift` — 13 findings, `undelegated=0` |
-| `remediation.md` | the order of attack — steps 1–4 done, step 5 part-done |
+| `remediation.md` | the order of attack — steps 1–5 done; `#396`, `#394`, `#398` left |
 | `retrospective.md` | why it happened; the root cause and its prevention |
-| group blueprint | **15 invariants** — `row-shape-is-the-writers` added this session |
-| suite | **1620 green** (`skills/meta-test/scripts/run.sh`) |
+| group blueprint | **15 invariants** — `row-shape-is-the-writers` added, writer-side only |
+| suite | **1623 green** (`skills/meta-test/scripts/run.sh`) |
 
 Two frontmatter values look wrong and are not, the same trap the preceding
 increments record. **`security.md` stays `Needs Plan Review`** — the field
@@ -35,9 +35,10 @@ records what a review *found*, not whether it was acted on. **`research.md` is
 `Needs PM Review`** because Peer Feedback carries the `VISION.md:67` contention
 (`#380`, filed, not actioned). Non-blocking.
 
-### What this session did
+### What the remediation did
 
-**24 commits, `0e55946..HEAD`.** The load-bearing ones:
+**31 commits, `0e55946..7af2fd7`** — this document's own commit follows
+them. The load-bearing ones:
 
 | commit | what |
 | :--- | :--- |
@@ -47,14 +48,18 @@ records what a review *found*, not whether it was acted on. **`research.md` is
 | `da7bd34` | `#391` — the callerless `is_filter_token` deleted |
 | `0d7c820` | `#393` — 34 spec/finding citations swept from six scripts |
 | `74a91d2` | `#395` — the index judges the scalar its rows carry |
+| `d63357d` | `#392` (1 of 2) — filter values trimmed only beside commas |
+| `2a22a21` | `#392` (2 of 2) — a row value read back as the writer wrote it |
+| `52d071e` | `#389` — an unresolvable dependency blocks |
 | `0197d67` | `remediation.md`'s steps-1+2 claim corrected |
 | `0981ae0` `9b67756` | blueprint invariant 15 added; map restamped |
 | `34fe1a1` `46d8908` | `#402` filed; `#374` extended |
 
-**Closed (8):** `#386`, `#387`, `#388`, `#390`, `#391`, `#393`, `#395`, `#397`.
-Each carries a Resolution note written to be read after the fact rather than to
-justify a commit — they hold the reproduction evidence. Read them before
-re-deriving anything about the fixes.
+**Closed (10):** `#386`, `#387`, `#388`, `#389`, `#390`, `#391`, `#392`,
+`#393`, `#395`, `#397`. Each carries a Resolution note written to be read after
+the fact rather than to justify a commit — they hold the reproduction evidence,
+and for `#392` and `#389` the record of what the *filed* reproduce got wrong.
+Read them before re-deriving anything about the fixes.
 
 **Filed (4):** `#399` (schema gate misses a partly converted collection,
 medium), `#400` (SKILL.md inlines title and origin into the emitter command
@@ -65,11 +70,18 @@ vocabularies span scripts, **high**).
 **Raised:** `#374` to high, twice extended — the face-counter undercount banks
 into ledger history, and it now blocks the reconcile's derivation outright.
 
+**Found, not filed (2)** — both from step 5, both recorded only in prose:
+`index.sh` warns `names an umbrella not in the collection` for a missing
+`part-of` target and has no analogue for `depends-on`; and
+`row-shape-is-the-writers` is stated writer-side only while `2a22a21` upholds
+its read-side half. They live in `remediation.md` § What it did not anticipate
+at all and in the two resolutions. Neither has an ordinal — decide whether they
+want one before they are lost.
+
 ### What remains, in `remediation.md`'s order
 
-- **Step 5, rest** — `#392` and `#389`. `#395` is done. **`#392` has a live
-  interaction; see § 4 before starting it.**
-- **`#396`** as the surrounding code is next touched, except its fifth item.
+- **`#396`** as the surrounding code is next touched, except its fifth item,
+  which is worth doing on its own.
 - **`#394` and `#398` last, and deliberately.** Neither is a defect today.
 - Outside the remediation: `/jim:arch` (§ 5), `#401`, `#402`, and `#374` —
   which now gates the blueprint surface, not just a counter.
@@ -102,27 +114,36 @@ against fields that are schema-valid and empty.
 Reading this document is not enough. Ground it in the artifacts, in this order
 — the first three are short and change how the rest reads.
 
-1. **`remediation.md`** § *Suggested remediation* → *Order*, and § *What not to
-   do*. Steps 1–4 are done and step 5 is part-done; the rest of the order
-   stands. Its steps-1+2 claim was wrong twice over and is now corrected — § 4
-   records what it said and how.
+1. **`remediation.md`** § *Order*, § *What not to do*, and § *What running it
+   settled*. All five steps are done; what is left of the order is `#396`,
+   `#394` and `#398`. Read § *Where this analysis was short* with it — five
+   entries now, and they are the honest account of where an analysis of a
+   review cannot reach.
 2. **`retrospective.md`** § *Root cause: one set, three enumerations* — the
    single most useful page here, and the reason every fix took the shape it did.
-   It is still predicting findings: `#402` is that shape one file boundary out.
-3. **The eight closed issues' Resolution sections** — `#386`, `#387`, `#388`,
-   `#390`, `#391`, `#393`, `#395`, `#397`.
+   It is still predicting findings: `#402` is that shape one file boundary out,
+   and `#392` turned out to be it at a seam between two functions.
+3. **The ten closed issues' Resolution sections** — `#386`, `#387`, `#388`,
+   `#389`, `#390`, `#391`, `#392`, `#393`, `#395`, `#397`. `#392` and `#389`
+   are the two worth reading first: each records a filed reproduce that does
+   not reproduce, and why.
 4. **`docs/specs/issue/000-blueprint/spec.md`** — the group's 15 invariants.
-   Three changed across this session (§ 4). This is what the code answers to.
+   Three changed across the remediation (§ 4). This is what the code answers
+   to — and `row-shape-is-the-writers` now understates the code, which upholds
+   a read-side half the invariant does not state.
 5. **`BLUEPRINT.md`** — the project map: four groups, their territories, and the
    derived contract graph. Read it to see where `issue` sits and what depends on
    its face. **Its Contract Graph is stale-by-design right now** — see § 3.
 6. **`review.md`** § *Findings* and § *Living intent* — the evidence behind each
-   issue, with `file:line` anchors.
-7. **`spec.md`** § *Acceptance Criteria* — five were partial; three are now
-   satisfied. The remaining two cite Finding 6 (`#392`) and Finding 9 (`#394`).
+   issue, with `file:line` anchors. Findings 6 and 5 are worth reading against
+   the resolutions of `#392` and `#389`: both name the right defect and the
+   wrong input.
+7. **`spec.md`** § *Acceptance Criteria* — five were partial; four are now
+   satisfied. The one left cites Finding 9 (`#394`), which is a dependency to
+   state rather than a bug to fix.
 8. The code, in dependency order: `skills/issue/scripts/render.sh` (the whole
-   filter surface), then `index.sh` (the row emitter and the scalar judge), then
-   `place.sh` → `place_substitute`.
+   filter surface, the row reader, and the derived axes), then `index.sh` (the
+   row emitter and the scalar judge), then `place.sh` → `place_substitute`.
 
 `plan.md` is worth reading for its Design Decisions, which carry reasoning the
 code comments do not — but it is a **historical** record: two Constitution
@@ -156,11 +177,31 @@ suggested.
   The count was one of **three** sites: the same raw value reached both
   vocabulary checks, so `type: "issue<0x01>"` warned `unrecognized type: issue`
   — printing the value it had not judged.
+- **`#392`. The filed reproduce does not reproduce, and the record says so.**
+  Build a collection holding `filed-by: " alice"` and `filed-by: "bob "` and
+  query both spellings of each. Before the fix, `" alice"` was reachable by
+  `alice` *and* by `" alice"` — the row reader ate leading whitespace and the
+  query's trim landed on the same string, two trims cancelling. `"bob "` matched
+  **nothing**: not `bob `, not `bob`. Trailing whitespace was the unreachable
+  class, and it was unfilterable rather than awkward. After: each identity is
+  reached by the one spelling it carries.
+- **`#392`, the second seam.** With `type: " issue"`, `index.sh` writes an
+  Integrity Warning reading `unrecognized type:  issue` — and `list --type
+  issue` returned that same record. The index refused the value; the view
+  served it as recognized. `priority: " high"` behaved the same under
+  `--priority high`. The row reader consuming a *run* of whitespace rather than
+  the writer's single separator space is the whole mechanism.
+- **`#389`.** A record whose `depends-on` names a slug the collection does not
+  hold read as `unblocked`. The issue proposed leaning on the index's
+  dangling-edge warning instead — but that warning reads `has no inverse blocks
+  back-edge`, and it fires **identically** for a dependency that resolves. It
+  reports reciprocity, not danglingness. Nothing reported the absence at all,
+  on any surface.
 
 ### `jimverify.sh faces` cannot be used to derive the graph (`#374`)
 
-The most consequential thing learned this session, and it changes how the
-blueprint surface must be operated.
+The most consequential thing learned across the remediation, and it changes how
+the blueprint surface must be operated.
 
 ```
 jimverify.sh faces docs/specs/sdlc/000-blueprint/spec.md  →  8 requires, 0 provides
@@ -206,19 +247,52 @@ undercounts the same way and nearly produced a false `leak` by hand. Match
 - **`migrate identity --from --nosuchflag --to <addr>` ran the remap at rc 0**
   before `95d56cc` — a live write-path defect found by extending the render-side
   fix to the sibling the SYNC marker binds.
+- **Neither step-5 fix moves this repository's own collection**, and both were
+  checked rather than assumed. Scanning the Issues section for a `key:` whose
+  value begins with whitespace returns nothing across all 402 rows, and the
+  collection holds seven `depends-on` edges across three distinct targets, all
+  of them present — one blocked record before `52d071e` and one after. These
+  changes matter only for a collection that has drifted, which is exactly when
+  a read view is most trusted.
+- **An invalid relation target never becomes an edge at all.** `index.sh`
+  refuses it with `invalid relation target` and drops it, so the record reads
+  unblocked and no Graph edge exists. That is a different path from `#389`'s,
+  and the one case where the operator is already told.
+- **`index.sh` warns about a missing umbrella but not a missing dependency.**
+  `names an umbrella not in the collection` fires for an unresolvable `part-of`
+  target; `depends-on` has no analogue. The collection already has the shape of
+  that check for one relation type and not the other. Unfiled.
 
 ## 4. Decisions whose reasoning lives only here
 
-- **`#392` collides with the `#390` fix. Settle this before starting it.**
-  `filter_axis_add` is the function step 2 changed to refuse an operand that
-  yields no alternative, and the edge trim is what makes that work.
+- **`#392` was two seams, and the rule chosen for the first is what let the
+  second stay safe.** `filter_axis_add` is the function step 2 changed to refuse
+  an operand yielding no alternative, and the edge trim is what made that work —
   `case_issues_render_operand_naming_no_alternative_refuses` loops
-  `',,,'  '   '  ','  ' , '` and asserts every one of them is
-  refused. Drop the edge trim to keep `" alice"` reachable and `'   '` becomes a
-  non-empty value — recorded as an alternative, matching nothing instead of
-  refusing. `,,,` still refuses; whitespace-only no longer does. The
-  delimiter-only trim needs an explicit decision about whitespace-only operands
-  or it quietly undoes half of `#390`.
+  `',,,'  '   '  ','  ' , '` and asserts every one is refused. Simply dropping
+  the edge trim would have made `'   '` a non-empty value, recorded as an
+  alternative matching nothing rather than refusing, undoing half of `#390`.
+  The rule adopted instead: whitespace beside a comma is the list's formatting
+  and goes; whitespace at the operand's own edge is part of the value; an
+  alternative that is *nothing but* whitespace names no value and is dropped.
+  That third clause is what keeps the refusal reachable, and it is the reason
+  an identity recorded as pure whitespace is deliberately still unreachable.
+  The consequence to know: a value carrying edge whitespace is namable at a
+  list's own edges but not beside its commas — `--filed-by 'carol, bob '`
+  reaches both records, `--filed-by 'bob , carol'` reaches only `carol`.
+- **The `#392` reader fix was taken here rather than filed**, on the developer's
+  call, because it is the same disagreement one surface further in and wider
+  than identity: the index recorded `unrecognized type` while the view served
+  the same record as recognized. Filing it would have meant a closed-on-arrival
+  issue, which the capture gate forbids — so it lives in `2a22a21`'s message and
+  `#392`'s resolution instead, and has no ordinal.
+- **`#389` took the first of its three options — block on an unresolvable
+  target — not the disclosure.** The wrong *answer* was the harm; a disclosure
+  would have left it standing beside a note about it. The third option
+  (lean on the index's warning) was removed by running it: that warning reports
+  missing reciprocity and fires for a resolvable dependency too. Disclosure
+  remains available on top, and would now be a note about a blocked record
+  rather than a caveat on an unblocked one.
 - **`#395` dropped the emission-site sanitizer rather than adding a second
   pass**, and the reason is measured, not aesthetic: `status`/`outcome`/`type`
   have one assignment site each, fed by the sanitized value, so re-applying an
@@ -272,18 +346,26 @@ undercounts the same way and nearly produced a false `leak` by hand. Match
 - **Read the configuration; do not trust any transcription of it.** Every gate
   and cap lives in `jimconf.toml`. `bash skills/conf/scripts/jimconf.sh get
   <key>` is the answer.
-- **`mktemp` + `mv` clobbers file permissions.** A sweep this session stripped
-  the exec bit from three scripts and dropped three more to `0600`. `git diff
-  --summary` names it (`mode change 100755 => 100644`); a comment-only diff
-  carrying one is easy to wave through.
+- **`mktemp` + `mv` clobbers file permissions.** A sweep during the citation
+  purge stripped the exec bit from three scripts and dropped three more to
+  `0600`. `git diff --summary` names it (`mode change 100755 => 100644`); a
+  comment-only diff carrying one is easy to wave through.
 - **Editing these scripts by line number is fragile.** `place.sh`'s `cmd_commit`
   was corrupted by an off-by-one range delete. Anchor on a unique literal, verify
   the anchor is unique *first*, and `bash -n` after every edit. A `case` arm
   pattern that appears in two functions matches both.
-- **Test timings.** `bash tests/issues.sh` is ~171s for ~393 cases. The
-  aggregate is **~35 minutes** for 1620 — expect several foreground waits to
-  time out before it reports; background it. `transition.sh close` costs ~45s
-  per issue because it regenerates the index over ~400 records.
+- **Test timings, measured rather than remembered.** `bash tests/issues.sh` is
+  **~400s** for its ~396 cases, and the aggregate
+  `skills/meta-test/scripts/run.sh` is **~18 minutes** for 1623. Both figures
+  were wrong in the previous handoff (171s and ~35 minutes) — re-measure
+  rather than trusting either. Every foreground wait will time out; background
+  the run and poll a log.
+  `transition.sh close` costs ~45s per issue because it regenerates the index
+  over ~400 records.
+- **A suite log can contain a NUL byte, and then `grep` goes silent.** Some case
+  writes one, so `grep -c '^PASS' run.log` reports nothing at all rather than a
+  count — it has decided the file is binary. Use `grep -a` for every read of a
+  run log. A watcher that greps without it waits forever on a run that finished.
 - **New test cases splice in before the standalone-runnable tail block** at the
   end of `tests/issues.sh`. There is also a *comment* block with a similar name
   mid-file — that one is prose, not the tail.
@@ -311,26 +393,35 @@ undercounts the same way and nearly produced a false `leak` by hand. Match
 ## 6. If you are picking up from here
 
 **The plan can be closed honestly.** All three gating issues are fixed, their
-tests pin them, the suite is green at 1620, and the living-intent sensor has now
+tests pin them, the suite is green at 1623, and the living-intent sensor has
 been run twice against the fixes rather than the original build. Marking
 `plan.md` `status: complete` is a single question to the developer.
 
-Four things worth carrying, all re-confirmed this session:
+Five things worth carrying, all re-confirmed across the remediation:
 
-- **Fix the shared cause, not the instance.** Step 4 confirmed it again: `#393`
-  named one file and 82% of the work was in the other five. `#395` reported one
-  count and was three classification sites. Take the same reading of what is
-  left.
+- **Reproduce the reproduce before you trust it.** This is the one that earned
+  its place in step 5. Both remaining issues were filed with a concrete recipe,
+  and in both the recipe was wrong about the input while right about the
+  defect: `#392` named `" alice"`, which already worked, and missed `"bob "`,
+  which worked under no spelling at all; `#389` named a warning as the existing
+  safety net, and that warning fires just as loudly for a dependency that
+  resolves. A filed reproduce is a hypothesis with a command attached, and both
+  halves need running.
+- **Fix the shared cause, not the instance.** `#393` named one file and 82% of
+  the work was in the other five. `#395` reported one count and was three
+  classification sites. `#392` named one trim and was two, applied at opposite
+  ends of the same path and cancelling. Take the same reading of what is left.
 - **Derive test domains from the code's own constants.** The cases loop
-  `AXIS_FIELDS`, `COL_TOKENS`, `RENDER_OPTIONS`, `SCHEMA_GATED_FIELDS`, and now
+  `AXIS_FIELDS`, `COL_TOKENS`, `RENDER_OPTIONS`, `SCHEMA_GATED_FIELDS`, and
   `index.sh`'s `ISSUE_*` vocabularies, failing on a declared member with no
   mapping — so a new one cannot enter the code without entering the guard's
   test. Extend that, don't sample.
 - **Reading finds what is missing; running settles why.** Independent judges
   found `#399`, `#400` and `#402` by reading. Execution confirmed `#399`'s
-  mechanism, measured the 41s→52s cost that shaped `#395`, and caught a `grep`
-  pattern that would have filed a false finding. A green suite distinguished
-  none of them.
+  mechanism, measured the 41s→52s cost that shaped `#395`, caught a `grep`
+  pattern that would have filed a false finding, and overturned the stated
+  premise of two of the three options `#389` offered. A green suite
+  distinguished none of them.
 - **Check the issue collection before reporting a measurement as new.** Twice
-  this session a "new" finding about `#374` was already in its Census section,
-  written the day before. Read the issue, then measure.
+  in one session a "new" finding about `#374` was already in its Census
+  section, written the day before. Read the issue, then measure.
