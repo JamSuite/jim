@@ -296,49 +296,49 @@ reaches the directory bind until every argument has been classified.
 
 ## Task Breakdown
 
-1. [ ] `index.sh` — render `type`, `filed-by`, `claimed-by`, `outcome` into the
+1. [x] `index.sh` — render `type`, `filed-by`, `claimed-by`, `outcome` into the
    Issues row, each under the existing `[[ -n … ]]` guard and each through
    `row_safe`.
    **Verify:** `bash tests/issues.sh index_row_carries_new_scalars | tail -3`
 
-2. [ ] `tests/issues.sh` — a case asserting a record with no holder and no
+2. [x] `tests/issues.sh` — a case asserting a record with no holder and no
    outcome emits neither key, and one asserting a value containing the row
    separator or a control character is sanitized.
    **Verify:** `bash tests/issues.sh index_row_omits_absent | tail -3`
 
-3. [ ] `render.sh` — teach `read_issue_rows` the four new keys, emitting the
+3. [x] `render.sh` — teach `read_issue_rows` the four new keys, emitting the
    12-field TSV per the contract. Depends on task 1.
    **Verify:** `bash tests/issues.sh render_rows_carry_new_scalars | tail -3`
 
-4. [ ] `render.sh` — add `read_graph_edges` matching the id character class, and
+4. [x] `render.sh` — add `read_graph_edges` matching the id character class, and
    route the blocking rollup and the insights graph through it, removing both
    `[a-z0-9-]+` copies. Its definition states which of `is_valid_id`'s semantics
    it implements and why the laxer form is safe where an edge slug is compared
    and never opened.
    **Verify:** `bash tests/issues.sh graph_edges_match_id_charset | tail -3`
 
-5. [ ] `render.sh` — add `need_operand` with a marker declaring it a shape
+5. [x] `render.sh` — add `need_operand` with a marker declaring it a shape
    sibling of `migrate.sh`'s rather than a byte-identical copy.
    **Verify:** `bash tests/issues.sh render_flag_requires_operand | tail -3`
 
-6. [ ] `render.sh` — add `parse_filters` per the contract: bare-word vocabulary,
+6. [x] `render.sh` — add `parse_filters` per the contract: bare-word vocabulary,
    flag parsing, operand consumption, and refusal on the first unrecognized
    token. Every token a refusal quotes is stripped of control characters and
    length-bounded first. No axis is applied yet. Depends on task 5.
    **Verify:** `bash tests/issues.sh parse_filters_refuses_unknown | tail -3`
 
-7. [ ] `render.sh` — bind the collection from `FILTER_RESIDUE` rather than from
+7. [x] `render.sh` — bind the collection from `FILTER_RESIDUE` rather than from
    raw argv, so a flag operand can never be read as the collection directory and
    a reserved word always reads as a filter. Depends on task 6.
    **Verify:** `bash tests/issues.sh list_label_operand_is_not_a_collection | tail -3`
 
-8. [ ] `render.sh` — make `dir_given` read arguments by the same grammar, so the
+8. [x] `render.sh` — make `dir_given` read arguments by the same grammar, so the
    routing decision and the binding decision cannot disagree: the `list` arm
    stops treating a flag's operand as a supplied directory, and the `stats` arm
    stops reading any argument as one. Depends on task 6.
    **Verify:** `bash tests/issues.sh routing_survives_filters | tail -3`
 
-9. [ ] `tests/issues.sh` — a case asserting that an unrecognized bare word, an
+9. [x] `tests/issues.sh` — a case asserting that an unrecognized bare word, an
    unknown flag, a flag missing its operand, and an unknown column token each
    leave **no directory created**, on `list` and on `stats`; and that a filter
    whose operand names an existing directory leaves **no `INDEX.md` written**
@@ -347,62 +347,62 @@ reaches the directory bind until every argument has been classified.
    retarget writes even though it cannot `mkdir`.
    **Verify:** `bash tests/issues.sh read_verb_writes_nothing | tail -3`
 
-10. [ ] `render.sh` — apply the scalar axes (`status`, `priority`, `type`,
+10. [x] `render.sh` — apply the scalar axes (`status`, `priority`, `type`,
     `label`) with OR within an axis and AND across axes, including a bare word
     and a flag naming one axis unioning. Depends on tasks 3, 7.
     **Verify:** `bash tests/issues.sh list_axes_or_within_and_across | tail -3`
 
-11. [ ] `render.sh` — match the person axes: resolve `me` through
+11. [x] `render.sh` — match the person axes: resolve `me` through
     `identity.sh resolve`, normalize both sides through `identity.sh normalize`
     memoized per distinct value, and fall back to literal comparison where either
     side cannot be normalized, so an unjudgeable record stays reachable.
     Depends on task 10.
     **Verify:** `bash tests/issues.sh list_person_axis_matches | tail -3`
 
-12. [ ] `render.sh` — the person-axis refusal paths: an unresolvable environment
+12. [x] `render.sh` — the person-axis refusal paths: an unresolvable environment
     identity, and a resolved-but-unnormalizable one, each name the condition and
     the setting to correct, never the value, and each fails writing nothing.
     Depends on task 11.
     **Verify:** `bash tests/issues.sh list_person_axis_refuses | tail -3`
 
-13. [ ] `render.sh` — disclose and fail when rows exist but none carries `type`,
+13. [x] `render.sh` — disclose and fail when rows exist but none carries `type`,
     and a filter names an axis the index does not describe. Depends on task 3.
     **Verify:** `bash tests/issues.sh list_refuses_unanswerable_axis | tail -3`
 
-14. [ ] `render.sh` — apply the origin axes: `--origin` as a quoted literal
+14. [x] `render.sh` — apply the origin axes: `--origin` as a quoted literal
     prefix over the row's origin field, `--spec` resolving against the configured
     specs root first. Depends on task 10.
     **Verify:** `bash tests/issues.sh list_origin_prefix_is_literal | tail -3`
 
-15. [ ] `render.sh` — apply the derived axes: `claimed`/`unclaimed` from holder
+15. [x] `render.sh` — apply the derived axes: `claimed`/`unclaimed` from holder
     emptiness, `blocked`/`unblocked` from a one-hop `depends-on` edge to a record
     that is not closed, and `--epic` from `part-of` edges. Depends on tasks 4, 10.
     **Verify:** `bash tests/issues.sh list_derived_predicates | tail -3`
 
-16. [ ] `render.sh` — add `type`, `filed-by`, `claimed-by`, `outcome` to
+16. [x] `render.sh` — add `type`, `filed-by`, `claimed-by`, `outcome` to
     `COL_TOKENS` and `format_row`, and honor `FILTER_COLS` for one invocation
     without touching the configured default. Depends on tasks 3, 6.
     **Verify:** `bash tests/issues.sh list_cols_flag | tail -3`
 
-17. [ ] `render.sh` — keep hiding finished issues unless a lifecycle-state
+17. [x] `render.sh` — keep hiding finished issues unless a lifecycle-state
     filter is given, and emit the disclosure line when a filter was active and
     finished issues were hidden. Depends on task 10.
     **Verify:** `bash tests/issues.sh list_hide_closed_discloses | tail -3`
 
-18. [ ] `render.sh` — route `cmd_stats` through `parse_filters`, scope its
+18. [x] `render.sh` — route `cmd_stats` through `parse_filters`, scope its
     clusters and rollup to the matching records, print the scope line, and never
     hide finished issues. Depends on tasks 6, 8, 10.
     **Verify:** `bash tests/issues.sh stats_scoped_by_filter | tail -3`
 
-19. [ ] `render.sh` — update `cmd_help` to describe the composed surface rather
+19. [x] `render.sh` — update `cmd_help` to describe the composed surface rather
     than a single status-or-priority token.
     **Verify:** `bash skills/issue/scripts/render.sh help | grep -qE -- '--claimed-by' && echo ok`
 
-20. [ ] `skills/issue/SKILL.md` — update the `list` verb's argument description
+20. [x] `skills/issue/SKILL.md` — update the `list` verb's argument description
     and document the `stats` filtering surface.
     **Verify:** `grep -qE -- '--claimed-by' skills/issue/SKILL.md && echo ok`
 
-21. [ ] Full suite green.
+21. [x] Full suite green.
     **Verify:** `bash skills/meta-test/scripts/run.sh 2>&1 | tail -5`
 
 ## Requirements Coverage Summary

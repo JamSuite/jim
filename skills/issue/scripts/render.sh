@@ -19,17 +19,21 @@
 #   failure the same way, and place.sh refuses outright on the write path,
 #   where the stale index would reach the shared branch.
 #
-#     render.sh stats [<dir>]            counts + clusters + blocking
-#     render.sh list  [<filter>] [<dir>] terse, grouped, configurable view
-#     render.sh show  <id> [<dir>]       one issue, cleaned-up
-#     render.sh insights-graph [<dir>]   graph facts for the issue-analyst
-#     render.sh help                     subcommand listing
+#     render.sh stats [<filter>...] [<dir>]  counts + clusters + blocking
+#     render.sh list  [<filter>...] [<dir>]  terse, grouped, configurable view
+#     render.sh show  <id> [<dir>]           one issue, cleaned-up
+#     render.sh insights-graph [<dir>]       graph facts for the issue-analyst
+#     render.sh help                         subcommand listing
 #
-#   <filter> ∈ {open, active, closed, critical, high, medium, low} — validated
-#   against this closed set (security 019 Finding 3); anything else errors.
+#   A <filter> is a reserved bare word or a flag with a comma-separated value
+#   list; see parse_filters for the vocabulary. Filters compose — values naming
+#   one axis are alternatives, and different axes must all hold. Every argument
+#   is classified before the collection positional binds, so a flag's operand
+#   can never be read as a directory and a mistyped filter never reaches one.
+#   A word outside the vocabulary errors.
 #   <id> is resolved ONLY against the indexed set of known issues
 #   (ordinal / exact slug / prefix / substring) — never composed into a
-#   filesystem path from raw input (security 019 Finding 1).
+#   filesystem path from raw input.
 #
 # CLI SUMMARY
 #   bash render.sh <subcommand> [args] [<issues_dir>]
@@ -37,7 +41,8 @@
 #
 # EXIT CODES
 #   0  Success (rendering failures degrade to empty sections).
-#   1  Validation failure (unknown filter), or the view was served from an
+#   1  Validation failure (an argument the filter grammar refuses, or a filter
+#      naming an axis the index cannot answer), or the view was served from an
 #      index that is stale and could not be regenerated — stdout still carries
 #      it, and stderr says which directory.
 #   2  Malformed invocation (unknown subcommand, missing show id).
@@ -376,7 +381,7 @@ read_issue_rows() {
       # SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
       # Degrade a non-conforming created so malformed frontmatter can never
       # corrupt the TSV (embedded tab/garbage): keep the day-start date prefix
-      # when present, else empty (rendered "-"). Spec 022 AC #8 / Finding F6.
+      # when present, else empty (rendered "-").
       if (created != "" && created !~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$/) {
         if (match(created, /^[0-9]{4}-[0-9]{2}-[0-9]{2}/))
           created = substr(created, RSTART, RLENGTH)
@@ -644,7 +649,7 @@ format_row() {
     case "$c" in
       num)
         # A provisional ordinal (P-<id>) is never rendered as a settled #N —
-        # the "(provisional)" marker is what distinguishes it (spec 010 AC 9).
+        # the "(provisional)" marker is what distinguishes it.
         if [[ "$num" == P-* ]]; then
           printf -v pad '%s (provisional)' "$num"
         else
