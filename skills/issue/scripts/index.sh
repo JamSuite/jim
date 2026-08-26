@@ -347,7 +347,9 @@ route_placement() {
   [[ -z "$arg" && -r "$place" ]] || return 0
   mode="$(bash "$place" mode --place-token "$token")" || exit $?
   [[ "$mode" == "route" ]] || return 0
-  exec bash "$place" run --verb reindex -- \
+  # {token} is the fourth word of the command below and {} the last; the
+  # wrapper substitutes at those offsets and nowhere else.
+  exec bash "$place" run --verb reindex --token-at 3 --dir-at -1 -- \
     bash "${BASH_SOURCE[0]}" --place-token '{token}' '{}'
 }
 

@@ -300,7 +300,9 @@ route_placement() {
   [[ "$mode" == "route" ]] || return 0
   local -a run=(run)
   if (( apply )); then run+=(--verb realize); else run+=(--read); fi
-  exec bash "$place" "${run[@]}" -- \
+  # {token} is the fourth word of the command below and {} the last; the
+  # wrapper substitutes at those offsets and nowhere else.
+  exec bash "$place" "${run[@]}" --token-at 3 --dir-at -1 -- \
     bash "${BASH_SOURCE[0]}" --place-token '{token}' "$@" '{}'
 }
 

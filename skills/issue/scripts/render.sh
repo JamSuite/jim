@@ -1455,7 +1455,10 @@ route_placement() {
   dir_given "$sub" "$@" && return 0
   mode="$(bash "$place" mode --place-token "$token")" || exit $?
   [[ "$mode" == "route" ]] || return 0
-  exec bash "$place" run --read -- \
+  # {token} is the fourth word of the command below and {} the last. Declaring
+  # the offsets is what keeps a filter value that reads --dir, or an operand
+  # that is exactly {}, from being taken for a marker this line placed.
+  exec bash "$place" run --read --token-at 3 --dir-at -1 -- \
     bash "${BASH_SOURCE[0]}" --place-token '{token}' "$sub" "$@" '{}'
 }
 

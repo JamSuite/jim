@@ -272,7 +272,7 @@ case_place_normalizes_a_repeated_dot_slash_issues_path() {
   local repo
   repo="$(place_repo place_dotdot_prefix \
     'issue_placement = "jim/issues"' 'issues_path = "././docs/issues"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_match "lands at the normalized prefix" 'docs/issues/20260101-a\.md' \
@@ -346,7 +346,7 @@ case_place_mode_route_under_branch_placement() {
 case_place_passthrough_substitutes_configured_dir() {
   local dir
   dir="$(empty_dir place_passthrough)"
-  run_place_in "$dir" run --verb file -- printf '%s' '{}'
+  run_place_in "$dir" run --verb file --dir-at -1 -- printf '%s' '{}'
   assert_exit "rc"           0               "$RC"
   assert_eq   "configured dir" "./docs/issues" "$OUT"
 }
@@ -366,7 +366,7 @@ case_place_passthrough_honors_configured_issues_path() {
   local dir
   dir="$(empty_dir place_passthrough_cfg)"
   printf 'issues_path = "notes/findings/"\n' > "$dir/jimconf.toml"
-  run_place_in "$dir" run --verb file -- printf '%s' '{}'
+  run_place_in "$dir" run --verb file --dir-at -1 -- printf '%s' '{}'
   assert_exit "rc"            0                 "$RC"
   assert_eq   "configured dir" "notes/findings" "$OUT"
 }
@@ -430,6 +430,53 @@ case_place_user_text_matching_a_marker_is_not_substituted() {
   assert_eq    "nothing was allocated"        ""     "$log"
 }
 
+# AC: a placeholder is substituted only at the position the caller declared it
+# built one, never at a position that merely looks like one. Forwarded caller
+# text can carry both halves of the old adjacency rule — a value reading `--dir`
+# and a bare `{}` after it — and rewriting that puts this run's temp path into
+# text the caller typed.
+case_place_substitutes_only_at_declared_positions() {
+  local repo
+  repo="$(place_repo place_subst_declared 'issue_placement = "jim/issues"')"
+  # The wrapped argv, by index: 0 printf · 1 format · 2 --place-token ·
+  # 3 {token} · 4 --dir · 5 {} · 6 {}. Only 3 and 6 were built as markers; 4
+  # and 5 are forwarded text that wears a marker's shape.
+  run_place_in "$repo" run --read --verb reindex --token-at 3 --dir-at -1 -- \
+    printf '%s\n' --place-token '{token}' --dir '{}' '{}'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "every argument came back" "5" "$(printf '%s\n' "$OUT" | grep -c .)"
+  assert_eq "forwarded text after --dir is left verbatim" "1" \
+    "$(printf '%s\n' "$OUT" | grep -cx '\{\}')"
+  assert_eq "the declared dir position was filled" "1" \
+    "$(printf '%s\n' "$OUT" | grep -c '/collection$')"
+  assert_eq "and the declared token position was filled" "0" \
+    "$(printf '%s\n' "$OUT" | grep -cx '\{token\}')"
+}
+
+# AC: an index naming an argument that is not a placeholder refuses. The caller
+# computes these positions, so a wrong one is a caller defect — and the failure
+# it would otherwise produce is a wrapped command handed a literal `{}` where a
+# directory belongs, which reads as a missing collection rather than as a bug
+# in the invocation.
+case_place_declared_position_must_hold_a_placeholder() {
+  local repo
+  repo="$(place_repo place_subst_bad_index 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --read --verb reindex --dir-at 1 -- printf '%s\n' 'x'
+  assert_exit  "refuses"          2 "$RC"
+  assert_match "names the option" '[-]-dir-at' "$ERR"
+}
+
+# AC: with no position declared, nothing is substituted — an argument that is
+# exactly `{}` is ordinary text to a caller that built no marker.
+case_place_undeclared_placeholders_are_left_verbatim() {
+  local repo
+  repo="$(place_repo place_subst_undeclared 'issue_placement = "jim/issues"')"
+  run_place_in "$repo" run --read --verb reindex -- printf '%s\n' '{}' '{token}'
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "both left verbatim" '{}
+{token}' "$OUT"
+}
+
 # ─── Section: Run-scoped token (security Finding 10) ─────────────────────────
 
 # AC: an inherited or hand-exported JIM_PLACE_TOKEN cannot switch centralization
@@ -489,7 +536,7 @@ case_place_matching_token_suppresses_routing() {
 case_place_write_lands_on_destination_branch() {
   local repo
   repo="$(place_repo place_land 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "landed on destination" "hello" \
@@ -501,7 +548,7 @@ case_place_write_lands_on_destination_branch() {
 case_place_write_is_one_commit_with_enum_subject() {
   local repo
   repo="$(place_repo place_one_commit 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --verb file --id 20260101-x -- \
+  run_place_in "$repo" run --verb file --id 20260101-x --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq   "one commit" "1" \
@@ -518,7 +565,7 @@ case_place_orphan_bootstrap_carries_only_the_collection() {
   repo="$(place_repo place_orphan 'issue_placement = "jim/issues"')"
   printf 'unrelated\n' > "$repo/README.md"
   git -C "$repo" add README.md && git -C "$repo" commit -q -m base
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "collection alone" "docs/issues/20260101-x.md
@@ -536,7 +583,7 @@ case_place_leaves_the_working_tree_untouched() {
   git -C "$repo" add README.md && git -C "$repo" commit -q -m base
   printf 'edited\n' > "$repo/README.md"
   before="$(git -C "$repo" status --porcelain)"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   after="$(git -C "$repo" status --porcelain)"
@@ -557,7 +604,7 @@ case_place_materializes_the_existing_collection() {
   repo="$(place_repo place_materialize 'issue_placement = "jim/issues"')"
   place_seed_collection "$repo" jim/issues docs/issues \
     '20260101-a.md=alpha' 'INDEX.md=index'
-  run_place_in "$repo" run --read --verb reindex -- \
+  run_place_in "$repo" run --read --verb reindex --dir-at -1 -- \
     sh -c 'cat "$1/20260101-a.md"' _ '{}'
   assert_exit "rc"        0       "$RC"
   assert_eq   "sees seeded" "alpha" "$OUT"
@@ -572,7 +619,7 @@ case_place_materializes_the_existing_collection() {
 case_place_does_not_publish_a_stranded_tmp() {
   local repo paths
   repo="$(place_repo place_tmp_ns 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "real\n" > "$1/20260101-a.md"; printf "half\n" > "$1/.INDEX.md.tmp.abc123"' \
     _ '{}'
   assert_exit "rc" 0 "$RC"
@@ -645,7 +692,7 @@ case_place_refuses_a_symlink_the_command_created() {
   repo="$(place_repo place_out_symlink 'issue_placement = "jim/issues"')"
   # A *live* symlink: it satisfies -f, so only the -L half of the guard refuses
   # it. A dangling one would be caught either way and would not pin this.
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "real\n" > "$1/20260101-a.md"; ln -s 20260101-a.md "$1/20260101-b.md"' \
     _ '{}'
   assert_eq    "refuses"          "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
@@ -690,7 +737,7 @@ case_place_read_serves_a_current_index() {
   place_seed_collection "$repo" jim/issues docs/issues \
     "20260101-a.md=$(place_issue_file 20260101-a open)" \
     'INDEX.md=# Issues Index'
-  run_place_in "$repo" run --read --verb reindex -- \
+  run_place_in "$repo" run --read --verb reindex --dir-at -1 -- \
     sh -c 'cat "$1/INDEX.md"' _ '{}'
   assert_exit  "rc" 0 "$RC"
   assert_match "the issue is in the served index" '20260101-a' "$OUT"
@@ -704,7 +751,7 @@ case_place_write_publishes_a_corrected_index() {
   place_seed_collection "$repo" jim/issues docs/issues \
     "20260101-a.md=$(place_issue_file 20260101-a open)" \
     'INDEX.md=# Issues Index'
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'true' _ '{}'
   assert_exit  "rc" 0 "$RC"
   assert_match "the published index knows the issue" '20260101-a' \
@@ -719,7 +766,7 @@ case_place_read_run_publishes_nothing() {
   repo="$(place_repo place_read_only 'issue_placement = "jim/issues"')"
   place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=alpha'
   before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
-  run_place_in "$repo" run --read --verb reindex -- \
+  run_place_in "$repo" run --read --verb reindex --dir-at -1 -- \
     sh -c 'printf "sneak\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "tip unmoved" "$before" \
@@ -734,7 +781,7 @@ case_place_carries_deletions() {
   repo="$(place_repo place_delete 'issue_placement = "jim/issues"')"
   place_seed_collection "$repo" jim/issues docs/issues \
     '20260101-a.md=alpha' '20260101-b.md=beta'
-  run_place_in "$repo" run --verb close -- \
+  run_place_in "$repo" run --verb close --dir-at -1 -- \
     sh -c 'rm "$1/20260101-a.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   local paths; paths="$(place_dest_paths "$repo" jim/issues)"
@@ -750,7 +797,7 @@ case_place_no_change_makes_no_commit() {
   repo="$(place_repo place_nochange 'issue_placement = "jim/issues"')"
   # Seeded through a real write, so the published index is already current —
   # otherwise the first run would legitimately have an index to add.
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "alpha\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
@@ -765,7 +812,7 @@ case_place_no_change_makes_no_commit() {
 case_place_failed_command_publishes_nothing() {
   local repo
   repo="$(place_repo place_cmd_fail 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "partial\n" > "$1/20260101-x.md"; exit 4' _ '{}'
   assert_exit "forwarded rc" 4 "$RC"
   assert_eq   "no branch created" "" \
@@ -778,7 +825,7 @@ case_place_honors_configured_issues_path() {
   local repo
   repo="$(place_repo place_custom_path \
     'issue_placement = "jim/issues"' 'issues_path = "notes/findings/"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "at the configured path" "notes/findings/20260101-x.md
@@ -791,7 +838,7 @@ notes/findings/INDEX.md" "$(place_dest_paths "$repo" jim/issues)"
 case_place_exports_a_matching_run_token() {
   local repo
   repo="$(place_repo place_token_pair 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --read --verb reindex -- \
+  run_place_in "$repo" run --read --verb reindex --token-at -1 -- \
     sh -c 'test -n "$JIM_PLACE_TOKEN" && test "$JIM_PLACE_TOKEN" = "$1" && echo match' _ '{token}'
   assert_exit "rc"    0       "$RC"
   assert_eq   "token pair agrees" "match" "$OUT"
@@ -804,7 +851,7 @@ case_place_cleans_up_its_temp_directory() {
   local repo leftovers rc
   repo="$(place_repo place_cleanup 'issue_placement = "jim/issues"')"
   mkdir -p "$repo/tmproot"
-  ( cd "$repo" && TMPDIR="$repo/tmproot" bash "$SCRIPT_place" run --verb file -- \
+  ( cd "$repo" && TMPDIR="$repo/tmproot" bash "$SCRIPT_place" run --verb file --dir-at -1 -- \
       sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}' >/dev/null 2>&1 )
   rc=$?
   assert_exit "rc" 0 "$rc"
@@ -840,7 +887,7 @@ case_place_publishes_to_the_remote() {
   local bare clone
   bare="$(place_bare place_pub_bare)"
   clone="$(place_clone "$bare" place_pub_clone 'issue_placement = "jim/issues"')"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "on the remote" "hello" \
@@ -854,7 +901,7 @@ case_place_defers_push_when_remote_unreachable() {
   local repo
   repo="$(place_repo place_defer 'issue_placement = "jim/issues"')"
   git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit  "rc"        0          "$RC"
   assert_match "discloses" 'defer'    "$ERR"
@@ -869,7 +916,7 @@ case_place_read_degrades_when_remote_unreachable() {
   repo="$(place_repo place_read_degrade 'issue_placement = "jim/issues"')"
   place_seed_collection "$repo" jim/issues docs/issues '20260101-a.md=alpha'
   git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$repo" run --read --verb reindex -- \
+  run_place_in "$repo" run --read --verb reindex --dir-at -1 -- \
     sh -c 'cat "$1/20260101-a.md"' _ '{}'
   assert_exit  "rc"          0            "$RC"
   assert_eq    "still serves" "alpha"     "$OUT"
@@ -890,10 +937,10 @@ case_place_retries_after_the_remote_advances() {
   # a file because a literal {} in the outer argv would be substituted away.
   teammate="$TMP_BASE/place-race-teammate.sh"
   cat > "$teammate" <<TEAMMATE
-cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
+cd "$theirs" && bash "$SCRIPT_place" run --verb file --dir-at -1 -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
 TEAMMATE
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "mine\n" > "$2/20260101-a.md"; sh "$1" >/dev/null 2>&1' \
     _ "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
@@ -920,7 +967,7 @@ case_place_non_contention_rejection_is_named_as_such() {
   bare="$(place_bare place_reject_bare)"
   clone="$(place_clone "$bare" place_reject 'issue_placement = "jim/issues"')"
   place_reject_pushes "$bare"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit  "rc"                       3                "$RC"
   assert_match "says it is not contention" 'not contention' "$ERR"
@@ -941,7 +988,7 @@ case_place_local_tier_non_contention_is_named_as_such() {
   empty="$(git -C "$repo" mktree < /dev/null)"
   git -C "$repo" update-ref refs/heads/jim \
     "$(git -C "$repo" commit-tree "$empty" -m block)"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit  "rc"                        3                 "$RC"
   assert_match "says it is not contention" 'not contention'  "$ERR"
@@ -972,13 +1019,13 @@ case_place_retry_publishes_no_empty_commit() {
   local bare mine before_count after_count
   bare="$(place_bare place_empty_bare)"
   mine="$(place_clone "$bare" place_empty_mine 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   before_count="$(git -C "$bare" rev-list --count refs/heads/jim/issues)"
   # Defer a close, so this clone's head runs ahead of the remote.
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb close --id 20260101-a -- \
+  run_place_in "$mine" run --verb close --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "offline close rc" 0 "$RC"
   git -C "$mine" remote set-url origin "$bare"
@@ -987,7 +1034,7 @@ case_place_retry_publishes_no_empty_commit() {
   # clone's own head and is rejected; the retry re-reads the remote, the merge
   # base moves back to it, and the refreshed base already holds exactly what
   # this run produced — so there is nothing left to publish.
-  run_place_in "$mine" run --verb edit --id 20260101-a -- \
+  run_place_in "$mine" run --verb edit --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   after_count="$(git -C "$bare" rev-list --count refs/heads/jim/issues)"
@@ -1028,13 +1075,13 @@ case_place_exhausted_attempts_reports_unpublished() {
   local bare clone
   bare="$(place_bare place_exhaust_bare)"
   clone="$(place_clone "$bare" place_exhaust 'issue_placement = "jim/issues"')"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "alpha\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   git -C "$bare" config user.name  "Remote"
   git -C "$bare" config user.email "remote@example.com"
   place_reject_and_advance "$bare" jim/issues
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "mine\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit  "rc"                       3             "$RC"
   assert_match "says the branch kept moving" 'kept moving' "$ERR"
@@ -1053,7 +1100,7 @@ case_place_mid_publish_degradation_is_disclosed() {
   local bare clone breaker
   bare="$(place_bare place_middrop_bare)"
   clone="$(place_clone "$bare" place_middrop 'issue_placement = "jim/issues"')"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "seed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   # The remote goes away after this run read it and before it can publish.
@@ -1061,7 +1108,7 @@ case_place_mid_publish_degradation_is_disclosed() {
   cat > "$breaker" <<BREAKER
 git -C "$clone" remote set-url origin "$TMP_BASE/no-such-remote.git"
 BREAKER
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "later\n" > "$2/20260101-b.md"; sh "$1"' _ "$breaker" '{}'
   assert_exit  "rc"                    0               "$RC"
   assert_match "discloses the drop"    'lost contact'  "$ERR"
@@ -1077,10 +1124,10 @@ case_place_read_fetches_before_serving() {
   bare="$(place_bare place_fresh_bare)"
   theirs="$(place_clone "$bare" place_fresh_them 'issue_placement = "jim/issues"')"
   mine="$(place_clone "$bare" place_fresh_mine   'issue_placement = "jim/issues"')"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "published\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
-  run_place_in "$mine" run --read --verb reindex -- \
+  run_place_in "$mine" run --read --verb reindex --dir-at -1 -- \
     sh -c 'cat "$1/20260101-a.md"' _ '{}'
   assert_exit "rc"            0           "$RC"
   assert_eq   "sees the fresh state" "published" "$OUT"
@@ -1096,11 +1143,11 @@ case_place_offline_read_serves_the_last_seen_collection() {
   bare="$(place_bare place_offline_read_bare)"
   theirs="$(place_clone "$bare" place_offline_read_them 'issue_placement = "jim/issues"')"
   mine="$(place_clone "$bare" place_offline_read_mine   'issue_placement = "jim/issues"')"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "published\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
   # Read once while the remote is reachable, so this clone has seen it...
-  run_place_in "$mine" run --read --verb reindex -- \
+  run_place_in "$mine" run --read --verb reindex --dir-at -1 -- \
     sh -c 'cat "$1/20260101-a.md"' _ '{}'
   assert_exit "online read rc"  0           "$RC"
   assert_eq   "saw it online"   "published" "$OUT"
@@ -1108,7 +1155,7 @@ case_place_offline_read_serves_the_last_seen_collection() {
     "$(git -C "$mine" rev-parse --verify --quiet refs/heads/jim/issues)"
   # ...then take the remote away.
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --read --verb reindex -- \
+  run_place_in "$mine" run --read --verb reindex --dir-at -1 -- \
     sh -c 'cat "$1/20260101-a.md"' _ '{}'
   assert_exit  "rc"        0           "$RC"
   assert_match "discloses" 'last-seen' "$ERR"
@@ -1124,13 +1171,13 @@ case_place_offline_write_builds_on_the_last_seen_state() {
   bare="$(place_bare place_offline_write_bare)"
   theirs="$(place_clone "$bare" place_offline_write_them 'issue_placement = "jim/issues"')"
   mine="$(place_clone "$bare" place_offline_write_mine   'issue_placement = "jim/issues"')"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "published\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
   run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
   assert_exit "online read rc" 0 "$RC"
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "mine\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit  "rc"        0       "$RC"
   assert_match "discloses" 'defer' "$ERR"
@@ -1146,11 +1193,11 @@ case_place_deferred_mutation_publishes_on_reconnect() {
   local bare mine
   bare="$(place_bare place_defer_pub_bare)"
   mine="$(place_clone "$bare" place_defer_pub_mine 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb close --id 20260101-a -- \
+  run_place_in "$mine" run --verb close --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit  "offline rc" 0       "$RC"
   assert_match "discloses"  'defer' "$ERR"
@@ -1159,7 +1206,7 @@ case_place_deferred_mutation_publishes_on_reconnect() {
   git -C "$mine" remote set-url origin "$bare"
   run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
   assert_exit "read rc" 0 "$RC"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "later\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "later write rc" 0 "$RC"
   # The resuming run says which of the two things it is doing with the backlog.
@@ -1179,18 +1226,18 @@ case_place_deferred_mutation_survives_a_moved_destination() {
   bare="$(place_bare place_defer_div_bare)"
   mine="$(place_clone "$bare" place_defer_div_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_defer_div_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb close --id 20260101-a -- \
+  run_place_in "$mine" run --verb close --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "offline rc" 0 "$RC"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "theirs\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$bare"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "mine\n" > "$1/20260101-c.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   # The other arm of the same disclosure: there was nothing to fast-forward, so
@@ -1222,18 +1269,18 @@ case_place_diverged_read_discloses_what_it_omits() {
   bare="$(place_bare place_div_read_bare)"
   mine="$(place_clone "$bare" place_div_read_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_div_read_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb close --id 20260101-a -- \
+  run_place_in "$mine" run --verb close --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "offline write rc" 0 "$RC"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "theirs\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$bare"
-  run_place_in "$mine" run --read --verb reindex -- \
+  run_place_in "$mine" run --read --verb reindex --dir-at -1 -- \
     sh -c 'ls "$1" | tr "\n" " "' _ '{}'
   assert_exit "read rc" 0 "$RC"
   assert_eq "the teammate's issue is genuinely not in the view" "no" \
@@ -1255,14 +1302,14 @@ case_place_begin_read_discloses_a_partial_view() {
   bare="$(place_bare place_div_begin_bare)"
   mine="$(place_clone "$bare" place_div_begin_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_div_begin_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb close --id 20260101-a -- \
+  run_place_in "$mine" run --verb close --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "offline write rc" 0 "$RC"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "theirs\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$bare"
@@ -1285,13 +1332,13 @@ case_place_deferred_mutation_survives_a_lost_race() {
   bare="$(place_bare place_defer_race_bare)"
   mine="$(place_clone "$bare" place_defer_race_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_defer_race_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   # Close it while the remote is away, so the clone carries one unpublished
   # commit the destination has never seen.
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb close --id 20260101-a -- \
+  run_place_in "$mine" run --verb close --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "offline rc" 0 "$RC"
   # Reconnect and write again — but lose the race for the push that would have
@@ -1299,10 +1346,10 @@ case_place_deferred_mutation_survives_a_lost_race() {
   git -C "$mine" remote set-url origin "$bare"
   teammate="$TMP_BASE/place-defer-race-teammate.sh"
   cat > "$teammate" <<TEAMMATE
-cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
+cd "$theirs" && bash "$SCRIPT_place" run --verb file --dir-at -1 -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
 TEAMMATE
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "mine\n" > "$2/20260101-c.md"; sh "$1" >/dev/null 2>&1' \
     _ "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
@@ -1330,19 +1377,19 @@ case_place_deferred_edit_refuses_a_concurrent_edit() {
   bare="$(place_bare place_defer_conflict_bare)"
   mine="$(place_clone "$bare" place_defer_conflict_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_defer_conflict_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb close --id 20260101-a -- \
+  run_place_in "$mine" run --verb close --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "offline rc" 0 "$RC"
   # The teammate edits the same file and publishes it while this clone is away.
-  run_place_in "$theirs" run --verb edit --id 20260101-a -- \
+  run_place_in "$theirs" run --verb edit --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "theirs\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "their edit landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$bare"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "mine\n" > "$1/20260101-c.md"' _ '{}'
   assert_exit  "refuses the concurrent edit" 3             "$RC"
   assert_match "names the path"              '20260101-a'  "$ERR"
@@ -1360,18 +1407,18 @@ case_place_write_withholds_stdout_from_a_refused_publish() {
   bare="$(place_bare place_stdout_refused_bare)"
   mine="$(place_clone "$bare" place_stdout_refused_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_stdout_refused_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$mine" run --verb close --id 20260101-a -- \
+  run_place_in "$mine" run --verb close --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "closed\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "offline rc" 0 "$RC"
-  run_place_in "$theirs" run --verb edit --id 20260101-a -- \
+  run_place_in "$theirs" run --verb edit --id 20260101-a --dir-at -1 -- \
     sh -c 'printf "theirs\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "their edit landed" 0 "$RC"
   git -C "$mine" remote set-url origin "$bare"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "20260101-c\t%s/20260101-c.md\n" "$JIM_PLACE_PREFIX"
            printf "mine\n" > "$1/20260101-c.md"' _ '{}'
   assert_exit "the publish is refused" 3 "$RC"
@@ -1393,7 +1440,7 @@ case_place_write_emits_stdout_once_the_publish_lands() {
   local repo
   repo="$(place_repo place_stdout_landed 'issue_placement = "jim/issues"')"
   place_seed_collection "$repo" jim/issues docs/issues 'INDEX.md=# Issues Index'
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "20260101-a\t%s/20260101-a.md\n" "$JIM_PLACE_PREFIX"
            printf "open\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit  "rc"                            0                            "$RC"
@@ -1409,7 +1456,7 @@ case_place_read_emits_stdout_unheld() {
   place_seed_collection "$repo" jim/issues docs/issues \
     "20260101-a.md=$(place_issue_file 20260101-a open)" \
     'INDEX.md=# Issues Index'
-  run_place_in "$repo" run --read --verb reindex -- \
+  run_place_in "$repo" run --read --verb reindex --dir-at -1 -- \
     sh -c 'printf "read-side output\n"' _ '{}'
   assert_exit  "rc"                    0                   "$RC"
   assert_match "the read's own output" 'read-side output'  "$OUT"
@@ -1491,9 +1538,9 @@ case_place_grafts_disjoint_concurrent_mutations() {
   theirs_w="$TMP_BASE/place-graft-them.sh"; place_issue_writer "$theirs_w" 20260101-b Beta
   teammate="$TMP_BASE/place-graft-teammate.sh"
   cat > "$teammate" <<TEAMMATE
-cd "$theirs" && bash "$SCRIPT_place" run --verb file -- sh "$theirs_w" '{}'
+cd "$theirs" && bash "$SCRIPT_place" run --verb file --dir-at -1 -- sh "$theirs_w" '{}'
 TEAMMATE
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'sh "$1" "$3"; sh "$2" >/dev/null 2>&1' _ "$mine_w" "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "mine survived"   "yes" \
@@ -1514,15 +1561,15 @@ case_place_refuses_same_file_concurrency() {
   mine="$(place_clone "$bare" place_conflict_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_conflict_them 'issue_placement = "jim/issues"')"
   # Seed a shared collection both clones start from.
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "base\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   teammate="$TMP_BASE/place-conflict-teammate.sh"
   cat > "$teammate" <<TEAMMATE
-cd "$theirs" && bash "$SCRIPT_place" run --verb edit -- \\
+cd "$theirs" && bash "$SCRIPT_place" run --verb edit --dir-at -1 -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-a.md"' _ '{}'
 TEAMMATE
-  run_place_in "$mine" run --verb edit -- \
+  run_place_in "$mine" run --verb edit --dir-at -1 -- \
     sh -c 'printf "mine\n" > "$2/20260101-a.md"; sh "$1" >/dev/null 2>&1' \
     _ "$teammate" '{}'
   assert_exit  "rc"        3              "$RC"
@@ -1539,16 +1586,16 @@ case_place_graft_replays_a_deletion() {
   bare="$(place_bare place_gdel_bare)"
   mine="$(place_clone "$bare" place_gdel_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_gdel_them 'issue_placement = "jim/issues"')"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "old\n" > "$1/20260101-old.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   teammate="$TMP_BASE/place-gdel-teammate.sh"
   cat > "$teammate" <<TEAMMATE
-cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
+cd "$theirs" && bash "$SCRIPT_place" run --verb file --dir-at -1 -- \\
   sh -c 'printf "other\\n" > "\$1/20260101-other.md"' _ '{}'
 TEAMMATE
   # A rename: remove the old name, create the new one, while the branch moves.
-  run_place_in "$mine" run --verb rename -- \
+  run_place_in "$mine" run --verb rename --dir-at -1 -- \
     sh -c 'git mv --help >/dev/null 2>&1; mv "$2/20260101-old.md" "$2/20260101-new.md"; sh "$1" >/dev/null 2>&1' \
     _ "$teammate" '{}'
   assert_exit "rc" 0 "$RC"
@@ -1570,10 +1617,10 @@ case_place_graft_does_not_reallocate_on_retry() {
   body="$(fixture place_realloc_body.md 'body')"
   teammate="$TMP_BASE/place-realloc-teammate.sh"
   cat > "$teammate" <<TEAMMATE
-cd "$theirs" && bash "$SCRIPT_place" run --verb file -- \\
+cd "$theirs" && bash "$SCRIPT_place" run --verb file --dir-at -1 -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
 TEAMMATE
-  run_place_in "$mine" run --verb file -- sh -c \
+  run_place_in "$mine" run --verb file --dir-at -1 -- sh -c \
     'bash "$1" --dir "$4" --title "Alpha bug" --priority medium --labels x \
        --origin conversation --body-file "$2" >/dev/null; sh "$3" >/dev/null 2>&1' \
     _ "$REPO_ROOT/skills/issue/scripts/new.sh" "$body" "$teammate" '{}'
@@ -1591,17 +1638,17 @@ TEAMMATE
 case_place_local_tier_retries_after_the_branch_moves() {
   local repo racer paths
   repo="$(place_repo place_local_race 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "base\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   # No remote at all, so both runs land by ref update. The second publishes from
   # inside the first's wrapped command, which makes the loss deterministic.
   racer="$TMP_BASE/place-local-race.sh"
   cat > "$racer" <<RACER
-cd "$repo" && bash "$SCRIPT_place" run --verb file -- \\
+cd "$repo" && bash "$SCRIPT_place" run --verb file --dir-at -1 -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-b.md"' _ '{}'
 RACER
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "mine\n" > "$2/20260101-c.md"; sh "$1" >/dev/null 2>&1' \
     _ "$racer" '{}'
   assert_exit "rc" 0 "$RC"
@@ -1634,7 +1681,7 @@ case_place_read_discloses_a_rewritten_destination() {
   local bare clone seen
   bare="$(place_bare place_rw_read_bare)"
   clone="$(place_clone "$bare" place_rw_read 'issue_placement = "jim/issues"')"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   seen="$(git -C "$clone" rev-parse --verify refs/heads/jim/issues)"
@@ -1652,12 +1699,12 @@ case_place_write_discloses_a_rewritten_destination() {
   local bare clone seen
   bare="$(place_bare place_rw_write_bare)"
   clone="$(place_clone "$bare" place_rw_write 'issue_placement = "jim/issues"')"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   seen="$(git -C "$clone" rev-parse --verify refs/heads/jim/issues)"
   place_force_unrelated "$bare" jim/issues >/dev/null
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "second\n" > "$1/20260101-y.md"' _ '{}'
   assert_exit  "rc"              0            "$RC"
   assert_match "discloses rewrite" 'rewritten' "$ERR"
@@ -1670,11 +1717,11 @@ case_place_rewrite_does_not_block_the_mutation() {
   local bare clone
   bare="$(place_bare place_rw_nonblock_bare)"
   clone="$(place_clone "$bare" place_rw_nonblock 'issue_placement = "jim/issues"')"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   place_force_unrelated "$bare" jim/issues >/dev/null
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "second\n" > "$1/20260101-y.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "mutation landed" "second" \
@@ -1689,7 +1736,7 @@ case_place_retry_discloses_a_rewrite_that_arrived_mid_publish() {
   local bare clone seen rewriter
   bare="$(place_bare place_rw_retry_bare)"
   clone="$(place_clone "$bare" place_rw_retry 'issue_placement = "jim/issues"')"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   seen="$(git -C "$clone" rev-parse --verify refs/heads/jim/issues)"
@@ -1703,7 +1750,7 @@ tree="\$(printf '100644 blob %s\\tother.md' "\$blob" | git -C "$bare" mktree)"
 commit="\$(git -C "$bare" commit-tree "\$tree" -m rewritten)"
 git -C "$bare" update-ref refs/heads/jim/issues "\$commit"
 REWRITER
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "second\n" > "$2/20260101-y.md"; sh "$1"' _ "$rewriter" '{}'
   assert_exit  "rc"                0            "$RC"
   assert_match "discloses rewrite" 'rewritten'  "$ERR"
@@ -1717,10 +1764,10 @@ case_place_fast_forward_is_not_a_rewrite() {
   bare="$(place_bare place_ff_bare)"
   mine="$(place_clone "$bare" place_ff_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_ff_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "b\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
   run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
@@ -1740,14 +1787,14 @@ case_place_offline_write_does_not_advance_the_bookmark() {
   local bare clone published
   bare="$(place_bare place_bm_write_bare)"
   clone="$(place_clone "$bare" place_bm_write 'issue_placement = "jim/issues"')"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   published="$(git -C "$bare" rev-parse --verify refs/heads/jim/issues)"
   assert_eq "the bookmark records what was published" \
     "$published" "$(place_bookmark "$clone" jim/issues)"
   git -C "$clone" remote set-url origin "$TMP_BASE/no-such-remote.git"
-  run_place_in "$clone" run --verb file -- \
+  run_place_in "$clone" run --verb file --dir-at -1 -- \
     sh -c 'printf "b\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "offline rc" 0 "$RC"
   assert_eq "the local branch moved" "no" \
@@ -1765,7 +1812,7 @@ case_place_offline_write_does_not_advance_the_bookmark() {
 case_place_remoteless_publish_advances_the_bookmark() {
   local repo published
   repo="$(place_repo place_bm_noremote 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   published="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
@@ -1783,10 +1830,10 @@ case_place_offline_read_does_not_rewind_the_bookmark() {
   bare="$(place_bare place_bm_read_bare)"
   mine="$(place_clone "$bare" place_bm_read_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_bm_read_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "b\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
   # An online read advances the bookmark past this clone's own branch ref, which
@@ -1804,7 +1851,7 @@ case_place_offline_read_does_not_rewind_the_bookmark() {
   # ref. The two are advanced by different events — only a publish moves the
   # branch, every authoritative read moves the bookmark — so preferring the
   # branch serves *less* than the clone last saw while announcing the opposite.
-  run_place_in "$mine" run --read --verb reindex -- \
+  run_place_in "$mine" run --read --verb reindex --dir-at -1 -- \
     sh -c 'ls "$1" | tr "\n" " "' _ '{}'
   assert_exit  "offline read rc"         0                "$RC"
   assert_match "serves what it last saw" '20260101-b\.md' "$OUT"
@@ -1824,11 +1871,11 @@ case_place_rewrite_after_an_offline_read_is_still_detected() {
   bare="$(place_bare place_bm_fn_bare)"
   mine="$(place_clone "$bare" place_bm_fn_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_bm_fn_them 'issue_placement = "jim/issues"')"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "a\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   first="$(git -C "$bare" rev-parse --verify refs/heads/jim/issues)"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "b\n" > "$1/20260101-b.md"' _ '{}'
   assert_exit "their write landed" 0 "$RC"
   run_place_in "$mine" run --read --verb reindex -- sh -c 'true'
@@ -1874,7 +1921,7 @@ case_place_direct_mode_commits_path_scoped() {
   local repo files
   repo="$(place_here place_direct_scoped)"
   printf 'edited\n' > "$repo/README.md"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'mkdir -p "$1" && printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "committed in the working tree" "hello" \
@@ -1903,7 +1950,7 @@ case_place_direct_mode_refuses_dirty_collection() {
   printf 'committed\n' > "$repo/docs/issues/20260101-a.md"
   git -C "$repo" add docs/issues && git -C "$repo" commit -q -m seed
   printf 'half-finished\n' > "$repo/docs/issues/20260101-a.md"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit  "rc"         2                "$RC"
   assert_match "names path" '20260101-a\.md' "$ERR"
@@ -1920,7 +1967,7 @@ case_place_direct_mode_read_serves_the_working_tree() {
   repo="$(place_here place_direct_read)"
   mkdir -p "$repo/docs/issues"
   printf 'alpha\n' > "$repo/docs/issues/20260101-a.md"
-  run_place_in "$repo" run --read --verb reindex -- \
+  run_place_in "$repo" run --read --verb reindex --dir-at -1 -- \
     sh -c 'cat "$1/20260101-a.md"' _ '{}'
   assert_exit "rc"     0       "$RC"
   assert_eq   "serves" "alpha" "$OUT"
@@ -1942,7 +1989,7 @@ case_place_direct_mode_discloses_push_divergence() {
   printf 'moved\n' > "$theirs/README.md"
   git -C "$theirs" commit -q -am moved
   git -C "$theirs" push -q origin "HEAD:refs/heads/$branch"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'mkdir -p "$1" && printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit  "rc"          0          "$RC"
   assert_match "discloses"   'diverged' "$ERR"
@@ -2068,7 +2115,7 @@ case_place_direct_read_degrades_when_remote_unreachable() {
   mkdir -p "$mine/docs/issues"
   printf 'open\n' > "$mine/docs/issues/20260101-a.md"
   git -C "$mine" add docs/issues && git -C "$mine" commit -q -m seed
-  run_place_in "$mine" run --read --verb reindex -- \
+  run_place_in "$mine" run --read --verb reindex --dir-at -1 -- \
     sh -c 'cat "$1/20260101-a.md"' _ '{}'
   assert_exit  "rc"           0             "$RC"
   assert_eq    "still serves" "open"        "$OUT"
@@ -2111,7 +2158,7 @@ case_place_direct_unreachable_remote_is_a_deferral() {
   mine="$(place_here place_direct_defer)"
   git -C "$mine" remote add origin "$TMP_BASE/no-such-remote.git"
   mkdir -p "$mine/docs/issues"
-  run_place_in "$mine" run --verb file -- \
+  run_place_in "$mine" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit  "rc"                  0          "$RC"
   assert_match "calls it a deferral" 'deferred' "$ERR"
@@ -2128,7 +2175,7 @@ case_place_direct_unreachable_remote_is_a_deferral() {
 case_place_refuses_to_publish_a_leading_dash_entry() {
   local repo
   repo="$(place_repo place_dash_publish 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "x\n" > "$1/-rf.md"' _ '{}'
   assert_eq    "refuses"         "no" "$([[ "$RC" == 0 ]] && echo yes || echo no)"
   assert_match "names the entry" '\-rf\.md' "$ERR"
@@ -2143,7 +2190,7 @@ case_place_refuses_to_publish_a_leading_dash_entry() {
 case_place_direct_read_discloses_a_rewritten_destination() {
   local repo seen
   repo="$(place_here_seeded place_direct_rewrite)"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "x\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   seen="$(git -C "$repo" rev-parse --verify HEAD)"
@@ -2165,7 +2212,7 @@ case_place_direct_refuses_a_collection_outside_the_worktree() {
   repo="$(place_here place_direct_escape)"
   outside="$(empty_dir place_direct_escape_target)"
   ln -s "$outside" "$repo/docs"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit  "refuses"            2           "$RC"
   assert_match "says why"           'worktree'  "$ERR"
@@ -2204,7 +2251,7 @@ case_place_direct_rejected_push_does_not_advance_the_bookmark() {
   branch="$(git -C "$repo" symbolic-ref --short HEAD)"
   git -C "$repo" remote add origin "$TMP_BASE/no-such-remote.git"
   mkdir -p "$repo/docs/issues"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "hello\n" > "$1/20260101-x.md"' _ '{}'
   assert_exit  "rc"                    0          "$RC"
   assert_match "discloses the failure" 'not published' "$ERR"
@@ -2382,14 +2429,14 @@ case_place_begin_commit_conflict_preserves_state() {
   bare="$(place_bare place_begin_conf_bare)"
   mine="$(place_clone "$bare" place_begin_conf_mine   'issue_placement = "jim/issues"')"
   theirs="$(place_clone "$bare" place_begin_conf_them 'issue_placement = "jim/issues"')"
-  run_place_in "$theirs" run --verb file -- \
+  run_place_in "$theirs" run --verb file --dir-at -1 -- \
     sh -c 'printf "base\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "seed landed" 0 "$RC"
   run_place_in "$mine" begin
   assert_exit "begin rc" 0 "$RC"
   token="${OUT%%$'\t'*}"; dir="${OUT##*$'\t'}"
   printf 'mine\n' > "$dir/20260101-a.md"
-  run_place_in "$theirs" run --verb edit -- \
+  run_place_in "$theirs" run --verb edit --dir-at -1 -- \
     sh -c 'printf "theirs\n" > "$1/20260101-a.md"' _ '{}'
   assert_exit "their edit landed" 0 "$RC"
   run_place_in "$mine" commit "$token" --verb edit --id 20260101-a
@@ -2665,7 +2712,7 @@ case_place_refuses_a_control_character_in_a_materialized_name() {
 case_place_refuses_to_publish_a_control_character_name() {
   local repo
   repo="$(place_repo place_ctrl_outbound 'issue_placement = "jim/issues"')"
-  run_place_in "$repo" run --verb file -- \
+  run_place_in "$repo" run --verb file --dir-at -1 -- \
     sh -c 'printf "x\n" > "$1/$(printf "20260101-a.md\nevil.md")"' _ '{}'
   assert_exit "refuses" 1 "$RC"
   assert_match "names the rule" 'control character' "$ERR"
@@ -2716,7 +2763,7 @@ case_place_republish_preserves_an_executable_entry() {
   git -C "$repo" update-ref refs/heads/jim/issues "$commit"
   # A mutation that touches the executable entry, so it is in the changed set
   # and is replayed rather than carried through untouched.
-  run_place_in "$repo" run --verb edit --id tool -- \
+  run_place_in "$repo" run --verb edit --id tool --dir-at -1 -- \
     sh -c 'printf "hook v2\n" > "$1/tool.md"' _ '{}'
   assert_exit "rc" 0 "$RC"
   assert_eq "the executable bit survives republish" "100755" \

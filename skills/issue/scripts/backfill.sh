@@ -252,7 +252,10 @@ route_placement() {
   [[ -z "$dir" ]] || return 0
   mode="$(bash "$place" mode --place-token "$token")" || exit $?
   [[ "$mode" == "route" ]] || return 0
-  exec bash "$place" run --verb backfill -- \
+  # The markers this line builds, by offset into the command below: {token} is
+  # the fourth word and {} the last. The wrapper substitutes where it is told
+  # and nowhere else, so forwarded text carrying either shape stays text.
+  exec bash "$place" run --verb backfill --token-at 3 --dir-at -1 -- \
     bash "${BASH_SOURCE[0]}" --place-token '{token}' "$@" '{}'
 }
 

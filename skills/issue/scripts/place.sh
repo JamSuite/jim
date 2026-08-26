@@ -41,7 +41,8 @@
 #   bash place.sh mode [--place-token <tok>]
 #     Print `direct` (run against the working tree, today's behavior) or
 #     `route` (re-exec through `run`). The config gate lives here.
-#   bash place.sh run [--read] [--verb <enum>] [--id <slug>] -- CMD [ARGS...]
+#   bash place.sh run [--read] [--verb <enum>] [--id <slug>]
+#       [--dir-at <n>] [--token-at <n>] -- CMD [ARGS...]
 #     Run CMD against the collection. --verb is required for a write and
 #     optional on a --read run, which publishes nothing and so composes no
 #     commit subject. An ARG that is exactly `{}` becomes the
@@ -107,6 +108,12 @@ readonly PLACE_INDEX_FILE="INDEX.md"
 
 # Built by place_substitute; the wrapped command with its placeholders resolved.
 PLACE_CMD=()
+
+# The argv positions the caller declared it put placeholders at, as offsets
+# into the wrapped command. Empty means the caller built no marker of that
+# kind, so none is substituted. Set by cmd_run from --dir-at / --token-at.
+PLACE_DIR_AT=""
+PLACE_TOKEN_AT=""
 
 # ─── Section: Config resolution ──────────────────────────────────────────────
 
@@ -222,44 +229,50 @@ place_valid_verb() {
 }
 
 # place_substitute <dir> <token> <arg>... — fill PLACE_CMD with the wrapped
-# command, replacing the placeholders the caller put there: `{}` with <dir> and
-# `{token}` with <token>.
+# command, replacing the placeholders the caller declared: the argument at
+# PLACE_DIR_AT with <dir>, and the one at PLACE_TOKEN_AT with <token>.
 #
-# A placeholder is recognized by position as well as value, because value alone
-# cannot tell a marker from user text that looks like one. Substitution is
-# whole-argument, so a directory containing spaces stays one word and an
-# argument that merely *contains* braces is left alone — `interface{}` is
-# ordinary in a developer-tool issue title. But an argument that *is* exactly
-# `{}` can be user text too: the emitter re-execs carrying its own caller's
-# entire argv, so `--title '{}'` arrives as a bare `{}` in a marker's shape.
-# Rewriting it puts this run's temp path into the title and from there into the
-# slug — the durable id an append-only registry has already recorded, which no
-# later run can reclaim.
+# The positions come from the caller, which built the invocation and so knows
+# where it put a marker. Nothing else is examined. Value alone cannot tell a
+# marker from user text — the emitter re-execs carrying its own caller's entire
+# argv, so `--title '{}'` arrives as a bare `{}` in a marker's shape, and
+# rewriting it puts this run's temp path into the title and from there into the
+# slug, the durable id an append-only registry has already recorded. Neither can
+# position relative to a neighbouring word: forwarded text supplies its own
+# neighbours, so a filter value reading `--dir` makes the argument after it look
+# placed. Only the caller knows, and only the caller is asked.
 #
-# So a marker counts only where a caller building an invocation puts one: as the
-# operand of the flag that names it, or as the trailing argument appended after
-# everything being forwarded. Every entry script uses one of those two shapes,
-# and neither is reachable by text travelling through the middle of an argv.
+# Offsets index the wrapped command, 0 being the executable and negative
+# counting from the end, so -1 is the last argument. An undeclared placeholder
+# is not substituted at all. Returns 2 when a declared position is out of range
+# or does not hold the marker it claims: the caller computes these, so a wrong
+# one is a defect in the invocation, and the alternative is a wrapped command
+# handed a literal `{}` where a directory belongs.
 place_substitute() {
   local dir="$1" token="$2"; shift 2
-  local -a args=( "$@" )
-  local n=${#args[@]} i prev
-  PLACE_CMD=()
-  for (( i = 0; i < n; i++ )); do
-    prev=""
-    (( i > 0 )) && prev="${args[i-1]}"
-    case "${args[i]}" in
-      '{}')
-        if [[ "$prev" == "--dir" ]] || (( i == n - 1 )); then
-          PLACE_CMD+=( "$dir" ); continue
-        fi ;;
-      '{token}')
-        if [[ "$prev" == "--place-token" ]] || (( i == n - 1 )); then
-          PLACE_CMD+=( "$token" ); continue
-        fi ;;
-    esac
-    PLACE_CMD+=( "${args[i]}" )
-  done
+  PLACE_CMD=( "$@" )
+  place_marker_at $# "$PLACE_DIR_AT"   '{}'      "$dir"   --dir-at   || return 2
+  place_marker_at $# "$PLACE_TOKEN_AT" '{token}' "$token" --token-at || return 2
+  return 0
+}
+
+# place_marker_at <argc> <offset> <marker> <value> <option>
+#   Replace PLACE_CMD's entry at <offset> with <value>, having checked it holds
+#   <marker>. An empty <offset> declares no marker and does nothing.
+place_marker_at() {
+  local n="$1" off="$2" marker="$3" value="$4" opt="$5"
+  [[ -z "$off" ]] && return 0
+  (( off < 0 )) && off=$(( n + off ))
+  if (( off < 0 || off >= n )); then
+    echo "place.sh run: $opt is outside the wrapped command" >&2
+    return 2
+  fi
+  if [[ "${PLACE_CMD[off]}" != "$marker" ]]; then
+    echo "place.sh run: $opt names an argument that is not $marker" >&2
+    return 2
+  fi
+  PLACE_CMD[off]="$value"
+  return 0
 }
 
 # ─── Section: Engine ─────────────────────────────────────────────────────────
@@ -731,7 +744,7 @@ place_direct() {
     place_dirty_guard "$prefix" || return 2
   fi
   PLACE_TOKEN="$(place_new_token)" || return 1
-  place_substitute "$prefix" "$PLACE_TOKEN" "$@"
+  place_substitute "$prefix" "$PLACE_TOKEN" "$@" || return 2
   local rc=0
   JIM_PLACE_TOKEN="$PLACE_TOKEN" JIM_PLACE_PREFIX="$prefix" "${PLACE_CMD[@]}" || rc=$?
   (( rc == 0 )) || return "$rc"
@@ -1722,11 +1735,20 @@ cmd_mode() {
   printf 'route\n'
 }
 
-# cmd_run [--read] [--verb <enum>] [--id <slug>] -- CMD [ARGS...]
+# cmd_run [--read] [--verb <enum>] [--id <slug>]
+#       [--dir-at <n>] [--token-at <n>] -- CMD [ARGS...]
 #   Run the wrapped command against the collection. Under the default placement
 #   this is transparent: `{}` resolves to the configured issues directory and the
 #   command is exec'd, so its exit status is the caller's and no git work
 #   happens at all — the script is usable outside a repository.
+# place_valid_offset <value> <option> — an argv offset is a signed integer.
+place_valid_offset() {
+  local v="${1#-}"
+  [[ -n "$v" && -z "${v//[0-9]/}" ]] && return 0
+  echo "place.sh run: $2 takes an argv offset" >&2
+  return 2
+}
+
 cmd_run() {
   local verb="" id="" read_only=0
   while (( $# )); do
@@ -1734,6 +1756,12 @@ cmd_run() {
       --read) read_only=1; shift ;;
       --verb) verb="${2-}"; shift 2 || break ;;
       --id)   id="${2-}";   shift 2 || break ;;
+      --dir-at)   PLACE_DIR_AT="${2-}"
+                  place_valid_offset "$PLACE_DIR_AT" --dir-at || return 2
+                  shift 2 || break ;;
+      --token-at) PLACE_TOKEN_AT="${2-}"
+                  place_valid_offset "$PLACE_TOKEN_AT" --token-at || return 2
+                  shift 2 || break ;;
       --)     shift; break ;;
       *) echo "place.sh run: unknown option '$1'" >&2; return 2 ;;
     esac
@@ -1759,7 +1787,7 @@ cmd_run() {
     # way, so the flag selects the same behavior here as a write.
     local dir
     dir="$(place_issues_dir)" || return 2
-    place_substitute "$dir" "" "$@"
+    place_substitute "$dir" "" "$@" || return 2
     exec "${PLACE_CMD[@]}"
   fi
   local prefix
@@ -1833,7 +1861,7 @@ cmd_run() {
     echo "place.sh: serving '$dest' from the index it already held" >&2
     stale=1
   fi
-  place_substitute "$PLACE_COLL" "$PLACE_TOKEN" "$@"
+  place_substitute "$PLACE_COLL" "$PLACE_TOKEN" "$@" || return 2
   local rc=0
   # The prefix travels with the token so a wrapped command can report where its
   # work will actually live, rather than the temp directory it composed it in.
@@ -2024,7 +2052,8 @@ usage() {
   cat <<'USAGE'
 Usage:
   place.sh mode [--place-token <tok>]        print `direct` or `route`
-  place.sh run [--read] [--verb <enum>] [--id <slug>] -- CMD [ARGS...]
+  place.sh run [--read] [--verb <enum>] [--id <slug>]
+               [--dir-at <n>] [--token-at <n>] -- CMD [ARGS...]
                                              --verb is required for a write,
                                              optional on a --read run
   place.sh begin [--read]                    print "<token><TAB><dir>"
@@ -2033,7 +2062,9 @@ Usage:
 
   verbs: file edit close rename realize reindex backfill migrate
          claim release start reopen
-  an ARG of exactly `{}` becomes the collection directory, `{token}` the token.
+  --dir-at / --token-at give the argv offsets of the `{}` and `{token}`
+  markers the caller built, 0 from the front and -1 from the end. Nothing
+  else is substituted.
 USAGE
 }
 

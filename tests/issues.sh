@@ -4172,13 +4172,13 @@ case_issues_placement_rename_race_grafts_as_delete_and_create() {
   assert_exit "filing landed" 0 "$RC"
   teammate="$TMP_BASE/issues-race-teammate.sh"
   cat > "$teammate" <<TEAMMATE
-cd "$theirs" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" run --verb file -- \\
+cd "$theirs" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" run --verb file --dir-at -1 -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-other.md"' _ '{}'
 TEAMMATE
   # The rename runs, then the teammate publishes, then this mutation tries to
   # land — so the graft has to replay both halves of the rename.
   OUT="$(cd "$mine" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" \
-    run --verb migrate -- sh -c \
+    run --verb migrate --dir-at -1 -- sh -c \
     'bash "$1" prefix "$3" --apply >/dev/null; sh "$2" >/dev/null 2>&1' \
     _ "$SCRIPT_MIGRATE" "$teammate" '{}' 2>"$TMP_BASE/.err")"
   RC=$?
@@ -7621,6 +7621,33 @@ case_issues_placement_filter_operand_still_routes() {
   assert_match "read the destination, not the checkout" 'Alpha bug' "$OUT"
   assert_eq    "nothing written into the operand" "0" \
     "$(ls "$repo/auth" | grep -c .)"
+}
+
+# AC: a routed read forwards the caller's own argv through the placement
+# wrapper, so text wearing a marker's shape — a filter value reading `--dir`,
+# and a bare `{}` behind it — arrives at the parser as it was typed, and the
+# refusal names what the caller wrote rather than this run's materialized
+# collection.
+#
+# This case pins the composed BOUNDARY, not the wrapper: it does not go red
+# against a wrapper that substitutes by adjacency, because the operand guard
+# refuses `--dir` where a value belongs before the substitution's effect can
+# reach a message. What it goes red against is that guard being relaxed while
+# the wrapper still infers — the two together are what keep a run-local path off
+# this surface. The wrapper's own rule is pinned in tests/place.sh, by
+# case_place_substitutes_only_at_declared_positions.
+case_issues_placement_marker_shaped_argv_reaches_the_parser() {
+  local repo body
+  repo="$(placement_repo issues_place_marker_argv jim/issues)"
+  body="$(fixture issues_place_marker_argv_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels auth \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_RENDER" list --label --dir '{}'
+  assert_exit  "refused"               1 "$RC"
+  assert_match "naming what was typed" '[-]-dir followed it' "$ERR"
+  assert_eq    "and no run-local path anywhere" "0" \
+    "$(printf '%s\n%s\n' "$OUT" "$ERR" | grep -c '/collection')"
 }
 
 # ─── Section: render.sh — a refused read touches nothing ─────────────────────

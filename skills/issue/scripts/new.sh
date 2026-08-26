@@ -170,7 +170,10 @@ if [[ -z "$dir" && -r "$PLACE" ]]; then
            "issue_placement_ack = \"true\" to accept auto-filing to that branch." >&2
       exit 4
     fi
-    exec bash "$PLACE" run --verb file -- \
+    # This line appends --dir {} --place-token {token}, so {} is third from the
+    # end and {token} last. The forwarded argv ahead of them is user text and is
+    # never examined — a --title of exactly {} is a title.
+    exec bash "$PLACE" run --verb file --dir-at -3 --token-at -1 -- \
       bash "${BASH_SOURCE[0]}" "${original_argv[@]}" --dir '{}' --place-token '{token}'
   fi
 fi
