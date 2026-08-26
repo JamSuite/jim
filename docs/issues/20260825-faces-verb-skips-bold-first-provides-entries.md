@@ -3,7 +3,7 @@ id: 20260825-faces-verb-skips-bold-first-provides-entries
 num: 374
 title: "faces verb skips bold-first Provides entries"
 status: open
-priority: medium
+priority: high
 type: issue
 filed-by: "jrko"
 claimed-by: ""
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-25T05:21:54Z
-updated: 2026-08-25T06:41:24Z
+updated: "2026-08-26T08:43:55Z"
 origin: "docs/specs/issue/000-blueprint/spec.md"
 ---
 
@@ -111,3 +111,23 @@ use — otherwise the entry becomes visible and still joins to nothing
 ([[20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face]]). Since
 no face parses cleanly today, the parser has to be fixed or the entries
 reshaped before any join over the faces can be computed at all.
+
+## The undercount is durable (2026-08-26)
+
+The reconcile pass writes `faces=` and `faces_max=` onto the specs-root ledger
+verbatim, as the counter contract requires — script-emitted, never recomputed
+by the caller. So every run banks the undercount into history rather than only
+reporting it: the 2026-08-26 run recorded `faces=23` against 32 declared
+entries and `faces_max=10` against a true 12.
+
+That bears on the direction above, and it splits the two options apart. Fixing
+the parser makes a backfill meaningful — the faces can be re-counted from the
+blueprints at any past commit. Reshaping the nine entries cannot be backfilled
+at all: a re-count would read historical content that is still bold-first
+through a parser that still drops it, so the growth trend stays unreadable
+across the boundary in exactly the period the reshape was meant to fix.
+
+`faces_max_group=issue` is correct today only by coincidence — `issue` holds
+the maximum under both the emitted count and the true one. Two groups whose
+bold/backtick mix differs could trade the lead in the emitted count while the
+true maximum never moves, and the attribution would follow the wrong one.
