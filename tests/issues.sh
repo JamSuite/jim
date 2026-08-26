@@ -5401,6 +5401,19 @@ case_migrate_identity_usage_refuses_a_flag_where_a_value_belongs() {
   assert_match "names the flag that landed there" '\-\-apply' "$ERR"
 }
 
+# AC: a flag this verb does not accept, standing where a value belongs, refuses
+# on the same rule as one it does. The rule is about a flag arriving where a
+# value belongs — an unrecognized flag is still a flag, and the option it can
+# swallow here is the gate authorizing a destructive whole-collection write.
+case_migrate_identity_usage_refuses_an_unknown_flag_where_a_value_belongs() {
+  local repo
+  repo="$(schema_repo migrate_identity_swallow_unknown)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from --nosuchflag --to 'new@example.test'
+  assert_exit  "rc" 2 "$RC"
+  assert_match "names the flag left without a value" '[-]-from requires a value' "$ERR"
+  assert_match "says a flag landed there"            'a flag followed it'        "$ERR"
+}
+
 # AC: a flag standing last, or given an empty value, refuses rather than
 # recording an empty one. The mode is read from what was typed, so a half-typed
 # remap can no longer slip past the both-modes check by leaving its value empty
@@ -5434,22 +5447,26 @@ case_migrate_identity_valueless_expect_does_not_disarm_the_guard() {
 
 # AC: a value that merely looks option-shaped is still carried. The accepted
 # identity set admits a leading hyphen deliberately, because real addresses
-# carry one, so only this verb's own option names are refused — the guard
-# distinguishes a mistyped flag from an unusual value rather than refusing both.
+# carry one, so a single-hyphen operand reaches the lookup like any other value
+# — the guard tells a mistyped flag from an unusual value rather than refusing
+# both.
 #
-# This case pins the guard's BOUNDARY, not the guard: it does not go red against
-# the unswallowed parser, which accepted these along with everything else. What
-# it goes red against is the stricter reading — refusing any operand with a
-# leading hyphen — which is the obvious tightening a later reader reaches for
-# and which would silently break every address that wears one.
-case_migrate_identity_option_shaped_values_are_still_accepted() {
+# This case pins the guard's BOUNDARY, not the guard, and the boundary sits
+# between one hyphen and two. A double-hyphen token is a flag arriving where a
+# value belongs whoever owns it, and binding one consumes the option that was
+# typed and applies one that was not — here on a path where the option it can
+# swallow authorizes a destructive whole-collection write. A single hyphen is
+# the case the identity set was widened for, and refusing it would silently
+# break every address that wears one, so it stays accepted.
+case_migrate_identity_hyphen_values_accepted_but_flags_are_not() {
   local repo
   repo="$(identity_collection migrate_identity_optionshaped)"
   recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
   run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from '-x' --to 'dev@example.test'
   assert_exit "hyphen value rc" 0 "$RC"
   run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from '--help' --to 'dev@example.test'
-  assert_exit "option-shaped value rc" 0 "$RC"
+  assert_exit "double-hyphen value refuses" 2 "$RC"
+  assert_match "says a flag landed there" 'a flag followed it' "$ERR"
 }
 
 # AC: a usage error writes nothing.
@@ -8113,6 +8130,89 @@ case_issues_render_unanswerable_column_refuses() {
   RC=$?
   assert_exit  "a configured column still serves the view" 0 "$RC"
   assert_match "and the rows are there"  '#1'    "$OUT"
+}
+
+# operand_fixture <dir> — two records, one carrying a label, so a narrowing
+# that arrives as a widening is visible as a count rather than as an absence.
+operand_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+labels: [auth]'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue'
+}
+
+# AC: a filter operand that names no alternative is refused rather than left to
+# widen the query. An axis nobody named matches everything, so an operand of
+# separators and spaces alone turns the narrowing the operator typed into a
+# widening — silently, and at status 0, which on a read surface is
+# indistinguishable from a query that legitimately matched a lot.
+case_issues_render_operand_naming_no_alternative_refuses() {
+  local dir f v flag_count=0
+  dir=$(empty_dir render_empty_operand)
+  operand_fixture "$dir"
+  run_index "$dir"
+
+  # The narrowing the operator meant, for contrast with every refusal below.
+  run_render list --label auth "$dir"
+  assert_exit "a real value narrows" 0   "$RC"
+  assert_eq   "to the one record"    "1" "$(printf '%s' "$OUT" | grep -cE '^  #')"
+
+  while read -r f; do
+    # --cols names a vocabulary rather than an axis and refuses on its own
+    # terms; every other option carries an axis value.
+    [[ "$f" == "--cols" ]] && continue
+    (( flag_count++ ))
+    for v in ',,,' '   ' ',' ' , '; do
+      run_render list "$f" "$v" "$dir"
+      assert_exit  "list $f [$v] refuses"   1 "$RC"
+      assert_match "list $f [$v] says why"  'yields none' "$ERR"
+      assert_eq    "and matches nothing"    "0" "$(printf '%s' "$OUT" | grep -cE '^  #')"
+    done
+    run_render stats "$f" ',,,' "$dir"
+    assert_exit "stats $f refuses on the same rule" 1 "$RC"
+  done < <(render_vocabulary RENDER_OPTIONS)
+
+  assert_match "the option vocabulary was read from the code" '^[1-9][0-9]*$' "$flag_count"
+}
+
+# AC: a flag standing where a value belongs is a typo rather than a value, for
+# any flag and not only the ones this file accepts — an unrecognized flag is
+# still a flag, and binding it as a value consumes the option that was typed
+# and applies one that was not.
+case_issues_render_flag_shaped_operand_refuses() {
+  local dir f flag_count=0
+  dir=$(empty_dir render_flag_shaped_operand)
+  operand_fixture "$dir"
+  run_index "$dir"
+
+  while read -r f; do
+    (( flag_count++ ))
+    run_render list "$f" --nosuchflag "$dir"
+    assert_exit  "list $f --nosuchflag refuses" 1 "$RC"
+    assert_match "names what followed it"       'followed it' "$ERR"
+  done < <(render_vocabulary RENDER_OPTIONS)
+
+  assert_match "the option vocabulary was read from the code" '^[1-9][0-9]*$' "$flag_count"
+
+  # One hyphen is not two: the recordable-identity set admits a leading hyphen
+  # deliberately, and a real address can wear one.
+  run_render list --filed-by -dev@example.test "$dir"
+  assert_exit "an option-shaped value still passes" 0 "$RC"
+
+  # An axis stores its alternatives newline-separated, so an operand carrying a
+  # newline cannot be told from two of them. It was cut at the first line and
+  # the rest went unapplied without a word.
+  run_render list --label "$(printf 'auth\nzzz')" "$dir"
+  assert_exit  "a multi-line operand refuses" 1 "$RC"
+  assert_match "says why" 'single-line value' "$ERR"
 }
 
 # ─── Section: render.sh — the origin axes ────────────────────────────────────

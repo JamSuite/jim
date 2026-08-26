@@ -67,9 +67,14 @@ MIGRATE_OPTIONS=(--apply --expect --renormalize --from --to)
 #   write — an --expect with nothing after it disarms the drift guard, because
 #   an empty expectation is indistinguishable from asking for no check.
 #
-#   Only this file's own option names are refused. A value that merely looks
-#   option-shaped is carried through, because the recordable-identity set admits
-#   a leading hyphen deliberately and a real address can wear one.
+#   Flag-shaped means any double-hyphen token, not only this verb's own option
+#   names: the rule is about a flag arriving where a value belongs, and one this
+#   verb does not accept is still a flag. Naming it back is reserved for the
+#   options this file declares, which are safe to echo; an arbitrary argv token
+#   is not, and stderr is a rendered surface too. One hyphen is not two — a
+#   value that merely looks option-shaped is carried through, because the
+#   recordable-identity set admits a leading hyphen deliberately and a real
+#   address can wear one.
 need_operand() {
   local flag="$1" argc="$2" operand="$3" known
   if (( argc < 2 )) || [[ -z "$operand" ]]; then
@@ -82,6 +87,11 @@ need_operand() {
       return 2
     fi
   done
+  if [[ "$operand" == --* ]]; then
+    echo "error: $flag requires a value, but a flag followed it" >&2
+    echo "       options are one of: ${MIGRATE_OPTIONS[*]}" >&2
+    return 2
+  fi
   printf '%s' "$operand"
 }
 

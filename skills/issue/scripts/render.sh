@@ -181,34 +181,47 @@ readonly RENDER_OPTIONS=(--status --priority --type --label --epic
 #   <argc> is the argument count remaining at the flag, so a flag standing last
 #   in the argv is one with nothing to take.
 #
-#   Absent, empty, and flag-shaped operands all refuse. Swallowing one costs
-#   twice over: the flag that was consumed goes unapplied, and the value it
-#   became is one nobody typed — and on a read surface both halves are silent,
-#   because a narrower query and a query that matched little look the same.
+#   Absent, empty, flag-shaped and multi-line operands all refuse. Swallowing
+#   one costs twice over: the flag that was consumed goes unapplied, and the
+#   value it became is one nobody typed — and on a read surface both halves are
+#   silent, because a narrower query and a query that matched little look the
+#   same.
 #
-#   Only this file's own option names are refused. A value that merely looks
-#   option-shaped is carried through, because the recordable-identity set
-#   admits a leading hyphen deliberately and a real address can wear one.
+#   Flag-shaped means any double-hyphen token, not this file's own option names:
+#   the rule is about a flag arriving where a value belongs, and a flag this
+#   file does not accept is still a flag. One hyphen is not two — a value that
+#   merely looks option-shaped is carried through, because the recordable
+#   identity set admits a leading hyphen deliberately and a real address can
+#   wear one.
+#
+#   A multi-line operand refuses because an axis stores its alternatives
+#   newline-separated: the line break cannot be told from the separator, and the
+#   value was being cut at the first line without a word.
 #
 #   SYNC(need-operand): a shape sibling of need_operand in
 #   skills/issue/scripts/migrate.sh, deliberately NOT byte-identical — each
-#   script refuses its own option list, and the two lists are disjoint. What
-#   the two share is the rule, not the text: absent, empty and own-flag
+#   script's refusal names its own option list, and the multi-line rule is this
+#   file's alone because only its axes store alternatives that way. What the two
+#   share is the rest of the rule, not the text: absent, empty and double-hyphen
 #   operands refuse at status 2 having written nothing to stdout. A
 #   byte-agreement fixture would assert a falsehood here, so there is none;
 #   this note is what keeps the difference from reading as drift.
 need_operand() {
-  local flag="$1" argc="$2" operand="$3" known
+  local flag="$1" argc="$2" operand="$3"
   if (( argc < 2 )) || [[ -z "$operand" ]]; then
     echo "error: $flag requires a value" >&2
     return 2
   fi
-  for known in "${RENDER_OPTIONS[@]}"; do
-    if [[ "$operand" == "$known" ]]; then
-      echo "error: $flag requires a value, but $known followed it" >&2
-      return 2
-    fi
-  done
+  if [[ "$operand" == --* ]]; then
+    echo "error: $flag requires a value, but $(token_safe "$operand") followed it" >&2
+    echo "       flags are one of: ${RENDER_OPTIONS[*]}" >&2
+    return 2
+  fi
+  if [[ "$operand" == *$'\n'* ]]; then
+    echo "error: $flag requires a single-line value" >&2
+    echo "       alternatives are separated by commas; a line break names none" >&2
+    return 2
+  fi
   printf '%s' "$operand"
 }
 
@@ -238,14 +251,23 @@ bare_word_help() {
 #   space — an origin prefix is free text — and splitting on one would widen a
 #   query the operator narrowed, which is the failure quoting the prefix
 #   comparison exists to prevent, arriving one step earlier.
+#
+#   Returns 1 when the operand yielded no alternative at all, so the caller can
+#   refuse. Recording nothing leaves the axis key unassigned, and every matcher
+#   reads an unassigned axis as one nobody named — a narrowing operand would
+#   arrive as a widening query, at status 0, on a surface where a wide answer
+#   and a large one look the same.
 filter_axis_add() {
-  local axis="$1" csv="$2" v
+  local axis="$1" csv="$2" v added=0
   local -a vals=()
   IFS=',' read -ra vals <<< "$csv"
   for v in "${vals[@]}"; do
     v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
-    [[ -z "$v" ]] || FILTER_AXIS[$axis]="${FILTER_AXIS[$axis]:+${FILTER_AXIS[$axis]}$'\n'}$v"
+    [[ -z "$v" ]] && continue
+    FILTER_AXIS[$axis]="${FILTER_AXIS[$axis]:+${FILTER_AXIS[$axis]}$'\n'}$v"
+    added=1
   done
+  (( added ))
 }
 
 # parse_filters <args...>
@@ -302,7 +324,11 @@ parse_filters() {
           return 1
         fi
         v="$(need_operand "$a" "$#" "${2:-}")" || return 1
-        filter_axis_add "${a#--}" "$v"
+        if ! filter_axis_add "${a#--}" "$v"; then
+          echo "error: $a requires a value, but '$(token_safe "$v")' yields none" >&2
+          echo "       separators and spaces alone name no alternative" >&2
+          return 1
+        fi
         shift 2
         ;;
       *)
