@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 142
-- Closed: 260
+- Open: 141
+- Closed: 261
 
 ## Issues
 
@@ -396,7 +396,7 @@
 - `20260826-blueprint-divergence-placeholder-by-position` — Blueprint divergence: placeholder-by-position · status: closed · num: 386 · priority: high · created: 2026-08-26T02:44:32Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/014-read-view-filter-composition · type: issue · filed-by: jrko · outcome: done
 - `20260826-blueprint-divergence-staleness-gated-reads` — Blueprint divergence: staleness-gated-reads · status: closed · num: 387 · priority: medium · created: 2026-08-26T02:44:33Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/014-read-view-filter-composition · type: issue · filed-by: jrko · outcome: done
 - `20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank` — Column naming a field the index cannot answer renders it blank · status: closed · num: 388 · priority: medium · created: 2026-08-26T01:36:55Z · labels: [issue, read-views, disclosure] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko · outcome: done
-- `20260826-dependency-outside-the-collection-reads-as-unblocked` — Dependency outside the collection reads as unblocked · status: open · num: 389 · priority: low · created: 2026-08-26T01:36:56Z · labels: [issue, read-views, graph] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko
+- `20260826-dependency-outside-the-collection-reads-as-unblocked` — Dependency outside the collection reads as unblocked · status: closed · num: 389 · priority: low · created: 2026-08-26T01:36:56Z · labels: [issue, read-views, graph] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-empty-shaped-filter-operand-silently-matches-everything` — Empty-shaped filter operand silently matches everything · status: closed · num: 390 · priority: high · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-is-filter-token-is-dead-code` — is_filter_token is dead code · status: closed · num: 391 · priority: medium · created: 2026-08-26T02:34:19Z · labels: [issue, read-views, cleanup] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-person-query-is-whitespace-trimmed-before-it-is-compared` — Person query is whitespace-trimmed before it is compared · status: closed · num: 392 · priority: low · created: 2026-08-26T02:34:44Z · labels: [issue, read-views, identity] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
