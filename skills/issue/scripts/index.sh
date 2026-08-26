@@ -466,6 +466,18 @@ main() {
         claimed-by) claimed_by="$_fval" ;;
       esac
     done < <(parse_scalar_fields "$fm")
+
+    # Judge the value the rows carry, not the one the file holds. A row never
+    # carries a raw scalar — one able to reproduce the row's separator could
+    # forge a field this writer already emitted — so a check reading the raw
+    # value judges something no reader downstream can see: the Summary asserts
+    # a count the rows beneath it deny, and a warning calls a value
+    # unrecognized while printing one that is. Only the scalars compared
+    # against a vocabulary need this; the rest are carried, never judged.
+    status="$(row_safe "$status")"
+    outcome="$(row_safe "$outcome")"
+    type="$(row_safe "$type")"
+
     [[ -z "$status" ]] && status="open"
 
     # SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
@@ -738,19 +750,27 @@ main() {
     done
   done
 
-  # Render Issues section
+  # Render Issues section.
+  #
+  # status, type and outcome arrive sanitized: they were judged against a
+  # vocabulary above, and judging one value while displaying another is what
+  # lets the Summary contradict the rows. They have one assignment site each,
+  # fed by that sanitized value, so re-applying the sanitizer here would repeat
+  # a transform on a value already in normal form — and row_safe is three
+  # processes a record, on the path every mutating verb regenerates through.
+  # The row's own safety is pinned by test rather than by this repetition.
   for s in "${slugs_seen[@]}"; do
     local row
-    row="- \`$s\` — $(row_safe "${meta_title[$s]:-(untitled)}") · status: $(row_safe "${meta_status[$s]:-open}")"
+    row="- \`$s\` — $(row_safe "${meta_title[$s]:-(untitled)}") · status: ${meta_status[$s]:-open}"
     [[ -n "${meta_num[$s]:-}" ]]        && row+=" · num: $(row_safe "${meta_num[$s]}")"
     [[ -n "${meta_priority[$s]:-}" ]]   && row+=" · priority: $(row_safe "${meta_priority[$s]}")"
     [[ -n "${meta_created[$s]:-}" ]]    && row+=" · created: $(row_safe "${meta_created[$s]}")"
     [[ -n "${meta_labels[$s]:-}" ]]     && row+=" · labels: $(row_safe "${meta_labels[$s]}")"
     [[ -n "${meta_origin[$s]:-}" ]]     && row+=" · origin: $(row_safe "${meta_origin[$s]}")"
-    [[ -n "${meta_type[$s]:-}" ]]       && row+=" · type: $(row_safe "${meta_type[$s]}")"
+    [[ -n "${meta_type[$s]:-}" ]]       && row+=" · type: ${meta_type[$s]}"
     [[ -n "${meta_filed_by[$s]:-}" ]]   && row+=" · filed-by: $(row_safe "${meta_filed_by[$s]}")"
     [[ -n "${meta_claimed_by[$s]:-}" ]] && row+=" · claimed-by: $(row_safe "${meta_claimed_by[$s]}")"
-    [[ -n "${meta_outcome[$s]:-}" ]]    && row+=" · outcome: $(row_safe "${meta_outcome[$s]}")"
+    [[ -n "${meta_outcome[$s]:-}" ]]    && row+=" · outcome: ${meta_outcome[$s]}"
     issues_section+="$row"$'\n'
   done
 

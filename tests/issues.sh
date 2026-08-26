@@ -8044,19 +8044,44 @@ case_issues_render_list_refuses_unanswerable_axis() {
   assert_match "the record"  'Alpha' "$OUT"
 }
 
-# render_vocabulary <constant> — the elements render.sh declares for one of its
-# readonly vocabularies, one per line. A case's domain comes from the code's own
-# declaration rather than from a list retyped here, so an entry added to the
-# constant enters every case that loops over it — which a hand-picked sample
-# never does.
-render_vocabulary() {
-  awk -v pfx="readonly $1=(" '
+# script_vocabulary <script> <constant> — the elements <script> declares for one
+# of its readonly vocabularies, one per line. A case's domain comes from the
+# code's own declaration rather than from a list retyped here, so an entry added
+# to the constant enters every case that loops over it — which a hand-picked
+# sample never does.
+script_vocabulary() {
+  awk -v pfx="readonly $2=(" '
     substr($0, 1, length(pfx)) == pfx { inside = 1; $0 = substr($0, length(pfx) + 1) }
     inside {
       if (match($0, /\)/)) { print substr($0, 1, RSTART - 1); exit }
       print
     }
-  ' "$SCRIPT_RENDER" | tr -s '[:space:]' '\n' | grep -v '^$'
+  ' "$1" | tr -s '[:space:]' '\n' | grep -v '^$'
+}
+
+# render_vocabulary <constant> — script_vocabulary against render.sh.
+render_vocabulary() {
+  script_vocabulary "$SCRIPT_RENDER" "$1"
+}
+
+# index_vocabularies — the names of every readonly vocabulary index.sh declares
+# for a frontmatter scalar, one per line. Discovered rather than listed, so a
+# vocabulary added to the script reaches the cases that quantify over them.
+index_vocabularies() {
+  grep -oE '^readonly (ISSUE_[A-Z_]+)=\(' "$SCRIPT_INDEX" \
+    | sed -E 's/^readonly (ISSUE_[A-Z_]+)=\($/\1/'
+}
+
+# classified_field <constant> — the frontmatter field index.sh judges against
+# <constant>. Every vocabulary index_vocabularies discovers needs an entry here:
+# a case looping the discovered set fails on one without a mapping, so a new
+# vocabulary cannot enter the script without also entering these cases.
+classified_field() {
+  case "$1" in
+    ISSUE_TYPES)    printf 'type\n' ;;
+    ISSUE_OUTCOMES) printf 'outcome\n' ;;
+    *) return 1 ;;
+  esac
 }
 
 # axis_query <axis> — a minimal query naming one axis, in that axis's own
@@ -8681,6 +8706,108 @@ case_issues_render_help_describes_the_filter_surface() {
   assert_match "the column flag"    '[-]-cols'       "$OUT"
   assert_match "stats takes them too" 'stats \[filter\.\.\.\]' "$OUT"
   assert_match "naming yourself"    '\bme\b'         "$OUT"
+}
+
+# AC: the Summary's lifecycle counts and the rows beside them derive from one
+# value. A row carries the sanitized scalar because a raw one could forge the
+# row's own separator, so a classification that reads the raw scalar makes the
+# index able to assert a count its own rows deny — and to disagree with every
+# reader downstream, all of which act on the row.
+case_issues_index_lifecycle_count_agrees_with_the_row_it_writes() {
+  local dir index fm
+  dir=$(empty_dir index_lifecycle_sanitized)
+  fm="title: \"Alpha\"
+status: \"closed$(printf '\001')\"
+priority: medium
+outcome: done"
+  write_issue "$dir" "20260101-alpha" "$fm"
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  index="$(cat "$dir/INDEX.md")"
+
+  assert_match "the row reads closed"       'status: closed' "$index"
+  assert_match "the Summary agrees"         '^- Closed: 1$'  "$index"
+  assert_match "and counts nothing as open" '^- Open: 0$'    "$index"
+
+  # The census reads that same row, so the two cannot disagree.
+  run_render stats "$dir"
+  assert_exit  "census rc" 0 "$RC"
+  assert_match "one finished record" 'Open: 0 · Closed: 1' "$OUT"
+}
+
+# AC: a vocabulary member wearing a control character is judged as that member.
+# Judging the raw scalar while printing the sanitized one produces a warning
+# that names a value which reads as recognized — an integrity warning nobody can
+# act on, because the thing it calls unrecognized is in the vocabulary it was
+# checked against.
+case_issues_index_vocabularies_are_judged_after_sanitizing() {
+  local dir vocab field member fm index
+  for vocab in $(index_vocabularies); do
+    field="$(classified_field "$vocab" || true)"
+    assert_nonempty "$vocab maps to a classified field" "$field"
+    [[ -n "$field" ]] || continue
+    for member in $(script_vocabulary "$SCRIPT_INDEX" "$vocab"); do
+      dir=$(empty_dir "index_vocab_${field}_${member}")
+      fm="title: \"Alpha\"
+status: open
+priority: medium
+${field}: \"${member}$(printf '\001')\""
+      write_issue "$dir" "20260101-alpha" "$fm"
+      run_index "$dir"
+      assert_exit "$field $member rc" 0 "$RC"
+      index="$(cat "$dir/INDEX.md")"
+      assert_eq "$field $member is judged as itself" "0" \
+        "$(printf '%s\n' "$index" | grep -c 'unrecognized')"
+    done
+  done
+}
+
+# classified_fields — the frontmatter scalars index.sh judges before it writes
+# them, one per line: `status` against a literal pair, the rest against a
+# declared vocabulary. These are the values the row emits without re-applying
+# the display sanitizer, so they are the ones whose row safety is pinned here.
+classified_fields() {
+  local vocab field
+  printf 'status\n'
+  for vocab in $(index_vocabularies); do
+    field="$(classified_field "$vocab" || true)"
+    assert_nonempty "$vocab maps to a classified field" "$field"
+    [[ -n "$field" ]] && printf '%s\n' "$field"
+  done
+}
+
+# AC: a judged scalar cannot forge a row field. A row is ` · `-separated
+# `key: value` pairs and every reader assigns by key, so a value able to
+# reproduce the separator could append a pair the writer already emitted.
+# These three reach the row without a second pass through the sanitizer — they
+# were sanitized once, before they were judged — so the guarantee is pinned by
+# this case rather than by repeating the transform at the emission point.
+case_issues_index_classified_scalars_cannot_forge_a_row_field() {
+  local dir field fm index row
+  for field in $(classified_fields); do
+    dir=$(empty_dir "index_forge_${field}")
+    fm="title: \"Alpha\"
+priority: medium"
+    [[ "$field" == status ]] || fm="$fm
+status: open"
+    fm="$fm
+${field}: \"open · num: 999$(printf '\001')\""
+    write_issue "$dir" "20260101-alpha" "$fm"
+    run_index "$dir"
+    assert_exit "$field rc" 0 "$RC"
+    index="$(cat "$dir/INDEX.md")"
+    # Scoped to the Issues section: a warning line shares the row's leading
+    # dash and slug, and would otherwise be measured as part of it.
+    row="$(printf '%s\n' "$index" | sed -n '/^## Issues/,/^## /p' | grep '^- ')"
+
+    assert_nonempty "$field produced a row" "$row"
+    assert_eq "$field appends no field pair" "0" \
+      "$(printf '%s\n' "$row" | grep -c ' · num: 999')"
+    # Newline is left in the delete set's gap so a multi-row result is compared
+    # as written rather than collapsed into one line.
+    assert_eq "$field carries no control byte" \
+      "$row" "$(printf '%s' "$row" | tr -d '\000-\011\013-\037\177')"
+  done
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
