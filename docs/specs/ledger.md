@@ -128,3 +128,5 @@
 1787656666	2026-08-25T11:17:46Z	spec	realized	moved=issue/P-20260825-read-view-filter-composition:issue/014
 1787712353	2026-08-26T02:45:53Z	blueprint	started	tier=project;op=reconcile
 1787712467	2026-08-26T02:47:47Z	blueprint	finished	tier=project;op=reconcile;edges=26;leaks=1;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=841;faces=23;faces_max=10;faces_max_group=issue;fanin_group=issue,platform
+1787731541	2026-08-26T08:05:41Z	blueprint	started	tier=project;op=reconcile
+1787731719	2026-08-26T08:08:39Z	blueprint	finished	tier=project;op=reconcile;edges=26;leaks=1;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=843;faces=23;faces_max=10;faces_max_group=issue;fanin_group=issue,platform
