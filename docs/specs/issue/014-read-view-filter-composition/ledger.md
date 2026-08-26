@@ -10,3 +10,5 @@
 1787659968	2026-08-25T12:12:48Z	plan	finished	
 1787694467	2026-08-25T21:47:47Z	build	started	base_sha=88a003afec03e749a6d35d4d9232fc64cc0ff878
 1787708280	2026-08-26T01:38:00Z	build	finished	head_sha=3bbb97acb2d40e6d340d6980ceb99802c6f12df4
+1787708292	2026-08-26T01:38:12Z	review	started	
+1787708984	2026-08-26T01:49:44Z	review	finished	alignment=minor-drift;findings=13;undelegated=0
