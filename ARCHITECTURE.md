@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-08-25*
+*Last updated: 2026-08-26*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill
 to preserve consistency.
@@ -1180,9 +1180,10 @@ recommendation — as a filed follow-on.
   `identity.sh` is the single place deciding both what a recordable identity is
   and what form it takes: it accepts a **positively enumerated** character set
   and refuses everything else, so unanticipated input fails closed rather than
-  surviving a list of known-bad characters, and every write path routes through
-  it — the emitter, the transition verbs, the conversion — so one definition
-  cannot drift into several. The value is normalized under a project-selected
+  surviving a list of known-bad characters, and every path that records or
+  compares an identity routes through it — the emitter, the transition verbs,
+  the conversion, and the read views' person filters — so one definition cannot
+  drift into several. The value is normalized under a project-selected
   form (`identity_scheme`: the whole address, a forge relay account name, or an
   organization-local account), lower-cased under every form, and resolved
   through whatever alias mapping version control carries *before* any
@@ -1407,9 +1408,10 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   `issue_list_group` (default `"status"`), `issue_list_sort` (default `"date"`),
   `issue_list_cols` (default `"num,date,priority,title"`), `issue_list_order`
   (default `"desc"`), and `issue_list_closed` (default `"false"`, the
-  closed-issue visibility toggle: when `"false"`, `/jim:issue list`'s default
-  and priority-filtered views hide closed issues, while `list closed` remains
-  the ad-hoc closed view), and the spec 021 issue-id-prefix keys
+  closed-issue visibility toggle: when `"false"`, `/jim:issue list` hides closed
+  issues from every view whose filters do not name lifecycle state, and says so
+  when a filter was active; `list closed` remains the ad-hoc closed view, and
+  `stats` never hides them), and the spec 021 issue-id-prefix keys
   `issue_id_prefix` (default `"date"`) and `issue_id_project` (default empty),
   which select the configurable issue-id prefix scheme, and the issue/011
   placement keys `issue_placement` (default `"branch"` — the reserved sentinel
@@ -1941,7 +1943,10 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   bidirectional integrity checks via `RELATION_INVERSE`), extracts validated
   wikilinks from issue bodies, and writes `INDEX.md` atomically via `tmp + mv`
   with `trap`-based cleanup; it parses the spec 019 `num:` field and emits `num` +
-  `created` in the `## Issues` rows. Top-level scalar frontmatter fields are
+  `created` in the `## Issues` rows, which also carry `type`, `filed-by`,
+  `claimed-by` and `outcome` — every field a read-view filter can name, each
+  emitted only when the record carries it. Top-level scalar frontmatter
+  fields are
   extracted in a single `awk` pass per file (`parse_scalar_fields`, one field
   per output line) rather than one `grep|head|sed` pipeline per field — a
   fork-reduction that dominates regen cost on larger collections. The atomic
@@ -1971,12 +1976,21 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   as-is, so a read over an unchanged collection costs a `stat`-based staleness
   check rather than a full directory rescan. `stats` emits the trend view
   (Open/Closed summary, by-priority, clusters by origin and label, top-N
-  blocking, integrity-warnings passthrough); `list` emits a terse
+  blocking, integrity-warnings passthrough), naming its `scope:` when filtered
+  and never hiding finished records; `list` emits a terse
   grouped/sorted/columned enumeration driven by the `issue_list_*` config
-  (filter, columns, group, and sort validated against closed sets, falling back
-  to defaults), hiding closed issues from the default and priority-filtered
-  views unless `issue_list_closed` is `"true"` while an explicit `list
-  open`/`list closed` status filter always overrides the toggle; `show` resolves
+  (columns, group, and sort validated against closed sets, falling back to
+  defaults), hiding closed issues from every view whose filters do not name
+  lifecycle state unless `issue_list_closed` is `"true"`, and disclosing that it
+  did so whenever a filter was active. Both read verbs take the same composed
+  filter grammar: `parse_filters` classifies every argument — reserved bare
+  words, and flags carrying comma-separated value lists — *before* the
+  collection positional binds, so a flag's operand can never be read as a
+  directory and a mistyped filter never reaches one. `dir_given` reads argv by
+  that same grammar, because a routing decision and a binding decision that
+  disagree produce a plausible answer over the wrong collection rather than an
+  error. Person filters resolve and compare through `identity.sh`, so a query
+  and a capture cannot disagree about who someone is. `show` resolves
   an argument ONLY against the indexed set (ordinal → exact slug → prefix →
   substring; never composing a filesystem path from raw input — security 019
   Finding 1) and renders one cleaned-up issue. The spec 020 `insights-graph` arm
