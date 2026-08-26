@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 142
+- Open: 143
 - Closed: 259
 
 ## Issues
@@ -392,6 +392,7 @@
 - `20260825-roadmap-md-has-not-been-refreshed-since-2026-03-16` — ROADMAP.md has not been refreshed since 2026-03-16 · status: open · num: 384 · priority: low · created: 2026-08-25T10:51:06Z · labels: [docs, strategy] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md · type: issue · filed-by: jrko
 - `20260825-sort-and-group-read-views-by-the-newly-indexed-fields` — Sort and group read views by the newly indexed fields · status: open · num: 385 · priority: low · created: 2026-08-25T10:51:05Z · labels: [issues-system, read-views] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md · type: issue · filed-by: jrko
 - `20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test` — Timestamp-shape sync marker in jimfile.sh is compared by no test · status: open · num: 372 · priority: medium · created: 2026-08-25T05:00:25Z · labels: [test, scripts, platform] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
+- `20260826-blueprint-divergence-declared-vocabularies-span-scripts` — Blueprint divergence: declared vocabularies span scripts · status: open · num: P-20260826-blueprint-divergence-declared-vocabularies-span-scripts · priority: high · created: 2026-08-26T19:36:21Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
 - `20260826-blueprint-divergence-placeholder-by-position` — Blueprint divergence: placeholder-by-position · status: closed · num: 386 · priority: high · created: 2026-08-26T02:44:32Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/014-read-view-filter-composition · type: issue · filed-by: jrko · outcome: done
 - `20260826-blueprint-divergence-staleness-gated-reads` — Blueprint divergence: staleness-gated-reads · status: closed · num: 387 · priority: medium · created: 2026-08-26T02:44:33Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/014-read-view-filter-composition · type: issue · filed-by: jrko · outcome: done
 - `20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank` — Column naming a field the index cannot answer renders it blank · status: closed · num: 388 · priority: medium · created: 2026-08-26T01:36:55Z · labels: [issue, read-views, disclosure] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko · outcome: done
