@@ -1,23 +1,21 @@
 # Context — read-view filter composition
 
-A closing handoff for whoever picks this up. It replaces the cold-start
-document written before the remediation ran, and keeps that document's one
-rule: **it records findings and points at configuration.** Anything below that
-looks like a setting is a pointer — go read the setting.
-
-It records what is **expensive or impossible to re-derive from the artifacts**:
-facts established by running things, reproduction recipes, decisions whose
-reasoning lives nowhere else, and the traps that cost real time. Everything
-already said well in `spec.md`, `plan.md`, `review.md`, `remediation.md` or
-`retrospective.md` is pointed at, not repeated.
+A closing handoff for whoever picks this up. It records what is **expensive or
+impossible to re-derive from the artifacts**: facts established by running
+things, reproduction recipes, decisions whose reasoning lives nowhere else, and
+the traps that cost real time. Everything already said well in `spec.md`,
+`plan.md`, `review.md`, `remediation.md` or `retrospective.md` is pointed at,
+not repeated. Anything below that looks like a setting is a pointer — go read
+the setting.
 
 ---
 
 ## 1. Where this stands
 
-The feature is **built, reviewed, and remediated through step 4**. The three
-issues that gated the plan are fixed, verified and closed. The plan is still
-held at `approved` — closing it is a single decision, described in § 6.
+The feature is **built, reviewed, and remediated through step 5's first
+issue**. The three issues that gated the plan are fixed, verified and closed.
+The plan is still held at `approved` — closing it is a single decision,
+described in § 6.
 
 | artifact | state |
 | :--- | :--- |
@@ -26,55 +24,59 @@ held at `approved` — closing it is a single decision, described in § 6.
 | `security.md` | `Needs Plan Review` — 12 findings, all routed and applied |
 | `plan.md` | `approved` — 21/21 tasks `[x]`, **held**, and now closeable |
 | `review.md` | `minor-drift` — 13 findings, `undelegated=0` |
-| `remediation.md` | the order of attack — steps 1–4 are done |
+| `remediation.md` | the order of attack — steps 1–4 done, step 5 part-done |
 | `retrospective.md` | why it happened; the root cause and its prevention |
-| living intent | re-run this session: 13 sensed · 10 holds · 2 violated · 1 skipped |
-| contracts | 4 edges checked, 0 violations |
+| group blueprint | **15 invariants** — `row-shape-is-the-writers` added this session |
+| suite | **1620 green** (`skills/meta-test/scripts/run.sh`) |
 
 Two frontmatter values look wrong and are not, the same trap the preceding
 increments record. **`security.md` stays `Needs Plan Review`** — the field
 records what a review *found*, not whether it was acted on. **`research.md` is
 `Needs PM Review`** because Peer Feedback carries the `VISION.md:67` contention
-(issue #380, filed, not actioned). Non-blocking.
+(`#380`, filed, not actioned). Non-blocking.
 
 ### What this session did
 
-Fifteen commits, `0e55946..HEAD`. The load-bearing ones:
+**24 commits, `0e55946..HEAD`.** The load-bearing ones:
 
 | commit | what |
 | :--- | :--- |
 | `9f292f0` | `#387` + `#388` — one `schema_gate` both read verbs call |
 | `95d56cc` | `#390` + `#397` — an operand that names no filter refuses |
 | `9cc6185` | `#386` — placeholders substitute only at declared offsets |
-| `19c6c5e` `22c1980` `6997468` | verify record, blueprint update, map restamp |
-| `b22b68b` `ff1cd5c` `15d0556` | issues filed, ordinals realized, five closed |
-| `da7bd34` `0d7c820` | `#391` deleted; `#393` swept across the whole group |
-| `c768186` `a3b9b94` | two closed with resolutions, `#401` filed and realized |
+| `da7bd34` | `#391` — the callerless `is_filter_token` deleted |
+| `0d7c820` | `#393` — 34 spec/finding citations swept from six scripts |
+| `74a91d2` | `#395` — the index judges the scalar its rows carry |
 | `0197d67` | `remediation.md`'s steps-1+2 claim corrected |
+| `0981ae0` `9b67756` | blueprint invariant 15 added; map restamped |
+| `34fe1a1` `46d8908` | `#402` filed; `#374` extended |
 
-**Closed:** `#386`, `#387`, `#388`, `#390`, `#391`, `#393`, `#397`. Each carries
-a resolution note that says what fixed it, what pins it, and — for `#387` and
-`#393` — what remains open. Read those notes before re-deriving the fixes.
+**Closed (8):** `#386`, `#387`, `#388`, `#390`, `#391`, `#393`, `#395`, `#397`.
+Each carries a Resolution note written to be read after the fact rather than to
+justify a commit — they hold the reproduction evidence. Read them before
+re-deriving anything about the fixes.
 
-**Filed:** `#399` (schema gate misses a partly converted collection, medium),
-`#400` (SKILL.md inlines title and origin into the emitter command line,
-critical) — both from the living-intent sensor, not the review — and `#401`
-(~58 spec/finding citations in three scripts outside this group, plus the
-missing mechanical check that let them accumulate, medium).
+**Filed (4):** `#399` (schema gate misses a partly converted collection,
+medium), `#400` (SKILL.md inlines title and origin into the emitter command
+line, **critical**), `#401` (~58 spec/finding citations in three scripts outside
+this group, plus the missing mechanical check, medium), `#402` (declared
+vocabularies span scripts, **high**).
 
-**Raised:** `#374` to high, with a section recording that the face undercount
-accumulates in ledger history rather than merely displaying.
+**Raised:** `#374` to high, twice extended — the face-counter undercount banks
+into ledger history, and it now blocks the reconcile's derivation outright.
 
 ### What remains, in `remediation.md`'s order
 
-- **Step 5** — `#392`, `#395`, `#389`. Real, small, none urgent. `#392` has the
-  neatest fix: trim around the delimiters rather than around the whole value,
-  which keeps `high, critical` working and leaves `" alice"` intact.
+- **Step 5, rest** — `#392` and `#389`. `#395` is done. **`#392` has a live
+  interaction; see § 4 before starting it.**
 - **`#396`** as the surrounding code is next touched, except its fifth item.
 - **`#394` and `#398` last, and deliberately.** Neither is a defect today.
-- Outside the remediation: `/jim:arch` (see § 5), and `#401`, which the step-4
-  sweep uncovered. The `remediation.md` correction in § 4 is done; the
-  `faces=23` undercount is `#374`'s to fix, in the script.
+- Outside the remediation: `/jim:arch` (§ 5), `#401`, `#402`, and `#374` —
+  which now gates the blueprint surface, not just a counter.
+
+Also open against this spec dir and never part of the remediation's thirteen:
+`#380`–`#385` (VISION amendment, graph-edge slug narrowing, filter negation,
+origin grouping, ROADMAP staleness, sort/group by the new fields).
 
 ### Where this sits in the larger arc
 
@@ -101,27 +103,26 @@ Reading this document is not enough. Ground it in the artifacts, in this order
 — the first three are short and change how the rest reads.
 
 1. **`remediation.md`** § *Suggested remediation* → *Order*, and § *What not to
-   do*. Steps 1–4 are done; the rest of the order stands. Its steps-1+2 claim
-   was wrong and is now corrected — § 4 records what it said and how.
+   do*. Steps 1–4 are done and step 5 is part-done; the rest of the order
+   stands. Its steps-1+2 claim was wrong twice over and is now corrected — § 4
+   records what it said and how.
 2. **`retrospective.md`** § *Root cause: one set, three enumerations* — the
-   single most useful page here, and the reason the fixes took the shape they
-   did.
-3. **The seven closed issues' Resolution sections** — `#386`, `#387`, `#388`,
-   `#390`, `#391`, `#393`, `#397`. Written to be read after the fact rather
-   than to justify a commit; they carry the reproduction evidence.
-4. **`docs/specs/issue/000-blueprint/spec.md`** — the group's invariants. Two
-   changed this session (§ 4). This is the specification the code answers to.
-5. **`BLUEPRINT.md`** — the project map: the four groups, their territories,
-   and the derived contract graph. Read it to see where `issue` sits and what
-   depends on its face before changing anything the other groups consume.
+   single most useful page here, and the reason every fix took the shape it did.
+   It is still predicting findings: `#402` is that shape one file boundary out.
+3. **The eight closed issues' Resolution sections** — `#386`, `#387`, `#388`,
+   `#390`, `#391`, `#393`, `#395`, `#397`.
+4. **`docs/specs/issue/000-blueprint/spec.md`** — the group's 15 invariants.
+   Three changed across this session (§ 4). This is what the code answers to.
+5. **`BLUEPRINT.md`** — the project map: four groups, their territories, and the
+   derived contract graph. Read it to see where `issue` sits and what depends on
+   its face. **Its Contract Graph is stale-by-design right now** — see § 3.
 6. **`review.md`** § *Findings* and § *Living intent* — the evidence behind each
    issue, with `file:line` anchors.
-7. **`spec.md`** § *Acceptance Criteria* — five were partial; three of those
-   are now satisfied. The remaining two cite Finding 6 (`#392`) and Finding 9
-   (`#394`), neither of which the remediation has reached.
+7. **`spec.md`** § *Acceptance Criteria* — five were partial; three are now
+   satisfied. The remaining two cite Finding 6 (`#392`) and Finding 9 (`#394`).
 8. The code, in dependency order: `skills/issue/scripts/render.sh` (the whole
-   filter surface), then `index.sh` (the row emitter), then `place.sh` →
-   `place_substitute`.
+   filter surface), then `index.sh` (the row emitter and the scalar judge), then
+   `place.sh` → `place_substitute`.
 
 `plan.md` is worth reading for its Design Decisions, which carry reasoning the
 code comments do not — but it is a **historical** record: two Constitution
@@ -130,123 +131,138 @@ Check rows cite the wrong task numbers, and `review.md` says which.
 ## 3. Facts established by running things
 
 Every one of these was verified in-session by executing it. **Do not re-derive
-them by reading**, and note that two of them contradict what a careful reading
-first suggested.
+them by reading**, and note that several contradict what a careful reading first
+suggested.
 
-### The three fixes, confirmed by probe
+### The fixes, confirmed by probe
 
-- **`#386`.** Probing the wrapper directly settles it. Feed
-  `place.sh run --read --token-at <i> --dir-at -1 -- /usr/bin/env printf '%s\n'
-  --place-token '{token}' list --label --dir '{}' '{}'` and read what the
-  wrapped command receives. Before: **both** `{}` came back as the run's
-  collection path. After: the caller's own `{}` survives verbatim and only the
-  declared trailing slot is filled. Needs a placement-configured repo — this
-  checkout resolves to `direct`, so confirm `place.sh mode` prints `route`
-  first or the repro is inert. The recipe for building one is in
-  `tests/issues.sh`'s `placement_repo`.
-- **`#387` / `#388`.** Against an index whose rows predate the widened row and
-  whose mtime is newest, all four recorded behaviours now refuse: `--claimed-by`
-  and `--filed-by` on either verb, and the `claimed` / `unclaimed` bare words.
-  The refusal names the **row field**, not the axis key.
+- **`#386`.** Feed `place.sh run --read --token-at <i> --dir-at -1 --
+  /usr/bin/env printf '%s\n' --place-token '{token}' list --label --dir '{}'
+  '{}'` and read what the wrapped command receives. Before: **both** `{}` came
+  back as the run's collection path. After: the caller's own `{}` survives
+  verbatim and only the declared trailing slot is filled. Needs a
+  placement-configured repo — this checkout resolves to `direct`, so confirm
+  `place.sh mode` prints `route` first or the repro is inert. The recipe for
+  building one is `tests/issues.sh`'s `placement_repo`.
+- **`#387` / `#388`.** Against an index whose rows predate the widened row, all
+  four recorded behaviours refuse: `--claimed-by` and `--filed-by` on either
+  verb, and the `claimed` / `unclaimed` bare words. The refusal names the **row
+  field**, not the axis key.
 - **`#390` / `#397`.** `--label ,,,` and `--label '   '` refuse instead of
   matching everything; `--label --nosuchflag` refuses; `--filed-by -alice` is
   still carried, because the boundary is one hyphen versus two.
+- **`#395`.** `status: "closed<0x01>"` produced `- Open: 1` three lines above a
+  row reading `status: closed`, with `stats` answering `Open: 0 · Closed: 1`.
+  The count was one of **three** sites: the same raw value reached both
+  vocabulary checks, so `type: "issue<0x01>"` warned `unrecognized type: issue`
+  — printing the value it had not judged.
 
-### The mixed-collection defect (`#399`) — the one the fixes did not close
+### `jimverify.sh faces` cannot be used to derive the graph (`#374`)
 
-`schema_gate` detects staleness from a **single witness**: one row carrying a
-`type` satisfies it for the whole index. Reproduced by executing it:
+The most consequential thing learned this session, and it changes how the
+blueprint surface must be operated.
 
 ```
-- `20260101-alpha` — Alpha · … · type: issue · filed-by: dev@example.test
-- `20260102-bravo` — Bravo · …                       (legacy: no type)
-
-render.sh list --type issue <dir>   ->  1 of 2 records, rc 0, no disclosure
+jimverify.sh faces docs/specs/sdlc/000-blueprint/spec.md  →  8 requires, 0 provides
 ```
 
-This is the collection's **ordinary steady state**, not an edge case: the
-schema conversion is opt-in and nothing forces it. The premise is pre-existing
-— it came from the original build — but this increment carried it to `stats`,
-to `held`, and to columns. `#399` has the full analysis.
+sdlc's Provides section has **five** entries. Two exact parse rules produce
+this, both measured:
 
-### The face-counter undercount (`#374`, already filed)
+- **Provides:** a slug is derived only from a **leading backticked token**. An
+  entry opening with bold yields nothing. Per group: sdlc 5→0, blueprint 9→8,
+  issue 12→10, platform 6→5. Total 32 declared, 23 reported.
+- **Requires:** **one dotted key per bullet**. Three bullets declare two
+  dependencies each (`` `platform.jimconf-cli` / `platform.jimfile-cli` ``, and
+  `` `issue.emitter` + `issue.candidate-batch-contract` `` in two blueprints),
+  so 26 declared requirements report as 23.
 
-`jimverify.sh faces-aggregate` counts only `` - ` ``-prefixed Provides entries
-and silently drops every `- **Bold**` one. Backtick-only across the four groups
-sums to exactly the 23 the verb reports; the true total is 32, and **sdlc's
-entire face measures as zero**. `#374`'s Census section carries the full table
-plus a requires-side failure this session did not detect.
+**Operational consequence:** a reconcile that re-derives from this verb reads
+sdlc as declaring nothing and fabricates a leak against every `sdlc.personas`
+requirement. This session's reconcile carried the persisted 26-edge table
+forward and restamped instead — safe only because the run changed no face. A run
+that *moves* a face has no such escape. `#374` now records this.
 
-**A trap that follows from it:** a `grep -cE '^- \`'` over a Provides section
-undercounts the same way. That pattern nearly produced a false `leak` finding
-against sdlc during the reconcile. Match `^- (\`|\*\*)`.
+**The trap that follows:** `grep -cE '^- \`'` over a Provides section
+undercounts the same way and nearly produced a false `leak` by hand. Match
+`^- (\`|\*\*)`.
 
 ### Other verified facts
 
-- **A single grep understates the citation class** (`#393`, now closed). The
-  issue reported eight citations in `render.sh`; two had already been rewritten
-  by the three preceding fixes, and the 28 that mattered were in the siblings —
-  `index.sh` 10, `new.sh` 7, `migrate.sh` 6, `backfill.sh` 5, `reconcile.sh` 3.
-  One id escaped the first pattern entirely: `new.sh` spelled it `spec-017`
-  with a hyphen. Two shapes are false positives and must be excluded — `cut -f1`
-  matches a bare `F<n>`, and a bare `#<n>` matches `"close issue #5"` in
-  `place.sh` and the legitimate `settled #N` in `render.sh`.
-- **`mktemp` + `mv` clobbers file permissions.** The sweep's applier stripped
-  the exec bit from three scripts and dropped three more to `0600`. `git diff
-  --summary` names it (`mode change 100755 => 100644`); a comment-only diff
-  carrying one is easy to wave through.
-- **The aggregate suite is 1617 green** (`skills/meta-test/scripts/run.sh`),
-  up from 1608 at the session's start: +9 cases, all looping declared
-  constants rather than sampling.
+- **The pre-existing row-forgery test.**
+  `case_issues_index_row_new_scalars_are_sanitized` already fed
+  `type: "issue · status: closed"` and `outcome: "done · num: 999"` through the
+  row and asserted five separators and zero control bytes. It was there before
+  `#395`. The new
+  `case_issues_index_classified_scalars_cannot_forge_a_row_field` adds `status`
+  (the old fixture uses a plain `status: open`), per-field isolation, and a
+  domain read from `index.sh`'s own declarations.
+- **`row_safe` is the index's cost centre** — three processes a call, ~11 calls
+  a record, most of the ~41s a 402-record regeneration takes. Applying it at
+  both the read and the emission site took that to 52s; the committed shape is
+  flat. Not filed — recorded in `#395`'s resolution.
+- **A regeneration of the real collection is byte-identical** after `#395`. The
+  numbers move only for a collection holding a control byte in a judged scalar.
 - **`migrate identity --from --nosuchflag --to <addr>` ran the remap at rc 0**
-  before `95d56cc` — a live defect on a write path, found by extending the
-  render-side fix to the sibling the SYNC marker binds. It was not filed
-  separately because the fix and its test landed in the same commit.
+  before `95d56cc` — a live write-path defect found by extending the render-side
+  fix to the sibling the SYNC marker binds.
 
 ## 4. Decisions whose reasoning lives only here
 
-- **`remediation.md`'s claim about steps 1+2 was wrong twice over, and is
-  now corrected.** It read "clear both blueprint violations and four of the
-  five partial ACs, and let the plan be marked complete honestly". Steps 1+2
-  clear one violation (`staleness-gated-reads`) and **three** partial ACs;
-  `#386` is `placeholder-by-position`, the second violation, and the plan's
-  gate needed step 3. The count error was found by mapping the five partial
-  ACs back to their findings — 1, 3, 2, 6, 9 — which steps 1+2 cover only
-  three of. The previous `context.md` repeated the first error and inherited
-  the second.
-- **Two blueprint invariants changed, both additive.**
-  `placeholder-by-position` was **strengthened**, not folded: the code no longer
-  implements the "flag's operand or trailing argument" mechanism the invariant
-  described, it implements a strictly narrower one, and a judge independently
-  characterized the code as stronger than the rule. A new row,
-  `declared-vocabularies`, records the property whose absence produced the
-  enumeration defects. Neither is a downgrade; no Provides entry was touched,
-  so no blast-radius grounding was needed.
-- **`#386` was fixed by having callers declare placeholder positions**, the
-  first of the three shapes its issue proposed, rather than by narrowing the
-  inference or pushing the rule onto every parser. It cost a sweep across both
-  test files — 116 invocations now declare their offsets — and that churn *is*
-  the point: substitution follows a statement rather than a convention, and a
-  caller whose arithmetic drifts is told on its first run. An earlier issue
-  (`#270`) proposed passing dir and token through the environment instead; that
-  was not taken, because each entry script needs the value in a specific argv
-  slot.
+- **`#392` collides with the `#390` fix. Settle this before starting it.**
+  `filter_axis_add` is the function step 2 changed to refuse an operand that
+  yields no alternative, and the edge trim is what makes that work.
+  `case_issues_render_operand_naming_no_alternative_refuses` loops
+  `',,,'  '   '  ','  ' , '` and asserts every one of them is
+  refused. Drop the edge trim to keep `" alice"` reachable and `'   '` becomes a
+  non-empty value — recorded as an alternative, matching nothing instead of
+  refusing. `,,,` still refuses; whitespace-only no longer does. The
+  delimiter-only trim needs an explicit decision about whitespace-only operands
+  or it quietly undoes half of `#390`.
+- **`#395` dropped the emission-site sanitizer rather than adding a second
+  pass**, and the reason is measured, not aesthetic: `status`/`outcome`/`type`
+  have one assignment site each, fed by the sanitized value, so re-applying an
+  idempotent transform on the hot path costs 11 seconds a regeneration and buys
+  a guarantee a test already held.
+- **Three blueprint invariants changed across the session, all additive.**
+  `placeholder-by-position` was **strengthened**, not folded — the code
+  implements a strictly narrower mechanism than the invariant described.
+  `declared-vocabularies` was added, recording the property whose absence
+  produced the enumeration defects. `row-shape-is-the-writers` was added for the
+  row-forgery property `row_safe`'s header already argued but no invariant
+  named. No Provides entry was ever touched, so no blast-radius grounding
+  applied.
+- **`#402` resolved `fix the code`, not `fold the intent`.** The judge returned
+  `partial` on `declared-vocabularies` because `ISSUE_OUTCOMES` is declared in
+  both `index.sh` and `transition.sh`, and one type vocabulary wears two names
+  (`ISSUE_TYPES`, `TYPE_TOKENS`) — no SYNC marker on any of the four, no test
+  comparing any pair. Folding would encode a regression as intent. **The
+  duplication predates the range**; it reached the fork because judges are
+  selected by what a change touches, not by what introduced the finding.
+- **`remediation.md` was wrong twice in one sentence, now corrected.** It read
+  "clear both blueprint violations and four of the five partial ACs". Steps 1+2
+  clear **one** violation (`staleness-gated-reads`) and **three** partial ACs.
+  `#386` is the second violation. The count error came from never mapping the
+  five partial ACs back to their findings — 1, 3, 2, 6, 9, of which steps 1+2
+  cover three.
+- **`#386` was fixed by having callers declare placeholder positions** — the
+  first of three shapes its issue proposed. It cost a sweep across both test
+  files, 116 invocations, and that churn *is* the point: substitution follows a
+  statement rather than a convention. `#270` proposed passing dir and token
+  through the environment instead; not taken, because each entry script needs
+  the value in a specific argv slot.
 - **A column that cannot be answered refuses rather than disclosing.** One rule
   for both surfaces. `remediation.md` leaned the other way; the developer chose
-  refusal. A *configured* `issue_list_cols` still degrades, which is the split
-  the file already makes between this run's explicit ask and a standing setting.
+  refusal. A *configured* `issue_list_cols` still degrades.
 - **`migrate.sh`'s boundary test was retuned, overriding a documented prior
-  decision.** `case_migrate_identity_option_shaped_values_are_still_accepted`
-  warned in its own comment against exactly the tightening that was applied.
-  It was retuned (and renamed) on `remediation.md`'s reasoning that the original
-  rationale covered addresses wearing *one* leading hyphen, not two. The
-  rewritten comment states the narrowed boundary and why. Reversible.
-- **`faces=23` was recorded on the ledger verbatim** although it is known to be
-  an undercount. Substituting a hand count would break comparability with every
-  prior event and violate the rule that counters are script-emitted. The number
-  is wrong; correcting it belongs in the script.
-- **The axis alternatives are newline-separated, not space-separated as the
-  plan's Interface Contract specifies.** A deliberate deviation, recorded in
+  decision** whose own comment warned against exactly that tightening. Retuned
+  on the reasoning that the original rationale covered addresses wearing *one*
+  leading hyphen, not two. Reversible.
+- **`faces=23` is recorded on the ledger verbatim** although known to be an
+  undercount. Substituting a hand count would break comparability and violate
+  the rule that counters are script-emitted. Correcting it belongs in `#374`.
+- **The axis alternatives are newline-separated, not space-separated** as the
+  plan's Interface Contract specifies. A deliberate deviation, recorded in
   `review.md` § *vs. Plan tasks*. Do not "restore" the contract's letter.
 - **`--cols` and `unblocked` were explicit additions the developer pulled into
   scope** after they had been proposed as out of it. Not scope creep to trim.
@@ -254,65 +270,67 @@ against sdlc during the reconcile. Match `^- (\`|\*\*)`.
 ## 5. Traps and environment
 
 - **Read the configuration; do not trust any transcription of it.** Every gate
-  and cap lives in `jimconf.toml`, and they were changed mid-session in a
-  previous run. `bash skills/conf/scripts/jimconf.sh get <key>` is the answer.
+  and cap lives in `jimconf.toml`. `bash skills/conf/scripts/jimconf.sh get
+  <key>` is the answer.
+- **`mktemp` + `mv` clobbers file permissions.** A sweep this session stripped
+  the exec bit from three scripts and dropped three more to `0600`. `git diff
+  --summary` names it (`mode change 100755 => 100644`); a comment-only diff
+  carrying one is easy to wave through.
 - **Editing these scripts by line number is fragile.** `place.sh`'s `cmd_commit`
-  was corrupted this session by an off-by-one range delete that removed the
-  wrong line and left a dangling fragment. Anchor on a unique literal, guard
-  for an empty match, verify the anchor is unique *first*, and `bash -n` after
-  every edit. A `case` arm pattern that appears in two functions will match both.
-- **Test timings, and they are worse under load.** `bash tests/issues.sh` is
-  ~171s for ~390 cases alone, but exceeded 400s while the aggregate was also
-  running — run one at a time. The aggregate is **~35 minutes** for its 1617
-  cases, not the ten minutes an earlier note here estimated; background it and
-  expect several foreground waits to time out before it reports.
-  `transition.sh close` costs ~45s per issue because it regenerates the index
-  over ~400 records, so closing five does not fit in one foreground call.
+  was corrupted by an off-by-one range delete. Anchor on a unique literal, verify
+  the anchor is unique *first*, and `bash -n` after every edit. A `case` arm
+  pattern that appears in two functions matches both.
+- **Test timings.** `bash tests/issues.sh` is ~171s for ~393 cases. The
+  aggregate is **~35 minutes** for 1620 — expect several foreground waits to
+  time out before it reports; background it. `transition.sh close` costs ~45s
+  per issue because it regenerates the index over ~400 records.
 - **New test cases splice in before the standalone-runnable tail block** at the
   end of `tests/issues.sh`. There is also a *comment* block with a similar name
   mid-file — that one is prose, not the tail.
-- **`/jim:blueprint --since` takes `<ref> <group>`, not a range.** Passing
-  `0e55946..HEAD` with no group silently reads as the wrong mode. The verify
-  engine's `--since` also **skips the registry rung entirely** — say so when
-  reporting, rather than letting it read as covered.
-- **The coordination remote is unreachable from this VM.** Filing returns a
-  `P-` provisional identity; the developer realizes it on the host via
-  `/jim:issue reconcile`. Nothing is pending right now — expect any new filing
-  to be provisional again.
+- **`/jim:blueprint --since` takes `<ref> <group>`, not a range.** The verify
+  engine's `--since` also **skips the registry rung entirely**; say so when
+  reporting rather than letting it read as covered. All 15 invariants are
+  `judge` method, so the mechanical floor produces no invariant outcomes at all
+  — only territory-conformance facts.
+- **The `docs/issues/` collection reads as outside the group's territory.** That
+  is correct: it is the data the group operates on, not group source. Report it
+  bucketed-informational, never as a stray.
+- **The coordination remote is unreachable from this VM.** Filing returns a `P-`
+  provisional identity; the developer realizes it on the host via `/jim:issue
+  reconcile`. Nothing is pending right now — expect any new filing to be
+  provisional again.
 - **`issue_placement` resolves to `branch` by default but `place.sh mode` prints
-  `direct` in this checkout.** Both are true. Check `mode`, not the config key.
-- **Never hand-edit `ARCHITECTURE.md`.** It is maintained through `/jim:arch`.
-  It currently describes placeholder substitution as whole-argument matching —
-  true, but now incomplete, since substitution is position-declared. That
-  refresh is outstanding and is a `/jim:arch` job, not an edit.
+  `direct` in this checkout.** Check `mode`, not the config key.
+- **Never hand-edit `ARCHITECTURE.md`.** It currently describes placeholder
+  substitution as whole-argument matching — true, but now incomplete, since
+  substitution is position-declared. That refresh is a `/jim:arch` job.
 - **The Bash tool's working directory persists between calls.** Prefer absolute
   paths or `cd /mnt/src/jim && …`.
 - **Do not push.** Git push is host-only from this sandbox.
 
 ## 6. If you are picking up from here
 
-**The plan can now be closed honestly.** All three gating issues (`#386`,
-`#387`, `#390`) are fixed, their tests pin them, the suite is green at 1617,
-and the living-intent sensor was re-run against the fixes rather than against
-the original build. Both blocking gates were satisfied — `review.md` exists and
-the blueprint update ran to completion with its fork answered. Marking
-`plan.md` `status: complete` is a single question to the developer, and nothing
-needs re-running unless you judge a fresh review worthwhile.
+**The plan can be closed honestly.** All three gating issues are fixed, their
+tests pin them, the suite is green at 1620, and the living-intent sensor has now
+been run twice against the fixes rather than the original build. Marking
+`plan.md` `status: complete` is a single question to the developer.
 
-Three things worth carrying while you work, all from `retrospective.md` and all
-re-confirmed this session:
+Four things worth carrying, all re-confirmed this session:
 
-- **Fix the shared cause, not the instance.** Every pair in this remediation was
-  one enumeration short of one rule. Step 4 confirmed it again: `#393` named
-  one file and 82% of the work was in the other five, and the census past the
-  group's edge found ~58 more plus the missing check that let them accumulate.
-  Take the same reading of what is left.
-- **Derive test domains from the code's own constants.** The new cases loop
-  `AXIS_FIELDS`, `COL_TOKENS`, `RENDER_OPTIONS` and `SCHEMA_GATED_FIELDS`, and
-  fail on a declared axis they have no query for — so a new axis cannot enter
-  the grammar without entering the guard's test. Extend that, don't sample.
+- **Fix the shared cause, not the instance.** Step 4 confirmed it again: `#393`
+  named one file and 82% of the work was in the other five. `#395` reported one
+  count and was three classification sites. Take the same reading of what is
+  left.
+- **Derive test domains from the code's own constants.** The cases loop
+  `AXIS_FIELDS`, `COL_TOKENS`, `RENDER_OPTIONS`, `SCHEMA_GATED_FIELDS`, and now
+  `index.sh`'s `ISSUE_*` vocabularies, failing on a declared member with no
+  mapping — so a new one cannot enter the code without entering the guard's
+  test. Extend that, don't sample.
 - **Reading finds what is missing; running settles why.** Independent judges
-  found `#399` and `#400` by reading. Execution is what confirmed the mechanism
-  of `#399` and what caught a `grep` pattern that would have filed a false
-  finding. Neither substitutes for the other, and a green suite distinguished
-  neither.
+  found `#399`, `#400` and `#402` by reading. Execution confirmed `#399`'s
+  mechanism, measured the 41s→52s cost that shaped `#395`, and caught a `grep`
+  pattern that would have filed a false finding. A green suite distinguished
+  none of them.
+- **Check the issue collection before reporting a measurement as new.** Twice
+  this session a "new" finding about `#374` was already in its Census section,
+  written the day before. Read the issue, then measure.
