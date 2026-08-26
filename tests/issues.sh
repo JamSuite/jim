@@ -8000,6 +8000,121 @@ case_issues_render_list_refuses_unanswerable_axis() {
   assert_match "the record"  'Alpha' "$OUT"
 }
 
+# render_vocabulary <constant> — the elements render.sh declares for one of its
+# readonly vocabularies, one per line. A case's domain comes from the code's own
+# declaration rather than from a list retyped here, so an entry added to the
+# constant enters every case that loops over it — which a hand-picked sample
+# never does.
+render_vocabulary() {
+  awk -v pfx="readonly $1=(" '
+    substr($0, 1, length(pfx)) == pfx { inside = 1; $0 = substr($0, length(pfx) + 1) }
+    inside {
+      if (match($0, /\)/)) { print substr($0, 1, RSTART - 1); exit }
+      print
+    }
+  ' "$SCRIPT_RENDER" | tr -s '[:space:]' '\n' | grep -v '^$'
+}
+
+# axis_query <axis> — a minimal query naming one axis, in that axis's own
+# syntax, one argument per line. Every axis the grammar declares needs an entry
+# here: a case looping the vocabulary fails on an axis without one, so an axis
+# cannot enter the grammar without also entering these cases.
+axis_query() {
+  case "$1" in
+    status)     printf '%s\n' open ;;
+    priority)   printf '%s\n' high ;;
+    type)       printf '%s\n' --type issue ;;
+    label)      printf '%s\n' --label auth ;;
+    epic)       printf '%s\n' --epic 20260101-alpha ;;
+    filed-by)   printf '%s\n' --filed-by dev@example.test ;;
+    claimed-by) printf '%s\n' --claimed-by dev@example.test ;;
+    spec)       printf '%s\n' --spec issue/011 ;;
+    origin)     printf '%s\n' --origin docs ;;
+    held)       printf '%s\n' unclaimed ;;
+    blocked)    printf '%s\n' blocked ;;
+  esac
+}
+
+# AC: when a filter names an axis the collection's index does not describe, the
+# view says so and fails, rather than reporting that nothing matched — on every
+# axis the grammar accepts and on both read verbs. The census shares the parser,
+# the matcher and the row reader with the list view, so it shares this too: a
+# rollup that answers confidently from an index it knows cannot answer is the
+# same wrong answer one surface out.
+case_issues_render_unanswerable_axes_refuse_on_both_verbs() {
+  local dir
+  dir=$(empty_dir render_unanswerable_axes)
+  person_fixture "$dir"
+  run_index "$dir"
+  strip_new_scalars "$dir/INDEX.md"
+
+  local gated pair axis field verb axis_count=0
+  local -a q=()
+  gated=" $(render_vocabulary SCHEMA_GATED_FIELDS | tr '\n' ' ')"
+  assert_match "the gated field set was read from the code" 'type' "$gated"
+
+  while read -r pair; do
+    axis="${pair%%:*}"; field="${pair#*:}"
+    (( axis_count++ ))
+    mapfile -t q < <(axis_query "$axis")
+    if (( ${#q[@]} == 0 )); then
+      CURRENT_FAILED=1
+      echo "    [render.sh declares axis '$axis' but axis_query has no query for it]"
+      continue
+    fi
+    for verb in list stats; do
+      run_render "$verb" "${q[@]}" "$dir"
+      if [[ "$gated" == *" $field "* ]]; then
+        assert_exit  "$verb $axis refuses"       1 "$RC"
+        assert_match "$verb $axis names its field" "does not describe:.*(^| )$field( |\$)" "$ERR"
+        assert_match "$verb $axis names the remedy" 'index\.sh' "$ERR"
+      else
+        assert_exit  "$verb $axis still answers" 0 "$RC"
+      fi
+    done
+  done < <(render_vocabulary AXIS_FIELDS)
+
+  # An empty domain would pass every assertion above without exercising
+  # anything, which is the failure this case exists to rule out.
+  assert_match "the axis vocabulary was read from the code" '^[1-9][0-9]*$' "$axis_count"
+}
+
+# AC: a column naming a field the index does not describe refuses on the same
+# rule as a filter naming it. A filter the index cannot answer makes the whole
+# result wrong and a column it cannot fill leaves one cell blank, but both are
+# the view failing to say it could not look — so both refuse, and the operator
+# gets the same one-command repair either way.
+case_issues_render_unanswerable_column_refuses() {
+  local dir cwd col gated
+  dir=$(empty_dir render_unanswerable_cols)
+  person_fixture "$dir"
+  run_index "$dir"
+  strip_new_scalars "$dir/INDEX.md"
+
+  gated=" $(render_vocabulary SCHEMA_GATED_FIELDS | tr '\n' ' ')"
+  assert_match "the gated field set was read from the code" 'type' "$gated"
+  while read -r col; do
+    run_render list --cols "$col" "$dir"
+    if [[ "$gated" == *" $col "* ]]; then
+      assert_exit  "--cols $col refuses"      1 "$RC"
+      assert_match "--cols $col names itself" "does not describe:.*(^| )$col( |\$)" "$ERR"
+    else
+      assert_exit  "--cols $col still answers" 0 "$RC"
+    fi
+  done < <(render_vocabulary COL_TOKENS)
+
+  # A standing setting degrades where this run's explicit ask refuses. The two
+  # fail differently on a column the vocabulary rejects, and they fail
+  # differently here for the same reason: a configured default that made the
+  # collection unreadable would be a setting no view could get past.
+  cwd=$(empty_dir render_unanswerable_cols_cwd)
+  printf 'issue_list_cols = "num,claimed-by"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit  "a configured column still serves the view" 0 "$RC"
+  assert_match "and the rows are there"  '#1'    "$OUT"
+}
+
 # ─── Section: render.sh — the origin axes ────────────────────────────────────
 
 # origin_fixture <dir> — issues whose origins span a spec's several artifacts,

@@ -77,6 +77,24 @@ readonly TYPE_TOKENS=(issue epic)
 readonly HELD_TOKENS=(claimed unclaimed)
 readonly BLOCKED_TOKENS=(blocked unblocked)
 
+# The row fields an index that fails the schema check does not carry, and the
+# set every rule about what such an index cannot answer quantifies over. The
+# check keys on `type`, so a row schema that gains a field records it here and
+# both the axis half of the guard and the column half pick it up.
+readonly SCHEMA_GATED_FIELDS=(type filed-by claimed-by outcome)
+
+# Every filter axis, paired with the row field it reads. This is the axis
+# vocabulary: the set the flag parser dispatches over — spelled there with the
+# leading `--` that RENDER_OPTIONS declares — and the set any guard asking
+# whether an index can answer an axis iterates. Pairing the field with the name
+# is what makes `held` answerable: it reads `claimed-by` under a key of its own,
+# and a guard listing axis names alone reads straight past that. `epic` and
+# `blocked` are derived from the index's Graph section rather than from a row
+# field, and carry `-` to say so.
+readonly AXIS_FIELDS=(status:status priority:priority type:type label:labels
+                      epic:- filed-by:filed-by claimed-by:claimed-by
+                      spec:origin origin:origin held:claimed-by blocked:-)
+
 # ─── Section: Shared helpers ─────────────────────────────────────────────────
 
 # resolve_dir <arg> — arg first, jimconf fallback, trailing-slash strip.
@@ -235,8 +253,8 @@ filter_axis_add() {
 #   leave what is left for the caller. Populates three globals:
 #
 #     FILTER_AXIS[<axis>]  newline-separated alternatives, one entry per axis
-#                          named: status priority type label epic filed-by
-#                          claimed-by spec origin held blocked
+#                          named. AXIS_FIELDS declares which those are, and
+#                          is the only place they are enumerated.
 #     FILTER_COLS          the ad-hoc column selection, or empty
 #     FILTER_RESIDUE       what is not a filter — at most one word, and only
 #                          ever the trailing one, which is where a collection
@@ -260,11 +278,6 @@ parse_filters() {
   while (( $# )); do
     a="$1"
     case "$a" in
-      --status|--priority|--type|--label|--epic|--filed-by|--claimed-by|--spec|--origin)
-        v="$(need_operand "$a" "$#" "${2:-}")" || return 1
-        filter_axis_add "${a#--}" "$v"
-        shift 2
-        ;;
       --cols)
         v="$(need_operand "$a" "$#" "${2:-}")" || return 1
         IFS=',' read -ra carr <<< "$v"
@@ -279,9 +292,18 @@ parse_filters() {
         shift 2
         ;;
       --*)
-        echo "error: unknown filter flag: $(token_safe "$a")" >&2
-        echo "       flags are one of: ${RENDER_OPTIONS[*]}" >&2
-        return 1
+        # The axis flags are not spelled out again here. RENDER_OPTIONS already
+        # declares them and every one but --cols names an axis, so membership is
+        # the whole dispatch — a second list is a second place for the grammar
+        # and its own refusal message to fall out of step.
+        if ! in_list "$a" "${RENDER_OPTIONS[@]}"; then
+          echo "error: unknown filter flag: $(token_safe "$a")" >&2
+          echo "       flags are one of: ${RENDER_OPTIONS[*]}" >&2
+          return 1
+        fi
+        v="$(need_operand "$a" "$#" "${2:-}")" || return 1
+        filter_axis_add "${a#--}" "$v"
+        shift 2
         ;;
       *)
         if   in_list "$a" "${STATUS_TOKENS[@]}";   then filter_axis_add status   "$a"
@@ -434,6 +456,55 @@ read_graph_edges() {
   ' "$index_file")
 }
 
+# schema_gate <dir> <seen-rows> <saw-type> [<cols-csv>]
+#   Refuse the read when the index cannot answer what the query asked of it,
+#   naming every row field it lacks and the one-command repair. A field rather
+#   than an axis key, because the second line of the message calls them fields
+#   and because `held` is a key an operator never types — the field it reads is.
+#   Returns 0 when the index can answer, having said nothing.
+#
+#   An index written before the row carried the late fields can be newer than
+#   every issue file, so the staleness gate reuses it and every axis reading
+#   them matches nothing. That is a true statement about the index and a false
+#   one about the collection, and the two are indistinguishable to a reader.
+#
+#   The condition needs no schema stamp and no version marker: `type` is
+#   non-empty on every record the current schema produces, so rows that exist
+#   while none carries one identify the older index on their own.
+#
+#   Both read verbs ask this, so they ask it in one place — a census that
+#   answered confidently from an index it knows cannot answer is the same wrong
+#   answer as a list that did, one surface out. And it quantifies over the
+#   declared vocabularies rather than over a list of its own: an axis or column
+#   reading a gated field is covered by being declared, not by being remembered.
+schema_gate() {
+  local dir="$1" seen_rows="$2" saw_type="$3" cols_csv="${4:-}"
+  (( seen_rows > 0 && saw_type == 0 )) || return 0
+  local pair axis field c
+  local -a fields=() carr=()
+  local -A named=()
+  for pair in "${AXIS_FIELDS[@]}"; do
+    axis="${pair%%:*}"; field="${pair#*:}"
+    [[ -n "${FILTER_AXIS[$axis]:-}" ]] || continue
+    in_list "$field" "${SCHEMA_GATED_FIELDS[@]}" || continue
+    [[ -n "${named[$field]:-}" ]] && continue
+    named[$field]=1; fields+=("$field")
+  done
+  # A column names its row field directly, so membership is the whole test.
+  IFS=',' read -ra carr <<< "$cols_csv"
+  for c in "${carr[@]}"; do
+    in_list "$c" "${SCHEMA_GATED_FIELDS[@]}" || continue
+    [[ -n "${named[$c]:-}" ]] && continue
+    named[$c]=1; fields+=("$c")
+  done
+  (( ${#fields[@]} )) || return 0
+  echo "error: the index for '$dir' does not describe: ${fields[*]}" >&2
+  echo "       it was written before those fields were recorded" >&2
+  echo "       regenerate it with: bash $INDEX_SCRIPT '$dir'" >&2
+  echo "       if the records themselves predate the schema, convert them first" >&2
+  return 1
+}
+
 # ─── Section: help ───────────────────────────────────────────────────────────
 
 cmd_help() {
@@ -530,7 +601,7 @@ cmd_stats() {
   label_count[__s__]=0;    unset 'label_count[__s__]'
   priority_count[__s__]=0; unset 'priority_count[__s__]'
   matching[__s__]=0;       unset 'matching[__s__]'
-  local open_count=0 closed_count=0
+  local open_count=0 closed_count=0 seen_rows=0 saw_type=0
   local slug num status prio created labels title origin
   local type filed_by claimed_by outcome
   if [[ -n "${FILTER_AXIS[blocked]:-}" || -n "${FILTER_AXIS[epic]:-}" ]]; then
@@ -539,6 +610,8 @@ cmd_stats() {
   while IFS=$'\t' read -r slug num status prio created labels title origin \
       type filed_by claimed_by outcome; do
     [[ -z "$slug" ]] && continue
+    (( seen_rows++ ))
+    [[ "$type" != "-" ]] && saw_type=1
     row_matches || continue
     matching[$slug]=1
     if [[ "$status" == "closed" ]]; then
@@ -561,6 +634,11 @@ cmd_stats() {
       done
     fi
   done < <(read_issue_rows "$index_file")
+
+  # The census reads the same rows through the same reader as the list
+  # view, so it answers the same question about what the index can
+  # describe before it reports a count.
+  schema_gate "$dir" "$seen_rows" "$saw_type" || return 1
 
   scope_line
   printf '  Open: %s · Closed: %s\n\n' "$open_count" "$closed_count"
@@ -1036,29 +1114,11 @@ cmd_list() {
     rows+=("$slug"$'\t'"$num"$'\t'"$status"$'\t'"$prio"$'\t'"$created"$'\t'"$labels"$'\t'"$title"$'\t'"$type"$'\t'"$filed_by"$'\t'"$claimed_by"$'\t'"$outcome")
   done < <(read_issue_rows "$index_file")
 
-  # An index written before the row carried these fields can be newer than
-  # every issue file, so the staleness gate reuses it and every axis reading
-  # them matches nothing. That is a true statement about the index and a false
-  # one about the collection, and the two are indistinguishable to a reader.
-  #
-  # The condition needs no schema stamp and no version marker: `type` is
-  # non-empty on every record the current schema produces, so rows that exist
-  # while none carries one identify the older index on their own. The repair is
-  # a single regeneration.
-  if (( seen_rows > 0 && saw_type == 0 )); then
-    local -a unanswerable=()
-    local ax
-    for ax in type filed-by claimed-by; do
-      [[ -n "${FILTER_AXIS[$ax]:-}" ]] && unanswerable+=("$ax")
-    done
-    if (( ${#unanswerable[@]} )); then
-      echo "error: the index for '$dir' does not describe: ${unanswerable[*]}" >&2
-      echo "       it was written before those fields were recorded" >&2
-      echo "       regenerate it with: bash $INDEX_SCRIPT '$dir'" >&2
-      echo "       if the records themselves predate the schema, convert them first" >&2
-      return 1
-    fi
-  fi
+  # Only this run's explicit column ask is gated, not the resolved set: a
+  # standing setting degrades so a value in it can never make the collection
+  # unreadable, which is the same split the column vocabulary already makes
+  # between a flag that refuses and a configured default that falls back.
+  schema_gate "$dir" "$seen_rows" "$saw_type" "$FILTER_COLS" || return 1
 
   if (( ${#rows[@]} == 0 )); then
     printf '_No matching issues._\n'
