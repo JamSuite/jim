@@ -383,3 +383,16 @@ issue allocate 382 20260825-negation-in-read-view-filters 20260825 jrko
 issue allocate 383 20260825-restore-origin-grouping-in-the-list-view 20260825 jrko
 issue allocate 384 20260825-roadmap-md-has-not-been-refreshed-since-2026-03-16 20260825 jrko
 issue allocate 385 20260825-sort-and-group-read-views-by-the-newly-indexed-fields 20260825 jrko
+issue allocate 386 20260826-blueprint-divergence-placeholder-by-position 20260825 jrko
+issue allocate 387 20260826-blueprint-divergence-staleness-gated-reads 20260825 jrko
+issue allocate 388 20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank 20260825 jrko
+issue allocate 389 20260826-dependency-outside-the-collection-reads-as-unblocked 20260825 jrko
+issue allocate 390 20260826-empty-shaped-filter-operand-silently-matches-everything 20260825 jrko
+issue allocate 391 20260826-is-filter-token-is-dead-code 20260825 jrko
+issue allocate 392 20260826-person-query-is-whitespace-trimmed-before-it-is-compared 20260825 jrko
+issue allocate 393 20260826-render-sh-comments-still-cite-spec-and-finding-ids 20260825 jrko
+issue allocate 394 20260826-spec-prefix-matching-has-no-directory-boundary 20260825 jrko
+issue allocate 395 20260826-statistics-counts-can-disagree-with-the-index-summary 20260825 jrko
+issue allocate 396 20260826-test-coverage-gaps-around-the-new-read-view-surfaces 20260825 jrko
+issue allocate 397 20260826-unrecognized-flag-is-accepted-as-a-flag-s-value 20260825 jrko
+issue allocate 398 20260826-untrusted-values-reach-awk-through-v-in-two-scripts 20260825 jrko
