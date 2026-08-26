@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 144
-- Closed: 256
+- Open: 143
+- Closed: 258
 
 ## Issues
 
@@ -397,11 +397,12 @@
 - `20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank` — Column naming a field the index cannot answer renders it blank · status: closed · num: 388 · priority: medium · created: 2026-08-26T01:36:55Z · labels: [issue, read-views, disclosure] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-dependency-outside-the-collection-reads-as-unblocked` — Dependency outside the collection reads as unblocked · status: open · num: 389 · priority: low · created: 2026-08-26T01:36:56Z · labels: [issue, read-views, graph] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko
 - `20260826-empty-shaped-filter-operand-silently-matches-everything` — Empty-shaped filter operand silently matches everything · status: closed · num: 390 · priority: high · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
-- `20260826-is-filter-token-is-dead-code` — is_filter_token is dead code · status: open · num: 391 · priority: medium · created: 2026-08-26T02:34:19Z · labels: [issue, read-views, cleanup] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
+- `20260826-is-filter-token-is-dead-code` — is_filter_token is dead code · status: closed · num: 391 · priority: medium · created: 2026-08-26T02:34:19Z · labels: [issue, read-views, cleanup] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-person-query-is-whitespace-trimmed-before-it-is-compared` — Person query is whitespace-trimmed before it is compared · status: open · num: 392 · priority: low · created: 2026-08-26T02:34:44Z · labels: [issue, read-views, identity] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
-- `20260826-render-sh-comments-still-cite-spec-and-finding-ids` — render.sh comments still cite spec and finding ids · status: open · num: 393 · priority: low · created: 2026-08-26T01:36:57Z · labels: [issue, hygiene] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko
+- `20260826-render-sh-comments-still-cite-spec-and-finding-ids` — render.sh comments still cite spec and finding ids · status: closed · num: 393 · priority: low · created: 2026-08-26T01:36:57Z · labels: [issue, hygiene] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-schema-gate-misses-a-partly-converted-collection` — Schema gate misses a partly converted collection · status: open · num: 399 · priority: medium · created: 2026-08-26T07:59:55Z · labels: [000-blueprint, verify] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
 - `20260826-skill-md-inlines-title-and-origin-into-the-emitter-command-line` — SKILL.md inlines title and origin into the emitter command line · status: open · num: 400 · priority: critical · created: 2026-08-26T07:59:56Z · labels: [000-blueprint, verify] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
+- `20260826-spec-and-finding-ids-in-comments-outside-the-issue-group` — spec and finding ids in comments outside the issue group · status: open · num: P-20260826-spec-and-finding-ids-in-comments-outside-the-issue-group · priority: medium · created: 2026-08-26T10:25:25Z · labels: [hygiene, conventions, tooling] · origin: docs/specs/issue/014-read-view-filter-composition/remediation.md · type: issue · filed-by: jrko
 - `20260826-spec-prefix-matching-has-no-directory-boundary` — Spec prefix matching has no directory boundary · status: open · num: 394 · priority: low · created: 2026-08-26T02:35:23Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
 - `20260826-statistics-counts-can-disagree-with-the-index-summary` — Statistics counts can disagree with the index summary · status: open · num: 395 · priority: low · created: 2026-08-26T02:34:45Z · labels: [issue, read-views, index] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
 - `20260826-test-coverage-gaps-around-the-new-read-view-surfaces` — Test-coverage gaps around the new read-view surfaces · status: open · num: 396 · priority: low · created: 2026-08-26T02:35:25Z · labels: [issue, tests, read-views] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
@@ -553,6 +554,7 @@
 - `20260826-blueprint-divergence-staleness-gated-reads` --related-to--> `20260826-schema-gate-misses-a-partly-converted-collection`
 - `20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank` --related-to--> `20260826-blueprint-divergence-staleness-gated-reads`
 - `20260826-empty-shaped-filter-operand-silently-matches-everything` --related-to--> `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value`
+- `20260826-render-sh-comments-still-cite-spec-and-finding-ids` --related-to--> `20260826-spec-and-finding-ids-in-comments-outside-the-issue-group`
 - `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value` --related-to--> `20260826-empty-shaped-filter-operand-silently-matches-everything`
 
 ## Integrity Warnings
