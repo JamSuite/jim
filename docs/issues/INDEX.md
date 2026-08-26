@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 143
-- Closed: 259
+- Open: 142
+- Closed: 260
 
 ## Issues
 
@@ -399,7 +399,7 @@
 - `20260826-dependency-outside-the-collection-reads-as-unblocked` — Dependency outside the collection reads as unblocked · status: open · num: 389 · priority: low · created: 2026-08-26T01:36:56Z · labels: [issue, read-views, graph] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko
 - `20260826-empty-shaped-filter-operand-silently-matches-everything` — Empty-shaped filter operand silently matches everything · status: closed · num: 390 · priority: high · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-is-filter-token-is-dead-code` — is_filter_token is dead code · status: closed · num: 391 · priority: medium · created: 2026-08-26T02:34:19Z · labels: [issue, read-views, cleanup] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
-- `20260826-person-query-is-whitespace-trimmed-before-it-is-compared` — Person query is whitespace-trimmed before it is compared · status: open · num: 392 · priority: low · created: 2026-08-26T02:34:44Z · labels: [issue, read-views, identity] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
+- `20260826-person-query-is-whitespace-trimmed-before-it-is-compared` — Person query is whitespace-trimmed before it is compared · status: closed · num: 392 · priority: low · created: 2026-08-26T02:34:44Z · labels: [issue, read-views, identity] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-render-sh-comments-still-cite-spec-and-finding-ids` — render.sh comments still cite spec and finding ids · status: closed · num: 393 · priority: low · created: 2026-08-26T01:36:57Z · labels: [issue, hygiene] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-schema-gate-misses-a-partly-converted-collection` — Schema gate misses a partly converted collection · status: open · num: 399 · priority: medium · created: 2026-08-26T07:59:55Z · labels: [000-blueprint, verify] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
 - `20260826-skill-md-inlines-title-and-origin-into-the-emitter-command-line` — SKILL.md inlines title and origin into the emitter command line · status: open · num: 400 · priority: critical · created: 2026-08-26T07:59:56Z · labels: [000-blueprint, verify] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
