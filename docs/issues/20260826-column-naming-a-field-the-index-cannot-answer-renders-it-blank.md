@@ -2,12 +2,12 @@
 id: 20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank
 num: 388
 title: "Column naming a field the index cannot answer renders it blank"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [issue, read-views, disclosure]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-26T01:36:55Z
-updated: 2026-08-26T01:36:55Z
+updated: 2026-08-26T08:53:47Z
 origin: "docs/specs/issue/014-read-view-filter-composition/plan.md"
 ---
 
@@ -70,3 +70,25 @@ result wrong, while a *column* that cannot be filled makes one column blank and
 leaves the rows correct. Refusing may be too strong — a disclosure line beside
 the view, like the closed-hidden one, may fit the severity better. Either beats
 silence.
+
+## Resolution
+
+Fixed in `9f292f0`, in the same diff as
+[[20260826-blueprint-divergence-staleness-gated-reads]] — the two were one
+enumeration short of one rule, and fixing either alone would have left the
+other looking deliberate.
+
+`schema_gate` takes the query's column selection alongside its axes and applies
+the same membership test: a column names its row field directly, so a selection
+naming a gated field refuses exactly as a filter naming one does. One rule for
+both surfaces, and the operator gets the same one-command repair either way.
+
+The refusal covers this run's explicit `--cols` ask only. A configured
+`issue_list_cols` still degrades and serves the view, which is the split the
+column vocabulary already makes between a flag that refuses and a standing
+setting that falls back — a setting that could make the collection unreadable
+is a setting no view could get past.
+
+Pinned by `case_issues_render_unanswerable_column_refuses`, which loops
+`COL_TOKENS` from the code's own declaration and separately pins the configured
+default's degradation.

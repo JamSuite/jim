@@ -2,12 +2,12 @@
 id: 20260826-blueprint-divergence-placeholder-by-position
 num: 386
 title: "Blueprint divergence: placeholder-by-position"
-status: open
+status: closed
 priority: high
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [000-blueprint, drift]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-26T02:44:32Z
-updated: 2026-08-26T02:44:32Z
+updated: 2026-08-26T08:51:40Z
 origin: "docs/specs/issue/014-read-view-filter-composition"
 ---
 
@@ -102,3 +102,36 @@ increasing strength:
 No test in either suite exercises a caller-supplied value equal to `--dir`; the
 existing coverage tests the wrapper's own hardcoded `--dir` and a directory
 named like a filter value.
+
+## Resolution
+
+Fixed in `9cc6185`, taking the first of the three fix shapes above.
+
+`place.sh run` gains `--dir-at` and `--token-at` — offsets into the wrapped
+command, negative counting from the end. `place_substitute` substitutes at
+those offsets and examines nothing else, and refuses at rc 2 when a declared
+offset is out of range or holds something other than the marker it names. Both
+halves of the old inference are gone: the `--dir` adjacency test and the
+trailing-argument rule.
+
+All six entry scripts declare their own positions. Five append the collection
+last and carry the token fourth (`--token-at 3 --dir-at -1`); `new.sh` appends
+`--dir {} --place-token {token}`, so its markers sit third from the end and
+last (`--dir-at -3 --token-at -1`).
+
+Confirmed by probing the wrapper before and after rather than by reading. The
+argv `… list --label --dir '{}' '{}'` previously came back with both `{}`
+rewritten to the run's collection path; it now returns the caller's own `{}`
+verbatim and fills only the declared trailing slot.
+
+Pinned by `case_place_substitutes_only_at_declared_positions`,
+`case_place_declared_position_must_hold_a_placeholder` and
+`case_place_undeclared_placeholders_are_left_verbatim` in `tests/place.sh`. The
+end-to-end route also carries `case_issues_placement_marker_shaped_argv_reaches_the_parser`
+in `tests/issues.sh`, which pins the composed boundary rather than the wrapper —
+its own comment says so, because it does not go red against a wrapper that
+still infers.
+
+The blueprint invariant was updated to record the stronger rule: the code no
+longer implements the "flag's operand or trailing argument" mechanism the
+invariant described, it implements a strictly narrower one.

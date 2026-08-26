@@ -2,12 +2,12 @@
 id: 20260826-empty-shaped-filter-operand-silently-matches-everything
 num: 390
 title: "Empty-shaped filter operand silently matches everything"
-status: open
+status: closed
 priority: high
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [issue, read-views, filters]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-26T02:34:18Z
-updated: 2026-08-26T02:34:18Z
+updated: 2026-08-26T08:54:30Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
@@ -67,3 +67,26 @@ stored rather than what it was handed.
 Worth deciding deliberately: whether a bare word can reach this state too. It
 cannot today (bare words are matched against fixed vocabularies before they
 reach `filter_axis_add`), so the refusal belongs on the flag path.
+
+## Resolution
+
+Fixed in `95d56cc`, together with the flag-shaped half
+([[20260826-unrecognized-flag-is-accepted-as-a-flag-s-value]]).
+
+`filter_axis_add` now reports when an operand yielded no alternative at all,
+and the parser refuses rather than leaving the axis key unassigned. That was
+the whole mechanism: every matcher reads an unassigned axis as one nobody
+named, so the narrowing flag the operator typed arrived as a widening query at
+status 0 — and on a read surface a wide answer and a large one look the same.
+
+`--label ,,,` and `--label '   '` refused; the refusal quotes the operand, so
+an operand that is invisible on the terminal is still legible in the message.
+
+A third case in the same family closed with it: an operand carrying a newline
+was silently cut at the first line, because an axis stores its alternatives
+newline-separated and the break cannot be told from the separator. It now
+refuses.
+
+Pinned by `case_issues_render_operand_naming_no_alternative_refuses`, which
+loops `RENDER_OPTIONS` from the code's own declaration and drives every axis
+flag on both read verbs, rather than the one flag the defect was found on.

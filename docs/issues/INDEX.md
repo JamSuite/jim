@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 149
-- Closed: 251
+- Open: 144
+- Closed: 256
 
 ## Issues
 
@@ -392,11 +392,11 @@
 - `20260825-roadmap-md-has-not-been-refreshed-since-2026-03-16` — ROADMAP.md has not been refreshed since 2026-03-16 · status: open · num: 384 · priority: low · created: 2026-08-25T10:51:06Z · labels: [docs, strategy] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md · type: issue · filed-by: jrko
 - `20260825-sort-and-group-read-views-by-the-newly-indexed-fields` — Sort and group read views by the newly indexed fields · status: open · num: 385 · priority: low · created: 2026-08-25T10:51:05Z · labels: [issues-system, read-views] · origin: docs/specs/issue/014-read-view-filter-composition/spec.md · type: issue · filed-by: jrko
 - `20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test` — Timestamp-shape sync marker in jimfile.sh is compared by no test · status: open · num: 372 · priority: medium · created: 2026-08-25T05:00:25Z · labels: [test, scripts, platform] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
-- `20260826-blueprint-divergence-placeholder-by-position` — Blueprint divergence: placeholder-by-position · status: open · num: 386 · priority: high · created: 2026-08-26T02:44:32Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/014-read-view-filter-composition · type: issue · filed-by: jrko
-- `20260826-blueprint-divergence-staleness-gated-reads` — Blueprint divergence: staleness-gated-reads · status: open · num: 387 · priority: medium · created: 2026-08-26T02:44:33Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/014-read-view-filter-composition · type: issue · filed-by: jrko
-- `20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank` — Column naming a field the index cannot answer renders it blank · status: open · num: 388 · priority: medium · created: 2026-08-26T01:36:55Z · labels: [issue, read-views, disclosure] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko
+- `20260826-blueprint-divergence-placeholder-by-position` — Blueprint divergence: placeholder-by-position · status: closed · num: 386 · priority: high · created: 2026-08-26T02:44:32Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/014-read-view-filter-composition · type: issue · filed-by: jrko · outcome: done
+- `20260826-blueprint-divergence-staleness-gated-reads` — Blueprint divergence: staleness-gated-reads · status: closed · num: 387 · priority: medium · created: 2026-08-26T02:44:33Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/014-read-view-filter-composition · type: issue · filed-by: jrko · outcome: done
+- `20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank` — Column naming a field the index cannot answer renders it blank · status: closed · num: 388 · priority: medium · created: 2026-08-26T01:36:55Z · labels: [issue, read-views, disclosure] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-dependency-outside-the-collection-reads-as-unblocked` — Dependency outside the collection reads as unblocked · status: open · num: 389 · priority: low · created: 2026-08-26T01:36:56Z · labels: [issue, read-views, graph] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko
-- `20260826-empty-shaped-filter-operand-silently-matches-everything` — Empty-shaped filter operand silently matches everything · status: open · num: 390 · priority: high · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
+- `20260826-empty-shaped-filter-operand-silently-matches-everything` — Empty-shaped filter operand silently matches everything · status: closed · num: 390 · priority: high · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-is-filter-token-is-dead-code` — is_filter_token is dead code · status: open · num: 391 · priority: medium · created: 2026-08-26T02:34:19Z · labels: [issue, read-views, cleanup] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
 - `20260826-person-query-is-whitespace-trimmed-before-it-is-compared` — Person query is whitespace-trimmed before it is compared · status: open · num: 392 · priority: low · created: 2026-08-26T02:34:44Z · labels: [issue, read-views, identity] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
 - `20260826-render-sh-comments-still-cite-spec-and-finding-ids` — render.sh comments still cite spec and finding ids · status: open · num: 393 · priority: low · created: 2026-08-26T01:36:57Z · labels: [issue, hygiene] · origin: docs/specs/issue/014-read-view-filter-composition/plan.md · type: issue · filed-by: jrko
@@ -405,7 +405,7 @@
 - `20260826-spec-prefix-matching-has-no-directory-boundary` — Spec prefix matching has no directory boundary · status: open · num: 394 · priority: low · created: 2026-08-26T02:35:23Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
 - `20260826-statistics-counts-can-disagree-with-the-index-summary` — Statistics counts can disagree with the index summary · status: open · num: 395 · priority: low · created: 2026-08-26T02:34:45Z · labels: [issue, read-views, index] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
 - `20260826-test-coverage-gaps-around-the-new-read-view-surfaces` — Test-coverage gaps around the new read-view surfaces · status: open · num: 396 · priority: low · created: 2026-08-26T02:35:25Z · labels: [issue, tests, read-views] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
-- `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value` — Unrecognized flag is accepted as a flag's value · status: open · num: 397 · priority: medium · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
+- `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value` — Unrecognized flag is accepted as a flag's value · status: closed · num: 397 · priority: medium · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-untrusted-values-reach-awk-through-v-in-two-scripts` — Untrusted values reach awk through -v in two scripts · status: open · num: 398 · priority: low · created: 2026-08-26T02:35:24Z · labels: [issue, security, awk] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
 
 ## Graph
@@ -549,6 +549,11 @@
 - `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` --related-to--> `20260825-faces-verb-skips-bold-first-provides-entries`
 - `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
 - `20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
+- `20260826-blueprint-divergence-staleness-gated-reads` --related-to--> `20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank`
+- `20260826-blueprint-divergence-staleness-gated-reads` --related-to--> `20260826-schema-gate-misses-a-partly-converted-collection`
+- `20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank` --related-to--> `20260826-blueprint-divergence-staleness-gated-reads`
+- `20260826-empty-shaped-filter-operand-silently-matches-everything` --related-to--> `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value`
+- `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value` --related-to--> `20260826-empty-shaped-filter-operand-silently-matches-everything`
 
 ## Integrity Warnings
 

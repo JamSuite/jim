@@ -2,12 +2,12 @@
 id: 20260826-blueprint-divergence-staleness-gated-reads
 num: 387
 title: "Blueprint divergence: staleness-gated-reads"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [000-blueprint, drift]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-26T02:44:33Z
-updated: 2026-08-26T02:44:33Z
+updated: 2026-08-26T08:52:22Z
 origin: "docs/specs/issue/014-read-view-filter-composition"
 ---
 
@@ -97,3 +97,33 @@ separately.
 
 No test exercises either gap; the staleness fixture the guard's own case builds
 drives only the list view and only two of the covered axes.
+
+## Resolution
+
+Fixed in `9f292f0`, together with the column half
+([[20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank]]).
+
+The disclosure moved out of `cmd_list` into `schema_gate`, which both read
+verbs call — the census shares the parser, the matcher and the row reader with
+the list view, and now shares this too. It quantifies over two declared
+constants rather than a hand-written list: `AXIS_FIELDS`, which pairs every
+axis with the row field it reads, and `SCHEMA_GATED_FIELDS`. Pairing the field
+with the name is what closes the original gap — `held` reads `claimed-by`
+under a key of its own, which a guard listing axis names reads straight past.
+
+The refusal names the row field rather than the axis key, because `held` is a
+name no operator types.
+
+All four behaviours recorded in the report now refuse: `--claimed-by` and
+`--filed-by` on either verb, and the `claimed` / `unclaimed` bare words that
+were the worst of them — a populated, wrong answer rather than an empty one.
+
+Pinned by `case_issues_render_unanswerable_axes_refuse_on_both_verbs`, which
+loops the vocabulary the code itself declares and fails on a declared axis it
+has no query for, so a new axis cannot enter the grammar without entering the
+guard's test.
+
+**Not wholly closed as a class.** The gate still detects staleness from a
+single witness: one row carrying a `type` satisfies it for the whole index, so
+a partly converted collection answers gated-field queries silently. Filed as
+[[20260826-schema-gate-misses-a-partly-converted-collection]].

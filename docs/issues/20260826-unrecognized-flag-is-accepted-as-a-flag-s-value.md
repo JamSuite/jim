@@ -2,12 +2,12 @@
 id: 20260826-unrecognized-flag-is-accepted-as-a-flag-s-value
 num: 397
 title: "Unrecognized flag is accepted as a flag's value"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [issue, read-views, filters]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-26T02:34:18Z
-updated: 2026-08-26T02:34:18Z
+updated: 2026-08-26T08:55:15Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
@@ -55,3 +55,32 @@ address wears.
 Refuse a `--`-prefixed operand; carry a single-hyphen one through. That matches
 the stated rationale exactly and closes the gap against the criterion, without
 breaking the leading-hyphen address case the decision was protecting.
+
+## Resolution
+
+Fixed in `95d56cc`, in the same diff as
+[[20260826-empty-shaped-filter-operand-silently-matches-everything]].
+
+`need_operand` refuses any double-hyphen operand rather than only the option
+names this file declares. The rule is about a flag arriving where a value
+belongs, and a flag the file does not accept is still a flag; enumerating the
+file's own options was the wrong set for the rule, which ranges over any flag.
+
+One hyphen is still carried through. That is the design decision's own stated
+rationale intact — the recordable-identity set admits a leading hyphen
+deliberately and a real address can wear one — and the boundary now sits
+between one hyphen and two rather than between known and unknown.
+
+**The same widening landed on `migrate.sh`'s sibling guard**, which a SYNC
+marker binds to the shared rule, and it closed a live defect there rather than
+a latent one: `migrate identity --from --nosuchflag --to <addr>` ran the remap
+at rc 0 with an unrecognized flag bound as the from-address. Its boundary case
+moved with it. The marker's text was rewritten to describe the asymmetry that
+remains, and a judge confirmed the description still matches both post-change
+bodies.
+
+Pinned by `case_issues_render_flag_shaped_operand_refuses` (looping
+`RENDER_OPTIONS`), `case_migrate_identity_usage_refuses_an_unknown_flag_where_a_value_belongs`,
+and `case_migrate_identity_hyphen_values_accepted_but_flags_are_not`, which
+pins the one-versus-two-hyphen boundary and says in its own comment that it
+pins the boundary rather than the guard.
