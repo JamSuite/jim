@@ -436,8 +436,8 @@ cmd_help() {
 jim issue — capture & review discovery artifacts
 
   add <subject>           capture a new issue from the conversation
-  list [status|priority]  terse list, grouped by status (default)
-  stats                   counts + clustering
+  list [filter...]        terse list, grouped by status (default)
+  stats [filter...]       counts + clustering, scoped by the same filters
   show <id>               view a single issue (by number, slug, or prefix)
   insights                LLM analysis: convergence, sequencing, parallel work
 
@@ -450,12 +450,33 @@ jim issue — capture & review discovery artifacts
 
   reconcile               realize ordinals bound while offline
 
+  Filters compose. Give as many as you like, in any order: values naming one
+  axis are alternatives, and different axes must all hold.
+
+    open active closed      lifecycle state       (or --status)
+    critical high medium low  priority            (or --priority)
+    issue epic              kind                  (or --type)
+    claimed unclaimed       whether anyone holds it
+    blocked unblocked       whether a dependency is still unfinished
+
+    --label <l>[,<l>]       carries any of these labels
+    --filed-by <who>        who filed it        · --claimed-by <who> who holds it
+    --spec <group>/<id>     filed from that spec's directory
+    --origin <prefix>       filed from a path starting with this
+    --epic <slug>           a member of that umbrella
+    --cols <c>[,<c>]        columns for this query only
+
+  Either person filter takes `me` for the identity this environment carries.
+  There is no word meaning "mine": who filed an issue and who holds it are
+  separate questions, so each takes its own filter.
+
   Issues live in the configured issues directory. The verbs above are how one
   moves: a close written by hand leaves `outcome` empty, and the index reports
   that record as closed with no outcome recorded.
 
   By default `list` hides closed issues; use `list closed` to see them, or set
   `issue_list_closed = "true"` in jimconf.toml to include them in every view.
+  `stats` never hides them — it says what it was scoped to instead.
 HELP
 }
 

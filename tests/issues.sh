@@ -8427,6 +8427,20 @@ case_issues_render_stats_scoped_by_filter() {
   assert_match "names the token" 'unrecognized filter token: bogus17' "$ERR"
 }
 
+# AC: the help text describes the composed surface rather than a single filter
+case_issues_render_help_describes_the_filter_surface() {
+  run_render help
+  assert_exit  "rc" 0 "$RC"
+  assert_match "several filters in one query" 'list \[filter\.\.\.\]' "$OUT"
+  assert_match "the person axes"    '[-]-claimed-by' "$OUT"
+  assert_match "the origin axes"    '[-]-spec'       "$OUT"
+  assert_match "the derived words"  'blocked'        "$OUT"
+  assert_match "the kind words"     'epic'           "$OUT"
+  assert_match "the column flag"    '[-]-cols'       "$OUT"
+  assert_match "stats takes them too" 'stats \[filter\.\.\.\]' "$OUT"
+  assert_match "naming yourself"    '\bme\b'         "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."
