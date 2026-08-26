@@ -8,6 +8,10 @@ a recommendation.
 
 ## Where we stand
 
+*This section and the order below record the state at writing, before any of it
+ran. What actually happened — including where this analysis was short — is in
+§ What running it settled, at the end.*
+
 The feature works. A developer composes several filters in one query, names
 themselves rather than an address, scopes a census to one spec's follow-up work,
 and chooses columns for a single query. Against the real 380-issue collection,
@@ -304,3 +308,74 @@ Two more worth recording, both about the review itself:
   rather than inferring. Both comparisons were then closed directly against the
   commits. A read-only boundary is only safe when the agents inside it disclose
   what it cost them.
+
+## What running it settled
+
+The order above was executed through step 4, plus the first of step 5. Eight
+issues are closed: `#386`, `#387`, `#388`, `#390`, `#391`, `#393`, `#395`,
+`#397`. The suite moved 1,608 → 1,620. Both blueprint violations resolved
+`fix`, never `fold`, as § What not to do asked. The plan's gate is satisfied:
+review and sensor have both come back against the fixes rather than the
+original build, so the hold this document describes is discharged.
+
+| step | issues | commit |
+| :--- | :--- | :--- |
+| 1 | `#387` + `#388` | `9f292f0` |
+| 2 | `#390` + `#397` | `95d56cc` |
+| 3 | `#386` | `9cc6185` |
+| 4 | `#391`, `#393` | `da7bd34`, `0d7c820` |
+| 5 (part) | `#395` | `74a91d2` |
+
+### Where this analysis was short
+
+Four places, each worth more than the fix it misjudged.
+
+**The steps-1+2 claim was wrong twice** and contradicted the paragraph two lines
+below it. Corrected in place; the sentence now says what steps 1+2 actually
+clear. The count error came from never mapping the five partial ACs back to
+their findings.
+
+**`#393` was scoped to one file and was mostly in five others.** This document
+counted eight comments — accurate for `render.sh`, and two of those were already
+gone by the time the sweep ran. The group held **34**, and the convention is
+project-wide: three scripts in two other groups carry ~58 more, now `#401`. The
+instinct to warn against a half-done sweep was right; the size estimate behind
+it was out by four times.
+
+**`#395` was called small and was three classification sites.** The index judged
+raw scalars while writing sanitized ones, so besides the Summary count, both
+vocabulary checks judged a value they did not print — `type: "issue<0x01>"`
+warned `unrecognized type: issue`. One rule computed from two values at three
+points, which is the retrospective's shape again, in a defect this document
+grouped as a correctness edge.
+
+**`#392`'s "neatest fix" collides with step 2.** Trimming around the delimiters
+rather than the whole value does keep `high, critical` working and `" alice"`
+intact, as recommended — but the edge trim is also what makes step 2's
+yields-no-alternative refusal work. Remove it and `'   '` becomes a recordable
+alternative that matches nothing instead of refusing, quietly undoing half of
+`#390`. `case_issues_render_operand_naming_no_alternative_refuses` fails on it.
+What a whitespace-only operand means has to be decided explicitly before `#392`
+is touched; this document treated the two fixes as independent and they are not.
+
+### What it did not anticipate at all
+
+Re-running the living-intent sensor against the fixes surfaced work this
+document has no entry for, because it is analysis of a review rather than of the
+code: `#399` (the schema gate cannot see a partly converted collection — the
+premise this increment carried to two more surfaces), `#400` (**critical** — the
+skill's own usage templates inline `title` and `origin` into the command line
+its scripts route the body around), and `#402` (**high** — the vocabulary
+discipline holds inside each script and breaks between them).
+
+`#374` also escalated from a wrong counter to a blocked capability: the faces
+verb loses a provides entry that does not lead with a backticked token, and one
+dotted key per requires bullet. A reconcile over a changed face now has to
+choose between a stale graph and a fabricated leak.
+
+### What still stands
+
+Everything from `#392` onward, in the order given: `#392` and `#389`, then
+`#396` as the surrounding code is touched, then `#394` and `#398`. § What not
+to do stands unchanged — its two rules about not folding invariants and not
+splitting the same-rule pairs were both borne out.
