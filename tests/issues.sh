@@ -2804,6 +2804,65 @@ origin: " · status: closed · num: 1"'
     "$(grep -q 'closed' <<< "$OUT" && echo yes || echo no)"
 }
 
+# AC: an INDEX.md row's shape is the writer's, on the way back out as well. The
+# writer emits one space after each `key:` and whatever the sanitizer left of
+# the value; a reader that consumes every space instead of that one space
+# silently trims a value's own leading whitespace. Then the value the index
+# judged and the value a read verb answers with are two different strings — the
+# index records `unrecognized type` in its warnings and the view hands the same
+# record back as one of the recognized ones.
+case_issues_render_row_scalars_read_back_as_written() {
+  local dir warnings
+  dir=$(empty_dir render_row_readback)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: " issue"
+priority: " high"
+filed-by: " alice"'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+priority: high
+filed-by: "alice"'
+  run_index "$dir"
+  assert_exit "index rc" 0 "$RC"
+
+  # The index judges the leading-space type and refuses it.
+  warnings="$(sed -n '/^## Integrity Warnings/,$p' "$dir/INDEX.md")"
+  assert_match "the index refuses the type" 'unrecognized type' "$warnings"
+
+  # So the view must not answer with it. The vocabulary the index applied and
+  # the one the reader compares against are the same vocabulary.
+  run_render list --type issue "$dir"
+  assert_exit "type rc" 0 "$RC"
+  assert_match "the conforming record"  'Bravo' "$OUT"
+  assert_eq    "and not the refused one" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  run_render list --priority high "$dir"
+  assert_exit "priority rc" 0 "$RC"
+  assert_match "the conforming record"  'Bravo' "$OUT"
+  assert_eq    "and not the padded one" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # An identity is not judged against a vocabulary, so its leading whitespace
+  # makes it unjudgeable rather than wrong — and the record stays reachable by
+  # the spelling it actually carries.
+  run_render list --filed-by ' alice' "$dir"
+  assert_exit  "exact rc" 0 "$RC"
+  assert_match "reaches the padded record" 'Alpha' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  run_render list --filed-by 'alice' "$dir"
+  assert_exit  "plain rc" 0 "$RC"
+  assert_match "reaches the plain record" 'Bravo' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+}
+
 # AC: the integrity-warnings section is concatenated from untrusted values — a
 # body wikilink, a relation target, an origin path, a filename-derived slug —
 # and was emitted with `printf '%b'`, which expands backslash escapes in them.

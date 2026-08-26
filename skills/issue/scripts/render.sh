@@ -412,6 +412,14 @@ cfg_validated() {
 #     type filed-by claimed-by outcome
 #   Parses the INDEX.md ## Issues section only. Unknown keys in a row are
 #   ignored, so an index written by a newer emitter still reads here.
+#
+#   A pair is `key:` plus one space plus the sanitized value, so exactly that
+#   one space is consumed on the way back. Consuming a run of whitespace would
+#   make the reader, not the writer, decide where a value with leading spaces
+#   begins — and the two then disagree about what the record holds: the index
+#   records a scalar as unrecognized in its warnings while a read verb, having
+#   trimmed the same scalar into a member, hands the record back as one of the
+#   recognized ones. A value's own edges belong to the value.
 read_issue_rows() {
   awk '
     /^## Issues$/ { insec = 1; next }
@@ -425,7 +433,7 @@ read_issue_rows() {
       n = split(line, parts, / · /)
       for (i = 2; i <= n; i++) {
         kv = parts[i]; key = kv; sub(/:.*/, "", key)
-        val = kv; sub(/^[^:]*:[[:space:]]*/, "", val)
+        val = kv; sub(/^[^:]*: ?/, "", val)
         if (key == "num") num = val
         else if (key == "status") status = val
         else if (key == "priority") prio = val
