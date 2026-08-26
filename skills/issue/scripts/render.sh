@@ -241,11 +241,24 @@ bare_word_help() {
 }
 
 # filter_axis_add <axis> <csv> — record one flag's or bare word's alternatives.
-#   The comma is the operator's own separator, so it is the only one applied.
+#   The comma is the operator's own separator, so it is the only one applied —
+#   and it is also the only place whitespace is formatting. A space beside a
+#   comma spaces the list out; a space at the operand's own edge is part of the
+#   value that was typed. The person axes compare literally, so an identity the
+#   configured form cannot judge *because of* edge whitespace is reachable by
+#   that spelling alone, and trimming both edges would leave such a record in
+#   the collection and outside every query that could name it.
+#
 #   Alternatives are stored newline-separated: a value can legitimately carry a
 #   space — an origin prefix is free text — and splitting on one would widen a
 #   query the operator narrowed, which is the failure quoting the prefix
 #   comparison exists to prevent, arriving one step earlier.
+#
+#   An alternative that is nothing but whitespace names no value, so it is
+#   dropped rather than recorded. That is what keeps the count below able to
+#   reach zero: the edge of a lone operand is no longer trimmed, and without
+#   this an operand of spaces alone would arrive as an alternative matching
+#   nothing instead of as one naming nothing.
 #
 #   Returns 1 when the operand yielded no alternative at all, so the caller can
 #   refuse. Recording nothing leaves the axis key unassigned, and every matcher
@@ -253,12 +266,15 @@ bare_word_help() {
 #   arrive as a widening query, at status 0, on a surface where a wide answer
 #   and a large one look the same.
 filter_axis_add() {
-  local axis="$1" csv="$2" v added=0
+  local axis="$1" csv="$2" v i last added=0
   local -a vals=()
   IFS=',' read -ra vals <<< "$csv"
-  for v in "${vals[@]}"; do
-    v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
-    [[ -z "$v" ]] && continue
+  last=$(( ${#vals[@]} - 1 ))
+  for i in "${!vals[@]}"; do
+    v="${vals[$i]}"
+    (( i > 0 ))    && v="${v#"${v%%[![:space:]]*}"}"
+    (( i < last )) && v="${v%"${v##*[![:space:]]}"}"
+    [[ -z "${v//[[:space:]]/}" ]] && continue
     FILTER_AXIS[$axis]="${FILTER_AXIS[$axis]:+${FILTER_AXIS[$axis]}$'\n'}$v"
     added=1
   done

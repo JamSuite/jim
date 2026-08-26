@@ -7895,6 +7895,61 @@ case_issues_render_list_person_axis_matches() {
   assert_match "reachable literally" 'Delta' "$OUT"
 }
 
+# AC: a contributor value the configured form cannot judge stays reachable by
+# naming it exactly. The comma is the operator's own separator, so whitespace
+# beside one is the list's formatting and goes; whitespace at the operand's own
+# edges is part of the value that was typed and stays. An identity carrying edge
+# whitespace is unjudgeable for that reason alone, so the literal spelling is
+# the only route to it — and trimming the operand's edges closes that route
+# while leaving the record in the collection.
+case_issues_render_list_person_axis_edge_whitespace_named_exactly() {
+  local dir
+  dir=$(empty_dir render_person_ws)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+filed-by: "bob "'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+filed-by: "carol"'
+  run_index "$dir"
+
+  # The unjudgeable identity, named exactly as the record carries it.
+  run_render list --filed-by 'bob ' "$dir"
+  assert_exit  "exact spelling rc"  0       "$RC"
+  assert_match "reaches the record" 'Alpha' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  # Trimmed, the operand names a different value, which no record carries.
+  run_render list --filed-by 'bob' "$dir"
+  assert_exit  "trimmed spelling rc" 0 "$RC"
+  assert_match "matches nothing" '_No matching issues\._' "$OUT"
+
+  # A value's own edge survives a list; the whitespace beside the comma does
+  # not. Which is why the trailing-whitespace identity is namable last and the
+  # same operand one position earlier reaches only its neighbour.
+  run_render list --filed-by 'carol, bob ' "$dir"
+  assert_exit  "list rc" 0 "$RC"
+  assert_match "the judgeable alternative"   'Bravo' "$OUT"
+  assert_match "and the unjudgeable one"     'Alpha' "$OUT"
+
+  run_render list --filed-by 'bob , carol' "$dir"
+  assert_exit "reordered rc" 0 "$RC"
+  assert_eq   "the edge beside the comma is formatting" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # The edge trim is also what lets an operand yielding no alternative be
+  # refused. Loosening it must not turn a whitespace-only operand into a
+  # recordable alternative that matches nothing at status 0.
+  run_render list --filed-by '   ' "$dir"
+  assert_exit "whitespace-only still refuses" 1 "$RC"
+}
+
 # AC: a developer can name themselves rather than an address, so the query does
 # not depend on which of their addresses this machine commits under
 case_issues_render_list_person_axis_resolves_me() {
