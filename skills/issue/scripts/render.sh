@@ -166,11 +166,6 @@ in_list() {
   return 1
 }
 
-is_filter_token() {
-  in_list "$1" "${STATUS_TOKENS[@]}" "${PRIORITY_TOKENS[@]}" \
-               "${TYPE_TOKENS[@]}" "${HELD_TOKENS[@]}" "${BLOCKED_TOKENS[@]}"
-}
-
 # The option names this file's filter parser accepts. An operand equal to one
 # of these is a flag that landed where a value belongs — a typo rather than a
 # value. See need_operand.
