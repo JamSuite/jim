@@ -872,15 +872,25 @@ declare -A DERIVED_EPIC=()
 #   issue is already blocked by that dependency's own unfinished state — but
 #   only under this keying; keying it on blocked-ness would make them diverge
 #   and demand a traversal.
+#
+#   A target the collection does not hold has no status to judge, so it counts
+#   as blocking rather than falling through. The predicate asks whether a
+#   dependency is finished, and one nobody can open is not — answering
+#   unblocked would hand a developer picking work an issue naming a blocker
+#   they cannot reach, which is the one direction of this answer that cannot be
+#   defended.
 build_derived_axes() {
   local index_file="$1" slug status src tgt rest
-  local -A unfinished=()
+  local -A known=() unfinished=()
   while IFS=$'\t' read -r slug _ status rest; do
     [[ -z "$slug" ]] && continue
+    known[$slug]=1
     [[ "$status" != "closed" ]] && unfinished[$slug]=1
   done < <(read_issue_rows "$index_file")
   while IFS=$'\t' read -r src tgt; do
-    [[ -n "${unfinished[$tgt]:-}" ]] && DERIVED_BLOCKED[$src]=1
+    if [[ -n "${unfinished[$tgt]:-}" || -z "${known[$tgt]:-}" ]]; then
+      DERIVED_BLOCKED[$src]=1
+    fi
   done < <(read_graph_edges "$index_file" depends-on)
   while IFS=$'\t' read -r src tgt; do
     DERIVED_EPIC[$src]="${DERIVED_EPIC[$src]:+${DERIVED_EPIC[$src]}$'\n'}$tgt"

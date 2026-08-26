@@ -8558,6 +8558,72 @@ case_issues_render_list_derived_predicates() {
   assert_eq    "not the blocked one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
 }
 
+# AC: an issue is blocked when it depends on an issue that is not finished. A
+# dependency the collection does not hold has no status to judge, so reading it
+# as finished is the one answer that cannot be defended: it hands a developer
+# picking work off `unblocked` an issue naming a blocker nobody can open. An
+# unknown target is not a finished one, so the predicate blocks on it — the
+# same direction the derivation already fails in for a target that is present
+# and open.
+case_issues_render_blocked_by_a_dependency_outside_the_collection() {
+  local dir
+  dir=$(empty_dir render_blocked_ghost)
+  write_issue "$dir" "20260101-ghosted" 'title: "Ghosted"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+relations:
+  depends-on: [20260199-ghost]'
+  write_issue "$dir" "20260102-live" 'title: "Live"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+relations:
+  depends-on: [20260104-target]'
+  write_issue "$dir" "20260103-free" 'title: "Free"
+status: open
+num: 3
+created: 2026-01-03
+type: issue'
+  write_issue "$dir" "20260104-target" 'title: "Target"
+status: open
+num: 4
+created: 2026-01-04
+type: issue'
+  write_issue "$dir" "20260105-settled" 'title: "Settled"
+status: open
+num: 5
+created: 2026-01-05
+type: issue
+relations:
+  depends-on: [20260106-finished]'
+  write_issue "$dir" "20260106-finished" 'title: "Finished"
+status: closed
+num: 6
+created: 2026-01-06
+type: issue
+outcome: done'
+  run_index "$dir"
+
+  run_render list blocked "$dir"
+  assert_exit  "blocked rc" 0 "$RC"
+  assert_match "an unresolvable dependency blocks" 'Ghosted' "$OUT"
+  assert_match "so does a live one"                'Live'    "$OUT"
+  assert_eq    "a record naming no dependency does not" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Free')"
+  assert_eq    "nor one whose dependency is finished" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Settled')"
+
+  run_render list unblocked "$dir"
+  assert_exit "unblocked rc" 0 "$RC"
+  assert_eq   "the ghosted record is not offered as pickable" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Ghosted')"
+  assert_match "a record naming no dependency is"  'Free'    "$OUT"
+  assert_match "and one whose dependency is done"  'Settled' "$OUT"
+}
+
 # ─── Section: render.sh — choosing columns ───────────────────────────────────
 
 # AC: the list view can display a record's kind, filer, holder and outcome
