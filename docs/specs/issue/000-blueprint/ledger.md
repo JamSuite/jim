@@ -26,3 +26,5 @@
 1787557834	2026-08-24T07:50:34Z	verify	finished	checked=10;holds=9;violated=1;failed=0;unconfigured=0;skipped=0;undelegated=0
 1787562740	2026-08-24T09:12:20Z	verify	started	
 1787563095	2026-08-24T09:18:15Z	verify	finished	checked=10;holds=7;violated=0;failed=0;unconfigured=0;skipped=3;undelegated=0
+1787708998	2026-08-26T01:49:58Z	verify	started	
+1787709640	2026-08-26T02:00:40Z	verify	finished	checked=13;holds=7;violated=2;failed=0;unconfigured=0;skipped=4;undelegated=0;inchange=2;preexisting=0;edges_checked=1;edge_violations=0
