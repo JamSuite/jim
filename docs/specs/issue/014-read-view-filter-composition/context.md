@@ -15,7 +15,7 @@ already said well in `spec.md`, `plan.md`, `review.md`, `remediation.md` or
 
 ## 1. Where this stands
 
-The feature is **built, reviewed, and remediated through step 3**. The three
+The feature is **built, reviewed, and remediated through step 4**. The three
 issues that gated the plan are fixed, verified and closed. The plan is still
 held at `approved` — closing it is a single decision, described in § 6.
 
@@ -26,7 +26,7 @@ held at `approved` — closing it is a single decision, described in § 6.
 | `security.md` | `Needs Plan Review` — 12 findings, all routed and applied |
 | `plan.md` | `approved` — 21/21 tasks `[x]`, **held**, and now closeable |
 | `review.md` | `minor-drift` — 13 findings, `undelegated=0` |
-| `remediation.md` | the order of attack — steps 1–3 are done |
+| `remediation.md` | the order of attack — steps 1–4 are done |
 | `retrospective.md` | why it happened; the root cause and its prevention |
 | living intent | re-run this session: 13 sensed · 10 holds · 2 violated · 1 skipped |
 | contracts | 4 edges checked, 0 violations |
@@ -39,7 +39,7 @@ records what a review *found*, not whether it was acted on. **`research.md` is
 
 ### What this session did
 
-Nine commits, `0e55946..HEAD`:
+Fifteen commits, `0e55946..HEAD`. The load-bearing ones:
 
 | commit | what |
 | :--- | :--- |
@@ -48,27 +48,33 @@ Nine commits, `0e55946..HEAD`:
 | `9cc6185` | `#386` — placeholders substitute only at declared offsets |
 | `19c6c5e` `22c1980` `6997468` | verify record, blueprint update, map restamp |
 | `b22b68b` `ff1cd5c` `15d0556` | issues filed, ordinals realized, five closed |
+| `da7bd34` `0d7c820` | `#391` deleted; `#393` swept across the whole group |
+| `c768186` `a3b9b94` | two closed with resolutions, `#401` filed and realized |
+| *(this one)* | `remediation.md`'s steps-1+2 claim corrected |
 
-**Closed:** `#386`, `#387`, `#388`, `#390`, `#397`, each carrying a resolution
-note that says what fixed it, what pins it, and — for `#387` — what remains
-open. Read those notes before re-deriving anything about the fixes.
+**Closed:** `#386`, `#387`, `#388`, `#390`, `#391`, `#393`, `#397`. Each carries
+a resolution note that says what fixed it, what pins it, and — for `#387` and
+`#393` — what remains open. Read those notes before re-deriving the fixes.
 
 **Filed:** `#399` (schema gate misses a partly converted collection, medium),
 `#400` (SKILL.md inlines title and origin into the emitter command line,
-critical). Both came out of the living-intent sensor, not the review.
+critical) — both from the living-intent sensor, not the review — and `#401`
+(~58 spec/finding citations in three scripts outside this group, plus the
+missing mechanical check that let them accumulate, medium).
 
 **Raised:** `#374` to high, with a section recording that the face undercount
 accumulates in ledger history rather than merely displaying.
 
 ### What remains, in `remediation.md`'s order
 
-- **Step 4** — `#391` (`is_filter_token` has no callers) and `#393` (comments
-  citing spec / AC / Finding ids). Both deletions. `#393` wants a sweep across
-  the sibling scripts in one pass, or it gets forgotten half-done.
-- **Then** `#392`, `#395`, `#389` — real, small, none urgent.
+- **Step 5** — `#392`, `#395`, `#389`. Real, small, none urgent. `#392` has the
+  neatest fix: trim around the delimiters rather than around the whole value,
+  which keeps `high, critical` working and leaves `" alice"` intact.
 - **`#396`** as the surrounding code is next touched, except its fifth item.
 - **`#394` and `#398` last, and deliberately.** Neither is a defect today.
-- Outside the remediation: `/jim:arch` (see § 5), and the two corrections in § 4.
+- Outside the remediation: `/jim:arch` (see § 5), and `#401`, which the step-4
+  sweep uncovered. The `remediation.md` correction in § 4 is done; the
+  `faces=23` undercount is `#374`'s to fix, in the script.
 
 ### Where this sits in the larger arc
 
@@ -110,8 +116,9 @@ Reading this document is not enough. Ground it in the artifacts, in this order
    depends on its face before changing anything the other groups consume.
 6. **`review.md`** § *Findings* and § *Living intent* — the evidence behind each
    issue, with `file:line` anchors.
-7. **`spec.md`** § *Acceptance Criteria* — five were partial; four of those are
-   now satisfied by the remediation.
+7. **`spec.md`** § *Acceptance Criteria* — five were partial; three of those
+   are now satisfied. The remaining two cite Finding 6 (`#392`) and Finding 9
+   (`#394`), neither of which the remediation has reached.
 8. The code, in dependency order: `skills/issue/scripts/render.sh` (the whole
    filter surface), then `index.sh` (the row emitter), then `place.sh` →
    `place_substitute`.
@@ -176,10 +183,18 @@ against sdlc during the reconcile. Match `^- (\`|\*\*)`.
 
 ### Other verified facts
 
-- **`is_filter_token` still has zero callers** (`#391`) — one occurrence in
-  `render.sh`, its own definition. The spec-id-citing comments (`#393`) are
-  still there too; take their count from the issue rather than from one grep
-  pattern, which misses forms like `security 019 Finding 5`.
+- **A single grep understates the citation class** (`#393`, now closed). The
+  issue reported eight citations in `render.sh`; two had already been rewritten
+  by the three preceding fixes, and the 28 that mattered were in the siblings —
+  `index.sh` 10, `new.sh` 7, `migrate.sh` 6, `backfill.sh` 5, `reconcile.sh` 3.
+  One id escaped the first pattern entirely: `new.sh` spelled it `spec-017`
+  with a hyphen. Two shapes are false positives and must be excluded — `cut -f1`
+  matches a bare `F<n>`, and a bare `#<n>` matches `"close issue #5"` in
+  `place.sh` and the legitimate `settled #N` in `render.sh`.
+- **`mktemp` + `mv` clobbers file permissions.** The sweep's applier stripped
+  the exec bit from three scripts and dropped three more to `0600`. `git diff
+  --summary` names it (`mode change 100755 => 100644`); a comment-only diff
+  carrying one is easy to wave through.
 - **The aggregate suite is 1617 green** (`skills/meta-test/scripts/run.sh`),
   up from 1608 at the session's start: +9 cases, all looping declared
   constants rather than sampling.
@@ -190,12 +205,15 @@ against sdlc during the reconcile. Match `^- (\`|\*\*)`.
 
 ## 4. Decisions whose reasoning lives only here
 
-- **`remediation.md` and the previous `context.md` both claim steps 1+2 close
-  "both blueprint violations" and let the plan be marked complete. That is
-  wrong** — `#386` was the second violation and needed step 3. The conclusion
-  is now true because all three landed, but the reasoning that reached it is
-  not, and `remediation.md` still carries the error. Correcting it is
-  outstanding.
+- **`remediation.md`'s claim about steps 1+2 was wrong twice over, and is
+  now corrected.** It read "clear both blueprint violations and four of the
+  five partial ACs, and let the plan be marked complete honestly". Steps 1+2
+  clear one violation (`staleness-gated-reads`) and **three** partial ACs;
+  `#386` is `placeholder-by-position`, the second violation, and the plan's
+  gate needed step 3. The count error was found by mapping the five partial
+  ACs back to their findings — 1, 3, 2, 6, 9 — which steps 1+2 cover only
+  three of. The previous `context.md` repeated the first error and inherited
+  the second.
 - **Two blueprint invariants changed, both additive.**
   `placeholder-by-position` was **strengthened**, not folded: the code no longer
   implements the "flag's operand or trailing argument" mechanism the invariant
@@ -245,7 +263,9 @@ against sdlc during the reconcile. Match `^- (\`|\*\*)`.
   every edit. A `case` arm pattern that appears in two functions will match both.
 - **Test timings, and they are worse under load.** `bash tests/issues.sh` is
   ~171s for ~390 cases alone, but exceeded 400s while the aggregate was also
-  running — run one at a time. The aggregate exceeds 600s; background it.
+  running — run one at a time. The aggregate is **~35 minutes** for its 1617
+  cases, not the ten minutes an earlier note here estimated; background it and
+  expect several foreground waits to time out before it reports.
   `transition.sh close` costs ~45s per issue because it regenerates the index
   over ~400 records, so closing five does not fit in one foreground call.
 - **New test cases splice in before the standalone-runnable tail block** at the
@@ -283,8 +303,10 @@ Three things worth carrying while you work, all from `retrospective.md` and all
 re-confirmed this session:
 
 - **Fix the shared cause, not the instance.** Every pair in this remediation was
-  one enumeration short of one rule. The same judgment applies to what is left:
-  `#393` is a sweep, not a file.
+  one enumeration short of one rule. Step 4 confirmed it again: `#393` named
+  one file and 82% of the work was in the other five, and the census past the
+  group's edge found ~58 more plus the missing check that let them accumulate.
+  Take the same reading of what is left.
 - **Derive test domains from the code's own constants.** The new cases loop
   `AXIS_FIELDS`, `COL_TOKENS`, `RENDER_OPTIONS` and `SCHEMA_GATED_FIELDS`, and
   fail on a declared axis they have no query for — so a new axis cannot enter

@@ -213,8 +213,12 @@ while continuing to carry a single-hyphen one through — the latter matches the
 design decision's own stated rationale exactly, which was about addresses
 wearing a leading hyphen, not about double-hyphen tokens.
 
-Those two steps clear both blueprint violations and four of the five partial
-ACs, and let the plan be marked complete honestly.
+Those two steps clear one of the two blueprint violations, the medium
+`staleness-gated-reads`, and three of the five partial ACs — the ones citing
+Findings 1, 2 and 3. They do not clear `placeholder-by-position`: that is
+`#386` below, and the plan's gate is not satisfied until it lands too. The
+two partial ACs left over cite Finding 6 (`#392`) and Finding 9 (`#394`),
+both further down this order.
 
 **Then `#386`.** It is last among the blockers because it is the only one whose
 fix is not local to this increment's code — the weakness is in
