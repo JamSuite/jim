@@ -1,223 +1,292 @@
 # Context — read-view filter composition
 
-A **mid-flight** handoff, written immediately before `/jim:build` and
-immediately before this session's context is compacted. Unlike the closing
-handoff in `013-recorded-identity-schemes/context.md`, this is not a cold start
-for someone else — it is a warm restart for the same work, at a known point.
+A closing handoff for whoever picks this up. The session that built, reviewed
+and analysed this increment is over and will not resume, so this is written for
+a **cold start** rather than for recovery from compaction.
 
 It records what is **expensive or impossible to re-derive from the artifacts**:
-facts established by running things, two corrections made mid-flight that a
-re-reading could easily reverse, and the environment traps that cost time. What
-`spec.md`, `research.md`, `security.md` and `plan.md` already say well is
-pointed at, not repeated.
+facts established by running things, reproduction recipes, decisions whose
+reasoning lives nowhere else, and the traps that cost real time. Everything
+already said well in `spec.md`, `plan.md`, `review.md`, `remediation.md` or
+`retrospective.md` is pointed at, not repeated.
+
+One rule this document learned from its own previous version: **it records
+findings and points at configuration.** The mid-flight handoff it replaces
+transcribed config values and was wrong within hours of the developer changing
+them. Anything below that looks like a setting is a pointer — go read the
+setting.
 
 ---
 
 ## 1. Where this stands
 
-Everything before the build is done. Nothing is committed.
+The feature is **built and shipped**; the increment is **not finished**. The
+plan is deliberately held at `approved` while remediation is outstanding.
 
 | artifact | state |
 | :--- | :--- |
 | `spec.md` | `approved` — 35 acceptance criteria |
-| `research.md` | `Needs PM Review` |
-| `security.md` | `Needs Plan Review` — two passes; findings 1–8 resolved, 9–12 routed into the plan |
-| `plan.md` | `approved` — 21 tasks, 11 design decisions, 35/35 AC coverage |
-| `ledger.md` | spec → research → sec → spec finished → plan → sec → plan finished |
+| `research.md` | `Needs PM Review` — the VISION contention, explicitly non-blocking |
+| `security.md` | `Needs Plan Review` — 12 findings, all routed and applied |
+| `plan.md` | `approved` — 21/21 tasks `[x]`, **held** pending remediation |
+| `review.md` | `minor-drift` — 13 findings, `undelegated=0` |
+| `remediation.md` | the order of attack — **read this first** |
+| `retrospective.md` | why it happened; the root cause and its prevention |
+| living intent | 13 sensed · 7 holds · **2 violated** · 4 skipped by scope |
+| contracts | 1 edge affected, holds |
 
-**Next action:** `/jim:build docs/specs/issue/014-read-view-filter-composition`.
-No gate blocks it, but the reason is no longer the one this doc first recorded.
-`require_security` and `auto_security` are now `true`, so the build's Step-2
-gate is live — it passes only because `security.md`'s `reviewed_phases` already
-includes `plan`. `require_review` and `auto_review` are `true` as well, which
-makes `/jim:review` a blocking completion phase: the plan cannot be marked
-`complete` until that review produces a `review.md`.
+**Next action:** remediate, in the order `remediation.md` § *Suggested
+remediation* → *Order* recommends. Nothing there has been approved — the
+sequencing is a recommendation, and the developer has seen it.
 
-Two frontmatter values look wrong and are not — the same trap 013's handoff
-records:
+Two frontmatter values look wrong and are not, the same trap the two preceding
+increments record:
 
 - **`security.md` stays `Needs Plan Review`.** The field records what a review
-  *found*, not whether it was acted on. All four open findings are routed into
-  the plan. Do not "fix" it.
+  *found*, not whether it was acted on. All findings were routed and applied.
 - **`research.md` is `Needs PM Review`** because Peer Feedback carries the
-  `VISION.md` contention. It is explicitly non-blocking and the issue is filed.
+  `VISION.md:67` contention (issue #380, filed, not actioned). Non-blocking.
+
+### The thirteen issues
+
+`#386`–`#398`, all realized (no provisional ordinals remain). Two are high; two
+are blueprint violations; they overlap by one. `remediation.md` groups and
+sequences them. The three that gate the plan's completion:
+
+- **`#386`** (high, blueprint violation `placeholder-by-position`)
+- **`#387`** (medium, blueprint violation `staleness-gated-reads`)
+- **`#390`** (high, the worst user-visible defect — a narrowing filter widens)
 
 ### Where this sits in the larger arc
 
-Spec 014 is the **third** spec out of
+014 is the **third** spec out of
 `docs/brainstorms/20260817-issue-epics-and-enhanced-filtering.md`, after 012
 (schema and state model) and 013 (recorded identity schemes). Two remain, and
 this decomposition lives nowhere but here:
 
 1. **Epics** — 012 shipped `type` and `part-of`; nothing produces or consumes an
    epic. There are 0 epics and every `part-of` is `[]`. Missing: filing one
-   (`new.sh:331` hardcodes `type: issue`), joining one (no transition verb
-   mutates `part-of`), the derived roster and progress, an INDEX Epics section,
-   and enforcement of the one-level nesting rule.
+   (`new.sh` hardcodes `type: issue`), joining one (no transition verb mutates
+   `part-of`), the derived roster and progress, an INDEX Epics section, and
+   enforcement of the one-level nesting rule.
 2. **Honest stats** — completion as `done / closed` rather than `closed / total`,
    with `wontfix` / `obsolete` / `duplicate` surfaced as their own signals.
 
-**014 was deliberately sequenced first** so that both later increments build
-*views* rather than a second parse surface. That ordering is the reason
-`--type` and `--epic` ship here against fields that are schema-valid and empty.
+**014 was deliberately sequenced first** so both later increments build *views*
+rather than a second parse surface. That is why `--type` and `--epic` ship here
+against fields that are schema-valid and empty.
 
-## 2. Read order for rebuilding depth
+## 2. Building deep context
 
-1. `plan.md` — the 11 design decisions carry nearly all the reasoning.
-2. `security.md` § Findings 9–12 and § Artifact Misalignment — these drove
-   tasks 8 and 9 and DD 1, 5, 11.
-3. `research.md` § Local Patterns — the finding that reshaped the work (below).
-4. `spec.md` § Open Questions — the four forks and how each resolved.
-5. `docs/specs/issue/000-blueprint/spec.md` — the group's Provides and
-   Invariants; the plan's Constitution Check maps against it directly.
+Read in this order. The first two are short and change how the rest reads.
+
+1. **`remediation.md`** — what is open, what the issues have in common, and the
+   order to fix them in. Its § *What not to do* is load-bearing.
+2. **`retrospective.md`** § *Root cause: one set, three enumerations* — the
+   single most useful page here. It explains why five of the thirteen issues are
+   the same defect wearing different labels.
+3. **`review.md`** § *Findings* and § *Living intent* — the evidence behind each
+   issue, with `file:line` anchors.
+4. **`docs/specs/issue/000-blueprint/spec.md`** — the group's invariants. Both
+   violations resolved *fix the code*, so the blueprint declares properties the
+   code must **return to**. It is the specification for the remediation, not a
+   record of what the code does.
+5. **`spec.md`** § *Acceptance Criteria* — five are partial; `review.md`
+   § *vs. Spec acceptance criteria* names which and why.
+6. The code, in dependency order: `skills/issue/scripts/render.sh` (the whole
+   filter surface), then `index.sh` (the row emitter), then
+   `skills/issue/scripts/place.sh` → `place_substitute` (for `#386` only).
+
+`plan.md` is worth reading for its Design Decisions, which carry reasoning the
+code comments do not — but note it is a **historical** record now: two of its
+Constitution Check rows cite the wrong task numbers, and `review.md` says which.
 
 ## 3. Facts established by running things
 
-Every one of these was verified in-session against the real scripts. Do not
-re-derive them from reading code alone — two of them contradict what a careful
-reading first suggested.
+Every one of these was verified in-session by executing it. Several contradict
+what a careful reading first suggested, and three corrected claims that had
+already been written down confidently. **Do not re-derive them by reading.**
 
-**The substrate is smaller than the spec implies.** `parse_relations`
-(`index.sh:178-207`) is type-agnostic — it emits any `<type>: [<slugs>]` pair
-under `relations:` — so `part-of` is *already* rendered into the index's Graph
-section, as is `depends-on`. Only four scalars (`type`, `filed-by`,
-`claimed-by`, `outcome`) need to reach the Issues row. `parse_scalar_fields`
-(`index.sh:153-171`) already allowlists all four; `index.sh:489-492` already
-stores them. Nothing parses them into a row today.
+### The stale-index behaviours (`#387`)
 
-**Measured widening cost:** +16,544 bytes on a 140,061-byte index → **+11.8 %**.
-Measured by summing the four frontmatter fields across `docs/issues/*.md`, not
-estimated.
+Against an index whose rows predate the widened row and whose mtime is newer
+than every issue file, holding one issue with `claimed-by` set:
 
-**Issue #18 was already fixed** before this spec existed. `render.sh list 17`
-refuses with a non-zero status and creates nothing. My first answer in this
-session claimed 014 would fix it; that was wrong. It is now `closed` /
-`outcome: obsolete` (num 18).
+```
+render.sh list --claimed-by <holder> <dir>   rc=1  refuses, names repair   ✓
+render.sh list unclaimed <dir>               rc=0  lists the HELD record   ✗
+render.sh list claimed <dir>                 rc=0  _No matching issues._   ✗
+render.sh stats --filed-by <filer> <dir>     rc=0  Open: 0 · Closed: 0     ✗
+```
 
-**A read verb does write to the checkout.** `render.sh list docs` binds `docs`
-as the collection (trailing argument that is a directory) and then writes
-`docs/INDEX.md` into it. Verified by removing the file and re-running: it comes
-back. `ensure_index`'s `[[ -d "$dir" ]] || return 0` guard prevents creating a
-*directory*, not writing an index into an existing one. **A stray `docs/INDEX.md`
-was produced during this session while probing and has been removed** — if it
-reappears in `git status`, that is the cause, and it is not a build artifact.
+The `unclaimed` line is the important one: a **populated, wrong** answer, not an
+empty one. An early write-up of this called it an empty result; that was wrong.
 
-**`dir_given` breaks under both new argument shapes.** Probed against the real
-logic in isolation:
+**Recipe.** `tests/issues.sh` already carries the fixture — `strip_new_scalars`
+(search for it) rewrites an index's rows as a pre-widening emitter would and
+`touch`es it newest. Its only current consumer drives `list` with two axes; a
+remediation test should drive every axis and both verbs.
 
-| invocation | `dir_given` | effect |
-| :--- | :--- | :--- |
-| `list --label auth` (with `./auth` existing) | TRUE | routing declined — serves the working tree |
-| `list --label nosuchdir` | false | routes correctly |
-| `list open high` | false | routes correctly |
-| `list open` | false | routes correctly |
-| `stats --spec x` | TRUE | routing declined — **any** filter breaks it |
+### The empty-operand widening (`#390`)
 
-Confirmed live: `render.sh stats --spec issue/011` already reports
-`error: '--spec' is not an existing collection directory`. This project runs
-`issue_placement=branch`, so both are day-one, not latent. Task 8 exists for
-this and nothing else.
+Two issues, one labelled `auth`:
 
-**The Graph slug narrowing is real but latent here.** `render.sh:324` and
-`:703` both match `[a-z0-9-]+`; `is_valid_id` (`render.sh:560`) allows
-`^[A-Za-z0-9][A-Za-z0-9._-]*$`. Every id in this collection is lowercase
-date-prefixed, so nothing is dropped today; under `issue_id_prefix=project` it
-would be. Filed as
-`20260825-graph-edge-readers-narrow-slugs-below-what-is-valid-id-allows`
-(num 381) and fixed by task 4 rather than deferred.
+```
+render.sh list --label auth <dir>    1 match    (correct)
+render.sh list --label ,,, <dir>     2 matches, rc 0
+render.sh list --label '   ' <dir>   2 matches, rc 0
+```
 
-**`need_operand` already exists** at `migrate.sh:73-86`, refusing both a missing
-operand and an operand that is another known flag. Task 5 writes a sibling, not
-a copy — see DD 4 for why a sync marker would assert a falsehood.
+An operand yielding no alternative leaves the axis key unassigned, and every
+matcher reads an unassigned axis as one nobody named.
 
-## 4. Two corrections — do not silently reverse them
+Related, same family: `render.sh list --label --nosuchflag <dir>` binds
+`--nosuchflag` as a label value at rc 0 (`#397`), and an operand containing a
+literal newline is truncated at the first line.
 
-Both are recorded inline in the artifacts, but a fresh reading of the code could
-plausibly re-derive the original wrong version.
+### The placeholder rewrite (`#386`)
 
-**Security Finding 1 was rewritten twice.** Its first form claimed the parse
-ordering was the only guard and that a bound directory would reach `index.sh`'s
-`mkdir -p`. That is false — `ensure_index` refuses a non-existent directory. The
-*first correction* then overcorrected, calling the residue "merely a silent
-wrong answer." Also false: the retarget writes an `INDEX.md` into whatever
-existing directory it lands on, which was verified by running it. The finding
-now carries both steps of the correction. **The current text is the right one.**
+Needs a placement-configured repository — this checkout resolves to `direct`, so
+it will not reproduce here. Recipe, mirroring `tests/issues.sh`'s
+`placement_repo`:
 
-**Issue #18 is not in this spec's scope.** The brainstorm predicted that strict
-bare words would incidentally fix the stray-directory bug. The fix landed
-independently first. Handoff Insight 6 in `spec.md` says so; the AC preserves
-and widens an existing guard rather than creating one.
+```bash
+git init -q <repo> && cd <repo>
+git config user.name T && git config user.email tester@example.test
+printf 'issue_placement = "jim/issues"\n' > jimconf.toml
+printf 'base\n' > README.md && git add -A && git commit -qm base
+# file one issue through new.sh --reviewed, then:
+bash <jim>/skills/issue/scripts/render.sh list --label --dir '{}'
+```
 
-## 5. Decisions whose reasoning lives only here
+The refusal names the run's **real materialized collection path** — the caller's
+own `{}` was rewritten with it. Confirm `place.sh mode` prints `route` first; if
+it prints `direct` the repro is inert.
 
-- **Widening the index row over a sidecar or a direct frontmatter read** was
-  chosen on measured cost: +11.8 % against roughly +100 % for a second
-  representation, and a third frontmatter parser for the direct read. The full
-  comparison is in `research.md` and DD 2, but the *rejection* of the sidecar
-  turned on the group's invariants being written around there being exactly one
-  index — that reasoning is in DD 2's Rejected clause and nowhere else.
-- **`--cols` and `unblocked` were explicit additions requested by the
-  developer**, beyond what the first cut proposed. They were raised as out of
-  scope and pulled in deliberately. Do not treat them as scope creep to trim.
-- **`identity-validated-before-record` is not engaged, and that is stated rather
-  than ticked.** The invariant governs identities that are *written*; a person
-  filter compares and never records. The plan routes query values through the
-  same `identity.sh normalize` anyway, so the definition stays single. See the
-  Constitution Check's note.
+### The census/Summary divergence (`#395`)
 
-## 6. Traps and environment
+An issue whose frontmatter carries `status: "closed<0x01>"` — a `closed` followed
+by a control byte, which is not whitespace and so is not trimmed:
 
-- **The Bash tool's working directory persists between calls.** A `cd docs/issues`
-  early in this session broke a later relative-path invocation of a repo-root
-  script. Prefer absolute paths or `cd /mnt/src/jim && …`. This is the same trap
-  `docs/notes/notes.md` records for `index.sh`.
+```
+grep -E '^- (Open|Closed):' <dir>/INDEX.md   ->  Open: 1 · Closed: 0
+render.sh stats <dir>                        ->  Open: 0 · Closed: 1
+```
+
+`index.sh` classifies the **raw** value; `render.sh` classifies the **sanitized**
+one read back from the row. The previous code echoed the Summary verbatim and
+could not diverge.
+
+### The structural fact underneath five of the issues
+
+`render.sh` declares **seven** vocabularies as `readonly` constants —
+`STATUS_TOKENS`, `PRIORITY_TOKENS`, `TYPE_TOKENS`, `HELD_TOKENS`,
+`BLOCKED_TOKENS`, `COL_TOKENS`, `RENDER_OPTIONS`. The **axis** vocabulary is the
+one it does not. Axis names exist in three places instead: the flag `case`
+pattern (derived via `${a#--}`), the bare-word `elif` chain (literals), and the
+staleness guard's own `for ax in type filed-by claimed-by`.
+
+Three enumerations of one set; the third is a strict subset, and the gap is
+exactly `held`. `retrospective.md` develops this; it is the thing to fix, and
+fixing it closes `#387` and `#388` together.
+
+### Other verified facts
+
+- **`is_filter_token` has zero callers** (three before this build). Verified by
+  repository-wide grep; the only other mentions are in spec artifacts describing
+  the historical bug. `#391`.
+- **The `is_valid_id` triplicate is byte-identical** across `render.sh`,
+  `index.sh` and `jimfile.sh` (verified by hash), and its asserting test passes.
+- **ARCHITECTURE.md contains no literal row-shape passage.** `research.md` claims
+  it "describes a six-field row" needing correction. It does not. That claim
+  survived four stages before the arch refresh went looking for the passage.
+- **The real collection's index was itself stale** in exactly the `#387` sense
+  after the build, and the guard fired correctly on `--claimed-by me`. It has
+  since been regenerated (+12.0%, 141,844 → 158,856 bytes). A remediation test
+  needs the fixture above; the live collection will no longer reproduce it.
+
+## 4. Decisions whose reasoning lives only here
+
+- **The axis alternatives are newline-separated, not space-separated as the
+  plan's Interface Contract specifies.** A deliberate deviation, flagged at the
+  time and recorded in `review.md` § *vs. Plan tasks*. A space separator splits
+  an `--origin` value containing a space into two alternatives and silently
+  widens the query — the failure the plan's own DD 8 exists to prevent. Do not
+  "restore" the contract's letter.
+- **Both invariant violations resolved *fix the code* at the blueprint fork.**
+  The blueprint therefore still declares `placeholder-by-position` and
+  `staleness-gated-reads` as they were. **Do not fold either to match the current
+  code** — that would encode a regression as intent, and for `#387` would mean
+  writing down that a census may answer confidently from an index it knows
+  cannot answer.
+- **The graph-slug narrowing was fixed inside this increment rather than
+  deferred** (issue #381, closed by task 4). Two new axes would otherwise have
+  become copies three and four of a pattern already known to be wrong. The same
+  judgment applies to the remediation: fix the shared cause, not the instances.
+- **`--cols` and `unblocked` were explicit additions the developer pulled into
+  scope** after they had been proposed as out of it. Not scope creep to trim.
+- **The review bundled 35 ACs into 5 investigators** rather than one per AC, with
+  a cap of 20 and only 14 used. A judgment about diminishing returns, not a cap
+  effect; `review.md` § *Coverage* says so. Whether per-AC dispatch finds more is
+  untested.
+
+## 5. Traps and environment
+
+- **Read the configuration; do not trust any transcription of it.** The gates in
+  force (`require_security`, `auto_security`, `require_review`, `auto_review`,
+  `require_blueprint`, `require_health`, the fan-out caps and models) all live in
+  `jimconf.toml` and were changed mid-session once already.
+  `bash skills/conf/scripts/jimconf.sh get <key>` is the answer.
+- **The Bash tool's working directory persists between calls.** An early `cd`
+  into a subdirectory broke a later relative-path invocation. Prefer absolute
+  paths or `cd /mnt/src/jim && …`.
+- **Editing these scripts by line number is fragile.** `render.sh` was corrupted
+  twice this session by `awk`/`sed` splices whose bounds were off by one or whose
+  anchor matched nothing — an empty match variable silently truncates the file.
+  Anchor on a unique literal, guard for an empty match, and `bash -n` after every
+  edit. `git checkout --` is cheap; a half-written script is not.
+- **Test timings.** `bash tests/issues.sh` is ~171s for 384 cases — foreground is
+  fine. The aggregate `bash skills/meta-test/scripts/run.sh` exceeds 600s for
+  1,608 cases — run it in the background and wait on it.
+- **New test cases splice in before the standalone-runnable tail block** at the
+  end of `tests/issues.sh` (the `if [[ "${BASH_SOURCE[0]}" == "${0}" ]]` guard).
+  There is also a *comment* block with a similar name mid-file — that one is
+  prose, not the tail.
 - **The coordination remote is unreachable from this VM.** `jimalloc allocate`
-  returns a `P-` provisional identity; the developer realizes it on the host.
-  Already done for this spec (`P-20260825-read-view-filter-composition` →
-  `issue/014`, landing on the ordinal `peek` had advised) and for the six issues
-  filed this session (nums 380–385). No pending identities remain.
-- **`issue_placement=branch` with `issue_placement_ack=false`**, so `new.sh`
-  requires `--reviewed` and the candidate batch always takes the interactive
-  path. `--auto` exits 4.
-- **Agent fan-out is authorized for this session** — the developer granted it at
-  the build's start. The review and verify surfaces fan out on `sonnet` with a
-  cap of 20 (`review_model` / `review_fanout_cap`, `verify_model` /
-  `verify_fanout_cap`). The grant is per-session rather than standing.
-- **Never hand-edit `ARCHITECTURE.md`** — it is refreshed by the build-completion
-  gate via `/jim:arch`.
+  returns a `P-` provisional identity and the developer realizes it on the host
+  via `/jim:issue reconcile`. All thirteen from this session are realized; none
+  is pending. Expect any new filing to be provisional again.
+- **`issue_placement` resolves to `branch` by default but `place.sh mode` prints
+  `direct` in this checkout.** Both are true and not in conflict — check `mode`,
+  not the config key, when reasoning about routing.
+- **Never hand-edit `ARCHITECTURE.md`.** It is maintained through `/jim:arch`; a
+  surgical edit bypasses the skill and stales its Last-updated header.
 - **Do not push.** Git push is host-only from this sandbox.
-- `wc -w` counts markdown syntax and backticked paths, so `research.md`'s
-  1500-word budget is approximate; it reads at ~1540 by that measure.
 
-## 7. Resuming the build
+## 6. If you are picking up the remediation
 
-Run `/jim:build docs/specs/issue/014-read-view-filter-composition`.
+Start with `remediation.md` § *Order*. Its first two steps close both blueprint
+violations and four of the five partial acceptance criteria, and they are what
+lets the plan be marked complete honestly.
 
-Worth watching:
+Three things worth carrying in from `retrospective.md` while you work:
 
-- **Task 8** is the one neither the spec nor the first security pass saw. It is
-  the only task addressing a defect that is live today rather than introduced by
-  this feature.
-- **Task 9** asserts *no `INDEX.md` was written*, not merely *no directory was
-  created*. The weaker assertion passes against the bug described in § 3.
-- **Task 4** changes two existing surfaces (the stats blocking rollup and the
-  insights graph) rather than only adding new ones, so its blast radius is wider
-  than its task text suggests.
-- Tasks 10–18 all depend on task 10 or earlier; the dependency notes are
-  accurate as written and were renumbered twice, so trust the notes over any
-  remembered numbering.
+- **Fix the shared cause, not the instance.** `#387` and `#388` are one fix
+  wearing two labels; so are `#390` and `#397`. Fixing either pair by halves
+  leaves the other half looking deliberate.
+- **Derive test domains from the code's own constants.** The reason the original
+  suite could not catch `#387` is that its test exercised the same two axes the
+  implementation enumerated — one context wrote both. A loop over an
+  `AXIS_TOKENS`-style constant catches the next one automatically; a hand-picked
+  pair never will.
+- **Smoke-test by enumeration, not by selection.** Every bare word and every flag
+  once against the real collection is ~23 invocations and costs nothing. The
+  original smoke test covered the axes the guard was built for, which is the same
+  blind spot one level up.
 
-**Uncommitted state at handoff** (branch `feat/issue-epics`, HEAD `3c6e347`):
-
-```
- M docs/issues/20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg.md
- M docs/issues/INDEX.md
- M docs/specs/ledger.md
-?? docs/issues/20260825-*.md                       (6 files, nums 380–385)
-?? docs/specs/issue/014-read-view-filter-composition/
-```
-
-**One open item unrelated to the build:** `VISION.md:67` still reads "not as a
-team-coordination primitive" while 012 shipped `claim` / `release` and 014 makes
-the holder queryable. Filed as num 380. `/jim:spec`'s alignment gate will raise
-it against every future spec in this area until the vision is amended.
+When the remediation is done, the completion gate is a single question to the
+developer: mark `plan.md` `status: complete`. Both blocking gates
+(`require_review`, `require_blueprint`) were satisfied during this session —
+`review.md` exists and the blueprint update ran to completion with its fork
+answered — so nothing needs re-running unless the code changes make a fresh
+review worthwhile. That is a judgment call; `remediation.md` does not presume it.
