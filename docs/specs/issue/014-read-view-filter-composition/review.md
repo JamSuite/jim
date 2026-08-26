@@ -47,12 +47,14 @@ deviations:** 2 · **Security regressions:** 0
 
 All 21 planned tasks shipped across 25 commits, with the full suite green at
 1608 tests and no scope creep. The drift is concentrated in one acceptance
-criterion: the disclosure that refuses an axis the index cannot answer was built
-to the plan's task text, which enumerated three axes on one verb, while the
-criterion it serves is stated over every axis on both. Against an index written
-before the row was widened, `list unclaimed` therefore reports a genuinely-held
-record as unclaimed, and `stats --filed-by X` reports `Open: 0 · Closed: 0` —
-both at status 0, which is the failure the criterion names in its own words.
+criterion: the disclosure that refuses an axis the index cannot answer covers
+three axes on one read verb, while the criterion it serves is stated over every
+axis on both. The plan's task text is general and its Interface Contract lists
+all eleven axes, so the narrowing entered at implementation, not at planning.
+Against an index written before the row was widened, `list unclaimed` therefore
+reports a genuinely-held record as unclaimed, and `stats --filed-by X` reports
+`Open: 0 · Closed: 0` — both at status 0, which is the failure the criterion
+names in its own words.
 
 ## Alignment
 
@@ -448,13 +450,19 @@ consumer-side 0)
 
 ## Deviations & feedback
 
-- **The plan's task text became the specification.** Both partial acceptance
-  criteria trace to the same shape: the plan enumerated a concrete subset
-  (`type` / `filed-by` / `claimed-by`; "another *known* flag") and the build
-  implemented the enumeration faithfully, while the criterion above it was
-  stated generally. Neither security pass caught it because both reviewed the
-  plan's own framing. A plan that narrows a criterion should say it is narrowing
-  one.
+- **One set, three enumerations — and only one of them narrowed by the plan.**
+  The two partial criteria have different origins, and conflating them would
+  point remediation at the wrong stage. Task 13's text is general ("an axis the
+  index does not describe") and the plan's own Interface Contract lists all
+  eleven axes including `held` — so for the staleness guard the plan supplied
+  both the rule and the complete domain, and the implementation enumerated a
+  subset of it anyway. Only the flag-operand refusal was narrowed at plan time
+  ("another *known* flag"), deliberately and with a stated rationale. The
+  present-but-empty operand was named by neither. What they share is not a
+  stage but a shape: a set the rule quantifies over, re-derived at each point of
+  use instead of declared once. `render.sh` declares seven vocabularies as
+  `readonly` constants; the axis vocabulary is the only one it does not, and it
+  is the one that drifted.
 - **The feature's own disclosure fired on its first real query.** The
   unanswerable-axis guard refused `--claimed-by me` against this repository's
   tracked index immediately after the build, because that index predated the

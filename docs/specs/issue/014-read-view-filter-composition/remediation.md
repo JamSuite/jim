@@ -16,9 +16,9 @@ and chooses columns for a single query. Against the real 380-issue collection,
 before its counts. The suite is green at 1,608 tests across 16 files, all 21
 plan tasks are `[x]`, and 30 of 35 acceptance criteria are fully satisfied.
 
-Two of the remaining five produce a **wrong answer** rather than a missing one,
-and the review found both by running the code after investigators had reasoned
-the other way.
+Two of the remaining five produce a **wrong answer** rather than a missing one.
+Independent investigators found both by reading; running them confirmed the
+behaviour and corrected my own first account of one.
 
 | artifact | state |
 | :--- | :--- |
@@ -133,12 +133,27 @@ Each enumeration is correct about what it lists. Each is a strict subset of the
 rule above it, and in every case the gap is silent — the code takes the
 optimistic branch and returns a plausible answer.
 
-The plan is where this entered, and the review's own feedback section says so:
-the plan named a concrete subset for each task, the build implemented the subset
-faithfully, and neither security pass caught the narrowing because both reviewed
-the plan's framing rather than the criterion's. **A plan that narrows a criterion
-should say that it is narrowing one.** That is the process finding worth carrying
-past this remediation.
+**These have three different origins, and only one is the plan's.** Task 13's
+text is general — "a filter names an axis the index does not describe" — and the
+plan's Interface Contract lists all eleven axes, `held` among them. For `#387`
+and `#388` the plan supplied both the rule and the complete domain, and the
+implementation enumerated a subset of it two pages later. `#397` *was* narrowed
+at plan time, deliberately and with a stated rationale about addresses wearing a
+leading hyphen. `#390` was named by neither.
+
+So the fix is not "write better plans." What the four share is structural:
+`render.sh` declares seven vocabularies as `readonly` constants — status,
+priority, kind, held, blocked, columns, options — and the **axis** vocabulary is
+the one it does not. Axis names exist in three places instead: a case pattern
+that derives them from flag names, an `elif` chain of literals, and the guard's
+own hand-written list. Three independent enumerations of one set, and the third
+is a subset of the other two. **A set the rule quantifies over was re-derived at
+each point of use instead of declared once and iterated.**
+
+`#397` is the instructive variant: `RENDER_OPTIONS` *is* declared — it is simply
+the wrong set for the rule, which quantifies over any flag rather than over this
+file's own. Declaring a set does not help when the rule ranges over a different
+one.
 
 A second, weaker shape connects `#386` and `#394`: **a guard whose correctness
 rests on the narrowness of its inputs, with nothing stating the dependency.**
@@ -254,20 +269,25 @@ as out of it.
 
 ### A process note worth keeping
 
-Three of this cycle's most useful findings were settled the same way, and it was
-not by reading:
+**Independent adversarial reading found the defects; execution corrected the
+mechanisms.** It is worth separating those, because the first sentence of this
+section originally said the opposite and had to be checked against the record:
 
-- `--label ,,,` matching everything — three investigators reasoned that a
-  present-but-empty operand *should* refuse; running it showed it matches
-  every record
-- `list unclaimed` misreporting a held record — the sensor and two investigators
-  described it as an empty result; running it showed a populated, wrong one
-- the census/Summary divergence — found by constructing the adversarial input
-  rather than by inspecting the two comparison sites
+- `--label ,,,` matching everything, `list unclaimed` misreporting a held
+  record, and the census/Summary divergence were each **found by reading** — by
+  an investigator or a judge given the criterion separately from the code and
+  told to default to unproven. Running them confirmed all three.
+- What execution actually corrected were **confident, specific, wrong claims
+  about mechanism**: security Finding 1 asserted twice that a bound directory
+  would reach `index.sh`'s `mkdir -p`, and both versions were wrong; a test
+  assertion of mine claimed a read never indexes a named empty collection, and
+  it does; and my own first summary of `#387` called it an empty result when it
+  is a populated, wrong one.
 
-In each case the reasoning was careful and the conclusion was wrong in the
-direction that mattered: toward the code being better than it is. The suite was
-green at 1,608 tests over all three.
+So the two techniques answer different questions. Reading finds *what is
+missing*. Running settles *why*, and it is the only thing that reliably catches
+a fluent explanation of a mechanism that does not exist. The suite was green at
+1,608 tests throughout — it never distinguished either.
 
 Two more worth recording, both about the review itself:
 
