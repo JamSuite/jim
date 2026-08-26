@@ -58,7 +58,9 @@ CLIs.
   (summary, issues, relation graph, integrity warnings). Guarantee:
   line-oriented parse only; atomic write — a failed run leaves the previous
   index untouched; a placement it cannot resolve refuses rather than publishing
-  an index whose origin lint silently did not run.
+  an index whose origin lint silently did not run; the Issues row describes each
+  record with every field a filter can name, each emitted only where the record
+  carries it.
 - `render.sh` **read views** — `stats`/`list`/`show`/`insights-graph`/`help`.
   Guarantee: staleness-gated index reuse in the working tree, where mtimes
   answer the question, and an unconditional rebuild on a materialized copy,
@@ -67,7 +69,13 @@ CLIs.
   collection at the configured placement rather than a branch-local copy. A
   view served from an index that could not be rebuilt is named on stderr and
   carries a non-zero status, so no reader is handed a stale view reported as a
-  current one.
+  current one. Both read verbs take one composed filter grammar over a reserved
+  vocabulary: every argument is classified before the collection positional
+  binds, so a flag's operand never reads as a directory and a reserved word
+  never leaves the filter vocabulary. A filter naming an axis the index does
+  not describe is named on stderr and carries a non-zero status, on the same
+  terms as a view that could not be refreshed — an empty result means nothing
+  matched, never that the view could not look.
 - `transition.sh` **lifecycle verbs** — `claim` / `release` / `start` / `close`
   / `reopen`, one command per transition. Guarantee: the id clears the validator
   and the outcome clears its enum before the placement door opens; each
@@ -91,7 +99,9 @@ CLIs.
   control carries before any extraction, so one contributor's several addresses
   collapse to one identity. The
   same definition governs every recorded identity — the emitter's filer, the
-  transition verbs' holder, and the filer the conversion recovers from history.
+  transition verbs' holder, and the filer the conversion recovers from history —
+  and the read views' person filters compare through it rather than through a
+  second one, so a query and a capture cannot disagree about who someone is.
 - `is_valid_id` **validator lockstep** — the two copies of the id validator
   this group carries, in `index.sh` and `render.sh`. Guarantee: both stay
   byte-identical to the platform CLI's own definition in `jimfile.sh`, so the
