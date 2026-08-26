@@ -1,6 +1,6 @@
 ---
 id: 20260826-statistics-counts-can-disagree-with-the-index-summary
-num: P-20260826-statistics-counts-can-disagree-with-the-index-summary
+num: 395
 title: "Statistics counts can disagree with the index summary"
 status: open
 priority: low

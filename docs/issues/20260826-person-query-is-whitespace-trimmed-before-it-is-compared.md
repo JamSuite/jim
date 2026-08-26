@@ -1,6 +1,6 @@
 ---
 id: 20260826-person-query-is-whitespace-trimmed-before-it-is-compared
-num: P-20260826-person-query-is-whitespace-trimmed-before-it-is-compared
+num: 392
 title: "Person query is whitespace-trimmed before it is compared"
 status: open
 priority: low

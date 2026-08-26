@@ -1,6 +1,6 @@
 ---
 id: 20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank
-num: P-20260826-column-naming-a-field-the-index-cannot-answer-renders-it-blank
+num: 388
 title: "Column naming a field the index cannot answer renders it blank"
 status: open
 priority: medium

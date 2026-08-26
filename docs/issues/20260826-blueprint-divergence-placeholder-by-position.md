@@ -1,6 +1,6 @@
 ---
 id: 20260826-blueprint-divergence-placeholder-by-position
-num: P-20260826-blueprint-divergence-placeholder-by-position
+num: 386
 title: "Blueprint divergence: placeholder-by-position"
 status: open
 priority: high

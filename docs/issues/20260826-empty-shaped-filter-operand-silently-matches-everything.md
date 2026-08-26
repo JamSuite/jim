@@ -1,6 +1,6 @@
 ---
 id: 20260826-empty-shaped-filter-operand-silently-matches-everything
-num: P-20260826-empty-shaped-filter-operand-silently-matches-everything
+num: 390
 title: "Empty-shaped filter operand silently matches everything"
 status: open
 priority: high

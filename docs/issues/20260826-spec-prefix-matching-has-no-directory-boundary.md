@@ -1,6 +1,6 @@
 ---
 id: 20260826-spec-prefix-matching-has-no-directory-boundary
-num: P-20260826-spec-prefix-matching-has-no-directory-boundary
+num: 394
 title: "Spec prefix matching has no directory boundary"
 status: open
 priority: low

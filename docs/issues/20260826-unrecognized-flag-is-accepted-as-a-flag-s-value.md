@@ -1,6 +1,6 @@
 ---
 id: 20260826-unrecognized-flag-is-accepted-as-a-flag-s-value
-num: P-20260826-unrecognized-flag-is-accepted-as-a-flag-s-value
+num: 397
 title: "Unrecognized flag is accepted as a flag's value"
 status: open
 priority: medium

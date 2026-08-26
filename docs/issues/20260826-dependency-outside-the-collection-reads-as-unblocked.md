@@ -1,6 +1,6 @@
 ---
 id: 20260826-dependency-outside-the-collection-reads-as-unblocked
-num: P-20260826-dependency-outside-the-collection-reads-as-unblocked
+num: 389
 title: "Dependency outside the collection reads as unblocked"
 status: open
 priority: low

@@ -1,6 +1,6 @@
 ---
 id: 20260826-test-coverage-gaps-around-the-new-read-view-surfaces
-num: P-20260826-test-coverage-gaps-around-the-new-read-view-surfaces
+num: 396
 title: "Test-coverage gaps around the new read-view surfaces"
 status: open
 priority: low

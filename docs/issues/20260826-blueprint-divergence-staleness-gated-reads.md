@@ -1,6 +1,6 @@
 ---
 id: 20260826-blueprint-divergence-staleness-gated-reads
-num: P-20260826-blueprint-divergence-staleness-gated-reads
+num: 387
 title: "Blueprint divergence: staleness-gated-reads"
 status: open
 priority: medium

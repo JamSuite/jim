@@ -1,6 +1,6 @@
 ---
 id: 20260826-untrusted-values-reach-awk-through-v-in-two-scripts
-num: P-20260826-untrusted-values-reach-awk-through-v-in-two-scripts
+num: 398
 title: "Untrusted values reach awk through -v in two scripts"
 status: open
 priority: low

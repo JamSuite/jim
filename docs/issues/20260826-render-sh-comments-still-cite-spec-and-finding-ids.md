@@ -1,6 +1,6 @@
 ---
 id: 20260826-render-sh-comments-still-cite-spec-and-finding-ids
-num: P-20260826-render-sh-comments-still-cite-spec-and-finding-ids
+num: 393
 title: "render.sh comments still cite spec and finding ids"
 status: open
 priority: low
