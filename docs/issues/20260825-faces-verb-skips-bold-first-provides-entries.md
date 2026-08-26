@@ -131,3 +131,38 @@ across the boundary in exactly the period the reshape was meant to fix.
 the maximum under both the emitted count and the true one. Two groups whose
 bold/backtick mix differs could trade the lead in the emitted count while the
 true maximum never moves, and the attribution would follow the wrong one.
+
+## It stops the reconcile from deriving at all (2026-08-26)
+
+The Census above measures what the verb loses. This records what that costs a
+run: the reconcile pass's derivation step is not merely inaccurate, it is
+unusable, and staying correct means not using it.
+
+A reconcile fired after a group-blueprint write on 2026-08-26. Deriving the
+contract graph from `jimverify.sh faces` would have read `sdlc` as declaring
+nothing, so every `sdlc.personas` requirement — from `blueprint` and from
+`platform` — would have surfaced as a leak against a group whose face is right
+there in the markdown. The pass carried the persisted 26-edge table forward and
+restamped instead, which is correct only because the run happened to change no
+face. A run that *does* move a face has no such escape: it must re-derive, and
+re-deriving is what manufactures the finding.
+
+So the failure has a second shape beyond the counters. A careful operator
+notices the face is empty and declines to derive, and the graph silently stops
+being refreshed. One who does not notice files leaks against declarations that
+exist. Neither outcome is visible in the ledger, because both record the same
+`edges=` and the same finding counters.
+
+**The finding counters may carry this too.** The durable-undercount section
+already records that `faces=` banks a wrong number into ledger history. The same
+applies to `leaks=`: the classification is judgment over the two faces, and one
+of those faces can read as empty. Consecutive runs have recorded `leaks=1`
+without the derivation inputs being trustworthy on the provider side. Whether
+that specific finding is real or an artifact is not settled here — settling it
+means re-deriving against the markdown rather than the verb, which is the same
+work as fixing the parser.
+
+That sharpens the direction: the parser fix is not only what makes a `faces=`
+backfill meaningful, it is what makes the derivation step usable at all. Until
+it lands, a reconcile over a changed face is choosing between a stale graph and
+a fabricated finding.
