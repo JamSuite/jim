@@ -1,6 +1,6 @@
 ---
 id: 20260826-blueprint-divergence-declared-vocabularies-span-scripts
-num: P-20260826-blueprint-divergence-declared-vocabularies-span-scripts
+num: 402
 title: "Blueprint divergence: declared vocabularies span scripts"
 status: open
 priority: high
