@@ -129,3 +129,5 @@ spec allocate issue/013 recorded-identity-schemes 20260823 jrko
 spec realize issue/P-20260823-recorded-identity-schemes issue/013 20260823 jrko
 spec allocate issue/014 read-view-filter-composition 20260825 jrko
 spec realize issue/P-20260825-read-view-filter-composition issue/014 20260825 jrko
+spec allocate issue/015 epic-authoring-and-views 20260827 jrko
+spec realize issue/P-20260827-epic-authoring-and-views issue/015 20260827 jrko
