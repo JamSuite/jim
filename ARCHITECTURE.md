@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-08-26*
+*Last updated: 2026-08-27*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill
 to preserve consistency.
@@ -1945,8 +1945,19 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   with `trap`-based cleanup; it parses the spec 019 `num:` field and emits `num` +
   `created` in the `## Issues` rows, which also carry `type`, `filed-by`,
   `claimed-by` and `outcome` — every field a read-view filter can name, each
-  emitted only when the record carries it. Top-level scalar frontmatter
-  fields are
+  emitted only when the record carries it. A row's shape is a property of the
+  writer, never of its inputs: a scalar reaches a row only through the display
+  sanitizer, which removes the ` · ` separator and control characters, so no
+  value can append a `key: value` pair the writer never emitted. A scalar
+  judged against a vocabulary is sanitized **once, before it is judged**, so
+  the value classified and the value displayed are one — otherwise the Summary
+  could assert a count its own rows deny, and a warning could call a value
+  unrecognized while printing one that is. `render.sh`'s `read_issue_rows`
+  inverts that format exactly, consuming the single separator space the emitter
+  writes rather than a run of whitespace: consuming a run would let the reader
+  decide where a value with leading spaces begins, and the index and its
+  readers would then disagree about what the record holds. Top-level scalar
+  frontmatter fields are
   extracted in a single `awk` pass per file (`parse_scalar_fields`, one field
   per output line) rather than one `grep|head|sed` pipeline per field — a
   fork-reduction that dominates regen cost on larger collections. The atomic
@@ -1986,7 +1997,31 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   filter grammar: `parse_filters` classifies every argument — reserved bare
   words, and flags carrying comma-separated value lists — *before* the
   collection positional binds, so a flag's operand can never be read as a
-  directory and a mistyped filter never reaches one. `dir_given` reads argv by
+  directory and a mistyped filter never reaches one. Every set the grammar
+  quantifies over is a declared `readonly` constant that each site iterates
+  rather than restates, `AXIS_FIELDS` among them — the axis vocabulary paired
+  with the row field each axis reads, which is what makes `held` answerable,
+  since it reads `claimed-by` under a key of its own and a guard listing axis
+  names alone reads straight past it. An operand is refused when it names no
+  filter at all: absent, `--`-prefixed (any flag, not merely this file's own),
+  multi-line, or yielding zero alternatives after splitting on the comma —
+  recording nothing would leave the axis unassigned, and every matcher reads an
+  unassigned axis as one nobody named, so a narrowing operand would arrive as a
+  widening query at status 0. A single leading hyphen is still carried, because
+  a recordable identity may wear one. `schema_gate` runs on **both** verbs and
+  quantifies over `SCHEMA_GATED_FIELDS`: a query naming an axis *or* a column
+  that an index predating the widened row cannot answer is refused rather than
+  answered from blanks, and the refusal names the row field rather than the
+  axis key. The two origin axes compare differently on purpose: `--origin` is
+  an unbounded literal path prefix, as specified, while `--spec` splits its
+  operand at the first `/` and compares segment-wise — the group must match a
+  whole path segment, and only what follows it may end at a `-`, so naming a
+  group and an ordinal still reaches the directory without spelling the rest of
+  its name while a group cannot reach a free-form sibling whose name it merely
+  prefixes. `blocked` and `epic` are derived from the index's `## Graph` rather
+  than stored, so no record can contradict them; a `depends-on` target the
+  collection does not hold counts as blocking, because a dependency nobody can
+  open is not finished. `dir_given` reads argv by
   that same grammar, because a routing decision and a binding decision that
   disagree produce a plausible answer over the wrong collection rather than an
   error. Person filters resolve and compare through `identity.sh`, so a query
@@ -2030,7 +2065,18 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   `awk` through the environment rather than `-v`, which processes its operand as
   a string literal and expands escape sequences — a literal `\n` in an untrusted
   timestamp would otherwise become a real newline and open a second frontmatter
-  pair that a reader resolves ahead of the file's own. The timestamp-shape
+  pair that a reader resolves ahead of the file's own. That is the group's
+  channel rule rather than this one script's habit: every value carrying
+  collection data or operator input reaches `awk` through `ENVIRON` — the
+  schema conversion, the identity remap and the plan lookup in `migrate.sh`,
+  the field rewriter in `transition.sh`, and the realizer's mapping lookup in
+  `reconcile.sh`. The `-v` operand is kept only for values a script computed
+  itself: an integer, a `mktemp` path, a literal field name. The gate the
+  callers already apply is not the argument for the channel — a guarantee held
+  a caller away is one the next caller can forget — though a
+  **format-validated** value passed through `-v` remains legitimate where the
+  validation is stated at the call site (`jimledger.sh`'s watermark, below).
+  The timestamp-shape
   allowlist (`^[0-9]{4}-[0-9]{2}-[0-9]{2}(T…Z)?$`) is copied across `render.sh`
   / `index.sh` / `backfill.sh` under a `# SYNC(ts-shape)` comment, with a
   `tests/issues.sh` triplicate-identical case guarding against drift. As of spec
@@ -2246,11 +2292,20 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   `--place-token`, and routing is suppressed only when they match, so an
   inherited or hand-exported variable is ignored and disclosed rather than
   silently landing writes on the working branch at rc 0. The `{}` / `{token}`
-  placeholders the re-exec carries are matched whole-argument, never as
-  substrings: the wrapped command forwards free-form user text, `{}` is ordinary
-  in a developer-tool issue title (`interface{}`, an empty JSON literal), and a
-  substring rewrite put the run's temp path into the title and from there into
-  the slug — the durable id an append-only registry has already recorded. A
+  placeholders the re-exec carries are substituted **only at argv offsets the
+  caller declared** — `--dir-at` / `--token-at`, indexing the wrapped command
+  with negative values counting from the end — and an offset holding something
+  other than the marker it names is refused at rc 2. Nothing else about the
+  argv is examined, because nothing else can tell a marker from user text.
+  Value alone cannot: the wrapped command forwards free-form input, and `{}` is
+  ordinary in a developer-tool issue title (`interface{}`, an empty JSON
+  literal). Position relative to a neighbouring word cannot either: forwarded
+  text supplies its own neighbours, so a filter value reading `--dir` makes the
+  argument after it look placed. Only the caller that built the invocation
+  knows where it put a marker, so only the caller is asked, and all six entry
+  scripts declare their own offsets. What this closes is a rewrite putting the
+  run's temp path into a title and from there into the slug — the durable id an
+  append-only registry has already recorded. A
   `begin`/`commit`/`abort` handle gives the same door to agent-side edits that
   have no command to wrap, keeping its state under the git dir where the token
   can find it across processes; a refused publish preserves the handle rather
