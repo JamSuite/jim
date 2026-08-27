@@ -11,7 +11,6 @@ id_coordination_unreachable = "provisional"
 
 # --- Reviews
 require_review = "true"
-auto_review = "true"
 review_model = "sonnet"
 review_fanout_cap = "20"
 
@@ -19,7 +18,6 @@ review_fanout_cap = "20"
 require_blueprint = "true"
 blueprint_regen_threshold = "5"
 require_health = "true"
-auto_health = "true"
 deps_command_refs = "bash scripts/jim-deps-refs.sh"
 verify_model = "sonnet"
 verify_fanout_cap = "20"
