@@ -12,10 +12,11 @@ the setting.
 
 ## 1. Where this stands
 
-The feature is **built, reviewed, and remediated through step 5** — the whole
-of `remediation.md`'s order except the three it deliberately deferred. The
-three issues that gated the plan are fixed, verified and closed. The plan is
-still held at `approved` — closing it is a single decision, described in § 6.
+The feature is **built, reviewed, and remediated through step 5**, and the test
+debt the order queued next is closed too — what is left of `remediation.md`'s
+order is the two it deliberately deferred. The three issues that gated the plan
+are fixed, verified and closed. The plan is still held at `approved` — closing
+it is a single decision, described in § 6.
 
 | artifact | state |
 | :--- | :--- |
@@ -24,10 +25,10 @@ still held at `approved` — closing it is a single decision, described in § 6.
 | `security.md` | `Needs Plan Review` — 12 findings, all routed and applied |
 | `plan.md` | `approved` — 21/21 tasks `[x]`, **held**, and now closeable |
 | `review.md` | `minor-drift` — 13 findings, `undelegated=0` |
-| `remediation.md` | the order of attack — steps 1–5 done; `#396`, `#394`, `#398` left |
+| `remediation.md` | the order of attack — steps 1–5 and `#396` done; `#394`, `#398` left |
 | `retrospective.md` | why it happened; the root cause and its prevention |
 | group blueprint | **15 invariants** — `row-shape-is-the-writers` added, writer-side only |
-| suite | **1623 green** (`skills/meta-test/scripts/run.sh`) |
+| suite | **1628 green** (`skills/meta-test/scripts/run.sh`) |
 
 Two frontmatter values look wrong and are not, the same trap the preceding
 increments record. **`security.md` stays `Needs Plan Review`** — the field
@@ -78,10 +79,25 @@ its read-side half. They live in `remediation.md` § What it did not anticipate
 at all and in the two resolutions. Neither has an ordinal — decide whether they
 want one before they are lost.
 
+### After the remediation
+
+**`#396` closed** — `80c169c` (five cases) and `320273c` (the resolution). It
+was the test debt the order queued next. Six behaviours were listed and five
+needed work: `52d071e` had already shipped the sixth's assertion alongside the
+fix for that defect, so the record's own list outlived the work by one. Two of
+the six were stated slightly wrong and running them is what corrected it (§ 3).
+Suite 1623 → 1628.
+
+**Found, not filed (a third)** —
+`case_issues_index_wikilink_in_inline_backticks_ignored` passes for the wrong
+reason. Its fixture body is double-quoted, so the wikilink it exists to test is
+consumed as command substitution before the file is written; the body reaches
+disk without it and the case then asserts that no edge was produced, which is
+true of a body holding no wikilink at all. Pre-existing, one site, and the
+shell announces it on every run. No ordinal.
+
 ### What remains, in `remediation.md`'s order
 
-- **`#396`** as the surrounding code is next touched, except its fifth item,
-  which is worth doing on its own.
 - **`#394` and `#398` last, and deliberately.** Neither is a defect today.
 - Outside the remediation: `/jim:arch` (§ 5), `#401`, `#402`, and `#374` —
   which now gates the blueprint surface, not just a counter.
@@ -115,18 +131,18 @@ Reading this document is not enough. Ground it in the artifacts, in this order
 — the first three are short and change how the rest reads.
 
 1. **`remediation.md`** § *Order*, § *What not to do*, and § *What running it
-   settled*. All five steps are done; what is left of the order is `#396`,
-   `#394` and `#398`. Read § *Where this analysis was short* with it — five
-   entries now, and they are the honest account of where an analysis of a
-   review cannot reach.
+   settled*. All five steps are done, and so is `#396`; what is left of the
+   order is `#394` and `#398`. Read § *Where this analysis was short* with it
+   — five entries now, and they are the honest account of where an analysis of
+   a review cannot reach.
 2. **`retrospective.md`** § *Root cause: one set, three enumerations* — the
    single most useful page here, and the reason every fix took the shape it did.
    It is still predicting findings: `#402` is that shape one file boundary out,
    and `#392` turned out to be it at a seam between two functions.
-3. **The ten closed issues' Resolution sections** — `#386`, `#387`, `#388`,
-   `#389`, `#390`, `#391`, `#392`, `#393`, `#395`, `#397`. `#392` and `#389`
-   are the two worth reading first: each records a filed reproduce that does
-   not reproduce, and why.
+3. **The eleven closed issues' Resolution sections** — `#386`, `#387`, `#388`,
+   `#389`, `#390`, `#391`, `#392`, `#393`, `#395`, `#396`, `#397`. `#392`,
+   `#389` and `#396` are the three worth reading first: each records a filed
+   account that did not survive being run, and why.
 4. **`docs/specs/issue/000-blueprint/spec.md`** — the group's 15 invariants.
    Three changed across the remediation (§ 4). This is what the code answers
    to — and `row-shape-is-the-writers` now understates the code, which upholds
@@ -197,6 +213,24 @@ suggested.
   back-edge`, and it fires **identically** for a dependency that resolves. It
   reports reciprocity, not danglingness. Nothing reported the absence at all,
   on any surface.
+- **`#396`, and the two of its six items that were stated wrong.** Its *item 3*
+  says the census scope line reports the `me` it resolved. It reports more than
+  that: the identity in the collection's own **recorded form**. Querying as
+  `1234+alice@users.noreply.github.com` prints `scope: filed-by=alice`, the
+  account name the configured form extracts — which is also the form the
+  comparison ran under, so the line and the count agree by construction rather
+  than by coincidence. Its *item 1* names "the trailing `if` with no `else`" as
+  though it were one path; the integrity-warnings block has two, and the verb's
+  status comes from whichever it takes, so an empty match has to be run over a
+  sound collection **and** over one carrying a warning.
+- **`labels: []` reaches the row as a literal pair and is still not a defect.**
+  Every other empty scalar is omitted from the row; this one is not, because
+  the frontmatter value is the two-character string rather than an empty one —
+  and it is the spelling `new.sh` emits for a record with no labels. It is
+  harmless: `read_issue_rows` strips the brackets, so the list view renders it
+  absent and the census clusters nothing under it. Writer and reader invert
+  each other exactly. Recorded because reading the emitter alone suggests a
+  defect that is not there.
 
 ### `jimverify.sh faces` cannot be used to derive the graph (`#374`)
 
@@ -354,18 +388,31 @@ undercounts the same way and nearly produced a false `leak` by hand. Match
   was corrupted by an off-by-one range delete. Anchor on a unique literal, verify
   the anchor is unique *first*, and `bash -n` after every edit. A `case` arm
   pattern that appears in two functions matches both.
-- **Test timings, measured rather than remembered.** `bash tests/issues.sh` is
-  **~400s** for its ~396 cases, and the aggregate
-  `skills/meta-test/scripts/run.sh` is **~18 minutes** for 1623. Both figures
-  were wrong in the previous handoff (171s and ~35 minutes) — re-measure
-  rather than trusting either. Every foreground wait will time out; background
-  the run and poll a log.
+- **Test timings vary enough that only the order of magnitude carries.**
+  `bash tests/issues.sh` is **~400s** for its 401 cases, and the aggregate
+  `skills/meta-test/scripts/run.sh` took **~18 minutes** at 1623 and
+  **~22 minutes** at 1628, on different days under different load. Two earlier
+  handoffs recorded 171s and ~35 minutes, both wrong. Measure; do not
+  transcribe. Every foreground wait will time out; background the run and poll
+  a log.
   `transition.sh close` costs ~45s per issue because it regenerates the index
   over ~400 records.
 - **A suite log can contain a NUL byte, and then `grep` goes silent.** Some case
   writes one, so `grep -c '^PASS' run.log` reports nothing at all rather than a
   count — it has decided the file is binary. Use `grep -a` for every read of a
   run log. A watcher that greps without it waits forever on a run that finished.
+- **Never edit a test file while `bash <that file>` is running.** Bash reads a
+  script incrementally and keeps a byte offset into it, so an edit that shifts
+  offsets can make a running interpreter resume mid-token. Any result from a
+  run that straddled an edit is untrustworthy whatever it reports — kill it and
+  start again rather than reasoning about whether the edit was "far enough
+  down". Confirm no runner survives first: `pgrep -fa 'tests/issues\.sh'`, then
+  kill **by PID**, never by pattern — a pattern matches the shell issuing it.
+- **Do not put `&` inside a call already backgrounded by the harness.** The
+  launcher returns immediately, the harness reports *its* exit status as the
+  run's, and the suite keeps going unsupervised. That is how two concurrent
+  runs over one edited file happened here; the first was still alive an hour
+  later. Background the plain command and let the harness track it.
 - **New test cases splice in before the standalone-runnable tail block** at the
   end of `tests/issues.sh`. There is also a *comment* block with a similar name
   mid-file — that one is prose, not the tail.
@@ -393,20 +440,28 @@ undercounts the same way and nearly produced a false `leak` by hand. Match
 ## 6. If you are picking up from here
 
 **The plan can be closed honestly.** All three gating issues are fixed, their
-tests pin them, the suite is green at 1623, and the living-intent sensor has
+tests pin them, the suite is green at 1628, and the living-intent sensor has
 been run twice against the fixes rather than the original build. Marking
 `plan.md` `status: complete` is a single question to the developer.
 
-Five things worth carrying, all re-confirmed across the remediation:
+Six things worth carrying, all re-confirmed across the remediation and the
+test-debt close that followed it:
 
 - **Reproduce the reproduce before you trust it.** This is the one that earned
-  its place in step 5. Both remaining issues were filed with a concrete recipe,
-  and in both the recipe was wrong about the input while right about the
-  defect: `#392` named `" alice"`, which already worked, and missed `"bob "`,
-  which worked under no spelling at all; `#389` named a warning as the existing
-  safety net, and that warning fires just as loudly for a dependency that
-  resolves. A filed reproduce is a hypothesis with a command attached, and both
-  halves need running.
+  its place in step 5, and `#396` supplied a third instance from a different
+  direction. Both step-5 issues were filed with a concrete recipe that was
+  wrong about the input while right about the defect: `#392` named `" alice"`,
+  which already worked, and missed `"bob "`, which worked under no spelling at
+  all; `#389` named a warning as the existing safety net, and that warning
+  fires just as loudly for a dependency that resolves. `#396` carried no recipe
+  at all — six behaviours "correct by code trace" — and two of the six were
+  described wrongly, which only running them showed. A characterization test
+  written from a trace pins whatever the trace got wrong.
+- **A test that passes on its first run has proved nothing yet.** That is also
+  what a test asserting nothing looks like, and `#396`'s five were all green
+  immediately. Break the behaviour each one claims to pin and watch it fail.
+  One of those five deliberate breaks silently failed to apply, and the case
+  passed for the wrong reason — the check caught the check.
 - **Fix the shared cause, not the instance.** `#393` named one file and 82% of
   the work was in the other five. `#395` reported one count and was three
   classification sites. `#392` named one trim and was two, applied at opposite

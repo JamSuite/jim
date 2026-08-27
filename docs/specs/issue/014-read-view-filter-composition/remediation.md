@@ -399,8 +399,14 @@ yet say.
 
 ### What still stands
 
-`#396` next, as the surrounding code is touched — except its fifth item, which
-is worth doing on its own — then `#394` and `#398` last, and deliberately.
+`#394` and `#398`, last and deliberately.
+
+`#396` is closed, and it was taken as a batch — which this section's order
+advised against. The advice was sound about its own concern: doing the test
+debt as a batch must not push the rest of the order behind it. By the time it
+ran there was no rest of the order left to push. Five of its six items needed
+work; the sixth's assertion had already shipped with `52d071e`, which is the
+second time a tally in this document outlived the work it described.
 
 § What not to do stands unchanged. Its two rules were both borne out, and step 5
 supplied a third instance of the same lesson from a different direction: not two
