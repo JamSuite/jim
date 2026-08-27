@@ -399,7 +399,21 @@ yet say.
 
 ### What still stands
 
-`#394` and `#398`, last and deliberately.
+`#394` — and it is no longer the thing this document ranked last. Filed and
+priced as a latent coupling, it turned out to name only half its own defect.
+The ordinal analysis holds and that collision really is unreachable, but the
+same unbounded compare runs over the **group** segment, where no allocator
+invariant exists because group names are free-form: `--spec issue` reaches
+`issues` and `issue-archive` alike, at status 0. That is a wrong answer, the
+class this document put at the top of its order, and the boundary check the
+issue proposed would not have closed it. Re-scoped and re-priced to medium.
+
+`#398` is closed. Its exposure argument held at every point — each gate was
+probed rather than read — but it named three call sites where the group holds
+ten, and its premise about the convention was wider than the convention: the
+project already admits `awk -v` for a format-validated value, which is what
+both sites it named were passing. Taken as a consistency change, at five
+sites.
 
 `#396` is closed, and it was taken as a batch — which this section's order
 advised against. The advice was sound about its own concern: doing the test
