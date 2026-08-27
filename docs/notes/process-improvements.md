@@ -177,6 +177,14 @@ re-runs here, and both read exactly like a verdict.
   when the pattern occurs three times — and a subcommand's index-regeneration
   call usually does. Make the harness die loudly on any match count but one, and
   do not discard its stderr, which is where it says so.
+
+  This is narrower than the rule deserves. **Any mechanical edit that does not
+  check how many times it matched is a change that can silently not happen** —
+  a `sed` in a fix pass, an `awk` sweeping citations, a scripted rename. One
+  mutation in a later session silently failed to apply on an escaping mistake
+  and the case passed, which read as a surviving mutant. Every replacement
+  after it asserted its own match count and refused at zero. The check costs a
+  clause; not having it costs a wrong conclusion that looks like a result.
 - **The case did not run.** Running each mutant against a *filtered* subset is
   what makes the census cheap, and a filter named after the surface excludes
   every case named after something else. Three cases read as non-discriminating
@@ -333,6 +341,32 @@ test is a defect the suite is structurally unable to report.** They now share a
 named helper carrying the shape the real corpus has, and the impossible shape
 appears only in the case that is about it.
 
+### Enumerate the declared surface, don't sample it
+
+*Run it against real data* says to exercise a new verb once against the corpus
+nobody designed. This says which invocations, and it is the half that was
+missed.
+
+After one build the author smoke-tested the feature against the real
+collection: several filters, a column selection, two derived predicates, the
+refusals. The index happened to be in exactly the degraded state that triggered
+the shipped defect, and the guard fired correctly on everything tried. The two
+bare words that would have exposed the gap were not among them — because the
+author tested the axes he had built the guard for. **The same blind spot as the
+code, one level up.** Twenty-three invocations, every declared word and flag
+once, would have cost nothing and caught it before review.
+
+So the rule is not "smoke-test the feature". It is: **enumerate the declared
+surface and run each element once, checking exit status and the shape of the
+answer.** Selection is where the shared prior re-enters; enumeration is what
+removes it. The enumeration is also free once the vocabularies are declared
+constants — read the constant, loop it — which is the same move as deriving a
+test's domain from the code's own declaration rather than from the author's
+imagination.
+
+A sampled smoke test and an enumerated one look identical in a report. Only one
+of them covers what it appears to.
+
 ### Reproduce a finding before believing it
 
 A fan-out reported three criticals; one was refuted by a thirty-second shell
@@ -366,6 +400,89 @@ refusal bug if implemented literally, and one cited a precedent the registry
 itself disproved. **Before implementing a proposed action, run it: confirm it
 fails without the fix and passes with it.** A proposal that cannot be told apart
 from the status quo has not been specified.
+
+**A correction is a claim of the same kind and gets less scrutiny than the
+original.** One security finding asserted a specific control-flow path that did
+not exist; the correction to it was also wrong, in the opposite direction,
+calling the residue "merely a silent wrong answer" when the real behaviour was
+a write into whatever directory the run landed on. The finding now carries a
+two-step correction note for that reason. A correction feels like a resolution
+— the question is closed, the work is done — which is exactly why it deserves
+the reproduction the original claim needed and usually does not get one.
+
+The asymmetry has a cause worth naming, because it decides where to spend
+effort on a filed record: **a defect is observed, while a reproduce is
+reconstructed** from a mental model of the mechanism — and the mechanism is
+precisely what the finder had wrong. So a reproduce inherits the model's error
+while wearing the authority of a command line, which is worse than no reproduce
+at all, because someone will run it, watch it behave, and conclude the defect
+is understood. Two records in one round carried confident reproductions that
+named the right defect and the wrong input; fixing what they described would
+have changed nothing and closed them.
+
+### Verify a claim about a document by opening it
+
+The longest escape ever measured in this project was not a code defect. It was
+a research pass asserting that `ARCHITECTURE.md` "describes a six-field row"
+that would need correcting. No such passage existed. The claim survived
+research, the security pass, the plan — entering its Out of Scope as work
+"handled by a later gate" — and the entire build, dying only when the
+architecture refresh went looking for the passage to update. **Three stages.**
+Every code defect in the same run was caught within about one.
+
+Claims about artifacts travel furthest because nothing on their path is
+constituted to check them. A reviewer reads the claim, not the document; the
+document is somewhere else and opening it is a deliberate act nobody is
+prompted to take. The same mechanism produced a security finding asserting a
+control-flow path through a function that does not have one, and *that* one
+shaped a task.
+
+**Any claim of the form "document D says S" carries a line reference**, and
+writing one is what forces the file open. Its absence is also the tell:
+reviewing three confidently wrong causal claims from one run, none read as
+uncertain and none cited a line that had been opened. Fluency is not
+calibration, and prose gives you nothing to check — a citation does.
+
+This sits in deliberate tension with *A line number is the first thing in a
+record to rot*, and the two resolve the same way: cite the coordinate to prove
+you opened the file, and name the symbol so the citation survives the file
+moving.
+
+### A false success is the failure mode that survives every gate
+
+The single most generalizable thing two rounds of remediation produced, and the
+class that several rules in this file are each one instance of.
+
+A remediation pass found the same shape in almost everything it touched — not
+in code, but in the **records, tests, runs and probes** used to fix the code:
+
+| what | presented as | actually |
+| :--- | :--- | :--- |
+| a filed issue | a complete account of a defect | one instance of a class |
+| a filed reproduce | a runnable recipe | a hypothesis about a mechanism |
+| a test green on first run | a behaviour pinned | possibly a test that cannot fail |
+| a killed suite process | a finished run | 124 of 401 cases, no summary line |
+| a `sed` mutation | applied | silently no-op'd on an escaping mistake |
+| `grep -c` on a log | a count of zero | a refusal to read a file it judged binary |
+| a narrowed query | a filter | three groups matched, at status 0 |
+| a column selection | applied | accepted and discarded |
+
+**Every gate is built to notice a reported failure.** None of these reported
+one. That is why a false success outlives the whole pipeline while an honest
+error dies at the first gate it reaches.
+
+The remedy is not diligence, and it is not a checklist. It is: **arrange for
+the thing that failed to say so.** Mutation testing does that for a test.
+Running a reproduce does it for a record. `grep -a` does it for a log. An
+`awk` replacement that asserts its own match count does it for an edit. A
+negative control does it for a probe. Each converts a silent wrong answer into
+a loud one, once, structurally — and none of them asks anybody to be more
+careful.
+
+Read *A clean result does not disclose its own coverage*, *A grep over a
+wrapped document*, *A case that cannot go red*, and *Two ways the census lies*
+as four instances of this. Meeting a new one, the question to ask is not
+"was I careful?" but "what would this have looked like if it had failed?"
 
 ### A clean result does not disclose its own coverage
 
@@ -450,6 +567,18 @@ made minutes earlier disagreed with it by exactly one. That is the argument for
 the remedies above being defaults rather than things reached for when
 suspicious: suspicion is the input none of these four produced.
 
+Two habits generalize past greps, from a round where probing dominated the
+work and the probe became a live source of error with no test suite of its own:
+
+- **Give every probe that claims something is refused a negative control.**
+  Run the case that should be *accepted* through the same probe. A probe that
+  reports refusal for everything, including the input that works, is reporting
+  its own breakage in the vocabulary of a finding.
+- **Rebuild a fixture rather than reusing one that has been edited.** A scratch
+  directory accumulated a stray `.md` while an issue body was drafted in it,
+  the indexer read it as an issue, and a count went from three to four. Nothing
+  was wrong with the code.
+
 ### Name the set before you write the enumeration
 
 Every corpus-shaped guard in one pass was too narrow in the same way: a sanitizer
@@ -499,6 +628,38 @@ is the signal to **fixture the caller** and to **state the guard's premise
 explicitly as a claim to check**. One of those two rested on "`mv` preserves the
 inode", which is false across a filesystem boundary and was never written down
 anywhere.
+
+### Budget for second priors, not for diligence
+
+The strongest claim to come out of running this pipeline with agents, and it
+generalizes past agents.
+
+Sorting one increment's mitigations by whether they worked produces a clean
+split. **Everything that worked introduced a second prior** — an investigator
+with no memory of authoring the code, a judge handed only an invariant and the
+file, a test whose domain comes from a declared constant instead of the
+author's imagination, a census that reads the mechanism rather than the record.
+**Everything that failed asked the same context to be more careful.** Test,
+code and smoke test all came from one context, drawn from one model of the
+problem, so they agreed with each other and were wrong together.
+
+That is the test-oracle problem, and writing the test first does not solve it:
+writing first forces interface thinking, but it does not supply a second
+*prior*. A human writing tests after the code at least switches from
+constructive to adversarial mode. An agent continuing in the same context does
+not.
+
+**A second prior does not have to be an agent — it has to be someone who did
+not write the thing.** The sharpest instance in two rounds came from the
+developer asking whether an issue was worth fixing at all. Nothing in the
+pipeline was going to ask that; the record read plausibly and had been reported
+back at its own framing. The question forced a probe, the probe found a second
+defect the record had missed, and the work was re-scoped.
+
+The corollary is the uncomfortable half and the reason this is a budgeting rule
+rather than an aspiration: **the parts that no second prior touched are the
+parts to trust least.** That is a triage instruction. When effort is short,
+spend it on introducing a reader rather than on re-reading as the same reader.
 
 ## Organizing a fix pass
 
@@ -750,6 +911,19 @@ property the task assumes it has**, at plan time, before any code exists. This
 acts earlier than everything else in this file; every other rule here fires at or
 after the change.
 
+**A universally-quantified task references the named domain; it never
+paraphrases the quantifier.** One task said "an axis the index does not
+describe" — general, correct, and satisfied by an implementation covering three
+of four axes and one of two verbs. The complete domain was two pages above it
+in the same plan, in that document's own interface contract. Had the task said
+"for each axis in the Interface Contract's axis list that reads a row scalar",
+the implementer would have had to go and look, and looking is the whole
+mechanism. A paraphrase lets the implementer supply the set from memory, which
+is where a locally-correct, globally-incomplete enumeration comes from. This is
+*Name the set before you write the enumeration* moved one stage earlier, to the
+document that commissions the enumeration rather than the code that contains
+it.
+
 ### A second reader is a disagreement risk, not a correctness risk
 
 Both of one build's criticals traced to a single root: a classifier, the
@@ -871,6 +1045,16 @@ handing that ordinal back — with nothing on either side pointing at the other.
 When you find one, connect them, so the issue names its restoration target and
 the blueprint is not read as current.
 
+**Judge an invariant by its recorded text, passed verbatim, and mark anything
+you add as supplementary.** One violation in a closing verification run came
+back against a property the session had put in the judge's prompt rather than
+one the blueprint states. Folding the invariant to match would have written a
+session's assumption into the group's permanent intent, under the appearance of
+a judge having found something. When a violation returns against a supplied
+property, **the finding is that the invariant is silent on it** — and silence
+is what needs fixing, by writing the property down deliberately, not by
+retrofitting the document to a question nobody had recorded.
+
 ### Close each issue as its fix lands
 
 One spec fixed fourteen issues and closed none, because no plan task covered it —
@@ -920,6 +1104,30 @@ research and fixed during the same increment is the shortest-lived set of
 coordinates in the project, because the build reshapes the file underneath it.
 And a record left open past its fix — the failure above — keeps accruing rot
 for as long as it stands.
+
+### A handoff records what was learned and points at what is configured
+
+Handoff documents are disposable and spec-scoped — that is the distinction this
+file opens with — but one property of them is durable enough to belong here.
+
+Across a session that compacted twice, the handoff survived and was
+load-bearing: findings, corrections and the reasoning behind decisions all came
+through intact and were still true. What went stale inside hours was
+**configuration** — the document asserted two gates were off after they had
+been turned on, and a reader trusting it would have skipped a phase the project
+required.
+
+The two halves of a handoff have opposite lifetimes. **A finding is durable**:
+what the code did on Tuesday it still did on Thursday, and a correction to a
+finding is more durable still. **Configuration is volatile** and, worse, it
+changes without touching anything the handoff would notice — a one-line edit to
+a settings file invalidates a paragraph.
+
+So a handoff should carry findings and corrections in full, and **name the
+resolver for anything configured rather than quoting its value**: which key
+decides it and which command answers it, not what the answer was when the
+document was written. The same rule protects a spec, a review, or any artifact
+that outlives the session that wrote it.
 
 ### Never hand-edit a derived artifact
 
