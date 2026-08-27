@@ -2,12 +2,12 @@
 id: 20260825-amend-vision-md-team-coordination-non-goal
 num: 380
 title: "Amend VISION.md team-coordination non-goal"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [vision, strategy]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-25T10:50:59Z
-updated: 2026-08-25T10:50:59Z
+updated: 2026-08-27T20:43:47Z
 origin: "docs/specs/issue/014-read-view-filter-composition/spec.md"
 ---
 
@@ -60,3 +60,38 @@ what jim does do (record who filed and who holds a discovery, and let a
 contributor filter on it) from what it still does not (assignment workflows,
 notification, capacity, sprints — the Jira/Linear surface the non-goal is
 actually pointing at).
+
+## Resolution
+
+Fixed in `ac8da2d`, through `/jim:vision`.
+
+The non-goal now states that recording and querying who filed and who holds a
+discovery is in scope, along with rolling that record up, and names the
+excluded surface explicitly: assigning work to someone else, notification,
+capacity planning, sprints, boards, and due dates. The distinguishing line is
+push versus pull — claiming is self-service, and the schema increment shipped
+no verb for assigning work to anyone else.
+
+**The amendment is wider than what was filed, in two places.** This record
+asked for `filter on it`; the text says `querying and rolling up`, chosen so
+that epic progress rollups fall inside the boundary rather than reopening this
+argument one increment later. And it excludes `boards` and `due dates`, which
+this record did not list. Both were deliberate; neither was requested.
+
+**The goal was met observably rather than by assertion.** The stated goal was
+that a spec scoped in this area should stop opening by arguing with a stale
+line. The epic authoring spec was scoped immediately after the amendment
+landed, reads `VISION.md` as a locked constraint like every other spec, and
+raised no divergence.
+
+**Nothing pins this.** It is a prose change with no test case, and the wording
+can drift back without anything failing. Recorded here rather than left for a
+later coverage sweep to report as a gap.
+
+**Sibling sweep — one live site, and it is this one.** The claim appears in
+five other places, none of them live: an issue body from 2026-07-28 and the
+2026-08-17 brainstorm, both correctly quoting what `VISION.md` said when they
+were written; `docs/specs/issue/001-issue-tracking/spec.md`, a historical
+statement of the same; this record; and the generated index. `BACKLOG.md`
+mentions Linear as a possible storage backend, which is a different subject.
+No other live document restates the non-goal, so no sibling edit was needed.
