@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 140
-- Closed: 262
+- Open: 139
+- Closed: 263
 
 ## Issues
 
@@ -408,7 +408,7 @@
 - `20260826-statistics-counts-can-disagree-with-the-index-summary` — Statistics counts can disagree with the index summary · status: closed · num: 395 · priority: low · created: 2026-08-26T02:34:45Z · labels: [issue, read-views, index] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-test-coverage-gaps-around-the-new-read-view-surfaces` — Test-coverage gaps around the new read-view surfaces · status: closed · num: 396 · priority: low · created: 2026-08-26T02:35:25Z · labels: [issue, tests, read-views] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value` — Unrecognized flag is accepted as a flag's value · status: closed · num: 397 · priority: medium · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
-- `20260826-untrusted-values-reach-awk-through-v-in-two-scripts` — Untrusted values reach awk through -v in two scripts · status: open · num: 398 · priority: low · created: 2026-08-26T02:35:24Z · labels: [issue, security, awk] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko
+- `20260826-untrusted-values-reach-awk-through-v-in-two-scripts` — Untrusted values reach awk through -v in two scripts · status: closed · num: 398 · priority: low · created: 2026-08-26T02:35:24Z · labels: [issue, security, awk] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 
 ## Graph
 
