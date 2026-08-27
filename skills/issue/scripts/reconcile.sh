@@ -173,7 +173,12 @@ apply_pending() {
   local id file newnum tmp realized=0 failed=0
   while IFS=$'\t' read -r id file; do
     [[ -n "$id" ]] || continue
-    newnum="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' <<<"$mapping")"
+    # The key came out of an issue file's frontmatter. It cleared the validator
+    # in scan_pending, which admits no backslash — but that is a gate in another
+    # function, and `-v` expands escape sequences in its operand, so a key that
+    # ever reached here carrying one would miss its row and be passed over in
+    # silence. Through the environment, the comparison is against the id itself.
+    newnum="$(k="$id" awk -F'\t' '$1==ENVIRON["k"]{print $2; exit}' <<<"$mapping")"
     [[ -n "$newnum" ]] || continue
     # A blocked identity maps to '-', never an ordinal: the registry claims its
     # durable id twice and the allocator refused to pick a winner. Loud,

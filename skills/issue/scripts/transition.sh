@@ -165,10 +165,18 @@ set_fields() {
       return 1
     fi
     next="$tmp.next"
-    awk -v field="$field" -v value="$value" '
+    # Both halves reach awk through the environment rather than `-v`, which
+    # processes its operand as a string literal and expands escape sequences: a
+    # backslash-n in a value would become a real newline and open a second
+    # frontmatter pair, which a reader resolves ahead of the file's own. The
+    # values that arrive here are gated — an identity clears the recordable
+    # character set, an outcome clears its vocabulary — but this function reads
+    # both halves out of its <pairs> argument and cannot see which caller built
+    # them, so the channel holds the guarantee rather than the caller.
+    field="$field" value="$value" awk '
       /^---$/ { fence++ }
-      fence == 1 && !done && $0 ~ "^" field ":" {
-        print field ": " value
+      fence == 1 && !done && $0 ~ "^" ENVIRON["field"] ":" {
+        print ENVIRON["field"] ": " ENVIRON["value"]
         done = 1
         next
       }

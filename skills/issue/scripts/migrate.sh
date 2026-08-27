@@ -309,7 +309,13 @@ apply_plan() {
     [[ "$base" == "$INDEX_FILENAME" ]] && continue
     [[ "$base" == .* ]] && continue
     id="${base%.md}"
-    finalid="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' "$mapfile")"
+    # The lookup key is a directory entry, so it is the one value here that has
+    # cleared nothing at all. Through the environment rather than `-v`, which
+    # expands escape sequences in its operand: a name carrying a backslash-n
+    # would be compared as a two-line string, miss a row it should have matched,
+    # and take the fallback below — a wrong answer arrived at quietly. The
+    # comparison is against the name on disk, whatever bytes that name holds.
+    finalid="$(k="$id" awk -F'\t' '$1==ENVIRON["k"]{print $2; exit}' "$mapfile")"
     [[ -n "$finalid" ]] || finalid="$id"
     # The map's own targets cleared the validator when the plan was built, but
     # the fallback here is the raw directory entry, which cleared nothing. The
@@ -597,14 +603,21 @@ apply_schema_plan() {
 
     tmp="$(mktemp "$dir/.schema.tmp.XXXXXX")" || {
       echo "error: cannot create tmp in $dir" >&2; return 1; }
-    awk -v filer="$SCHEMA_FILER" -v outcome="$outcome" '
+    # The values reach awk through the environment rather than `-v`, which
+    # processes its operand as a string literal and expands escape sequences:
+    # a literal backslash-n would become a real newline and open a second
+    # frontmatter pair, which a reader resolves ahead of the file's own. The
+    # filer clears the identity gate before it gets here and that set admits no
+    # backslash, so this is the channel holding a guarantee the caller already
+    # holds — which is where the project puts it.
+    filer="$SCHEMA_FILER" outcome="$outcome" awk '
       /^---$/ { fence++ }
       # The four scalars sit where the template puts them, ahead of labels.
       fence == 1 && !scalars && /^labels:/ {
         print "type: issue"
-        print "filed-by: \"" filer "\""
+        print "filed-by: \"" ENVIRON["filer"] "\""
         print "claimed-by: \"\""
-        print "outcome: " outcome
+        print "outcome: " ENVIRON["outcome"]
         scalars = 1
       }
       # Membership is a relations child, and the member is the only side that
@@ -963,10 +976,17 @@ apply_identity_plan() {
     claimed="${changes[$slug|claimed-by]:-}"
     tmp="$(mktemp "$dir/.identity.tmp.XXXXXX")" || {
       echo "error: cannot create tmp in $dir" >&2; return 1; }
-    awk -v filed="$filed" -v claimed="$claimed" '
+    # Through the environment rather than `-v`, for the reason apply_schema_plan
+    # states: `-v` expands escape sequences in its operand, so
+    # a backslash-n in a recorded identity would open a second frontmatter pair.
+    # Both values clear the identity gate before they reach here, whichever mode
+    # produced them — the channel keeps the guarantee rather than borrowing it.
+    filed="$filed" claimed="$claimed" awk '
       /^---$/ { fence++ }
-      fence == 1 && filed   != "" && /^filed-by:/   { print "filed-by: \"" filed "\""; next }
-      fence == 1 && claimed != "" && /^claimed-by:/ { print "claimed-by: \"" claimed "\""; next }
+      fence == 1 && ENVIRON["filed"]   != "" && /^filed-by:/ {
+        print "filed-by: \"" ENVIRON["filed"] "\""; next }
+      fence == 1 && ENVIRON["claimed"] != "" && /^claimed-by:/ {
+        print "claimed-by: \"" ENVIRON["claimed"] "\""; next }
       { print }
     ' "$f" > "$tmp" || {
       rm -f "$tmp"
