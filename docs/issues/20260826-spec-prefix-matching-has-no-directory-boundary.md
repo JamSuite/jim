@@ -2,12 +2,12 @@
 id: 20260826-spec-prefix-matching-has-no-directory-boundary
 num: 394
 title: "Spec prefix matching has no directory boundary"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [issue, read-views, filters]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-26T02:35:23Z
-updated: 2026-08-27T10:02:11Z
+updated: 2026-08-27T10:35:11Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
@@ -117,3 +117,54 @@ right and the collision it describes really is unreachable, but the same
 unbounded compare applies to the group segment, where no allocator invariant
 exists — and the boundary check originally proposed here would not have closed
 it. Re-scoped and re-priced accordingly.
+
+## Resolution
+
+Fixed in `a01c038`, taking the second of the two shapes above — the boundary
+rather than the stated coupling — because the group segment made it a defect
+rather than a latent dependency.
+
+**Both collisions close, and the criterion is untouched.** The operand is split
+at its first `/`: the group must match a whole path segment, and only what
+follows it may end at a `-`, a `/`, or the end of the string. `--spec issue`
+reaches its own group and neither `issues` nor `issue-archive`; `--spec
+issue/011` still reaches `011-issue-placement` without spelling the rest of the
+directory, which is the whole reason the match was loose. Siblings stay
+reachable by their own names.
+
+**One character class over the composed path could not have done it**, which is
+what the Description records and the fix bears out. `-` has to be admitted for
+the ordinal to reach the directory carrying it, and admitting `-` is exactly
+what lets a group reach a hyphenated sibling. The two halves end differently,
+so they are compared separately rather than pasted together.
+
+**A behaviour change worth stating:** `--spec iss` now matches nothing, where
+before it reached every group beginning `iss`. A partial group name was never a
+group, and the criterion promises a group and an ordinal — but an operator who
+had been relying on the loose reading will see a query narrow.
+
+**Pinned by** `case_issues_render_list_spec_group_is_a_whole_segment`, which
+asserts the boundary in both directions — the sibling groups excluded, each
+still reachable by its own name — that the ordinal case survives, that the
+census reports a scope it actually has, and that `--origin` stays unbounded.
+The case failed on exactly three assertions before the fix and none after; the
+ordinal and `--origin` assertions passed throughout, which is what shows the
+fix preserved them rather than happening to satisfy them.
+
+**Checked past what the case asserts**, because a green test covers only what
+it names: a trailing slash (`issue/`), a full directory name, an operand
+reaching a file, comma-separated alternatives, a glob metacharacter (still
+literal, still matching nothing), and `issue/0110` — the sibling-ordinal
+collision this record originally described, which is now closed too even though
+the allocator already made it unreachable.
+
+**`prefix_axis` lost its root parameter.** `--origin` is its only caller and
+always passed an empty one, so the parameter was a knob no caller turned. The
+loose compare stays there deliberately: an origin match is specified as a path
+prefix, so reaching partway into a segment is that axis working as written.
+
+**Blast radius: none here.** This project's groups are `blueprint`, `issue`,
+`jim`, `platform` and `sdlc`, no one a prefix of another, so no query over this
+collection changes answer. It moves a consumer project that names its own
+groups — and `/jim:partition` splitting a group while keeping the parent's name
+for one child produces exactly the colliding shape.

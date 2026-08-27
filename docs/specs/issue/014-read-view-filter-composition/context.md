@@ -12,11 +12,11 @@ the setting.
 
 ## 1. Where this stands
 
-The feature is **built, reviewed, and remediated through step 5**, and the test
-debt the order queued next is closed too — what is left of `remediation.md`'s
-order is the two it deliberately deferred. The three issues that gated the plan
-are fixed, verified and closed. The plan is still held at `approved` — closing
-it is a single decision, described in § 6.
+The feature is **built, reviewed, and fully remediated** — `remediation.md`'s
+order ran to completion, including the two items it deliberately deferred to
+last. The three issues that gated the plan are fixed, verified and closed, and
+so is every acceptance criterion the review found partial. The plan is still
+held at `approved` — closing it is a single decision, described in § 6.
 
 | artifact | state |
 | :--- | :--- |
@@ -25,10 +25,10 @@ it is a single decision, described in § 6.
 | `security.md` | `Needs Plan Review` — 12 findings, all routed and applied |
 | `plan.md` | `approved` — 21/21 tasks `[x]`, **held**, and now closeable |
 | `review.md` | `minor-drift` — 13 findings, `undelegated=0` |
-| `remediation.md` | the order of attack — all of it done but `#394`, which was re-scoped |
+| `remediation.md` | the order of attack — **all of it done**, `#394` last |
 | `retrospective.md` | why it happened; the root cause and its prevention |
 | group blueprint | **15 invariants** — `row-shape-is-the-writers` added, writer-side only |
-| suite | **1628 green** (`skills/meta-test/scripts/run.sh`) |
+| suite | **1629 green** (`skills/meta-test/scripts/run.sh`) |
 
 Two frontmatter values look wrong and are not, the same trap the preceding
 increments record. **`security.md` stays `Needs Plan Review`** — the field
@@ -121,16 +121,29 @@ malformed-wikilink case's own shape. Disabling the inline-span strip in
 `index.sh` fails both assertions; the half-fixed version failed one, which is
 what exposed the second defect.
 
-### What remains, in `remediation.md`'s order
+**`#394` closed** — `a01c038` (the fix and its case), `3884025` (the re-scope).
+It was ranked last as a dependency to state rather than a defect, which is true
+of the ordinal collision it describes and false of the group segment it does
+not. `--spec` pasted its operand onto the specs root and prefix-tested the whole
+string, so `--spec issue` reached `issues` and `issue-archive` too, at status 0,
+on a view whose default columns carry no origin to notice it by — and `stats
+--spec issue` printed that scope above a count covering all three. The operand
+is now split at its first `/`: the group matches a whole path segment, and only
+what follows it may end at a `-`. See § 3 for why one character class over the
+composed path could not have done it.
 
-- **`#394`, and it is not what the order thought it was.** It was ranked last
-  as a dependency to state rather than a defect. That is true of the ordinal
-  collision it describes and false of the group segment it does not: `--spec
-  issue` reaches `issues` and `issue-archive` too, silently, at status 0. The
-  record is re-scoped and re-priced to medium (§ 3). It is the last item of
-  the order and the only one behind the last partial AC.
-- Outside the remediation: `/jim:arch` (§ 5), `#401`, `#402`, and `#374` —
-  which now gates the blueprint surface, not just a counter.
+**With it, the last of the five partial acceptance criteria closes** — the
+review's Findings 1, 2, 3, 6 and 9 are all answered. One deliberate exception
+survives inside the fourth and is recorded rather than resolved: an identity
+made of nothing but whitespace stays unreachable, because a whitespace-only
+operand refuses and keeping `#390`'s guard was worth more than that case
+(`#392`'s resolution). So the criteria are satisfied, with that one named
+carve-out — not met in full without it.
+
+### What remains
+
+Nothing in `remediation.md`'s order. Outside it: `/jim:arch` (§ 5), `#401`,
+`#402`, and `#374` — which now gates the blueprint surface, not just a counter.
 
 Also open against this spec dir and never part of the remediation's thirteen:
 `#380`–`#385` (VISION amendment, graph-edge slug narrowing, filter negation,
@@ -161,20 +174,20 @@ Reading this document is not enough. Ground it in the artifacts, in this order
 — the first three are short and change how the rest reads.
 
 1. **`remediation.md`** § *Order*, § *What not to do*, and § *What running it
-   settled*. All five steps are done, and so are `#396` and `#398`; what is
-   left of the order is `#394`, re-scoped. Read § *Where this analysis was
-   short* with it — five entries, and they are the honest account of where an
-   analysis of a review cannot reach.
+   settled*. The order is complete — all five steps, then `#396`, `#398` and
+   `#394`. Read § *Where this analysis was short* and § *What still stands*
+   with it: between them they are the honest account of where an analysis of a
+   review cannot reach, and three of the last four items it ranked were
+   mis-scoped in the same direction.
 2. **`retrospective.md`** § *Root cause: one set, three enumerations* — the
    single most useful page here, and the reason every fix took the shape it did.
    It is still predicting findings: `#402` is that shape one file boundary out,
    and `#392` turned out to be it at a seam between two functions.
-3. **The twelve closed issues' Resolution sections** — `#386`, `#387`, `#388`,
-   `#389`, `#390`, `#391`, `#392`, `#393`, `#395`, `#396`, `#397`, `#398`.
-   `#392`, `#389`, `#396` and `#398` are the four worth reading first: each
-   records a filed account that did not survive being run, and why. Read
-   `#394`'s Description with them — it is the same pattern caught before the
-   work rather than during it.
+3. **The thirteen closed issues' Resolution sections** — `#386` through `#398`.
+   `#392`, `#389`, `#396`, `#398` and `#394` are the five worth reading first:
+   each records a filed account that did not survive being run, and why.
+   `#394`'s is the one where that happened *before* the work rather than
+   during it, and only because the developer questioned its priority.
 4. **`docs/specs/issue/000-blueprint/spec.md`** — the group's 15 invariants.
    Three changed across the remediation (§ 4). This is what the code answers
    to — and `row-shape-is-the-writers` now understates the code, which upholds
@@ -186,9 +199,10 @@ Reading this document is not enough. Ground it in the artifacts, in this order
    issue, with `file:line` anchors. Findings 6 and 5 are worth reading against
    the resolutions of `#392` and `#389`: both name the right defect and the
    wrong input.
-7. **`spec.md`** § *Acceptance Criteria* — five were partial; four are now
-   satisfied. The one left cites Finding 9 (`#394`), which reads as a
-   dependency to state and is half a defect — see § 3 before pricing it.
+7. **`spec.md`** § *Acceptance Criteria* — five were partial and all five are
+   now answered. One deliberate carve-out survives inside the fourth: an
+   identity of nothing but whitespace stays unreachable, traded for keeping
+   `#390`'s guard (`#392`'s resolution says why).
 8. The code, in dependency order: `skills/issue/scripts/render.sh` (the whole
    filter surface, the row reader, and the derived axes), then `index.sh` (the
    row emitter and the scalar judge), then `place.sh` → `place_substitute`.
@@ -255,9 +269,10 @@ suggested.
   though it were one path; the integrity-warnings block has two, and the verb's
   status comes from whichever it takes, so an empty match has to be run over a
   sound collection **and** over one carrying a warning.
-- **`#394` names half its own defect, and the reachable half is the one it
-  leaves out.** `prefix_axis` composes `<root>/<value>` and prefix-tests the
-  whole composed string, so the **group** segment matches as loosely as the
+- **`#394` named half its own defect, and the reachable half was the one it
+  left out** (fixed in `a01c038`; the account below is what the fix was built
+  from). `prefix_axis` composed `<root>/<value>` and prefix-tested the
+  whole composed string, so the **group** segment matched as loosely as the
   ordinal — and group names are free-form, so no allocator invariant covers
   them. Against origins under `issue/`, `issues/` and `issue-archive/`,
   `--spec issue` returns **all three** while `--spec issue/011` correctly
@@ -490,13 +505,15 @@ undercounts the same way and nearly produced a false `leak` by hand. Match
 
 ## 6. If you are picking up from here
 
-**The plan can be closed honestly.** All three gating issues are fixed, their
-tests pin them, the suite is green at 1628, and the living-intent sensor has
-been run twice against the fixes rather than the original build. Marking
+**The plan can be closed honestly, and the case is stronger than it was.** All
+three gating issues are fixed and their tests pin them; the whole remediation
+order has run, not just the part that gated the plan; every partial acceptance
+criterion is answered; the suite is green at 1629; and the living-intent sensor
+has been run twice against the fixes rather than the original build. Marking
 `plan.md` `status: complete` is a single question to the developer.
 
 Six things worth carrying, all re-confirmed across the remediation and the
-test-debt close that followed it:
+work that followed it:
 
 - **Reproduce the reproduce before you trust it.** This is the one that earned
   its place in step 5, and `#396` supplied a third instance from a different

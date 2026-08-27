@@ -399,14 +399,19 @@ yet say.
 
 ### What still stands
 
-`#394` — and it is no longer the thing this document ranked last. Filed and
-priced as a latent coupling, it turned out to name only half its own defect.
-The ordinal analysis holds and that collision really is unreachable, but the
-same unbounded compare runs over the **group** segment, where no allocator
-invariant exists because group names are free-form: `--spec issue` reaches
-`issues` and `issue-archive` alike, at status 0. That is a wrong answer, the
-class this document put at the top of its order, and the boundary check the
-issue proposed would not have closed it. Re-scoped and re-priced to medium.
+**Nothing does.** The order ran to completion: five steps, then `#396`, `#398`
+and `#394`.
+
+`#394` was not the thing this document ranked last. Filed and priced as a
+latent coupling, it named only half its own defect. The ordinal analysis holds
+and that collision really is unreachable, but the same unbounded compare ran
+over the **group** segment, where no allocator invariant exists because group
+names are free-form: `--spec issue` reached `issues` and `issue-archive` alike,
+at status 0. That is a wrong answer, the class this document put at the top of
+its order. The boundary check the issue proposed would not have closed it
+either — `-` has to be admitted for the ordinal, and admitting `-` is what
+lets a group reach a hyphenated sibling — so the operand is now split and its
+two halves compared separately. Re-scoped, re-priced to medium, and fixed.
 
 `#398` is closed. Its exposure argument held at every point — each gate was
 probed rather than read — but it named three call sites where the group holds
