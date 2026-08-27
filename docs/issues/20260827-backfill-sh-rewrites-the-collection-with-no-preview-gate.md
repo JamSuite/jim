@@ -1,6 +1,6 @@
 ---
 id: 20260827-backfill-sh-rewrites-the-collection-with-no-preview-gate
-num: P-20260827-backfill-sh-rewrites-the-collection-with-no-preview-gate
+num: 404
 title: "backfill.sh rewrites the collection with no preview gate"
 status: open
 priority: high

@@ -1,6 +1,6 @@
 ---
 id: 20260827-a-pinned-slug-silently-overwrites-an-existing-issue
-num: P-20260827-a-pinned-slug-silently-overwrites-an-existing-issue
+num: 403
 title: "A pinned slug silently overwrites an existing issue"
 status: open
 priority: medium
