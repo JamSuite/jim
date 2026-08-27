@@ -397,6 +397,59 @@ code hardcodes a value a configured resolver would also return, the two coincide
 configuration differs — which is most installations. A green check against this
 repo is evidence about this repo.
 
+### A grep over a wrapped document measures the rendering, not the content
+
+Four probes in one session returned wrong answers about a document that was
+correct, by three different mechanisms. None of them errored, and every one
+read like a finding.
+
+- **A phrase split by the wrap.** A count of `External Constraint` citations in
+  an 80-column spec came back one short, because in that one citation
+  `External` ended a line and `Constraint` began the next. The document was
+  right; the count was not.
+- **An absence that could not have been proven.** A check that a corrected
+  phrase was gone returned nothing. It genuinely was gone — but the same
+  pattern returns nothing for a phrase that merely wrapped, so the method
+  could not distinguish removal from invisibility. A clean result from a
+  pattern that could straddle a break is not evidence.
+- **A marker that means two things in two sections.** Counting `- [ ]` to get
+  acceptance criteria over-counted by two, because open questions use the same
+  checkbox marker further down the file. The count was of a syntax, not of a
+  population.
+- **A diff filter eating the lines it was meant to keep.** Reading a diff as
+  `grep '^[+-]' | grep -v '^[+-][+-]'` — added and removed lines, minus the
+  `+++`/`---` headers — silently dropped every **added markdown list item**,
+  because `+` followed by a list `-` matches the exclusion exactly. The
+  conclusion drawn was that a hunk touched nothing it in fact touched.
+
+The shape is one: **a pattern matched against rendered text measures the
+rendering.** Wrapping, sibling syntax elsewhere in the file, and the diff's own
+markers are all part of that rendering, and none of them is part of what you
+were asking about.
+
+Three remedies, each one command:
+
+- **Unwrap before searching prose.** `tr '\n' ' ' | tr -s ' '` then grep. Any
+  phrase question about a hard-wrapped document should go through it.
+- **Scope before counting structure.** `sed -n '/^## Section/,/^## Next/p'`
+  first, because the same marker legitimately means different things in
+  different sections and a whole-file count silently unions them.
+- **Read diffs by hunk, not by line prefix.** `git diff -U0` and read the
+  hunks, or match `^\+` and `^-` separately rather than composing a class that
+  a list marker can satisfy.
+
+This is *The measurement apparatus is a source of error* in its cheapest form.
+What makes it worth its own entry is that all four failures were **silent and
+plausible**: three under-reported and one over-reported, and every result was a
+number or an emptiness that fitted the story being told, so none of them looked
+like an anomaly.
+
+**Not one was caught by the result looking wrong.** Each was caught by a second
+measurement taken a different way — and the first only because a hand tally
+made minutes earlier disagreed with it by exactly one. That is the argument for
+the remedies above being defaults rather than things reached for when
+suspicious: suspicion is the input none of these four produced.
+
 ### Name the set before you write the enumeration
 
 Every corpus-shaped guard in one pass was too narrow in the same way: a sanitizer
@@ -824,6 +877,49 @@ One spec fixed fourteen issues and closed none, because no plan task covered it 
 and the collection misrepresented the project's state until a later review
 reconciled it. A batch close at the end is a window in which the tracked set is
 knowably wrong, and it is exactly the window in which someone else reads it.
+
+### A line number is the first thing in a record to rot
+
+An issue's `## Where` section named two call sites by file and line. Both were
+right when filed. Both were wrong inside the same increment — not because the
+defect moved, but because the file grew by roughly 450 lines around them while
+the fix landed. Checking the record against current code by those numbers now
+arrives at an unrelated assignment and an unrelated conditional.
+
+That produces two different wrong readings, and the record cannot distinguish
+them: that the defect was fixed somewhere else, or that the reporter was
+careless. Neither was true. The record was accurate, the fix was complete, and
+only the coordinates had moved.
+
+**The codebase already knows this about itself.** Script comments are forbidden
+from carrying cross-file line ranges, because the rename and split verbs
+renumber the very things a reference points at. Records have the same exposure
+and no such rule, and they are worse off in one respect: a stale comment sits
+beside the code that invalidated it, where the next reader of that function
+trips over it. A stale record sits in another directory and is read months
+later by someone who was not there when it moved.
+
+The remedy is not to drop line numbers. They are how a finder communicates
+precisely at the moment of discovery, they cost nothing, and a record without
+them is harder to act on. It is to **pair every coordinate with something that
+survives it** — the function name, the symbol, the rule — so that when the
+numbers go stale the record still says what to look for. `render.sh:324` alone
+rots; `render.sh:324, the stats blocking rollup's slug pattern` degrades into
+a search.
+
+The verification half follows from *A contract names a site; a site is not a
+class*, and sharpens it: **a site named only by line number is not a site at
+all once the file moves.** So confirm a record against the rule it describes,
+never against the coordinates it quotes. Closing the issue above meant
+censusing every slug character class in the tree and finding two deliberate
+families whose boundary held — one command, and it answered a question the
+line numbers could no longer even pose.
+
+Two forces make this bite hardest exactly where it did. A record filed by
+research and fixed during the same increment is the shortest-lived set of
+coordinates in the project, because the build reshapes the file underneath it.
+And a record left open past its fix — the failure above — keeps accruing rot
+for as long as it stands.
 
 ### Never hand-edit a derived artifact
 
