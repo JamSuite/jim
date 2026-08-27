@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-26T19:36:21Z
-updated: 2026-08-26T19:36:21Z
+updated: 2026-08-27T11:21:07Z
 origin: "docs/specs/issue/000-blueprint/spec.md"
 ---
 
@@ -104,3 +104,50 @@ Surfaced by the living-intent sensor over the range that fixed the index's
 lifecycle classification. The duplication predates that change; it reached the
 fork because the sensor selects judges by what the change touches, not by what
 introduced the finding.
+
+## Census extended
+
+A later `/jim:verify --since` grounding run judged this invariant again and
+confirmed both instances above, then found four more. The record was two of
+six.
+
+**`new.sh` retypes two vocabularies as `case` literals.** Rather than
+iterating the declared arrays, it inlines them:
+
+```
+priority)  low|medium|high|critical
+status)    open|closed
+```
+
+The priority list restates `PRIORITY_TOKENS` in a different order. The status
+list is worse: it is a **silent subset** of `STATUS_TOKENS=(open active
+closed)`, dropping `active` with no comment saying why filing time is narrower
+than the lifecycle. Filing an `active` issue is not a thing anyone should do —
+a capture is always `open` — so the subset is probably intended, and that is
+exactly the problem this invariant names: an intended narrowing and an
+accidental omission are indistinguishable when the set is retyped rather than
+derived.
+
+**Two tests hand-retype partial slices of `transition.sh`'s vocabularies.**
+`tests/issues.sh` loops two of the four `ISSUE_OUTCOMES`; `tests/place.sh`
+loops four of the five transition verbs, with `close` silently missing. Both
+sit in the same file as tests that read `render.sh`'s and `index.sh`'s
+constants mechanically off the script — so the discipline exists in the corpus
+and these two did not get it.
+
+**Where the discipline does hold**, worth recording so a fix does not
+over-reach: inside `render.sh` every quantifying site iterates its own declared
+arrays, `index.sh`'s vocabularies are exercised by tests that discover them off
+the script, and `is_valid_id` is SYNC-marked across three files with a
+cross-file test pinning byte agreement. The failure is at the seams between
+scripts, not within them.
+
+## Fix shape, revised
+
+The two same-file duplications need a marker and a test binding them, as
+`is_valid_id` has. The cross-script cases need a decision this record cannot
+make for them: either one script owns each vocabulary and the others read it,
+or every copy carries a SYNC marker and a test compares them. The test-side
+retyping is the cheapest of the six and the most clearly wrong — those loops
+should read the constant, which is what their neighbours in the same file
+already do.
