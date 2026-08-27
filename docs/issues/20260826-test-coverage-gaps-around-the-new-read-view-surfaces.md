@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-26T02:35:25Z
-updated: 2026-08-27T08:18:00Z
+updated: 2026-08-27T09:00:28Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
@@ -131,3 +131,13 @@ all. The shell reports it on every run. It is the same class as this record —
 a behaviour pinned by a case that does not reach it — but a different defect
 from the six listed, so it is left for its own decision rather than folded in
 here.
+
+**That decision was taken: fixed in `21eec13`.** It was two defects, and the
+quoting was the smaller one. Even spelled correctly the fixture's token was
+`[[B]]`, on which neither assertion could fail — the edge assertion looks for
+an edge to `20260530-b`, which a differently-named target never makes, and the
+warning assertion needs a target that fails `is_valid_id`, which guards
+containment rather than slug shape, so a bare name passes it and yields an edge
+to an unvalidated target with no warning at all. The fixture now spans a
+resolvable slug and a traversal shape, and disabling the inline-span strip
+fails both assertions where the half-fixed version failed one.

@@ -88,13 +88,26 @@ fix for that defect, so the record's own list outlived the work by one. Two of
 the six were stated slightly wrong and running them is what corrected it (§ 3).
 Suite 1623 → 1628.
 
-**Found, not filed (a third)** —
-`case_issues_index_wikilink_in_inline_backticks_ignored` passes for the wrong
-reason. Its fixture body is double-quoted, so the wikilink it exists to test is
-consumed as command substitution before the file is written; the body reaches
-disk without it and the case then asserts that no edge was produced, which is
-true of a body holding no wikilink at all. Pre-existing, one site, and the
-shell announces it on every run. No ordinal.
+**One case fixed rather than filed** (`21eec13`).
+`case_issues_index_wikilink_in_inline_backticks_ignored` passed for the wrong
+reason, found by the shell's own complaint during the work above — one site
+across all 1628 tests. It was two defects, and the second is the durable one:
+
+- Its fixture body was double-quoted, so the wikilink it exists to test was
+  command substitution. Bash ran it, and the body reached disk without the
+  token; the case then asserted that a body holding no wikilink made no edge.
+- **Correct quoting alone would not have saved it.** Its token was `[[B]]`,
+  and neither assertion could fail on that. The edge assertion looks for an
+  edge to `20260530-b`, which a differently-named target never makes; the
+  warning assertion needs a target that fails `is_valid_id`, and `B` passes
+  it, because that validator guards **containment** — empty, over 128 chars,
+  `..` — and not slug shape. So a bare name yields an edge to an unvalidated
+  target and no warning at all. Both assertions were inert.
+
+The fixture now spans a resolvable slug and a traversal shape, the sibling
+malformed-wikilink case's own shape. Disabling the inline-span strip in
+`index.sh` fails both assertions; the half-fixed version failed one, which is
+what exposed the second defect.
 
 ### What remains, in `remediation.md`'s order
 
