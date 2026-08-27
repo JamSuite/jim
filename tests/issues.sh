@@ -8563,6 +8563,75 @@ case_issues_render_list_origin_prefix_is_literal() {
   assert_match "no record satisfies both" '_No matching issues\._' "$OUT"
 }
 
+# AC: a `--spec` operand names path segments, so a group reaches its own group
+# and not a sibling whose name it happens to prefix. Nothing else bounds the
+# group: the allocator invariants the ordinal leans on have no analogue for a
+# group name, which is free-form. And the default columns carry no origin, so
+# a widened answer here is one the operator has no way to see.
+case_issues_render_list_spec_group_is_a_whole_segment() {
+  local dir
+  dir=$(empty_dir render_spec_segment)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+origin: "docs/specs/issue/011-issue-placement/spec.md"'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+origin: "docs/specs/issues/011-something-else/spec.md"'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: open
+num: 3
+created: 2026-01-03
+type: issue
+origin: "docs/specs/issue-archive/011-x/spec.md"'
+  run_index "$dir"
+
+  # The group is a whole segment, so a sibling it prefixes is not inside it.
+  run_render list --spec issue "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "its own group"       'Alpha' "$OUT"
+  assert_eq "not the plural sibling" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq "not the hyphenated one" "0" "$(printf '%s' "$OUT" | grep -c 'Charlie')"
+
+  # Each sibling is still reachable by its own name, so the boundary narrows
+  # the query rather than putting records out of the collection's reach.
+  run_render list --spec issues "$dir"
+  assert_match "the plural sibling" 'Bravo' "$OUT"
+  assert_eq "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+  run_render list --spec issue-archive "$dir"
+  assert_match "the hyphenated one" 'Charlie' "$OUT"
+  assert_eq "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # An ordinal still reaches the directory without naming the rest of it. That
+  # is the criterion the loose match existed for, and the boundary keeps it:
+  # the ordinal may end at the hyphen, where the group may not.
+  run_render list --spec issue/011 "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "group and ordinal" 'Alpha' "$OUT"
+  assert_eq "and no sibling group" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  # The census asks the same question, so it cannot report a scope it does not
+  # have — `scope: spec=issue` above a count covering three groups would be a
+  # rollup contradicting its own disclosure.
+  run_render stats --spec issue "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the scope it claims"    'scope: spec=issue'   "$OUT"
+  assert_match "counts only that group" 'Open: 1 · Closed: 0' "$OUT"
+
+  # `--origin` is deliberately not bounded: an origin match is specified as a
+  # path prefix, so reaching partway into a segment is that axis working.
+  run_render list --origin docs/specs/issue "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reaches its own"      'Alpha'   "$OUT"
+  assert_match "and the siblings too" 'Bravo'   "$OUT"
+  assert_match "including hyphenated" 'Charlie' "$OUT"
+}
+
 # ─── Section: render.sh — the derived predicates ─────────────────────────────
 
 # derived_fixture <dir> — an umbrella with two members, a live dependency, a

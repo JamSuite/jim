@@ -831,29 +831,69 @@ label_matches() {
   return 1
 }
 
-# prefix_axis <axis> <origin> <root> — an axis whose alternatives are literal
-#   path prefixes of the row's recorded origin, each resolved under <root>
-#   first when one is given.
+# prefix_axis <axis> <origin> — an axis whose alternatives are literal path
+#   prefixes of the row's recorded origin.
 #
-#   A prefix rather than an equality, so naming a spec's directory reaches
-#   every artifact filed from it — a review, a plan, a research pass — and not
-#   only the spec document. Naming a group and an ordinal reaches the directory
-#   without spelling the rest of its name, which matters because a spec's
-#   ordinal is not stable: the rename and split verbs renumber directories and
-#   sweep the citations, so the filter matches whatever origin currently
-#   records rather than any resolution held anywhere.
+#   A prefix rather than an equality, so naming a directory reaches every
+#   artifact filed from it — a review, a plan, a research pass — and not only
+#   the document named. The match is deliberately unbounded: an origin match is
+#   specified as a path prefix, so reaching partway into a path segment is this
+#   axis doing its job. The spec axis takes a structured operand rather than
+#   free text and is compared segment-wise instead — see spec_matches.
 #
 #   The pattern operand is quoted. Unquoted it is a glob, and a value carrying
 #   `*`, `?` or `[` would then silently widen a query the developer narrowed.
 prefix_axis() {
-  local axis="$1" origin="$2" root="$3" alt pfx
+  local axis="$1" origin="$2" alt
   [[ -n "${FILTER_AXIS[$axis]:-}" ]] || return 0
   [[ "$origin" == "-" || -z "$origin" ]] && return 1
-  root="${root%/}"
   while IFS= read -r alt; do
-    pfx="${root:+$root/}$alt"
-    [[ "$origin" == "$pfx"* ]] && return 0
+    [[ "$origin" == "$alt"* ]] && return 0
   done <<< "${FILTER_AXIS[$axis]}"
+  return 1
+}
+
+# spec_matches <origin> <specs-root> — the spec axis, compared by segment.
+#
+#   The operand names a group and, optionally, an ordinal or more of the
+#   directory name. Naming a group and an ordinal reaches the directory without
+#   spelling the rest of its name, which matters because a spec's ordinal is
+#   not stable: the rename and split verbs renumber directories and sweep the
+#   citations, so the filter matches whatever origin currently records rather
+#   than any resolution held anywhere.
+#
+#   The two halves of the operand end differently, which is why one prefix test
+#   over the whole composed path cannot express this:
+#
+#     - a group is a **whole path segment**. Group names are free-form, so one
+#       is routinely a prefix of another, and an unbounded compare puts every
+#       such sibling inside the query — a narrowing operand arriving as a
+#       widening one, at status 0, on a view whose default columns carry no
+#       origin for a reader to notice it by.
+#     - an ordinal is a prefix of the directory that carries it, so it ends at
+#       the `-` separating it from that directory's name.
+#
+#   Admitting `-` is exactly what would let a group reach a hyphenated sibling,
+#   so the group is matched to its separator before anything after it is
+#   considered, rather than both being pasted together and tested at once.
+#
+#   Operands are quoted throughout, for the reason prefix_axis states.
+spec_matches() {
+  local origin="$1" root="${2%/}" alt group rest base rem
+  [[ -n "${FILTER_AXIS[spec]:-}" ]] || return 0
+  [[ "$origin" == "-" || -z "$origin" ]] && return 1
+  while IFS= read -r alt; do
+    alt="${alt%/}"
+    [[ -z "$alt" ]] && continue
+    group="${alt%%/*}"
+    rest=""
+    [[ "$alt" == */* ]] && rest="${alt#*/}"
+    base="${root:+$root/}$group"
+    [[ "$origin" == "$base/"* ]] || continue
+    [[ -z "$rest" ]] && return 0
+    rem="${origin#"$base/"}"
+    [[ "$rem" == "$rest" || "$rem" == "$rest"[-/]* ]] && return 0
+  done <<< "${FILTER_AXIS[spec]}"
   return 1
 }
 
@@ -970,8 +1010,8 @@ row_matches() {
   label_matches         "$labels" || return 1
   person_matches filed-by   "$filed_by"   || return 1
   person_matches claimed-by "$claimed_by" || return 1
-  prefix_axis origin "$origin" ""            || return 1
-  prefix_axis spec   "$origin" "$specs_root" || return 1
+  prefix_axis  origin "$origin"        || return 1
+  spec_matches "$origin" "$specs_root" || return 1
   held_matches    "$claimed_by" || return 1
   blocked_matches "$slug"       || return 1
   epic_matches    "$slug"       || return 1
