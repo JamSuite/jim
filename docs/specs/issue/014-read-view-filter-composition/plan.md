@@ -2,7 +2,7 @@
 title: "Read-view filter composition"
 spec: "docs/specs/issue/014-read-view-filter-composition/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Read-view filter composition — Plan

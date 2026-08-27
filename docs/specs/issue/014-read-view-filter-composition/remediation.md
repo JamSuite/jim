@@ -400,7 +400,11 @@ yet say.
 ### What still stands
 
 **Nothing does.** The order ran to completion: five steps, then `#396`, `#398`
-and `#394`.
+and `#394`. The plan is `complete`, and this document is closed with it. What
+followed the order — the closing verify, the two invariant clauses it earned,
+and the four issues it routed — is recorded in `context.md` § 1 rather than
+here, because this document is the record of an analysis and its execution, not
+a running log.
 
 `#394` was not the thing this document ranked last. Filed and priced as a
 latent coupling, it named only half its own defect. The ordinal analysis holds

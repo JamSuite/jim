@@ -12,22 +12,28 @@ the setting.
 
 ## 1. Where this stands
 
-The feature is **built, reviewed, and fully remediated** — `remediation.md`'s
-order ran to completion, including the two items it deliberately deferred to
-last. The three issues that gated the plan are fixed, verified and closed, and
-so is every acceptance criterion the review found partial. The plan is still
-held at `approved` — closing it is a single decision, described in § 6.
+**This increment is closed.** The feature is built, reviewed, fully remediated,
+verified against the group's invariants, and the plan is marked `complete`.
+`remediation.md`'s order ran to completion including the two items it deferred
+to last, every acceptance criterion the review found partial is answered, and
+the blueprint and the project map are current. Nothing here is waiting on a
+decision.
+
+What is left is follow-on work with its own records, listed under § *What
+remains*. Read § 3 before touching any of it: it holds the things that cost
+real time to learn and cannot be re-derived by reading the code.
 
 | artifact | state |
 | :--- | :--- |
-| `spec.md` | `approved` — 35 acceptance criteria |
+| `spec.md` | `approved` — 35 acceptance criteria, all answered |
 | `research.md` | `Needs PM Review` — the VISION contention, explicitly non-blocking |
 | `security.md` | `Needs Plan Review` — 12 findings, all routed and applied |
-| `plan.md` | `approved` — 21/21 tasks `[x]`, **held**, and now closeable |
+| `plan.md` | **`complete`** — 21 tasks, 26 checkboxes, 0 unchecked |
 | `review.md` | `minor-drift` — 13 findings, `undelegated=0` |
-| `remediation.md` | the order of attack — **all of it done**, `#394` last |
-| `retrospective.md` | why it happened; the root cause and its prevention |
-| group blueprint | **15 invariants** — `row-shape-is-the-writers` added, writer-side only |
+| `remediation.md` | the order of attack — **all of it done** |
+| `retrospective.md` | why it happened, the root cause, and what the remediation taught |
+| group blueprint | **15 invariants** — two strengthened by the closing verify run (§ 4) |
+| project map | contract graph restamped; 26 edges carried forward, no face moved |
 | suite | **1629 green** (`skills/meta-test/scripts/run.sh`) |
 
 Two frontmatter values look wrong and are not, the same trap the preceding
@@ -74,10 +80,11 @@ into ledger history, and it now blocks the reconcile's derivation outright.
 **Found, not filed (2)** — both from step 5, both recorded only in prose:
 `index.sh` warns `names an umbrella not in the collection` for a missing
 `part-of` target and has no analogue for `depends-on`; and
-`row-shape-is-the-writers` is stated writer-side only while `2a22a21` upholds
+`row-shape-is-the-writers` was stated writer-side only while `2a22a21` upheld
 its read-side half. They live in `remediation.md` § What it did not anticipate
-at all and in the two resolutions. Neither has an ordinal — decide whether they
-want one before they are lost.
+at all and in the two resolutions. **The second is closed** — the invariant
+gained its read-side clause at the close of the session, grounded in a judge
+that reached the same reading independently. The first still has no ordinal.
 
 ### After the remediation
 
@@ -140,14 +147,72 @@ operand refuses and keeping `#390`'s guard was worth more than that case
 (`#392`'s resolution). So the criteria are satisfied, with that one named
 carve-out — not met in full without it.
 
+### The closing verify and blueprint run
+
+The last act was `/jim:blueprint --since` over the five remediation commits,
+which grounds its violation fork in `/jim:verify --since`. All 15 invariants
+are `judge` method, so grounding meant 11 change-selected judges (4 skipped by
+scope — the three `place.sh` invariants and the analyst boundary, none of which
+the range touched). **15 checked · 8 holds · 3 violated · 4 skipped · 0
+undelegated.**
+
+**Two invariants gained a clause** (`0d26d58`), both additive:
+
+- `row-shape-is-the-writers` now states the **read side**. The judge confirmed
+  independently what § 3 had recorded as an open question: the reader consumes
+  exactly the writer's one separator space, but the invariant's text was
+  writer-scoped, so a reader-side regression *"would not, on the letter of this
+  invariant, constitute a violation."* It would now.
+- `staleness-gated-reads` now states the **schema-staleness half at all**. Two
+  closed issues bound the schema gate to this invariant through issue history
+  and nobody wrote it into the text, so the rule the code implements went
+  unstated — including the deliberate asymmetry that the axis half binds both
+  read verbs while the column half binds only the view that renders columns.
+
+**Three violations, none folded.** Two routed to issues (`ef8441c`): the
+`backfill.sh` preview gate filed fresh, and `#402` extended from the two
+instances it named to the six the judge found. The third resolved as the
+`staleness-gated-reads` edit above — and honestly, because the property it
+"violated" was one this session put in the judge's prompt rather than one the
+blueprint states. Read § 6's last entry before trusting a violation of a
+property you supplied.
+
+**A judge also caught an error committed earlier the same day.** The `/jim:arch`
+refresh claimed the schema gate refuses an unanswerable axis *or column* on both
+read verbs. `cmd_stats` passes no column argument and never reads `FILTER_COLS`;
+the column half binds `list` alone. Corrected in `be89b3c`.
+
+**And one finding arrived sideways**: while judging `atomic-index-write` (which
+holds), a judge noticed that a caller-pinned `--slug` skips the collision check
+guarding allocator-derived ids. Verified by running it — two filings with the
+same pinned slug leave one file, the first record's body gone, rc 0 and silence
+both times. Filed at medium (`ee6b70b`); the allocator arm eight lines above
+already refuses this case, and its comment says *"refused, never overwritten."*
+
 ### What remains
 
-Nothing in `remediation.md`'s order. Outside it: `/jim:arch` (§ 5), `#401`,
-`#402`, and `#374` — which now gates the blueprint surface, not just a counter.
+Nothing in `remediation.md`'s order, and nothing gating this increment.
+
+**Filed and open, in the order I would take them:**
+
+| issue | why it leads |
+| :--- | :--- |
+| `#400` **critical** | the skill's own usage templates inline `title` and `origin` into the command line its scripts route the body around |
+| `#374` **high** | the `faces` verb loses a provides entry per bold-first bullet, so a reconcile over a *changed* face must choose between a stale graph and a fabricated leak (§ 3) |
+| `#402` **high** | declared vocabularies, now six instances |
+| the `backfill.sh` preview gate | a collection-wide rewrite with nothing to inspect first |
+| `#399`, `#401`, the pinned-slug overwrite | medium, independent of each other |
 
 Also open against this spec dir and never part of the remediation's thirteen:
 `#380`–`#385` (VISION amendment, graph-edge slug narrowing, filter negation,
-origin grouping, ROADMAP staleness, sort/group by the new fields).
+origin grouping, ROADMAP staleness, sort/group by the new fields). `#380` is
+the one with a strategic question in it rather than a code change.
+
+**Two findings still carry no ordinal**, both from step 5 and both recorded
+only in prose (§ 3): `index.sh` warns about a missing `part-of` umbrella and
+has no analogue for a missing `depends-on` target; and `stats --cols` is
+accepted by the shared grammar and silently ignored. Decide whether they want
+records before they are lost.
 
 ### Where this sits in the larger arc
 
@@ -398,14 +463,18 @@ undercounts the same way and nearly produced a false `leak` by hand. Match
   have one assignment site each, fed by the sanitized value, so re-applying an
   idempotent transform on the hot path costs 11 seconds a regeneration and buys
   a guarantee a test already held.
-- **Three blueprint invariants changed across the session, all additive.**
+- **Five blueprint invariant edits across the session, every one additive.**
   `placeholder-by-position` was **strengthened**, not folded — the code
   implements a strictly narrower mechanism than the invariant described.
   `declared-vocabularies` was added, recording the property whose absence
   produced the enumeration defects. `row-shape-is-the-writers` was added for the
   row-forgery property `row_safe`'s header already argued but no invariant
-  named. No Provides entry was ever touched, so no blast-radius grounding
-  applied.
+  named, then **extended again** at the close to state the reader's half. And
+  `staleness-gated-reads` gained the schema-staleness clause it had never
+  carried. **No Provides entry was touched in any of them**, so no
+  blast-radius grounding ever applied and the contract graph never had to move.
+  That is worth knowing before proposing a sixth: an invariant edit is cheap
+  here precisely because it stays off the face.
 - **`#402` resolved `fix the code`, not `fold the intent`.** The judge returned
   `partial` on `declared-vocabularies` because `ISSUE_OUTCOMES` is declared in
   both `index.sh` and `transition.sh`, and one type vocabulary wears two names
@@ -505,14 +574,20 @@ undercounts the same way and nearly produced a false `leak` by hand. Match
 
 ## 6. If you are picking up from here
 
-**The plan can be closed honestly, and the case is stronger than it was.** All
-three gating issues are fixed and their tests pin them; the whole remediation
-order has run, not just the part that gated the plan; every partial acceptance
-criterion is answered; the suite is green at 1629; and the living-intent sensor
-has been run twice against the fixes rather than the original build. Marking
-`plan.md` `status: complete` is a single question to the developer.
+**The plan is closed.** All three gating issues are fixed and their tests pin
+them; the whole remediation order ran, not just the part that gated the plan;
+every partial acceptance criterion is answered; the suite is green at 1629; and
+the engine has been run three times against the fixes rather than the original
+build. Nothing about this increment is waiting on anyone.
 
-Six things worth carrying, all re-confirmed across the remediation and the
+If you are here to do the follow-on work, § *What remains* has it in the order
+I would take it, and § 3 has what running things settled — read that first,
+because most of it contradicts what the artifacts suggest.
+
+`retrospective.md`'s closing section is the other half of this: what the
+remediation itself taught, as opposed to what the build did.
+
+Seven things worth carrying, all re-confirmed across the remediation and the
 work that followed it:
 
 - **Reproduce the reproduce before you trust it.** This is the one that earned
@@ -548,3 +623,14 @@ work that followed it:
 - **Check the issue collection before reporting a measurement as new.** Twice
   in one session a "new" finding about `#374` was already in its Census
   section, written the day before. Read the issue, then measure.
+- **A judge answers the question you ask, not the one the blueprint asks.**
+  Grounding the closing fork, I put a property into a judge's prompt — the
+  schema gate refusing an unanswerable axis *or column* on both read verbs —
+  that the invariant's own text does not contain. The judge checked what I
+  asked and correctly reported the code does not satisfy it. That is a
+  violation of my phrasing, not of the blueprint, and folding it as though it
+  were the blueprint's would have written my assumption into the group's
+  intent. Pass the invariant's text verbatim in a delimited block and let the
+  supplementary questions be visibly supplementary; when a violation comes back
+  against a property you supplied, that is the finding — the invariant is
+  silent, and silence is what needs fixing.
