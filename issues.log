@@ -400,3 +400,7 @@ issue allocate 399 20260826-schema-gate-misses-a-partly-converted-collection 202
 issue allocate 400 20260826-skill-md-inlines-title-and-origin-into-the-emitter-command-line 20260826 jrko
 issue allocate 401 20260826-spec-and-finding-ids-in-comments-outside-the-issue-group 20260826 jrko
 issue allocate 402 20260826-blueprint-divergence-declared-vocabularies-span-scripts 20260826 jrko
+issue allocate 403 20260827-a-pinned-slug-silently-overwrites-an-existing-issue 20260827 jrko
+issue allocate 404 20260827-backfill-sh-rewrites-the-collection-with-no-preview-gate 20260827 jrko
+issue allocate 405 20260827-group-the-read-views-by-umbrella-membership 20260827 jrko
+issue allocate 406 20260827-report-an-honest-completion-rate-from-the-outcome-field 20260827 jrko
