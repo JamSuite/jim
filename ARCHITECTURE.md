@@ -2008,11 +2008,17 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   recording nothing would leave the axis unassigned, and every matcher reads an
   unassigned axis as one nobody named, so a narrowing operand would arrive as a
   widening query at status 0. A single leading hyphen is still carried, because
-  a recordable identity may wear one. `schema_gate` runs on **both** verbs and
-  quantifies over `SCHEMA_GATED_FIELDS`: a query naming an axis *or* a column
-  that an index predating the widened row cannot answer is refused rather than
-  answered from blanks, and the refusal names the row field rather than the
-  axis key. The two origin axes compare differently on purpose: `--origin` is
+  a recordable identity may wear one. `schema_gate` quantifies over
+  `SCHEMA_GATED_FIELDS` and catches the second staleness class — an index
+  newer than every issue file that nonetheless predates a row field. Both read
+  verbs put their **axes** through it, so a query naming a field such an index
+  cannot answer is refused rather than answered from blanks, and the refusal
+  names the row field rather than the axis key. The **column** half binds
+  `list` alone, because `stats` renders no per-row columns: a selection a verb
+  never renders is one a stale index cannot answer wrongly, so `cmd_stats`
+  passes no column argument to the gate and `--cols`, accepted by the shared
+  grammar, goes unused there. The two origin axes compare differently on
+  purpose: `--origin` is
   an unbounded literal path prefix, as specified, while `--spec` splits its
   operand at the first `/` and compares segment-wise — the group must match a
   whole path segment, and only what follows it may end at a `-`, so naming a
