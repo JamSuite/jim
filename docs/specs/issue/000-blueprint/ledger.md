@@ -41,3 +41,4 @@
 1787828534	2026-08-27T11:02:14Z	blueprint	started	
 1787828732	2026-08-27T11:05:32Z	verify	started	
 1787829154	2026-08-27T11:12:34Z	verify	finished	checked=15;holds=8;violated=3;failed=0;unconfigured=0;skipped=4;undelegated=0
+1787829553	2026-08-27T11:19:13Z	blueprint	finished	violations=3;folded=1;fixed=2
