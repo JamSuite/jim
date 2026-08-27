@@ -2127,6 +2127,56 @@ relations:
   fi
 }
 
+# AC (spec 020): the two edge types the graph reads do different work. Both
+# `blocks` and `depends-on` take their endpoints out of the isolation report,
+# but only `blocks` carries a blocking out-degree. A reader that stopped
+# distinguishing them would report every dependent as a blocker, and the
+# isolation assertions alone cannot catch that — they hold under both readings.
+case_issues_render_insights_graph_depends_on_is_not_a_blocking_edge() {
+  local dir n
+  dir=$(empty_dir insights_graph_edge_types)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+created: 2026-01-01
+relations:
+  blocks: [20260101-b]'
+  write_issue "$dir" "20260101-b" 'title: "B"
+status: open
+created: 2026-01-01
+relations:
+  depends-on: [20260101-a]'
+  # C is the sharp case: a depends-on source with no blocks edge anywhere in
+  # the collection, so nothing but the edge type decides its out-degree.
+  write_issue "$dir" "20260101-c" 'title: "C"
+status: open
+created: 2026-01-01
+relations:
+  depends-on: [20260101-d]'
+  write_issue "$dir" "20260101-d" 'title: "D"
+status: open
+created: 2026-01-01'
+  write_issue "$dir" "20260101-e" 'title: "E"
+status: open
+created: 2026-01-01'
+  run_render insights-graph "$dir"
+  assert_exit "rc" 0 "$RC"
+
+  # The blocks source has an out-degree, and it is the only node that does.
+  assert_match "the blocks source" 'BLOCKING 1 20260101-a' "$OUT"
+  assert_eq "and nothing else blocks anything" "1" \
+    "$(printf '%s\n' "$OUT" | grep -c '^BLOCKING ')"
+  for n in 20260101-b 20260101-c 20260101-d; do
+    assert_eq "$n does not block" "0" \
+      "$(printf '%s\n' "$OUT" | grep -c "^BLOCKING [0-9]* $n\$")"
+  done
+
+  # The same edges still take their endpoints out of the isolation report, so
+  # the gating above is about out-degree rather than about ignoring the edge.
+  assert_match "the edgeless node is isolated" 'ISOLATED 20260101-e' "$OUT"
+  assert_eq "and it is the only one" "1" \
+    "$(printf '%s\n' "$OUT" | grep -c '^ISOLATED ')"
+}
+
 # spec 020: insights-graph degrades cleanly on an empty collection — no
 # ISOLATED/BLOCKING lines, exit 0. Characterizes the edge of the task-1 helper.
 case_issues_render_insights_graph_empty_dir() {
@@ -7290,6 +7340,54 @@ outcome: ""'
   assert_eq "no outcome key" "0" "$(printf '%s' "$row" | grep -c 'outcome')"
 }
 
+# AC: an empty frontmatter scalar produces no row pair at all — for every
+# optional field, rather than for the two a reader happened to check. The field
+# list is read out of the emitter itself, so a field added to the row cannot
+# skip this guard: the rule is that an empty value emits no key, and a test
+# enumerating its own subset of the fields agrees with that rule by coincidence.
+case_issues_index_row_omits_every_empty_field() {
+  local dir row f
+  local -a optional=()
+  while IFS= read -r f; do optional+=("$f"); done < <(
+    grep -oE 'row\+=" · [a-z-]+:' "$SCRIPT_INDEX" | sed 's/.*· //; s/:$//')
+  assert_nonempty "the emitter's optional fields were found" "${optional[*]:-}"
+  # A garbled extraction must not pass vacuously, so the four fields the
+  # widened row added are named explicitly as a floor under it.
+  for f in type filed-by claimed-by outcome; do
+    assert_match "the extraction found $f" "^$f\$" "$(printf '%s\n' "${optional[@]}")"
+  done
+
+  dir=$(empty_dir index_row_omits_all)
+  write_issue "$dir" "20260101-bare" 'title: "Bare"
+status: open
+num: ""
+priority: ""
+created: ""
+labels: ""
+origin: ""
+type: ""
+filed-by: ""
+claimed-by: ""
+outcome: ""'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  row="$(grep -F '`20260101-bare`' "$dir/INDEX.md" | head -n1)"
+
+  # What survives is the writer's own floor — the two fields it always emits.
+  # This assertion is the one that does not depend on the extraction above:
+  # any key that leaked into the row breaks it, named in the list or not.
+  assert_eq "the row is title and status alone" \
+    '- `20260101-bare` — Bare · status: open' "$row"
+  for f in "${optional[@]}"; do
+    assert_eq "no $f key" "0" "$(printf '%s' "$row" | grep -c -- "· $f:")"
+  done
+
+  # And the record still reads back through the view that consumes the row.
+  run_render list "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "still listed" 'Bare' "$OUT"
+}
+
 # AC: a record's own field values can never corrupt the structure of the index
 # that carries them — the row separator and control characters are stripped
 case_issues_index_row_new_scalars_are_sanitized() {
@@ -8768,6 +8866,42 @@ case_issues_render_list_hide_closed_discloses() {
     "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
 }
 
+# AC: a column selection is a display choice, not a filter — so it neither
+# narrows the view nor makes the view claim it was narrowed. That distinction
+# is only visible where a filter would change what the reader is told: the
+# closed-hiding default stays silent under `--cols` alone, because nothing was
+# narrowed for the hidden records to be mistaken against, and a census under
+# one is still a statement about the whole collection.
+case_issues_render_cols_alone_is_not_a_filter() {
+  local dir
+  dir=$(empty_dir render_cols_not_a_filter)
+  hide_fixture "$dir"
+  run_index "$dir"
+
+  # A closed record shares the open one's label, so it is hidden by the
+  # standing default in both queries below — the same records either way, and
+  # the only difference is whether an axis was named.
+  run_render list --cols num,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the open one"           'Alpha' "$OUT"
+  assert_eq    "the closed ones hidden" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq    "and quietly, as the unfiltered default always has" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # Name an axis over the same collection and the disclosure fires, which is
+  # what shows the silence above belongs to `--cols` and not to the fixture.
+  run_render list --label auth --cols num,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the same open record" 'Alpha'         "$OUT"
+  assert_match "and now it discloses" 'closed hidden' "$OUT"
+
+  # The census makes the same distinction one surface out.
+  run_render stats --cols num,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the whole collection" 'Open: 1 · Closed: 2' "$OUT"
+  assert_eq    "and no scope claimed" "0" "$(printf '%s' "$OUT" | grep -c 'scope:')"
+}
+
 # ─── Section: render.sh — statistics under a filter ──────────────────────────
 
 # stats_fixture <dir> — records spanning two labels, both lifecycle ends, and
@@ -8872,6 +9006,92 @@ case_issues_render_stats_scoped_by_filter() {
   run_render stats bogus17 "$dir"
   assert_exit  "refused" 1 "$RC"
   assert_match "names the token" 'unrecognized filter token: bogus17' "$ERR"
+}
+
+# AC: a census that matches nothing reports zero rather than failing, and still
+# names the scope the zero belongs to — a bare `Open: 0` would read as a
+# statement about the collection. The verb's status is whatever its trailing
+# integrity-warnings block evaluates to, so both branches of that block are
+# exercised here rather than whichever one the fixture happens to take.
+case_issues_render_stats_empty_match_succeeds() {
+  local dir warn
+  dir=$(empty_dir render_stats_empty)
+  hide_fixture "$dir"
+  run_index "$dir"
+
+  # Nothing matches, and the collection is sound — no warnings block, so the
+  # status comes from the branch that did not fire.
+  run_render stats --label nosuchlabel "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "zero counts"       'Open: 0 · Closed: 0'      "$OUT"
+  assert_match "scope is named"    'scope: label=nosuchlabel' "$OUT"
+  assert_match "no blocking edges" '_No blocking edges\._'    "$OUT"
+  assert_eq    "every cluster empty" "3" "$(printf '%s' "$OUT" | grep -c '_none_')"
+  assert_eq    "nothing on stderr" "" "$ERR"
+
+  # A census never hides a finished record, so an empty one is empty for a
+  # single reason and has nothing to disclose about what it dropped.
+  assert_eq "no closed-hidden disclosure" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # The same empty match over a collection that does carry warnings takes the
+  # other branch and reports the same status.
+  warn=$(empty_dir render_stats_empty_warn)
+  write_issue "$warn" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+relations:
+  related-to: [20260102-bravo]'
+  write_issue "$warn" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue'
+  run_index "$warn"
+  run_render stats --label nosuchlabel "$warn"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "still zero" 'Open: 0 · Closed: 0' "$OUT"
+  # The warnings describe the collection's health rather than the queried
+  # subset, so an empty query still reports them.
+  assert_match "and the collection's health is still reported" \
+    '== Integrity Warnings ==' "$OUT"
+}
+
+# AC: the census takes the person axes on the same terms the list view does,
+# and the scope it discloses is the identity it actually compared — `me` is
+# resolved before any row is read, and resolution runs through the project's
+# recorded form. Echoing the literal `me` back would name the query rather than
+# the identity, and two developers would read one line as two different facts.
+case_issues_render_stats_person_axis_reports_the_resolved_identity() {
+  local dir
+  dir=$(empty_dir render_stats_person)
+  person_fixture "$dir"
+  run_index "$dir"
+
+  # The holder axis: one record is held by this environment's own identity.
+  run_render_as "tester@example.test" stats --claimed-by me "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "scoped to the holder" 'Open: 1 · Closed: 0' "$OUT"
+  assert_match "and names who that is" \
+    'scope: claimed-by=tester@example\.test' "$OUT"
+  assert_eq    "rather than the word that was typed" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'claimed-by=me')"
+
+  # The filer axis, through a relay address: the scope reports the value the
+  # collection would record, not the address the environment carries — the same
+  # form the comparison itself ran under, so the line and the count agree.
+  run_render_as "1234+alice@users.noreply.github.com" stats --filed-by me "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "one record filed"     'Open: 1 · Closed: 0'   "$OUT"
+  assert_match "in the recorded form" 'scope: filed-by=alice' "$OUT"
+
+  # Spelled out, the same query reaches the same record and reads the same.
+  run_render stats --claimed-by tester@example.test "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "same count" 'Open: 1 · Closed: 0'                   "$OUT"
+  assert_match "same scope" 'scope: claimed-by=tester@example\.test' "$OUT"
 }
 
 # AC: the help text describes the composed surface rather than a single filter
