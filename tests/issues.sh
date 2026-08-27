@@ -606,13 +606,16 @@ status: open' ""
 }
 
 # AC: wikilink-shaped tokens inside inline backtick spans are stripped — a
-# prose mention like `[[B]]` (single-backtick code) is inline code, not a
-# graph claim. No edge, no malformed-wikilink warning.
+# prose mention inside `…` is inline code, not a graph claim. No edge, no
+# malformed-wikilink warning. Two shapes are spanned so that both assertions
+# below bite: stripping that stopped working would turn the resolvable slug
+# into an edge, and hand the traversal shape to the id validator, which warns.
+# So the stripping has to happen before validation, not after it.
 case_issues_index_wikilink_in_inline_backticks_ignored() {
   local dir
   dir=$(empty_dir index_inline_backtick)
   write_issue "$dir" "20260530-a" 'title: "A"
-status: open' "Authors who write `[[B]]` in prose are documenting wikilink syntax, not asserting an edge."
+status: open' 'Prose like `[[20260530-b]]` or `[[../../etc/passwd]]` documents syntax, not edges.'
   write_issue "$dir" "20260530-b" 'title: "B"
 status: open' ""
   run_index "$dir"
@@ -621,11 +624,11 @@ status: open' ""
   idx="$(cat "$dir/INDEX.md")"
   if printf '%s\n' "$idx" | grep -q -- 'a` --related-to--> `20260530-b'; then
     CURRENT_FAILED=1
-    echo "    [inline-backtick [[B]] should not produce a graph edge]"
+    echo "    [a slug inside inline backticks should not become an edge]"
   fi
   if printf '%s\n' "$idx" | grep -q 'malformed wikilink'; then
     CURRENT_FAILED=1
-    echo "    [inline-backtick wikilink-shape should not warn]"
+    echo "    [a traversal shape inside inline backticks should not reach the validator]"
   fi
 }
 
