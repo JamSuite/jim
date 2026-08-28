@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-08-27*
+*Last updated: 2026-08-28*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill
 to preserve consistency.
@@ -73,7 +73,7 @@ jim/
 │   ├── brainstorm/          # /jim:brainstorm — freeform ideation capture
 │   ├── issue/               # /jim:issue — capture + review, one command (017+019)
 │   │   ├── SKILL.md          #   subcommands: add / claim / release / start / close / reopen
-│   │   │                     #               / list / stats / show / insights / help
+│   │   │                     #               / join / leave / list / stats / show / insights / help
 │   │   ├── assets/
 │   │   │   └── issue-template.md      # YAML-frontmatter template (num ordinal; identity,
 │   │   │                              #   lifecycle and umbrella fields per issue/012)
@@ -81,7 +81,8 @@ jim/
 │   │       ├── index.sh                # Frontmatter scan → INDEX.md (atomic)
 │   │       ├── new.sh                  # Issue-file emitter: fields → spec-017 file (spec 025)
 │   │       ├── identity.sh             # Resolve, validate, normalize and map the recorded contributor identity
-│   │       ├── transition.sh           # Lifecycle verbs: claim/release/start/close/reopen
+│   │       ├── resolve.sh              # One definition of what an issue reference names on a write path (issue/015)
+│   │       ├── transition.sh           # Lifecycle verbs: claim/release/start/close/reopen/join/leave
 │   │       ├── render.sh               # stats/list/show/help dispatcher → stdout
 │   │       ├── place.sh                # Placement primitive: mode/run/begin/commit/abort (issue/011)
 │   │       ├── reconcile.sh            # realize pending provisional issue ordinals (platform/009)
@@ -1964,7 +1965,24 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   `mv` preserves the tmp file's earlier mtime, so `index.sh` `touch`es
   `INDEX.md` as its final step to leave it the newest entry in the dir;
   `render.sh`'s staleness gate relies on this invariant. Failure preserves the
-  previous `INDEX.md` unchanged. As of spec 018, `index.sh` runs a second pass
+  previous `INDEX.md` unchanged. As of issue/015 the composition also carries a
+  `## Epics` section, between `## Issues` and `## Graph`. Its placement is
+  constrained rather than cosmetic: the integrity-warnings extractors read from
+  their header to end of file, so a section below them would have every roster
+  line swallowed into the warnings view. Each umbrella's roster and progress
+  are derived by **bucketing** the frontmatter membership edges — every record
+  contributes itself to the bucket of each umbrella it names, and nothing walks
+  from an umbrella into a member's own memberships — which makes termination a
+  property of the pass's shape rather than of a cycle guard: two records naming
+  each other are two buckets, not a loop. The pass reads the frontmatter-only
+  edge set so a body wikilink cannot create a membership, and deduplicates by
+  `(member, umbrella)` because that set, unlike the Graph's, is appended
+  unguarded. The roster lists open members to a declared `ROSTER_CAP`, with an
+  overflow line naming the remainder: the section is a convenience rather than
+  the record, since every membership also renders as a Graph edge below it, so
+  bounding one entry costs nothing and is what keeps a single record from
+  growing the generated file without limit. As of spec 018, `index.sh` runs a
+  second pass
   that validates each issue's `origin:` field: entries containing `/` are
   treated as path-shaped and `test -e` against the script's invoking CWD
   (PWD-relative resolution); non-resolving paths surface as integrity warnings
@@ -2027,7 +2045,14 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   prefixes. `blocked` and `epic` are derived from the index's `## Graph` rather
   than stored, so no record can contradict them; a `depends-on` target the
   collection does not hold counts as blocking, because a dependency nobody can
-  open is not finished. `dir_given` reads argv by
+  open is not finished. As of issue/015 the `epic` axis resolves its operand
+  before matching it — an ordinal, an exact slug or a prefix, through the same
+  ladder `show` uses — and refuses a reference naming no record of kind `epic`,
+  so an empty result means nothing matched and never that the reference could
+  not be resolved. Resolving that reference reads the `type` row scalar, so the
+  axis is schema-gated like a stored one rather than exempt as a purely derived
+  one: an index that cannot say what is an epic refuses the query naming the
+  row field, rather than answering it from blanks. `dir_given` reads argv by
   that same grammar, because a routing decision and a binding decision that
   disagree produce a plausible answer over the wrong collection rather than an
   error. Person filters resolve and compare through `identity.sh`, so a query
@@ -2046,7 +2071,19 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   announced; it is NOT wired into the verb flow (new issues get their ordinal at
   `add` time via `jimfile.sh next-num issue`). All scripts use `set -uo
   pipefail; export LC_ALL=C` and resolve their target dir from `jimconf.sh get
-  issues` when no argument is passed. `/jim:issue add` invokes `index.sh`
+  issues` when no argument is passed. As of issue/015 every lifecycle verb
+  writes only on change: the pending field set is filtered at the existing
+  change choke point — after the verb composes it, before the `updated` stamp
+  is appended — and a run with nothing left to write touches no field, moves no
+  stamp, regenerates no index, releases the placement handle rather than asking
+  it to publish, and reports `unchanged` at a success status. The comparison is
+  between composed `field: value` lines rather than between values, because the
+  verbs emit in file form — `claimed-by` carrying its quotes, `status` and
+  `outcome` bare — so a value comparison against a quote-stripping reader would
+  no-op the bare fields and never the quoted ones. Ordering the filter above
+  the stamp is what lets the placement door's own empty-diff guard finally
+  reach a transition: a fresh timestamp had always made the file differ.
+  `/jim:issue add` invokes `index.sh`
   post-write (eager regen, AC-I2); the spec 018 candidate-batch step in every
   skill that files through the § 7a contract invokes `index.sh` once at the
   batch boundary; the `/jim:issue` read verbs invoke `render.sh` (which calls
