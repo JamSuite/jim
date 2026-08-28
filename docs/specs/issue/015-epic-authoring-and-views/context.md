@@ -1,24 +1,24 @@
 # Context — epic authoring and views
 
-A handoff written after the increment closed. Everything the pipeline asks for
-has run: build, review, remediation, re-review, living-intent sensor, blueprint
-update, reconcile, and the issue reconciliation. **One gesture is deliberately
-outstanding** — `plan.md` is `approved`, not `complete`, and marking it is the
-developer's.
+A handoff written after the increment closed **and** after its follow-on pass.
+Everything the pipeline asks for has run, `plan.md` is `complete`, the
+build-scope follow-ons are fixed and closed with resolutions, and the
+retrospective is written. **Nothing in this increment is pending.**
 
-This replaces the handoff written at the review/remediation boundary. That one
-pointed forward at a fix pass; the fix pass is done and its record is
-`remediation.md`.
+This replaces a handoff written when the plan was still `approved`. That one
+pointed at one outstanding gesture; the gesture was made.
 
 **What this document is for.** It records what is **expensive or impossible to
-re-derive**: claims that were attacked and rejected, traps that cost real time,
-and the operational facts of this environment. It does **not** restate the
-findings — those live in `review.md` and `remediation.md`, and § 2 is how you
-reach them.
+re-derive**: design forks already settled, claims already attacked and
+rejected, operational facts of this environment, and the small number of
+records whose surface text is misleading. It does **not** restate findings —
+those live in `review.md`, `remediation.md` and `retrospective.md` — and it no
+longer restates the general process lessons, because § 2's reading list now
+reaches them in `docs/notes/process-improvements.md`, which is their home.
 
 **Anything below that looks like a setting is a pointer.** Configuration is the
-half of a handoff that goes stale fastest; where a value matters this document
-names the resolver rather than quoting what it answered.
+half of a handoff that rots fastest; where a value matters this names the
+resolver rather than quoting what it answered.
 
 ---
 
@@ -26,32 +26,24 @@ names the resolver rather than quoting what it answered.
 
 | artifact | state |
 | :--- | :--- |
-| `spec.md` | `approved` — 38 ACs, **all 38 satisfied** |
-| `plan.md` | `approved`, 29/29 tasks `[x]` — **not `complete`**, deliberately |
-| `security.md` | `[spec, plan]` — 0 Critical · 10 Notable · 4 Advisory |
-| `review.md` | **`minor-drift`** — 11 findings, 38/38 ACs, `undelegated=0` |
-| `remediation.md` | the completed fix pass, with per-issue attribution in § 5 |
+| `spec.md` | `approved` — 38 criteria, **all 38 satisfied** |
+| `plan.md` | **`complete`** — 29/29 tasks, 0 open questions, 4 disclosed deviations |
+| `security.md` | `[spec, plan]` — 0 critical · 10 notable · 4 advisory |
+| `review.md` | **`minor-drift`** — 11 findings, 38/38 criteria, `undelegated=0` |
+| `remediation.md` | the completed fix pass; § 5 attributes every issue, § 5a marked discharged |
+| `retrospective.md` | the post-increment analysis — drift causes, actions, metric caveat |
 | `ledger.md` | every stage closed; the verdict trajectory is two lines |
 
-- Range `c910f14..e805a4b`, 33 commits. Suite **1,673 green**, run last after
-  the blueprint and map writes and the ordinal realization.
+- Suite **1,677 green** (1,673 before the follow-on pass, plus 4 cases).
 - Living intent: 15 invariants — 10 hold · 4 violated · 1 skipped (scope).
   Contract edges: 4 checked · 0 violations.
-- The group blueprint and the project map are both updated and committed. The
-  blueprint's six edits are additive; its Invariants table took none, because
-  all three in-change violations resolved *fix the code*.
-- **Thirteen issues** trace to the increment, `#405`–`#417`, all with durable
-  ordinals. `remediation.md` § 5 groups them by whether the build should have
-  done them: **5a build scope · 5b outside it · 5c pre-existing · 5d declined**.
+- The group blueprint and project map are current and committed. **No blueprint
+  edit is owed:** all in-change violations resolved *fix the code*.
+- Fourteen issues trace here, `#405`–`#418`. **Four closed** (411, 414, 416,
+  417); ten open and correctly so.
 
-**Two decisions already made. Do not reopen them.**
-
-- **The AC gaps were fixed, not filed.** That is why the tracked set contains
-  follow-ons rather than unmet criteria — and why § 5a names three-and-a-half
-  issues rather than eight.
-- **The three in-change invariant violations resolved *fix the code*.** The
-  blueprint therefore records nothing about them; issues `#410` and `#411` are
-  the only things keeping the pending fixes visible.
+**Nothing is owed on this increment.** If you are here to do work, it is either
+one of the open issues in § 5 or something new.
 
 ---
 
@@ -63,157 +55,198 @@ made without opening the thing it described.
 
 **In the spec directory, in this order:**
 
-1. **`remediation.md`** — the completed fix pass. § 2 is what landed and the
+1. **`retrospective.md`** — start here. It is the only artifact that explains
+   *why* the increment drifted rather than *what* drifted: § 4 traces the five
+   unmet criteria to two rows of the plan's coverage table, § 5 to an invariant
+   whose quantifier could not cover the breach, and § 8 warns that the ledger's
+   duration metric cannot be read literally.
+2. **`remediation.md`** — the completed fix pass. § 2 is what landed and the
    mutation that proved each item; § 4 is what was attacked and held; **§ 5 is
-   the per-issue attribution** and the only place it survives.
-2. **`review.md`** — the second review. Its Coverage section records what was
-   rejected on verification, which matters as much as the findings, and its
-   Deviations section carries the process lessons.
-3. `plan.md` — the 29 tasks and 11 design decisions. Its Requirements Coverage
-   is where the first review's largest finding had its root: two capture-flow
-   criteria mapped to script tasks.
-4. `spec.md` — the 38 ACs. Read the **Out of Scope** list too; it is what makes
+   the per-issue attribution**, the only place it survives, with § 5a now
+   marked discharged.
+3. **`review.md`** — the second review. Its Coverage section records what was
+   rejected on verification, and its Deviations section carries process lessons
+   since promoted into the notes file.
+4. `plan.md` — 29 tasks, 11 design decisions. Read the **Requirements Coverage
+   Summary** specifically: it is the artifact the retrospective indicts, and
+   seeing the two-column shape is the fastest way to understand the drift.
+5. `spec.md` — the 38 criteria. Read **Out of Scope** too; it is what makes
    several open issues correctly deferred rather than missed.
-5. `security.md` — the plan-lens pass. Every guard it produced was
+6. `security.md` — the plan-lens pass. Every guard it produced was
    mutation-tested and holds.
-6. `research.md` — its Peer Feedback documents two places the spec was
+7. `research.md` — its Peer Feedback documents two places the spec was
    factually wrong, which is the failure mode most likely to recur.
-7. `ledger.md` — the stage record, including the `major-drift → minor-drift`
-   trajectory and the second build run the remediation opened.
+8. `ledger.md` — the stage record, including the `major-drift → minor-drift`
+   trajectory and the second build pair the remediation opened.
 
 **Grounding beyond this increment — all four are load-bearing:**
 
-8. `docs/specs/issue/000-blueprint/spec.md` — the group's present-tense
-   specification. Its **Invariants** table is what the sensor judged; four are
-   violated and three of those are tracked as issues. Its **Provides** entries
-   now describe the umbrella capability — read them before claiming a face is
-   missing something.
-9. `BLUEPRINT.md` — the project map and derived contract graph. It is what says
-   the emitter and the placement door have consumers **outside** this group,
-   which is why the contract-edge phase runs at all.
-10. `docs/notes/process-improvements.md` — **read this before working, not
-    after something goes wrong.** The sections that bit this work are named in
-    § 4. Two fresh instances of rules already written there were added during
-    it, which is the argument for reading it first.
-11. `docs/brainstorms/20260817-issue-epics-and-enhanced-filtering.md` — the
+9. `docs/specs/issue/000-blueprint/spec.md` — the group's present-tense
+   specification. Its **Invariants** table is what the sensor judged. Note
+   before relying on it: **all 15 are `judge`-method with no `verify-checks`
+   block**, so this group has no mechanical floor at all. Its **Provides**
+   entries describe the umbrella capability and publish `transition.sh`'s
+   validator-before-the-door ordering as a guarantee — see § 3.
+10. `BLUEPRINT.md` — the project map and derived contract graph. It is what
+    says the emitter and the placement door have consumers **outside** this
+    group, which is why the contract-edge phase runs at all.
+11. **`docs/notes/process-improvements.md`** — **read before working, not after
+    something goes wrong.** 50 sections; five were added by this increment and
+    three existing ones extended. The general lessons that used to be listed in
+    this handoff now live there, which is why § 4 below is short.
+12. `docs/brainstorms/20260817-issue-epics-and-enhanced-filtering.md` — the
     origin. Its design-options analysis explains why membership is stored on
     the member and derived on the umbrella, which no later artifact re-argues.
 
 ---
 
-## 3. Attacked and rejected — do not re-derive these
+## 3. Settled — do not reopen
 
-An agent's report is evidence, not a verdict. Four claims were raised by
-investigators or judges, checked, and **rejected**. Each is cheap to raise
-again and expensive to settle.
+Each of these cost real work to decide. Re-deciding them is cheap to start and
+expensive to finish.
 
-- **The raw-id echo in `transition.sh` is pre-existing**, not this increment's
-  — settled with `git log -S`.
-- **The `leave`-availability comment is not false.** It is scoped to
-  containment violations, where the target record exists and resolves. The
-  dangling-umbrella case is a different scenario, filed as `#413`.
-- **`status` reaching the index section unsanitized does not matter for
-  row-shape.** It is sanitized once, before both the open/closed bucketing and
-  the display, so the value classified and the value displayed are one.
-- **`EPIC_ROWS` needs no sentinel-key guard.** An investigator flagged it as
-  the only new global expanded as a whole array without the file's
-  create-then-unset idiom, on a bash floor below the version that fixed the
-  empty-array/`nounset` bug. The idiom applies to arrays declared **without**
-  an `=()` initializer; `EPIC_ROWS` has one, the identical count-guarded
-  pattern already shipped against `EPIC_TOTAL`, and the guard means the
-  whole-array expansion is never reached empty.
+**Design forks, settled with the developer:**
 
-`remediation.md` § 4 carries the mechanisms that were attacked and held.
+- **`transition.sh` resolves its primary `<id>` through `resolve.sh`.** The
+  fork was delegate-or-mark; it was settled by *deleting* the duplicate ladder,
+  not annotating it. `resolve_slug` and both open-coded validate blocks are
+  gone.
+- **The `jimfile.sh valid-id` call before the placement door stays.** It looks
+  like leftover duplication and is not: the group blueprint publishes *the id
+  clears the validator and the outcome clears its enum before the placement
+  door opens* as a `transition.sh` guarantee. Removing it breaks a published
+  guarantee to buy nothing. It is commented in place as a fail-fast.
+- **The census rollup is scoped to the query; its progress numbers are not.**
+  An umbrella whose own row the filter excludes is not listed; one it admits
+  reports its whole roster. This mirrors the `== Blocking ==` rollup twenty
+  lines below, which is the precedent that settled it.
+- **Membership is one-sided on the member**, and rosters are derived by
+  **bucketing, never traversal**. From the brainstorm; re-argued nowhere.
+
+**Claims raised, checked, and rejected:**
+
+- The raw-id echo in `transition.sh` is **pre-existing** — settled with
+  `git log -S`.
+- The `leave`-availability comment is **not false**; it is scoped to
+  containment violations. The dangling-umbrella case is different, filed as
+  `#413`.
+- `status` reaching the index section unsanitized **does not matter for
+  row-shape** — it is sanitized once, before both bucketing and display.
+- `EPIC_ROWS` **needs no sentinel-key guard.** The idiom applies to arrays
+  declared *without* an `=()` initializer; this one has one, and the
+  count-guard means the whole-array expansion is never reached empty.
+
+`remediation.md` § 4 carries the mechanisms attacked and held.
 
 ---
 
 ## 4. Traps and environment
 
-**Configuration — resolve, do not trust this page.** Every gate flag, the
-identity scheme and the appetite knobs answer to
+The general verification lessons are in `process-improvements.md` (§ 2, item
+11) and are not repeated. What follows is operational — facts about *this*
+checkout and *these* scripts that no document elsewhere states.
+
+**Configuration — resolve, do not trust this page.** Gate flags, the identity
+scheme and the appetite knobs answer to
 `bash skills/conf/scripts/jimconf.sh get <key>`.
 
 **The placement mode is the exception, and the config CLI answers it
 misleadingly.** `get issue_placement` returns `branch` — not a branch name but
 the sentinel for *the working branch*. Taken at face value it says the
-collection is centralized when it is not. Ask the door: `place.sh mode`.
+collection is centralized when it is not. Ask the door: `place.sh mode`, which
+answers `direct`.
 
-**A mutation that silently fails to apply reports a false pass.** A `sed`
-substitution containing `||` clashed with its own `s|…|` delimiter; the
-mutation never applied and the case "passed" for the wrong reason. It was
-caught only because the step echoed the `grep` proving the mutant was in place.
-**Prove the mutant is present before believing the result.**
+**`new.sh` does not regenerate the index.** The skill instructs the caller to,
+and its checklist confirms it. After filing, run `index.sh` yourself or the
+collection ships with a stale index that `git status` will not flag, because
+the new file is untracked and `INDEX.md` merely unchanged.
 
-**A narrow grep produces a confident false finding.** A sweep for `"$PLACE"`
-found two scripts and nearly produced a finding that the blueprint's "the six
-re-exec themselves through" was wrong. Five more scripts reach `place.sh`
-through a differently-named variable; the claim was correct and the grep was
-not. Check a negative before reporting one.
+**`transition.sh` does not commit under a direct placement.** It writes the
+fields and stops; the developer commits. The repo's convention for that commit
+is a subject naming the ordinal (`close 380 with its resolution`) and an
+appended `## Resolution` section in the body — see `process-improvements.md`,
+*A resolution note is the durable record*.
 
-**A fix list derived from a findings report inherits that report's
-enumeration.** The remediation fixed the superseded `type` rule at the four
-sites the review's finding named. The file had five. Name the set mechanically
-before writing the enumeration.
+**Anything touching the whole collection is slow enough to need backgrounding.**
+`index.sh` over ~420 records takes ~2 minutes; each `transition.sh close`
+takes ~40 seconds. A loop closing four issues exceeds a foreground timeout.
 
-**A probe named after its own subject will match itself.** A fixture directory
-named `..._no_epics` matched a word search against a census header that echoes
-the collection path. Assert the *structure*, never the bare word. The same
-shape reappeared in a doc-surface helper that anchors on the string it then
-asserts — recorded as a review finding.
-
-**A `sed` range does not test its end pattern on the start line.** Extracting a
-single-line array with `/^readonly X=(/,/)/p` runs on to the next paren. Copy
-the awk idiom in `tests/issues.sh`'s `script_vocabulary`.
-
-**A whole-file grep over the collection reads body content as frontmatter.**
-Two records carry `status: open` in their bodies. Scope to the fence with awk.
-This is the same defect class as `#415`, which is still open.
+**The suite takes ~9 minutes**, exceeds a foreground timeout, and must run
+backgrounded and **never concurrently with anything, subagents included**. Its
+per-file summary line is `Ran N tests:`.
 
 **The coordination remote is unreachable from this VM**, so every filing
 returns a `P-` provisional ordinal and the host realizes them. An ordinal is
 **spent even when a run later refuses**, because the allocator is append-only —
 which is why the capture-time refusals sit above the spend.
 
-**The suite takes ~9 minutes**, exceeds a foreground timeout, and must run
-backgrounded and **never concurrently with anything, subagents included**. Its
-summary line is `Ran N tests:` — grep for that.
-
-**No `python3` in this VM.** Bash and POSIX tools only.
+**No `python3`.** Bash and POSIX tools only.
 
 **The census oracle.** `render.sh stats` over a copy of the real collection is
 byte-identical to a stored pre-increment oracle, verified four times. Take it
 against a **copy** — a read regenerates `INDEX.md`, which is a write to a
-tracked artifact — and expect a difference of exactly the records filed since
-the oracle was taken.
-
-**Fault injection at a boundary beats guessing.** `#410` was proven by copying
-`skills/` to a scratch tree and giving `index.sh` a call-counting failure, then
-identifying which call was `transition.sh`'s. The first two attempts failed
-because `place.sh` reindexes at materialize time and because a stub that
-`exec`s a copy breaks `BASH_SOURCE`-relative resolution. Both are worth
-knowing before rebuilding such a rig.
+tracked artifact.
 
 ---
 
-## 5. If you are picking up from here
+## 5. Tracked but unfixed — and two records that mislead
 
-**There is no pending work in this increment.** The next actions are:
+Ten issues remain open. These are the ones a reader is most likely to
+mis-assess:
 
-1. **Mark `plan.md` complete** — the developer's confirmation, the one gate
-   this pipeline never takes on its own.
-2. **Nothing else is owed.** Every artifact is written, committed, and
-   self-consistent; the suite is green; the blueprint and map are current.
+- **`#415` (critical)** — `backfill.sh` and `migrate.sh` read past the
+  frontmatter fence, and under `--apply` that path reaches a file rename.
+  Reproduced twice. **The most serious thing either review found**, pre-existing
+  and outside this increment's change set. Nothing here fixed it.
+- **`#410` (data loss)** — a completed transition destroyed when a post-write
+  reindex fails under a branch placement. Reproduced end to end with a
+  fault-injection rig; the rig's construction notes are in the issue.
+- **`#412` (high)** — malformed capture-flag input is undefined. Downstream of
+  the remediation, not the build: the flags did not exist until then.
 
-If you are here to act on the tracked follow-ons instead, read
-`remediation.md` § 5 first and take its grouping seriously — **`#415` is the
-critical one** (fence-scoping in `backfill.sh` / `migrate.sh`, pre-existing,
-reaches a file rename under `--apply`), and **`#410` is the data-loss one**
-(a completed transition destroyed under a branch placement). Both are
-reproduced; the reproductions are in the issue bodies.
+**Two records whose surface text is wrong. Read the corrections.**
 
-**A session grant that does not survive this document.** The developer
-authorized agent fan-out for the session that produced this work. **It was a
-per-session grant**, and it was spent well — the first review's five AC
-findings and the second review's data-loss finding both came from the fan-out,
-not from the author's own reading. A later session must not read this paragraph
-as standing authorization; confirm before fanning out.
+- **`#418` — the description is factually wrong and a `## Correction` says so.**
+  It claims the close-side resolution convention is undocumented; it is
+  documented, in `process-improvements.md`. The sweep behind that sentence
+  covered three operator surfaces and not the notes file. **The Correction is
+  the operative half**: the rule exists but sits where retrospectives are read
+  rather than at the verb.
+- **The ledger's `<stage>_duration_seconds` cannot be read literally.** It spans
+  first-`started` to last-`finished`, so any re-run stage is overstated —
+  23× on `sec` here. Tracked as **`#252`**. `retrospective.md` § 2 carries
+  timings reconstructed from event pairs; use those.
+
+**Also open and unowned:** `ARCHITECTURE.md:1937` says "Nine deterministic
+scripts" where the tree in the same document lists ten. Declined at review,
+still true. It must be fixed through `/jim:arch`, never by hand.
+
+---
+
+## 6. If you are picking up from here
+
+**There is no pending work in this increment.** Every artifact is written,
+committed and self-consistent; the suite is green; the blueprint and map are
+current; the plan is complete.
+
+The candidates, in the order I would take them:
+
+1. **`#415`** — it outranks everything else open, and its blast radius reaches
+   a file rename under `--apply`.
+2. **`#410`** — data loss, reproduced, with the rig described.
+3. **`retrospective.md` § 9 actions 1–3** — a *Demonstrated by* column on
+   Requirements Coverage, a coverage-adversarial pass at plan time, and a
+   `verify-checks` block giving this group its first mechanical floor. These
+   target the causes rather than the instances, and 1–2 address the drift that
+   made this increment `major-drift` at first review.
+
+**A session grant that does not survive this document.** Agent fan-out was
+authorized for an earlier session and is **per-session**. The follow-on pass
+that closed § 5a used **no fan-out at all** — everything was read directly —
+so nothing here depends on it. Confirm before fanning out.
+
+**One habit worth copying from the last pass.** Before filing anything, grep
+the collection for an existing record. A duration-metric defect found during
+the retrospective was already `#252`, filed three weeks earlier; checking cost
+one command and avoided a duplicate. The counter-example is `#418`, filed after
+a sweep that was one surface too narrow.
