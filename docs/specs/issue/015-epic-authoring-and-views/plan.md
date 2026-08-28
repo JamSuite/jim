@@ -734,7 +734,7 @@ flowchart TD
 
 ### Documentation surfaces
 
-25. [ ] `tests/docsurfaces.sh`: add `transition_verbs()` reading
+25. [x] `tests/docsurfaces.sh`: add `transition_verbs()` reading
     `TRANSITION_VERBS` out of `transition.sh`, and a case asserting every
     dispatched verb is named on each operator surface — `README.md`,
     `WORKFLOW.md`, `skills/issue/SKILL.md`. Copy `ledger_verbs()` (`:60-64`) and
@@ -744,7 +744,7 @@ flowchart TD
     Depends on task 9.
     **Verify:** `bash tests/docsurfaces.sh case_docsurfaces_transition_verbs_are_documented; test $? -ne 0 && echo "red as expected"`
 
-26. [ ] `skills/issue/SKILL.md`: add `join` / `leave` to the dispatch table
+26. [x] `skills/issue/SKILL.md`: add `join` / `leave` to the dispatch table
     (`:34`) and the transition-verb list (`:380`); document the `unchanged`
     report. Correct § 6a's rationale at `:236` — it claims `updated` is
     refreshed "so recency ordering reflects the real time of the last change",
@@ -753,20 +753,20 @@ flowchart TD
     (`render.sh:1245`). Say what the field is actually for.
     **Verify:** `bash tests/docsurfaces.sh case_docsurfaces_transition_verbs_are_documented`
 
-27. [ ] `README.md:54` and `WORKFLOW.md:81`: add the two verbs to the operator
+27. [x] `README.md:54` and `WORKFLOW.md:81`: add the two verbs to the operator
     verb lists. Depends on task 25 — the check must be red before this lands.
     **Verify:** `bash tests/docsurfaces.sh case_docsurfaces_transition_verbs_are_documented && bash tests/docsurfaces.sh`
 
 ### Closing
 
-28. [ ] `tests/issues.sh`: extend `derived_fixture` (`:8639-8680`) so its
+28. [x] `tests/issues.sh`: extend `derived_fixture` (`:8639-8680`) so its
     umbrella is **partially** complete — today both members are open, so no
     fixture exercises a non-zero progress numerator. Extend rather than adding
     inline epic frontmatter; it is the corpus-shaped helper the group converged
     on.
     **Verify:** `bash tests/issues.sh case_issues_render_list_derived_predicates && bash tests/issues.sh case_index_derives_a_roster_and_progress`
 
-29. [ ] Run the whole suite backgrounded and confirm green. Never concurrently
+29. [x] Run the whole suite backgrounded and confirm green. Never concurrently
     with anything else, subagents included.
     **Verify:** `rm -f /tmp/suite.log && bash skills/meta-test/scripts/run.sh > /tmp/suite.log 2>&1; grep -E '^Ran ' /tmp/suite.log`
 

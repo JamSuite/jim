@@ -132,6 +132,46 @@ case_docsurfaces_retired_symbols_are_gone() {
   done
 }
 
+# transition_verbs — every lifecycle verb transition.sh dispatches, one per
+# line, read from the array it validates against.
+#
+#   Derived rather than retyped. A list written into this file would have the
+#   defect it exists to catch: a verb added to the script but not to the list
+#   passes a check whose whole purpose is that class.
+#   The closing paren is found with awk rather than a sed range, because a sed
+#   range does not test its end pattern on the start line — against a
+#   single-line array it would run on to the next paren in the file.
+transition_verbs() {
+  awk -v pfx="readonly TRANSITION_VERBS=(" '
+    substr($0, 1, length(pfx)) == pfx { inside = 1; $0 = substr($0, length(pfx) + 1) }
+    inside {
+      if (match($0, /\)/)) { print substr($0, 1, RSTART - 1); exit }
+      print
+    }
+  ' "$REPO_ROOT/skills/issue/scripts/transition.sh" \
+    | tr -s '[:space:]' '\n' | grep -v '^$'
+}
+
+# INTRODUCTION, lifecycle half. The verbs are restated in prose on three
+# hand-maintained operator surfaces, and only ARCHITECTURE.md is refreshed by
+# the pipeline. A hand edit fixes the increment that noticed the drift and
+# leaves the next one exposed, so the enumeration is checked rather than
+# corrected.
+case_docsurfaces_transition_verbs_are_documented() {
+  local v n=0 missing="" surface
+  while IFS= read -r v; do
+    [[ -n "$v" ]] || continue
+    n=$((n + 1))
+    for surface in "$REPO_ROOT/README.md" "$REPO_ROOT/WORKFLOW.md" \
+                   "$REPO_ROOT/skills/issue/SKILL.md"; do
+      grep -qF -- "\`$v\`" "$surface" || missing="$missing$(basename "$surface"):$v "
+    done
+  done < <(transition_verbs)
+  assert_eq "the array was read (>= 7 verbs, got $n)" "yes" \
+    "$([[ "$n" -ge 7 ]] && echo yes || echo no)"
+  assert_eq "every dispatched lifecycle verb is documented" "" "${missing% }"
+}
+
 # INTRODUCTION, ledger half. Every verb the script dispatches is named in the
 # feature doc that enumerates them, so a new verb cannot ship undocumented.
 case_docsurfaces_ledger_verbs_are_documented() {

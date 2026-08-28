@@ -31,7 +31,7 @@ Read the **first whitespace-delimited token** of `$ARGUMENTS` as the subcommand.
   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/render.sh help
   ```
 - **`add`** → the remainder of `$ARGUMENTS` (after `add`) is the capture **subject** (it may be empty). Proceed to **Capture** (step 2).
-- **`claim`** / **`release`** / **`start`** / **`close`** / **`reopen`** → move one issue through its lifecycle. The remaining token is the `<id>` (an ordinal, a slug, or a slug prefix). These are *mutating* verbs; the script owns the placement door, the `updated` refresh and the index regeneration, so there is nothing to do around it:
+- **`claim`** / **`release`** / **`start`** / **`close`** / **`reopen`** / **`join`** / **`leave`** → move one issue through its lifecycle. The remaining token is the `<id>` (an ordinal, a slug, or a slug prefix); `join` and `leave` take a second one naming the umbrella, in the same reference forms. These are *mutating* verbs; the script owns the placement door, the `updated` refresh and the index regeneration, so there is nothing to do around it:
   ```
   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/transition.sh <verb> <id> [--as <outcome>] [--force]
   ```
@@ -40,6 +40,9 @@ Read the **first whitespace-delimited token** of `$ARGUMENTS` as the subcommand.
   - `start` marks the issue underway, claiming it first when it is unheld.
   - `close` finishes it. `--as <done|wontfix|duplicate|obsolete>` says how; without one the issue is recorded as `done`. Any developer may close any issue, and the holder record is preserved — it says who *held* the issue, not who finished it. Closing `--as duplicate` requires the superseding issue to be named in the record's `duplicates` relation.
   - `reopen` returns it to not-started and **keeps** the outcome, which is what makes a reopen legible: an open issue carrying an outcome was finished before, and the outcome names how.
+  - `join <id> <umbrella>` puts the issue under an umbrella; `leave <id> <umbrella>` takes it out. Membership is recorded on the member alone, so exactly one record is written and the umbrella's own file is untouched. An issue may belong to several umbrellas. An umbrella that is not `type: epic` is refused naming what the record is, and an epic may not be put under an epic.
+
+  **A verb that would change nothing writes nothing.** Re-claiming an issue you already hold, re-closing one already closed with the same outcome, joining an umbrella the issue already belongs to — each leaves the record untouched, refreshes no timestamp, regenerates no index and publishes nothing. The run succeeds and its stdout carries a third field, `unchanged`, so a caller can tell it apart from a transition that did something. Succeeding rather than refusing is deliberate: grouping several issues at once should not fail on the one already grouped.
 
   Present the script's output, then stop. Do not edit the issue file yourself and do not regenerate the index separately.
 - **`list`** → run, substituting the remaining argument string (any number of filters, in any order):
@@ -233,7 +236,7 @@ On `cancel`: discard the draft and stop.
 bash ${CLAUDE_PLUGIN_ROOT}/skills/file/scripts/jimfile.sh now
 ```
 
-Write that exact value into `updated`, leaving `created` unchanged, so recency ordering reflects the real time of the last change. This is a convention, not an enforced mechanism — an out-of-band edit made outside jim's tooling is not auto-stamped (spec 022 Out of Scope). Never hand-write the timestamp; the helper is the deterministic source.
+Write that exact value into `updated`, leaving `created` unchanged, so the record states when it last changed. It is a record rather than an ordering key: nothing sorts or filters on it — the read views' `date` sort reads `created` — and no index row carries it. The lifecycle verbs move it only on a real change, so a moved stamp now means something actually changed. This is a convention, not an enforced mechanism — an out-of-band edit made outside jim's tooling is not auto-stamped (spec 022 Out of Scope). Never hand-write the timestamp; the helper is the deterministic source.
 
 **Editing under a branch placement.** When the project keeps its issue collection on a designated branch (`issue_placement`), the file you would edit is not in the working tree. A direct edit is a mutation like any other and goes to the destination, in two steps around your edits:
 
@@ -377,11 +380,12 @@ Before writing (capture / `add` only):
 - [ ] Wikilinks in the body match `^[a-z0-9][a-z0-9-]*$`.
 - [ ] After write, INDEX.md regen was invoked and exited 0.
 
-For the transition verbs (`claim` / `release` / `start` / `close` / `reopen`):
+For the transition verbs (`claim` / `release` / `start` / `close` / `reopen` / `join` / `leave`):
 
 - [ ] The transition ran through `transition.sh` — the issue file was not edited here, and `index.sh` was not invoked separately.
 - [ ] A refusal was reported as it came back: exit 5 names the current holder and is overridable with `--force`; a `close --as duplicate` with no superseding issue named is a refusal to fix, not to retry.
 - [ ] No outcome was invented — only `done`, `wontfix`, `duplicate` or `obsolete`.
+- [ ] An `unchanged` result was reported as the success it is, not retried — the desired state already held.
 
 For the read verbs (`list` / `stats` / `show` / help):
 

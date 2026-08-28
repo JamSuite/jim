@@ -9364,6 +9364,17 @@ created: 2026-01-06
 type: issue
 relations:
   depends-on: [20260105-donedep]'
+  # A finished member, so the umbrella is PARTIALLY complete. Without one every
+  # member here is open and no fixture exercises a non-zero progress
+  # numerator — a derivation that always answered 0/N would pass.
+  write_issue "$dir" "20260107-memberdone" 'title: "MemberDone"
+status: closed
+num: 7
+created: 2026-01-07
+type: issue
+outcome: done
+relations:
+  part-of: [20260101-epicone]'
 }
 
 # AC: whether an issue is held is filterable without naming a person, in both
@@ -9385,6 +9396,13 @@ case_issues_render_list_derived_predicates() {
   assert_match "an unheld one"     'MemberTwo' "$OUT"
   assert_match "and the umbrella"  'EpicOne'   "$OUT"
   assert_eq    "not the held one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
+
+  # Progress over a partially-complete umbrella: three members, one finished.
+  # A numerator asserted only against an all-open umbrella would be satisfied
+  # by a derivation that always answered zero.
+  run_render list epic "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the umbrella carries a non-zero numerator" '1/3 closed' "$OUT"
 
   # Blocked is one hop, and it keys on the target not being finished.
   run_render list blocked "$dir"
