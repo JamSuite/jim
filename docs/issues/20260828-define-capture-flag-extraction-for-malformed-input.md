@@ -1,6 +1,6 @@
 ---
 id: 20260828-define-capture-flag-extraction-for-malformed-input
-num: P-20260828-define-capture-flag-extraction-for-malformed-input
+num: 412
 title: "Define capture flag extraction for malformed input"
 status: open
 priority: high

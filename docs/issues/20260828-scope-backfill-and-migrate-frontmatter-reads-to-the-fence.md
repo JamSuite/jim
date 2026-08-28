@@ -1,6 +1,6 @@
 ---
 id: 20260828-scope-backfill-and-migrate-frontmatter-reads-to-the-fence
-num: P-20260828-scope-backfill-and-migrate-frontmatter-reads-to-the-fence
+num: 415
 title: "Scope backfill and migrate frontmatter reads to the fence"
 status: open
 priority: critical

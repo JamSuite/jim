@@ -1,6 +1,6 @@
 ---
 id: 20260828-state-the-capture-kind-rule-correctly-in-the-issue-skill-checkli
-num: P-20260828-state-the-capture-kind-rule-correctly-in-the-issue-skill-checkli
+num: 416
 title: "State the capture kind rule correctly in the issue skill checklist"
 status: open
 priority: high

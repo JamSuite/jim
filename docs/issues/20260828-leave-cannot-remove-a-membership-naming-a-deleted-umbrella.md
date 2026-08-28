@@ -1,6 +1,6 @@
 ---
 id: 20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella
-num: P-20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella
+num: 413
 title: "leave cannot remove a membership naming a deleted umbrella"
 status: open
 priority: medium

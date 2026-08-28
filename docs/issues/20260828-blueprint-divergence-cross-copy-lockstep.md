@@ -1,6 +1,6 @@
 ---
 id: 20260828-blueprint-divergence-cross-copy-lockstep
-num: P-20260828-blueprint-divergence-cross-copy-lockstep
+num: 411
 title: "Blueprint divergence: cross-copy-lockstep"
 status: open
 priority: high

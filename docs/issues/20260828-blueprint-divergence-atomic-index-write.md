@@ -1,6 +1,6 @@
 ---
 id: 20260828-blueprint-divergence-atomic-index-write
-num: P-20260828-blueprint-divergence-atomic-index-write
+num: 410
 title: "Blueprint divergence: atomic-index-write"
 status: open
 priority: medium
