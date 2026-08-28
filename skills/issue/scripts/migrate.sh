@@ -107,10 +107,18 @@ resolve_dir() {
   printf '%s\n' "$dir"
 }
 
-# field_value <file> <field> — top-level scalar value, quotes stripped, or empty.
-field_value() {
-  grep -E "^$2:" "$1" 2>/dev/null \
-    | head -n 1 \
+# frontmatter <file> — the lines between the first two fences.
+#   Scoped deliberately: a whole-file read for a field also matches a body that
+#   quotes one, and at least one issue in a real collection does. The plan this
+#   file builds becomes a file rename, so a value answered from prose renames a
+#   record onto a name its own frontmatter never carried.
+frontmatter() {
+  awk '/^---$/{c++; if(c==2) exit; if(c==1) next} c==1{print}' "$1"
+}
+
+# fm_field <frontmatter> <field> — top-level scalar, quotes stripped, or empty.
+fm_field() {
+  printf '%s\n' "$1" | grep -E "^$2:" | head -n 1 \
     | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
 }
 
@@ -140,7 +148,7 @@ split_row() {
 # the id after its first '-' (every preset prefix is dash-free); the new
 # id and any -2/-3 discriminator pass jimfile's valid-id (the security boundary).
 build_plan() {
-  local dir="$1" f base id created num newpfx rc slug newid
+  local dir="$1" f base id fm created num newpfx rc slug newid
   local -a rows=()
   for f in "$dir"/*.md; do
     [[ -f "$f" ]] || continue
@@ -152,8 +160,9 @@ build_plan() {
       rows+=("skip-unmigratable"$'\t'"$id"$'\t'""$'\t'"id has no prefix delimiter")
       continue
     fi
-    created="$(field_value "$f" created)"
-    num="$(field_value "$f" num)"
+    fm="$(frontmatter "$f")"
+    created="$(fm_field "$fm" created)"
+    num="$(fm_field "$fm" num)"
     newpfx="$(jf prefix-from "$created" "$num" 2>&1)"; rc=$?
     if (( rc != 0 )); then
       rows+=("skip-unmigratable"$'\t'"$id"$'\t'""$'\t'"${newpfx#un-migratable: }")
@@ -436,18 +445,6 @@ split_schema_row() {
   SCHEMA_FILER="${row%%$'\t'*}";  SCHEMA_OUTCOME="${row#*$'\t'}"
 }
 
-# frontmatter <file> — the lines between the first two fences.
-#   Scoped deliberately: a whole-file read for `^status:` also matches a body
-#   that quotes one, and at least one issue in a real collection does.
-frontmatter() {
-  awk '/^---$/{c++; if(c==2) exit; if(c==1) next} c==1{print}' "$1"
-}
-
-# fm_field <frontmatter> <field> — top-level scalar, quotes stripped, or empty.
-fm_field() {
-  printf '%s\n' "$1" | grep -E "^$2:" | head -n 1 \
-    | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
-}
 
 # schema_anchored <frontmatter> — 0 when the conversion has somewhere to write.
 #   The rewrite needs two anchors: a top-level `labels:` line, ahead of which

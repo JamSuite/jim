@@ -1284,6 +1284,31 @@ created: 2026-01-04'
   assert_eq "new continues from max" "6" "$(num_of "$dir" 20260104-needs)"
 }
 
+# AC: `num` reads the ordinal from the frontmatter fence, not from the whole
+# file. A record lacking the field is backfill's own operating condition, so a
+# body line that happens to name it is read as an ordinal the record does not
+# have — the record is skipped as already-numbered, and the bogus value raises
+# the collection max every later assignment continues from.
+case_issues_backfill_num_reads_only_the_fence() {
+  local dir
+  dir=$(empty_dir backfill_num_fence)
+  write_issue "$dir" "20260101-quotes-the-field" 'title: "Quotes the field"
+status: open
+created: 2026-01-01' '## Description
+
+num: 900 retries were attempted before the fix landed.'
+  write_issue "$dir" "20260102-plain" 'title: "Plain"
+status: open
+created: 2026-01-02'
+  run_backfill num "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the body line is not an ordinal" "1" \
+    "$(num_of "$dir" 20260101-quotes-the-field)"
+  assert_eq "and does not raise the max" "2" "$(num_of "$dir" 20260102-plain)"
+  assert_eq "the body line is left alone" "1" \
+    "$(grep -c '^num: 900 retries' "$dir/20260101-quotes-the-field.md")"
+}
+
 # AC: backfill is idempotent — a fully-numbered collection is a silent no-op
 case_issues_backfill_idempotent() {
   local dir
@@ -1887,6 +1912,30 @@ status: open'
   assert_eq   "no second status pair"     "1"                    "$(grep -c '^status:' "$f")"
 }
 
+# AC: `timestamp` reads created/updated from the frontmatter fence. A body line
+# naming a field the frontmatter lacks is normalized into a value the rewrite
+# then has nowhere to put — the awk writes only inside the fence — so the file
+# is rewritten byte-identical and counted, and the run announces work it did
+# not do.
+case_issues_backfill_timestamp_reads_only_the_fence() {
+  local dir before
+  dir=$(empty_dir backfill_ts_fence)
+  write_issue "$dir" "20260613-x" 'title: "X"
+status: open
+num: 1
+created: 2026-06-13T00:00:00Z' '## Description
+
+The record this supersedes carried:
+
+updated: 2026-05-05'
+  before="$(cat "$dir/20260613-x.md")"
+  run_backfill timestamp "$dir"
+  assert_exit "rc"                       0  "$RC"
+  assert_eq   "nothing announced"        "" "$OUT"
+  assert_eq   "no warning about the body" "" "$ERR"
+  assert_eq   "file untouched" "$before" "$(cat "$dir/20260613-x.md")"
+}
+
 # extract_ts_shape <script> — the canonical timestamp-shape pattern marked with
 # `# SYNC(ts-shape): <pattern>`, indentation-independent (Finding F6).
 extract_ts_shape() {
@@ -2391,6 +2440,53 @@ created: 2025-01-01T00:00:00Z'
   # a filename count alone stays at three while one issue's content is gone.
   titles="$(grep -h '^title:' "$dir"/*.md 2>/dev/null | sort | tr -d '"' | sed 's/title: //' | tr '\n' ' ')"
   assert_eq "all three issues survive" "A B C " "$titles"
+}
+
+# AC: the prefix plan reads `num` from the frontmatter fence. Under the
+# sequential scheme that value becomes the record's new prefix, so a body line
+# naming the field plans a rename onto an ordinal the record never carried —
+# and the plan is what `--apply` executes.
+case_issues_migrate_prefix_num_reads_only_the_fence() {
+  local dir cfg
+  dir=$(empty_dir migrate_num_fence)
+  write_issue "$dir" "0007-example" 'title: "Example"
+status: open
+created: 2026-01-01T00:00:00Z' '## Description
+
+The record this supersedes carried:
+
+num: 900'
+  cfg=$(fixture migrate-num-fence.toml "issues_path = \"$dir\"
+issue_id_prefix = \"sequential\"")
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "no ordinal to re-derive from" \
+    'num "" is not a display ordinal' "$OUT"
+  assert_eq    "no rename onto the body value" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '0900-example')"
+}
+
+# AC: the prefix plan reads `created` from the frontmatter fence too — under a
+# date or timestamp scheme it is that field, not `num`, that the new prefix is
+# rendered from.
+case_issues_migrate_prefix_created_reads_only_the_fence() {
+  local dir cfg
+  dir=$(empty_dir migrate_created_fence)
+  write_issue "$dir" "legacy-example" 'title: "Example"
+status: open
+num: 7' '## Description
+
+The record this supersedes carried:
+
+created: 2020-01-01'
+  cfg=$(fixture migrate-created-fence.toml "issues_path = \"$dir\"
+issue_id_prefix = \"date\"")
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "no date to re-derive from" \
+    'created "" is not a valid date' "$OUT"
+  assert_eq    "no rename onto the body value" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '20200101-example')"
 }
 
 # spec 023 Task 4: the preview adds a stable PLAN-HASH and a read-only VCS note,

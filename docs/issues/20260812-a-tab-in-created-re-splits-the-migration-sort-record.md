@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-12T21:53:33Z
-updated: 2026-08-12T21:53:33Z
+updated: 2026-08-28T22:31:15Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
@@ -25,25 +25,25 @@ origin: "docs/specs/issue/011-issue-placement/review.md"
 `cmd_assign_numbers` joins an untrusted frontmatter value into a tab-delimited
 sort record, then splits it back out.
 
-`skills/issue/scripts/backfill.sh:118` builds the record:
+`skills/issue/scripts/backfill.sh:128` builds the record:
 
     "$created"$'\t'"$f"
 
-and `:125` reads it back with `IFS=$'\t' read -r createdkey file`.
+and `:135` reads it back with `IFS=$'\t' read -r createdkey file`.
 
-`field_value` (`:62-66`) preserves tabs — its capture is `([^\"]*)`, which matches
+`fm_field` (`:71-74`) preserves tabs — its capture is `([^\"]*)`, which matches
 them. So a `created:` value containing a tab puts attacker-controlled text at the
 head of `$file`.
 
-At `:131` that corrupted value becomes an `awk` operand:
+At `:141` that corrupted value becomes an `awk` operand:
 
     awk -v n="$next" 'PROG' "$file"
 
 with `$file` now shaped like `1<TAB>/dir/x.md`. `awk` recognises a `NAME=VALUE`
 argument as an **assignment**, not a filename — with escape expansion on the
 value — so it falls through to stdin and drains the `while` loop's process
-substitution at `:148`, silently skipping every remaining issue. The subsequent
-`mv "$tmp" "$file"` at `:136` then targets an attacker-influenced path.
+substitution at `:158`, silently skipping every remaining issue. The subsequent
+`mv "$tmp" "$file"` at `:146` then targets an attacker-influenced path.
 
 I traced no write outside the collection: the real path is appended *after* the
 tab, so the target's parent directory cannot exist. The impact is aborting the
@@ -63,7 +63,7 @@ No test covers it.
 ## Action
 
 Validate `created` against the `SYNC(ts-shape)` pattern (or `tr -d '\t'` it)
-before it is joined into the sort record at `:118`, and make the record
+before it is joined into the sort record at `:128`, and make the record
 NUL-delimited so no field value can re-split it.
 
 Related and worth doing in the same pass: `backfill.sh` installs no
