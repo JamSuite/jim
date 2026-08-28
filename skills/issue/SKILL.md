@@ -379,7 +379,8 @@ Before writing (capture / `add` only):
 - [ ] Frontmatter contains `id`, `num`, `title`, `status`, `priority`, `type`, `filed-by`, `claimed-by`, `outcome`, `labels`, `relations`, `created`, `updated`, `origin`.
 - [ ] `num` is a positive integer, or a provisional `P-<id>` marker, resolved via the coordination allocator (never invented).
 - [ ] `status` is exactly `open`. New captures are always open; closed-on-arrival is forbidden (it signals there was no pending work — see the actionability gate). The lifecycle has three states — `open`, `active`, `closed` — and an issue reaches the other two through the transition verbs, never at filing time.
-- [ ] `type` is `issue`, and `claimed-by` and `outcome` are both empty: nothing is held or finished at the moment it is filed.
+- [ ] `type` is `issue`, or `epic` when `--type epic` was given — the kind the flag named, never one inferred from the subject's wording.
+- [ ] `claimed-by` and `outcome` are both empty: nothing is held or finished at the moment it is filed.
 - [ ] `filed-by` was written by the emitter, not composed here.
 - [ ] `relations:` contains the five typed buckets (blocks, depends-on, related-to, duplicates, part-of), even when empty.
 - [ ] The body contains no copy-pasted secrets, API keys, raw credentials, or PII.

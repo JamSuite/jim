@@ -600,6 +600,42 @@ case_docsurfaces_capture_flags_reach_the_emitter_invocation() {
   assert_match "the dispatch names the kind flag" '`--type[ `]'    "$add_bullet"
   assert_match "and the membership flag"          '`--part-of[ `]' "$add_bullet"
 }
+
+# issue_kinds() — the kinds the emitter admits, read off its own array, the way
+# transition_verbs reads the lifecycle vocabulary.
+issue_kinds() {
+  awk -v pfx="readonly ISSUE_TYPES=(" '
+    substr($0, 1, length(pfx)) == pfx { inside = 1; $0 = substr($0, length(pfx) + 1) }
+    inside {
+      if (match($0, /\)/)) { print substr($0, 1, RSTART - 1); exit }
+      print
+    }
+  ' "$REPO_ROOT/skills/issue/scripts/new.sh" \
+    | tr -s '[:space:]' '\n' | grep -v '^$'
+}
+
+# INTRODUCTION, capture-kind half. The pre-write checklist restates the
+# emitter's kind vocabulary in prose, and a checklist is read as a literal
+# gate: a kind the emitter admits but the checklist forbids is a rule an
+# agent's own correct draft fails, and the two ways out of that are both wrong
+# -- ignore the gate, or file the other kind. So the enumeration is derived
+# rather than maintained. Maintaining it is what left the checklist naming one
+# kind for a whole increment after the emitter began admitting two, at a site
+# two hand-driven passes over the same file both walked past.
+case_docsurfaces_capture_kinds_reach_the_checklist() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" rule k n=0 missing=""
+  rule="$(grep -m1 -- '^- \[ \] `type` is ' "$skill")"
+  assert_nonempty "the checklist states a kind rule" "$rule"
+  while IFS= read -r k; do
+    [[ -n "$k" ]] || continue
+    n=$((n + 1))
+    printf '%s' "$rule" | grep -qF -- "\`$k\`" || missing="$missing$k "
+  done < <(issue_kinds)
+  assert_eq "the array was read (>= 2 kinds, got $n)" "yes" \
+    "$([[ "$n" -ge 2 ]] && echo yes || echo no)"
+  assert_eq "every kind the emitter admits is on the checklist" "" "${missing% }"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
