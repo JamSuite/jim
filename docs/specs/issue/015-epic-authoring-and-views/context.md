@@ -329,7 +329,15 @@ existed and can ask.
 unattended invocation for the post-build review and the blueprint health hook,
 so both prompt and give a compaction point. Whether that is still true is a
 question for `bash skills/conf/scripts/jimconf.sh get <key>`, not for this
-document. Same for every gate flag, the placement mode and the identity scheme.
+document. Same for every gate flag and the identity scheme.
+
+**The placement mode is the exception, and `jimconf.sh` answers it
+misleadingly.** `get issue_placement` returns `branch` — which is not a branch
+name but the sentinel for *the working branch*, read at `place.sh:199-202` and
+fabricated as the default at `jimconf.sh:96`. Taken at face value it says the
+collection is centralized when it is not. Ask the door instead:
+`bash skills/issue/scripts/place.sh mode`. Verified this session — the key
+reads `branch`, the door reports `direct`.
 
 **The diff-filter trap fired again this session, on a reader who had already
 written it down.** `git diff | grep '^[+-]' | grep -v '^[+-][+-]'` silently
