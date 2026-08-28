@@ -63,9 +63,9 @@
 #     Discard a handle, publishing nothing.
 #
 #   verb enum: file | edit | close | rename | realize | reindex | backfill |
-#   migrate | claim | release | start | reopen. Commit subjects are composed
-#   from the enum plus an optional validated id, so no free text ever reaches a
-#   commit message.
+#   migrate | claim | release | start | reopen | join | leave. Commit subjects
+#   are composed from the enum plus an optional validated id, so no free text
+#   ever reaches a commit message.
 #
 # EXIT CODES
 #   0  Success (stderr may carry degradation notes).
@@ -103,7 +103,7 @@ JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 INDEX_SCRIPT="$HERE/index.sh"
 
 readonly PLACE_VERBS=(file edit close rename realize reindex backfill migrate
-                      claim release start reopen)
+                      claim release start reopen join leave)
 readonly PLACE_INDEX_FILE="INDEX.md"
 
 # Built by place_substitute; the wrapped command with its placeholders resolved.
@@ -2049,23 +2049,26 @@ place_commit_changes() {
 }
 
 usage() {
-  cat <<'USAGE'
-Usage:
-  place.sh mode [--place-token <tok>]        print `direct` or `route`
-  place.sh run [--read] [--verb <enum>] [--id <slug>]
-               [--dir-at <n>] [--token-at <n>] -- CMD [ARGS...]
-                                             --verb is required for a write,
-                                             optional on a --read run
-  place.sh begin [--read]                    print "<token><TAB><dir>"
-  place.sh commit <token> --verb <enum> [--id <slug>]
-  place.sh abort <token>
-
-  verbs: file edit close rename realize reindex backfill migrate
-         claim release start reopen
-  --dir-at / --token-at give the argv offsets of the `{}` and `{token}`
-  markers the caller built, 0 from the front and -1 from the end. Nothing
-  else is substituted.
-USAGE
+  # Every line is a single-quoted literal except the one carrying the verb
+  # vocabulary, which interpolates the array the dispatcher validates against
+  # so the two cannot drift. The quoting is per-line rather than whole-body on
+  # purpose: this text uses backticks as prose, and a form that interpolated
+  # all of it would substitute those words instead of printing them.
+  printf '%s\n' \
+    'Usage:' \
+    '  place.sh mode [--place-token <tok>]        print `direct` or `route`' \
+    '  place.sh run [--read] [--verb <enum>] [--id <slug>]' \
+    '               [--dir-at <n>] [--token-at <n>] -- CMD [ARGS...]' \
+    '                                             --verb is required for a write,' \
+    '                                             optional on a --read run' \
+    '  place.sh begin [--read]                    print "<token><TAB><dir>"' \
+    '  place.sh commit <token> --verb <enum> [--id <slug>]' \
+    '  place.sh abort <token>' \
+    '' \
+    "  verbs: ${PLACE_VERBS[*]}" \
+    '  --dir-at / --token-at give the argv offsets of the `{}` and `{token}`' \
+    '  markers the caller built, 0 from the front and -1 from the end. Nothing' \
+    '  else is substituted.'
 }
 
 main() {

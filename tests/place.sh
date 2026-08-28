@@ -2772,6 +2772,56 @@ case_place_republish_preserves_an_executable_entry() {
     "$(git -C "$repo" ls-tree refs/heads/jim/issues docs/issues/20260101-a.md | awk '{print $1}')"
 }
 
+# ─── Section: Declared vocabulary ────────────────────────────────────────────
+
+# place_vocabulary <constant> — the elements place.sh declares for one of its
+# readonly vocabularies, one per line. The domain comes from the script's own
+# declaration rather than from a list retyped here, so a verb added to the
+# constant enters the case below without an edit.
+place_vocabulary() {
+  awk -v pfx="readonly $1=(" '
+    substr($0, 1, length(pfx)) == pfx { inside = 1; $0 = substr($0, length(pfx) + 1) }
+    inside {
+      if (match($0, /\)/)) { print substr($0, 1, RSTART - 1); exit }
+      print
+    }
+  ' "$SCRIPT_place" | tr -s '[:space:]' '\n' | grep -v '^$'
+}
+
+# AC: the help body's verb list and PLACE_VERBS are one vocabulary rather than
+# two enumerations that agree by coincidence. Every verb the dispatcher
+# validates against has to appear in the text an operator reads, so a verb
+# added to the array without reaching the help fails here.
+#
+# The backtick assertions guard the conversion rather than the vocabulary, and
+# they are why this case is not a grep for the verbs alone. The help body
+# carries `direct`, `route`, `{}` and `{token}` as prose; making the verb line
+# interpolate by unquoting the heredoc delimiter enables command substitution
+# on all four at once, which deletes them from the body and runs whatever
+# `route` resolves to on PATH. That output still contains every verb, so only
+# the literal tokens and an empty stderr tell the two apart.
+case_place_usage_verbs_derive_from_the_array() {
+  local v block missing=0
+  run_place_in "$REPO_ROOT" --help
+  assert_exit "help exits clean"              0  "$RC"
+  assert_eq   "help writes nothing to stderr" "" "$ERR"
+  # Scope the membership check to the vocabulary block. A verb that happens to
+  # occur in unrelated prose must not read as a documented one.
+  block="$(printf '%s\n' "$OUT" | awk '/^  verbs:/{f=1} f && /^  --/{exit} f')"
+  while read -r v; do
+    [[ -n "$v" ]] || continue
+    if ! printf '%s\n' "$block" | grep -qw -- "$v"; then
+      missing=$((missing + 1))
+      echo "    [verb '$v' is dispatched but absent from the help body]"
+    fi
+  done < <(place_vocabulary PLACE_VERBS)
+  assert_eq "every dispatched verb is documented" "0" "$missing"
+  for v in '`direct`' '`route`' '`{}`' '`{token}`'; do
+    assert_eq "the literal $v survives" "1" \
+      "$(printf '%s\n' "$OUT" | grep -cF -- "$v")"
+  done
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
