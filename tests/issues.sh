@@ -9893,6 +9893,99 @@ case_issues_render_stats_reports_a_per_umbrella_rollup() {
     '20260101-umbrella.*1/2 closed' "$OUT"
 }
 
+# AC: opening an umbrella shows its roster and its progress, computed from the
+# members rather than recorded on the umbrella.
+case_issues_render_show_lists_the_roster_and_progress() {
+  local dir
+  dir=$(empty_dir render_show_roster)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render show 20260101-umbrella "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "progress is shown"        'progress: 1/2 closed'   "$OUT"
+  assert_match "the roster is shown"      '^  Members$'            "$OUT"
+  assert_match "an open member"           '20260102-member-open'   "$OUT"
+  assert_match "and a finished one"       '20260103-member-done'   "$OUT"
+  # The unrelated issue is not a member.
+  assert_eq "a non-member is absent" "0" \
+    "$(printf '%s' "$OUT" | grep -c '20260104-loner')"
+}
+
+# AC: an umbrella with no members reports an empty roster rather than failing
+# or reporting nothing at all.
+case_issues_render_show_empty_umbrella_reports_an_empty_roster() {
+  local dir
+  dir=$(empty_dir render_show_empty_roster)
+  write_issue "$dir" "20260101-empty" 'title: "Empty"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  run_index "$dir"
+  run_render show 20260101-empty "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "progress is still reported" 'progress: 0/0 closed' "$OUT"
+  assert_match "and the roster says so"     '_no members_'         "$OUT"
+}
+
+# AC: the read views can list the umbrellas in the collection, each with its
+# progress.
+case_issues_render_list_epic_shows_progress() {
+  local dir
+  dir=$(empty_dir render_list_epic_progress)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render list epic "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the umbrella carries its progress" '1/2 closed' "$OUT"
+  # An ordinary issue's row is unchanged — progress belongs to containers.
+  run_render list "$dir"
+  assert_eq "no progress on a plain row" "0" \
+    "$(printf '%s\n' "$OUT" | grep '20260104-loner' | grep -c 'closed')"
+}
+
+# AC: naming a non-existent umbrella is refused when filtering, and the
+# refusal is distinguishable from a query that matched nothing. An empty
+# result means no record matched; it never means the reference could not be
+# resolved.
+case_issues_render_refuses_an_unresolvable_umbrella() {
+  local dir
+  dir=$(empty_dir render_epic_refusal)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render list --epic no-such-umbrella "$dir"
+  assert_exit "refused, not answered emptily" 1 "$RC"
+  assert_match "and it names the reference" 'no-such-umbrella' "$ERR"
+  # A resolvable umbrella that genuinely holds nothing is the other side: it
+  # succeeds with an empty result, which is what makes the refusal meaningful.
+  write_issue "$dir" "20260109-barren" 'title: "Barren"
+status: open
+num: 9
+type: epic
+outcome: ""'
+  run_index "$dir"
+  run_render list --epic 20260109-barren "$dir"
+  assert_exit "an empty umbrella still answers" 0 "$RC"
+}
+
+# AC: an umbrella is nameable by the same reference forms an issue is
+# nameable by elsewhere in the read views — an ordinal, a slug, or a prefix.
+# Exact string equality against the graph answers only for the slug.
+case_issues_render_epic_accepts_ordinal_and_prefix_forms() {
+  local dir
+  dir=$(empty_dir render_epic_forms)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  # Asserted on the title, which the default columns render — the slug is not
+  # among them, so matching on it would fail against a correct result.
+  run_render list --epic 1 "$dir"
+  assert_exit "an ordinal resolves" 0 "$RC"
+  assert_match "and selects the members" 'Open member' "$OUT"
+  run_render list --epic 20260101-umb "$dir"
+  assert_exit "a prefix resolves" 0 "$RC"
+  assert_match "to the same umbrella" 'Open member' "$OUT"
+}
+
 case_issues_render_stats_scoped_by_filter() {
   local dir
   dir=$(empty_dir render_stats_scoped)

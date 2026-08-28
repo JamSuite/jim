@@ -92,7 +92,7 @@ readonly SCHEMA_GATED_FIELDS=(type filed-by claimed-by outcome)
 # `blocked` are derived from the index's Graph section rather than from a row
 # field, and carry `-` to say so.
 readonly AXIS_FIELDS=(status:status priority:priority type:type label:labels
-                      epic:- filed-by:filed-by claimed-by:claimed-by
+                      epic:type filed-by:filed-by claimed-by:claimed-by
                       spec:origin origin:origin held:claimed-by blocked:-)
 
 # ─── Section: Shared helpers ─────────────────────────────────────────────────
@@ -653,7 +653,7 @@ cmd_stats() {
   local slug num status prio created labels title origin
   local type filed_by claimed_by outcome
   if [[ -n "${FILTER_AXIS[blocked]:-}" || -n "${FILTER_AXIS[epic]:-}" ]]; then
-    build_derived_axes "$index_file"
+    build_derived_axes "$index_file" || return 1
   fi
   while IFS=$'\t' read -r slug num status prio created labels title origin \
       type filed_by claimed_by outcome; do
@@ -758,29 +758,14 @@ cmd_stats() {
   fi
   printf '\n'
 
-  # Per-umbrella rollup. Membership is read through read_graph_edges by name —
-  # the shared reader every other read of that section goes through — rather
-  # than by parsing the section here with a pattern of its own.
-  declare -A epic_total epic_done seen_pair
-  epic_total[__s__]=0;  unset 'epic_total[__s__]'
-  epic_done[__s__]=0;   unset 'epic_done[__s__]'
-  seen_pair[__s__]=0;   unset 'seen_pair[__s__]'
-  local pe_src pe_tgt pair
-  while IFS=$'\t' read -r pe_src pe_tgt; do
-    [[ -n "$pe_src" && -n "$pe_tgt" ]] || continue
-    pair="$pe_src|$pe_tgt"
-    [[ -n "${seen_pair[$pair]:-}" ]] && continue
-    seen_pair[$pair]=1
-    epic_total[$pe_tgt]=$(( ${epic_total[$pe_tgt]:-0} + 1 ))
-    [[ "${row_status[$pe_src]:-}" == "closed" ]] && \
-      epic_done[$pe_tgt]=$(( ${epic_done[$pe_tgt]:-0} + 1 ))
-  done < <(read_graph_edges "$index_file" part-of)
-
-  if (( ${#epic_total[@]} > 0 )); then
+  # Per-umbrella rollup, from the shared derivation. Progress is a property of
+  # the umbrella rather than of the query, so it is not scoped by the filter.
+  build_epic_progress "$index_file"
+  if (( ${#EPIC_TOTAL[@]} > 0 )); then
     printf '== Epics ==\n\n'
     local e
-    for e in "${!epic_total[@]}"; do
-      printf '  %-44s %s/%s closed\n' "$e" "${epic_done[$e]:-0}" "${epic_total[$e]}"
+    for e in "${!EPIC_TOTAL[@]}"; do
+      printf '  %-44s %s/%s closed\n' "$e" "${EPIC_DONE[$e]:-0}" "${EPIC_TOTAL[$e]}"
     done | sort
     printf '\n'
   fi
@@ -863,6 +848,12 @@ format_row() {
     esac
     out+=" "
   done
+  # An umbrella carries its progress wherever it is shown. Appended rather than
+  # given a column of its own: it is meaningful for containers only, and a
+  # column would render an empty cell on every ordinary row.
+  if [[ "$type" == "epic" ]]; then
+    out+="$(printf '%s/%s closed' "${EPIC_DONE[$slug]:-0}" "${EPIC_TOTAL[$slug]:-0}")"
+  fi
   printf '  %s\n' "$out"
 }
 
@@ -969,6 +960,38 @@ spec_matches() {
 declare -A DERIVED_BLOCKED=()
 declare -A DERIVED_EPIC=()
 
+# An umbrella's derived roster and progress, keyed by umbrella. Declared once
+# and read by every view that reports either — the census rollup, the list
+# row and `show` — so three surfaces cannot disagree about one umbrella's
+# progress.
+declare -A EPIC_TOTAL=() EPIC_DONE=() EPIC_MEMBERS=()
+
+# build_epic_progress <index_file> — populate the three maps above.
+#   Reads membership through read_graph_edges by name, the shared reader every
+#   other read of that section goes through, and deduplicates by
+#   (member, umbrella): one record naming an umbrella repeatedly is one member,
+#   or the denominator inflates and the roster repeats.
+build_epic_progress() {
+  local index_file="$1" slug num status rest src tgt pair
+  local -A st=() seen=()
+  # Reset rather than accumulate. These are globals, and the counters add, so a
+  # second call in one run would double every figure it reports.
+  EPIC_TOTAL=(); EPIC_DONE=(); EPIC_MEMBERS=()
+  while IFS=$'\t' read -r slug num status rest; do
+    [[ -z "$slug" ]] && continue
+    st[$slug]="$status"
+  done < <(read_issue_rows "$index_file")
+  while IFS=$'\t' read -r src tgt; do
+    [[ -n "$src" && -n "$tgt" ]] || continue
+    pair="$src|$tgt"
+    [[ -n "${seen[$pair]:-}" ]] && continue
+    seen[$pair]=1
+    EPIC_TOTAL[$tgt]=$(( ${EPIC_TOTAL[$tgt]:-0} + 1 ))
+    [[ "${st[$src]:-}" == "closed" ]] && EPIC_DONE[$tgt]=$(( ${EPIC_DONE[$tgt]:-0} + 1 ))
+    EPIC_MEMBERS[$tgt]="${EPIC_MEMBERS[$tgt]:-}$src "
+  done < <(read_graph_edges "$index_file" part-of)
+}
+
 # resolve_indexed_ref <index_file> <ref> [<kind>] — the slugs <ref> names,
 #   one per line, resolved against the INDEXED SET and never against the
 #   directory: ids resolve only against what the index holds, never composed
@@ -1045,6 +1068,42 @@ build_derived_axes() {
   while IFS=$'\t' read -r src tgt; do
     DERIVED_EPIC[$src]="${DERIVED_EPIC[$src]:+${DERIVED_EPIC[$src]}$'\n'}$tgt"
   done < <(read_graph_edges "$index_file" part-of)
+
+  # Resolve each --epic operand to the umbrella it names, and refuse one that
+  # names none. An empty result must mean nothing matched, never that the
+  # reference could not be resolved — the two are indistinguishable to a
+  # developer otherwise, and a mistyped umbrella reads as an empty one.
+  #
+  # This runs here rather than beside the person axes: deciding whether a slug
+  # names an umbrella needs the built index, and those resolve before it
+  # exists. The property that matters is preserved either way — no row has
+  # been read yet, so a refusal writes nothing.
+  if [[ -n "${FILTER_AXIS[epic]:-}" ]]; then
+    # An index that cannot describe `type` cannot say what is an umbrella, so
+    # it cannot validate the reference either. Leave the refusal to the schema
+    # gate, which names the row field and the remedy: refusing here instead
+    # would report a missing umbrella when the real answer is a stale index.
+    local any_type=0 t_slug t_num t_status t_prio t_created t_labels t_title
+    local t_origin t_type t_rest
+    while IFS=$'\t' read -r t_slug t_num t_status t_prio t_created t_labels \
+        t_title t_origin t_type t_rest; do
+      [[ -z "$t_slug" ]] && continue
+      [[ "$t_type" != "-" ]] && { any_type=1; break; }
+    done < <(read_issue_rows "$index_file")
+    (( any_type )) || return 0
+
+    local alt hits resolved=""
+    while IFS= read -r alt; do
+      [[ -n "$alt" ]] || continue
+      hits="$(resolve_indexed_ref "$index_file" "$alt" epic)"
+      if [[ -z "$hits" ]]; then
+        echo "error: no epic matches '$alt'" >&2
+        return 1
+      fi
+      resolved+="$hits"$'\n'
+    done <<< "${FILTER_AXIS[epic]}"
+    FILTER_AXIS[epic]="$(printf '%s' "$resolved" | grep -v '^$')"
+  fi
 }
 
 # state_matches <axis> <state> — a derived axis, whose alternatives are the two
@@ -1295,11 +1354,15 @@ cmd_list() {
   # makes the collection unreadable.
   [[ -n "$FILTER_COLS" ]] && cols="$FILTER_COLS"
 
+  # Progress rides on an umbrella's row wherever one is listed, from the
+  # same derivation the census and `show` read.
+  build_epic_progress "$index_file"
+
   # Load rows, applying the filter.
   local rows=() slug num status prio created labels title origin
   # Only when an axis needs them: both walk the index a second time.
   if [[ -n "${FILTER_AXIS[blocked]:-}" || -n "${FILTER_AXIS[epic]:-}" ]]; then
-    build_derived_axes "$index_file"
+    build_derived_axes "$index_file" || return 1
   fi
   local seen_rows=0 saw_type=0 hidden_closed=0
   local type filed_by claimed_by outcome
@@ -1430,9 +1493,11 @@ is_valid_id() {
   return 0
 }
 
-# render_issue_file <dir> <slug>
+# render_issue_file <dir> <slug> [<index_file>]
+#   <index_file> supplies the roster an umbrella renders; the record itself
+#   stores no membership, so the derivation needs the built index.
 render_issue_file() {
-  local dir="$1" slug="$2"
+  local dir="$1" slug="$2" index_file="${3:-}"
   is_valid_id "$slug" 2>/dev/null || { echo "error: refusing to read invalid id" >&2; return 1; }
   local f="$dir/$slug.md"
   [[ -f "$f" ]] || { printf 'no issue file for `%s`.\n' "$slug"; return 0; }
@@ -1462,6 +1527,34 @@ render_issue_file() {
   [[ -n "$labels" ]] && printf '  labels: %s\n' "$labels"
   [[ -n "$origin" ]] && printf '  origin: %s\n' "$origin"
   [[ -n "$created" ]] && printf '  created: %s\n' "$created"
+
+  # An umbrella's roster and progress, derived from the members rather than
+  # recorded here — nothing stores them apart from the records claiming
+  # membership, so the two cannot disagree.
+  #
+  # Uncapped, unlike the index's section, and the asymmetry is deliberate: the
+  # index is regenerated on every write and committed, while this renders one
+  # record on demand and is neither.
+  if [[ "$type" == "epic" && -n "$index_file" && -f "$index_file" ]]; then
+    build_epic_progress "$index_file"
+    local r_slug r_num r_status r_rest mem
+    local -A m_num=() m_status=()
+    while IFS=$'\t' read -r r_slug r_num r_status r_rest; do
+      [[ -z "$r_slug" ]] && continue
+      m_num[$r_slug]="$r_num"; m_status[$r_slug]="$r_status"
+    done < <(read_issue_rows "$index_file")
+    printf '  progress: %s/%s closed\n' \
+      "${EPIC_DONE[$slug]:-0}" "${EPIC_TOTAL[$slug]:-0}"
+    printf '\n  Members\n'
+    if [[ -n "${EPIC_MEMBERS[$slug]:-}" ]]; then
+      for mem in ${EPIC_MEMBERS[$slug]}; do
+        printf '    #%-6s %-9s %s\n' "${m_num[$mem]:--}" \
+          "${m_status[$mem]:-open}" "$mem"
+      done
+    else
+      printf '    _no members_\n'
+    fi
+  fi
   printf '\n'
   # Body: everything after the second ---.
   awk '/^---$/{c++; next} c>=2{print}' "$f"
@@ -1490,7 +1583,7 @@ cmd_show() {
     printf 'no issue matched `%s`.\n' "$id"
     return 0
   elif (( ${#matches[@]} == 1 )); then
-    render_issue_file "$dir" "${matches[0]}"
+    render_issue_file "$dir" "${matches[0]}" "$index_file"
     return 0
   else
     printf 'Multiple issues match `%s`:\n' "$id"

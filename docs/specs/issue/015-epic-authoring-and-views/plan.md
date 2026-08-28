@@ -711,17 +711,17 @@ flowchart TD
     Depends on task 19.
     **Verify:** `bash tests/issues.sh case_issues_render_stats_reports_a_per_umbrella_rollup`
 
-22. [ ] `render.sh`: render the roster and progress in `show`, between `created`
+22. [x] `render.sh`: render the roster and progress in `show`, between `created`
     (`:1354`) and the blank line (`:1355`). `render_issue_file` takes `dir` and
     `slug` only today, so it gains the index path `cmd_show` already holds at
     `:1369`. Uncapped, deliberately.
     **Verify:** `bash tests/issues.sh case_issues_render_show_lists_the_roster_and_progress && bash tests/issues.sh case_issues_render_show_empty_umbrella_reports_an_empty_roster`
 
-23. [ ] `render.sh`: carry an umbrella's progress on its `list` row. Depends on
+23. [x] `render.sh`: carry an umbrella's progress on its `list` row. Depends on
     task 13.
     **Verify:** `bash tests/issues.sh case_issues_render_list_epic_shows_progress`
 
-24. [ ] `render.sh`: resolve an `--epic` reference through the shared
+24. [x] `render.sh`: resolve an `--epic` reference through the shared
     ordinal → exact → prefix ladder (the same helper task 6 uses) inside
     `build_derived_axes` (`:922-938`), which gains an umbrella set beside
     `DERIVED_EPIC`; refuse only when resolution finds no record of kind `epic`.
