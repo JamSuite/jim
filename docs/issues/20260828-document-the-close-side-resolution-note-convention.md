@@ -1,6 +1,6 @@
 ---
 id: 20260828-document-the-close-side-resolution-note-convention
-num: P-20260828-document-the-close-side-resolution-note-convention
+num: 418
 title: "Document the close-side resolution note convention"
 status: open
 priority: medium
