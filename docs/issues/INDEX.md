@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 149
+- Open: 151
 - Closed: 266
 
 ## Issues
@@ -414,6 +414,8 @@
 - `20260827-group-the-read-views-by-umbrella-membership` — Group the read views by umbrella membership · status: open · num: 405 · priority: low · created: 2026-08-27T20:10:36Z · labels: [issues-system, read-views] · origin: docs/specs/issue/015-epic-authoring-and-views/spec.md · type: issue · filed-by: jrko
 - `20260827-report-an-honest-completion-rate-from-the-outcome-field` — Report an honest completion rate from the outcome field · status: open · num: 406 · priority: medium · created: 2026-08-27T20:10:31Z · labels: [issues-system, read-views, metrics] · origin: docs/specs/issue/015-epic-authoring-and-views/spec.md · type: issue · filed-by: jrko
 - `20260828-a-relation-type-reaches-the-graph-unbounded-in-length` — A relation type reaches the graph unbounded in length · status: open · num: 407 · priority: low · created: 2026-08-28T05:17:25Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
+- `20260828-blueprint-divergence-atomic-index-write` — Blueprint divergence: atomic-index-write · status: open · num: P-20260828-blueprint-divergence-atomic-index-write · priority: medium · created: 2026-08-28T11:55:12Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/015-epic-authoring-and-views · type: issue · filed-by: jrko
+- `20260828-blueprint-divergence-cross-copy-lockstep` — Blueprint divergence: cross-copy-lockstep · status: open · num: P-20260828-blueprint-divergence-cross-copy-lockstep · priority: high · created: 2026-08-28T11:55:11Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/015-epic-authoring-and-views · type: issue · filed-by: jrko
 - `20260828-define-capture-flag-extraction-for-malformed-input` — Define capture flag extraction for malformed input · status: open · num: P-20260828-define-capture-flag-extraction-for-malformed-input · priority: high · created: 2026-08-28T11:37:32Z · labels: [skill-surface, epic] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko
 - `20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella` — leave cannot remove a membership naming a deleted umbrella · status: open · num: P-20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella · priority: medium · created: 2026-08-28T08:46:45Z · labels: [issue, lifecycle] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 - `20260828-membership-doubles-the-index-graph-section` — Membership doubles the index graph section · status: open · num: 408 · priority: medium · created: 2026-08-28T05:17:23Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
@@ -582,3 +584,5 @@ _No epics._
 - `20260812-index-sh-warnings-and-row-set-escape-the-sanitizer-discipline`: malformed wikilink `[[ -z "$fm" ]]` ignored.
 - `20260812-migration-destroys-an-issue-on-the-success-path-at-rc-0`: malformed wikilink `[[ "$action" == rename ]]` ignored.
 - `20260812-place-direct-publish-reads-a-git-failure-as-nothing-to-publish`: malformed wikilink `[[ -n "$st" ]]` ignored.
+- `20260828-blueprint-divergence-atomic-index-write`: malformed wikilink `[[ -n "$changes" ]]` ignored.
+- `20260828-blueprint-divergence-atomic-index-write`: malformed wikilink `[[ -n "$token" ]]` ignored.
