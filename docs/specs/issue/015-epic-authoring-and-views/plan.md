@@ -683,13 +683,13 @@ flowchart TD
 
 ### The read views
 
-18. [ ] `tests/issues.sh`: pin the census regression oracle **before** touching
+18. [x] `tests/issues.sh`: pin the census regression oracle **before** touching
     `cmd_stats` — a collection holding no umbrellas produces byte-identical
     `stats` output across the change. The current collection holds none, so this
     is available at no cost.
     **Verify:** `bash tests/issues.sh case_issues_render_stats_unchanged_without_umbrellas`
 
-19. [ ] `render.sh`: add the epic-exclusion guard to `cmd_stats`' row loop
+19. [x] `render.sh`: add the epic-exclusion guard to `cmd_stats`' row loop
     between `matching[$slug]=1` (`:661`) and the first work counter (`:662`),
     with a comment naming the three regions and why each boundary is where it
     is. The guard increments a container counter as it skips, and `cmd_stats`
@@ -699,13 +699,13 @@ flowchart TD
     empty. Depends on task 18.
     **Verify:** `bash tests/issues.sh case_issues_render_stats_counts_work_not_containers && bash tests/issues.sh case_issues_render_stats_type_epic_still_rolls_up_blocking && bash tests/issues.sh case_issues_render_stats_reports_a_container_count`
 
-20. [ ] `tests/issues.sh`: add the ordering cases — one per region — that go red
+20. [x] `tests/issues.sh`: add the ordering cases — one per region — that go red
     if the guard moves above `matching` or above `seen_rows`/`saw_type`. The
     schema-staleness case is the sharp one: a collection of epics only must still
     fail the schema gate. Depends on task 19.
     **Verify:** `bash tests/issues.sh case_issues_render_stats_exclusion_ordering_is_load_bearing`
 
-21. [ ] `render.sh`: add the `== Epics ==` rollup to `cmd_stats`, between the
+21. [x] `render.sh`: add the `== Epics ==` rollup to `cmd_stats`, between the
     label cluster (ends `:719`) and `== Blocking ==` (`:722`), reading `part-of`
     through `read_graph_edges` by name — the shared reader, call site six.
     Depends on task 19.

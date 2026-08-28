@@ -9709,6 +9709,190 @@ relations:
 
 # AC: the statistics view accepts the same filters as the list view under the
 # same rules, discloses what it was scoped to, and never hides finished issues
+# epic_stats_fixture <dir> — one umbrella, two members (one closed), and one
+#   unrelated issue. Counts: 2 open units of work + 1 closed, 1 container.
+epic_stats_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+num: 1
+type: epic
+priority: high
+outcome: ""'
+  write_issue "$dir" "20260102-member-open" 'title: "Open member"
+status: open
+num: 2
+type: issue
+priority: medium
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella]'
+  write_issue "$dir" "20260103-member-done" 'title: "Closed member"
+status: closed
+num: 3
+type: issue
+priority: low
+outcome: done
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella]'
+  write_issue "$dir" "20260104-loner" 'title: "Loner"
+status: open
+num: 4
+type: issue
+priority: low
+outcome: ""'
+}
+
+# AC: a statistics run over a collection holding no umbrellas reports what it
+# reported before this increment, so adopting umbrellas is what changes the
+# numbers rather than installing the feature.
+#
+# The collection this was built against held no epics at all, which made a
+# byte-for-byte before/after comparison available at no cost. This is the
+# standing form of that oracle: with no container present, every record counts
+# as work and no container line appears anywhere.
+case_issues_render_stats_unchanged_without_umbrellas() {
+  local dir
+  dir=$(empty_dir render_stats_no_epics)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+type: issue
+priority: high
+outcome: ""'
+  write_issue "$dir" "20260102-b" 'title: "B"
+status: closed
+num: 2
+type: issue
+priority: low
+outcome: done'
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "every record counts as work" 'Open: 1 · Closed: 1' "$OUT"
+  # Asserted as the two structures rather than as the bare word: the census
+  # header echoes the collection path, so a fixture directory named for this
+  # case would match a word search and the probe would be reporting itself.
+  assert_eq "no container summary line" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^  Epics: ')"
+  assert_eq "no container rollup section" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^== Epics ==$')"
+}
+
+# AC: the statistics view counts units of work and reports containers
+# separately, so a rollup is never inflated by the umbrellas in it. Every
+# cluster the view already reports counts work only.
+case_issues_render_stats_counts_work_not_containers() {
+  local dir body
+  dir=$(empty_dir render_stats_work_only)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  # Four records, one of them a container: two open units of work, one closed.
+  assert_match "the headline counts work" 'Open: 2 · Closed: 1' "$OUT"
+  body="$(printf '%s\n' "$OUT" | awk '/^== Epics ==$/ { exit } { print }')"
+  # The umbrella is the only record carrying priority high, so its absence
+  # from the priority cluster is what proves the exclusion reached that
+  # cluster rather than only the headline.
+  assert_eq "the priority cluster excludes it" "0" \
+    "$(printf '%s' "$body" | grep -c 'high')"
+}
+
+# AC: the view reports containers separately — the count has somewhere to go,
+# which is also what stops a container-scoped census reporting zeroes.
+case_issues_render_stats_reports_a_container_count() {
+  local dir
+  dir=$(empty_dir render_stats_container_count)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_match "containers are counted on their own line" \
+    'Epics: 1 open · 0 closed' "$OUT"
+}
+
+# AC: `stats --type epic` is a legal query. The guard skips containers before
+# every work counter, so without a count of their own the headline would read
+# zero and every cluster _none_ however many umbrellas the collection holds.
+case_issues_render_stats_type_epic_still_rolls_up_blocking() {
+  local dir
+  dir=$(empty_dir render_stats_type_epic)
+  epic_stats_fixture "$dir"
+  # Give the umbrella an outgoing blocks edge so the rollup has something to
+  # find, and the rollup is gated on the matching set the guard must not touch.
+  write_issue "$dir" "20260105-blocked" 'title: "Blocked"
+status: open
+num: 5
+type: issue
+priority: low
+outcome: ""'
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+num: 1
+type: epic
+priority: high
+outcome: ""
+relations:
+  blocks: [20260105-blocked]
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: []'
+  run_index "$dir"
+  run_render stats --type epic "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the container census has something true to say" \
+    'Epics: 1 open · 0 closed' "$OUT"
+  assert_match "and the blocking rollup still works" '20260101-umbrella' "$OUT"
+}
+
+# AC: the exclusion sits at one ordering boundary, and the boundary is
+# load-bearing. Three regions, three populations: the staleness signals read
+# every row before the filter, the scope set reads rows that passed it, and
+# only the work counters exclude containers. A guard placed above the scope
+# set breaks the blocking rollup for a container-scoped query; one placed
+# above the staleness signals lets a collection of nothing but epics report
+# seen_rows == 0 and pass a schema gate it should fail.
+case_issues_render_stats_exclusion_ordering_is_load_bearing() {
+  local dir
+  dir=$(empty_dir render_stats_ordering)
+  # A collection of containers only, written against a schema-blind index.
+  write_issue "$dir" "20260101-e1" 'title: "E1"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  run_index "$dir"
+  # Strip the type field from every row, the way an index written before the
+  # widened schema carries it. The gate must still refuse a query naming it.
+  sed -i 's/ · type: epic//' "$dir/INDEX.md"
+  touch "$dir/INDEX.md"
+  run_render stats --type epic "$dir"
+  assert_exit "an index that cannot describe type refuses" 1 "$RC"
+  assert_match "and names the row field" 'type' "$ERR"
+}
+
+# AC: the statistics view reports a per-umbrella rollup.
+case_issues_render_stats_reports_a_per_umbrella_rollup() {
+  local dir
+  dir=$(empty_dir render_stats_rollup)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the rollup section exists" '^== Epics ==$' "$OUT"
+  assert_match "with the umbrella and its progress" \
+    '20260101-umbrella.*1/2 closed' "$OUT"
+}
+
 case_issues_render_stats_scoped_by_filter() {
   local dir
   dir=$(empty_dir render_stats_scoped)

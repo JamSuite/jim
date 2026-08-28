@@ -647,6 +647,9 @@ cmd_stats() {
   priority_count[__s__]=0; unset 'priority_count[__s__]'
   matching[__s__]=0;       unset 'matching[__s__]'
   local open_count=0 closed_count=0 seen_rows=0 saw_type=0
+  local epic_open=0 epic_closed=0
+  declare -A row_status
+  row_status[__s__]=""; unset 'row_status[__s__]'
   local slug num status prio created labels title origin
   local type filed_by claimed_by outcome
   if [[ -n "${FILTER_AXIS[blocked]:-}" || -n "${FILTER_AXIS[epic]:-}" ]]; then
@@ -657,8 +660,37 @@ cmd_stats() {
     [[ -z "$slug" ]] && continue
     (( seen_rows++ ))
     [[ "$type" != "-" ]] && saw_type=1
+    # Every row, unfiltered: the per-umbrella rollup below reports progress as
+    # a property of the umbrella rather than of the query, so its denominator
+    # must not move when a filter narrows the census.
+    row_status[$slug]="$status"
     row_matches || continue
     matching[$slug]=1
+    # The loop has three regions with three populations, and this is the
+    # second boundary:
+    #
+    #   seen_rows / saw_type  every row, before the filter — they answer
+    #                         "can this index describe type at all", so a
+    #                         collection of nothing but containers must still
+    #                         reach them or it passes a schema gate it fails
+    #   matching              rows that passed the filter — `stats --type
+    #                         epic` is a legal query whose blocking rollup
+    #                         reads this set, so containers stay in it
+    #   the work counters     units of work — containers are excluded here
+    #
+    # One guard covers all five counters because they are contiguous and end
+    # the loop body, and the failure mode is biased safe: a counter added to
+    # the tail later is excluded by default, which is right for a work count.
+    # Containers get their own accumulator as they are skipped, so "reports
+    # containers separately" has somewhere to land.
+    if [[ "$type" == "epic" ]]; then
+      if [[ "$status" == "closed" ]]; then
+        epic_closed=$(( epic_closed + 1 ))
+      else
+        epic_open=$(( epic_open + 1 ))
+      fi
+      continue
+    fi
     if [[ "$status" == "closed" ]]; then
       closed_count=$(( closed_count + 1 ))
     else
@@ -686,7 +718,14 @@ cmd_stats() {
   schema_gate "$dir" "$seen_rows" "$saw_type" || return 1
 
   scope_line
-  printf '  Open: %s · Closed: %s\n\n' "$open_count" "$closed_count"
+  printf "  Open: %s · Closed: %s\n" "$open_count" "$closed_count"
+  # Containers on their own line: the census counts work, and this is where
+  # the count it deliberately excludes goes. It is also what gives a
+  # container-scoped query something true to say.
+  if (( epic_open + epic_closed > 0 )); then
+    printf "  Epics: %s open · %s closed\n" "$epic_open" "$epic_closed"
+  fi
+  printf "\n"
   printf '== Clusters ==\n\n'
 
   printf '  By priority\n'
@@ -718,6 +757,33 @@ cmd_stats() {
     done | sort -k2,2nr -k1,1
   fi
   printf '\n'
+
+  # Per-umbrella rollup. Membership is read through read_graph_edges by name —
+  # the shared reader every other read of that section goes through — rather
+  # than by parsing the section here with a pattern of its own.
+  declare -A epic_total epic_done seen_pair
+  epic_total[__s__]=0;  unset 'epic_total[__s__]'
+  epic_done[__s__]=0;   unset 'epic_done[__s__]'
+  seen_pair[__s__]=0;   unset 'seen_pair[__s__]'
+  local pe_src pe_tgt pair
+  while IFS=$'\t' read -r pe_src pe_tgt; do
+    [[ -n "$pe_src" && -n "$pe_tgt" ]] || continue
+    pair="$pe_src|$pe_tgt"
+    [[ -n "${seen_pair[$pair]:-}" ]] && continue
+    seen_pair[$pair]=1
+    epic_total[$pe_tgt]=$(( ${epic_total[$pe_tgt]:-0} + 1 ))
+    [[ "${row_status[$pe_src]:-}" == "closed" ]] && \
+      epic_done[$pe_tgt]=$(( ${epic_done[$pe_tgt]:-0} + 1 ))
+  done < <(read_graph_edges "$index_file" part-of)
+
+  if (( ${#epic_total[@]} > 0 )); then
+    printf '== Epics ==\n\n'
+    local e
+    for e in "${!epic_total[@]}"; do
+      printf '  %-44s %s/%s closed\n' "$e" "${epic_done[$e]:-0}" "${epic_total[$e]}"
+    done | sort
+    printf '\n'
+  fi
 
   printf '== Blocking ==\n\n'
   declare -A blocks_out blocks_targets
