@@ -32,6 +32,8 @@ Issues are where Jim captures what was noticed but not acted upon. Every stage o
 ```
 /jim:issue                   # print help
 /jim:issue add <subject>     # capture a discovery from this conversation
+/jim:issue add <subject> --type epic       # capture an umbrella instead
+/jim:issue add <subject> --part-of 12      # capture it into one (csv for several)
 /jim:issue list [filter]     # open work, grouped and sorted
 /jim:issue show 53           # one issue, by ordinal / slug / unique slug prefix
 /jim:issue stats             # counts, clusters, blocking ranking
@@ -42,6 +44,8 @@ Issues are where Jim captures what was noticed but not acted upon. Every stage o
 /jim:issue start 53          # mark it underway, claiming it when unheld
 /jim:issue close 53 --as done   # finish it, recording how
 /jim:issue reopen 53         # back to not-started, keeping the outcome
+/jim:issue join 53 12        # put it under umbrella 12
+/jim:issue leave 53 12       # take it back out
 
 /jim:issue reconcile         # realize ordinals bound while offline
 ```
@@ -98,7 +102,7 @@ Prose, under a `## Description` heading. Cross-references other issues as `[[oth
 
 An issue is `open` (not started), `active` (underway) or `closed` (finished). Beside that it records who filed it, who currently holds it, what kind of record it is, which umbrellas it belongs to, and — once it has been finished at least once — the outcome of the most recent finish.
 
-Five verbs move it, and they are the supported path. Each writes every field the move implies, refreshes `updated`, and regenerates the index; a state change written by hand is what leaves `outcome` empty on a close, which the index then reports as an integrity warning.
+Seven verbs move it, and they are the supported path. Each writes every field the move implies, refreshes `updated`, and regenerates the index; a state change written by hand is what leaves `outcome` empty on a close, which the index then reports as an integrity warning.
 
 | Verb | What it does |
 | :--- | :--- |
@@ -107,6 +111,8 @@ Five verbs move it, and they are the supported path. Each writes every field the
 | `start <id>` | Mark it underway, claiming it first when it is unheld |
 | `close <id> [--as <outcome>]` | Finish it. `--as` takes `done`, `wontfix`, `duplicate` or `obsolete`; a bare close records `done` |
 | `reopen <id>` | Return it to not-started and **keep** the outcome |
+| `join <id> <umbrella>` | Put it under an umbrella. The umbrella must be an `epic`, and an epic is refused a membership of its own |
+| `leave <id> <umbrella>` | Take it back out. Available even where `join` would now refuse, so a membership reached by hand-edit stays repairable |
 
 Any developer may close any issue, and `claimed-by` survives the close — the field says who *held* the issue, not who finished it. Closing `--as duplicate` requires the superseding issue to be named in the record's `duplicates` relation.
 
@@ -172,6 +178,8 @@ flowchart LR
 
 `/jim:issue add <subject>` drafts from the conversation, framed by the project's vision, architecture and roadmap, and presents the whole draft — frontmatter and body together — as one block: **file**, **edit**, or **cancel**. No per-field prompting.
 
+Two flags may appear anywhere in the subject and are taken out of it before the rest becomes the title: `--type epic` files an umbrella rather than an ordinary issue, and `--part-of <ref>[,<ref>]` files the capture straight into one or more, each named the way `join` names one. Both are resolved and refused before an ordinal is spent, so a capture naming an umbrella that does not exist — or one that is not an umbrella — costs nothing.
+
 That presentation is the **last scrub moment**. The file is about to be persisted and committed alongside your code, so the prompt asks you to check the body for API keys, customer data, and raw logs before it lands.
 
 Identity is reserved at save, not at draft. The ordinal you see during the interview is an advisory peek; an interview you cancel or edit never burns an id.
@@ -200,20 +208,21 @@ The issue collection defaults to `docs/issues/` — one file per issue plus a ge
 
 `list`, `show`, and `stats` are deterministic bash, and their output is presented verbatim.
 
-**`list [open|active|closed|critical|high|medium|low]`** — the terse view, grouped by status. It shows open work by default: `list` and the priority filters hide closed issues unless you ask for them with `list closed` or set `issue_list_closed = "true"`. Grouping, sort key, columns and direction are configurable (`issue_list_group` / `_sort` / `_cols` / `_order`), and an explicit filter always overrides the configured default.
+**`list [filter …]`** — the terse view, grouped by status. Filters compose: values naming one axis are alternatives, and different axes must all hold. The bare words are `open|active|closed`, `critical|high|medium|low`, `issue|epic`, `claimed|unclaimed` and `blocked|unblocked`; the flags — `--status`, `--priority`, `--type`, `--label`, `--filed-by`, `--claimed-by`, `--spec`, `--origin`, `--epic` and `--cols` — each take a comma-separated list, and `--epic` scopes the view to one umbrella's members. It shows open work by default: `list` and the priority filters hide closed issues unless you ask for them with `list closed` or set `issue_list_closed = "true"`. Grouping, sort key, columns and direction are configurable (`issue_list_group` / `_sort` / `_cols` / `_order`), and an explicit filter always overrides the configured default.
 
-**`show <id>`** — resolves an ordinal, an exact id or slug, or a unique slug prefix, against the indexed set only.
+**`show <id>`** — resolves an ordinal, an exact id or slug, or a unique slug prefix, against the indexed set only. On an umbrella it also lists the derived roster and its progress.
 
-**`stats`** — open/closed counts, clusters by priority, origin and label, and a **blocking ranking**: the issues with the highest `blocks` out-degree, which answers "what is holding up the most work?".
+**`stats`** — open/closed counts, clusters by priority, origin and label, and a **blocking ranking**: the issues with the highest `blocks` out-degree, which answers "what is holding up the most work?". Umbrellas are counted on their own `Epics: N open · M closed` line, because the other counts are counts of work and an umbrella names none of its own; an `== Epics ==` rollup then gives each one its progress. Both describe the same population — a filter that excludes an umbrella's own row drops it from the headline and the rollup alike — while the progress a listed umbrella carries is its whole roster's, not the filter's share of it.
 
 ### The index
 
-`INDEX.md` is a pure projection of the issue files, rebuilt after every write and whenever a read finds it stale. It holds no authority of its own — identity comes from the allocator, and the index only reports what the files say. Four sections:
+`INDEX.md` is a pure projection of the issue files, rebuilt after every write and whenever a read finds it stale. It holds no authority of its own — identity comes from the allocator, and the index only reports what the files say. Five sections:
 
 | Section | Content |
 | :--- | :--- |
 | **Summary** | Open and closed counts |
 | **Issues** | One row per issue: slug, title, status, num, priority, created, labels, origin |
+| **Epics** | One row per umbrella, with its derived roster and progress |
 | **Graph** | Every typed edge — `A --blocks--> B` — from frontmatter relations and body wikilinks |
 | **Integrity Warnings** | What the scan could not reconcile |
 

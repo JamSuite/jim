@@ -152,19 +152,27 @@ transition_verbs() {
     | tr -s '[:space:]' '\n' | grep -v '^$'
 }
 
-# INTRODUCTION, lifecycle half. The verbs are restated in prose on three
+# INTRODUCTION, lifecycle half. The verbs are restated in prose on four
 # hand-maintained operator surfaces, and only ARCHITECTURE.md is refreshed by
 # the pipeline. A hand edit fixes the increment that noticed the drift and
 # leaves the next one exposed, so the enumeration is checked rather than
-# corrected.
+# corrected. The feature doc is on the list because it is the doc for exactly
+# the verbs this check derives, and it is the surface that went stale when two
+# were added -- the sweep quantified over every surface but that one.
 case_docsurfaces_transition_verbs_are_documented() {
   local v n=0 missing="" surface
   while IFS= read -r v; do
     [[ -n "$v" ]] || continue
     n=$((n + 1))
     for surface in "$REPO_ROOT/README.md" "$REPO_ROOT/WORKFLOW.md" \
-                   "$REPO_ROOT/skills/issue/SKILL.md"; do
-      grep -qF -- "\`$v\`" "$surface" || missing="$missing$(basename "$surface"):$v "
+                   "$REPO_ROOT/skills/issue/SKILL.md" \
+                   "$REPO_ROOT/docs/features/issues.md"; do
+      # The verb, then a space or its closing backtick. A surface documenting
+      # it with operands -- `join <id> <umbrella>`, the feature doc's form --
+      # counts, while `claimed-by` and `closed` still do not, because the
+      # character after the verb decides it.
+      grep -qE -- '`'"$v"'[ `]' "$surface" \
+        || missing="$missing$(basename "$surface"):$v "
     done
   done < <(transition_verbs)
   assert_eq "the array was read (>= 7 verbs, got $n)" "yes" \
