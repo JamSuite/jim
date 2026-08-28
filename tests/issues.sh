@@ -6070,20 +6070,48 @@ status: open'
     "$(find "$repo/docs/issues" -name '*.md' | wc -l)"
 }
 
+# AC: an umbrella groups work, so putting one under another is refused --
+# and it is refused wherever the state is reachable. The capture path and
+# `join` write the same field, so a containment rule enforced on one of them
+# is a rule the collection does not have: the record filed here is exactly
+# the record `join` would refuse. Refused above the allocator with the other
+# capture-time checks, which is what keeps it free.
+case_new_refuses_an_epic_filed_into_an_epic() {
+  local repo b
+  repo=$(new_repo new_nested_epic)
+  mkdir -p "$repo/docs/issues"
+  write_issue "$repo/docs/issues" "20260101-outer" 'id: 20260101-outer
+num: 1
+type: epic
+status: open'
+  b=$(fixture new_nested_epic_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Inner" --priority medium --labels x --origin conversation \
+    --type epic --part-of 20260101-outer --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_eq "only the seeded umbrella exists" "1" \
+    "$(find "$repo/docs/issues" -name '*.md' | wc -l)"
+}
+
 # AC: a filing refused for any reason consumes no issue identity. The
 # allocator is append-only, so an ordinal spent by a run that then refuses is
 # one no later run reclaims — which makes the POSITION of a refusal, not its
-# wording, the property under test. Both capture-time refusals are driven
+# wording, the property under test. Every capture-time refusal is driven
 # here, then a filing that succeeds is asserted to take the ordinal they would
 # have taken.
 #
-# This is what makes the directory hoist and the two checks one change rather
-# than three edits: move either refusal below the allocation and the good
-# filing lands on 2 or 3, not 1.
+# This is what makes the directory hoist and the checks one change rather than
+# several edits: move any refusal below the allocation and the good filing
+# lands past 1.
 case_new_refusals_leave_the_ordinal_unspent() {
   local repo b log slug
   repo=$(new_repo new_unspent_ordinal)
   mkdir -p "$repo/docs/issues"
+  write_issue "$repo/docs/issues" "20260101-outer" 'id: 20260101-outer
+num: 1
+type: epic
+status: open'
   b=$(fixture new_unspent_body.md 'body')
 
   run_new_in "$repo" --dir "$repo/docs/issues" \
@@ -6095,6 +6123,11 @@ case_new_refusals_leave_the_ordinal_unspent() {
     --title "Rejected umbrella" --priority medium --labels x --origin conversation \
     --part-of no-such-umbrella --body-file "$b"
   assert_exit "an unresolvable umbrella refuses" 1 "$RC"
+
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Rejected nesting" --priority medium --labels x --origin conversation \
+    --type epic --part-of 20260101-outer --body-file "$b"
+  assert_exit "an epic under an epic refuses" 1 "$RC"
 
   # Nothing was reserved: the registry has no allocation to show for either.
   log="$(git -C "$repo" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null)"

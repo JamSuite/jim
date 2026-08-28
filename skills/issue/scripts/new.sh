@@ -292,6 +292,15 @@ if [[ -n "$part_of" ]]; then
       fi
       exit 1
     fi
+    # An umbrella groups work, so it may not itself be grouped. Checked after
+    # the target's kind, in the order the lifecycle verb checks the same pair,
+    # so the two write paths refuse the same state for the same stated reason.
+    # Without it the capture path writes exactly what `join` refuses, which
+    # makes the containment a property of the route rather than of the record.
+    if [[ "$type" == "epic" ]]; then
+      echo "error: an epic cannot belong to an epic" >&2
+      exit 1
+    fi
     if [[ -z "$part_of_enc" ]]; then part_of_enc="$_rslug"
     else part_of_enc="$part_of_enc, $_rslug"; fi
   done
