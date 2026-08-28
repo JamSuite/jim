@@ -407,3 +407,11 @@ issue allocate 406 20260827-report-an-honest-completion-rate-from-the-outcome-fi
 issue allocate 407 20260828-a-relation-type-reaches-the-graph-unbounded-in-length 20260827 jrko
 issue allocate 408 20260828-membership-doubles-the-index-graph-section 20260827 jrko
 issue allocate 409 20260828-the-updated-field-is-written-but-never-read 20260827 jrko
+issue allocate 410 20260828-blueprint-divergence-atomic-index-write 20260828 jrko
+issue allocate 411 20260828-blueprint-divergence-cross-copy-lockstep 20260828 jrko
+issue allocate 412 20260828-define-capture-flag-extraction-for-malformed-input 20260828 jrko
+issue allocate 413 20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella 20260828 jrko
+issue allocate 414 20260828-reconcile-the-census-container-headline-with-its-rollup 20260828 jrko
+issue allocate 415 20260828-scope-backfill-and-migrate-frontmatter-reads-to-the-fence 20260828 jrko
+issue allocate 416 20260828-state-the-capture-kind-rule-correctly-in-the-issue-skill-checkli 20260828 jrko
+issue allocate 417 20260828-update-the-issues-feature-doc-for-the-epic-increment 20260828 jrko
