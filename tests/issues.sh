@@ -9898,6 +9898,44 @@ outcome: ""'
   assert_match "and names the row field" 'type' "$ERR"
 }
 
+# AC: a roster can never disagree with the records claiming membership — and
+# the surfaces that report one cannot disagree with each other either. A
+# hand-edited record naming a plain issue as its umbrella is a containment
+# violation the index reports; neither surface may present that issue AS an
+# umbrella. The index filters its section to records of kind epic, so the
+# census rollup must apply the same test rather than listing every target that
+# happens to be named.
+case_issues_render_stats_rollup_lists_only_real_umbrellas() {
+  local dir
+  dir=$(empty_dir render_rollup_non_epic)
+  write_issue "$dir" "20260101-plain" 'title: "Plain"
+status: open
+num: 1
+type: issue
+outcome: ""'
+  write_issue "$dir" "20260102-m" 'title: "M"
+status: open
+num: 2
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-plain]'
+  run_index "$dir"
+  assert_match "the index reports the violation" 'names an umbrella that is not an epic' \
+    "$(cat "$dir/INDEX.md")"
+  assert_match "and lists no umbrella" '_No epics._' "$(cat "$dir/INDEX.md")"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the census agrees with the index" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^== Epics ==$')"
+  assert_eq "no container count either" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^  Epics: ')"
+}
+
 # AC: the statistics view reports a per-umbrella rollup.
 case_issues_render_stats_reports_a_per_umbrella_rollup() {
   local dir

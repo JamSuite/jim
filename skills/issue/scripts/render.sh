@@ -972,17 +972,25 @@ declare -A EPIC_TOTAL=() EPIC_DONE=() EPIC_MEMBERS=()
 #   (member, umbrella): one record naming an umbrella repeatedly is one member,
 #   or the denominator inflates and the roster repeats.
 build_epic_progress() {
-  local index_file="$1" slug num status rest src tgt pair
-  local -A st=() seen=()
+  local index_file="$1" slug num status prio created labels title origin type rest
+  local src tgt pair
+  local -A st=() kind=()
   # Reset rather than accumulate. These are globals, and the counters add, so a
   # second call in one run would double every figure it reports.
   EPIC_TOTAL=(); EPIC_DONE=(); EPIC_MEMBERS=()
-  while IFS=$'\t' read -r slug num status rest; do
+  local -A seen=()
+  while IFS=$'\t' read -r slug num status prio created labels title origin \
+      type rest; do
     [[ -z "$slug" ]] && continue
-    st[$slug]="$status"
+    st[$slug]="$status"; kind[$slug]="$type"
   done < <(read_issue_rows "$index_file")
   while IFS=$'\t' read -r src tgt; do
     [[ -n "$src" && -n "$tgt" ]] || continue
+    # Only a record that IS an umbrella gets one. A membership naming a plain
+    # issue is a containment violation the index reports as such, and
+    # presenting that issue as an umbrella here would make this surface
+    # disagree with the section the index writes from the same edges.
+    [[ "${kind[$tgt]:-}" == "epic" ]] || continue
     pair="$src|$tgt"
     [[ -n "${seen[$pair]:-}" ]] && continue
     seen[$pair]=1
