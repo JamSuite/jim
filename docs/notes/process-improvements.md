@@ -463,6 +463,7 @@ in code, but in the **records, tests, runs and probes** used to fix the code:
 | a test green on first run | a behaviour pinned | possibly a test that cannot fail |
 | a killed suite process | a finished run | 124 of 401 cases, no summary line |
 | a `sed` mutation | applied | silently no-op'd on an escaping mistake |
+| a `grep` probe proving a mutant is in place | the mutation applied | a `$` in the pattern read as a metacharacter, matching nothing |
 | `grep -c` on a log | a count of zero | a refusal to read a file it judged binary |
 | a narrowed query | a filter | three groups matched, at status 0 |
 | a column selection | applied | accepted and discarded |
