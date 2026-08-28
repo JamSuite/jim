@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 147
-- Closed: 271
+- Open: 146
+- Closed: 272
 
 ## Issues
 
@@ -416,7 +416,7 @@
 - `20260828-a-relation-type-reaches-the-graph-unbounded-in-length` — A relation type reaches the graph unbounded in length · status: open · num: 407 · priority: low · created: 2026-08-28T05:17:25Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 - `20260828-blueprint-divergence-atomic-index-write` — Blueprint divergence: atomic-index-write · status: open · num: 410 · priority: medium · created: 2026-08-28T11:55:12Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/015-epic-authoring-and-views · type: issue · filed-by: jrko
 - `20260828-blueprint-divergence-cross-copy-lockstep` — Blueprint divergence: cross-copy-lockstep · status: closed · num: 411 · priority: high · created: 2026-08-28T11:55:11Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/015-epic-authoring-and-views · type: issue · filed-by: jrko · outcome: done
-- `20260828-define-capture-flag-extraction-for-malformed-input` — Define capture flag extraction for malformed input · status: open · num: 412 · priority: high · created: 2026-08-28T11:37:32Z · labels: [skill-surface, epic] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko
+- `20260828-define-capture-flag-extraction-for-malformed-input` — Define capture flag extraction for malformed input · status: closed · num: 412 · priority: high · created: 2026-08-28T11:37:32Z · labels: [skill-surface, epic] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · claimed-by: jrko · outcome: done
 - `20260828-document-the-close-side-resolution-note-convention` — Document the close-side resolution note convention · status: open · num: 418 · priority: medium · created: 2026-08-28T20:44:41Z · labels: [skill-surface, docs, lifecycle] · origin: docs/specs/issue/015-epic-authoring-and-views/remediation.md · type: issue · filed-by: jrko
 - `20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella` — leave cannot remove a membership naming a deleted umbrella · status: open · num: 413 · priority: medium · created: 2026-08-28T08:46:45Z · labels: [issue, lifecycle] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 - `20260828-membership-doubles-the-index-graph-section` — Membership doubles the index graph section · status: open · num: 408 · priority: medium · created: 2026-08-28T05:17:23Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
