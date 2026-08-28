@@ -10024,6 +10024,36 @@ case_issues_render_stats_reports_a_per_umbrella_rollup() {
     '20260101-umbrella.*1/2 closed' "$OUT"
 }
 
+# AC: the census describes one population. The container headline is
+# accumulated behind the filter gate, so a rollup read from the unfiltered
+# derivation names umbrellas the headline above it declines to count. The
+# blocking rollup one section below already settles the shape: which sources
+# appear is scoped to the query, and the count each one carries is whole.
+case_issues_render_stats_rollup_is_scoped_like_its_headline() {
+  local dir section
+  dir=$(empty_dir render_rollup_scoped)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  # The umbrella is `high`, so its own row fails a `low` query.
+  run_render stats --priority low "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the headline declines to count it" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^  Epics: ')"
+  assert_eq "so the rollup does not name it either" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^== Epics ==$')"
+  # The control, on the same collection: a query the umbrella's row passes.
+  # Progress is a property of the umbrella rather than of the query, so it
+  # reads whole — 1/2, not the 0/0 a member-scoped count would report here,
+  # since neither member is `high`.
+  run_render stats --priority high "$dir"
+  assert_exit "rc" 0 "$RC"
+  section="$(printf '%s\n' "$OUT" \
+    | awk '/^== Epics ==$/ { on = 1; next } on && /^== / { exit } on')"
+  assert_match "the headline counts it" 'Epics: 1 open · 0 closed' "$OUT"
+  assert_match "and its progress is complete" \
+    '20260101-umbrella +1/2 closed' "$section"
+}
+
 # AC: opening an umbrella shows its roster and its progress, computed from the
 # members rather than recorded on the umbrella.
 case_issues_render_show_lists_the_roster_and_progress() {

@@ -757,19 +757,34 @@ cmd_stats() {
   fi
   printf '\n'
 
-  # Per-umbrella rollup, from the shared derivation. Progress is a property of
-  # the umbrella rather than of the query, so it is not scoped by the filter.
+  # Per-umbrella rollup, from the shared derivation. Which umbrellas appear is
+  # scoped to the query, the way the blocking rollup below scopes its sources:
+  # the container headline above is accumulated behind the same gate, and a
+  # census must not name an umbrella in its rollup that its own headline
+  # declines to count. What a row *carries* is not scoped — progress is a
+  # property of the umbrella rather than of the query, so it reads whole, again
+  # the rule the blocking rollup applies to its edge counts.
   # Driven by the roster, not by the progress maps: those are keyed by the
   # umbrellas that have members, so reading their keys would omit an umbrella
   # nobody has joined — a record the container count on the headline above
   # still counts, and one `show` and `list epic` both report.
+  #
+  # The rows are accumulated before the heading is printed, because whether
+  # there is a section at all is the filtered roster's answer, not the whole
+  # roster's. `printf -v` rather than a command substitution per row, for the
+  # reason format_row states.
   build_epic_progress "$index_file"
+  local epic_block="" e row
   if (( ${#EPIC_ROWS[@]} > 0 )); then
-    printf '== Epics ==\n\n'
-    local e
     for e in "${EPIC_ROWS[@]}"; do
-      printf '  %-44s %s/%s closed\n' "$e" "${EPIC_DONE[$e]:-0}" "${EPIC_TOTAL[$e]:-0}"
-    done | sort
+      [[ -n "${matching[$e]:-}" ]] || continue
+      printf -v row '  %-44s %s/%s closed' "$e" "${EPIC_DONE[$e]:-0}" "${EPIC_TOTAL[$e]:-0}"
+      epic_block+="$row"$'\n'
+    done
+  fi
+  if [[ -n "$epic_block" ]]; then
+    printf '== Epics ==\n\n'
+    printf '%s' "$epic_block" | sort
     printf '\n'
   fi
 
