@@ -221,6 +221,31 @@ reached a refusal message that concatenated it unsanitized, which was a fresh
 row-forgery route created *by* the fix. Both edits shipped together. The rule's
 cost is one careful read; its absence has cost three rounds.
 
+### A claim's quantifier is the part to check
+
+A `high` invariant read: *every guard carrying a sync marker stays
+byte-identical to the other copies of that marker.* A build then added a script
+declaring itself the single definition of a resolution rule and left the old
+implementation in a sibling, unmarked. The invariant could not fire. It is
+quantified over **marked** copies, and an unmarked duplicate is outside its
+domain by construction — so the rule governs the maintenance of duplicates and
+is silent on their creation, which is when this one appeared.
+
+**A rule quantified over the opt-in cannot catch the case that did not opt in.**
+Read an invariant's quantifier before trusting it to cover a class: the breach
+it misses is the one that never entered its domain, and no amount of judge
+effort recovers it, because the judge is asked the rule as written.
+
+The same increment supplies the paired trap. That script's header asserts it is
+*the single definition* of the rule on every write path — **a proposition about
+the whole repository, made in a file that cannot see the rest of it.** A
+uniqueness claim in a comment is an untested assertion, and it reads as
+established because headers usually describe their own file, where they are
+self-verifying. When a header claims singularity, something has to assert
+exactly one implementation exists; otherwise the claim decays into documentation
+of an intention. That is *Write the guarantee and the mechanism separately*
+applied to a claim whose scope is wider than its file.
+
 ### Test the mechanism, don't assume it
 
 A fix that rests on a tool's behaviour is only as good as your belief about that
@@ -900,6 +925,14 @@ This is the sibling of *By file, not by issue* below, at a different moment: tha
 one governs reading a whole function while editing it, this one governs
 enumerating a rule's reach before declaring it held.
 
+**Automation is not exempt, and hides the miss better.** A doc generator ran at
+one build's completion gate, updated the script-count *tree* in its output to
+ten, and left the *prose* count in the same document at nine. The generator
+reported success, which is what makes this instance worse than a hand pass: the
+first site was refreshed by a tool, so nobody re-read the second. A surface
+maintained by a generator still has siblings, and the generator's own output is
+where to look for them.
+
 ### Assert the verb's assumed property at plan time
 
 Two of one build's three plan deviations were the same defect: an instruction
@@ -924,6 +957,41 @@ is where a locally-correct, globally-incomplete enumeration comes from. This is
 *Name the set before you write the enumeration* moved one stage earlier, to the
 document that commissions the enumeration rather than the code that contains
 it.
+
+### A task list cannot be run
+
+A plan's Requirements Coverage maps each acceptance criterion to the tasks that
+satisfy it. That mapping records **presence, not sufficiency**, and the
+distinction is the whole of one increment's drift: two rows read
+
+    | Create an umbrella kind without a separate capture flow | 5 |
+    | Name an umbrella at capture time                        | 6 |
+
+where tasks 5 and 6 change the emitter script and both criteria describe the
+*skill surface* that invokes it. Every criterion had a task, so the table read
+complete. All 29 tasks were executed correctly. Those two rows are exactly the
+two criteria the review recorded as not satisfied.
+
+Nothing downstream could have caught it, because **a task list is not
+falsifiable**. You cannot run "tasks 5, 6" and watch it fail. Name instead the
+**observable that demonstrates the criterion** — a case, a command, a
+doc-surface assertion — and the coverage column becomes a set of runnable
+things a completion gate can check. The case that eventually closed this
+criterion already had a home in the doc-surface suite; had the plan been
+required to name an observable, it would have been a task instead of a
+remediation.
+
+**The reason to spend more here than a human workflow would.** A builder
+holding "the `add` subcommand accepts `--type`" while implementing "add
+`--type` to `new.sh`" tends to notice the gap between them. A compliant
+executor does not: the task is the unit of work and it was completed. Fidelity
+removes the informal error-correction that ordinarily absorbs a defective
+instruction, so **an agentic pipeline converts plan defects into shipped
+defects at close to 1:1**, and verification effort should be redistributed
+toward the artifacts that instruct in proportion to how faithfully they will be
+obeyed. This is the economic argument under *Assert the verb's assumed property
+at plan time*, and it applies to every rule in this file that fires at or after
+the change.
 
 ### A second reader is a disagreement risk, not a correctness risk
 
@@ -955,6 +1023,14 @@ canonical snippet consumers copy that encoded the unsafe case.
 Prefer: implement, then verify the claim against the implementation as a separate
 act — ideally by a different reader.
 
+The same effect reaches the plan, where it is cheaper to catch and more
+expensive to miss. One plan's Requirements Coverage mapped two capture-flow
+criteria to script tasks, and its File Manifest scoped the matching prose edit
+to a different part of the file. Two artifacts, one author, one pass — and they
+agreed, because agreement between artifacts derived from a single model of the
+work is not corroboration. **Defence in depth adds assurance only when the
+layers are independently derived; these were independently formatted.**
+
 ## Records
 
 ### A resolution note is the durable record
@@ -975,6 +1051,21 @@ naming precisely what did not land. It is better than editing the original
 resolution, because the overclaim itself is information: it tells the next author
 which claims in this collection are load-bearing and which were written from
 memory.
+
+**A rule written here is not written where the verb is.** This section states
+the convention; the `close` dispatch, the feature doc and the workflow doc do
+not. An executor following the skill sets `status`, `outcome` and the stamp,
+and stops — producing a record that is complete in every field a reader would
+check and missing the only half that cannot be re-derived. Four issues were
+closed that way in one pass, and the omission was invisible until someone
+asked.
+
+The general form: **a convention documented only in the retrospective record is
+enforced only on whoever reads retrospectives.** Where a rule governs a verb,
+it belongs at the verb — the point of use is the surface an executor actually
+reads, and a validation checklist is the enforceable version of it. That this
+file had the rule for two rounds and the gap persisted is the evidence, not a
+counter-example.
 
 ### Name the guard that ships pinned by nothing
 
@@ -1147,6 +1238,27 @@ working, one round later than it should have.
 `/jim:arch`.** A surgical hand-edit bypasses the skill's grading, its
 present-tense and provenance scans, and its `Last updated` stamp.
 
+### A measurement can be accurate exactly where it does not matter
+
+`<stage>_duration_seconds` reports the span from a stage's **first** `started`
+to its **last** `finished`. For a stage run once that is the duration. For a
+stage run twice it is the wall-clock gap between the two, including every other
+stage that ran in between.
+
+One increment reported 31,024 seconds of security review over two runs that took
+1,340 — a factor of 23 — alongside a 5× overstatement on review and 2× on build,
+with the three single-run stages exact.
+
+The general shape is worth more than the defect: **the error is correlated with
+the condition being measured.** A stage is re-run because something went wrong,
+so the metric is trustworthy for untroubled increments and wrong for exactly the
+ones a retrospective wants to examine. A defect distributed that way survives
+every casual check, because the runs where anyone would scrutinise the number
+are the runs where it is right.
+
+Reconstruct from the event pairs when a stage records more than one run, and say
+in the artifact that you did.
+
 ## Reviews
 
 ### Fan-out is the evidence, not the reading
@@ -1248,6 +1360,56 @@ reports clean coverage.
 
 Judge the working tree, and say in `review.md` that you did.
 
+### Coverage chosen by judgment is not reproducible
+
+Two sensor passes over the *same* change and the *same* blueprint judged 11
+invariants, then 14. Nothing degraded and nothing was capped; the second pass
+re-derived its change selection instead of copying the first's, and three
+invariants recorded as `skipped (scope)` turned out to be in scope. All three
+held — so the first report said *unexamined* where the second said *checked*,
+and both reports read clean.
+
+The second pass also found a data-loss path the first had recorded as holding.
+
+Two rules follow. **Where the selection input is mechanically computable —
+territory ∩ changed files — compute it**, and the variance disappears for free.
+**Where it is not, the mitigation is repetition, and agreement between passes
+is the signal** rather than the first pass's verdict.
+
+The objection is cost, and the arithmetic does not support it. In one increment
+build ran 2h04m and each review ran 13 and 11 minutes — verification at roughly
+a tenth of construction, its cost close to flat in the size of the change while
+its yield scales with the defects actually present. Reviewing once is calibrated
+to scarce human attention, and that constraint is absent here. Recalibrate to
+the measured cost rather than inheriting the human one.
+
+A standing consequence: **an invariant whose territory no change touches is
+never checked, and its scope-skip reads identically to a clean result on every
+report it ever appears in.** One has now been scope-skipped in every pass so
+far. Periodically running the sensor unscoped is what distinguishes "checked and
+sound" from "never looked at" — see *A clean result does not disclose its own
+coverage*.
+
+### A judge-only invariant set has no floor
+
+One group's blueprint carries fifteen invariants, **all fifteen `judge`-method,
+with no `verify-checks` block and no pattern or structure rung at all** — in the
+group holding the project's widest fan-in provides face.
+
+Three consequences, none of them visible in a report: every invariant costs an
+LLM dispatch, so coverage is bounded by appetite and fan-out cap rather than by
+free mechanical scanning; coverage inherits the non-determinism above; and
+nothing fails fast, because a mechanical breach is loud and free where a judge
+verdict is neither.
+
+The remedy is not to replace judges with patterns — the prose captures more than
+a pattern can, which is why it is prose. It is to **give each invariant a
+mechanical necessary condition wherever one exists**, so the floor catches the
+common breach for free and the judge is spent on the residue. A tool grant is a
+frontmatter set; "never sourced" is a `must-not` pattern; "atomic write" is the
+absence of a direct redirect; the marked half of a lockstep rule is a byte
+compare. None of these is the whole invariant. Each is a condition whose breach
+is certainly a violation, which is all a floor has to be to be worth having.
 ## Mechanics
 
 **The suite** takes ~9 minutes on a quiet VM and exceeds a foreground timeout.

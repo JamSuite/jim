@@ -90,3 +90,32 @@ rule from the emitter's own vocabulary rather than by hand-correcting the
 prose. There is no equivalent mechanical source here: whether a resolution was
 written is a property of the body, not of a declared constant, so this one is
 prose that has to be stated rather than derived.
+
+## Correction — 2026-08-28
+
+**The claim that the convention is not written down is wrong.**
+`docs/notes/process-improvements.md` carries *A resolution note is the durable
+record*, which states it directly — a dated `## Resolution` naming what shipped,
+the commit, and the case that pins it — and adds a `## Correction` instrument
+for a note that overclaims. It has been there for two rounds.
+
+The sweep behind that sentence covered `skills/issue/SKILL.md`,
+`docs/features/issues.md` and `WORKFLOW.md`. It did not cover the notes file,
+so it found the operator surfaces and missed the one place the rule actually
+lived — an enumeration too narrow in exactly the way this collection has a rule
+against.
+
+**What survives is the sharper half.** The convention is documented in the
+retrospective record and absent from the point of use. An executor reading the
+`close` dispatch, the feature doc or the validation checklist meets no rule and
+produces a complete-looking close; the rule reaches only whoever reads
+retrospectives, which is not who runs the verb. The gap persisting across two
+rounds *while the rule was written down* is the argument for moving it, not
+against it.
+
+So the fix narrows: not "write it down" but **state it where the verb is**, with
+the checklist's transition half as the enforceable form. The two candidate sites
+and the open question about `--as wontfix` versus a bare `done` are unchanged.
+
+This correction is appended rather than replacing the description above, because
+the overclaim is itself information about how the record was made.

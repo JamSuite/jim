@@ -348,9 +348,14 @@ re-investigated by the next context, at full cost, indefinitely.
 issue set `status`, `outcome` and the stamp, and the result looks finished from
 every field a reader would check — while the half that cannot be re-derived
 (which commit, what pins it, what was deliberately left alone) is simply
-absent. An agent does what the verb does and stops. Where a convention lives
-only in a maintainer's habit, it is invisible to the executor; `#418` records
-this one.
+absent. An agent does what the verb does and stops.
+
+The rule for this one **was** written down — `process-improvements.md` carries
+*A resolution note is the durable record* — and the closes still omitted it,
+because the rule lives in the retrospective record and not at the verb. A
+convention documented only where retrospectives are read is enforced only on
+whoever reads retrospectives, which is not who runs the verb. `#418` records
+it, corrected on this point.
 
 ---
 
