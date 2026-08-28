@@ -592,7 +592,7 @@ flowchart TD
    makes that false.
    **Verify:** `bash tests/issues.sh case_new_files_an_epic_kind && bash tests/issues.sh case_new_refuses_an_unrecognized_kind_before_spending_an_ordinal`
 
-6. [ ] `new.sh`: add `--part-of`; validate each reference with `valid-id`, then
+6. [x] `new.sh`: add `--part-of`; validate each reference with `valid-id`, then
    resolve it through the shared ordinal → exact → prefix ladder and refuse one
    that resolves to no record of kind `epic` — all in the pre-spend block, using
    the directory hoisted in task 4. Write the **resolved id verbatim** into
@@ -601,7 +601,7 @@ flowchart TD
    task 4.
    **Verify:** `bash tests/issues.sh case_new_files_into_an_umbrella && bash tests/issues.sh case_new_refuses_an_unresolvable_umbrella_before_spending_an_ordinal && bash tests/issues.sh case_new_part_of_preserves_a_mixed_case_umbrella_id`
 
-7. [ ] `tests/issues.sh`: add the paired no-identity-burned case — after each of
+7. [x] `tests/issues.sh`: add the paired no-identity-burned case — after each of
    the two new refusals, the allocator's next ordinal is the one the run would
    have taken. This is the case that makes tasks 4-6 a unit rather than three
    edits.

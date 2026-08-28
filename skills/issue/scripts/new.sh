@@ -26,7 +26,8 @@
 # USAGE
 #   bash new.sh --title <s> --priority <low|medium|high|critical> \
 #               --labels <csv> --origin <s> --body-file <path> \
-#               [--status open] [--type <issue|epic>] [--slug <id>] [--num <int>] \
+#               [--status open] [--type <issue|epic>] [--part-of <csv>] \
+#               [--slug <id>] [--num <int>] \
 #               [--created <ts>] [--updated <ts>] [--dir <issues_dir>] \
 #               (--auto | --reviewed)
 #
@@ -72,6 +73,7 @@ JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 JIMALLOC="$(dirname "$JIMFILE")/jimalloc.sh"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 IDENTITY="$HERE/identity.sh"
+RESOLVE="$HERE/resolve.sh"
 
 # What kind of record a capture may create. Iterated rather than restated at
 # the check below, so a kind added here reaches the validation without a second
@@ -82,7 +84,7 @@ readonly ISSUE_TYPES=(issue epic)
 
 title="" priority="" labels="" origin="" body_file=""
 status="open" slug="" num="" created="" updated="" dir="" place_token=""
-type="issue"
+type="issue" part_of=""
 auto=0 reviewed=0
 
 # Kept whole for the placement re-exec below, which has to hand this script its
@@ -98,6 +100,7 @@ while [[ $# -gt 0 ]]; do
     --body-file) body_file="${2-}"; shift 2 || break ;;
     --status)    status="${2-}";    shift 2 || break ;;
     --type)      type="${2-}";      shift 2 || break ;;
+    --part-of)   part_of="${2-}";   shift 2 || break ;;
     --slug)      slug="${2-}";      shift 2 || break ;;
     --num)       num="${2-}";       shift 2 || break ;;
     --created)   created="${2-}";   shift 2 || break ;;
@@ -248,6 +251,52 @@ else
 fi
 issues_dir="${issues_dir%/}"
 
+# ─── Resolve the umbrellas this filing joins ─────────────────────────────────
+
+# Each reference is resolved through resolve.sh, the same definition the
+# lifecycle verbs resolve through, so a reference that works on `join` works
+# here and the two paths cannot disagree about what exists. Resolution runs
+# above the allocator: an umbrella that does not resolve refuses a filing that
+# has not yet spent an ordinal.
+#
+# The RESOLVED id is what gets written, verbatim. It has already cleared
+# valid-id twice and named a real record, so it is not put through the label
+# encoder below — that encoder is a lossy normalizer for free text and reduces
+# anything outside [a-z0-9-], while an id may legitimately carry uppercase and
+# a dot. Encoding one would write a membership naming a record that does not
+# exist.
+part_of_enc=""
+if [[ -n "$part_of" ]]; then
+  IFS=',' read -ra _pref_parts <<< "$(printf '%s' "$part_of" | tr '\n\r' '  ')"
+  for _raw in "${_pref_parts[@]}"; do
+    _ref="$(printf '%s' "$_raw" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    [[ -n "$_ref" ]] || continue
+    if ! _res="$(bash "$RESOLVE" "$issues_dir" "$_ref" 2>/dev/null)"; then
+      echo "error: --part-of names no issue in the collection" >&2
+      exit 1
+    fi
+    _rslug="${_res%%$'\t'*}"
+    _rkind="${_res##*$'\t'}"
+    if [[ "$_rkind" != "epic" ]]; then
+      # Name the kind only when it is one the schema declares. A hand-edited
+      # record can carry anything in that field, and a refusal is not the place
+      # to render arbitrary file content.
+      _named=""
+      for _t in "${ISSUE_TYPES[@]}"; do
+        [[ "$_rkind" == "$_t" ]] && { _named="$_rkind"; break; }
+      done
+      if [[ -n "$_named" ]]; then
+        echo "error: --part-of names a record of type '$_named', not an epic" >&2
+      else
+        echo "error: --part-of names a record that is not an epic" >&2
+      fi
+      exit 1
+    fi
+    if [[ -z "$part_of_enc" ]]; then part_of_enc="$_rslug"
+    else part_of_enc="$part_of_enc, $_rslug"; fi
+  done
+fi
+
 # ─── Resolve identity (overrides win; else compose via jimalloc.sh) ──────────
 
 # Unset slug/num are resolved together, through the coordination allocator —
@@ -368,7 +417,10 @@ trap 'rm -f "$tmpfile"' EXIT INT TERM
   printf 'claimed-by: ""\n'
   printf 'outcome: ""\n'
   printf 'labels: [%s]\n' "$labels_enc"
-  printf 'relations:\n  blocks: []\n  depends-on: []\n  related-to: []\n  duplicates: []\n  part-of: []\n'
+  # Every part-of entry resolved to a record of kind epic above, so each is a
+  # validated id and none can close the array or open a field of its own.
+  printf 'relations:\n  blocks: []\n  depends-on: []\n  related-to: []\n  duplicates: []\n'
+  printf '  part-of: [%s]\n' "$part_of_enc"
   printf 'created: %s\n' "$created"
   printf 'updated: %s\n' "$updated"
   printf 'origin: "%s"\n' "$origin_enc"

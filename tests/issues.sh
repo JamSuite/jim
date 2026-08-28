@@ -5461,6 +5461,156 @@ case_new_refuses_an_unrecognized_kind_before_spending_an_ordinal() {
     "$(find "$repo/docs/issues" -name '*.md' 2>/dev/null | wc -l)"
 }
 
+# AC: naming an umbrella at capture time groups the work in one command, and
+# the membership is recorded on the member alone — the umbrella's own file
+# says nothing about who joined it.
+case_new_files_into_an_umbrella() {
+  local dir b out
+  dir=$(empty_dir new_part_of)
+  write_issue "$dir" "20260101-umbrella" 'id: 20260101-umbrella
+num: 1
+type: epic
+status: open'
+  b=$(fixture new_part_of_body.md 'body')
+  run_new --dir "$dir" --slug "20260102-member" --num 2 \
+    --created "2026-01-02T00:00:00Z" --updated "2026-01-02T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --part-of 20260101-umbrella --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260102-member.md")"
+  assert_match "membership recorded on the member" \
+    '^  part-of: \[20260101-umbrella\]$' "$out"
+  assert_eq "the umbrella records nothing about the member" "0" \
+    "$(grep -c 'member' "$dir/20260101-umbrella.md")"
+}
+
+# AC: an umbrella is nameable by every form an issue is nameable by, so the
+# capture path and the lifecycle verbs cannot disagree about what resolves.
+# An ordinal and a prefix are the two forms exact-string matching would miss.
+case_new_part_of_accepts_ordinal_and_prefix_forms() {
+  local dir b
+  dir=$(empty_dir new_part_of_forms)
+  write_issue "$dir" "20260101-auth-hardening" 'id: 20260101-auth-hardening
+num: 7
+type: epic
+status: open'
+  b=$(fixture new_part_of_forms_body.md 'body')
+  run_new --dir "$dir" --slug "20260102-by-ordinal" --num 2 \
+    --created "2026-01-02T00:00:00Z" --updated "2026-01-02T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --part-of 7 --body-file "$b"
+  assert_exit "ordinal rc" 0 "$RC"
+  assert_match "an ordinal resolves to the umbrella's slug" \
+    '^  part-of: \[20260101-auth-hardening\]$' "$(cat "$dir/20260102-by-ordinal.md")"
+  run_new --dir "$dir" --slug "20260103-by-prefix" --num 3 \
+    --created "2026-01-03T00:00:00Z" --updated "2026-01-03T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --part-of 20260101-auth --body-file "$b"
+  assert_exit "prefix rc" 0 "$RC"
+  assert_match "a prefix resolves to the umbrella's slug" \
+    '^  part-of: \[20260101-auth-hardening\]$' "$(cat "$dir/20260103-by-prefix.md")"
+}
+
+# AC: a reference that resolved is written as the record it resolved to. The
+# id charset the validator admits is wider than the label charset -- uppercase
+# and `.` clear one and are reduced by the other -- so putting a resolved id
+# through the label encoder would write a membership naming a record that does
+# not exist, which the index would then warn about forever.
+case_new_part_of_preserves_a_mixed_case_umbrella_id() {
+  local dir b
+  dir=$(empty_dir new_part_of_mixed_case)
+  write_issue "$dir" "JIM-0042-auth-hardening" 'id: JIM-0042-auth-hardening
+num: 42
+type: epic
+status: open'
+  b=$(fixture new_part_of_mixed_body.md 'body')
+  run_new --dir "$dir" --slug "20260102-member" --num 2 \
+    --created "2026-01-02T00:00:00Z" --updated "2026-01-02T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --part-of JIM-0042-auth-hardening --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the resolved id is written verbatim" \
+    '^  part-of: \[JIM-0042-auth-hardening\]$' "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: naming an umbrella that does not exist is refused when filing, on the
+# same terms as naming one afterwards, and the refusal costs no identity.
+# case_new_refusals_leave_the_ordinal_unspent measures the ordinal.
+case_new_refuses_an_unresolvable_umbrella_before_spending_an_ordinal() {
+  local repo b
+  repo=$(new_repo new_bad_umbrella)
+  mkdir -p "$repo/docs/issues"
+  b=$(fixture new_bad_umbrella_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Alpha" --priority medium --labels x --origin conversation \
+    --part-of no-such-umbrella --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_eq "nothing was written" "0" \
+    "$(find "$repo/docs/issues" -name '*.md' 2>/dev/null | wc -l)"
+}
+
+# AC: an umbrella contains ordinary issues, so filing into a record that is
+# not one is refused -- and the refusal says what that record actually is,
+# which is the difference between a typo and a category error.
+case_new_refuses_a_non_epic_umbrella_at_capture() {
+  local repo b
+  repo=$(new_repo new_non_epic_umbrella)
+  mkdir -p "$repo/docs/issues"
+  write_issue "$repo/docs/issues" "20260101-plain" 'id: 20260101-plain
+num: 1
+type: issue
+status: open'
+  b=$(fixture new_non_epic_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Alpha" --priority medium --labels x --origin conversation \
+    --part-of 20260101-plain --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the refusal names what the record is" 'issue' "$ERR"
+  assert_eq "only the seeded record exists" "1" \
+    "$(find "$repo/docs/issues" -name '*.md' | wc -l)"
+}
+
+# AC: a filing refused for any reason consumes no issue identity. The
+# allocator is append-only, so an ordinal spent by a run that then refuses is
+# one no later run reclaims — which makes the POSITION of a refusal, not its
+# wording, the property under test. Both capture-time refusals are driven
+# here, then a filing that succeeds is asserted to take the ordinal they would
+# have taken.
+#
+# This is what makes the directory hoist and the two checks one change rather
+# than three edits: move either refusal below the allocation and the good
+# filing lands on 2 or 3, not 1.
+case_new_refusals_leave_the_ordinal_unspent() {
+  local repo b log slug
+  repo=$(new_repo new_unspent_ordinal)
+  mkdir -p "$repo/docs/issues"
+  b=$(fixture new_unspent_body.md 'body')
+
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Rejected kind" --priority medium --labels x --origin conversation \
+    --type sandwich --body-file "$b"
+  assert_exit "an unrecognized kind refuses" 1 "$RC"
+
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Rejected umbrella" --priority medium --labels x --origin conversation \
+    --part-of no-such-umbrella --body-file "$b"
+  assert_exit "an unresolvable umbrella refuses" 1 "$RC"
+
+  # Nothing was reserved: the registry has no allocation to show for either.
+  log="$(git -C "$repo" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null)"
+  assert_eq "no ordinal was reserved by the refusals" "0" \
+    "$(printf '%s' "$log" | grep -c '^issue allocate ')"
+
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Accepted" --priority medium --labels x --origin conversation \
+    --body-file "$b"
+  assert_exit "the next filing succeeds" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "it takes the ordinal the refusals would have burned" "1" \
+    "$(num_of "$repo/docs/issues" "$slug")"
+}
+
 # AC: when the developer's identity cannot be determined from the environment,
 # filing an issue is refused and nothing is written.
 case_new_refuses_a_filing_with_no_identity() {
