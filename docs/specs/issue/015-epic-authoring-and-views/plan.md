@@ -2,7 +2,7 @@
 title: "Epic authoring and views"
 spec: "docs/specs/issue/015-epic-authoring-and-views/spec.md"
 type: feature
-status: approved
+status: complete
 ---
 
 # Epic authoring and views — Plan
@@ -870,8 +870,11 @@ No `[NEEDS CLARIFICATION]` items. All 38 criteria map to at least one task.
 - [x] ~Does extending `PLACE_VERBS` break either outside consumer?~ → No.
   `reconcile.sh` uses `mode`/`begin`/`commit --verb edit`/`abort`;
   `/jim:partition` holds a read-only trio. Growing an enum removes nothing.
-- [ ] **`--part-of` accepts a comma-separated list at capture; `join` takes one
+- [x] ~**`--part-of` accepts a comma-separated list at capture; `join` takes one
   umbrella per call.** The asymmetry follows the flag conventions on each side
   (`--labels` is a list; a transition verb takes one operand) and no criterion
-  requires either to match the other. Worth a second look at build time if the
-  batch shape reads oddly in practice.
+  requires either to match the other.~ → Kept, after the second look this asked
+  for. Nothing since has argued against it: the build, both reviews, the
+  remediation pass and the follow-on fixes raised no complaint about the batch
+  shape, and documenting the two forms beside each other in the feature doc
+  read naturally rather than oddly.
