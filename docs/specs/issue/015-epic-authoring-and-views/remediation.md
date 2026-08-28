@@ -226,54 +226,103 @@ expensive half of what has already been paid for.
 
 ---
 
-## 5. Follow-on work, and where it now lives
+## 5. The open issues, and whose they are
 
-The first review's candidate batch never ran, so none of this was tracked. The
-second review's batch filed five of twelve rows on the developer's selection,
-and the blueprint fork filed two more.
+Thirteen issues trace to this increment, all now carrying durable ordinals.
+They divide by one question — **should this have been done in the build?** —
+and the answer is not the same as *when it was found*: the second review found
+the build's defects and the build's own batch found follow-ons. Attribution is
+recorded here because it is the only place it survives; an issue's body says
+what it is, not whose it was.
 
-**Filed:**
+### 5a. Build scope — should have been done then
 
-- `20260828-scope-backfill-and-migrate-frontmatter-reads-to-the-fence` —
-  critical. `backfill.sh`'s `field_value`/`num_of` and `migrate.sh`'s
-  `build_plan` `field_value` read past the frontmatter fence. Reproduced twice.
-  Sharper than first recorded: `migrate.sh` carries **both** readers, the
-  unscoped one and a correctly fence-scoped pair, so the file knows the hazard
-  and its `prefix` path uses the wrong helper anyway — and under `--apply` that
-  path reaches a file rename.
-- `20260828-state-the-capture-kind-rule-correctly-in-the-issue-skill-checkli` —
-  high. The Validation Checklist still asserts a capture's `type` is `issue`,
-  a fifth site § 2.1's four-site fix list never enumerated. Three investigators
-  found it independently.
-- `20260828-define-capture-flag-extraction-for-malformed-input` — high. The new
-  extraction instruction is undetermined for a repeated flag, a valueless
-  trailing flag, and a non-kind token; the first reproduces the original
-  title-pollution defect from a different direction.
-- `20260828-reconcile-the-census-container-headline-with-its-rollup` — medium.
-  The container headline is filter-scoped while the rollup is not. Reproduced
-  with a negative control and confirmed against pre-remediation code, so it is
-  the build's rather than this pass's — though § 2.3's fix widens the
-  population that can hit it.
-- `20260828-update-the-issues-feature-doc-for-the-epic-increment` — medium.
-  Stale in four places, not the one first recorded.
-- `20260828-blueprint-divergence-cross-copy-lockstep` — high. From the fork.
-  The divergence between `resolve.sh` and `transition.sh`'s retained
-  `resolve_slug` is real but currently **masked**, because both callers discard
-  `resolve.sh`'s stderr — so today's observable behaviour coincides by accident
-  rather than by construction. The issue frames it as the design fork it is.
-- `20260828-blueprint-divergence-atomic-index-write` — medium. From the fork,
-  and new in the second review: `transition.sh` aborts the placement handle
-  after a successful write, destroying a completed transition under a branch
-  placement. Reproduced end to end with a fault-injection rig.
+- **#411 `cross-copy-lockstep`** (high). The build *created* the duplicate:
+  it added `resolve.sh` and left `transition.sh`'s `resolve_slug` in place,
+  unmarked and uncompared, in a territory where five other copy-pairs all carry
+  a marker and a fixture. The divergence is real but currently **masked** —
+  both callers discard `resolve.sh`'s stderr, so today's observable behaviour
+  coincides by accident rather than by construction. The issue frames it as the
+  design fork it is: either the primary id delegates too, or the header stops
+  claiming to be the single definition.
+- **#414 census headline vs rollup** (medium). Both halves shipped in the same
+  increment — a filter-scoped `Epics:` line above an unfiltered rollup.
+  Confirmed by running pre-remediation code against the same fixture, so it is
+  the build's rather than this pass's, though § 2.3's fix widens the population
+  that can hit it.
+- **#416 the checklist's superseded `type` rule** (high). The plan told the
+  build to delete this claim; it was deleted at one site in `SKILL.md` and left
+  standing at a second in the same file. Three investigators found it
+  independently.
+- **#417 the feature doc** (medium) — the weaker case, recorded as arguable
+  rather than settled. No criterion required updating
+  `docs/features/issues.md`, but the build falsified four statements in it, and
+  the doc-surface sweep the build *added* to catch exactly this class was
+  scoped to README, WORKFLOW and the skill body rather than to the feature doc
+  for the verbs it derives.
+
+**What these three-and-a-half share:** each is a *second site the build did not
+sweep for* — a second resolver, a second population, a second restatement of a
+rule. That is the same failure that made the first review `major-drift`, and
+the same one § 2.1's fix pass then repeated by working from a four-site list
+when the file held five.
+
+**And what is not here.** The five unmet acceptance criteria were
+unambiguously build scope and are absent from this list because they were fixed
+rather than filed (§ 1). Had they been filed, this section would name eight.
+
+### 5b. Outside the build — deferred by the spec, or genuine follow-ons
+
+- **#405 grouping the read views by umbrella** (low) — the spec's Out of Scope
+  names it and says it is tracked with the other grouping work.
+- **#408 membership doubles the index graph section** (medium) — the spec
+  *states* this design: the complete membership stays in the Graph section
+  below the roster, always. A size question the spec accepted, not an oversight.
+- **#406 an honest completion rate from `outcome`** (medium) — a new capability
+  the increment's fields make cheap. No criterion asked for it.
+- **#409 the `updated` field has no reader** (low) — confirmed deferred, and
+  named as such in both reviews' scope-creep checks.
+- **#413 `leave` cannot remove a dangling membership** (medium) — reachable
+  because membership is one-sided by design, but no criterion required
+  repairing it. The `leave`-availability comment beside it is correctly scoped
+  to containment violations, which is a different scenario (§ 4).
+- **#412 malformed capture-flag input** (high) — downstream of *this pass*, not
+  the build: the build never wired the flags at all, so the ambiguity could not
+  have existed until § 2.1 introduced the extraction instruction.
+
+### 5c. Pre-existing — older than this increment
+
+- **#415 fence-scoped frontmatter reads** (critical). `backfill.sh`'s
+  `field_value`/`num_of` and `migrate.sh`'s `build_plan` `field_value` read
+  past the frontmatter fence. Reproduced twice. Sharper than first recorded:
+  `migrate.sh` carries **both** readers — the unscoped one and a correctly
+  fence-scoped pair — so the file knows the hazard and its `prefix` path uses
+  the wrong helper anyway, and under `--apply` that path reaches a file rename.
+  Neither file is in this increment's change set. The most serious thing either
+  review found that this pass did not fix.
+- **#410 `atomic-index-write`** (medium). `transition.sh` aborts the placement
+  handle after a successful write, destroying a completed transition under a
+  branch placement. Reproduced end to end with a fault-injection rig, and new
+  in the second review — but the line predates the range, so it is pre-existing
+  despite being found here. Blast radius is branch placements plus a transient
+  index failure.
+- **#407 an unbounded relation type reaches the graph** (low) — in
+  `index.sh`'s `parse_relations`, untouched by this increment.
+
+### 5d. Declined, and already tracked
 
 **Declined, recorded in `review.md` only:** the unsanitized `--epic` refusal
 operand, the `ARCHITECTURE.md` script miscount, the tautological `--reviewed`
 assertion in the new sweep, the unpinned refusal-message parity, the
 `stats --epic` coverage asymmetry, the `--type` quoting inconsistency, and the
-two cases that cannot go red.
+two cases that cannot go red. Two of those — the miscount and the tautological
+assertion — are build scope by the § 5a test and were declined anyway; that is
+a deliberate call, not an oversight.
 
 **Already tracked:** `declared-vocabularies` has an open record, which is why
-the fork filed two divergence issues rather than three.
+the fork filed two divergence issues rather than three. It is build scope by
+the § 5a test: this increment added the third declaration of the record-kind
+vocabulary.
 
 ---
 
