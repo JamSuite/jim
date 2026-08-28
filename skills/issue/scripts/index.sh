@@ -77,6 +77,14 @@ readonly RELATION_TYPES=(blocks depends-on related-to duplicates)
 readonly ISSUE_TYPES=(issue epic)
 readonly ISSUE_OUTCOMES=(done wontfix duplicate obsolete)
 
+# How many open members one umbrella's entry renders before it truncates. The
+# roster is a convenience, not the record — every membership also renders as a
+# Graph edge below, so the complete list is permanently one section down and
+# nothing is lost by bounding what this one shows. The bound exists so that no
+# single entry can grow the generated file without limit; at the collection's
+# real shape it truncates about one umbrella in fifty.
+readonly ROSTER_CAP=10
+
 # in_list <needle> <candidate...> — membership test for the enums above.
 in_list() {
   local needle="$1" item
@@ -739,15 +747,83 @@ main() {
   # in sync. What can go wrong is the member naming an umbrella the collection
   # does not hold, which the graph would otherwise render as an edge to
   # nothing.
-  local m medge mtarget
+  # The same pass derives each umbrella's roster and progress, by BUCKETING
+  # rather than by traversal: every record contributes itself to the bucket of
+  # each umbrella its own part-of names, and nothing ever walks from an
+  # umbrella into a member's own memberships. Termination is therefore a
+  # property of the pass's shape rather than of a cycle guard that would have
+  # to be correct itself — two records naming each other are two buckets each
+  # holding one record, and the pass still visits each record once.
+  #
+  # Read from outgoing_fm and never outgoing_all: a body wikilink must not
+  # create a membership. Deduplicating by (member, umbrella) is a SECOND and
+  # independent requirement — outgoing_all is guarded by seen_all while
+  # edges_fm is appended unconditionally, so a record naming one umbrella
+  # three times arrives here three times. Counted three times it would
+  # overstate the progress denominator and let a single record fill the whole
+  # roster cap while hiding genuinely distinct members.
+  local m medge mtarget mkey
+  declare -A roster_total roster_closed roster_open seen_member warned_nested
+  seen_member[__sentinel__]=1; unset 'seen_member[__sentinel__]'
+  warned_nested[__sentinel__]=1; unset 'warned_nested[__sentinel__]'
   for m in "${slugs_seen[@]}"; do
     for medge in ${outgoing_fm[$m]:-}; do
       [[ "${medge%%:*}" == "part-of" ]] || continue
       mtarget="${medge#*:}"
+      mkey="$m|$mtarget"
+      [[ -n "${seen_member[$mkey]:-}" ]] && continue
+      seen_member[$mkey]=1
+
+      # An umbrella that is itself contained is reported once per record, not
+      # once per membership: the violation is a property of the record.
+      if [[ "${meta_type[$m]:-}" == "epic" && -z "${warned_nested[$m]:-}" ]]; then
+        warned_nested[$m]=1
+        warnings_section+="- \`$m\` is an epic and cannot belong to an epic."$'\n'
+      fi
+
       if [[ -z "${meta_status[$mtarget]:-}" ]]; then
         warnings_section+="- \`$m\` names an umbrella not in the collection: $(row_safe "$mtarget" | tr -d '`')."$'\n'
+        continue
+      fi
+      if [[ "${meta_type[$mtarget]:-}" != "epic" ]]; then
+        warnings_section+="- \`$m\` names an umbrella that is not an epic: \`$mtarget\`."$'\n'
+      fi
+
+      roster_total[$mtarget]=$(( ${roster_total[$mtarget]:-0} + 1 ))
+      if [[ "${meta_status[$m]:-}" == "closed" ]]; then
+        roster_closed[$mtarget]=$(( ${roster_closed[$mtarget]:-0} + 1 ))
+      else
+        roster_open[$mtarget]="${roster_open[$mtarget]:-}$m "
       fi
     done
+  done
+
+  # Render the Epics section.
+  #
+  # Every line's opening bytes are this writer's — the `- `, the two-space
+  # indent, the `… ` — and no interpolated value ever begins a line. That is
+  # what makes nesting unforgeable: a value can only change a line's start by
+  # carrying a newline, and row_safe strips the control range that contains
+  # one. Titles additionally lose backticks, because unlike a flat row this
+  # entry has lines below it that an opened code span could reach into.
+  local epics_section="" u u_total u_closed u_shown u_more mem
+  for u in "${slugs_seen[@]}"; do
+    [[ "${meta_type[$u]:-}" == "epic" ]] || continue
+    u_total="${roster_total[$u]:-0}"
+    u_closed="${roster_closed[$u]:-0}"
+    epics_section+="- \`$u\` — $(row_safe "${meta_title[$u]:-(untitled)}" | tr -d '`')"
+    epics_section+=" · status: ${meta_status[$u]:-open} · $u_closed/$u_total closed"$'\n'
+    u_shown=0
+    for mem in ${roster_open[$u]:-}; do
+      if (( u_shown >= ROSTER_CAP )); then break; fi
+      epics_section+="  - \`$mem\`"$'\n'
+      u_shown=$(( u_shown + 1 ))
+    done
+    u_more=$(( u_total - u_closed - u_shown ))
+    if (( u_more > 0 )); then
+      epics_section+="  … $u_more more open · $u_closed closed"$'\n'
+    fi
+    epics_section+=$'\n'
   done
 
   # Render Issues section.
@@ -806,6 +882,16 @@ main() {
       printf '%s' "$issues_section"
     else
       printf '_No issues._\n'
+    fi
+    # Between Issues and Graph, which is constrained rather than cosmetic: the
+    # integrity-warnings extractors read from that header to end of file, so a
+    # section placed after it would have every roster line swallowed into the
+    # warnings view.
+    printf '\n## Epics\n\n'
+    if [[ -n "$epics_section" ]]; then
+      printf '%s' "$epics_section"
+    else
+      printf '_No epics._\n'
     fi
     printf '\n## Graph\n\n'
     if [[ -n "$graph_section" ]]; then

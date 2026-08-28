@@ -647,7 +647,7 @@ flowchart TD
 
 ### The index
 
-13. [ ] `index.sh`: derive rosters and progress by bucketing `part-of` edges
+13. [x] `index.sh`: derive rosters and progress by bucketing `part-of` edges
     from `outgoing_fm` in one flat pass, beside the existing umbrella-resolves
     check (`:742-751`), deduplicating by `(member, umbrella)` as it goes. Two
     independent requirements: read `outgoing_fm` and never `outgoing_all`,
@@ -656,25 +656,25 @@ flowchart TD
     one record naming an umbrella three times reaches the bucket three times.
     **Verify:** `bash tests/issues.sh case_index_derives_a_roster_and_progress && bash tests/issues.sh case_index_roster_counts_a_repeated_membership_once`
 
-14. [ ] `index.sh`: add a cycle fixture and the case that pins termination — two
+14. [x] `index.sh`: add a cycle fixture and the case that pins termination — two
     records naming each other as umbrellas, and an umbrella naming itself. The
     index must complete and warn, not hang. Depends on task 13.
     **Verify:** `timeout 30 bash tests/issues.sh case_index_terminates_over_forbidden_membership`
 
-15. [ ] `index.sh`: emit the `## Epics` section between the `## Issues` block
+15. [x] `index.sh`: emit the `## Epics` section between the `## Issues` block
     (`:804-809`) and the `## Graph` block (`:810-815`), with `ROSTER_CAP` as a
     declared constant. Every scalar through `row_safe` plus the backtick strip;
     every line's opening bytes writer-literal. Depends on task 13.
     **Verify:** `bash tests/issues.sh case_index_emits_the_epics_section && bash tests/issues.sh case_index_epics_section_caps_a_long_roster`
 
-16. [ ] `tests/issues.sh`: add the structural-containment case — a record whose
+16. [x] `tests/issues.sh`: add the structural-containment case — a record whose
     title carries a newline, a `·`, a leading `- `, and a backtick produces a
     section with the expected line count and no line whose shape a member entry
     could be confused with. Assert counts and shapes, never the absence of the
     injected string. Depends on task 15.
     **Verify:** `bash tests/issues.sh case_index_epics_section_structure_is_the_writers`
 
-17. [ ] `index.sh`: add the two containment warnings beside the existing
+17. [x] `index.sh`: add the two containment warnings beside the existing
     umbrella-resolves check (`:742-751`), which already has `mtarget`,
     `meta_type` and `meta_status` in scope — a `part-of` target that is not
     `type: epic`, and a record that is itself an epic and carries a `part-of`.

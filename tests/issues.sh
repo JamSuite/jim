@@ -5572,6 +5572,296 @@ relations:
        && echo yes || echo no)"
 }
 
+# epic_fixture <dir> <umbrella-slug> — an umbrella plus members, one closed.
+#   Members are named so glob order is the order the section renders them in.
+epic_fixture() {
+  local dir="$1" u="$2"
+  write_issue "$dir" "$u" "title: \"Umbrella\"
+status: open
+num: 1
+type: epic
+outcome: \"\""
+  write_issue "$dir" "20260102-open-member" "title: \"Open member\"
+status: open
+num: 2
+type: issue
+outcome: \"\"
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [$u]"
+  write_issue "$dir" "20260103-closed-member" "title: \"Closed member\"
+status: closed
+num: 3
+type: issue
+outcome: done
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [$u]"
+}
+
+# AC: an umbrella's roster is derived from the records claiming membership, so
+# nothing stores it apart from them; its progress counts members finished
+# against members held.
+case_index_derives_a_roster_and_progress() {
+  local dir idx
+  dir=$(empty_dir index_roster)
+  epic_fixture "$dir" 20260101-umbrella
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "progress counts closed against total" \
+    '^- `20260101-umbrella` — Umbrella · status: open · 1/2 closed$' "$idx"
+  assert_match "the open member is listed" '^  - `20260102-open-member`$' "$idx"
+  assert_eq "the closed member is counted, not listed" "0" \
+    "$(printf '%s\n' "$idx" | grep -c '^  - `20260103-closed-member`$')"
+}
+
+# AC: a roster can never disagree with the records claiming membership. One
+# record naming the same umbrella repeatedly is one member -- the frontmatter
+# edge set is appended unguarded, unlike the deduped set the Graph renders, so
+# a pass that trusts it counts that record once per mention: the progress
+# denominator inflates and one record can fill the whole cap while hiding
+# genuinely distinct members.
+case_index_roster_counts_a_repeated_membership_once() {
+  local dir idx
+  dir=$(empty_dir index_roster_dedup)
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  write_issue "$dir" "20260102-member" 'title: "Member"
+status: open
+num: 2
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella, 20260101-umbrella, 20260101-umbrella]'
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "counted once" \
+    '^- `20260101-umbrella` — Umbrella · status: open · 0/1 closed$' "$idx"
+  assert_eq "listed once" "1" \
+    "$(printf '%s\n' "$idx" | grep -c '^  - `20260102-member`$')"
+}
+
+# AC: deriving a roster finishes for any membership the collection can hold,
+# including membership the containment rule forbids but a hand-edited record
+# can still express. Termination is a property of the pass's shape -- it
+# buckets records under the umbrellas they name and never walks out of a
+# bucket -- so a cycle is two buckets, not a loop.
+case_index_terminates_over_forbidden_membership() {
+  local dir
+  dir=$(empty_dir index_cycle)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+type: epic
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260102-b]'
+  write_issue "$dir" "20260102-b" 'title: "B"
+status: open
+num: 2
+type: epic
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-a]'
+  write_issue "$dir" "20260103-self" 'title: "Self"
+status: open
+num: 3
+type: epic
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260103-self]'
+  run_index "$dir"
+  assert_exit "the index completes" 0 "$RC"
+  assert_match "and reports the violation" 'cannot belong to an epic' \
+    "$(cat "$dir/INDEX.md")"
+}
+
+# AC: the index carries a section describing the umbrellas it holds, and an
+# umbrella with no members reports an empty roster rather than vanishing.
+case_index_emits_the_epics_section() {
+  local dir idx
+  dir=$(empty_dir index_epics_section)
+  epic_fixture "$dir" 20260101-umbrella
+  write_issue "$dir" "20260104-empty" 'title: "Empty"
+status: open
+num: 4
+type: epic
+outcome: ""'
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the section exists" '^## Epics$' "$idx"
+  assert_match "an umbrella with no members reports zero of zero" \
+    '^- `20260104-empty` — Empty · status: open · 0/0 closed$' "$idx"
+  # Placement is constrained, not cosmetic: the integrity-warnings extractor
+  # reads from its header to end of file, so a section after it would have
+  # every roster line swallowed into the warnings view.
+  assert_eq "it sits between Issues and Graph" "Issues Epics Graph Warnings" \
+    "$(printf '%s\n' "$idx" | sed -n 's/^## \(Issues\|Epics\|Graph\|Integrity Warnings\)$/\1/p' \
+       | sed 's/Integrity Warnings/Warnings/' | tr '\n' ' ' | sed 's/ $//')"
+}
+
+# AC: a bound exists on how much the section renders for any one umbrella, so
+# no entry can grow the generated file without limit.
+case_index_epics_section_caps_a_long_roster() {
+  local dir idx i n
+  dir=$(empty_dir index_epics_cap)
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  for i in $(seq -w 1 14); do
+    write_issue "$dir" "202602$i-member" "title: \"M$i\"
+status: open
+num: 1$i
+type: issue
+outcome: \"\"
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella]"
+  done
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  n="$(printf '%s\n' "$idx" | sed -n '/^## Epics$/,/^## Graph$/p' | grep -c '^  - `')"
+  assert_eq "the roster is capped" "10" "$n"
+  assert_match "and the remainder is named" '^  … 4 more open · 0 closed$' "$idx"
+}
+
+# AC: no field value a record carries can introduce a line into the section,
+# place a member under an umbrella it did not name, or change how deeply a
+# line is nested. The section's structure is a property of what writes it.
+#
+# Asserted as counts and shapes rather than as the absence of the injected
+# string: sanitized text legitimately survives, so "the string is gone" is the
+# wrong property and would pass against a broken fix.
+#
+# The values used are ones that SURVIVE the line-oriented frontmatter parse:
+# the field separator, a backtick and a control byte. A multi-line title would
+# prove nothing here — the parser drops the continuation lines before the
+# section ever sees them, so a case built on one passes with the section's own
+# sanitizer removed.
+case_index_epics_section_structure_is_the_writers() {
+  local dir idx section hostile
+  dir=$(empty_dir index_epics_injection)
+  # A title trying to forge extra `·`-delimited fields, open a code span, and
+  # smuggle a control byte.
+  hostile="Evil$(printf '\xc2\xb7')status: closed$(printf '\xc2\xb7')9/9 closed\`$(printf '\x01')x"
+  write_issue "$dir" "20260101-umbrella" "title: \"$hostile\"
+status: open
+num: 1
+type: epic
+outcome: \"\""
+  write_issue "$dir" "20260102-member" 'title: "M"
+status: open
+num: 2
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella]'
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  section="$(printf '%s\n' "$idx" | sed -n '/^## Epics$/,/^## Graph$/p')"
+  assert_eq "exactly one umbrella entry" "1" \
+    "$(printf '%s\n' "$section" | grep -c '^- `')"
+  assert_eq "exactly one member line" "1" \
+    "$(printf '%s\n' "$section" | grep -c '^  - `')"
+  # The writer emits exactly two separators on an umbrella line — before
+  # `status:` and before the progress figure. A title that kept its own would
+  # add more, which is how a value forges a field the writer never wrote.
+  assert_eq "the umbrella line carries only the writer's separators" "2" \
+    "$(printf '%s\n' "$section" | grep '^- `' | grep -o '·' | wc -l)"
+  # Two backticks, both the writer's, around the slug. A third would open a
+  # span reaching into the member lines below.
+  assert_eq "only the writer's backticks" "2" \
+    "$(printf '%s\n' "$section" | grep '^- `' | grep -o '`' | wc -l)"
+  assert_eq "no control byte reached the index" "0" \
+    "$(printf '%s\n' "$section" | grep -c "$(printf '\x01')")"
+}
+
+# AC: the index reports any membership that violates the containment rule, so
+# a record written by hand rather than through a verb is still caught.
+case_index_warns_a_non_epic_umbrella() {
+  local dir
+  dir=$(empty_dir index_warn_non_epic)
+  write_issue "$dir" "20260101-plain" 'title: "Plain"
+status: open
+num: 1
+type: issue
+outcome: ""'
+  write_issue "$dir" "20260102-member" 'title: "M"
+status: open
+num: 2
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-plain]'
+  run_index "$dir"
+  assert_match "warned" 'names an umbrella that is not an epic' \
+    "$(cat "$dir/INDEX.md")"
+}
+
+# AC: an umbrella never contains another umbrella, and the index reports one
+# that arrived by hand-edit.
+case_index_warns_an_epic_inside_an_epic() {
+  local dir
+  dir=$(empty_dir index_warn_nested_epic)
+  write_issue "$dir" "20260101-outer" 'title: "Outer"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  write_issue "$dir" "20260102-inner" 'title: "Inner"
+status: open
+num: 2
+type: epic
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-outer]'
+  run_index "$dir"
+  assert_match "warned" 'cannot belong to an epic' "$(cat "$dir/INDEX.md")"
+}
+
 # AC: integrity reports identify offending issues without reproducing their
 # body content — the value a schema warning names goes through the same row
 # sanitizer its sibling warnings use, so a control byte or an unbounded value
