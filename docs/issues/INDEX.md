@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 140
+- Open: 143
 - Closed: 266
 
 ## Issues
@@ -413,6 +413,9 @@
 - `20260827-backfill-sh-rewrites-the-collection-with-no-preview-gate` — backfill.sh rewrites the collection with no preview gate · status: open · num: 404 · priority: high · created: 2026-08-27T11:20:44Z · labels: [000-blueprint, verify] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
 - `20260827-group-the-read-views-by-umbrella-membership` — Group the read views by umbrella membership · status: open · num: 405 · priority: low · created: 2026-08-27T20:10:36Z · labels: [issues-system, read-views] · origin: docs/specs/issue/015-epic-authoring-and-views/spec.md · type: issue · filed-by: jrko
 - `20260827-report-an-honest-completion-rate-from-the-outcome-field` — Report an honest completion rate from the outcome field · status: open · num: 406 · priority: medium · created: 2026-08-27T20:10:31Z · labels: [issues-system, read-views, metrics] · origin: docs/specs/issue/015-epic-authoring-and-views/spec.md · type: issue · filed-by: jrko
+- `20260828-a-relation-type-reaches-the-graph-unbounded-in-length` — A relation type reaches the graph unbounded in length · status: open · num: 407 · priority: low · created: 2026-08-28T05:17:25Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
+- `20260828-membership-doubles-the-index-graph-section` — Membership doubles the index graph section · status: open · num: 408 · priority: medium · created: 2026-08-28T05:17:23Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
+- `20260828-the-updated-field-is-written-but-never-read` — The updated field is written but never read · status: open · num: 409 · priority: low · created: 2026-08-28T05:17:24Z · labels: [issues-system, schema] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 
 ## Graph
 
