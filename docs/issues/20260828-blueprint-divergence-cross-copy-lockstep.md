@@ -2,12 +2,12 @@
 id: 20260828-blueprint-divergence-cross-copy-lockstep
 num: 411
 title: "Blueprint divergence: cross-copy-lockstep"
-status: open
+status: closed
 priority: high
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [000-blueprint, drift]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-28T11:55:11Z
-updated: 2026-08-28T11:55:11Z
+updated: 2026-08-28T20:25:46Z
 origin: "docs/specs/issue/015-epic-authoring-and-views"
 ---
 

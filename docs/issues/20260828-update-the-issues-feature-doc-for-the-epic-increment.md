@@ -2,12 +2,12 @@
 id: 20260828-update-the-issues-feature-doc-for-the-epic-increment
 num: 417
 title: "Update the issues feature doc for the epic increment"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [docs]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-28T11:37:35Z
-updated: 2026-08-28T11:37:35Z
+updated: 2026-08-28T20:28:03Z
 origin: "docs/specs/issue/015-epic-authoring-and-views/review.md"
 ---
 

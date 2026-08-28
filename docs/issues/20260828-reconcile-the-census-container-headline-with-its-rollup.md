@@ -2,12 +2,12 @@
 id: 20260828-reconcile-the-census-container-headline-with-its-rollup
 num: 414
 title: "Reconcile the census container headline with its rollup"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [render, epic]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-28T11:37:34Z
-updated: 2026-08-28T11:37:34Z
+updated: 2026-08-28T20:26:31Z
 origin: "docs/specs/issue/015-epic-authoring-and-views/review.md"
 ---
 

@@ -2,12 +2,12 @@
 id: 20260828-state-the-capture-kind-rule-correctly-in-the-issue-skill-checkli
 num: 416
 title: "State the capture kind rule correctly in the issue skill checklist"
-status: open
+status: closed
 priority: high
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [skill-surface, epic]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-28T11:37:31Z
-updated: 2026-08-28T11:37:31Z
+updated: 2026-08-28T20:27:21Z
 origin: "docs/specs/issue/015-epic-authoring-and-views/review.md"
 ---
 
