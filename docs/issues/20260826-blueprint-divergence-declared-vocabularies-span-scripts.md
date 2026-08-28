@@ -151,3 +151,29 @@ or every copy carries a SYNC marker and a test compares them. The test-side
 retyping is the cheapest of the six and the most clearly wrong — those loops
 should read the constant, which is what their neighbours in the same file
 already do.
+
+## Census extended again — 2026-08-28
+
+The epic-authoring increment added a **third** declaration of the kind
+vocabulary. `new.sh` needed to validate a new `--type` flag against it, and
+the choice was between restating the members inline as a `case` — which is the
+shape recorded above as this file's own finding — or declaring the array and
+iterating it, which is what `transition.sh` already does for `ISSUE_OUTCOMES`.
+
+Declaring it was the better of the two locally and the worse one for this
+record, so it is written down rather than left for a later census:
+
+```
+skills/issue/scripts/index.sh   readonly ISSUE_TYPES=(issue epic)
+skills/issue/scripts/new.sh     readonly ISSUE_TYPES=(issue epic)
+skills/issue/scripts/render.sh  readonly TYPE_TOKENS=(issue epic)
+```
+
+Three copies, two names, no marker, no test comparing any pair. The count in
+"Fix shape, revised" is now one higher, and the type vocabulary — already
+called the harder one to notice because it wears two names — is the member
+that grew.
+
+Nothing about the fix shape changes. It is the same decision: one script owns
+the vocabulary and the others read it, or every copy carries a SYNC marker and
+a test compares them.
