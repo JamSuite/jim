@@ -511,6 +511,95 @@ case_docsurfaces_config_keys_are_documented() {
   assert_eq "every key reaches jimconf.toml.example"     "" "${no_example% }"
   assert_eq "every issue key reaches its feature doc"    "" "${no_feature% }"
 }
+
+# emitter_flags — every flag new.sh's parser accepts, one per line. Read off
+# the case arms the loop dispatches on rather than the usage comment above
+# them, so this is what the script does rather than what it says about itself.
+emitter_flags() {
+  awk '
+    $0 == "while [[ $# -gt 0 ]]; do" { inside = 1; next }
+    inside && $0 == "done" { exit }
+    inside {
+      if (substr($1, 1, 2) == "--") {
+        p = index($1, ")")
+        if (p > 0) print substr($1, 1, p - 1)
+      }
+    }
+  ' "$REPO_ROOT/skills/issue/scripts/new.sh"
+}
+
+# capture_flag_excused <flag> — true when the documented capture flow passes
+# this flag deliberately not at all, with the reason. Every flag emitter_flags
+# discovers must be excused here or appear in the documented invocation, so a
+# flag cannot enter the emitter without a decision about whether a capture may
+# set it. The failure direction is what matters: a new flag is REQUIRED by
+# default and has to be argued out, rather than being silently absent.
+capture_flag_excused() {
+  case "$1" in
+    # The allocator resolves the identity at save time; the skill says so and
+    # says not to pass either.
+    --slug|--num)  return 0 ;;
+    # Tests and the placement re-exec own these; a capture never names one.
+    --dir|--place-token) return 0 ;;
+    # A new capture is open, which is the emitter's own default.
+    --status)      return 0 ;;
+    # The confirm-or-edit moment IS the review, so this path is --reviewed.
+    --auto)        return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# skill_emitter_invocation — the fenced emitter call /jim:issue add documents,
+# from the line naming the script through the last continued line. Anchored on
+# the literal `--reviewed`, which is what tells the capture flow's invocation
+# apart from the candidate batch's, whose declaration flag is a choice.
+skill_emitter_invocation() {
+  awk '
+    index($0, "new.sh --reviewed") > 0 { on = 1 }
+    on { print; if ($0 !~ /\\$/) exit }
+  ' "$REPO_ROOT/skills/issue/SKILL.md"
+}
+
+# INTRODUCTION, capture half. The lifecycle verbs reach a user through a
+# dispatch table this suite already checks; the capture flags reach one only
+# through the emitter invocation the skill body spells out, and a flag the
+# script gained but that invocation never passes is unreachable from the
+# command however well the script implements it. That is how this increment's
+# headline capability shipped with a flag surface nobody could type.
+case_docsurfaces_capture_flags_reach_the_emitter_invocation() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" f n=0 missing="" unknown=""
+  local invocation add_bullet
+  invocation="$(skill_emitter_invocation)"
+  assert_nonempty "the documented invocation was found" "$invocation"
+
+  while IFS= read -r f; do
+    [[ -n "$f" ]] || continue
+    n=$((n + 1))
+    capture_flag_excused "$f" && continue
+    grep -qF -- "$f " <<< "$invocation" || missing="$missing$f "
+  done < <(emitter_flags)
+  assert_eq "the parser was read (>= 10 flags, got $n)" "yes" \
+    "$([[ "$n" -ge 10 ]] && echo yes || echo no)"
+  assert_eq "every capture flag reaches the documented invocation" "" \
+    "${missing% }"
+
+  # The other direction: a flag the documentation passes that the emitter does
+  # not parse is refused at rc 2, so the whole filing fails.
+  while IFS= read -r f; do
+    [[ -n "$f" ]] || continue
+    grep -qxF -- "$f" <(emitter_flags) || unknown="$unknown$f "
+  done < <(grep -oE -- '--[a-z-]+' <<< "$invocation" | LC_ALL=C sort -u)
+  assert_eq "and passes no flag the emitter would refuse" "" "${unknown% }"
+
+  # Forwarding is half of it. The values a developer types arrive inside the
+  # argument string, so the dispatch has to take them out of it before the
+  # remainder becomes the capture subject -- otherwise the flags are filed as
+  # part of the title.
+  add_bullet="$(awk '/^- \*\*`claim`/ { exit } /^- \*\*`add`\*\*/ { on = 1 } on' "$skill")"
+  assert_nonempty "the add dispatch bullet was found" "$add_bullet"
+  assert_match "the dispatch names the kind flag" '`--type[ `]'    "$add_bullet"
+  assert_match "and the membership flag"          '`--part-of[ `]' "$add_bullet"
+}
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
