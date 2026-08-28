@@ -62,8 +62,6 @@ readonly VERBS_WITH_UMBRELLA=(join leave)
 # record the schema says cannot exist, where refusing keeps it from existing.
 readonly ISSUE_OUTCOMES=(done wontfix duplicate obsolete)
 
-readonly INDEX_FILENAME="INDEX.md"
-
 usage() {
   printf '%s\n' \
     'transition.sh — move one issue through its lifecycle.' \
@@ -120,39 +118,6 @@ relation_targets() {
       exit
     }
   '
-}
-
-# resolve_slug <dir> <id> — the single issue <id> names, or empty.
-#   Accepts an exact slug, a display ordinal, or a unique slug prefix, matching
-#   how the read views resolve one. Every candidate is confirmed against the
-#   file's own frontmatter before it is accepted, so a body that happens to
-#   contain an ordinal line cannot claim to be that issue.
-resolve_slug() {
-  local dir="$1" id="$2" f base cand fm hits=()
-
-  [[ -f "$dir/$id.md" ]] && { printf '%s' "$id"; return 0; }
-
-  # An ordinal narrows to candidates with one pass, then each is confirmed
-  # fence-scoped — the grep is a filter, not the decision.
-  if [[ "$id" =~ ^[0-9]+$ ]]; then
-    while IFS= read -r f; do
-      [[ -n "$f" ]] || continue
-      fm="$(frontmatter "$f")"
-      [[ "$(fm_field "$fm" num)" == "$id" ]] || continue
-      base="$(basename "$f")"
-      hits+=("${base%.md}")
-    done < <(grep -l -E "^num: $id\$" "$dir"/*.md 2>/dev/null)
-  else
-    for f in "$dir/$id"*.md; do
-      [[ -f "$f" ]] || continue
-      base="$(basename "$f")"
-      [[ "$base" == "$INDEX_FILENAME" ]] && continue
-      hits+=("${base%.md}")
-    done
-  fi
-
-  (( ${#hits[@]} == 1 )) || return 1
-  printf '%s' "${hits[0]}"
 }
 
 # csv_has <csv> <needle> — exit 0 iff <needle> is one of <csv>'s members.
@@ -316,7 +281,10 @@ main() {
     return 1
   }
 
-  # Before any path is composed from it, including the stat inside resolve_slug.
+  # A fail-fast ahead of the door, not a second definition of resolution: an
+  # id that cannot name a record at all should not cost a materialized
+  # collection first. resolve.sh gates the same bytes again on its own side,
+  # which is what makes this one an optimization rather than a guard.
   bash "$JIMFILE" valid-id "$id" >/dev/null 2>&1 || {
     echo "error: invalid issue id" >&2
     return 1
@@ -334,40 +302,41 @@ main() {
 
   # From here every exit unwinds the door rather than leaving a handle open —
   # every exit but the publish itself, which the door keeps on purpose.
-  local slug rc=0
-  if ! slug="$(resolve_slug "$work" "$id")" || [[ -z "$slug" ]]; then
-    echo "error: no single issue matches '$id'" >&2
+  #
+  # Both operands resolve through the same script, so a reference that names a
+  # record on this path names the same record on the capture path, and neither
+  # can drift from the other by being edited alone. It also performs both
+  # validations a reference needs — the supplied bytes before any path is
+  # composed from them, and the resolved name again, because an ordinal or a
+  # prefix answers with a basename read off the directory rather than with
+  # anything the caller chose, and a collection can arrive from a destination
+  # branch whose entry gate admits names this one refuses.
+  #
+  # Its stderr is left to reach the developer. The reasons it gives are fixed
+  # strings carrying neither the reference nor any issue content, and they
+  # separate a reference matching nothing from one matching several — a
+  # distinction the line below cannot draw, and one worth having when a verb
+  # takes two references and only one of them is wrong.
+  local slug kind rc=0 res
+  if ! res="$(bash "$RESOLVE" "$work" "$id")"; then
+    echo "error: cannot resolve the issue reference" >&2
     [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
     return 1
   fi
-
-  # The caller's id cleared the validator above, but only one of resolve_slug's
-  # three branches answers with that id. An ordinal or a prefix answers with a
-  # name read off the directory, whose remaining bytes nothing here chose — and
-  # the collection can arrive from a destination branch whose entry gate admits
-  # names this one refuses. So the value that actually names the file is checked
-  # at the site composing the path, the way the migrations check theirs.
-  bash "$JIMFILE" valid-id "$slug" >/dev/null 2>&1 || {
-    echo "error: invalid issue id" >&2
-    [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
-    return 1
-  }
+  slug="${res%%$'\t'*}"
+  kind="${res##*$'\t'}"
 
   local file="$work/$slug.md"
 
-  # The umbrella operand is gated exactly as the issue id is: validated as
-  # supplied before any path is composed from it, and validated again after
-  # resolution, because an ordinal or a prefix answers with a name read off
-  # the directory. resolve.sh performs both, and it is the same definition the
-  # emitter resolves --part-of through — so a reference that names a record on
-  # one path names the same record on the other.
+  # The umbrella operand goes through the same script, for the same reasons,
+  # and its stderr reaches the developer on the same terms. The line below
+  # only names which of a two-reference verb's operands failed, which is the
+  # one thing resolve.sh cannot know.
   local umbrella_slug="" umbrella_kind=""
   if [[ -n "$umbrella" ]]; then
     local ures
-    if ! ures="$(bash "$RESOLVE" "$work" "$umbrella" 2>/dev/null)"; then
-      # The reference is not echoed: resolution may have failed at the
-      # validator, so these bytes are not known to be inert.
-      echo "error: no single issue matches that umbrella reference" >&2
+    if ! ures="$(bash "$RESOLVE" "$work" "$umbrella")"; then
+      echo "error: cannot resolve the umbrella reference" >&2
       [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
       return 1
     fi
@@ -392,7 +361,10 @@ main() {
       [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
       return 1
     fi
-    if [[ "$(fm_field "$(frontmatter "$file")" type)" == "epic" ]]; then
+    # The member's own kind came back from the same resolution, so the two
+    # records in this refusal are read the same way rather than one being
+    # resolved and the other re-read.
+    if [[ "$kind" == "epic" ]]; then
       echo "error: an epic cannot belong to an epic" >&2
       [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
       return 1

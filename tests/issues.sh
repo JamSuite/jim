@@ -4539,6 +4539,75 @@ case_transition_refuses_an_epic_inside_an_epic() {
     "$(cat "$dir/20260102-inner.md")"
 }
 
+# AC: one definition decides what a reference resolves to on every write path.
+# The lifecycle verb kept a second three-branch ladder beside the capture
+# path's -- unmarked and uncompared, the only duplicate in this territory
+# that was neither -- so the two agreed by coincidence rather than by
+# construction. They already differed: the shared definition separates a
+# reference matching nothing from one matching several, and the copy collapsed
+# both into one refusal. Resolving through the shared definition is what makes
+# the finer reason reach the developer at all.
+case_transition_resolves_its_id_through_the_shared_definition() {
+  local dir
+  dir=$(empty_dir transition_shared_resolution)
+  transition_issue "$dir" 20260101-alpha  1 open "" ""
+  transition_issue "$dir" 20260101-alpaca 2 open "" ""
+
+  # A prefix naming two records is refused as ambiguous...
+  run_transition close 20260101-alp --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the reference is called ambiguous" 'more than one issue' "$ERR"
+
+  # ...and one naming none is refused as absent, which the collapsed refusal
+  # could not tell apart from the case above.
+  run_transition close 20260109-absent --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the reference is called absent" 'no issue matches' "$ERR"
+
+  # Neither refusal reached the collection.
+  assert_match "the record is untouched" '^status: open$' \
+    "$(cat "$dir/20260101-alpha.md")"
+}
+
+# AC: the capture path and the lifecycle path resolve a reference the same
+# way, so a reference that names no single record is refused on both rather
+# than on whichever one happens to check. Both operands of the two-reference
+# verb are covered, because the primary id was the one resolving privately.
+case_transition_and_capture_refuse_a_reference_alike() {
+  local repo dir b
+  repo=$(new_repo shared_reference_refusal)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  write_issue "$dir" "20260101-alpha" 'id: 20260101-alpha
+num: 1
+type: epic
+status: open'
+  write_issue "$dir" "20260101-alpaca" 'id: 20260101-alpaca
+num: 2
+type: epic
+status: open'
+  transition_issue "$dir" 20260102-member 3 open "" ""
+  b=$(fixture shared_ref_body.md 'body')
+
+  # The capture path, resolving the ambiguous prefix through --part-of.
+  run_new_in "$repo" --dir "$dir" \
+    --title "Ambiguous" --priority medium --labels x --origin conversation \
+    --part-of 20260101-alp --body-file "$b"
+  assert_exit "capture refuses the ambiguous prefix" 1 "$RC"
+
+  # The lifecycle path's umbrella operand, on the same collection.
+  run_transition join 20260102-member 20260101-alp --dir "$dir"
+  assert_exit "the umbrella operand refuses it" 1 "$RC"
+
+  # And its primary operand, which is the one that used to resolve privately.
+  run_transition close 20260101-alp --dir "$dir"
+  assert_exit "the issue operand refuses it too" 1 "$RC"
+  assert_match "for the reason the shared definition gives" \
+    'more than one issue' "$ERR"
+
+  assert_eq "nothing was filed" "3" "$(find "$dir" -name '2026*.md' | wc -l)"
+}
+
 # AC: a change that would leave the record as it found it writes nothing — no
 # field, no stamp — and says so without failing.
 case_transition_a_noop_writes_nothing() {
