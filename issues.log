@@ -404,3 +404,6 @@ issue allocate 403 20260827-a-pinned-slug-silently-overwrites-an-existing-issue 
 issue allocate 404 20260827-backfill-sh-rewrites-the-collection-with-no-preview-gate 20260827 jrko
 issue allocate 405 20260827-group-the-read-views-by-umbrella-membership 20260827 jrko
 issue allocate 406 20260827-report-an-honest-completion-rate-from-the-outcome-field 20260827 jrko
+issue allocate 407 20260828-a-relation-type-reaches-the-graph-unbounded-in-length 20260827 jrko
+issue allocate 408 20260828-membership-doubles-the-index-graph-section 20260827 jrko
+issue allocate 409 20260828-the-updated-field-is-written-but-never-read 20260827 jrko
