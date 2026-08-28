@@ -178,7 +178,7 @@ flowchart LR
 
 `/jim:issue add <subject>` drafts from the conversation, framed by the project's vision, architecture and roadmap, and presents the whole draft — frontmatter and body together — as one block: **file**, **edit**, or **cancel**. No per-field prompting.
 
-Two flags may appear anywhere in the subject and are taken out of it before the rest becomes the title: `--type epic` files an umbrella rather than an ordinary issue, and `--part-of <ref>[,<ref>]` files the capture straight into one or more, each named the way `join` names one. Both are resolved and refused before an ordinal is spent, so a capture naming an umbrella that does not exist — or one that is not an umbrella — costs nothing.
+Two flags may appear anywhere in the subject and are taken out of it before the rest becomes the title: `--type epic` files an umbrella rather than an ordinary issue, and `--part-of <ref>[,<ref>]` files the capture straight into one or more, each named the way `join` names one. Both are resolved and refused before an ordinal is spent, so a capture naming an umbrella that does not exist — or one that is not an umbrella — costs nothing. A flag repeated takes its last occurrence, and one naming no value — ending the string, or followed by the other flag — is dropped rather than kept as title text.
 
 That presentation is the **last scrub moment**. The file is about to be persisted and committed alongside your code, so the prompt asks you to check the body for API keys, customer data, and raw logs before it lands.
 

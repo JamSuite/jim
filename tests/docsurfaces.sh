@@ -644,6 +644,25 @@ case_docsurfaces_capture_kinds_reach_the_checklist() {
   assert_eq "every kind the emitter admits is on the checklist" "" "${missing% }"
 }
 
+# AC: the dispatch bullet's `--type` synopsis names every kind the emitter
+# admits. The capture flow deliberately does not judge the kind — the emitter
+# owns that vocabulary and its refusal is the answer — so this synopsis is the
+# only place the skill tells a developer which kinds exist, and a kind added to
+# the array with no mention here is one nobody is told they can ask for.
+case_docsurfaces_capture_kinds_reach_the_dispatch_bullet() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" line k n=0 missing=""
+  line="$(grep -m1 -- '^  - `--type ' "$skill")"
+  assert_nonempty "the bullet states a --type synopsis" "$line"
+  while IFS= read -r k; do
+    [[ -n "$k" ]] || continue
+    n=$((n + 1))
+    printf '%s' "$line" | grep -qF -- "$k" || missing="$missing$k "
+  done < <(issue_kinds)
+  assert_eq "the array was read (>= 2 kinds, got $n)" "yes" \
+    "$([[ "$n" -ge 2 ]] && echo yes || echo no)"
+  assert_eq "every kind the emitter admits is in the synopsis" "" "${missing% }"
+}
+
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

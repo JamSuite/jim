@@ -6268,6 +6268,35 @@ status: open'
     "$(find "$repo/docs/issues" -name '*.md' | wc -l)"
 }
 
+# AC: a repeated capture flag is carried forward by its LAST occurrence. The
+# dispatch bullet tells the agent to take every occurrence out of the subject
+# on exactly this ground — a leftover one is filed as title text — so the
+# parser's tie-break is what makes that instruction correct rather than
+# arbitrary.
+case_new_repeated_flag_takes_the_last_occurrence() {
+  local dir b file
+  dir=$(empty_dir new_repeated_flag)
+  write_issue "$dir" "20260101-alpha" 'id: 20260101-alpha
+num: 7
+type: epic
+status: open'
+  write_issue "$dir" "20260101-beta" 'id: 20260101-beta
+num: 8
+type: epic
+status: open'
+  b=$(fixture new_repeated_flag_body.md 'body')
+  run_new --dir "$dir" --slug "20260102-member" --num 2 \
+    --created "2026-01-02T00:00:00Z" --updated "2026-01-02T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --type epic --type issue \
+    --part-of 20260101-alpha --part-of 20260101-beta \
+    --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  file="$(cat "$dir/20260102-member.md")"
+  assert_match "the last kind wins"     '^type: issue$'                  "$file"
+  assert_match "the last umbrella wins" '^  part-of: \[20260101-beta\]$' "$file"
+}
+
 # AC: a filing refused for any reason consumes no issue identity. The
 # allocator is append-only, so an ordinal spent by a run that then refuses is
 # one no later run reclaims — which makes the POSITION of a refusal, not its

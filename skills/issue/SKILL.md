@@ -35,6 +35,8 @@ Read the **first whitespace-delimited token** of `$ARGUMENTS` as the subcommand.
   - `--part-of <ref>[,<ref>]` — the umbrella(s) to file it into, each named by an ordinal, a slug, or a slug prefix, exactly as `join` names one.
 
   **Whatever remains once both are removed is the capture subject** (it may be empty). A flag left in the string is filed as part of the title — `add "Auth hardening" --type epic` must file an epic titled `Auth hardening`, never an issue titled `Auth hardening --type epic`. Carry both values forward: they populate the draft in step 3 and are passed to the emitter in step 6. Proceed to **Capture** (step 2).
+
+  **Malformed input is determined, not left to judgment.** Extraction removes **every** occurrence of a flag, never just the first: the emitter's parser takes the last occurrence, so `add x --type epic --type issue` files an ordinary issue titled `x`, and a second occurrence left behind would be filed as title text — the very defect the rule above closes, reached from the other side. A flag whose next token is the other flag, or which ends the string, **names no value**: drop the bare flag, carry nothing forward, and say that you did, so `add see PR --part-of` files `see PR` into no umbrella rather than titling it `see PR --part-of`. Otherwise the next token **is** the value, whatever it is — do not judge a kind here, because the emitter owns that vocabulary and its refusal is the answer, exactly as it is for a `list` filter. Its refusal is above the allocator and costs no ordinal, so `add investigate --type of service degradation` reaches step 6 with the subject `investigate service degradation` and the kind `of`, and is refused there; the draft you present at step 5 shows that kind, which is where a developer catches it first.
 - **`claim`** / **`release`** / **`start`** / **`close`** / **`reopen`** / **`join`** / **`leave`** → move one issue through its lifecycle. The remaining token is the `<id>` (an ordinal, a slug, or a slug prefix); `join` and `leave` take a second one naming the umbrella, in the same reference forms. These are *mutating* verbs; the script owns the placement door, the `updated` refresh and the index regeneration, so there is nothing to do around it:
   ```
   bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/transition.sh <verb> <id> [--as <outcome>] [--force]
@@ -373,6 +375,7 @@ safety boundary (spec 020; security.md Findings 1, 2, 4).
 
 Before writing (capture / `add` only):
 
+- [ ] The capture subject carries no flag text: **every** occurrence of `--type` and `--part-of` came out with its value, a repeated flag was carried forward by its **last** occurrence, and a flag naming no value — one ending the string, or followed by the other flag — was dropped rather than left in the subject.
 - [ ] The issue represents pending, unresolved work (the actionability gate passed) — not a retrospective record of already-shipped work whose home is a point-of-encounter doc.
 - [ ] Issue slug matches `^[a-z0-9][a-z0-9-]*$` (alphanumeric + dash).
 - [ ] Filename uses the configured prefix scheme (default `YYYYMMDD-<slug>.md`).
