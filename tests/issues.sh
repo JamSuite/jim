@@ -5423,6 +5423,44 @@ case_new_defaults_kind_and_leaves_holder_and_outcome_empty() {
   assert_match "no umbrella"             '^  part-of: \[\]$' "$out"
 }
 
+# AC: an umbrella is created through the same capture flow that files an
+# ordinary issue, so the kind is the only difference between the two calls.
+case_new_files_an_epic_kind() {
+  local dir b out
+  dir=$(empty_dir new_epic_kind)
+  b=$(fixture new_epic_kind_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-umbrella" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels x --origin conversation \
+    --type epic --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-umbrella.md")"
+  assert_match "the kind asked for is the kind written" '^type: epic$' "$out"
+}
+
+# AC: an unrecognized kind is refused rather than written, and the refusal
+# fires above the allocator so it costs no identity. This case pins the
+# refusal and that nothing reached the collection; the ordinal itself is
+# measured by case_new_refusals_leave_the_ordinal_unspent, which is what makes
+# the position rather than the wording the thing under test.
+case_new_refuses_an_unrecognized_kind_before_spending_an_ordinal() {
+  local repo b
+  repo=$(new_repo new_bad_kind)
+  b=$(fixture new_bad_kind_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Alpha" --priority medium --labels x --origin conversation \
+    --type sandwich --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  # The refusal names the rejected field, never its value: a kind arrives as
+  # the same model-produced text a title does, and the priority and status
+  # refusals beside it already answer this way.
+  assert_eq "the rejected value is not echoed back" "0" \
+    "$(printf '%s' "$ERR" | grep -c sandwich)"
+  assert_eq "nothing was written" "0" \
+    "$(find "$repo/docs/issues" -name '*.md' 2>/dev/null | wc -l)"
+}
+
 # AC: when the developer's identity cannot be determined from the environment,
 # filing an issue is refused and nothing is written.
 case_new_refuses_a_filing_with_no_identity() {

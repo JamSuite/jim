@@ -26,7 +26,7 @@
 # USAGE
 #   bash new.sh --title <s> --priority <low|medium|high|critical> \
 #               --labels <csv> --origin <s> --body-file <path> \
-#               [--status open] [--slug <id>] [--num <int>] \
+#               [--status open] [--type <issue|epic>] [--slug <id>] [--num <int>] \
 #               [--created <ts>] [--updated <ts>] [--dir <issues_dir>] \
 #               (--auto | --reviewed)
 #
@@ -73,10 +73,16 @@ JIMALLOC="$(dirname "$JIMFILE")/jimalloc.sh"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
 IDENTITY="$HERE/identity.sh"
 
+# What kind of record a capture may create. Iterated rather than restated at
+# the check below, so a kind added here reaches the validation without a second
+# edit. index.sh declares the same vocabulary for the reading side.
+readonly ISSUE_TYPES=(issue epic)
+
 # ─── Parse flags ─────────────────────────────────────────────────────────────
 
 title="" priority="" labels="" origin="" body_file=""
 status="open" slug="" num="" created="" updated="" dir="" place_token=""
+type="issue"
 auto=0 reviewed=0
 
 # Kept whole for the placement re-exec below, which has to hand this script its
@@ -91,6 +97,7 @@ while [[ $# -gt 0 ]]; do
     --origin)    origin="${2-}";    shift 2 || break ;;
     --body-file) body_file="${2-}"; shift 2 || break ;;
     --status)    status="${2-}";    shift 2 || break ;;
+    --type)      type="${2-}";      shift 2 || break ;;
     --slug)      slug="${2-}";      shift 2 || break ;;
     --num)       num="${2-}";       shift 2 || break ;;
     --created)   created="${2-}";   shift 2 || break ;;
@@ -195,6 +202,21 @@ case "$status" in
   *) echo "error: invalid status (expected open|closed)" >&2; exit 1 ;;
 esac
 
+# Iterated rather than pattern-matched, so the declaration above is the single
+# statement of what a kind may be and a kind added there needs no edit here.
+# The refusal names the field and the accepted set, never the rejected value —
+# a kind arrives as the same model-produced text a title does. Above the
+# allocator with the other enum checks, so refusing costs no ordinal.
+type_ok=0
+for _t in "${ISSUE_TYPES[@]}"; do
+  [[ "$type" == "$_t" ]] && { type_ok=1; break; }
+done
+if (( ! type_ok )); then
+  _types_expected="$(printf '%s|' "${ISSUE_TYPES[@]}")"
+  echo "error: invalid type (expected ${_types_expected%|})" >&2
+  exit 1
+fi
+
 # ─── Resolve the filer ───────────────────────────────────────────────────────
 
 # Ahead of the allocator on purpose: the allocator is append-only, so a filing
@@ -207,6 +229,24 @@ filed_by="$(bash "$IDENTITY" resolve)" || {
   echo "error: refusing to file without a recordable identity" >&2
   exit 1
 }
+
+# ─── Resolve the issues directory ────────────────────────────────────────────
+
+# Above the allocator, not beside its first use. The validations that refuse a
+# filing need a collection to resolve a reference against, and the allocator is
+# append-only — so a check that runs below it burns an ordinal no later run
+# reclaims, whether or not the filing then succeeds. This resolution depends on
+# nothing the allocation produces, which is what makes the ordering free.
+#
+# Used by the pre-spend reference checks, the local-collision handling further
+# down, and the final write path.
+if [[ -n "$dir" ]]; then
+  issues_dir="$dir"
+else
+  issues_dir="$(bash "$JIMFILE" path issue)" || {
+    echo "error: could not resolve issues directory" >&2; exit 1; }
+fi
+issues_dir="${issues_dir%/}"
 
 # ─── Resolve identity (overrides win; else compose via jimalloc.sh) ──────────
 
@@ -240,16 +280,6 @@ elif [[ "$num" == P-* ]] && bash "$JIMFILE" valid-id "${num#P-}" >/dev/null 2>&1
   num_valid=1
 fi
 (( num_valid )) || { echo "error: --num must be a positive integer or a P-<id> provisional ordinal" >&2; exit 1; }
-
-# Resolve the issues directory once — used for the local-collision handling
-# below and the final write path.
-if [[ -n "$dir" ]]; then
-  issues_dir="$dir"
-else
-  issues_dir="$(bash "$JIMFILE" path issue)" || {
-    echo "error: could not resolve issues directory" >&2; exit 1; }
-fi
-issues_dir="${issues_dir%/}"
 
 # Provisional local disambiguation / real-mode drift guard: only the id this
 # call resolved itself is eligible — a caller-pinned --slug is never altered.
@@ -328,9 +358,9 @@ trap 'rm -f "$tmpfile"' EXIT INT TERM
   printf 'title: "%s"\n' "$title_enc"
   printf 'status: %s\n' "$status"
   printf 'priority: %s\n' "$priority"
-  # A capture is always an issue; an umbrella is made by changing this field,
-  # not by filing a different kind of record.
-  printf 'type: issue\n'
+  # Cleared the kind enum above, so it is one of the declared vocabulary's
+  # members and can neither close this scalar nor open a field of its own.
+  printf 'type: %s\n' "$type"
   # The filer cleared a positive character gate, so it cannot close this scalar
   # or open a field of its own. A new issue is unheld and has never been
   # finished, so the holder and outcome start empty.

@@ -556,10 +556,10 @@ flowchart TD
 
 ### The door and its vocabulary
 
-1. [ ] `place.sh`: add `join` and `leave` to `PLACE_VERBS` (`:104-105`).
+1. [x] `place.sh`: add `join` and `leave` to `PLACE_VERBS` (`:104-105`).
    **Verify:** `bash -c 'source <(sed -n "104,105p" skills/issue/scripts/place.sh); for v in join leave file edit close; do printf "%s " "${PLACE_VERBS[*]}" | grep -q " $v " || { echo "MISSING $v"; exit 1; }; done; echo ok'`
 
-2. [ ] `place.sh`: convert `usage()` from `cat <<'USAGE'` to the
+2. [x] `place.sh`: convert `usage()` from `cat <<'USAGE'` to the
    `printf '%s\n'` form used at `transition.sh:58-65` — every existing line a
    single-quoted literal, only the vocabulary line double-quoted so
    `${PLACE_VERBS[*]}` expands. **Do not simply unquote the heredoc
@@ -568,7 +568,7 @@ flowchart TD
    Depends on task 1.
    **Verify:** `out=$(bash skills/issue/scripts/place.sh --help 2>/tmp/uerr); test -z "$(cat /tmp/uerr)" && printf '%s' "$out" | grep -q '`route`' && printf '%s' "$out" | grep -q '`{token}`' && printf '%s' "$out" | grep -q 'join' && printf '%s' "$out" | grep -q 'leave' && echo ok`
 
-3. [ ] `tests/place.sh`: add a case asserting `usage()`'s verb list is derived —
+3. [x] `tests/place.sh`: add a case asserting `usage()`'s verb list is derived —
    every element of `PLACE_VERBS`, read out of the script with the
    `script_vocabulary` idiom, appears in the usage output — **and** that the
    conversion did not turn prose into substitution: the literal backticked
@@ -579,13 +579,13 @@ flowchart TD
 
 ### Capture time
 
-4. [ ] `new.sh`: hoist the issues-directory resolution (`:246-252`) to
+4. [x] `new.sh`: hoist the issues-directory resolution (`:246-252`) to
    immediately below the filer resolution (`:209`), above the allocation
    (`:219`). No behavioural change on its own — it is what makes task 6
    affordable. **Do not split from task 6** (DD 8).
    **Verify:** `awk '/issues_dir=/{d=NR} /allocate issue/{a=NR} END{exit !(d && a && d < a)}' skills/issue/scripts/new.sh && bash tests/issues.sh case_new_defaults_kind_and_leaves_holder_and_outcome_empty`
 
-5. [ ] `new.sh`: add `--type`, validate it against the declared kind vocabulary
+5. [x] `new.sh`: add `--type`, validate it against the declared kind vocabulary
    in the pre-spend block beside the `status` check (`:193-196`), and write the
    parsed value at `:333` in place of the hardcoded `issue`. Remove the comment
    at `:331-332` asserting a capture is always an issue — this increment is what
