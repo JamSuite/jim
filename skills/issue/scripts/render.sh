@@ -571,6 +571,8 @@ jim issue — capture & review discovery artifacts
   close <id> [--as <o>]   finish it; <o> is done | wontfix | duplicate |
                           obsolete, and done is what a bare close records
   reopen <id>             return it to not-started, keeping the outcome
+  join <id> <umbrella>    put it under an umbrella; <umbrella> is an epic
+  leave <id> <umbrella>   take it back out
 
   reconcile               realize ordinals bound while offline
 

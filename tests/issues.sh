@@ -1388,18 +1388,27 @@ case_issues_render_help_lists_subcommands() {
 # Help is the surface a user reaches when they are already unsure, and it told
 # them to close an issue by editing `status:` directly. That leaves `outcome`
 # empty, which the index then reports as "closed but records no outcome" — help
-# text teaching the collection's own integrity check to fire. The verbs are
-# matched with their operand so the assertions discriminate: bare `close` and
-# `start` both already occur in the surrounding prose.
+# text teaching the collection's own integrity check to fire.
+#
+# The domain is read from the dispatch table rather than hand-listed here. A
+# case naming the verbs it knows about goes green for a verb it has never
+# heard of, which is exactly how this surface fell behind the dispatcher a
+# second time — the first repair enumerated five and the sixth and seventh
+# shipped past it. Verbs are matched with their operand so the assertions
+# discriminate: bare `close` and `start` both occur in the surrounding prose,
+# and a two-operand verb still leads with `<id>`.
 case_issues_render_help_points_at_the_lifecycle_verbs() {
+  local v n=0 missing=""
   run_render help
   assert_exit "rc" 0 "$RC"
-  assert_match "lists claim"     'claim <id>'   "$OUT"
-  assert_match "lists release"   'release <id>' "$OUT"
-  assert_match "lists start"     'start <id>'   "$OUT"
-  assert_match "lists close"     'close <id>'   "$OUT"
-  assert_match "lists reopen"    'reopen <id>'  "$OUT"
-  assert_match "lists reconcile" 'reconcile'    "$OUT"
+  for v in $(script_vocabulary "$SCRIPT_TRANSITION" TRANSITION_VERBS); do
+    n=$((n + 1))
+    grep -qF -- "$v <id>" <<< "$OUT" || missing="$missing$v "
+  done
+  assert_eq "the dispatch table was read (>= 7 verbs, got $n)" "yes" \
+    "$([[ "$n" -ge 7 ]] && echo yes || echo no)"
+  assert_eq "every dispatched verb reaches the help surface" "" "${missing% }"
+  assert_match "lists reconcile" 'reconcile' "$OUT"
   assert_eq "sends nobody to a hand edit" "" \
     "$(grep -o 'editing its' <<< "$OUT")"
 }
