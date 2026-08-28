@@ -2,7 +2,7 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-08-27"
+updated: "2026-08-28"
 last_full_generate: "2026-08-25T05:10:57Z"
 ---
 
@@ -18,7 +18,8 @@ group's specs, ARCHITECTURE.md, and code.*
 The `issue` group is jim's discovery-capture vertical: actionable findings
 surfaced mid-conversation become structured, indexed, analyzable issue files
 under `docs/issues/`. It owns the capture flow (`/jim:issue add`), the lifecycle
-verbs that move a record through it, the read views
+verbs that move a record through it, the umbrella records that group work and
+the membership that places an issue under one, the read views
 (`list`/`stats`/`show`/`insights`), the collection's index, the definition of a
 recordable contributor identity, one-shot migrations, and the read-only insights
 persona. It also owns where the collection lives: a project may keep it on the
@@ -54,13 +55,23 @@ CLIs.
   emitter cannot verify the declaration, which is why it refuses to supply one:
   no absence is read as an answer in either direction. Under the default
   placement both flags are inert.
+  A capture names the kind it files and the umbrellas it joins: `--type`
+  selects between an ordinary issue and an umbrella, and `--part-of` names one
+  or more umbrellas by any reference form the lifecycle verbs accept. Both
+  resolve above the allocator, so a filing refused for an unresolvable
+  umbrella, a target that is not an umbrella, or an umbrella filed into another
+  spends no identity and leaves the collection as it was.
 - `index.sh` **index generation** — frontmatter scan → `INDEX.md`
-  (summary, issues, relation graph, integrity warnings). Guarantee:
-  line-oriented parse only; atomic write — a failed run leaves the previous
+  (summary, issues, umbrella rosters, relation graph, integrity warnings).
+  Guarantee: line-oriented parse only; atomic write — a failed run leaves the previous
   index untouched; a placement it cannot resolve refuses rather than publishing
   an index whose origin lint silently did not run; the Issues row describes each
   record with every field a filter can name, each emitted only where the record
-  carries it.
+  carries it. Membership is read from the member's own record and the roster
+  derived by bucketing, so no umbrella records its own members and none can
+  disagree with the records claiming it; a membership naming a record that is
+  not an umbrella, or an umbrella placed under another, is reported as an
+  integrity warning rather than rendered as a roster.
 - `render.sh` **read views** — `stats`/`list`/`show`/`insights-graph`/`help`.
   Guarantee: staleness-gated index reuse in the working tree, where mtimes
   answer the question, and an unconditional rebuild on a materialized copy,
@@ -75,17 +86,29 @@ CLIs.
   never leaves the filter vocabulary. A filter naming an axis the index does
   not describe is named on stderr and carries a non-zero status, on the same
   terms as a view that could not be refreshed — an empty result means nothing
-  matched, never that the view could not look.
+  matched, never that the view could not look. An umbrella is nameable by the
+  same reference forms as any record, and the views that report one report its
+  progress from the same derivation the index uses — the census rollup, the
+  list row and `show` cannot disagree about an umbrella's members. An umbrella
+  nobody has joined reports an empty roster rather than vanishing from the view.
 - `transition.sh` **lifecycle verbs** — `claim` / `release` / `start` / `close`
-  / `reopen`, one command per transition. Guarantee: the id clears the validator
-  and the outcome clears its enum before the placement door opens; each
+  / `reopen` / `join` / `leave`, one command per transition. Guarantee: the id
+  clears the validator and the outcome clears its enum before the placement
+  door opens; each
   transition publishes every field it changes, plus the refreshed stamp, in one
   atomic write, so a record is never observed finished with no outcome; a claim
   or release on an issue another holds refuses naming the holder and takes
   `--force` to override; closing preserves the holder record, and reopening
   keeps the outcome, which is what makes a reopen legible from the record alone.
   The door commits under the verb matching the subcommand, so a centralized
-  collection's history is self-describing.
+  collection's history is self-describing. Membership is recorded on the member
+  alone, so joining writes exactly one record and the umbrella's own file is
+  untouched; an umbrella may not be placed under another, and containment is
+  enforced on the way in only, so `leave` stays available to repair a violation
+  a hand edit introduced. A verb that would change nothing writes nothing — no
+  record touched, no stamp refreshed, no index regenerated — and says so on
+  stdout, so grouping several issues at once does not fail on the one already
+  grouped.
 - `identity.sh` **recordable identity** — `resolve` (the environment's),
   `validate` (one already obtained), `normalize` (one carried into the
   project's configured form) and `map` (one resolved through the project's
@@ -189,11 +212,13 @@ CLIs.
 ## Structure
 
 - `skills/issue/` — `SKILL.md` (subcommand routing, § 7a contract, § Step-7
-  wrapping discipline), `assets/issue-template.md`, and nine scripts:
+  wrapping discipline), `assets/issue-template.md`, and ten scripts:
   `new.sh` (emitter), `index.sh` (index), `render.sh` (views), `backfill.sh` /
   `migrate.sh` (migrations), `reconcile.sh` (realize provisional ordinals),
   `identity.sh` (the recordable-identity definition), `transition.sh` (the
-  lifecycle verbs), and `place.sh` — the seam between an on-branch collection
+  lifecycle verbs), `resolve.sh` — one definition of what an ordinal, an exact
+  slug or a slug prefix names on a write path, shared by the capture and
+  lifecycle surfaces — and `place.sh` — the seam between an on-branch collection
   and one centralized on a designated branch, which the six re-exec themselves
   through; `transition.sh` drives its two-phase handle directly instead. It also
   carries a face: the spec group's citation sweep and the partition surface
