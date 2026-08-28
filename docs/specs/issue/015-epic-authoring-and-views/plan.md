@@ -609,25 +609,25 @@ flowchart TD
 
 ### Lifecycle verbs
 
-8. [ ] `transition.sh`: add a verb-gated second positional to `main`'s argument
+8. [x] `transition.sh`: add a verb-gated second positional to `main`'s argument
    loop (`:203-213`) — a `VERBS_WITH_UMBRELLA` constant, and a third branch in
    the `*)` arm. The five existing verbs keep today's arity: a second bare token
    is still `error: unexpected argument`, status 2.
    **Verify:** `bash tests/issues.sh case_transition_existing_verbs_still_refuse_a_second_operand`
 
-9. [ ] `transition.sh`: add `join` / `leave` to `TRANSITION_VERBS` (`:49`), the
+9. [x] `transition.sh`: add `join` / `leave` to `TRANSITION_VERBS` (`:49`), the
    `apply_verb` arms (`:353-379`), and the header verb list (`:27`), writing the
    member's `part-of`. The umbrella operand clears `valid-id` as supplied and
    again after resolution, in the same positions the issue id does (`:241-245`,
    `:266-276`). Depends on task 8.
    **Verify:** `bash tests/issues.sh case_transition_join_and_leave_write_membership`
 
-10. [ ] `transition.sh`: add the two containment refusals to the new arms — an
+10. [x] `transition.sh`: add the two containment refusals to the new arms — an
     umbrella that is not `type: epic` is refused naming what the record *is*,
     and an epic may not be put under an epic. Depends on task 9.
     **Verify:** `bash tests/issues.sh case_transition_join_refuses_a_non_epic_umbrella && bash tests/issues.sh case_transition_refuses_an_epic_inside_an_epic`
 
-11. [ ] `transition.sh`: add the write-only-on-change filter between the change
+11. [x] `transition.sh`: add the write-only-on-change filter between the change
     capture (`:281`) and the stamp (`:300`), comparing the **composed
     `field: value` line** against the record's existing `^field:` line — not
     value against value, which mismatches for every quoted field. Read a
@@ -636,7 +636,7 @@ flowchart TD
     Applies to all seven verbs. Depends on task 10.
     **Verify:** `bash tests/issues.sh case_transition_a_noop_writes_nothing && bash tests/issues.sh case_transition_a_real_change_still_writes && bash tests/issues.sh case_transition_noop_holds_for_quoted_and_bare_fields`
 
-12. [ ] `tests/issues.sh`: give the no-op rule a case per existing verb that
+12. [x] `tests/issues.sh`: give the no-op rule a case per existing verb that
     goes red without the filter — mtime and `updated:` both unmoved, and the
     placement door asked to commit nothing.
     `case_transition_claim_is_idempotent_for_the_holder` (`:4436`) is today's

@@ -4345,13 +4345,13 @@ origin: "conversation"'
 #   not, which is how the emitter and the close verb actually write it — a
 #   fixture that quoted a set value would be testing a shape nothing produces.
 transition_issue() {
-  local outcome_field='""'
+  local outcome_field='""' kind="${7:-issue}"
   [[ -n "$6" ]] && outcome_field="$6"
   write_issue "$1" "$2" "num: $3
 title: \"T\"
 status: $4
 priority: medium
-type: issue
+type: $kind
 filed-by: \"filer@example.test\"
 claimed-by: \"$5\"
 outcome: $outcome_field
@@ -4441,6 +4441,215 @@ case_transition_claim_is_idempotent_for_the_holder() {
   assert_exit "rc" 0 "$RC"
   assert_match "still held by the same developer" "^claimed-by: \"$TEST_IDENTITY\"\$" \
     "$(cat "$dir/20260101-d.md")"
+  # A reclaim by the holder is the no-op case, so it must also leave the record
+  # alone. Without this the case passes whether or not the write happened,
+  # which is coverage it does not have — the field it asserts is already the
+  # value a rewrite would put back.
+  assert_match "the stamp did not move" '^updated: 2026-01-01T00:00:00Z$' \
+    "$(cat "$dir/20260101-d.md")"
+  assert_match "and it says nothing changed" 'unchanged' "$OUT"
+}
+
+# AC: the five existing verbs keep the arity they have today — only the
+# membership verbs bind a second operand, so nothing about how the other five
+# are called changes.
+case_transition_existing_verbs_still_refuse_a_second_operand() {
+  local dir v
+  dir=$(empty_dir transition_arity)
+  transition_issue "$dir" 20260101-a 1 open "" ""
+  for v in claim release start close reopen; do
+    run_transition "$v" 20260101-a extra-operand --dir "$dir"
+    assert_exit "$v refuses a second operand" 2 "$RC"
+  done
+}
+
+# AC: an issue is put under an umbrella and taken out again through one
+# command each, without hand-editing the record, and the membership is written
+# on the member alone — the umbrella's own file never mentions it.
+case_transition_join_and_leave_write_membership() {
+  local dir
+  dir=$(empty_dir transition_join_leave)
+  transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+  transition_issue "$dir" 20260102-member   2 open "" ""
+  run_transition join 20260102-member 20260101-umbrella --dir "$dir"
+  assert_exit "join rc" 0 "$RC"
+  assert_match "membership recorded on the member" \
+    '^  part-of: \[20260101-umbrella\]$' "$(cat "$dir/20260102-member.md")"
+  assert_match "the umbrella records nothing about it" \
+    '^  part-of: \[\]$' "$(cat "$dir/20260101-umbrella.md")"
+  run_transition leave 20260102-member 20260101-umbrella --dir "$dir"
+  assert_exit "leave rc" 0 "$RC"
+  assert_match "membership removed" \
+    '^  part-of: \[\]$' "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: an umbrella is nameable by the same reference forms an issue is, so a
+# developer does not learn a second way to point at a record. Exact-string
+# matching would answer for the slug alone.
+case_transition_join_accepts_ordinal_and_prefix_forms() {
+  local dir
+  dir=$(empty_dir transition_join_forms)
+  transition_issue "$dir" 20260101-auth-hardening 7 open "" "" epic
+  transition_issue "$dir" 20260102-member         2 open "" ""
+  run_transition join 20260102-member 7 --dir "$dir"
+  assert_exit "an ordinal resolves" 0 "$RC"
+  assert_match "to the umbrella's slug" '^  part-of: \[20260101-auth-hardening\]$' \
+    "$(cat "$dir/20260102-member.md")"
+  run_transition leave 20260102-member 20260101-auth --dir "$dir"
+  assert_exit "a prefix resolves" 0 "$RC"
+  assert_match "to the same record" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: an umbrella contains ordinary issues, so a record that is not one is
+# refused — and the refusal says what the named record actually is, which is
+# what separates a typo from a category error.
+case_transition_join_refuses_a_non_epic_umbrella() {
+  local dir
+  dir=$(empty_dir transition_join_non_epic)
+  transition_issue "$dir" 20260101-plain  1 open "" ""
+  transition_issue "$dir" 20260102-member 2 open "" ""
+  run_transition join 20260102-member 20260101-plain --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the refusal names what it is" 'issue' "$ERR"
+  assert_match "no membership written" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: an umbrella never contains another umbrella, so what one contains has a
+# single unambiguous answer.
+case_transition_refuses_an_epic_inside_an_epic() {
+  local dir
+  dir=$(empty_dir transition_epic_in_epic)
+  transition_issue "$dir" 20260101-outer 1 open "" "" epic
+  transition_issue "$dir" 20260102-inner 2 open "" "" epic
+  run_transition join 20260102-inner 20260101-outer --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_match "no membership written" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-inner.md")"
+}
+
+# AC: a change that would leave the record as it found it writes nothing — no
+# field, no stamp — and says so without failing.
+case_transition_a_noop_writes_nothing() {
+  local dir before_mtime after_mtime
+  dir=$(empty_dir transition_noop)
+  transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+  transition_issue "$dir" 20260102-member   2 open "" ""
+  run_transition join 20260102-member 20260101-umbrella --dir "$dir"
+  assert_exit "the first join applies" 0 "$RC"
+  before_mtime="$(stat -c %Y "$dir/20260102-member.md")"
+  run_transition join 20260102-member 20260101-umbrella --dir "$dir"
+  assert_exit "the repeat succeeds" 0 "$RC"
+  assert_match "and reports that nothing changed" 'unchanged' "$OUT"
+  after_mtime="$(stat -c %Y "$dir/20260102-member.md")"
+  assert_eq "the file was not rewritten" "$before_mtime" "$after_mtime"
+  assert_eq "membership recorded once, not twice" "1" \
+    "$(grep -c '^  part-of: \[20260101-umbrella\]$' "$dir/20260102-member.md")"
+}
+
+# AC: an issue can belong to several umbrellas, so joining a second one keeps
+# the first. The membership field is a list read through the relations reader;
+# a scalar reader anchored at the start of a line cannot see it at all and
+# answers empty, which would rewrite the list down to the one umbrella just
+# named and silently drop every other membership the record held.
+case_transition_join_preserves_existing_memberships() {
+  local dir
+  dir=$(empty_dir transition_join_multi)
+  transition_issue "$dir" 20260101-first  1 open "" "" epic
+  transition_issue "$dir" 20260102-second 2 open "" "" epic
+  transition_issue "$dir" 20260103-member 3 open "" ""
+  run_transition join 20260103-member 20260101-first --dir "$dir"
+  assert_exit "first join" 0 "$RC"
+  run_transition join 20260103-member 20260102-second --dir "$dir"
+  assert_exit "second join" 0 "$RC"
+  assert_match "both memberships are held" \
+    '^  part-of: \[20260101-first, 20260102-second\]$' \
+    "$(cat "$dir/20260103-member.md")"
+  # Leaving one keeps the other.
+  run_transition leave 20260103-member 20260101-first --dir "$dir"
+  assert_exit "leave" 0 "$RC"
+  assert_match "only the named membership was removed" \
+    '^  part-of: \[20260102-second\]$' "$(cat "$dir/20260103-member.md")"
+}
+
+# AC: the rule governs the no-op path only. On a real change every verb keeps
+# the behaviour it has — this is the case that goes red if the filter starts
+# swallowing genuine writes.
+case_transition_a_real_change_still_writes() {
+  local dir
+  dir=$(empty_dir transition_real_change)
+  transition_issue "$dir" 20260101-a 1 open "" ""
+  run_transition close 20260101-a --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "it does not claim to be a no-op" "0" \
+    "$(printf '%s' "$OUT" | grep -c unchanged)"
+  assert_match "the field was written" '^status: closed$' "$(cat "$dir/20260101-a.md")"
+  assert_eq "the stamp moved" "0" \
+    "$(grep -c '^updated: 2026-01-01T00:00:00Z$' "$dir/20260101-a.md")"
+}
+
+# AC: every lifecycle verb obeys the rule, whichever verb it is. The two field
+# classes are the point: apply_verb emits claimed-by carrying its quotes and
+# status/outcome bare, so a filter comparing a pair's VALUE against a
+# quote-stripping reader matches for the bare fields and never for the quoted
+# one. That failure is partial and silent — close-on-closed would no-op while
+# every claim kept writing — so both classes are driven here.
+case_transition_noop_holds_for_quoted_and_bare_fields() {
+  local dir m1 m2
+  dir=$(empty_dir transition_noop_field_classes)
+  # claimed-by: written quoted.
+  transition_issue "$dir" 20260101-held 1 open "$TEST_IDENTITY" ""
+  m1="$(stat -c %Y "$dir/20260101-held.md")"
+  run_transition claim 20260101-held --dir "$dir"
+  assert_exit "reclaim rc" 0 "$RC"
+  assert_match "a quoted field no-ops" 'unchanged' "$OUT"
+  assert_eq "and is not rewritten" "$m1" "$(stat -c %Y "$dir/20260101-held.md")"
+  # status / outcome: written bare.
+  transition_issue "$dir" 20260102-done 2 closed "" "done"
+  m2="$(stat -c %Y "$dir/20260102-done.md")"
+  run_transition close 20260102-done --dir "$dir"
+  assert_exit "re-close rc" 0 "$RC"
+  assert_match "a bare field no-ops" 'unchanged' "$OUT"
+  assert_eq "and is not rewritten" "$m2" "$(stat -c %Y "$dir/20260102-done.md")"
+}
+
+# AC: every lifecycle verb obeys the no-op rule, not only the membership ones.
+# The domain is read from the script's own dispatch vocabulary rather than
+# retyped, so a verb added to TRANSITION_VERBS enters this case without an
+# edit — and a verb that writes unconditionally fails here rather than
+# silently publishing a stamp-only commit.
+case_transition_noop_is_free_for_every_verb() {
+  local dir v mtime seeded
+  for v in $(script_vocabulary "$SCRIPT_TRANSITION" TRANSITION_VERBS); do
+    dir=$(empty_dir "transition_noop_$v")
+    transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+    # Seed the record already in the state this verb would move it to, so the
+    # verb has nothing left to do.
+    case "$v" in
+      claim|start) seeded="$TEST_IDENTITY" ;;
+      *)           seeded="" ;;
+    esac
+    case "$v" in
+      start)  transition_issue "$dir" 20260102-m 2 active "$seeded" "" ;;
+      close)  transition_issue "$dir" 20260102-m 2 closed "" "done" ;;
+      reopen) transition_issue "$dir" 20260102-m 2 open   "" "" ;;
+      *)      transition_issue "$dir" 20260102-m 2 open "$seeded" "" ;;
+    esac
+    if [[ "$v" == join || "$v" == leave ]]; then
+      [[ "$v" == join ]] && run_transition join 20260102-m 20260101-umbrella --dir "$dir"
+      mtime="$(stat -c %Y "$dir/20260102-m.md")"
+      run_transition "$v" 20260102-m 20260101-umbrella --dir "$dir"
+    else
+      mtime="$(stat -c %Y "$dir/20260102-m.md")"
+      run_transition "$v" 20260102-m --dir "$dir"
+    fi
+    assert_exit "$v succeeds on a no-op" 0 "$RC"
+    assert_match "$v reports it changed nothing" 'unchanged' "$OUT"
+    assert_eq "$v did not rewrite the record" "$mtime" \
+      "$(stat -c %Y "$dir/20260102-m.md")"
+  done
 }
 
 # AC: any developer can close any issue, whether or not they hold it, and

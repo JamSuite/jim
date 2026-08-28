@@ -24,8 +24,11 @@
 #
 # USAGE
 #   bash transition.sh <verb> <id> [--as <outcome>] [--force] [--dir <path>]
-#     verb ∈ claim | release | start | close | reopen
+#   bash transition.sh <join|leave> <id> <umbrella> [--dir <path>]
+#     verb ∈ claim | release | start | close | reopen | join | leave
 #     <id>   a display ordinal, an exact slug, or a unique slug prefix
+#     <umbrella>  the same reference forms <id> accepts; join and leave are
+#            the only verbs that bind a second operand
 #     --dir  operate on a named collection and skip the placement door; for
 #            tests, mirroring the emitter's flag of the same name
 #
@@ -45,8 +48,14 @@ IDENTITY="$HERE/identity.sh"
 PLACE="$HERE/place.sh"
 INDEX_SCRIPT="$HERE/index.sh"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
+RESOLVE="$HERE/resolve.sh"
 
-readonly TRANSITION_VERBS=(claim release start close reopen)
+readonly TRANSITION_VERBS=(claim release start close reopen join leave)
+
+# The verbs that bind a second positional. Every other verb keeps the arity it
+# has always had, so a stray token stays an error rather than becoming an
+# operand nothing reads.
+readonly VERBS_WITH_UMBRELLA=(join leave)
 
 # How an issue can have been finished. Checked before anything is written: the
 # index reports an unrecognized outcome, but detecting one afterwards leaves a
@@ -62,6 +71,15 @@ usage() {
     '  bash transition.sh <verb> <id> [--as <outcome>] [--force] [--dir <path>]' \
     '' \
     "  verbs: ${TRANSITION_VERBS[*]}" >&2
+}
+
+# takes_umbrella <verb> — exit 0 iff <verb> binds a second positional operand.
+takes_umbrella() {
+  local v
+  for v in "${VERBS_WITH_UMBRELLA[@]}"; do
+    [[ "$1" == "$v" ]] && return 0
+  done
+  return 1
 }
 
 # in_verbs <candidate> — exit 0 iff <candidate> is a transition verb.
@@ -137,8 +155,59 @@ resolve_slug() {
   printf '%s' "${hits[0]}"
 }
 
+# csv_has <csv> <needle> — exit 0 iff <needle> is one of <csv>'s members.
+csv_has() {
+  local IFS=',' t
+  for t in $1; do [[ "$t" == "$2" ]] && return 0; done
+  return 1
+}
+
+# csv_without <csv> <needle> — <csv> with every occurrence of <needle> dropped.
+csv_without() {
+  local IFS=',' t out=""
+  for t in $1; do
+    [[ "$t" == "$2" ]] && continue
+    if [[ -z "$out" ]]; then out="$t"; else out="$out,$t"; fi
+  done
+  printf '%s' "$out"
+}
+
+# drop_unchanged <file> <pairs> — <pairs> minus every pair the record already
+# satisfies.
+#
+#   The comparison is between COMPOSED LINES, not between values, and that is
+#   the load-bearing detail. set_fields writes `field: value`, while the pairs
+#   arrive in file form — claimed-by carrying its literal quotes, status and
+#   outcome bare. Comparing a pair's value against a quote-stripping reader
+#   would match for the bare fields and never for the quoted one, so the rule
+#   would look implemented while every claim and release kept rewriting the
+#   record. Asking whether `field: value` already IS the record's line is
+#   quote-agnostic, needs no per-field knowledge, and cannot drift when a
+#   field with a different convention is added.
+#
+#   It reaches an indented relations child for the same reason set_fields
+#   does: the field name carries its own indentation.
+drop_unchanged() {
+  local file="$1" pairs="$2" fm line field value current kept=""
+  fm="$(frontmatter "$file")"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    field="${line%%$'\t'*}"
+    value="${line#*$'\t'}"
+    current="$(printf '%s\n' "$fm" | grep -m1 -E "^$field:" | sed 's/[[:space:]]*$//')"
+    [[ "$current" == "$field: $value" ]] && continue
+    kept+="$line"$'\n'
+  done <<< "$pairs"
+  printf '%s' "$kept"
+}
+
 # set_fields <file> <pairs> — replace top-level frontmatter scalars, where
 # <pairs> is newline-separated `field<TAB>value`.
+#
+#   A field name may carry its own leading indentation, which is how a
+#   relations child such as `  part-of` is addressed: the match, the
+#   presence check and the rewritten line all use the name as given, so an
+#   indented field needs no second writer.
 #
 #   Every change lands in ONE atomic publish. A transition that wrote each
 #   field separately could be interrupted between them and leave, say, a
@@ -200,20 +269,29 @@ main() {
   fi
   shift
 
-  local id="" outcome="" force=0 dir=""
+  local id="" umbrella="" outcome="" force=0 dir=""
   while (( $# )); do
     case "$1" in
       --as)    outcome="${2-}"; shift 2 || break ;;
       --force) force=1; shift ;;
       --dir)   dir="${2-}"; shift 2 || break ;;
       -*)      echo "error: unknown flag '$1'" >&2; usage; return 2 ;;
-      *)       if [[ -z "$id" ]]; then id="$1"; shift; else
+      *)       if [[ -z "$id" ]]; then id="$1"; shift
+               elif [[ -z "$umbrella" ]] && takes_umbrella "$verb"; then
+                 umbrella="$1"; shift
+               else
                  echo "error: unexpected argument '$1'" >&2; return 2; fi ;;
     esac
   done
 
   if [[ -z "$id" ]]; then
     echo "error: '$verb' requires an issue id" >&2
+    usage
+    return 2
+  fi
+
+  if takes_umbrella "$verb" && [[ -z "$umbrella" ]]; then
+    echo "error: '$verb' requires an umbrella" >&2
     usage
     return 2
   fi
@@ -277,12 +355,74 @@ main() {
 
   local file="$work/$slug.md"
 
+  # The umbrella operand is gated exactly as the issue id is: validated as
+  # supplied before any path is composed from it, and validated again after
+  # resolution, because an ordinal or a prefix answers with a name read off
+  # the directory. resolve.sh performs both, and it is the same definition the
+  # emitter resolves --part-of through — so a reference that names a record on
+  # one path names the same record on the other.
+  local umbrella_slug="" umbrella_kind=""
+  if [[ -n "$umbrella" ]]; then
+    local ures
+    if ! ures="$(bash "$RESOLVE" "$work" "$umbrella" 2>/dev/null)"; then
+      # The reference is not echoed: resolution may have failed at the
+      # validator, so these bytes are not known to be inert.
+      echo "error: no single issue matches that umbrella reference" >&2
+      [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
+      return 1
+    fi
+    umbrella_slug="${ures%%$'\t'*}"
+    umbrella_kind="${ures##*$'\t'}"
+  fi
+
+  # Containment is enforced on the way in only. A record that reached a
+  # forbidden membership by hand-edit is reported by the index, and `leave`
+  # stays available to repair it — refusing there would make the violation
+  # permanent through the very verb that undoes it.
+  if [[ "$verb" == join ]]; then
+    if [[ "$umbrella_kind" != "epic" ]]; then
+      # The kind is displayed only when its shape is inert. It is read from a
+      # record that may have been hand-edited, and a refusal is not the place
+      # to render arbitrary file content.
+      if [[ "$umbrella_kind" =~ ^[a-z][a-z-]{0,30}$ ]]; then
+        echo "error: that record is an $umbrella_kind, not an epic" >&2
+      else
+        echo "error: that record is not an epic" >&2
+      fi
+      [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
+      return 1
+    fi
+    if [[ "$(fm_field "$(frontmatter "$file")" type)" == "epic" ]]; then
+      echo "error: an epic cannot belong to an epic" >&2
+      [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
+      return 1
+    fi
+  fi
+
   local changes
-  changes="$(apply_verb "$verb" "$file" "$actor" "$outcome" "$force")"
+  changes="$(apply_verb "$verb" "$file" "$actor" "$outcome" "$force" "$umbrella_slug")"
   rc=$?
   if (( rc != 0 )); then
     [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
     return $rc
+  fi
+
+  # Drop everything the record already satisfies, BEFORE the stamp is composed.
+  # The order is the whole point: the stamp is a fresh timestamp and so is
+  # never equal to the record's, and appending it first would make every run a
+  # change. Deciding on the semantic fields alone is also what lets the
+  # placement door's own empty-diff guard finally reach a transition — the
+  # stamp is exactly what has been defeating it.
+  changes="$(drop_unchanged "$file" "$changes")"
+
+  if [[ -z "$changes" ]]; then
+    # Nothing to do is a success, not a refusal: grouping several issues at
+    # once must not fail on the one already grouped. Nothing is written, no
+    # stamp moves, the index is not regenerated, and the door is released
+    # rather than asked to publish an empty commit.
+    [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
+    printf '%s\t%s\tunchanged\n' "$slug" "$verb"
+    return 0
   fi
 
   # The stamp rides with the verb's own changes so the whole transition is one
@@ -346,6 +486,7 @@ takeable() {
 #   the emitter writes the same fields.
 apply_verb() {
   local verb="$1" file="$2" actor="$3" outcome="$4" force="$5"
+  local umbrella="${6:-}"
   local fm holder
   fm="$(frontmatter "$file")"
   holder="$(fm_field "$fm" claimed-by)"
@@ -385,6 +526,32 @@ apply_verb() {
       # how a reopen is recorded: it names how the issue was finished last
       # time, and discarding it would throw away the reason.
       printf 'status\topen\n'
+      ;;
+    join|leave)
+      # Membership is a set, and the field is a list — so an append is the
+      # wrong default. The existing order is preserved and the umbrella is
+      # added only when absent, which makes a repeated join produce the line
+      # the record already has; the shared filter then drops it and the run
+      # writes nothing.
+      #
+      # Read through relation_targets, not the top-level scalar reader: this
+      # field is indented under `relations:` and a reader anchored at the
+      # start of a line cannot see it at all.
+      local targets next
+      targets="$(relation_targets "$fm" part-of)"
+      if [[ "$verb" == join ]]; then
+        next="$targets"
+        if ! csv_has "$targets" "$umbrella"; then
+          if [[ -z "$targets" ]]; then next="$umbrella"
+          else next="$targets,$umbrella"; fi
+        fi
+      else
+        next="$(csv_without "$targets" "$umbrella")"
+      fi
+      # The field name carries its indentation, which is how set_fields
+      # addresses a relations child. Every member is a resolved, twice
+      # validated id, so none can close the array or open a field of its own.
+      printf '  part-of\t[%s]\n' "${next//,/, }"
       ;;
   esac
   return 0
