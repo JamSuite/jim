@@ -237,6 +237,25 @@ what it is, not whose it was.
 
 ### 5a. Build scope — should have been done then
 
+**All four are closed** (`b686454a`, `d4984a8c`, `414fc3b4`, `b58b4d5c`;
+closed at `25da3537`), in a follow-on pass after this document was written.
+The attribution below is left as it was recorded — it is why the work was
+taken, and a record that rewrites itself once the work lands stops being
+evidence of anything.
+
+Three of the four closed by a **derived check** rather than by the edit alone,
+which is the shape their shared failure asked for: the capture checklist now
+reads the emitter's `ISSUE_TYPES`, the lifecycle-verb sweep now covers
+`docs/features/issues.md`, and the duplicate reference ladder was deleted
+rather than annotated. `#414` closed on a behavioural test alone, having no
+enumeration to derive. Suite 1,677 green.
+
+One correction the pass produced: `#417` named four stale places and there
+were **five** — the interactive-capture section documented `add` with neither
+flag. Derived from the doc's own structure rather than from the issue's list,
+which is the failure `#416` itself was.
+
+
 - **#411 `cross-copy-lockstep`** (high). The build *created* the duplicate:
   it added `resolve.sh` and left `transition.sh`'s `resolve_slug` in place,
   unmarked and uncompared, in a territory where five other copy-pairs all carry
