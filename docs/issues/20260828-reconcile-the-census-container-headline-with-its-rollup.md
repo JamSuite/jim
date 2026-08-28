@@ -66,3 +66,39 @@ than of the query, so it is not scoped by the filter" — and the headline does
 not follow it. Either scope both to the query or scope neither, but a census
 should not name an umbrella in its rollup that its own container line declines
 to count.
+
+## Resolution
+
+Fixed in `b686454a`. The decision this record asked for was made the third way
+it offered — scope the rollup's *roster*, leave its *numbers* alone.
+
+**The file already answered the question twenty lines below.** The `== Blocking
+==` rollup gates which sources appear on the filtered `matching` set and then
+reports each one's complete outbound count. The umbrella rollup now does the
+same: an umbrella whose own row the filter excluded is not named, and one it
+admits carries its whole roster's progress rather than the filter's share of
+it. That keeps the code comment above the block true — progress stays a
+property of the umbrella, not of the query — while removing the population
+mismatch with the headline.
+
+The heading moved below the rows it introduces, because whether there is a
+section at all is the *filtered* roster's answer. Rows accumulate through
+`printf -v` rather than a command substitution per row, for the reason
+`format_row` states about subshell cost.
+
+**Pinned by** `case_issues_render_stats_rollup_is_scoped_like_its_headline`,
+which carries its own negative control: the same collection under a query the
+umbrella passes, asserting progress reads `1/2` and not the `0/0` a
+member-scoped count would give when neither member matches. Mutation-verified —
+deleting the one guard line turns it red on exactly the rollup assertion, with
+the headline assertion still passing.
+
+**Exercised against the real collection, not only the fixture.** On a copy with
+one record marked `epic` and one member joined: unfiltered and under a query
+the umbrella passes, headline and rollup both appear and progress reads whole;
+under one it fails, both disappear together.
+
+**Provenance unchanged from what was filed.** This was the build's, not the
+remediation pass's — the headline was filter-scoped and the rollup unfiltered
+from the start. The fix that made the rollup enumerate umbrella rows widened
+the population that could hit it, and that fix stays.

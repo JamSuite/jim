@@ -79,3 +79,51 @@ asks for.
 `transition.sh:97-105` and `migrate.sh:442-450`, unmarked. They are currently
 byte-identical, so this is not a breach today — but it is the same shape one
 edit away from being one.
+
+## Resolution
+
+Fixed in `414fc3b4`. The fork was settled the first way: `transition.sh`'s
+primary `<id>` now resolves through `resolve.sh`, so the header's
+single-definition claim is true rather than annotated.
+
+Delegating removed rather than marked. `resolve_slug` is gone, and so are both
+open-coded validate blocks around it — `resolve.sh` already gates the supplied
+reference before composing a path and the resolved basename afterwards, which
+was the whole of what those blocks did. `INDEX_FILENAME` went with them, having
+had no other reader. The `join` nesting check now reads the kind that comes
+back with the slug instead of re-opening the file, so both records in that
+refusal are read one way.
+
+**The masked divergence is now observable, which was the point.** Neither
+caller suppresses `resolve.sh`'s stderr any more, so a reference matching
+nothing and one matching several give different reasons. The line each caller
+keeps names only which operand failed — the one thing `resolve.sh` cannot know
+on a verb taking two references. The refusal strings carry neither the
+reference nor any issue content, so nothing that was withheld before is
+disclosed now.
+
+**One deliberate departure from "delegate everything".** The cheap
+`jimfile.sh valid-id` call ahead of the placement door stays. It is not a
+second definition — it is one call to the shared validator — and it is
+load-bearing: the group blueprint states as a `transition.sh` guarantee that
+*the id clears the validator and the outcome clears its enum before the
+placement door opens*. Delegating it would have moved the check behind the
+door and broken a published guarantee to buy nothing. Commented in place as a
+fail-fast so it does not read as the duplication returning.
+
+**Pinned by two cases** in `tests/issues.sh`:
+`case_transition_resolves_its_id_through_the_shared_definition` asserts the
+ambiguous and absent refusals are distinguishable, and
+`case_transition_and_capture_refuse_a_reference_alike` drives one collection
+from both write paths. The first was mutation-verified: re-suppressing the
+stderr on the primary operand turns it red on exactly those two assertions.
+
+**No blueprint edit was needed**, and that is the correct outcome for a
+divergence resolved *fix the code*. The map already described `resolve.sh` as
+shared by the capture and lifecycle surfaces; that sentence was the false one,
+and the fix made it true.
+
+**Not addressed, and still true as filed:** `frontmatter()` / `fm_field()`
+remain triplicated across `resolve.sh`, `transition.sh` and `migrate.sh`,
+unmarked and byte-identical. This record judged that not a breach today, and
+nothing here changed it either way.

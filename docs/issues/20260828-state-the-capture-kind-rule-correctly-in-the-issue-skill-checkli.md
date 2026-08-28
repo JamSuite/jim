@@ -62,3 +62,35 @@ the emitter's own flag parser, so a new flag cannot go undocumented in the
 invocation. It does not quantify over the surfaces that restate the emitter's
 *semantics* in prose, which is where this survived. Worth considering whether
 the checklist should be derived rather than hand-maintained.
+
+## Resolution
+
+Fixed in `d4984a8c`. The line now reads *`type` is `issue`, or `epic` when
+`--type epic` was given — the kind the flag named, never one inferred from the
+subject's wording*.
+
+**Split rather than amended.** The bullet carried two unrelated claims, and only
+one was falsified; `claimed-by` and `outcome` being empty at filing time is
+still true and now sits on its own line, so a future change to one rule cannot
+drag the other with it.
+
+**The wider point this record raised is what actually closes it.** A hand
+correction would have fixed the pass that noticed the drift and left the next
+one exposed — which is precisely this record's own history, since the line
+survived both the build and a remediation pass that each worked from someone
+else's list of sites. `case_docsurfaces_capture_kinds_reach_the_checklist` now
+derives the vocabulary from the emitter's own `ISSUE_TYPES` array, the way the
+lifecycle sweep derives from `TRANSITION_VERBS`, so a third kind cannot reach
+the parser while the checklist still forbids it. Red-verified against the exact
+pre-fix wording, where it names `epic` as the missing kind.
+
+**The set was derived, not inherited — and it was one site.** A sweep across
+every skill body, feature doc, README, WORKFLOW and the issue template found no
+other live restatement of the superseded rule; `assets/issue-template.md` and
+the two earlier statements in this same file were already correct. So the
+"three investigators found it independently" count was the count of readers,
+not of sites.
+
+**Scope note.** Only the kind rule is derived. The rest of the capture
+checklist is still hand-maintained prose, and this record's suggestion that the
+whole checklist might be derived is neither taken nor refused here.

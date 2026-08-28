@@ -56,3 +56,37 @@ Bring the doc up to the shipped surface. Then consider whether
 `case_docsurfaces_transition_verbs_are_documented` should include
 `docs/features/issues.md` in its surface list, since it is the feature doc for
 exactly the verbs that check derives.
+
+## Resolution
+
+Fixed in `b58b4d5c`, and the doc-surface question this record left open is
+answered yes.
+
+**Five stale places, not the four filed.** The Usage block, the "five verbs"
+claim and its table, the read-views section, and the "four sections" index
+claim were all as recorded. The fifth: *Interactive capture* described
+`add <subject>` with neither flag — the section a reader would actually consult
+to learn how to file an umbrella. It was found by deriving the set from the
+doc's own structure instead of working from this record's line numbers, which
+is the same failure the sibling checklist record is.
+
+**The sweep now covers this file, which is the durable half.** This is the
+feature doc for exactly the verbs that
+`case_docsurfaces_transition_verbs_are_documented` derives from
+`TRANSITION_VERBS`, and it was the one surface that check
+did not quantify over — which is why the drift survived. The probe now accepts
+a verb followed by a space as well as by its closing backtick, because this doc
+names its verbs with operands (`` `join <id> <umbrella>` ``); `closed` and
+`claimed-by` still fail to match, since the character after the verb decides
+it. Red-verified against the pre-fix doc, where it names exactly
+`issues.md:join` and `issues.md:leave`.
+
+**The remaining count claims were checked rather than assumed.** "Four groups"
+of integrity warnings and "three sections" of insights are both still accurate;
+they were verified against what the doc itself lists rather than left for the
+next sweep to find.
+
+**Arguability, as recorded.** No acceptance criterion required updating this
+file, so it stays the weaker of the build-scope four. What is not arguable is
+the check: a doc that restates a derived vocabulary and is not swept is a
+surface that will go stale again.
