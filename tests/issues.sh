@@ -10090,6 +10090,40 @@ outcome: ""'
   assert_exit "an empty umbrella still answers" 0 "$RC"
 }
 
+
+# AC: the refusal is distinguishable from a query that matched nothing -- on
+# an empty collection as well. Resolution is deferred when no row carries
+# `type`, so the schema gate can name the row field rather than report a
+# missing umbrella for what is really a stale index. Zero rows satisfies that
+# condition vacuously: there is nothing to be stale about, and deferring there
+# answers emptily for a reference that resolves to nothing at all.
+case_issues_render_refuses_an_unresolvable_umbrella_on_an_empty_collection() {
+  local dir stale
+  dir=$(empty_dir render_epic_refusal_empty)
+  run_index "$dir"
+  run_render list --epic no-such-umbrella "$dir"
+  assert_exit "refused, not answered emptily" 1 "$RC"
+  assert_match "and it names the reference" 'no-such-umbrella' "$ERR"
+
+  # The control, which is what makes the distinction rather than the refusal
+  # the thing under test: rows that exist and carry no `type` are the genuine
+  # stale index, and that one still defers -- naming the row field and its
+  # repair instead of blaming the reference.
+  stale=$(empty_dir render_epic_refusal_stale)
+  write_issue "$stale" "20260101-a" 'title: "A"
+status: open
+num: 1
+type: issue
+outcome: ""'
+  run_index "$stale"
+  sed -i 's/ · type: issue//' "$stale/INDEX.md"
+  touch "$stale/INDEX.md"
+  run_render list --epic no-such-umbrella "$stale"
+  assert_exit "a stale index still refuses" 1 "$RC"
+  assert_match "but names the row field" 'type' "$ERR"
+  assert_eq "and does not blame the reference" "0" \
+    "$(printf '%s' "$ERR" | grep -c 'no epic matches')"
+}
 # AC: an umbrella is nameable by the same reference forms an issue is
 # nameable by elsewhere in the read views — an ordinal, a slug, or a prefix.
 # Exact string equality against the graph answers only for the slug.

@@ -1104,14 +1104,21 @@ build_derived_axes() {
     # it cannot validate the reference either. Leave the refusal to the schema
     # gate, which names the row field and the remedy: refusing here instead
     # would report a missing umbrella when the real answer is a stale index.
-    local any_type=0 t_slug t_num t_status t_prio t_created t_labels t_title
-    local t_origin t_type t_rest
+    #
+    # That condition is about rows the index describes badly, so it is asked
+    # of rows that exist. An index holding none satisfies "no row carries
+    # type" vacuously while nothing about it is stale — and the schema gate
+    # declines a rowless index for the same reason, so deferring there leaves
+    # nothing to refuse and every reference answers emptily.
+    local any_type=0 any_row=0 t_slug t_num t_status t_prio t_created t_labels
+    local t_title t_origin t_type t_rest
     while IFS=$'\t' read -r t_slug t_num t_status t_prio t_created t_labels \
         t_title t_origin t_type t_rest; do
       [[ -z "$t_slug" ]] && continue
+      any_row=1
       [[ "$t_type" != "-" ]] && { any_type=1; break; }
     done < <(read_issue_rows "$index_file")
-    (( any_type )) || return 0
+    (( any_row && ! any_type )) && return 0
 
     local alt hits resolved=""
     while IFS= read -r alt; do
