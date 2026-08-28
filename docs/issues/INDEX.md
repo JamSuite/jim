@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 148
-- Closed: 270
+- Open: 147
+- Closed: 271
 
 ## Issues
 
@@ -421,7 +421,7 @@
 - `20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella` — leave cannot remove a membership naming a deleted umbrella · status: open · num: 413 · priority: medium · created: 2026-08-28T08:46:45Z · labels: [issue, lifecycle] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 - `20260828-membership-doubles-the-index-graph-section` — Membership doubles the index graph section · status: open · num: 408 · priority: medium · created: 2026-08-28T05:17:23Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 - `20260828-reconcile-the-census-container-headline-with-its-rollup` — Reconcile the census container headline with its rollup · status: closed · num: 414 · priority: medium · created: 2026-08-28T11:37:34Z · labels: [render, epic] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · outcome: done
-- `20260828-scope-backfill-and-migrate-frontmatter-reads-to-the-fence` — Scope backfill and migrate frontmatter reads to the fence · status: open · num: 415 · priority: critical · created: 2026-08-28T11:37:33Z · labels: [blueprint-divergence, verify] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko
+- `20260828-scope-backfill-and-migrate-frontmatter-reads-to-the-fence` — Scope backfill and migrate frontmatter reads to the fence · status: closed · num: 415 · priority: critical · created: 2026-08-28T11:37:33Z · labels: [blueprint-divergence, verify] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · claimed-by: jrko · outcome: done
 - `20260828-state-the-capture-kind-rule-correctly-in-the-issue-skill-checkli` — State the capture kind rule correctly in the issue skill checklist · status: closed · num: 416 · priority: high · created: 2026-08-28T11:37:31Z · labels: [skill-surface, epic] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260828-the-updated-field-is-written-but-never-read` — The updated field is written but never read · status: open · num: 409 · priority: low · created: 2026-08-28T05:17:24Z · labels: [issues-system, schema] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 - `20260828-update-the-issues-feature-doc-for-the-epic-increment` — Update the issues feature doc for the epic increment · status: closed · num: 417 · priority: medium · created: 2026-08-28T11:37:35Z · labels: [docs] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · outcome: done
