@@ -9969,6 +9969,39 @@ relations:
     "$(printf '%s\n' "$OUT" | grep -c '^  Epics: ')"
 }
 
+# AC: the read views can list the umbrellas in the collection, each with its
+# progress -- and an umbrella with no members reports an empty roster rather
+# than reporting nothing at all. The rollup must enumerate the epic ROWS: an
+# umbrella nobody has joined has no membership edge to be found by, so a rollup
+# driven off the edges omits the record entirely while the same run's container
+# count still counts it. `show` and `list epic` are already right because they
+# enumerate rows and read the progress maps with a zero default.
+case_issues_render_stats_rollup_lists_a_memberless_umbrella() {
+  local dir section
+  dir=$(empty_dir render_rollup_memberless)
+  epic_stats_fixture "$dir"
+  write_issue "$dir" "20260105-untouched" 'title: "Untouched"
+status: open
+num: 5
+type: epic
+priority: low
+outcome: ""'
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  section="$(printf '%s\n' "$OUT" \
+    | awk '/^== Epics ==$/ { on = 1; next } on && /^== / { exit } on')"
+  assert_match "the joined umbrella carries its progress" \
+    '20260101-umbrella +1/2 closed' "$section"
+  assert_match "and the one nobody joined is listed too" \
+    '20260105-untouched +0/0 closed' "$section"
+  # The rollup and the container count describe one set: a headline counting
+  # two umbrellas cannot sit above a rollup naming one.
+  assert_match "the container count agrees" 'Epics: 2 open · 0 closed' "$OUT"
+  assert_eq "one row per umbrella, no more" "2" \
+    "$(printf '%s\n' "$section" | grep -c 'closed$')"
+}
+
 # AC: the statistics view reports a per-umbrella rollup.
 case_issues_render_stats_reports_a_per_umbrella_rollup() {
   local dir

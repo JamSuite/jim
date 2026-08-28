@@ -760,12 +760,16 @@ cmd_stats() {
 
   # Per-umbrella rollup, from the shared derivation. Progress is a property of
   # the umbrella rather than of the query, so it is not scoped by the filter.
+  # Driven by the roster, not by the progress maps: those are keyed by the
+  # umbrellas that have members, so reading their keys would omit an umbrella
+  # nobody has joined — a record the container count on the headline above
+  # still counts, and one `show` and `list epic` both report.
   build_epic_progress "$index_file"
-  if (( ${#EPIC_TOTAL[@]} > 0 )); then
+  if (( ${#EPIC_ROWS[@]} > 0 )); then
     printf '== Epics ==\n\n'
     local e
-    for e in "${!EPIC_TOTAL[@]}"; do
-      printf '  %-44s %s/%s closed\n' "$e" "${EPIC_DONE[$e]:-0}" "${EPIC_TOTAL[$e]}"
+    for e in "${EPIC_ROWS[@]}"; do
+      printf '  %-44s %s/%s closed\n' "$e" "${EPIC_DONE[$e]:-0}" "${EPIC_TOTAL[$e]:-0}"
     done | sort
     printf '\n'
   fi
@@ -966,7 +970,15 @@ declare -A DERIVED_EPIC=()
 # progress.
 declare -A EPIC_TOTAL=() EPIC_DONE=() EPIC_MEMBERS=()
 
-# build_epic_progress <index_file> — populate the three maps above.
+# Every umbrella the collection holds, in index order. The maps above are keyed
+# by the umbrellas that have members, which is a different set: an umbrella
+# nobody has joined never appears as an edge target. A surface that enumerates
+# the collection's umbrellas reads this and takes its progress from the maps
+# with a zero default, which is why the roster and the progress cannot
+# disagree about which records exist.
+declare -a EPIC_ROWS=()
+
+# build_epic_progress <index_file> — populate the three maps and the roster.
 #   Reads membership through read_graph_edges by name, the shared reader every
 #   other read of that section goes through, and deduplicates by
 #   (member, umbrella): one record naming an umbrella repeatedly is one member,
@@ -977,12 +989,13 @@ build_epic_progress() {
   local -A st=() kind=()
   # Reset rather than accumulate. These are globals, and the counters add, so a
   # second call in one run would double every figure it reports.
-  EPIC_TOTAL=(); EPIC_DONE=(); EPIC_MEMBERS=()
+  EPIC_TOTAL=(); EPIC_DONE=(); EPIC_MEMBERS=(); EPIC_ROWS=()
   local -A seen=()
   while IFS=$'\t' read -r slug num status prio created labels title origin \
       type rest; do
     [[ -z "$slug" ]] && continue
     st[$slug]="$status"; kind[$slug]="$type"
+    [[ "$type" == "epic" ]] && EPIC_ROWS+=("$slug")
   done < <(read_issue_rows "$index_file")
   while IFS=$'\t' read -r src tgt; do
     [[ -n "$src" && -n "$tgt" ]] || continue
