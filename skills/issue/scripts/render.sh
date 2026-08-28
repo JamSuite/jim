@@ -969,6 +969,50 @@ spec_matches() {
 declare -A DERIVED_BLOCKED=()
 declare -A DERIVED_EPIC=()
 
+# resolve_indexed_ref <index_file> <ref> [<kind>] — the slugs <ref> names,
+#   one per line, resolved against the INDEXED SET and never against the
+#   directory: ids resolve only against what the index holds, never composed
+#   into a path from raw input.
+#
+#   The ladder is the grammar `show` documents — an ordinal, an exact slug, a
+#   slug prefix, then a substring — and both callers share it so a reference a
+#   developer can `show` is one they can also filter by. Restricting to <kind>
+#   narrows the population before the ladder runs, so a prefix that is
+#   ambiguous across the collection can still be unambiguous among umbrellas.
+resolve_indexed_ref() {
+  local index_file="$1" ref="$2" want_kind="${3:-}"
+  local slugs=() nums=() slug num status prio created labels title origin type rest
+  while IFS=$'\t' read -r slug num status prio created labels title origin \
+      type rest; do
+    [[ -z "$slug" ]] && continue
+    [[ -n "$want_kind" && "$type" != "$want_kind" ]] && continue
+    slugs+=("$slug"); nums+=("$num")
+  done < <(read_issue_rows "$index_file")
+
+  local matches=() i
+  if [[ "$ref" =~ ^[0-9]+$ ]]; then
+    for i in "${!slugs[@]}"; do
+      [[ "${nums[$i]}" == "$ref" ]] && matches+=("${slugs[$i]}")
+    done
+  else
+    for i in "${!slugs[@]}"; do
+      [[ "${slugs[$i]}" == "$ref" ]] && matches+=("${slugs[$i]}")
+    done
+    if (( ${#matches[@]} == 0 )); then
+      for i in "${!slugs[@]}"; do
+        [[ "${slugs[$i]}" == "$ref"* ]] && matches+=("${slugs[$i]}")
+      done
+    fi
+    if (( ${#matches[@]} == 0 )); then
+      for i in "${!slugs[@]}"; do
+        [[ "${slugs[$i]}" == *"$ref"* ]] && matches+=("${slugs[$i]}")
+      done
+    fi
+  fi
+  (( ${#matches[@]} )) && printf '%s\n' "${matches[@]}"
+  return 0
+}
+
 # build_derived_axes <index_file> — populate the two maps above.
 #   Both read the Graph section the index already renders, so the umbrella and
 #   dependency axes need no row column of their own.
@@ -1424,7 +1468,7 @@ render_issue_file() {
 }
 
 cmd_show() {
-  local id="${1:-}" dir="${2:-}"
+  local id="${1:-}" dir="${2:-}" m
   if [[ -z "$id" ]]; then
     echo "error: 'show' requires an id (number, slug, or prefix)" >&2
     return 2
@@ -1435,30 +1479,12 @@ cmd_show() {
   local index_file="$dir/$INDEX_FILENAME"
   [[ -f "$index_file" ]] || { printf 'no issue matched `%s`.\n' "$id"; return 0; }
 
-  # Build slug/num table from the indexed set only.
-  local slugs=() nums=() slug num rest
-  while IFS=$'\t' read -r slug num rest; do
-    [[ -z "$slug" ]] && continue
-    slugs+=("$slug"); nums+=("$num")
-  done < <(read_issue_rows "$index_file")
-
-  local matches=() i
-  if [[ "$id" =~ ^[0-9]+$ ]]; then
-    for i in "${!slugs[@]}"; do
-      [[ "${nums[$i]}" == "$id" ]] && matches+=("${slugs[$i]}")
-    done
-  else
-    # exact slug
-    for i in "${!slugs[@]}"; do [[ "${slugs[$i]}" == "$id" ]] && matches+=("${slugs[$i]}"); done
-    # prefix
-    if (( ${#matches[@]} == 0 )); then
-      for i in "${!slugs[@]}"; do [[ "${slugs[$i]}" == "$id"* ]] && matches+=("${slugs[$i]}"); done
-    fi
-    # substring
-    if (( ${#matches[@]} == 0 )); then
-      for i in "${!slugs[@]}"; do [[ "${slugs[$i]}" == *"$id"* ]] && matches+=("${slugs[$i]}"); done
-    fi
-  fi
+  # The ladder is shared with the umbrella filter, so a reference that opens a
+  # record here is one that filters by it there.
+  local matches=()
+  while IFS= read -r m; do
+    [[ -n "$m" ]] && matches+=("$m")
+  done < <(resolve_indexed_ref "$index_file" "$id")
 
   if (( ${#matches[@]} == 0 )); then
     printf 'no issue matched `%s`.\n' "$id"
