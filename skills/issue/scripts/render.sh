@@ -88,9 +88,12 @@ readonly SCHEMA_GATED_FIELDS=(type filed-by claimed-by outcome)
 # leading `--` that RENDER_OPTIONS declares — and the set any guard asking
 # whether an index can answer an axis iterates. Pairing the field with the name
 # is what makes `held` answerable: it reads `claimed-by` under a key of its own,
-# and a guard listing axis names alone reads straight past that. `epic` and
-# `blocked` are derived from the index's Graph section rather than from a row
-# field, and carry `-` to say so.
+# and a guard listing axis names alone reads straight past that. `blocked` is
+# derived from the index's Graph section alone and carries `-` to say it reads
+# no row field. `epic` is derived from that section too, but it pairs with
+# `type`: deciding whether a reference names an umbrella is a question about a
+# row, so an index that cannot describe `type` cannot answer the axis and the
+# schema gate has to see it.
 readonly AXIS_FIELDS=(status:status priority:priority type:type label:labels
                       epic:type filed-by:filed-by claimed-by:claimed-by
                       spec:origin origin:origin held:claimed-by blocked:-)
@@ -648,8 +651,6 @@ cmd_stats() {
   matching[__s__]=0;       unset 'matching[__s__]'
   local open_count=0 closed_count=0 seen_rows=0 saw_type=0
   local epic_open=0 epic_closed=0
-  declare -A row_status
-  row_status[__s__]=""; unset 'row_status[__s__]'
   local slug num status prio created labels title origin
   local type filed_by claimed_by outcome
   if [[ -n "${FILTER_AXIS[blocked]:-}" || -n "${FILTER_AXIS[epic]:-}" ]]; then
@@ -660,10 +661,6 @@ cmd_stats() {
     [[ -z "$slug" ]] && continue
     (( seen_rows++ ))
     [[ "$type" != "-" ]] && saw_type=1
-    # Every row, unfiltered: the per-umbrella rollup below reports progress as
-    # a property of the umbrella rather than of the query, so its denominator
-    # must not move when a filter narrows the census.
-    row_status[$slug]="$status"
     row_matches || continue
     matching[$slug]=1
     # The loop has three regions with three populations, and this is the

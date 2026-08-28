@@ -4,9 +4,11 @@
 #
 # PURPOSE
 #   Scan an issues directory, parse the markdown frontmatter and body for every
-#   issue file, and write an auto-generated INDEX.md with four sections:
+#   issue file, and write an auto-generated INDEX.md with five sections:
 #     ## Summary             — Open/Closed counts
 #     ## Issues              — one row per issue (slug, title, status, ...)
+#     ## Epics               — one row per umbrella, with its derived roster
+#                              and progress
 #     ## Graph               — typed edges from frontmatter relations and body
 #                              wikilinks
 #     ## Integrity Warnings  — bidirectional relation mismatches; malformed
