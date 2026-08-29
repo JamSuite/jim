@@ -1,6 +1,6 @@
 ---
 id: 20260829-declare-the-mirrored-branch-name-gate-on-platform-s-provides-fac
-num: P-20260829-declare-the-mirrored-branch-name-gate-on-platform-s-provides-fac
+num: 420
 title: "Declare the mirrored branch-name gate on platform's provides face"
 status: open
 priority: medium

@@ -1,6 +1,6 @@
 ---
 id: 20260829-bind-the-twice-declared-kind-and-outcome-vocabularies
-num: P-20260829-bind-the-twice-declared-kind-and-outcome-vocabularies
+num: 419
 title: "Bind the twice-declared kind and outcome vocabularies"
 status: open
 priority: medium
