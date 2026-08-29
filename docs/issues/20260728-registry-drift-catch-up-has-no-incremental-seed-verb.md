@@ -4,12 +4,17 @@ num: 130
 title: "Registry drift catch-up has no incremental seed verb"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, registry]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T21:39:26Z
 updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/008-registry-seed/spec.md

@@ -4,12 +4,17 @@ num: 98
 title: "formalize the is-valid-id lockstep contract between platform and issue"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:40Z
 updated: 2026-07-25T08:04:40Z
 origin: BLUEPRINT.md

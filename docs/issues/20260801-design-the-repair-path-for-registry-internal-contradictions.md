@@ -4,12 +4,17 @@ num: 200
 title: "Design the repair path for registry-internal contradictions"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [stride-tampering, id-coordination, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T22:36:01Z
 updated: 2026-08-02T01:07:27Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/spec.md

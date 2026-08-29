@@ -4,12 +4,17 @@ num: 153
 title: "run.sh honors only its first filter argument"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [meta-test, testing]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T10:32:47Z
 updated: 2026-07-30T10:32:47Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md

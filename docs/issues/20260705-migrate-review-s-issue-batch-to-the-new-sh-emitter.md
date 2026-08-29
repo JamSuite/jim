@@ -4,12 +4,17 @@ num: 55
 title: "Migrate review's issue batch to the new.sh emitter"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue-tracking, review]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-05T07:25:21Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/008-verify-loop/plan.md

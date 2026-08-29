@@ -4,12 +4,17 @@ num: 215
 title: "Extend the provisional-grammar byte fixture to its shims and constants"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, test-integrity, sync-discipline]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-03T05:50:30Z
 updated: 2026-08-05T10:21:33Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md

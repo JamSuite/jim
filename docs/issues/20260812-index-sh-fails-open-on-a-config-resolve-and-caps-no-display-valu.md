@@ -4,12 +4,17 @@ num: 310
 title: "index.sh fails open on a config resolve and caps no display value"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, index]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:42:08Z
 updated: 2026-08-12T09:00:55Z
 origin: docs/specs/issue/011-issue-placement/review.md

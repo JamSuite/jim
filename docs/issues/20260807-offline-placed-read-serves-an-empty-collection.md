@@ -4,12 +4,17 @@ num: 267
 title: "Offline placed read serves an empty collection"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, correctness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T11:43:22Z
 updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

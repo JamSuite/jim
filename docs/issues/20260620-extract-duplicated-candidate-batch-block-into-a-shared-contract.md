@@ -4,12 +4,17 @@ id: 20260620-extract-duplicated-candidate-batch-block-into-a-shared-contract
 title: "Extract duplicated candidate-batch block into a shared contract"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [refactor, candidate-batch, consistency]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-20T07:17:42Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/issue/008-issue-pipeline-ownership/research.md

@@ -4,12 +4,17 @@ num: 197
 title: "Cover untracked files in the realize citation sweep"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [sdlc, spec, scripts, id-coordination]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T21:23:36Z
 updated: 2026-08-02T06:52:07Z
 origin: conversation

@@ -4,12 +4,17 @@ num: 155
 title: "Single-source the provisional identity grammar"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, refactor]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T10:55:22Z
 updated: 2026-08-03T05:46:40Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md

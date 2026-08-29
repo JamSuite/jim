@@ -2,16 +2,21 @@
 id: 20260627-read-verb-list-creates-a-stray-directory-from-a-non-filter-arg
 num: 18
 title: "Read-verb list creates a stray directory from a non-filter arg"
-status: open
+status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: obsolete
 labels: [issue, cli]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-27T05:13:33Z
-updated: 2026-08-12T19:28:27Z
+updated: 2026-08-25T10:51:09Z
 origin: conversation
 ---
 

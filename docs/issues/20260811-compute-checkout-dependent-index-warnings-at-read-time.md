@@ -4,12 +4,17 @@ num: 297
 title: "Compute checkout-dependent index warnings at read time"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, placement, index]
 relations:
   blocks: []
   depends-on: []
   related-to: [20260807-placement-turns-the-origin-lint-into-cross-branch-index-churn]
   duplicates: []
+  part-of: []
 created: 2026-08-11T01:31:36Z
 updated: 2026-08-11T01:31:36Z
 origin: docs/specs/issue/011-issue-placement/remediation.md

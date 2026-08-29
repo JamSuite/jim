@@ -4,12 +4,17 @@ num: 253
 title: "Teach both single-source guards in jimfile tests the spellings and copies they miss"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [test-coverage, test, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T22:20:29Z
 updated: 2026-08-05T22:20:29Z
 origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"

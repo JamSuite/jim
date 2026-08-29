@@ -274,6 +274,43 @@ security_adhoc_path       = "docs/security"
 # placement, where auto-filing is already a local, amendable act.
 # issue_placement_ack = "false"
 
+# --- Recorded identity ----------------------------------------------------
+
+# The form a contributor identity takes when it is recorded as an issue's filer
+# or holder. The choice belongs to the project, not to each contributor, so one
+# collection never holds identities recorded under different rules. The forms
+# are ordered — each records everything the one below it records, plus one
+# further extraction — so a contributor who commits several ways still reads as
+# one identity.
+#
+#   email  : the whole address, extracting nothing
+#   github : also record a forge private-relay address as the account name it
+#            carries, leaving every other address alone (default)
+#   local  : also record an address inside identity_domain as the account part
+#            preceding that domain; anything outside it falls to the rule above
+#
+# Every form lower-cases what it records, including "email" — case variance in
+# one contributor's address would otherwise split them. An unrecognized value is
+# refused rather than quietly treated as the default, because a typo would
+# otherwise record every identity under a form the project did not choose.
+#
+# Before any form is applied, the address resolves through whatever alias
+# mapping version control carries, so one person's several addresses collapse to
+# one identity. jim reads that mapping; it does not create or require one.
+#
+# Changing this does not rewrite what is already recorded. The collection is
+# told it no longer matches, and `migrate.sh identity --renormalize` re-applies
+# the current form behind a preview.
+# identity_scheme = "github"
+
+# The organization's mail domain, used only by the "local" form. Exactly one
+# domain; a value naming several is refused rather than partly honored, because
+# extracting across a union nobody has checked for uniqueness is where one
+# person's account name silently becomes another's. Selecting "local" without
+# setting this refuses every operation that would record an identity — a warning
+# would leave a project recording identities under a form it cannot apply.
+# identity_domain = ""
+
 # --- Issue list view ------------------------------------------------------
 
 # Default view for `/jim:issue list`. An explicit filter argument

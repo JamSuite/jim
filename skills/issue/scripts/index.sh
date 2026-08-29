@@ -4,18 +4,20 @@
 #
 # PURPOSE
 #   Scan an issues directory, parse the markdown frontmatter and body for every
-#   issue file, and write an auto-generated INDEX.md with four sections:
+#   issue file, and write an auto-generated INDEX.md with five sections:
 #     ## Summary             — Open/Closed counts
 #     ## Issues              — one row per issue (slug, title, status, ...)
+#     ## Epics               — one row per umbrella, with its derived roster
+#                              and progress
 #     ## Graph               — typed edges from frontmatter relations and body
 #                              wikilinks
 #     ## Integrity Warnings  — bidirectional relation mismatches; malformed
 #                              frontmatter; invalid wikilink content
 #
 #   Line-oriented parsing only — never `source` or `eval` issue files
-#   (spec 017 AC-S1, CLAUDE.md → Bash scripts). Frontmatter is bounded by
-#   the first two ^---$ lines; nested `relations:` is parsed via awk with
-#   2-space indent tracking (DD #11). Atomic write via tmp + mv (DD #12).
+#   (CLAUDE.md → Bash scripts). Frontmatter is bounded by the first two
+#   ^---$ lines; nested `relations:` is parsed via awk with 2-space indent
+#   tracking. Atomic write via tmp + mv.
 #
 #   Edge provenance is tracked via two parallel maps:
 #     outgoing_fm[$slug]  — edges asserted in the frontmatter relations:
@@ -58,6 +60,7 @@ export LC_ALL=C
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
+IDENTITY="$HERE/identity.sh"
 
 readonly INDEX_FILENAME="INDEX.md"
 
@@ -70,10 +73,34 @@ declare -A RELATION_INVERSE=(
 )
 readonly RELATION_TYPES=(blocks depends-on related-to duplicates)
 
+# Recognized values for the schema's enumerated fields. The index reports an
+# unrecognized value rather than correcting it — it reads the collection, it
+# does not repair it.
+readonly ISSUE_TYPES=(issue epic)
+readonly ISSUE_OUTCOMES=(done wontfix duplicate obsolete)
+
+# How many open members one umbrella's entry renders before it truncates. The
+# roster is a convenience, not the record — every membership also renders as a
+# Graph edge below, so the complete list is permanently one section down and
+# nothing is lost by bounding what this one shows. The bound exists so that no
+# single entry can grow the generated file without limit; at the collection's
+# real shape it truncates about one umbrella in fifty.
+readonly ROSTER_CAP=10
+
+# in_list <needle> <candidate...> — membership test for the enums above.
+in_list() {
+  local needle="$1" item
+  shift
+  for item in "$@"; do
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
 # ─── Section: Id validator (mirrors jimfile.sh is_valid_id) ─────────────────
 
 # is_valid_id <id>
-#   Bounded allowlist for a full issue id / prefix (spec 021 AC #7, AC #11).
+#   Bounded allowlist for a full issue id / prefix.
 #   SYNC: the function body below is byte-identical to the copies in
 #   skills/file/scripts/jimfile.sh and skills/issue/scripts/render.sh — a
 #   tests/jimfile.sh case asserts the three agree. Keep them in lockstep.
@@ -118,17 +145,21 @@ extract_frontmatter() {
 
 # parse_scalar_fields <frontmatter-content>
 #   Extract every top-level scalar field we care about in a SINGLE awk pass and
-#   emit them ONE PER LINE in a fixed order:
-#     status, priority, title, origin, labels, created, num
-#   This replaces seven per-field `grep|head|sed` pipelines (~28 forks per
-#   issue) with one awk invocation. One field per line (not TAB-joined) so the
-#   caller can read empty fields back without IFS-whitespace collapsing
-#   consecutive delimiters. Semantics match the prior parse_simple_field: only
-#   top-level keys (no leading indent) match, the first occurrence wins,
-#   leading `key:` and surrounding whitespace are stripped, and a single leading
-#   and trailing double quote are removed independently (so `"Foo: bar"` →
-#   `Foo: bar` and an unquoted `[a, b]` is preserved verbatim). Indented
-#   `relations:` children never match the no-indent key pattern.
+#   emit them as `key<TAB>value` lines. This replaces a per-field
+#   `grep|head|sed` pipeline each (~28 forks per issue) with one awk
+#   invocation.
+#
+#   Keyed rather than positional: the caller matches on the name, so adding a
+#   field cannot shift the meaning of every field after it, and a field the
+#   file omits is simply a line the caller never sees. The value keeps any tab
+#   it contains, because the caller splits on the first one only.
+#
+#   Semantics match the prior parse_simple_field: only top-level keys (no
+#   leading indent) match, the first occurrence wins, leading `key:` and
+#   surrounding whitespace are stripped, and a single leading and trailing
+#   double quote are removed independently (so `"Foo: bar"` → `Foo: bar` and an
+#   unquoted `[a, b]` is preserved verbatim). Indented `relations:` children
+#   never match the no-indent key pattern.
 parse_scalar_fields() {
   printf '%s\n' "$1" | awk '
     /^[a-z_-]+:/ {
@@ -136,25 +167,22 @@ parse_scalar_fields() {
       sub(/:.*$/, "", key)
       if (key != "status" && key != "priority" && key != "title" &&
           key != "origin" && key != "labels" && key != "created" &&
-          key != "num") next
+          key != "num" && key != "type" && key != "filed-by" &&
+          key != "claimed-by" && key != "outcome") next
       if (key in seen) next
       seen[key] = 1
       val = $0
       sub(/^[^:]*:[[:space:]]*/, "", val)   # strip "key:" + leading whitespace
       sub(/[[:space:]]+$/, "", val)         # strip trailing whitespace
       sub(/^"/, "", val); sub(/"$/, "", val) # strip one leading + trailing quote
-      f[key] = val
-    }
-    END {
-      print f["status"]; print f["priority"]; print f["title"]
-      print f["origin"]; print f["labels"]; print f["created"]; print f["num"]
+      printf "%s\t%s\n", key, val
     }
   '
 }
 
 # parse_relations <frontmatter-content>
 #   Emit lines: <type>\t<slug>  for each entry inside the `relations:` block.
-#   DD #11 parser: scan top-level `relations:`; child lines at exactly 2-space
+#   The parser scans top-level `relations:`; child lines at exactly 2-space
 #   indent and matching `<type>: [<slugs>]`. Anything deeper or non-conforming
 #   is ignored (the caller surfaces malformed-relations as Integrity Warnings).
 parse_relations() {
@@ -191,7 +219,7 @@ parse_relations() {
 # parse_wikilinks_from_body <file>
 #   Read the body (everything after the second ^---$ line); extract candidate
 #   wikilinks via grep regex; emit one slug per line for each VALID candidate.
-#   Invalid candidates are silently dropped (treated as prose per AC-I4).
+#   Invalid candidates are silently dropped (treated as prose).
 #
 #   Fenced code blocks are excluded from extraction — tokens like `[[B]]` in
 #   a ```bash example or shell conditionals like `[[ "$x" != "y" ]]` are
@@ -284,6 +312,23 @@ row_safe() {
   printf '%s' "$1" | tr -d '\000-\037\177' | sed 's/·//g' | cut -c1-512
 }
 
+# slug_list <slug>... — the slugs as one capped, display-safe inline list.
+#   The slugs reaching this have cleared the id gate; they clear the display
+#   sanitizer too, for the same reason every other row value does. The cap keeps
+#   one warning from becoming the whole warnings block, and the remainder is
+#   counted rather than dropped, so the line never reads as exhaustive when it
+#   is not.
+slug_list() {
+  local out="" i=0 cap=10 s total=$#
+  for s in "$@"; do
+    (( i >= cap )) && break
+    out+="${out:+, }\`$(row_safe "$s" | tr -d '`')\`"
+    i=$((i+1))
+  done
+  (( total > cap )) && out+=", … and $(( total - cap )) more"
+  printf '%s' "$out"
+}
+
 # resolve_dir <arg>
 #   Determine the issues directory: arg if non-empty, else jimconf default.
 #   Errors with rc=2 if the result is empty or whitespace-only.
@@ -312,7 +357,9 @@ route_placement() {
   [[ -z "$arg" && -r "$place" ]] || return 0
   mode="$(bash "$place" mode --place-token "$token")" || exit $?
   [[ "$mode" == "route" ]] || return 0
-  exec bash "$place" run --verb reindex -- \
+  # {token} is the fourth word of the command below and {} the last; the
+  # wrapper substitutes at those offsets and nowhere else.
+  exec bash "$place" run --verb reindex --token-at 3 --dir-at -1 -- \
     bash "${BASH_SOURCE[0]}" --place-token '{token}' '{}'
 }
 
@@ -365,6 +412,7 @@ main() {
 
   # Build per-issue map: slug → "<status>\t<priority>\t<title>\t<origin>".
   declare -A meta_status meta_priority meta_title meta_origin meta_labels meta_created meta_num
+  declare -A meta_type meta_outcome meta_filed_by meta_claimed_by
   # Adjacency maps: slug → "<type>:<target> <type>:<target> ..." (space-separated).
   #   outgoing_fm  — frontmatter relations only (drives bidirectional check).
   #   outgoing_all — frontmatter + body wikilinks, deduped per
@@ -405,22 +453,47 @@ main() {
     # asserting a row its own Summary denies.
     slugs_seen+=("$slug")
 
-    local status priority title origin labels created num
-    {
-      IFS= read -r status
-      IFS= read -r priority
-      IFS= read -r title
-      IFS= read -r origin
-      IFS= read -r labels
-      IFS= read -r created
-      IFS= read -r num
-    } < <(parse_scalar_fields "$fm")
+    # Read by key, not by position: a field the file omits produces no line at
+    # all, so every target starts empty and only a present field overwrites it.
+    local status="" priority="" title="" origin="" labels="" created="" num=""
+    local type="" outcome="" filed_by="" claimed_by=""
+    local _fline _fkey _fval
+    while IFS= read -r _fline; do
+      [[ "$_fline" == *$'\t'* ]] || continue
+      _fkey="${_fline%%$'\t'*}"
+      _fval="${_fline#*$'\t'}"
+      case "$_fkey" in
+        status)   status="$_fval" ;;
+        priority) priority="$_fval" ;;
+        title)    title="$_fval" ;;
+        origin)   origin="$_fval" ;;
+        labels)   labels="$_fval" ;;
+        created)  created="$_fval" ;;
+        num)      num="$_fval" ;;
+        type)       type="$_fval" ;;
+        outcome)    outcome="$_fval" ;;
+        filed-by)   filed_by="$_fval" ;;
+        claimed-by) claimed_by="$_fval" ;;
+      esac
+    done < <(parse_scalar_fields "$fm")
+
+    # Judge the value the rows carry, not the one the file holds. A row never
+    # carries a raw scalar — one able to reproduce the row's separator could
+    # forge a field this writer already emitted — so a check reading the raw
+    # value judges something no reader downstream can see: the Summary asserts
+    # a count the rows beneath it deny, and a warning calls a value
+    # unrecognized while printing one that is. Only the scalars compared
+    # against a vocabulary need this; the rest are carried, never judged.
+    status="$(row_safe "$status")"
+    outcome="$(row_safe "$outcome")"
+    type="$(row_safe "$type")"
+
     [[ -z "$status" ]] && status="open"
 
     # SYNC(ts-shape): ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$
     # Degrade a non-conforming created so a malformed value never lands raw in an
     # INDEX.md row (tab/garbage): keep the day-start date prefix when present,
-    # else empty, and surface an Integrity Warning. Spec 022 AC #8 / Finding F6.
+    # else empty, and surface an Integrity Warning.
     if [[ -n "$created" && ! "$created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$ ]]; then
       if [[ "$created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
         created="${BASH_REMATCH[0]}"
@@ -437,6 +510,27 @@ main() {
     meta_labels[$slug]="$labels"
     meta_created[$slug]="$created"
     meta_num[$slug]="$num"
+    meta_type[$slug]="$type"
+    meta_outcome[$slug]="$outcome"
+    meta_filed_by[$slug]="$filed_by"
+    meta_claimed_by[$slug]="$claimed_by"
+
+    # Schema integrity. An issue that has ever been finished carries an
+    # outcome, and both enumerated fields carry a recognized value.
+    #
+    # An OPEN issue holding an outcome is not reported: that is an issue which
+    # was finished and later reopened, and the outcome names how it was
+    # finished last time. The pairing is the record of the reopen, so warning
+    # about it would report the schema working as intended.
+    if [[ "$status" == "closed" && -z "$outcome" ]]; then
+      warnings_section+="- \`$slug\` is closed but records no outcome."$'\n'
+    fi
+    if [[ -n "$outcome" ]] && ! in_list "$outcome" "${ISSUE_OUTCOMES[@]}"; then
+      warnings_section+="- \`$slug\` unrecognized outcome: $(row_safe "$outcome" | tr -d '`')."$'\n'
+    fi
+    if [[ -n "$type" ]] && ! in_list "$type" "${ISSUE_TYPES[@]}"; then
+      warnings_section+="- \`$slug\` unrecognized type: $(row_safe "$type" | tr -d '`')."$'\n'
+    fi
 
     if [[ "$status" == "closed" ]]; then
       closed_count=$((closed_count + 1))
@@ -493,7 +587,7 @@ main() {
     outgoing_all[$slug]="${edges_all% }"
   done
 
-  # Origin-lint second pass (spec 018 OL-1, OL-2, OL-3).
+  # Origin-lint second pass.
   # For each indexed slug whose origin field is path-shaped (contains '/'),
   # validate that the path resolves against the script's invoking CWD (PWD-
   # relative resolution; matches the rest of jim's bash conventions and
@@ -505,7 +599,7 @@ main() {
   # Under `set -u`, access meta_origin via ${meta_origin[$slug]-} and
   # continue when the value is empty — issues without an `origin:` field
   # are common (early adoption, hand-authored fixtures) and the lint pass
-  # must not crash on them. (Spec 018 security review Finding 9.)
+  # must not crash on them.
   #
   # The pass is skipped when the collection lives on a designated branch. An
   # origin resolves or not according to the checkout the run happens to be
@@ -518,6 +612,71 @@ main() {
   # somebody else's; keying on the arm would keep the flapping and only move the
   # seam. The skip is stated rather than silent: a check that cannot be grounded
   # says so.
+  # Configured-form mismatch. A form that can be changed with no signal that
+  # several hundred records now disagree with it is a setting whose effect stays
+  # invisible until someone reads a by-person view and mistrusts it.
+  #
+  #   Distinct values, not records. A collection holds hundreds of records and a
+  #   handful of identities, and this path runs on every write — so the form is
+  #   applied once per distinct value rather than once per field. Re-deriving the
+  #   rule here instead would be a second copy of it on the most-travelled path
+  #   in the collection.
+  #
+  #   The probe settles whether the form can be applied at all before any value
+  #   is judged by it. A configuration that cannot select one omits the check and
+  #   says so: computing the comparison under a guessed form would write a wrong
+  #   warning into content the project publishes, and an index claiming a check
+  #   it did not perform is the failure the origin lint already refuses.
+  #
+  #   No configuration silences this. A signal that can be switched off stops
+  #   being a signal, and the repetition objection does not survive inspection —
+  #   the warning has an exit condition, so it prompts an operator to finish a
+  #   migration rather than nagging forever.
+  local ident_probe="probe@example.invalid"
+  local ident_value ident_form s2
+  local -a mismatched=() unjudgeable=()
+  if ! bash "$IDENTITY" normalize "$ident_probe" >/dev/null 2>&1; then
+    warnings_section+="- recorded identities not checked against the configured form: identity_scheme could not be applied."$'\n'
+  else
+    declare -A ident_seen=()
+    for s2 in "${slugs_seen[@]}"; do
+      local mismatch=0 unjudged=0
+      for ident_value in "${meta_filed_by[$s2]-}" "${meta_claimed_by[$s2]-}"; do
+        [[ -n "$ident_value" ]] || continue
+        if [[ -z "${ident_seen[$ident_value]+set}" ]]; then
+          # Three outcomes, not two. A value the form cannot produce is not
+          # conforming — nothing that fails the definition of a recordable
+          # identity can equal what the form would record — and it is not an
+          # ordinary mismatch either, because the re-normalization skips exactly
+          # these. Filing it under a remedy that cannot clear it would leave the
+          # warning standing after the operator did what it asked, and a signal
+          # with no exit condition is the nag this surface is built not to be.
+          if ! ident_form="$(bash "$IDENTITY" normalize "$ident_value" 2>/dev/null)"; then
+            ident_seen["$ident_value"]=2
+          elif [[ "$ident_form" != "$ident_value" ]]; then
+            ident_seen["$ident_value"]=1
+          else
+            ident_seen["$ident_value"]=0
+          fi
+        fi
+        case "${ident_seen[$ident_value]}" in
+          1) mismatch=1 ;;
+          2) unjudged=1 ;;
+        esac
+      done
+      # A record can hold one of each across its two identity fields, and both
+      # facts are true of it, so the classes are not exclusive.
+      (( mismatch )) && mismatched+=("$s2")
+      (( unjudged )) && unjudgeable+=("$s2")
+    done
+    if (( ${#mismatched[@]} )); then
+      warnings_section+="- ${#mismatched[@]} record(s) hold an identity the configured form would record differently: $(slug_list "${mismatched[@]}"). Re-apply the current form with \`migrate.sh identity --renormalize\`."$'\n'
+    fi
+    if (( ${#unjudgeable[@]} )); then
+      warnings_section+="- ${#unjudgeable[@]} record(s) hold an identity the configured form cannot judge: $(slug_list "${unjudgeable[@]}"). The re-normalization skips these; repair them with \`migrate.sh identity --from <old> --to <new>\`."$'\n'
+    fi
+  fi
+
   local placement placement_shown origin_value origin_created prc
   # The resolver's own status decides this, not its output. An empty result read
   # as `branch` means a failed resolve *runs* the lint and the index then claims
@@ -558,7 +717,7 @@ main() {
     done
   fi
 
-  # Bidirectional integrity check (DD #7).
+  # Bidirectional integrity check.
   # For each FRONTMATTER outgoing edge A --type--> B, if type has an inverse,
   # check that B has an inverse FRONTMATTER edge back to A. Wikilinks do not
   # participate on either side: a wikilink does not trigger a warning, and a
@@ -583,15 +742,113 @@ main() {
     done
   done
 
-  # Render Issues section
+  # Umbrella membership resolves within the collection.
+  #
+  # Membership is stored on the member alone, so unlike the check above there
+  # is no reciprocal entry to look for — an umbrella carries no roster to keep
+  # in sync. What can go wrong is the member naming an umbrella the collection
+  # does not hold, which the graph would otherwise render as an edge to
+  # nothing.
+  # The same pass derives each umbrella's roster and progress, by BUCKETING
+  # rather than by traversal: every record contributes itself to the bucket of
+  # each umbrella its own part-of names, and nothing ever walks from an
+  # umbrella into a member's own memberships. Termination is therefore a
+  # property of the pass's shape rather than of a cycle guard that would have
+  # to be correct itself — two records naming each other are two buckets each
+  # holding one record, and the pass still visits each record once.
+  #
+  # Read from outgoing_fm and never outgoing_all: a body wikilink must not
+  # create a membership. Deduplicating by (member, umbrella) is a SECOND and
+  # independent requirement — outgoing_all is guarded by seen_all while
+  # edges_fm is appended unconditionally, so a record naming one umbrella
+  # three times arrives here three times. Counted three times it would
+  # overstate the progress denominator and let a single record fill the whole
+  # roster cap while hiding genuinely distinct members.
+  local m medge mtarget mkey
+  declare -A roster_total roster_closed roster_open seen_member warned_nested
+  seen_member[__sentinel__]=1; unset 'seen_member[__sentinel__]'
+  warned_nested[__sentinel__]=1; unset 'warned_nested[__sentinel__]'
+  for m in "${slugs_seen[@]}"; do
+    for medge in ${outgoing_fm[$m]:-}; do
+      [[ "${medge%%:*}" == "part-of" ]] || continue
+      mtarget="${medge#*:}"
+      mkey="$m|$mtarget"
+      [[ -n "${seen_member[$mkey]:-}" ]] && continue
+      seen_member[$mkey]=1
+
+      # An umbrella that is itself contained is reported once per record, not
+      # once per membership: the violation is a property of the record.
+      if [[ "${meta_type[$m]:-}" == "epic" && -z "${warned_nested[$m]:-}" ]]; then
+        warned_nested[$m]=1
+        warnings_section+="- \`$m\` is an epic and cannot belong to an epic."$'\n'
+      fi
+
+      if [[ -z "${meta_status[$mtarget]:-}" ]]; then
+        warnings_section+="- \`$m\` names an umbrella not in the collection: $(row_safe "$mtarget" | tr -d '`')."$'\n'
+        continue
+      fi
+      if [[ "${meta_type[$mtarget]:-}" != "epic" ]]; then
+        warnings_section+="- \`$m\` names an umbrella that is not an epic: \`$mtarget\`."$'\n'
+      fi
+
+      roster_total[$mtarget]=$(( ${roster_total[$mtarget]:-0} + 1 ))
+      if [[ "${meta_status[$m]:-}" == "closed" ]]; then
+        roster_closed[$mtarget]=$(( ${roster_closed[$mtarget]:-0} + 1 ))
+      else
+        roster_open[$mtarget]="${roster_open[$mtarget]:-}$m "
+      fi
+    done
+  done
+
+  # Render the Epics section.
+  #
+  # Every line's opening bytes are this writer's — the `- `, the two-space
+  # indent, the `… ` — and no interpolated value ever begins a line. That is
+  # what makes nesting unforgeable: a value can only change a line's start by
+  # carrying a newline, and row_safe strips the control range that contains
+  # one. Titles additionally lose backticks, because unlike a flat row this
+  # entry has lines below it that an opened code span could reach into.
+  local epics_section="" u u_total u_closed u_shown u_more mem
+  for u in "${slugs_seen[@]}"; do
+    [[ "${meta_type[$u]:-}" == "epic" ]] || continue
+    u_total="${roster_total[$u]:-0}"
+    u_closed="${roster_closed[$u]:-0}"
+    epics_section+="- \`$u\` — $(row_safe "${meta_title[$u]:-(untitled)}" | tr -d '`')"
+    epics_section+=" · status: ${meta_status[$u]:-open} · $u_closed/$u_total closed"$'\n'
+    u_shown=0
+    for mem in ${roster_open[$u]:-}; do
+      if (( u_shown >= ROSTER_CAP )); then break; fi
+      epics_section+="  - \`$mem\`"$'\n'
+      u_shown=$(( u_shown + 1 ))
+    done
+    u_more=$(( u_total - u_closed - u_shown ))
+    if (( u_more > 0 )); then
+      epics_section+="  … $u_more more open · $u_closed closed"$'\n'
+    fi
+    epics_section+=$'\n'
+  done
+
+  # Render Issues section.
+  #
+  # status, type and outcome arrive sanitized: they were judged against a
+  # vocabulary above, and judging one value while displaying another is what
+  # lets the Summary contradict the rows. They have one assignment site each,
+  # fed by that sanitized value, so re-applying the sanitizer here would repeat
+  # a transform on a value already in normal form — and row_safe is three
+  # processes a record, on the path every mutating verb regenerates through.
+  # The row's own safety is pinned by test rather than by this repetition.
   for s in "${slugs_seen[@]}"; do
     local row
-    row="- \`$s\` — $(row_safe "${meta_title[$s]:-(untitled)}") · status: $(row_safe "${meta_status[$s]:-open}")"
-    [[ -n "${meta_num[$s]:-}" ]]      && row+=" · num: $(row_safe "${meta_num[$s]}")"
-    [[ -n "${meta_priority[$s]:-}" ]] && row+=" · priority: $(row_safe "${meta_priority[$s]}")"
-    [[ -n "${meta_created[$s]:-}" ]]  && row+=" · created: $(row_safe "${meta_created[$s]}")"
-    [[ -n "${meta_labels[$s]:-}" ]]   && row+=" · labels: $(row_safe "${meta_labels[$s]}")"
-    [[ -n "${meta_origin[$s]:-}" ]]   && row+=" · origin: $(row_safe "${meta_origin[$s]}")"
+    row="- \`$s\` — $(row_safe "${meta_title[$s]:-(untitled)}") · status: ${meta_status[$s]:-open}"
+    [[ -n "${meta_num[$s]:-}" ]]        && row+=" · num: $(row_safe "${meta_num[$s]}")"
+    [[ -n "${meta_priority[$s]:-}" ]]   && row+=" · priority: $(row_safe "${meta_priority[$s]}")"
+    [[ -n "${meta_created[$s]:-}" ]]    && row+=" · created: $(row_safe "${meta_created[$s]}")"
+    [[ -n "${meta_labels[$s]:-}" ]]     && row+=" · labels: $(row_safe "${meta_labels[$s]}")"
+    [[ -n "${meta_origin[$s]:-}" ]]     && row+=" · origin: $(row_safe "${meta_origin[$s]}")"
+    [[ -n "${meta_type[$s]:-}" ]]       && row+=" · type: ${meta_type[$s]}"
+    [[ -n "${meta_filed_by[$s]:-}" ]]   && row+=" · filed-by: $(row_safe "${meta_filed_by[$s]}")"
+    [[ -n "${meta_claimed_by[$s]:-}" ]] && row+=" · claimed-by: $(row_safe "${meta_claimed_by[$s]}")"
+    [[ -n "${meta_outcome[$s]:-}" ]]    && row+=" · outcome: ${meta_outcome[$s]}"
     issues_section+="$row"$'\n'
   done
 
@@ -605,7 +862,7 @@ main() {
     done
   done
 
-  # Atomic write via tmp + mv (DD #12).
+  # Atomic write via tmp + mv.
   local tmpfile
   tmpfile="$(mktemp "$dir/.${INDEX_FILENAME}.tmp.XXXXXX")" || {
     echo "error: cannot create tmp file in '$dir'" >&2
@@ -627,6 +884,16 @@ main() {
       printf '%s' "$issues_section"
     else
       printf '_No issues._\n'
+    fi
+    # Between Issues and Graph, which is constrained rather than cosmetic: the
+    # integrity-warnings extractors read from that header to end of file, so a
+    # section placed after it would have every roster line swallowed into the
+    # warnings view.
+    printf '\n## Epics\n\n'
+    if [[ -n "$epics_section" ]]; then
+      printf '%s' "$epics_section"
+    else
+      printf '_No epics._\n'
     fi
     printf '\n## Graph\n\n'
     if [[ -n "$graph_section" ]]; then

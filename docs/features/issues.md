@@ -9,18 +9,20 @@ Issues are where Jim captures what was noticed but not acted upon. Every stage o
 2. [The issue file](#the-issue-file)
     * [Metadata](#metadata)
     * [Body](#body)
-3. [Issue capture](#issue-capture)
+3. [The lifecycle](#the-lifecycle)
+4. [Recorded identity](#recorded-identity)
+5. [Issue capture](#issue-capture)
     * [Interactive capture](#interactive-capture)
     * [Pipeline capture](#pipeline-capture)
-4. [The collection](#the-collection)
+6. [The collection](#the-collection)
     * [Read views](#read-views)
     * [The index](#the-index)
     * [Insights](#insights)
-5. [ID coordination](#id-coordination)
-6. [Issue placement](#issue-placement)
-7. [Migrations](#migrations)
-8. [Trust and safety](#trust-and-safety)
-9. [Configuration](#configuration)
+7. [ID coordination](#id-coordination)
+8. [Issue placement](#issue-placement)
+9. [Migrations](#migrations)
+10. [Trust and safety](#trust-and-safety)
+11. [Configuration](#configuration)
 
 ---
 [Jump to configuration](#configuration)
@@ -30,10 +32,21 @@ Issues are where Jim captures what was noticed but not acted upon. Every stage o
 ```
 /jim:issue                   # print help
 /jim:issue add <subject>     # capture a discovery from this conversation
+/jim:issue add <subject> --type epic       # capture an umbrella instead
+/jim:issue add <subject> --part-of 12      # capture it into one (csv for several)
 /jim:issue list [filter]     # open work, grouped and sorted
 /jim:issue show 53           # one issue, by ordinal / slug / unique slug prefix
 /jim:issue stats             # counts, clusters, blocking ranking
 /jim:issue insights          # LLM analysis: convergence, sequencing, parallel work
+
+/jim:issue claim 53          # take it (--force takes over one held)
+/jim:issue release 53        # give it up
+/jim:issue start 53          # mark it underway, claiming it when unheld
+/jim:issue close 53 --as done   # finish it, recording how
+/jim:issue reopen 53         # back to not-started, keeping the outcome
+/jim:issue join 53 12        # put it under umbrella 12
+/jim:issue leave 53 12       # take it back out
+
 /jim:issue reconcile         # realize ordinals bound while offline
 ```
 
@@ -52,14 +65,19 @@ YAML frontmatter:
 id: 20260813-foo-widget-lacks-input-validation
 num: 350
 title: "Foo widget lacks input validation"
-status: open                 # open | closed — the whole lifecycle
+status: open                 # open (not started) | active (underway) | closed
 priority: critical           # low | medium | high | critical
+type: issue                  # issue | epic (an umbrella others belong to)
+filed-by: "you@example.com"  # resolved by the emitter, never written by hand
+claimed-by: ""               # the current holder; empty when unheld
+outcome: ""                  # done | wontfix | duplicate | obsolete, once closed
 labels: [foo, widget]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []                # umbrella slugs, stored on the member only
 created: 2026-08-13T04:12:07Z
 updated: 2026-08-13T04:12:07Z
 origin: docs/specs/foo/042-widget/spec.md
@@ -72,11 +90,77 @@ origin: docs/specs/foo/042-widget/spec.md
 
 **`origin`** records the artifact the discovery surfaced from — a spec, plan, research, review or brainstorm path — or the sentinel `conversation` for a free-form capture.
 
-**`relations`** are the structural channel: the four typed buckets above. Body `[[wikilinks]]` are the prose channel and alias to `related-to`. Both become edges in the index graph, deduped per `(source, type, target)`, so writing both about the same target produces one edge, not two.
+**`status`, `claimed-by` and `outcome`** are moved by the lifecycle verbs, never by hand — see [The lifecycle](#the-lifecycle).
+
+**`relations`** are the structural channel: the five typed buckets above. Body `[[wikilinks]]` are the prose channel and alias to `related-to`. Both become edges in the index graph, deduped per `(source, type, target)`, so writing both about the same target produces one edge, not two.
 
 ### Body
 
 Prose, under a `## Description` heading. Cross-references other issues as `[[other-issue-slug]]`.
+
+## The lifecycle
+
+An issue is `open` (not started), `active` (underway) or `closed` (finished). Beside that it records who filed it, who currently holds it, what kind of record it is, which umbrellas it belongs to, and — once it has been finished at least once — the outcome of the most recent finish.
+
+Seven verbs move it, and they are the supported path. Each writes every field the move implies, refreshes `updated`, and regenerates the index; a state change written by hand is what leaves `outcome` empty on a close, which the index then reports as an integrity warning.
+
+| Verb | What it does |
+| :--- | :--- |
+| `claim <id>` | Take the issue. One held by someone else is refused, naming the holder; `--force` takes it over |
+| `release <id>` | Give it up. Gated exactly as claiming is — otherwise release-then-claim would be a takeover with no override in it |
+| `start <id>` | Mark it underway, claiming it first when it is unheld |
+| `close <id> [--as <outcome>]` | Finish it. `--as` takes `done`, `wontfix`, `duplicate` or `obsolete`; a bare close records `done` |
+| `reopen <id>` | Return it to not-started and **keep** the outcome |
+| `join <id> <umbrella>` | Put it under an umbrella. The umbrella must be an `epic`, and an epic is refused a membership of its own |
+| `leave <id> <umbrella>` | Take it back out. Available even where `join` would now refuse, so a membership reached by hand-edit stays repairable — including one whose umbrella no longer exists, matched against the record's own entries |
+
+Any developer may close any issue, and `claimed-by` survives the close — the field says who *held* the issue, not who finished it. Closing `--as duplicate` requires the superseding issue to be named in the record's `duplicates` relation.
+
+**A close carries a resolution.** The verb sets the fields; a dated `## Resolution` appended to the record's body carries what the fields cannot — the commit that shipped the fix, what pins it, what was left alone, and where the work diverged from what was filed. It is written whatever the outcome: a `wontfix` or `obsolete` needs the reasoning most, and a `done` needs the part its commit trailer cannot hold. Where a resolution later turns out to overclaim, a dated `## Correction` is appended rather than the original edited — the overclaim is itself information about how the record was made.
+
+Three readings are **derived** and never stored, so no field can contradict them:
+
+| Reading | Derived from |
+| :--- | :--- |
+| held | `claimed-by` is non-empty |
+| blocked | some `depends-on` target is not `closed` |
+| reopened | `status` is not `closed` **and** `outcome` is non-empty |
+
+`outcome` is non-empty exactly when the issue has **ever** been closed, not when it is closed now — so `outcome: done` alone does not mean finished; pair it with `status` to ask that question. That is what makes a reopen legible: an open issue carrying an outcome was finished before, and the outcome names how.
+
+Outside an agent session, `bash skills/issue/scripts/transition.sh <verb> <id>` is the same operation, and routes to a configured destination branch on its own.
+
+## Recorded identity
+
+`filed-by` and `claimed-by` hold a contributor identity, and `identity_scheme` decides what form it takes. The choice belongs to the project rather than to each contributor, so one collection never holds identities recorded under different rules.
+
+| Form | What it records |
+| :--- | :--- |
+| `email` | The whole address, extracting nothing |
+| `github` (default) | Also a forge private-relay address as the account name it carries, leaving every other address alone |
+| `local` | Also an address inside `identity_domain` as the account part in front of that domain; anything outside it falls to the rule above |
+
+The forms are ordered — each records everything the one below it records, plus one further extraction — so a contributor who commits several ways still reads as one identity. Every form lower-cases what it records, including `email`: case variance in one person's address would otherwise split them in two. Before any form applies, the address resolves through whatever alias mapping version control carries, which is what collapses one person's several addresses onto one identity. Jim reads that mapping; it neither creates nor requires one.
+
+An **unrecognized** `identity_scheme` refuses every operation that would record an identity rather than quietly falling back to the default — a typo would otherwise record a whole collection under a form the project never chose. An **absent** one takes the default, so a zero-config project is unaffected. Selecting `local` without setting `identity_domain` refuses the same way, for the same reason.
+
+**Changing the form rewrites nothing already recorded.** The index reports the divergence instead — one warning naming the records the current form would record differently, and a second naming any the form cannot judge — and the identity rewrite is what clears them:
+
+```bash
+bash skills/issue/scripts/migrate.sh identity --renormalize           # preview (read-only)
+bash skills/issue/scripts/migrate.sh identity --renormalize --apply   # re-record
+```
+
+Re-normalization re-applies the current form to every recorded identity and supplies no mapping of its own. It **skips** a record whose identity the form cannot judge, which is why the index warns about that class separately: those are repaired by naming both values, the rewrite's other mode.
+
+```bash
+bash skills/issue/scripts/migrate.sh identity --from <old> --to <new>
+bash skills/issue/scripts/migrate.sh identity --from <old> --to <new> --apply
+```
+
+That mode covers every field recording an identity, not only the filer, and records `--to` as given (lower-cased) rather than through the configured form — an operator who names a value gets that value, and the mismatch warning is what tells them if it disagrees with the form.
+
+The warning has no suppression knob, deliberately. It has an exit condition: running the rewrite clears it, so it is a finite prompt to finish a migration rather than a setting to switch off.
 
 ## Issue capture
 
@@ -95,6 +179,8 @@ flowchart LR
 ### Interactive capture
 
 `/jim:issue add <subject>` drafts from the conversation, framed by the project's vision, architecture and roadmap, and presents the whole draft — frontmatter and body together — as one block: **file**, **edit**, or **cancel**. No per-field prompting.
+
+Two flags may appear anywhere in the subject and are taken out of it before the rest becomes the title: `--type epic` files an umbrella rather than an ordinary issue, and `--part-of <ref>[,<ref>]` files the capture straight into one or more, each named the way `join` names one. Both are resolved and refused before an ordinal is spent, so a capture naming an umbrella that does not exist — or one that is not an umbrella — costs nothing. A flag repeated takes its last occurrence, and one naming no value — ending the string, or followed by the other flag — is dropped rather than kept as title text.
 
 That presentation is the **last scrub moment**. The file is about to be persisted and committed alongside your code, so the prompt asks you to check the body for API keys, customer data, and raw logs before it lands.
 
@@ -124,24 +210,32 @@ The issue collection defaults to `docs/issues/` — one file per issue plus a ge
 
 `list`, `show`, and `stats` are deterministic bash, and their output is presented verbatim.
 
-**`list [open|closed|critical|high|medium|low]`** — the terse view, grouped by status. It shows open work by default: `list` and the priority filters hide closed issues unless you ask for them with `list closed` or set `issue_list_closed = "true"`. Grouping, sort key, columns and direction are configurable (`issue_list_group` / `_sort` / `_cols` / `_order`), and an explicit filter always overrides the configured default.
+**`list [filter …]`** — the terse view, grouped by status. Filters compose: values naming one axis are alternatives, and different axes must all hold. The bare words are `open|active|closed`, `critical|high|medium|low`, `issue|epic`, `claimed|unclaimed` and `blocked|unblocked`; the flags — `--status`, `--priority`, `--type`, `--label`, `--filed-by`, `--claimed-by`, `--spec`, `--origin`, `--epic` and `--cols` — each take a comma-separated list, and `--epic` scopes the view to one umbrella's members. It shows open work by default: `list` and the priority filters hide closed issues unless you ask for them with `list closed` or set `issue_list_closed = "true"`. Grouping, sort key, columns and direction are configurable (`issue_list_group` / `_sort` / `_cols` / `_order`), and an explicit filter always overrides the configured default.
 
-**`show <id>`** — resolves an ordinal, an exact id or slug, or a unique slug prefix, against the indexed set only.
+**`show <id>`** — resolves an ordinal, an exact id or slug, or a unique slug prefix, against the indexed set only. On an umbrella it also lists the derived roster and its progress.
 
-**`stats`** — open/closed counts, clusters by priority, origin and label, and a **blocking ranking**: the issues with the highest `blocks` out-degree, which answers "what is holding up the most work?".
+**`stats`** — open/closed counts, clusters by priority, origin and label, and a **blocking ranking**: the issues with the highest `blocks` out-degree, which answers "what is holding up the most work?". Umbrellas are counted on their own `Epics: N open · M closed` line, because the other counts are counts of work and an umbrella names none of its own; an `== Epics ==` rollup then gives each one its progress. Both describe the same population — a filter that excludes an umbrella's own row drops it from the headline and the rollup alike — while the progress a listed umbrella carries is its whole roster's, not the filter's share of it.
 
 ### The index
 
-`INDEX.md` is a pure projection of the issue files, rebuilt after every write and whenever a read finds it stale. It holds no authority of its own — identity comes from the allocator, and the index only reports what the files say. Four sections:
+`INDEX.md` is a pure projection of the issue files, rebuilt after every write and whenever a read finds it stale. It holds no authority of its own — identity comes from the allocator, and the index only reports what the files say. Five sections:
 
 | Section | Content |
 | :--- | :--- |
 | **Summary** | Open and closed counts |
 | **Issues** | One row per issue: slug, title, status, num, priority, created, labels, origin |
+| **Epics** | One row per umbrella, with its derived roster and progress |
 | **Graph** | Every typed edge — `A --blocks--> B` — from frontmatter relations and body wikilinks |
 | **Integrity Warnings** | What the scan could not reconcile |
 
-The warnings are the collection's self-check, and they never block a write: a malformed frontmatter block, an invalid relation target, a malformed wikilink, an `origin:` path that no longer resolves, and — the substantive one — a **bidirectional mismatch**, where one issue asserts `blocks` and the target carries no reciprocal `depends-on`. Wikilinks are one-way "see also" pointers, so they neither trigger nor satisfy that check.
+The warnings are the collection's self-check, and they never block a write. They fall into four groups:
+
+- **Records that will not parse** — a filename that is not a valid id, a missing or malformed frontmatter block, a `created` stamp that is not a date or timestamp.
+- **Fields outside their enum** — an unrecognized `outcome` or `type`, and a record that is closed but records no outcome (what a close written by hand leaves behind).
+- **References that do not resolve** — an invalid relation target, a malformed wikilink, an `origin:` path that no longer exists, a `part-of` naming an umbrella the collection does not hold, and — the substantive one — a **bidirectional mismatch**, where one issue asserts `blocks` and the target carries no reciprocal `depends-on`. Wikilinks are one-way "see also" pointers, so they neither trigger nor satisfy that check.
+- **Recorded identities that disagree with the configured form** — counted and named, with the rewrite that clears each class; see [Recorded identity](#recorded-identity).
+
+Two groups can also report that a check did **not run** rather than that it failed: origin paths go unchecked under a placement, since a path there would resolve against whichever checkout wrote last rather than against the collection, and identities go unchecked when the configured form cannot be applied at all.
 
 ### Insights
 
@@ -185,11 +279,13 @@ Changing `issue_placement` on an existing project moves where issues live but do
 
 ## Migrations
 
-Four one-shot, opt-in commands, none of them wired into normal use. Each writes atomically per file, is idempotent under a retry, and regenerates the index once at the end. The two that rewrite existing identity preview first and mutate only behind `--apply`; the two backfills only fill in absent fields, so they apply directly.
+Six one-shot, opt-in commands, none of them wired into normal use. Each writes atomically per file, is idempotent under a retry, and regenerates the index once at the end. The four that rewrite what a record already holds preview first and mutate only behind `--apply`; the two backfills only fill in absent fields, so they apply directly.
 
 | Command | What it does |
 | :--- | :--- |
 | `migrate.sh prefix [--apply]` | Converge existing ids on the active `issue_id_prefix` scheme |
+| `migrate.sh schema [--apply]` | Give every issue the identity, type and outcome fields, recovering each filer from the commit that created its file |
+| `migrate.sh identity [--apply]` | Re-record contributor identities — re-apply the configured form, or replace one identity with another (see [Recorded identity](#recorded-identity)) |
 | `reconcile.sh [--apply]` | Realize provisional ordinals — the script behind `/jim:issue reconcile` |
 | `backfill.sh num` | Assign display ordinals to legacy issues filed before ordinals existed |
 | `backfill.sh timestamp` | Normalize date-only `created`/`updated` to second-resolution day-start values |
@@ -233,6 +329,8 @@ All keys are optional; zero-config defaults apply throughout.
 | `issue_list_closed` | `"false"` | Include closed issues in the default and priority-filtered views |
 | `issue_id_prefix` | `"date"` | Id prefix scheme (`date` / `timestamp` / `sequential` / `project`, or a `{date:…}`/`{seq:…}` template); forward-only |
 | `issue_id_project` | `""` | Static tag prepended when `issue_id_prefix = "project"` |
+| `identity_scheme` | `"github"` | The form every recorded filer and holder takes (`email` / `github` / `local`); forward-only — see [Recorded identity](#recorded-identity) |
+| `identity_domain` | `""` | The organization's mail domain, used only by the `"local"` form; exactly one domain |
 | `id_coordination_mechanism` | `"git"` | How ids are coordinated between clones; `git` uses the append-only registry |
 | `id_coordination_branch` | `"jim/registry"` | The branch holding the registry logs — never project content |
 | `id_coordination_unreachable` | `"fail"` | Offline behavior: `fail` issues no identity, `provisional` binds a local `P-<id>` for `/jim:issue reconcile` |

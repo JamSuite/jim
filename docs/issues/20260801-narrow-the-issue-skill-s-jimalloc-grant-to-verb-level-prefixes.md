@@ -4,12 +4,17 @@ num: 198
 title: "Narrow the issue skill's jimalloc grant to verb-level prefixes"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, permissions, hardening]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T20:33:39Z
 updated: 2026-08-02T06:52:07Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/research.md

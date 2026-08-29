@@ -4,12 +4,17 @@ num: 334
 title: "jimconf value-form refusal covers one of three read doors"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [platform, config, fail-open]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:32Z
 updated: 2026-08-13T06:19:48Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

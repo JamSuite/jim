@@ -4,12 +4,17 @@ num: 150
 title: "Gate the realized spec ordinal and stop silent record loss"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, security]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T19:35:00Z
 updated: 2026-07-31T12:40:00Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md

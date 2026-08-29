@@ -4,12 +4,17 @@ num: 126
 title: "Spec issue_placement config for issue content location"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, issue]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T00:47:22Z
 updated: 2026-07-28T00:47:22Z
 origin: docs/specs/issue/010-ordinal-coordination/spec.md

@@ -4,12 +4,17 @@ num: 196
 title: "Uncommitted-sweep containment guard lost its only coverage"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [test, spec, id-coordination]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T06:36:08Z
 updated: 2026-08-01T10:01:09Z
 origin: "20260801-c-prime-fix-handoff.md (retired; see 5e712bf)"

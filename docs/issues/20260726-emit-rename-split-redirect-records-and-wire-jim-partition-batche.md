@@ -4,12 +4,17 @@ num: 113
 title: "Emit rename/split redirect records and wire /jim:partition batches"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T19:01:57Z
 updated: 2026-08-03T05:46:40Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md

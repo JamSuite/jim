@@ -4,14 +4,19 @@ num: 44
 title: "Surface face freshness in the reconcile report"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [000-blueprint, contract-graph]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-07-04T09:23:24Z
-updated: 2026-07-25T07:49:14Z
+updated: 2026-08-29T07:52:20Z
 origin: docs/specs/blueprint/006-contract-graph/plan.md
 ---
 

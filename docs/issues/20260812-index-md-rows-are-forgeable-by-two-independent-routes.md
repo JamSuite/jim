@@ -4,12 +4,17 @@ num: 309
 title: "INDEX.md rows are forgeable by two independent routes"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, security, index]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:37Z
 updated: 2026-08-12T09:00:02Z
 origin: docs/specs/issue/011-issue-placement/review.md

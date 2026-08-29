@@ -4,12 +4,17 @@ num: 63
 title: "Compute graph-health metrics in the reconcile pass"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, contract-graph, spec-groups]
 relations:
   blocks: [20260703-build-the-partition-migration-skill, 20260704-add-partition-health-sensors-split-merge-signals]
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-07T03:07:44Z
 updated: 2026-07-25T07:49:14Z
 origin: conversation

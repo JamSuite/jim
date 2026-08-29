@@ -4,12 +4,17 @@ num: 350
 title: "verify grades a violation by its rule not by its breach"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [verify, triage, noise]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-13T11:36:55Z
 updated: 2026-08-13T11:36:55Z
 origin: "docs/specs/jim/000-blueprint/spec.md"

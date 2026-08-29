@@ -4,12 +4,17 @@ num: 42
 title: "Add partition-health sensors (split/merge signals)"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, cross-group, spec-groups]
 relations:
   blocks: []
   depends-on: [20260630-add-the-cross-group-contract-graph-and-blast-radius, 20260707-compute-graph-health-metrics-in-the-reconcile-pass]
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T08:08:24Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/006-contract-graph/spec.md

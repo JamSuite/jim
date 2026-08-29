@@ -2,8 +2,8 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-08-12"
-last_full_generate: "2026-08-12T20:31:41Z"
+updated: "2026-08-29"
+last_full_generate: "2026-08-29T05:38:09Z"
 ---
 
 # issue — blueprint
@@ -17,11 +17,16 @@ group's specs, ARCHITECTURE.md, and code.*
 
 The `issue` group is jim's discovery-capture vertical: actionable findings
 surfaced mid-conversation become structured, indexed, analyzable issue files
-under `docs/issues/`. It owns the capture flow (`/jim:issue add`), the read
-views (`list`/`stats`/`show`/`insights`), the collection's index, one-shot
-migrations, and the read-only insights persona. Every other group's skills emit
-into it through its single emitter; it is the project's widest-fan-in provides
-face after the platform CLIs.
+under `docs/issues/`. It owns the capture flow (`/jim:issue add`), the lifecycle
+verbs that move a record through it, the umbrella records that group work and
+the membership that places an issue under one, the read views
+(`list`/`stats`/`show`/`insights`), the collection's index, the definition of a
+recordable contributor identity, one-shot migrations, and the read-only insights
+persona. It also owns where the collection lives: a project may keep it on the
+working branch or centralize it on a designated one, and this group's own door
+decides which. Every other group's skills emit into it through its single
+emitter; it is the project's widest-fan-in provides face after the platform
+CLIs.
 
 ## Provides
 
@@ -50,10 +55,23 @@ face after the platform CLIs.
   emitter cannot verify the declaration, which is why it refuses to supply one:
   no absence is read as an answer in either direction. Under the default
   placement both flags are inert.
+  A capture names the kind it files and the umbrellas it joins: `--type`
+  selects between an ordinary issue and an umbrella, and `--part-of` names one
+  or more umbrellas by any reference form the lifecycle verbs accept. Both
+  resolve above the allocator, so a filing refused for an unresolvable
+  umbrella, a target that is not an umbrella, or an umbrella filed into another
+  spends no identity and leaves the collection as it was.
 - `index.sh` **index generation** — frontmatter scan → `INDEX.md`
-  (summary, issues, relation graph, integrity warnings). Guarantee:
-  line-oriented parse only; atomic write — a failed run leaves the previous
-  index untouched.
+  (summary, issues, umbrella rosters, relation graph, integrity warnings).
+  Guarantee: line-oriented parse only; atomic write — a failed run leaves the previous
+  index untouched; a placement it cannot resolve refuses rather than publishing
+  an index whose origin lint silently did not run; the Issues row describes each
+  record with every field a filter can name, each emitted only where the record
+  carries it. Membership is read from the member's own record and the roster
+  derived by bucketing, so no umbrella records its own members and none can
+  disagree with the records claiming it; a membership naming a record that is
+  not an umbrella, or an umbrella placed under another, is reported as an
+  integrity warning rather than rendered as a roster.
 - `render.sh` **read views** — `stats`/`list`/`show`/`insights-graph`/`help`.
   Guarantee: staleness-gated index reuse in the working tree, where mtimes
   answer the question, and an unconditional rebuild on a materialized copy,
@@ -62,7 +80,69 @@ face after the platform CLIs.
   collection at the configured placement rather than a branch-local copy. A
   view served from an index that could not be rebuilt is named on stderr and
   carries a non-zero status, so no reader is handed a stale view reported as a
-  current one.
+  current one. Both read verbs take one composed filter grammar over a reserved
+  vocabulary: every argument is classified before the collection positional
+  binds, so a flag's operand never reads as a directory and a reserved word
+  never leaves the filter vocabulary. A filter naming an axis the index does
+  not describe is named on stderr and carries a non-zero status, on the same
+  terms as a view that could not be refreshed — an empty result means nothing
+  matched, never that the view could not look. An umbrella is nameable by the
+  same reference forms as any record, and the views that report one report its
+  progress from the same derivation the index uses — the census rollup, the
+  list row and `show` cannot disagree about an umbrella's members. An umbrella
+  nobody has joined reports an empty roster rather than vanishing from the view.
+- `transition.sh` **lifecycle verbs** — `claim` / `release` / `start` / `close`
+  / `reopen` / `join` / `leave`, one command per transition. Guarantee: the id
+  clears the validator and the outcome clears its enum before the placement
+  door opens; each
+  transition publishes every field it changes, plus the refreshed stamp, in one
+  atomic write, so a record is never observed finished with no outcome; a claim
+  or release on an issue another holds refuses naming the holder and takes
+  `--force` to override; closing preserves the holder record, and reopening
+  keeps the outcome, which is what makes a reopen legible from the record alone.
+  The door commits under the verb matching the subcommand, so a centralized
+  collection's history is self-describing. Membership is recorded on the member
+  alone, so joining writes exactly one record and the umbrella's own file is
+  untouched; an umbrella may not be placed under another, and containment is
+  enforced on the way in only, so `leave` stays available to repair a violation
+  a hand edit introduced. `leave` matches its operand against the record's own
+  memberships before it reaches the resolver, so an entry whose umbrella no
+  longer resolves is cleared by the verb rather than by hand; `join` resolves
+  first and always, because entering a set requires the set to exist and
+  leaving one does not. A verb that would change nothing writes nothing — no
+  record touched, no stamp refreshed, no index regenerated — and says so on
+  stdout, so grouping several issues at once does not fail on the one already
+  grouped. Regenerating the index belongs to whichever party publishes the
+  collection: the door rebuilds the index of what it publishes, so this script
+  rebuilds only the collection nothing will publish, and a failure there leaves
+  the written transition in place and reports the stale index rather than
+  unwinding the move.
+- `identity.sh` **recordable identity** — `resolve` (the environment's),
+  `validate` (one already obtained), `normalize` (one carried into the
+  project's configured form) and `map` (one resolved through the project's
+  alias mapping, with no form applied). Guarantee: one positively enumerated
+  character set decides what can be recorded, so an unanticipated value fails
+  closed rather than surviving a list of characters someone thought to name; a
+  value that cannot be recorded is refused exactly as an absent one; refusals
+  are fixed reasons carrying neither the rejected value nor issue content. The
+  form a recorded identity takes is the project's choice rather than each
+  contributor's, and an address resolves through whatever alias mapping version
+  control carries before any extraction, so one contributor's several addresses
+  collapse to one identity. The
+  same definition governs every recorded identity — the emitter's filer, the
+  transition verbs' holder, and the filer the conversion recovers from history —
+  and the read views' person filters compare through it rather than through a
+  second one, so a query and a capture cannot disagree about who someone is.
+- `is_valid_id` **validator lockstep** — the two copies of the id validator
+  this group carries, in `index.sh` and `render.sh`. Guarantee: both stay
+  byte-identical to the platform CLI's own definition in `jimfile.sh`, so the
+  ids the substrate accepts and the ids this group accepts are one set rather
+  than three that merely coincide. Each copy carries a marker naming the other
+  two and a test compares all three, so a drifting copy fails rather than
+  quietly narrowing what one surface will open. The validator is a cross-group
+  contract rather than a local helper — the platform group requires these
+  copies to hold the line — so a change to any one of the three is a change to
+  all three.
 - **§ 7a candidate-batch contract** — the canonical definition of the fileable
   bar (resolution, actionability, pipeline-ownership) and the emitter call
   shape, defined once in this group's `SKILL.md`. Guarantee: surfacing skills
@@ -86,47 +166,86 @@ face after the platform CLIs.
   partition surface holds `mode`, `begin --read` and `abort` alone — no publish
   verb — for the re-points it discloses rather than applies.
 - `backfill.sh` / `migrate.sh` / `reconcile.sh` **migrations** — opt-in,
-  preview-gated one-shot transforms (num / timestamp / prefix; and realizing
-  provisional ordinals into real coordinated ones). Internal surface, low
-  contract weight.
+  preview-gated one-shot transforms (num / timestamp; prefix, schema and
+  recorded identity; and realizing provisional ordinals into real coordinated
+  ones). The two surfaces
+  divide by risk rather than era: `backfill.sh` fills constant values that need
+  no preview, `migrate.sh` writes derived ones behind a preview, an explicit
+  apply gate and a plan-hash drift guard. The identity rewrite carries one
+  further refusal of its own: a run that would record two distinct contributors
+  as one identity refuses whole rather than merging them.
+  Internal surface, low contract weight.
 - `@jim:issue-analyst` **insights persona** — read-only synthesis over the
   collection; capability-narrowed (Read plus one `render.sh` invocation).
-- `issue-template.md` — the schema shape the emitter materializes.
+- `issue-template.md` — the schema shape the emitter materializes: identity
+  (`filed-by` / `claimed-by`), lifecycle (`status` across not-started, underway
+  and finished, with `outcome` non-empty once an issue has ever been finished),
+  and grouping (`type`, and `part-of` recorded on the member side only).
 
 ## Requires
 
-- `platform.jimfile-cli` — id minting (`next-id`/`next-num`), timestamps
-  (`now`), path resolution (`path issue`), and id validation, from the skill
-  flow and script-to-script (`new.sh`, `migrate.sh`).
+- `platform.jimfile-cli` — id validation (`valid-id`, this group's most-used
+  cross-group call), timestamps (`now`), path resolution (`path issue`),
+  relative-path containment (`valid-relpath`), and the prefix migration's
+  re-derivation (`prefix-from`), from the skill flow and script-to-script. The
+  shape `now` emits is a second coupling: the group's three timestamp guards
+  carry marked copies of the pattern that must match the one in `jimfile.sh`, so
+  a change to the emitted format is a change to every guard that reads it. The
+  id-prefix scheme is a third: `path issue` and `prefix-from` consult it inside
+  the platform CLI, so this group depends on that derivation without reading the
+  keys that configure it. Ordinal minting is not here — that is the allocator's,
+  below.
 - `platform.jimalloc` — coordinated issue identity: the emitter reserves the
-  display ordinal + durable id via `allocate issue` (durable-before-write), and
-  `reconcile.sh` realizes pending provisional ordinals via `reconcile issue`.
-- `platform.jimconf-cli` — the `issue_list_*`, `issue_id_*` and
-  `issue_placement` / `issue_placement_ack` key contract, from the skill flow
-  and script-to-script (`index.sh`, `render.sh`, `backfill.sh`, `migrate.sh`,
-  `place.sh`). `place.sh` additionally reads `id_coordination_branch`, the one
-  key this group consumes that another group owns the meaning of — it is the
-  branch placement refuses to write the collection to. The resolver
-  distinguishes an unset key from a failed resolution, which is what lets the
-  placement gate's refusal hold: a configuration it cannot read, a value form it
-  cannot parse, and a run started below the project root each refuse rather than
-  yielding the key's default.
+  display ordinal + durable id via `allocate issue` (durable-before-write),
+  `peek issue` supplies the capture flow's advisory preview, and `reconcile.sh`
+  realizes pending provisional ordinals via `reconcile issue`.
+- `platform.valid-branch-shape` — `place.sh`'s branch-name gate is a
+  byte-identical mirror of the allocator's own, marked on both sides and
+  compared by a test. The two agree because a branch the allocator would refuse
+  must not be one the placement door accepts. A sibling containment rule is
+  deliberately *not* mirrored: the door's is the tighter of the two, and its
+  marker says so rather than leaving the difference to look like drift.
+- `platform.jimconf-cli` — the `issues` path and the `specs` root, the
+  `issue_list_*` family, `issue_placement` / `issue_placement_ack`, and the
+  recorded-identity pair `identity_scheme` / `identity_domain`, script-to-script
+  (`index.sh`, `render.sh`, `backfill.sh`, `migrate.sh`, `place.sh`,
+  `identity.sh`, `new.sh`); `auto_issue_file` is the skill flow's read alone,
+  and the emitter states why reading it script-side would be neither necessary
+  nor sufficient. The `specs` root is what lets a query name a spec by group and
+  ordinal rather than by path. `place.sh` additionally reads
+  `id_coordination_branch`, the one key this group consumes that another group
+  owns the meaning of — it is the branch placement refuses to write the
+  collection to. The resolver distinguishes an
+  unset key from a failed resolution, which is what lets the placement gate's
+  refusal hold: a configuration it cannot read, a value form it cannot parse,
+  and a run started below the project root each refuse rather than yielding the
+  key's default.
 - `platform.testlib` — `tests/issues.sh` and `tests/place.sh` run under the
   shared framework.
 
 ## Structure
 
 - `skills/issue/` — `SKILL.md` (subcommand routing, § 7a contract, § Step-7
-  wrapping discipline), `assets/issue-template.md`, and seven scripts:
+  wrapping discipline), `assets/issue-template.md`, and ten scripts:
   `new.sh` (emitter), `index.sh` (index), `render.sh` (views), `backfill.sh` /
-  `migrate.sh` (migrations), `reconcile.sh` (realize provisional ordinals), and
-  `place.sh` — the seam between an on-branch collection and one centralized on a
-  designated branch, which the other six route themselves through. It also
+  `migrate.sh` (migrations), `reconcile.sh` (realize provisional ordinals),
+  `identity.sh` (the recordable-identity definition), `transition.sh` (the
+  lifecycle verbs), `resolve.sh` — one definition of what an ordinal, an exact
+  slug or a slug prefix names on a write path, shared by the capture and
+  lifecycle surfaces — and `place.sh` — the seam between an on-branch collection
+  and one centralized on a designated branch, which the six re-exec themselves
+  through; `transition.sh` drives its two-phase handle directly instead. It also
   carries a face: the spec group's citation sweep and the partition surface
   invoke it directly, script to script, for mutations that have no single
   command to wrap.
 - `agents/issue-analyst.md` — the read-only insights subagent.
-- `tests/issues.sh` and `tests/place.sh` — the group's test files.
+- `tests/issues.sh` and `tests/place.sh` — the group's test files. Two of the
+  platform group's files assert against this group as well, each for a reason
+  that puts the assertion on their side of the boundary: `tests/jimfile.sh`
+  holds the validator triplicate, because one of the three copies is platform's
+  own, and `tests/docsurfaces.sh` holds this group's documentation to its
+  scripts, deriving the verb and kind vocabularies from the scripts that declare
+  them so prose cannot drift from the code it describes.
 - **Data store** (owned, not territory): `docs/issues/` + `INDEX.md` — one
   markdown file per issue, index regenerated on every write. The directory is
   the collection's path within a branch; which branch holds it is
@@ -139,9 +258,22 @@ face after the platform CLIs.
 | single-emitter | Every issue file is created only through `new.sh`; no skill or agent composes an issue file by hand. Editing an existing issue is a different path, governed by the two-phase door — which publishes a content diff rather than a verb-scoped one, so a handle-holder that creates a file there publishes it like any edit. That separation rests on the caller's discipline, not on a mechanism the door enforces | high | judge |
 | untrusted-body-never-shell | Issue bodies travel only via `--body-file` temp files, copied file→file; title/label/origin scalars are YAML-encoded; no untrusted value is interpolated into shell or YAML | critical | judge |
 | id-gate-before-path | Every id passes the validator before any path composition or file read; `show` resolves only against the indexed set | critical | judge |
-| placeholder-by-position | The placement wrapper substitutes only the placeholders a caller positioned — a flag's operand, or the trailing argument it appended — never an argument matching a placeholder's text elsewhere in the argv. Forwarded caller text can look exactly like one, and rewriting it puts a run-local path into a durable identity | high | judge |
+| placeholder-by-position | The placement wrapper substitutes a placeholder only at an argv offset the caller declared it built one at, and refuses an offset whose argument is not that placeholder. Position is stated by the caller, never inferred from a neighbouring word or from standing last — forwarded caller text supplies its own neighbours and can read exactly like a marker, and rewriting one puts a run-local path into a durable identity | high | judge |
 | atomic-index-write | Every script-mediated write of `INDEX.md` or an issue file is tmp+mv atomic, and a failed run leaves the previous file untouched. An agent editing an issue in place through the two-phase door is outside this rule — there the atomicity is the publish, not the write. A failure handler never discards a staged file that is an issue's only remaining copy, and claims no all-clear it cannot make | medium | judge |
-| staleness-gated-reads | A read builds a current index where it can — gated on staleness in the working tree, unconditionally on a materialized copy, whose mtimes encode extraction order rather than edit history. A view served from an index that could not be rebuilt is disclosed on stderr and carries a non-zero status; a write refuses instead, so a stale index never reaches the destination | medium | judge |
+| staleness-gated-reads | A read builds a current index where it can — gated on staleness in the working tree, unconditionally on a materialized copy, whose mtimes encode extraction order rather than edit history. A view served from an index that could not be rebuilt is disclosed on stderr and carries a non-zero status; a write refuses instead, so a stale index never reaches the destination. Schema staleness is the second class and is gated the same way: an index newer than every issue file can still predate a row field, so a query naming a field such an index cannot answer is refused rather than answered from blanks, and the refusal names the row field rather than the axis key. Every read verb asks that question of the axes a query names; the column half binds only the view that renders columns, because a selection a verb never renders is one a stale index cannot answer wrongly | medium | judge |
 | placement-gate-before-git | The destination branch name clears a validity gate and the coordination-branch refusal before it reaches any git argument. A configured value that fails, and a configuration read that fails, both refuse — neither falls back to the working branch, and an unresolvable setting is never read as an unset one | critical | judge |
 | materialization-contained | Every entry extracted from destination-branch content is a regular file with a plain name resolving inside the collection directory, and its bytes are read by object name, never by tree path; the first violation aborts the extraction before the wrapped command runs | critical | judge |
 | insights-capability-boundary | Insights synthesis happens only in the issue-analyst subagent, which holds no write, edit or agent capability; its one granted read verb regenerates an index as a side effect and can author no content. The main agent reads no issue bodies during insights. The runtime enforcement rides the allowed-tools permission channel, which no mechanical check here models — judged from the prompt surface | high | judge |
+| identity-validated-before-record | Every recorded identity — supplied by the environment or recovered from version-control history — clears one positively enumerated character set before it is written, and a value outside it is refused exactly as an absent one. The refusal carries neither the rejected value nor issue content | critical | judge |
+| cross-copy-lockstep | Every guard carrying a sync marker stays byte-identical to the other copies of that marker, whether the marker names them or names only the shared pattern. A copy deliberately *not* identical declares the difference in its own marker, so an intended asymmetry never reads as drift and drift never reads as intent | high | judge |
+| declared-vocabularies | Every vocabulary a rule quantifies over is a declared constant, and every site that quantifies iterates that constant rather than restating its members. A guard, a parser dispatch and a test that each enumerate the same set independently agree only by coincidence, and the one that is short is silent about it | high | judge |
+| issue-file-never-sourced | No script sources or evaluates an issue file; frontmatter and body are read line-oriented with grep, sed and awk only — on every read path, including the ones recovering values from version-control history | critical | judge |
+| collection-rewrite-preview-gated | Every collection-wide rewrite previews by default and mutates only under an explicit apply flag, and a plan hash supplied with that flag refuses a run whose collection drifted since the preview it names | critical | judge |
+| refusal-discloses-no-input | A refusal names the field and the accepted set, never the value it rejected, and carries no issue content. The rule binds every refusing surface — the recordable-identity gate, the capture emitter's enumerated fields, the lifecycle verbs and the shared reference resolver — so a caller learns what would have been acceptable without the collection echoing back what it was handed | high | judge |
+| collection-scan-excludes-its-own-files | Every scan of the collection directory skips the index and every dotfile before a name is read as a record. The index is the scan's own output and a dotfile is an atomic writer's staging file, so a scan that admitted either would migrate, renumber or resolve against a file no record ever wrote | high | judge |
+| no-in-place-rewrite | No script rewrites a file in place. Every write stages a temporary beside its target and renames over it, which is what makes a failed run leave the previous file untouched; an in-place editor is the one construct that cannot offer that, whatever the surrounding handler does | medium | pattern |
+| row-shape-is-the-writers | An `INDEX.md` row's shape is a property of the writer, never of its inputs: a frontmatter scalar reaches a row only after the display sanitizer has removed the row separator and control characters, so no value can append a `key: value` pair the writer never emitted. A scalar judged against a vocabulary is sanitized once, before it is judged, so the value classified and the value displayed are one — an index can never assert a count its own rows deny. The reader is the writer's inverse and is bound by the same rule from the other side: a pair is `key:` plus the one separator space the writer emits, so exactly that one space is consumed reading it back. A reader consuming a run of whitespace would decide for itself where a value with leading spaces begins, and the index would then record a scalar as unrecognized while a view, having trimmed the same scalar into a member, served the record as one of the recognized ones | high | judge |
+
+```verify-checks
+no-in-place-rewrite polarity=must-not regex=sed[[:space:]]+-i scope=skills/issue
+```

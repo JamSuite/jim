@@ -4,12 +4,17 @@ id: 20260530-smoke-test
 title: "End-to-end smoke test"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [smoke, e2e]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-05-30T00:00:00Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/issue/001-issue-tracking/spec.md

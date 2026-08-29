@@ -4,12 +4,17 @@ num: 94
 title: "Extend jimfile.sh with a reference ref-verb, anchor resolution, and a bare-reference lint"
 status: open
 priority: low
+type: issue
+filed-by: "dorsma"
+claimed-by: ""
+outcome: ""
 labels: [enhancement, jimfile, references]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-23T20:18:03Z
 updated: 2026-07-23T20:19:05Z
 origin: docs/brainstorms/20260720-claude-speak.md

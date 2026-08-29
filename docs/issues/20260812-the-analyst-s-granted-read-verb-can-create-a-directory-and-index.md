@@ -4,12 +4,17 @@ num: 321
 title: "The analyst's granted read verb can create a directory and index"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, verify, issue]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T04:09:11Z
 updated: 2026-08-12T09:34:16Z
 origin: docs/specs/issue/000-blueprint/spec.md

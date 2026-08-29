@@ -88,7 +88,7 @@ re-declared here.*
 ## Contract Graph
 
 *Derived from the group blueprints' provides/requires faces — regenerated
-on every blueprint write; do not edit. Last reconciled: 2026-08-13T05:50:54Z
+on every blueprint write; do not edit. Last reconciled: 2026-08-29T05:41:26Z
 (via /jim:blueprint)*
 
 | Consumer | Relies on | Provider |

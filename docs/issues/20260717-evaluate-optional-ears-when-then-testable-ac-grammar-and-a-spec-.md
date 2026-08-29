@@ -4,12 +4,17 @@ num: 81
 title: "Evaluate optional EARS/WHEN-THEN testable-AC grammar and a spec-check testability lint"
 status: open
 priority: medium
+type: issue
+filed-by: "dorsma"
+claimed-by: ""
+outcome: ""
 labels: [spec, spec-check, testability, grammar]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-17T22:22:04Z
 updated: 2026-07-17T22:22:04Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md

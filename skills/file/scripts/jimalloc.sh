@@ -29,6 +29,7 @@
 #   bash jimalloc.sh seed     [--apply]                 preview/apply a one-time bootstrap
 #   bash jimalloc.sh sweep                              read-only tree-vs-registry integrity report
 #   bash jimalloc.sh catch-up [--apply]                 preview/apply the records a non-empty log lacks
+#   bash jimalloc.sh lift     [--apply]                 preview/apply registry records for pre-emission moves
 #   bash jimalloc.sh -c <path> <subcmd>                 use <path> as jimconf.toml
 #
 # EXIT CODES

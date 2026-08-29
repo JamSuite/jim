@@ -4,12 +4,17 @@ id: 20260603-codebase-aware-implementation-independence-analysis-for-parallel
 title: "Codebase-aware implementation-independence analysis for parallel work"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issues-system, trends, future-spec]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-03T00:00:00Z
 updated: 2026-06-03T00:00:00Z
 origin: docs/brainstorms/20260603-issue-command-consolidation.md

@@ -4,12 +4,17 @@ num: 307
 title: "Direct arm reports an unreachable remote as divergence"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:54Z
 updated: 2026-08-12T07:32:50Z
 origin: docs/specs/issue/011-issue-placement/review.md

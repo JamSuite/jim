@@ -63,6 +63,42 @@ ledger_verbs() {
     | sed -n 's/^    \([a-z][a-z-]*\)).*/\1/p'
 }
 
+# migration_subcommands <script> — every subcommand the script advertises in its
+# own usage text, one per line.
+#
+#   Read from usage() rather than the dispatch table on purpose. The dispatch
+#   also carries an internal primitive the script deliberately does not
+#   advertise, and what an operator is told exists is exactly what the feature
+#   doc owes a row — so an unadvertised primitive is correctly outside this set,
+#   and adding it to usage() pulls it in without anyone editing this list.
+migration_subcommands() {
+  local base; base="$(basename "$1")"
+  sed -n "s/^ *'  bash $base \([a-z][a-z-]*\).*/\1/p" "$1" | LC_ALL=C sort -u
+}
+
+# conf_documented <key> <file> — 0 when <file>'s tables name <key>.
+#
+#   Three shapes are accepted, because all three are how the tables are actually
+#   written: the CLI name as a row, the TOML name (`<key>_path`, the suffix the
+#   resolver adds for path-valued keys) as a row, and a family row such as
+#   `health_threshold_<signal>` whose text names this key's own suffix in
+#   backticks. Demanding a row per key would ask the tables to stop documenting
+#   a five-key family in one line, which is a worse document, not a better one.
+conf_documented() {
+  local key="$1" file="$2" prefix suffix
+  grep -qE "^\| \`($key|${key}_path)\`" "$file" && return 0
+  # A family row documents several keys at once: its first cell carries a
+  # `<placeholder>` tail and its text names each member's own suffix. The
+  # prefixes are read out of the document rather than guessed by splitting the
+  # key, because a member's suffix can itself carry an underscore.
+  while IFS= read -r prefix; do
+    [[ "$key" == "$prefix"_* ]] || continue
+    suffix="${key#"${prefix}_"}"
+    grep -qE "^\| \`${prefix}_<[a-z]+>\`.*\`$suffix\`" "$file" && return 0
+  done < <(sed -n 's/^| `\([a-z_]*\)_<[a-z]*>`.*/\1/p' "$file" | LC_ALL=C sort -u)
+  return 1
+}
+
 # gh_anchor <heading-text> — the GitHub in-page anchor for a heading: lowercase,
 # drop every byte that is not a letter, digit, space or hyphen, then spaces to
 # hyphens. A space-surrounded dropped character therefore yields a double hyphen,
@@ -94,6 +130,54 @@ case_docsurfaces_retired_symbols_are_gone() {
     done < <(doc_corpus)
     assert_eq "no surface still names the retired '$sym'" "" "${hits% }"
   done
+}
+
+# transition_verbs — every lifecycle verb transition.sh dispatches, one per
+# line, read from the array it validates against.
+#
+#   Derived rather than retyped. A list written into this file would have the
+#   defect it exists to catch: a verb added to the script but not to the list
+#   passes a check whose whole purpose is that class.
+#   The closing paren is found with awk rather than a sed range, because a sed
+#   range does not test its end pattern on the start line — against a
+#   single-line array it would run on to the next paren in the file.
+transition_verbs() {
+  awk -v pfx="readonly TRANSITION_VERBS=(" '
+    substr($0, 1, length(pfx)) == pfx { inside = 1; $0 = substr($0, length(pfx) + 1) }
+    inside {
+      if (match($0, /\)/)) { print substr($0, 1, RSTART - 1); exit }
+      print
+    }
+  ' "$REPO_ROOT/skills/issue/scripts/transition.sh" \
+    | tr -s '[:space:]' '\n' | grep -v '^$'
+}
+
+# INTRODUCTION, lifecycle half. The verbs are restated in prose on four
+# hand-maintained operator surfaces, and only ARCHITECTURE.md is refreshed by
+# the pipeline. A hand edit fixes the increment that noticed the drift and
+# leaves the next one exposed, so the enumeration is checked rather than
+# corrected. The feature doc is on the list because it is the doc for exactly
+# the verbs this check derives, and it is the surface that went stale when two
+# were added -- the sweep quantified over every surface but that one.
+case_docsurfaces_transition_verbs_are_documented() {
+  local v n=0 missing="" surface
+  while IFS= read -r v; do
+    [[ -n "$v" ]] || continue
+    n=$((n + 1))
+    for surface in "$REPO_ROOT/README.md" "$REPO_ROOT/WORKFLOW.md" \
+                   "$REPO_ROOT/skills/issue/SKILL.md" \
+                   "$REPO_ROOT/docs/features/issues.md"; do
+      # The verb, then a space or its closing backtick. A surface documenting
+      # it with operands -- `join <id> <umbrella>`, the feature doc's form --
+      # counts, while `claimed-by` and `closed` still do not, because the
+      # character after the verb decides it.
+      grep -qE -- '`'"$v"'[ `]' "$surface" \
+        || missing="$missing$(basename "$surface"):$v "
+    done
+  done < <(transition_verbs)
+  assert_eq "the array was read (>= 7 verbs, got $n)" "yes" \
+    "$([[ "$n" -ge 7 ]] && echo yes || echo no)"
+  assert_eq "every dispatched lifecycle verb is documented" "" "${missing% }"
 }
 
 # INTRODUCTION, ledger half. Every verb the script dispatches is named in the
@@ -311,6 +395,25 @@ case_docsurfaces_placement_edit_flow_is_stated() {
   assert_match "names abort"  'place\.sh abort'  "$body"
 }
 
+# A close sets every field a reader would check and can still omit the only half
+# that cannot be re-derived. The convention was documented in the retrospective
+# notes for two rounds while four issues closed without one, which is the case
+# for pinning it at the point of use instead: the dispatch bullet an executor
+# reads, and the checklist it applies literally. Both, because a rule stated
+# once in prose is a rule the checklist does not enforce.
+case_docsurfaces_close_records_its_resolution() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" bullet checklist
+  bullet="$(sed -n '/^  - `close` finishes it\./,/^  - `reopen`/p' "$skill")"
+  assert_eq "the close dispatch bullet was located" "yes" \
+    "$([[ -n "$bullet" ]] && echo yes || echo no)"
+  assert_match "the bullet names the section"   'Resolution' "$bullet"
+  assert_match "and says it is unconditional"   'not conditional on the outcome' "$bullet"
+  checklist="$(sed -n '/^For the transition verbs/,/^For the read verbs/p' "$skill")"
+  assert_eq "the transition checklist was located" "yes" \
+    "$([[ -n "$checklist" ]] && echo yes || echo no)"
+  assert_match "the checklist checks it" 'Resolution' "$checklist"
+}
+
 # The insights analyst is handed a directory and is the collection's terminal
 # reader, so a literal collection path in its method is not a stale mention —
 # it is a second collection. Under a placement the roster and graph come from
@@ -327,18 +430,256 @@ case_docsurfaces_analyst_reads_the_directory_it_is_handed() {
 }
 
 # The same reasoning reaches past the skill. WORKFLOW.md is where a user is told
-# how to close an issue, and it said to edit the file directly — which under a
-# placement edits something that is not the collection. Sweeping only the skill
-# left the one sentence a user actually follows outside the guard.
+# how to close an issue, and it said to edit `status:` directly — which leaves
+# `outcome` empty for the collection's own integrity check to report, and which
+# under a placement edits something that is not the collection at all. Sweeping
+# only the skill left the one sentence a user actually follows outside both
+# guards. Scoped to the section rather than to one line, because the correction
+# splits what was one sentence into a verb and a content-edit caveat.
 case_docsurfaces_workflow_close_flow_survives_a_placement() {
-  local wf="$REPO_ROOT/WORKFLOW.md" line
+  local wf="$REPO_ROOT/WORKFLOW.md" sec
   assert_eq "the workflow doc is present" "yes" \
     "$([[ -r "$wf" ]] && echo yes || echo no)"
-  line="$(grep -n 'Close an issue' "$wf")"
-  assert_eq "the close instruction was located" "yes" \
-    "$([[ -n "$line" ]] && echo yes || echo no)"
-  assert_match "it qualifies the direct edit" 'issue_placement' "$line"
-  assert_match "and points at the flow that works" '6a'          "$line"
+  sec="$(awk '/^### Discovery capture/ { s=1; next }
+              s && (/^## / || /^### /) { s=0 }
+              s' "$wf")"
+  assert_nonempty "the capture section was located" "$sec"
+  assert_match "closing goes through the verb"     'close <id>'      "$sec"
+  assert_match "which is what records the outcome" 'outcome'         "$sec"
+  assert_match "the placement caveat survives"     'issue_placement' "$sec"
+  assert_match "and points at the flow that works" '6a'              "$sec"
+  # The instruction this replaced is what produced the record the index reports.
+  assert_eq "nobody is sent to a hand-written close" "" \
+    "$(grep -oE 'editing its .status:. field' <<< "$sec")"
+}
+
+# A skill's grant and its body are one document read by two readers. The body
+# prescribed the lifecycle verbs and the collection conversions; the grant named
+# neither script, so every documented step ended at a permission prompt for a
+# script the skill itself had just told the developer to run. Swept rather than
+# listed, so a call site added later is covered without anyone remembering to.
+#
+# The withheld half is load-bearing too. `migrate.sh prefix --apply` renames every
+# file in the collection and rewrites its inbound references, and this body never
+# instructs it — so the grant enumerates the two subcommands the body does use
+# rather than taking the script whole.
+case_docsurfaces_issue_grant_covers_the_scripts_it_instructs() {
+  local s="$REPO_ROOT/skills/issue/SKILL.md" tools body scr n=0 missing=""
+  assert_eq "the skill is present" "yes" \
+    "$([[ -r "$s" ]] && echo yes || echo no)"
+  tools="$(sed -n '/^allowed-tools:/p' "$s")"
+  body="$(awk 'NR==1 && $0 == "---" { fm=1; next }
+               fm && $0 == "---"    { fm=0; rest=1; next }
+               rest' "$s")"
+  for scr in $(printf '%s\n' "$body" | grep -o 'scripts/[a-z]*\.sh' | LC_ALL=C sort -u); do
+    n=$(( n + 1 ))
+    grep -qF "$scr" <<< "$tools" || missing="$missing ${scr#scripts/}"
+  done
+  assert_eq "the body names call sites at all" "yes" \
+    "$([[ $n -gt 0 ]] && echo yes || echo no)"
+  assert_eq "every script the body invokes is granted" "" "${missing# }"
+  # The collection-wide rename is the verb this skill deliberately does not hold.
+  assert_eq "and the collection-wide rename is not" "" \
+    "$(grep -oE 'migrate\.sh prefix' <<< "$tools")"
+}
+
+
+# INTRODUCTION, migrations half. A migration subcommand the scripts advertise is
+# a row in the doc that enumerates them, and every row names a subcommand that
+# exists. Both directions, because they fail independently and neither sees the
+# other: a shipped subcommand with no row, and a row outliving the subcommand it
+# describes. Two subcommands shipped without reaching this table before the
+# check existed.
+case_docsurfaces_migration_commands_are_documented() {
+  local doc="$REPO_ROOT/docs/features/issues.md"
+  local script base sub n=0 missing="" stale=""
+  for script in "$REPO_ROOT/skills/issue/scripts/migrate.sh" \
+                "$REPO_ROOT/skills/issue/scripts/backfill.sh"; do
+    base="$(basename "$script")"
+    while IFS= read -r sub; do
+      [[ -n "$sub" ]] || continue
+      n=$((n + 1))
+      grep -qE "^\| \`$base $sub" "$doc" || missing="$missing$base $sub, "
+    done < <(migration_subcommands "$script")
+    while IFS= read -r sub; do
+      [[ -n "$sub" ]] || continue
+      migration_subcommands "$script" | grep -qx -- "$sub" \
+        || stale="$stale$base $sub, "
+    done < <(sed -n "s/^| \`$base \([a-z][a-z-]*\).*/\1/p" "$doc" | LC_ALL=C sort -u)
+  done
+  assert_eq "both usage blocks were read (>= 5 subcommands, got $n)" "yes" \
+    "$([[ "$n" -ge 5 ]] && echo yes || echo no)"
+  assert_eq "every advertised migration subcommand has a row" "" "${missing%, }"
+  assert_eq "every migration row names a subcommand that exists" "" "${stale%, }"
+}
+
+# INTRODUCTION, config half. Every key the resolver knows is named where keys are
+# enumerated: both operator surfaces, and — for the two families the issue
+# feature owns — its feature doc as well. A key shipped and reachable from a
+# jimconf.toml nobody documents is configuration only its author knows about,
+# which is how two of them shipped.
+case_docsurfaces_config_keys_are_documented() {
+  local k n=0 no_readme="" no_example="" no_feature=""
+  while IFS= read -r k; do
+    [[ -n "$k" ]] || continue
+    n=$((n + 1))
+    conf_documented "$k" "$REPO_ROOT/README.md" || no_readme="$no_readme$k "
+    grep -qE "^#? *($k|${k}_path) *=" "$REPO_ROOT/jimconf.toml.example" \
+      || no_example="$no_example$k "
+    case "$k" in
+      issue*|identity*)
+        conf_documented "$k" "$REPO_ROOT/docs/features/issues.md" \
+          || no_feature="$no_feature$k " ;;
+    esac
+  done < <(bash "$REPO_ROOT/skills/conf/scripts/jimconf.sh" keys)
+  assert_eq "the key list was read (>= 40 keys, got $n)" "yes" \
+    "$([[ "$n" -ge 40 ]] && echo yes || echo no)"
+  assert_eq "every key reaches README's tables"          "" "${no_readme% }"
+  assert_eq "every key reaches jimconf.toml.example"     "" "${no_example% }"
+  assert_eq "every issue key reaches its feature doc"    "" "${no_feature% }"
+}
+
+# emitter_flags — every flag new.sh's parser accepts, one per line. Read off
+# the case arms the loop dispatches on rather than the usage comment above
+# them, so this is what the script does rather than what it says about itself.
+emitter_flags() {
+  awk '
+    $0 == "while [[ $# -gt 0 ]]; do" { inside = 1; next }
+    inside && $0 == "done" { exit }
+    inside {
+      if (substr($1, 1, 2) == "--") {
+        p = index($1, ")")
+        if (p > 0) print substr($1, 1, p - 1)
+      }
+    }
+  ' "$REPO_ROOT/skills/issue/scripts/new.sh"
+}
+
+# capture_flag_excused <flag> — true when the documented capture flow passes
+# this flag deliberately not at all, with the reason. Every flag emitter_flags
+# discovers must be excused here or appear in the documented invocation, so a
+# flag cannot enter the emitter without a decision about whether a capture may
+# set it. The failure direction is what matters: a new flag is REQUIRED by
+# default and has to be argued out, rather than being silently absent.
+capture_flag_excused() {
+  case "$1" in
+    # The allocator resolves the identity at save time; the skill says so and
+    # says not to pass either.
+    --slug|--num)  return 0 ;;
+    # Tests and the placement re-exec own these; a capture never names one.
+    --dir|--place-token) return 0 ;;
+    # A new capture is open, which is the emitter's own default.
+    --status)      return 0 ;;
+    # The confirm-or-edit moment IS the review, so this path is --reviewed.
+    --auto)        return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# skill_emitter_invocation — the fenced emitter call /jim:issue add documents,
+# from the line naming the script through the last continued line. Anchored on
+# the literal `--reviewed`, which is what tells the capture flow's invocation
+# apart from the candidate batch's, whose declaration flag is a choice.
+skill_emitter_invocation() {
+  awk '
+    index($0, "new.sh --reviewed") > 0 { on = 1 }
+    on { print; if ($0 !~ /\\$/) exit }
+  ' "$REPO_ROOT/skills/issue/SKILL.md"
+}
+
+# INTRODUCTION, capture half. The lifecycle verbs reach a user through a
+# dispatch table this suite already checks; the capture flags reach one only
+# through the emitter invocation the skill body spells out, and a flag the
+# script gained but that invocation never passes is unreachable from the
+# command however well the script implements it. That is how this increment's
+# headline capability shipped with a flag surface nobody could type.
+case_docsurfaces_capture_flags_reach_the_emitter_invocation() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" f n=0 missing="" unknown=""
+  local invocation add_bullet
+  invocation="$(skill_emitter_invocation)"
+  assert_nonempty "the documented invocation was found" "$invocation"
+
+  while IFS= read -r f; do
+    [[ -n "$f" ]] || continue
+    n=$((n + 1))
+    capture_flag_excused "$f" && continue
+    grep -qF -- "$f " <<< "$invocation" || missing="$missing$f "
+  done < <(emitter_flags)
+  assert_eq "the parser was read (>= 10 flags, got $n)" "yes" \
+    "$([[ "$n" -ge 10 ]] && echo yes || echo no)"
+  assert_eq "every capture flag reaches the documented invocation" "" \
+    "${missing% }"
+
+  # The other direction: a flag the documentation passes that the emitter does
+  # not parse is refused at rc 2, so the whole filing fails.
+  while IFS= read -r f; do
+    [[ -n "$f" ]] || continue
+    grep -qxF -- "$f" <(emitter_flags) || unknown="$unknown$f "
+  done < <(grep -oE -- '--[a-z-]+' <<< "$invocation" | LC_ALL=C sort -u)
+  assert_eq "and passes no flag the emitter would refuse" "" "${unknown% }"
+
+  # Forwarding is half of it. The values a developer types arrive inside the
+  # argument string, so the dispatch has to take them out of it before the
+  # remainder becomes the capture subject -- otherwise the flags are filed as
+  # part of the title.
+  add_bullet="$(awk '/^- \*\*`claim`/ { exit } /^- \*\*`add`\*\*/ { on = 1 } on' "$skill")"
+  assert_nonempty "the add dispatch bullet was found" "$add_bullet"
+  assert_match "the dispatch names the kind flag" '`--type[ `]'    "$add_bullet"
+  assert_match "and the membership flag"          '`--part-of[ `]' "$add_bullet"
+}
+
+# issue_kinds() — the kinds the emitter admits, read off its own array, the way
+# transition_verbs reads the lifecycle vocabulary.
+issue_kinds() {
+  awk -v pfx="readonly ISSUE_TYPES=(" '
+    substr($0, 1, length(pfx)) == pfx { inside = 1; $0 = substr($0, length(pfx) + 1) }
+    inside {
+      if (match($0, /\)/)) { print substr($0, 1, RSTART - 1); exit }
+      print
+    }
+  ' "$REPO_ROOT/skills/issue/scripts/new.sh" \
+    | tr -s '[:space:]' '\n' | grep -v '^$'
+}
+
+# INTRODUCTION, capture-kind half. The pre-write checklist restates the
+# emitter's kind vocabulary in prose, and a checklist is read as a literal
+# gate: a kind the emitter admits but the checklist forbids is a rule an
+# agent's own correct draft fails, and the two ways out of that are both wrong
+# -- ignore the gate, or file the other kind. So the enumeration is derived
+# rather than maintained. Maintaining it is what left the checklist naming one
+# kind for a whole increment after the emitter began admitting two, at a site
+# two hand-driven passes over the same file both walked past.
+case_docsurfaces_capture_kinds_reach_the_checklist() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" rule k n=0 missing=""
+  rule="$(grep -m1 -- '^- \[ \] `type` is ' "$skill")"
+  assert_nonempty "the checklist states a kind rule" "$rule"
+  while IFS= read -r k; do
+    [[ -n "$k" ]] || continue
+    n=$((n + 1))
+    printf '%s' "$rule" | grep -qF -- "\`$k\`" || missing="$missing$k "
+  done < <(issue_kinds)
+  assert_eq "the array was read (>= 2 kinds, got $n)" "yes" \
+    "$([[ "$n" -ge 2 ]] && echo yes || echo no)"
+  assert_eq "every kind the emitter admits is on the checklist" "" "${missing% }"
+}
+
+# AC: the dispatch bullet's `--type` synopsis names every kind the emitter
+# admits. The capture flow deliberately does not judge the kind — the emitter
+# owns that vocabulary and its refusal is the answer — so this synopsis is the
+# only place the skill tells a developer which kinds exist, and a kind added to
+# the array with no mention here is one nobody is told they can ask for.
+case_docsurfaces_capture_kinds_reach_the_dispatch_bullet() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" line k n=0 missing=""
+  line="$(grep -m1 -- '^  - `--type ' "$skill")"
+  assert_nonempty "the bullet states a --type synopsis" "$line"
+  while IFS= read -r k; do
+    [[ -n "$k" ]] || continue
+    n=$((n + 1))
+    printf '%s' "$line" | grep -qF -- "$k" || missing="$missing$k "
+  done < <(issue_kinds)
+  assert_eq "the array was read (>= 2 kinds, got $n)" "yes" \
+    "$([[ "$n" -ge 2 ]] && echo yes || echo no)"
+  assert_eq "every kind the emitter admits is in the synopsis" "" "${missing% }"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

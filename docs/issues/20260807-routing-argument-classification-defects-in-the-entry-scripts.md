@@ -4,12 +4,17 @@ num: 277
 title: "Routing argument classification defects in the entry scripts"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, correctness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T11:43:55Z
 updated: 2026-08-11T11:05:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

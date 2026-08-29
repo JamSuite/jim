@@ -4,12 +4,17 @@ num: 99
 title: "script-preamble rule vs source-inherited preambles: fix or fold"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:41Z
 updated: 2026-07-26T08:18:02Z
 origin: BLUEPRINT.md

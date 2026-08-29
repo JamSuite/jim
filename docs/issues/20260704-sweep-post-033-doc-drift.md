@@ -4,12 +4,17 @@ num: 36
 title: "Sweep post-033 doc drift"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [docs, workflow, blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T00:22:57Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/005-context-map/review.md

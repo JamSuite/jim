@@ -4,12 +4,17 @@ num: 89
 title: "Harden textual-invariant test global-identifier naming"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [test, meta-test, tech-debt]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-23T10:23:59Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/022-blueprint-present-tense/plan.md

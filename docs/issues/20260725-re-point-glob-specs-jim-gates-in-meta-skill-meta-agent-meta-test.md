@@ -4,12 +4,17 @@ num: 104
 title: "re-point glob-specs-jim gates in meta-skill, meta-agent, meta-test"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:47Z
 updated: 2026-07-25T08:29:06Z
 origin: BLUEPRINT.md

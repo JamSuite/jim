@@ -4,12 +4,17 @@ num: 207
 title: "Fix the lift's cross-run idempotency hole and one-sided batch guard"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, registry, lift]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-02T21:35:10Z
 updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md

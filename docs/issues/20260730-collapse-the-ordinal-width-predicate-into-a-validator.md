@@ -4,12 +4,17 @@ num: 138
 title: "Collapse the ordinal-width predicate into a validator"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, refactor]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T01:09:08Z
 updated: 2026-07-30T01:09:08Z
 origin: docs/specs/platform/011-rename-path-correctness/review.md

@@ -4,12 +4,17 @@ num: 73
 title: "Add partition stage metrics to the review ledger allowlist"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [ledger, review, partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-12T08:06:17Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/016-partition-health/plan.md

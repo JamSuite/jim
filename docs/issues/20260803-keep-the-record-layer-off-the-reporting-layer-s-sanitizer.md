@@ -4,12 +4,17 @@ num: 216
 title: "Keep the record layer off the reporting layer's sanitizer"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, hygiene]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-03T05:50:29Z
 updated: 2026-08-05T10:21:33Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md

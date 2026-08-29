@@ -4,12 +4,17 @@ num: 256
 title: "Fixture the invalid id_coordination_branch refusal in tests/jimalloc.sh"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [tests, jimalloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-06T20:20:17Z
 updated: 2026-08-06T20:20:17Z
 origin: docs/specs/issue/011-issue-placement/research.md

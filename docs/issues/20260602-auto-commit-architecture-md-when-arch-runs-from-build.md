@@ -4,12 +4,17 @@ id: 20260602-auto-commit-architecture-md-when-arch-runs-from-build
 title: "Auto-commit ARCHITECTURE.md when /jim:arch runs from /jim:build"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [arch, build, workflow, future]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-02T00:00:00Z
 updated: 2026-06-02T00:00:00Z
 origin: skills/build/SKILL.md

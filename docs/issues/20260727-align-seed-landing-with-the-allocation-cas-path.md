@@ -4,12 +4,17 @@ num: 122
 title: "Align seed landing with the allocation CAS path"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-27T05:34:22Z
 updated: 2026-07-29T20:05:42Z
 origin: docs/specs/platform/008-registry-seed/review.md

@@ -4,12 +4,17 @@ num: 257
 title: "Extract a shared valid-branch verb into jimfile.sh"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [platform, jimfile, refactor]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-06T21:48:56Z
 updated: 2026-08-06T21:48:56Z
 origin: docs/specs/issue/011-issue-placement/plan.md

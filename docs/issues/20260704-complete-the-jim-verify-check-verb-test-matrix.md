@@ -4,12 +4,17 @@ num: 49
 title: "Complete the /jim:verify check-verb test matrix"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [verify, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T23:53:20Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/007-verify-engine/review.md

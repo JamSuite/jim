@@ -4,12 +4,17 @@ num: 68
 title: "Extend /jim:partition with a spec-migration mode (move specs into new groups)"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition, migration, freeze-history]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-08T07:53:09Z
 updated: 2026-07-21T06:05:54Z
 origin: conversation

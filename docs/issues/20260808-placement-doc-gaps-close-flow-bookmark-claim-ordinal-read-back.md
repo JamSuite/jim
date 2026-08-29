@@ -4,12 +4,17 @@ num: 292
 title: "Placement doc gaps: close-flow, bookmark claim, ordinal read-back"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-08T18:40:08Z
 updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md

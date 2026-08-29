@@ -4,12 +4,17 @@ num: 286
 title: "Insights empty-collection short-circuit has no granted capability"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, invariant]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-08T18:49:44Z
 updated: 2026-08-11T12:20:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

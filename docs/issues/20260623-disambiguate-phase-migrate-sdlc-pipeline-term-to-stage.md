@@ -4,12 +4,17 @@ num: 12
 title: "Disambiguate \"phase\": migrate SDLC pipeline term to \"stage\""
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [terminology, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-23T07:10:26Z
 updated: 2026-06-23T07:10:26Z
 origin: conversation

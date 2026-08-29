@@ -4,12 +4,17 @@ num: 192
 title: "index.sh publishes a truncated INDEX.md as success"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [scripts, issue]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T06:36:06Z
 updated: 2026-08-01T10:01:09Z
 origin: "20260801-c-prime-fix-handoff.md (retired; see 5e712bf)"

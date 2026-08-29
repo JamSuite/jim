@@ -4,12 +4,17 @@ num: 260
 title: "Read collection blobs in one batch instead of one process per entry"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, performance, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T10:59:34Z
 updated: 2026-08-07T10:59:34Z
 origin: docs/specs/issue/011-issue-placement/plan.md

@@ -4,12 +4,17 @@ num: 77
 title: "Reconcile brainstorm skill's passive-capture stance with users' expectation of active evaluation"
 status: open
 priority: medium
+type: issue
+filed-by: "dorsma"
+claimed-by: ""
+outcome: ""
 labels: [brainstorm, skill, ux]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-17T18:07:21Z
 updated: 2026-07-17T18:07:21Z
 origin: conversation

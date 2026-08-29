@@ -4,12 +4,17 @@ num: 339
 title: "partition SKILL.md steps contradict its disclosure rule"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [partition, placement, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:57Z
 updated: 2026-08-12T21:53:57Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

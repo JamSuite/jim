@@ -4,12 +4,17 @@ num: 212
 title: "Single-source the ordinal width bound across jimalloc, jimfile and jimledger"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, sync-discipline]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-02T20:57:29Z
 updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/plan.md

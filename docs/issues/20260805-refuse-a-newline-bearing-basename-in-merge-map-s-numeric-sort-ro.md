@@ -4,12 +4,17 @@ num: 246
 title: "Refuse a newline-bearing basename in merge-map's numeric sort round-trip"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, partition, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T22:20:05Z
 updated: 2026-08-06T06:38:55Z
 origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"

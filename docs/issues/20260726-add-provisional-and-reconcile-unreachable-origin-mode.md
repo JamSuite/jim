@@ -4,12 +4,17 @@ num: 115
 title: "Add provisional and reconcile unreachable-origin mode"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, config]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T19:02:00Z
 updated: 2026-07-29T19:38:53Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md

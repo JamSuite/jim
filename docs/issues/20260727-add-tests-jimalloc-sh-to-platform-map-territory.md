@@ -4,12 +4,17 @@ num: 125
 title: "Add tests/jimalloc.sh to platform map territory"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, territory]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: [20260726-declare-tests-jimalloc-sh-in-platform-territory]
+  part-of: []
 created: 2026-07-27T11:03:18Z
 updated: 2026-08-02T06:52:07Z
 origin: docs/specs/platform/009-provisional-reconcile/review.md

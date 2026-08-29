@@ -4,12 +4,17 @@ num: 61
 title: "Guard the contracts-check edge loop against self-edges"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [verify, contract-graph]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-05T22:44:13Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/009-verify-contracts/review.md

@@ -4,12 +4,17 @@ num: 103
 title: "review the 17 frozen jim-group prose mentions"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:46Z
 updated: 2026-07-25T18:17:15Z
 origin: BLUEPRINT.md

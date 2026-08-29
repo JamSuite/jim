@@ -4,12 +4,17 @@ num: 231
 title: "Retire the four stale doc sites the emission cluster left behind"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [docs, workflow]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T01:53:46Z
 updated: 2026-08-05T12:55:00Z
 origin: "20260805-b-prime-review.md (retired; see 5e712bf)"

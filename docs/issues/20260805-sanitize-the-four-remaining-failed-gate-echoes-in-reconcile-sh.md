@@ -4,12 +4,17 @@ num: 232
 title: "Sanitize the four remaining failed-gate echoes in reconcile.sh"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, security, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T01:53:42Z
 updated: 2026-08-05T10:21:33Z
 origin: "20260805-b-prime-review.md (retired; see 5e712bf)"

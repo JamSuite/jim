@@ -4,12 +4,17 @@ num: 100
 title: "judge or fix rename-tracked pathspec use against relpath-validation"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:42Z
 updated: 2026-07-26T06:04:06Z
 origin: BLUEPRINT.md

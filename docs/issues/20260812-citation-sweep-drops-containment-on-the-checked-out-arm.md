@@ -4,12 +4,17 @@ num: 326
 title: "Citation sweep drops containment on the checked-out arm"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [spec, security, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:20Z
 updated: 2026-08-13T10:27:58Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

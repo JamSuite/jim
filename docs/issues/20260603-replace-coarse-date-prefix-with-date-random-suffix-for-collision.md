@@ -4,12 +4,17 @@ id: 20260603-replace-coarse-date-prefix-with-date-random-suffix-for-collision
 title: "Replace coarse date prefix with date+random suffix for collision-safe issue ids"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issues-system, id-scheme]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-03T00:00:00Z
 updated: 2026-06-03T00:00:00Z
 origin: docs/brainstorms/20260603-issue-command-consolidation.md

@@ -4,12 +4,17 @@ num: 314
 title: "Partition migrate arms bypass issue placement"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:32Z
 updated: 2026-08-12T20:02:19Z
 origin: docs/specs/issue/011-issue-placement/review.md

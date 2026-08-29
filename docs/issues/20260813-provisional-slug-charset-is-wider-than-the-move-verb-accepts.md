@@ -4,12 +4,17 @@ num: 348
 title: "Provisional slug charset is wider than the move verb accepts"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [platform, allocator, grammar]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-13T10:59:41Z
 updated: 2026-08-13T10:59:41Z
 origin: "20260804-b-prime-completion-handoff.md (retired; see 5e712bf)"

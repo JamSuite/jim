@@ -4,12 +4,17 @@ num: 45
 title: "Update issue SKILL.md 7a surfacing-skills enumeration"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T11:07:13Z
 updated: 2026-08-12T19:49:07Z
 origin: docs/specs/blueprint/006-contract-graph/review.md

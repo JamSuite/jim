@@ -4,12 +4,17 @@ num: 244
 title: "Read the spent set the lift already fills"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, registry, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T09:50:23Z
 updated: 2026-08-05T10:21:33Z
 origin: "20260728-id-coordination-issue-grouping.md (retired; see 5e712bf)"

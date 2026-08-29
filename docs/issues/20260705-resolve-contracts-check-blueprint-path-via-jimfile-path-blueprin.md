@@ -4,12 +4,17 @@ num: 62
 title: "Harden contracts-check: blueprint-path resolver + self-edge guard + edge tests"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, drift, verify, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-05T22:47:39Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/jim/000-blueprint/spec.md

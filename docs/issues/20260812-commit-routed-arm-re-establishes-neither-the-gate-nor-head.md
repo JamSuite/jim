@@ -4,12 +4,17 @@ num: 304
 title: "commit routed arm re-establishes neither the gate nor HEAD"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, security]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:50Z
 updated: 2026-08-12T06:06:19Z
 origin: docs/specs/issue/011-issue-placement/review.md

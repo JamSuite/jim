@@ -4,12 +4,17 @@ num: 315
 title: "place.sh header and usage still misdescribe the script"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:42:10Z
 updated: 2026-08-12T06:30:53Z
 origin: docs/specs/issue/011-issue-placement/review.md

@@ -4,12 +4,17 @@ num: 340
 title: "place_direct_publish reads a git failure as nothing to publish"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, fail-open]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:21Z
 updated: 2026-08-13T07:57:24Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

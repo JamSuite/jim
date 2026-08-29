@@ -4,12 +4,17 @@ num: 93
 title: "Widen the mechanical provenance guard to extended artifact-ref forms"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [blueprint, provenance]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-23T21:23:49Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/024-blueprint-provenance-guard/spec.md

@@ -4,12 +4,17 @@ num: 17
 title: "Add frontmatter-body count consistency check to /jim:review validation"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [review]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-26T06:43:41Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/sdlc/015-review-depth/spec.md

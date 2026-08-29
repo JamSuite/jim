@@ -4,12 +4,17 @@ num: 151
 title: "Harden the spec realize path against silent failures"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, spec]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T19:35:15Z
 updated: 2026-07-31T20:41:26Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md

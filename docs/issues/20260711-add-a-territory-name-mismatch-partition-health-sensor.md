@@ -4,12 +4,17 @@ num: 71
 title: "Add a territory-name-mismatch partition-health sensor"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition, health, blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-11T09:10:28Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260711-partition-migrate-capabilities.md

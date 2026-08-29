@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# tests/issues.sh — Tests for skills/issue/scripts/index.sh and render.sh
+# tests/issues.sh — Tests for skills/issue/scripts/ (place.sh has its own file)
 #
 # Conventions: see skills/meta-test/scripts/testlib.sh header (canonical).
 #
@@ -20,6 +20,8 @@ SCRIPT_BACKFILL="$REPO_ROOT/skills/issue/scripts/backfill.sh"
 SCRIPT_MIGRATE="$REPO_ROOT/skills/issue/scripts/migrate.sh"
 SCRIPT_NEW="$REPO_ROOT/skills/issue/scripts/new.sh"
 SCRIPT_RECONCILE="$REPO_ROOT/skills/issue/scripts/reconcile.sh"
+SCRIPT_IDENTITY="$REPO_ROOT/skills/issue/scripts/identity.sh"
+SCRIPT_TRANSITION="$REPO_ROOT/skills/issue/scripts/transition.sh"
 
 # ─── Section: Per-script invoker ─────────────────────────────────────────────
 
@@ -56,9 +58,17 @@ run_migrate() {
   ERR="$(cat "$err_file")"
 }
 
+# The emitter records a filer resolved from the environment. Pin it for every
+# invocation so cases assert against a fixed value rather than whatever identity
+# the machine running the suite happens to carry. These variables outrank any
+# config file, so no repo setup is needed to make the value deterministic.
+TEST_IDENTITY="tester@example.test"
+identity_env=(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.email
+              GIT_CONFIG_VALUE_0="$TEST_IDENTITY")
+
 run_new() {
   local err_file="$TMP_BASE/.err"
-  OUT="$(bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  OUT="$(env "${identity_env[@]}" bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
   RC=$?
   ERR="$(cat "$err_file")"
 }
@@ -70,7 +80,20 @@ run_new() {
 run_new_in() {
   local repo="$1"; shift
   local err_file="$TMP_BASE/.err"
-  OUT="$(cd "$repo" && bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  OUT="$(cd "$repo" && env "${identity_env[@]}" bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# run_new_unidentified <repo> <args...>
+#   Invoke new.sh from inside <repo> with no identity reachable at all — the
+#   repo carries none and the machine's own config is neutralized, so this is
+#   the genuine absent case rather than a repo that merely overrides one.
+run_new_unidentified() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    bash "$SCRIPT_NEW" "$@" 2> "$err_file")"
   RC=$?
   ERR="$(cat "$err_file")"
 }
@@ -583,13 +606,16 @@ status: open' ""
 }
 
 # AC: wikilink-shaped tokens inside inline backtick spans are stripped — a
-# prose mention like `[[B]]` (single-backtick code) is inline code, not a
-# graph claim. No edge, no malformed-wikilink warning.
+# prose mention inside `…` is inline code, not a graph claim. No edge, no
+# malformed-wikilink warning. Two shapes are spanned so that both assertions
+# below bite: stripping that stopped working would turn the resolvable slug
+# into an edge, and hand the traversal shape to the id validator, which warns.
+# So the stripping has to happen before validation, not after it.
 case_issues_index_wikilink_in_inline_backticks_ignored() {
   local dir
   dir=$(empty_dir index_inline_backtick)
   write_issue "$dir" "20260530-a" 'title: "A"
-status: open' "Authors who write `[[B]]` in prose are documenting wikilink syntax, not asserting an edge."
+status: open' 'Prose like `[[20260530-b]]` or `[[../../etc/passwd]]` documents syntax, not edges.'
   write_issue "$dir" "20260530-b" 'title: "B"
 status: open' ""
   run_index "$dir"
@@ -598,11 +624,11 @@ status: open' ""
   idx="$(cat "$dir/INDEX.md")"
   if printf '%s\n' "$idx" | grep -q -- 'a` --related-to--> `20260530-b'; then
     CURRENT_FAILED=1
-    echo "    [inline-backtick [[B]] should not produce a graph edge]"
+    echo "    [a slug inside inline backticks should not become an edge]"
   fi
   if printf '%s\n' "$idx" | grep -q 'malformed wikilink'; then
     CURRENT_FAILED=1
-    echo "    [inline-backtick wikilink-shape should not warn]"
+    echo "    [a traversal shape inside inline backticks should not reach the validator]"
   fi
 }
 
@@ -1258,6 +1284,31 @@ created: 2026-01-04'
   assert_eq "new continues from max" "6" "$(num_of "$dir" 20260104-needs)"
 }
 
+# AC: `num` reads the ordinal from the frontmatter fence, not from the whole
+# file. A record lacking the field is backfill's own operating condition, so a
+# body line that happens to name it is read as an ordinal the record does not
+# have — the record is skipped as already-numbered, and the bogus value raises
+# the collection max every later assignment continues from.
+case_issues_backfill_num_reads_only_the_fence() {
+  local dir
+  dir=$(empty_dir backfill_num_fence)
+  write_issue "$dir" "20260101-quotes-the-field" 'title: "Quotes the field"
+status: open
+created: 2026-01-01' '## Description
+
+num: 900 retries were attempted before the fix landed.'
+  write_issue "$dir" "20260102-plain" 'title: "Plain"
+status: open
+created: 2026-01-02'
+  run_backfill num "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the body line is not an ordinal" "1" \
+    "$(num_of "$dir" 20260101-quotes-the-field)"
+  assert_eq "and does not raise the max" "2" "$(num_of "$dir" 20260102-plain)"
+  assert_eq "the body line is left alone" "1" \
+    "$(grep -c '^num: 900 retries' "$dir/20260101-quotes-the-field.md")"
+}
+
 # AC: backfill is idempotent — a fully-numbered collection is a silent no-op
 case_issues_backfill_idempotent() {
   local dir
@@ -1357,6 +1408,34 @@ case_issues_render_help_lists_subcommands() {
   assert_match "lists list"  'list'  "$OUT"
   assert_match "lists stats" 'stats' "$OUT"
   assert_match "lists show"  'show'  "$OUT"
+}
+
+# Help is the surface a user reaches when they are already unsure, and it told
+# them to close an issue by editing `status:` directly. That leaves `outcome`
+# empty, which the index then reports as "closed but records no outcome" — help
+# text teaching the collection's own integrity check to fire.
+#
+# The domain is read from the dispatch table rather than hand-listed here. A
+# case naming the verbs it knows about goes green for a verb it has never
+# heard of, which is exactly how this surface fell behind the dispatcher a
+# second time — the first repair enumerated five and the sixth and seventh
+# shipped past it. Verbs are matched with their operand so the assertions
+# discriminate: bare `close` and `start` both occur in the surrounding prose,
+# and a two-operand verb still leads with `<id>`.
+case_issues_render_help_points_at_the_lifecycle_verbs() {
+  local v n=0 missing=""
+  run_render help
+  assert_exit "rc" 0 "$RC"
+  for v in $(script_vocabulary "$SCRIPT_TRANSITION" TRANSITION_VERBS); do
+    n=$((n + 1))
+    grep -qF -- "$v <id>" <<< "$OUT" || missing="$missing$v "
+  done
+  assert_eq "the dispatch table was read (>= 7 verbs, got $n)" "yes" \
+    "$([[ "$n" -ge 7 ]] && echo yes || echo no)"
+  assert_eq "every dispatched verb reaches the help surface" "" "${missing% }"
+  assert_match "lists reconcile" 'reconcile' "$OUT"
+  assert_eq "sends nobody to a hand edit" "" \
+    "$(grep -o 'editing its' <<< "$OUT")"
 }
 
 # AC: `render.sh stats` includes a by-priority breakdown (spec 019)
@@ -1833,6 +1912,30 @@ status: open'
   assert_eq   "no second status pair"     "1"                    "$(grep -c '^status:' "$f")"
 }
 
+# AC: `timestamp` reads created/updated from the frontmatter fence. A body line
+# naming a field the frontmatter lacks is normalized into a value the rewrite
+# then has nowhere to put — the awk writes only inside the fence — so the file
+# is rewritten byte-identical and counted, and the run announces work it did
+# not do.
+case_issues_backfill_timestamp_reads_only_the_fence() {
+  local dir before
+  dir=$(empty_dir backfill_ts_fence)
+  write_issue "$dir" "20260613-x" 'title: "X"
+status: open
+num: 1
+created: 2026-06-13T00:00:00Z' '## Description
+
+The record this supersedes carried:
+
+updated: 2026-05-05'
+  before="$(cat "$dir/20260613-x.md")"
+  run_backfill timestamp "$dir"
+  assert_exit "rc"                       0  "$RC"
+  assert_eq   "nothing announced"        "" "$OUT"
+  assert_eq   "no warning about the body" "" "$ERR"
+  assert_eq   "file untouched" "$before" "$(cat "$dir/20260613-x.md")"
+}
+
 # extract_ts_shape <script> — the canonical timestamp-shape pattern marked with
 # `# SYNC(ts-shape): <pattern>`, indentation-independent (Finding F6).
 extract_ts_shape() {
@@ -2085,6 +2188,56 @@ relations:
   fi
 }
 
+# AC (spec 020): the two edge types the graph reads do different work. Both
+# `blocks` and `depends-on` take their endpoints out of the isolation report,
+# but only `blocks` carries a blocking out-degree. A reader that stopped
+# distinguishing them would report every dependent as a blocker, and the
+# isolation assertions alone cannot catch that — they hold under both readings.
+case_issues_render_insights_graph_depends_on_is_not_a_blocking_edge() {
+  local dir n
+  dir=$(empty_dir insights_graph_edge_types)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+created: 2026-01-01
+relations:
+  blocks: [20260101-b]'
+  write_issue "$dir" "20260101-b" 'title: "B"
+status: open
+created: 2026-01-01
+relations:
+  depends-on: [20260101-a]'
+  # C is the sharp case: a depends-on source with no blocks edge anywhere in
+  # the collection, so nothing but the edge type decides its out-degree.
+  write_issue "$dir" "20260101-c" 'title: "C"
+status: open
+created: 2026-01-01
+relations:
+  depends-on: [20260101-d]'
+  write_issue "$dir" "20260101-d" 'title: "D"
+status: open
+created: 2026-01-01'
+  write_issue "$dir" "20260101-e" 'title: "E"
+status: open
+created: 2026-01-01'
+  run_render insights-graph "$dir"
+  assert_exit "rc" 0 "$RC"
+
+  # The blocks source has an out-degree, and it is the only node that does.
+  assert_match "the blocks source" 'BLOCKING 1 20260101-a' "$OUT"
+  assert_eq "and nothing else blocks anything" "1" \
+    "$(printf '%s\n' "$OUT" | grep -c '^BLOCKING ')"
+  for n in 20260101-b 20260101-c 20260101-d; do
+    assert_eq "$n does not block" "0" \
+      "$(printf '%s\n' "$OUT" | grep -c "^BLOCKING [0-9]* $n\$")"
+  done
+
+  # The same edges still take their endpoints out of the isolation report, so
+  # the gating above is about out-degree rather than about ignoring the edge.
+  assert_match "the edgeless node is isolated" 'ISOLATED 20260101-e' "$OUT"
+  assert_eq "and it is the only one" "1" \
+    "$(printf '%s\n' "$OUT" | grep -c '^ISOLATED ')"
+}
+
 # spec 020: insights-graph degrades cleanly on an empty collection — no
 # ISOLATED/BLOCKING lines, exit 0. Characterizes the edge of the task-1 helper.
 case_issues_render_insights_graph_empty_dir() {
@@ -2289,6 +2442,53 @@ created: 2025-01-01T00:00:00Z'
   assert_eq "all three issues survive" "A B C " "$titles"
 }
 
+# AC: the prefix plan reads `num` from the frontmatter fence. Under the
+# sequential scheme that value becomes the record's new prefix, so a body line
+# naming the field plans a rename onto an ordinal the record never carried —
+# and the plan is what `--apply` executes.
+case_issues_migrate_prefix_num_reads_only_the_fence() {
+  local dir cfg
+  dir=$(empty_dir migrate_num_fence)
+  write_issue "$dir" "0007-example" 'title: "Example"
+status: open
+created: 2026-01-01T00:00:00Z' '## Description
+
+The record this supersedes carried:
+
+num: 900'
+  cfg=$(fixture migrate-num-fence.toml "issues_path = \"$dir\"
+issue_id_prefix = \"sequential\"")
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "no ordinal to re-derive from" \
+    'num "" is not a display ordinal' "$OUT"
+  assert_eq    "no rename onto the body value" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '0900-example')"
+}
+
+# AC: the prefix plan reads `created` from the frontmatter fence too — under a
+# date or timestamp scheme it is that field, not `num`, that the new prefix is
+# rendered from.
+case_issues_migrate_prefix_created_reads_only_the_fence() {
+  local dir cfg
+  dir=$(empty_dir migrate_created_fence)
+  write_issue "$dir" "legacy-example" 'title: "Example"
+status: open
+num: 7' '## Description
+
+The record this supersedes carried:
+
+created: 2020-01-01'
+  cfg=$(fixture migrate-created-fence.toml "issues_path = \"$dir\"
+issue_id_prefix = \"date\"")
+  run_migrate -c "$cfg" prefix
+  assert_exit  "rc" 0 "$RC"
+  assert_match "no date to re-derive from" \
+    'created "" is not a valid date' "$OUT"
+  assert_eq    "no rename onto the body value" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '20200101-example')"
+}
+
 # spec 023 Task 4: the preview adds a stable PLAN-HASH and a read-only VCS note,
 # and mutates nothing.
 case_issues_migrate_prefix_preview() {
@@ -2461,6 +2661,48 @@ issue_id_prefix = \"timestamp\"")
   assert_eq "B migrated on retry" "yes" "$b"
   assert_match "ref rewritten on retry" 'depends-on: \[20260613T100000-bbb\]' "$(cat "$dir/20260613T090000-aaa.md")"
   assert_match "INDEX clean" '_None' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: the prefix migration gates the id it composes a destination path from,
+# on both arms. A rename target cleared the validator when the plan was built,
+# but an entry the plan could not migrate falls back to the raw directory name,
+# which cleared nothing — and the boundary is the validator call rather than
+# where the value came from. A run holding an id it cannot vouch for stages
+# nothing and refuses whole.
+case_issues_migrate_prefix_apply_gates_the_id_before_composing_a_path() {
+  local dir cfg before after
+  dir=$(empty_dir migrate_prefix_idgate)
+  write_issue "$dir" "20260613-aaa" 'title: "A"
+status: open
+num: 1
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T09:00:00Z'
+  # No `-` delimiter, so the plan cannot re-derive it: this entry takes the
+  # ungated fallback arm.
+  write_issue "$dir" "bad..name" 'title: "B"
+status: open
+num: 2
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-06-13T10:00:00Z'
+  cfg=$(fixture migrate-prefix-idgate.toml "issues_path = \"$dir\"
+issue_id_prefix = \"timestamp\"")
+
+  before="$(find "$dir" -type f | sort | xargs cksum 2>/dev/null)"
+  run_migrate -c "$cfg" prefix --apply
+  after="$(find "$dir" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit  "rc" 1 "$RC"
+  assert_match "the refusal names the gate" 'invalid issue id' "$ERR"
+  assert_eq    "the collection is untouched" "$before" "$after"
+  assert_eq    "no tmp was left behind" "0" \
+    "$(find "$dir" -name '.migrate.tmp.*' | wc -l)"
 }
 
 # AC: a failure part-way through the commit loses no issue. Every staged file is
@@ -2720,6 +2962,65 @@ origin: " · status: closed · num: 1"'
     "$(grep -q 'closed' <<< "$OUT" && echo yes || echo no)"
 }
 
+# AC: an INDEX.md row's shape is the writer's, on the way back out as well. The
+# writer emits one space after each `key:` and whatever the sanitizer left of
+# the value; a reader that consumes every space instead of that one space
+# silently trims a value's own leading whitespace. Then the value the index
+# judged and the value a read verb answers with are two different strings — the
+# index records `unrecognized type` in its warnings and the view hands the same
+# record back as one of the recognized ones.
+case_issues_render_row_scalars_read_back_as_written() {
+  local dir warnings
+  dir=$(empty_dir render_row_readback)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: " issue"
+priority: " high"
+filed-by: " alice"'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+priority: high
+filed-by: "alice"'
+  run_index "$dir"
+  assert_exit "index rc" 0 "$RC"
+
+  # The index judges the leading-space type and refuses it.
+  warnings="$(sed -n '/^## Integrity Warnings/,$p' "$dir/INDEX.md")"
+  assert_match "the index refuses the type" 'unrecognized type' "$warnings"
+
+  # So the view must not answer with it. The vocabulary the index applied and
+  # the one the reader compares against are the same vocabulary.
+  run_render list --type issue "$dir"
+  assert_exit "type rc" 0 "$RC"
+  assert_match "the conforming record"  'Bravo' "$OUT"
+  assert_eq    "and not the refused one" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  run_render list --priority high "$dir"
+  assert_exit "priority rc" 0 "$RC"
+  assert_match "the conforming record"  'Bravo' "$OUT"
+  assert_eq    "and not the padded one" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # An identity is not judged against a vocabulary, so its leading whitespace
+  # makes it unjudgeable rather than wrong — and the record stays reachable by
+  # the spelling it actually carries.
+  run_render list --filed-by ' alice' "$dir"
+  assert_exit  "exact rc" 0 "$RC"
+  assert_match "reaches the padded record" 'Alpha' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  run_render list --filed-by 'alice' "$dir"
+  assert_exit  "plain rc" 0 "$RC"
+  assert_match "reaches the plain record" 'Bravo' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+}
+
 # AC: the integrity-warnings section is concatenated from untrusted values — a
 # body wikilink, a relation target, an origin path, a filename-derived slug —
 # and was emitted with `printf '%b'`, which expands backslash escapes in them.
@@ -2880,12 +3181,17 @@ num: 3
 title: "Parity"
 status: open
 priority: medium
+type: issue
+filed-by: "tester@example.test"
+claimed-by: ""
+outcome: ""
 labels: [a, b]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-01-01T00:00:00Z
 updated: 2026-01-01T00:00:00Z
 origin: "conversation"
@@ -3872,7 +4178,7 @@ case_issues_placement_list_typo_does_not_litter() {
   # collection. Classifying it as a directory instead declines routing, and the
   # refusal then comes from the working tree having no such collection, which is
   # a different answer to a different question.
-  assert_match "routed rather than read as a collection" 'unknown filter' "$ERR"
+  assert_match "routed rather than read as a collection" 'unrecognized filter token' "$ERR"
 }
 
 # AC: the two-argument shape is classified the same way. `dir_given` answered on
@@ -3880,7 +4186,11 @@ case_issues_placement_list_typo_does_not_litter() {
 # `/jim:issue list open high` — two valid filters, which the skill substitutes
 # whole into `render.sh list` — declined routing, adopted `high` as the
 # collection, had a directory created for it in the checkout and served an empty
-# view at rc 0 while the destination went unread (spec AC #5).
+# view at rc 0 while the destination went unread.
+#
+# Composing several filters in one query is now the ordinary case rather than an
+# error, so what this asserts is the routing half: both words stay filters, the
+# destination is what gets read, and the checkout gains nothing.
 case_issues_placement_two_filters_do_not_bypass_placement() {
   local repo body
   repo="$(placement_repo issues_place_two_filters jim/issues)"
@@ -3888,12 +4198,17 @@ case_issues_placement_two_filters_do_not_bypass_placement() {
   run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels x \
     --origin conversation --body-file "$body"
   assert_exit "filing landed" 0 "$RC"
-  run_in "$repo" "$SCRIPT_RENDER" list open high
+  run_in "$repo" "$SCRIPT_RENDER" list open medium
   assert_eq "no directory was created for the second filter" "no" \
-    "$([[ -e "$repo/high" ]] && echo yes || echo no)"
-  assert_eq "and it did not serve an empty view as success" "no" \
-    "$([[ "$RC" == 0 ]] && echo yes || echo no)"
-  assert_match "it says what is wrong" 'high' "$ERR"
+    "$([[ -e "$repo/medium" ]] && echo yes || echo no)"
+  assert_exit  "the composed query succeeds" 0 "$RC"
+  assert_match "and it read the destination"  'Alpha bug' "$OUT"
+  # A filter that excludes it proves both words were applied, not just the
+  # first — an empty result here is the query working.
+  run_in "$repo" "$SCRIPT_RENDER" list open critical
+  assert_exit "still succeeds" 0 "$RC"
+  assert_eq   "the second filter narrowed it" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Alpha bug')"
 }
 
 # AC: a read verb never brings a collection into being. index.sh mkdir -p's
@@ -4002,6 +4317,56 @@ case_issues_placement_migrate_lands_renames_as_one_commit() {
     "$(git -C "$repo" rev-list --count "$before..refs/heads/jim/issues")"
 }
 
+
+# AC: the identity rewrite reaches a destination branch like every other
+# mutation. Placement routing was covered for the prefix migration and never
+# for the two conversions that shipped after it, so a subcommand with flags of
+# its own had never been driven through the routing loop end to end.
+case_issues_placement_migrate_identity_lands_at_the_destination() {
+  local repo body dest_file
+  repo="$(placement_repo issues_place_identity jim/issues)"
+  body="$(fixture issues_place_identity_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-alpha --num 3 \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity \
+    --from "$TEST_IDENTITY" --to 'someone@example.test' --apply
+  assert_exit "migrate rc" 0 "$RC"
+  assert_eq "nothing landed on the working branch" "no" \
+    "$([[ -e "$repo/docs/issues/20260101-alpha.md" ]] && echo yes || echo no)"
+  dest_file="$(git -C "$repo" cat-file -p \
+    refs/heads/jim/issues:docs/issues/20260101-alpha.md 2>/dev/null)"
+  assert_match "the rewrite reached the destination" \
+    '^filed-by: "someone@example\.test"$' "$dest_file"
+  assert_match "under the migrate verb" 'migrate' \
+    "$(git -C "$repo" log -1 --format='%s' refs/heads/jim/issues)"
+}
+
+# AC: the schema conversion routes to the destination and then refuses there,
+# naming why. It recovers each filer from the commit that created its file, and
+# a materialized collection is outside any work tree, so there is no history to
+# read — the refusal is the fail-closed half of a gap that is tracked
+# separately. Pinned because it is the current contract: closing that gap has to
+# change this assertion deliberately rather than silently.
+case_issues_placement_migrate_schema_refuses_at_the_destination() {
+  local repo body before
+  repo="$(placement_repo issues_place_schema jim/issues)"
+  body="$(fixture issues_place_schema_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-alpha --num 3 \
+    --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema --apply
+  assert_exit "migrate rc" 1 "$RC"
+  # The message proves the run reached the materialized collection rather than
+  # failing before routing: the path it names is the temporary one.
+  assert_match "names the cause" 'not inside a work tree' "$ERR"
+  assert_eq "the destination did not move" "$before" \
+    "$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+}
+
 # AC: a rename that loses a push race grafts as a delete plus a create. Carrying
 # only the create would leave one issue under two filenames and an index holding
 # two entries for it — at rc 0 (security Finding 8).
@@ -4024,13 +4389,13 @@ case_issues_placement_rename_race_grafts_as_delete_and_create() {
   assert_exit "filing landed" 0 "$RC"
   teammate="$TMP_BASE/issues-race-teammate.sh"
   cat > "$teammate" <<TEAMMATE
-cd "$theirs" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" run --verb file -- \\
+cd "$theirs" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" run --verb file --dir-at -1 -- \\
   sh -c 'printf "theirs\\n" > "\$1/20260101-other.md"' _ '{}'
 TEAMMATE
   # The rename runs, then the teammate publishes, then this mutation tries to
   # land — so the graft has to replay both halves of the rename.
   OUT="$(cd "$mine" && bash "$REPO_ROOT/skills/issue/scripts/place.sh" \
-    run --verb migrate -- sh -c \
+    run --verb migrate --dir-at -1 -- sh -c \
     'bash "$1" prefix "$3" --apply >/dev/null; sh "$2" >/dev/null 2>&1' \
     _ "$SCRIPT_MIGRATE" "$teammate" '{}' 2>"$TMP_BASE/.err")"
   RC=$?
@@ -4044,6 +4409,6466 @@ TEAMMATE
   index="$(git -C "$bare/r.git" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
   assert_eq "index holds one entry for the renamed issue" "1" \
     "$(printf '%s\n' "$index" | grep -c '0003-alpha')"
+}
+
+# ─── Section: transition.sh — dispatch and the shared mutation path ─────────
+
+# run_transition <args...> — invoke transition.sh with a pinned identity.
+run_transition() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(env "${identity_env[@]}" bash "$SCRIPT_TRANSITION" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# transition_dir <name> — a collection holding one open issue.
+transition_dir() {
+  local d
+  d=$(empty_dir "$1")
+  write_issue "$d" "20260101-target" 'num: 42
+title: "Target"
+status: open
+priority: medium
+type: issue
+filed-by: "filer@example.test"
+claimed-by: ""
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  printf '%s' "$d"
+}
+
+# transition_issue <dir> <slug> <num> <status> <claimed-by> <outcome>
+#   The outcome is rendered bare when set and as an empty quoted scalar when
+#   not, which is how the emitter and the close verb actually write it — a
+#   fixture that quoted a set value would be testing a shape nothing produces.
+transition_issue() {
+  local outcome_field='""' kind="${7:-issue}" parts="${8:-}"
+  [[ -n "$6" ]] && outcome_field="$6"
+  write_issue "$1" "$2" "num: $3
+title: \"T\"
+status: $4
+priority: medium
+type: $kind
+filed-by: \"filer@example.test\"
+claimed-by: \"$5\"
+outcome: $outcome_field
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [$parts]
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: \"conversation\""
+}
+
+
+# failing_date_shim <name> — a PATH entry whose `date` refuses, so the
+# deterministic timestamp helper every jim write stamps from cannot answer.
+failing_date_shim() {
+  local dir
+  dir=$(empty_dir "$1")
+  printf '#!/usr/bin/env bash\nexit 1\n' > "$dir/date"
+  chmod +x "$dir/date"
+  printf '%s' "$dir"
+}
+
+# AC: a transition whose timestamp cannot be resolved refuses rather than
+# moving the issue without one. For a transition `updated` is the single field
+# guaranteed to be wrong afterwards, so skipping it quietly publishes a record
+# stale in exactly the respect the command was run to change — while reporting
+# success. The refusal lands before anything is written, so the issue is left
+# as it was rather than half-moved.
+case_transition_refuses_when_the_timestamp_cannot_be_resolved() {
+  local dir shim oldpath before
+  dir=$(empty_dir transition_no_now)
+  transition_issue "$dir" 20260101-e 5 open "" ""
+  before="$(cat "$dir/20260101-e.md")"
+  shim=$(failing_date_shim transition_now_shim)
+  oldpath="$PATH"; PATH="$shim:$PATH"
+  run_transition claim 20260101-e --dir "$dir"
+  PATH="$oldpath"
+  assert_exit "rc" 1 "$RC"
+  assert_match "names the cause" 'timestamp' "$ERR"
+  assert_eq "the record is untouched" "$before" "$(cat "$dir/20260101-e.md")"
+}
+# AC: starting an unheld issue also claims it for the developer starting it.
+case_transition_start_claims_an_unheld_issue() {
+  local dir out
+  dir=$(empty_dir transition_start)
+  transition_issue "$dir" 20260101-a 1 open "" ""
+  run_transition start 20260101-a --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-a.md")"
+  assert_match "claimed by the starter" "^claimed-by: \"$TEST_IDENTITY\"\$" "$out"
+  assert_match "and underway"           '^status: active$'                 "$out"
+}
+
+# AC: claiming an issue another developer holds is refused, and the refusal
+# names the current holder.
+case_transition_claim_refuses_an_issue_another_holds() {
+  local dir
+  dir=$(empty_dir transition_held)
+  transition_issue "$dir" 20260101-b 2 open "someone@example.test" ""
+  run_transition claim 20260101-b --dir "$dir"
+  assert_exit "rc" 5 "$RC"
+  assert_match "names the holder" 'someone@example\.test' "$ERR"
+  assert_match "holder unchanged" '^claimed-by: "someone@example.test"$' \
+    "$(cat "$dir/20260101-b.md")"
+}
+
+# AC: the developer can override the refusal to take it over.
+case_transition_claim_force_takes_over() {
+  local dir
+  dir=$(empty_dir transition_force)
+  transition_issue "$dir" 20260101-c 3 open "someone@example.test" ""
+  run_transition claim 20260101-c --force --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "taken over" "^claimed-by: \"$TEST_IDENTITY\"\$" "$(cat "$dir/20260101-c.md")"
+}
+
+# AC: an issue's holder is distinct from its lifecycle state — re-claiming what
+# you already hold changes nothing and is not a refusal.
+case_transition_claim_is_idempotent_for_the_holder() {
+  local dir
+  dir=$(empty_dir transition_reclaim)
+  transition_issue "$dir" 20260101-d 4 open "$TEST_IDENTITY" ""
+  run_transition claim 20260101-d --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "still held by the same developer" "^claimed-by: \"$TEST_IDENTITY\"\$" \
+    "$(cat "$dir/20260101-d.md")"
+  # A reclaim by the holder is the no-op case, so it must also leave the record
+  # alone. Without this the case passes whether or not the write happened,
+  # which is coverage it does not have — the field it asserts is already the
+  # value a rewrite would put back.
+  assert_match "the stamp did not move" '^updated: 2026-01-01T00:00:00Z$' \
+    "$(cat "$dir/20260101-d.md")"
+  assert_match "and it says nothing changed" 'unchanged' "$OUT"
+}
+
+# AC: the five existing verbs keep the arity they have today — only the
+# membership verbs bind a second operand, so nothing about how the other five
+# are called changes.
+case_transition_existing_verbs_still_refuse_a_second_operand() {
+  local dir v
+  dir=$(empty_dir transition_arity)
+  transition_issue "$dir" 20260101-a 1 open "" ""
+  for v in claim release start close reopen; do
+    run_transition "$v" 20260101-a extra-operand --dir "$dir"
+    assert_exit "$v refuses a second operand" 2 "$RC"
+  done
+}
+
+# AC: an issue is put under an umbrella and taken out again through one
+# command each, without hand-editing the record, and the membership is written
+# on the member alone — the umbrella's own file never mentions it.
+case_transition_join_and_leave_write_membership() {
+  local dir
+  dir=$(empty_dir transition_join_leave)
+  transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+  transition_issue "$dir" 20260102-member   2 open "" ""
+  run_transition join 20260102-member 20260101-umbrella --dir "$dir"
+  assert_exit "join rc" 0 "$RC"
+  assert_match "membership recorded on the member" \
+    '^  part-of: \[20260101-umbrella\]$' "$(cat "$dir/20260102-member.md")"
+  assert_match "the umbrella records nothing about it" \
+    '^  part-of: \[\]$' "$(cat "$dir/20260101-umbrella.md")"
+  run_transition leave 20260102-member 20260101-umbrella --dir "$dir"
+  assert_exit "leave rc" 0 "$RC"
+  assert_match "membership removed" \
+    '^  part-of: \[\]$' "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: an umbrella is nameable by the same reference forms an issue is, so a
+# developer does not learn a second way to point at a record. Exact-string
+# matching would answer for the slug alone.
+case_transition_join_accepts_ordinal_and_prefix_forms() {
+  local dir
+  dir=$(empty_dir transition_join_forms)
+  transition_issue "$dir" 20260101-auth-hardening 7 open "" "" epic
+  transition_issue "$dir" 20260102-member         2 open "" ""
+  run_transition join 20260102-member 7 --dir "$dir"
+  assert_exit "an ordinal resolves" 0 "$RC"
+  assert_match "to the umbrella's slug" '^  part-of: \[20260101-auth-hardening\]$' \
+    "$(cat "$dir/20260102-member.md")"
+  run_transition leave 20260102-member 20260101-auth --dir "$dir"
+  assert_exit "a prefix resolves" 0 "$RC"
+  assert_match "to the same record" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: `leave` removes a membership the record literally holds, even when the
+# umbrella it names no longer resolves. That state is ordinary — an umbrella is
+# a record like any other and can be deleted, renamed by the prefix migration,
+# or realized from a provisional ordinal into a different id — and because
+# membership is one-sided, nothing updates the member when it happens. The
+# index then reports the dangle on every regeneration until something clears
+# it, and refusing here leaves a hand edit as the only repair, through the very
+# verb built to remove that friction.
+case_transition_leave_clears_a_membership_whose_umbrella_is_gone() {
+  local dir
+  dir=$(empty_dir transition_leave_dangling)
+  transition_issue "$dir" 20260102-member 2 open "" "" issue 20260101-gone
+  run_transition leave 20260102-member 20260101-gone --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the membership is gone" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: the fallback matches the record's own entries literally — it is not a
+# licence to name anything once resolution fails. A reference that neither
+# resolves nor appears in the record is still refused, and nothing is written.
+case_transition_leave_refuses_a_reference_the_record_does_not_hold() {
+  local dir
+  dir=$(empty_dir transition_leave_unheld)
+  transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+  transition_issue "$dir" 20260102-member   2 open "" "" issue 20260101-umbrella
+  run_transition leave 20260102-member 20260101-nothing --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_match "the membership stands" '^  part-of: \[20260101-umbrella\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: the asymmetry is the point, not an inconsistency to smooth over —
+# entering a set requires the target to exist, leaving one does not. `join`
+# keeps refusing an umbrella that does not resolve even when the record already
+# holds that exact entry, which is the input a fallback placed ahead of the
+# verb would wave through.
+case_transition_join_still_refuses_an_umbrella_that_is_gone() {
+  local dir
+  dir=$(empty_dir transition_join_dangling)
+  transition_issue "$dir" 20260102-member 2 open "" "" issue 20260101-gone
+  run_transition join 20260102-member 20260101-gone --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_match "and refuses on the reference, not the kind" \
+    'resolve the umbrella reference' "$ERR"
+  assert_match "the record is untouched" '^  part-of: \[20260101-gone\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: clearing a dangling entry leaves every other membership in place. The
+# repair path composes the new list from the record's own entries, so a fault
+# here would drop live memberships while removing a dead one.
+case_transition_leave_keeps_the_memberships_it_was_not_asked_about() {
+  local dir
+  dir=$(empty_dir transition_leave_siblings)
+  transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+  transition_issue "$dir" 20260102-member   2 open "" "" issue \
+    "20260101-umbrella, 20260101-gone"
+  run_transition leave 20260102-member 20260101-gone --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "only the dead entry went" '^  part-of: \[20260101-umbrella\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: an umbrella contains ordinary issues, so a record that is not one is
+# refused — and the refusal says what the named record actually is, which is
+# what separates a typo from a category error.
+case_transition_join_refuses_a_non_epic_umbrella() {
+  local dir
+  dir=$(empty_dir transition_join_non_epic)
+  transition_issue "$dir" 20260101-plain  1 open "" ""
+  transition_issue "$dir" 20260102-member 2 open "" ""
+  run_transition join 20260102-member 20260101-plain --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the refusal names what it is" 'issue' "$ERR"
+  assert_match "no membership written" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: an umbrella never contains another umbrella, so what one contains has a
+# single unambiguous answer.
+case_transition_refuses_an_epic_inside_an_epic() {
+  local dir
+  dir=$(empty_dir transition_epic_in_epic)
+  transition_issue "$dir" 20260101-outer 1 open "" "" epic
+  transition_issue "$dir" 20260102-inner 2 open "" "" epic
+  run_transition join 20260102-inner 20260101-outer --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_match "no membership written" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-inner.md")"
+}
+
+# AC: one definition decides what a reference resolves to on every write path.
+# The lifecycle verb kept a second three-branch ladder beside the capture
+# path's -- unmarked and uncompared, the only duplicate in this territory
+# that was neither -- so the two agreed by coincidence rather than by
+# construction. They already differed: the shared definition separates a
+# reference matching nothing from one matching several, and the copy collapsed
+# both into one refusal. Resolving through the shared definition is what makes
+# the finer reason reach the developer at all.
+case_transition_resolves_its_id_through_the_shared_definition() {
+  local dir
+  dir=$(empty_dir transition_shared_resolution)
+  transition_issue "$dir" 20260101-alpha  1 open "" ""
+  transition_issue "$dir" 20260101-alpaca 2 open "" ""
+
+  # A prefix naming two records is refused as ambiguous...
+  run_transition close 20260101-alp --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the reference is called ambiguous" 'more than one issue' "$ERR"
+
+  # ...and one naming none is refused as absent, which the collapsed refusal
+  # could not tell apart from the case above.
+  run_transition close 20260109-absent --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the reference is called absent" 'no issue matches' "$ERR"
+
+  # Neither refusal reached the collection.
+  assert_match "the record is untouched" '^status: open$' \
+    "$(cat "$dir/20260101-alpha.md")"
+}
+
+# AC: the capture path and the lifecycle path resolve a reference the same
+# way, so a reference that names no single record is refused on both rather
+# than on whichever one happens to check. Both operands of the two-reference
+# verb are covered, because the primary id was the one resolving privately.
+case_transition_and_capture_refuse_a_reference_alike() {
+  local repo dir b
+  repo=$(new_repo shared_reference_refusal)
+  dir="$repo/docs/issues"
+  mkdir -p "$dir"
+  write_issue "$dir" "20260101-alpha" 'id: 20260101-alpha
+num: 1
+type: epic
+status: open'
+  write_issue "$dir" "20260101-alpaca" 'id: 20260101-alpaca
+num: 2
+type: epic
+status: open'
+  transition_issue "$dir" 20260102-member 3 open "" ""
+  b=$(fixture shared_ref_body.md 'body')
+
+  # The capture path, resolving the ambiguous prefix through --part-of.
+  run_new_in "$repo" --dir "$dir" \
+    --title "Ambiguous" --priority medium --labels x --origin conversation \
+    --part-of 20260101-alp --body-file "$b"
+  assert_exit "capture refuses the ambiguous prefix" 1 "$RC"
+
+  # The lifecycle path's umbrella operand, on the same collection.
+  run_transition join 20260102-member 20260101-alp --dir "$dir"
+  assert_exit "the umbrella operand refuses it" 1 "$RC"
+
+  # And its primary operand, which is the one that used to resolve privately.
+  run_transition close 20260101-alp --dir "$dir"
+  assert_exit "the issue operand refuses it too" 1 "$RC"
+  assert_match "for the reason the shared definition gives" \
+    'more than one issue' "$ERR"
+
+  assert_eq "nothing was filed" "3" "$(find "$dir" -name '2026*.md' | wc -l)"
+}
+
+# AC: a change that would leave the record as it found it writes nothing — no
+# field, no stamp — and says so without failing.
+case_transition_a_noop_writes_nothing() {
+  local dir before_mtime after_mtime
+  dir=$(empty_dir transition_noop)
+  transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+  transition_issue "$dir" 20260102-member   2 open "" ""
+  run_transition join 20260102-member 20260101-umbrella --dir "$dir"
+  assert_exit "the first join applies" 0 "$RC"
+  before_mtime="$(stat -c %Y "$dir/20260102-member.md")"
+  run_transition join 20260102-member 20260101-umbrella --dir "$dir"
+  assert_exit "the repeat succeeds" 0 "$RC"
+  assert_match "and reports that nothing changed" 'unchanged' "$OUT"
+  after_mtime="$(stat -c %Y "$dir/20260102-member.md")"
+  assert_eq "the file was not rewritten" "$before_mtime" "$after_mtime"
+  assert_eq "membership recorded once, not twice" "1" \
+    "$(grep -c '^  part-of: \[20260101-umbrella\]$' "$dir/20260102-member.md")"
+}
+
+# AC: an issue can belong to several umbrellas, so joining a second one keeps
+# the first. The membership field is a list read through the relations reader;
+# a scalar reader anchored at the start of a line cannot see it at all and
+# answers empty, which would rewrite the list down to the one umbrella just
+# named and silently drop every other membership the record held.
+case_transition_join_preserves_existing_memberships() {
+  local dir
+  dir=$(empty_dir transition_join_multi)
+  transition_issue "$dir" 20260101-first  1 open "" "" epic
+  transition_issue "$dir" 20260102-second 2 open "" "" epic
+  transition_issue "$dir" 20260103-member 3 open "" ""
+  run_transition join 20260103-member 20260101-first --dir "$dir"
+  assert_exit "first join" 0 "$RC"
+  run_transition join 20260103-member 20260102-second --dir "$dir"
+  assert_exit "second join" 0 "$RC"
+  assert_match "both memberships are held" \
+    '^  part-of: \[20260101-first, 20260102-second\]$' \
+    "$(cat "$dir/20260103-member.md")"
+  # Leaving one keeps the other.
+  run_transition leave 20260103-member 20260101-first --dir "$dir"
+  assert_exit "leave" 0 "$RC"
+  assert_match "only the named membership was removed" \
+    '^  part-of: \[20260102-second\]$' "$(cat "$dir/20260103-member.md")"
+}
+
+# AC: the rule governs the no-op path only. On a real change every verb keeps
+# the behaviour it has — this is the case that goes red if the filter starts
+# swallowing genuine writes.
+case_transition_a_real_change_still_writes() {
+  local dir
+  dir=$(empty_dir transition_real_change)
+  transition_issue "$dir" 20260101-a 1 open "" ""
+  run_transition close 20260101-a --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "it does not claim to be a no-op" "0" \
+    "$(printf '%s' "$OUT" | grep -c unchanged)"
+  assert_match "the field was written" '^status: closed$' "$(cat "$dir/20260101-a.md")"
+  assert_eq "the stamp moved" "0" \
+    "$(grep -c '^updated: 2026-01-01T00:00:00Z$' "$dir/20260101-a.md")"
+}
+
+# AC: every lifecycle verb obeys the rule, whichever verb it is. The two field
+# classes are the point: apply_verb emits claimed-by carrying its quotes and
+# status/outcome bare, so a filter comparing a pair's VALUE against a
+# quote-stripping reader matches for the bare fields and never for the quoted
+# one. That failure is partial and silent — close-on-closed would no-op while
+# every claim kept writing — so both classes are driven here.
+case_transition_noop_holds_for_quoted_and_bare_fields() {
+  local dir m1 m2
+  dir=$(empty_dir transition_noop_field_classes)
+  # claimed-by: written quoted.
+  transition_issue "$dir" 20260101-held 1 open "$TEST_IDENTITY" ""
+  m1="$(stat -c %Y "$dir/20260101-held.md")"
+  run_transition claim 20260101-held --dir "$dir"
+  assert_exit "reclaim rc" 0 "$RC"
+  assert_match "a quoted field no-ops" 'unchanged' "$OUT"
+  assert_eq "and is not rewritten" "$m1" "$(stat -c %Y "$dir/20260101-held.md")"
+  # status / outcome: written bare.
+  transition_issue "$dir" 20260102-done 2 closed "" "done"
+  m2="$(stat -c %Y "$dir/20260102-done.md")"
+  run_transition close 20260102-done --dir "$dir"
+  assert_exit "re-close rc" 0 "$RC"
+  assert_match "a bare field no-ops" 'unchanged' "$OUT"
+  assert_eq "and is not rewritten" "$m2" "$(stat -c %Y "$dir/20260102-done.md")"
+}
+
+# AC: every lifecycle verb obeys the no-op rule, not only the membership ones.
+# The domain is read from the script's own dispatch vocabulary rather than
+# retyped, so a verb added to TRANSITION_VERBS enters this case without an
+# edit — and a verb that writes unconditionally fails here rather than
+# silently publishing a stamp-only commit.
+case_transition_noop_is_free_for_every_verb() {
+  local dir v mtime seeded
+  for v in $(script_vocabulary "$SCRIPT_TRANSITION" TRANSITION_VERBS); do
+    dir=$(empty_dir "transition_noop_$v")
+    transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+    # Seed the record already in the state this verb would move it to, so the
+    # verb has nothing left to do.
+    case "$v" in
+      claim|start) seeded="$TEST_IDENTITY" ;;
+      *)           seeded="" ;;
+    esac
+    case "$v" in
+      start)  transition_issue "$dir" 20260102-m 2 active "$seeded" "" ;;
+      close)  transition_issue "$dir" 20260102-m 2 closed "" "done" ;;
+      reopen) transition_issue "$dir" 20260102-m 2 open   "" "" ;;
+      *)      transition_issue "$dir" 20260102-m 2 open "$seeded" "" ;;
+    esac
+    if [[ "$v" == join || "$v" == leave ]]; then
+      [[ "$v" == join ]] && run_transition join 20260102-m 20260101-umbrella --dir "$dir"
+      mtime="$(stat -c %Y "$dir/20260102-m.md")"
+      run_transition "$v" 20260102-m 20260101-umbrella --dir "$dir"
+    else
+      mtime="$(stat -c %Y "$dir/20260102-m.md")"
+      run_transition "$v" 20260102-m --dir "$dir"
+    fi
+    assert_exit "$v succeeds on a no-op" 0 "$RC"
+    assert_match "$v reports it changed nothing" 'unchanged' "$OUT"
+    assert_eq "$v did not rewrite the record" "$mtime" \
+      "$(stat -c %Y "$dir/20260102-m.md")"
+  done
+}
+
+# AC: any developer can close any issue, whether or not they hold it, and
+# closing preserves the record of who held it.
+case_transition_close_by_a_non_holder_preserves_the_holder() {
+  local dir out
+  dir=$(empty_dir transition_close_other)
+  transition_issue "$dir" 20260101-e 5 active "someone@example.test" ""
+  run_transition close 20260101-e --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-e.md")"
+  assert_match "finished"        '^status: closed$'                     "$out"
+  assert_match "holder kept"     '^claimed-by: "someone@example.test"$' "$out"
+}
+
+# AC: closing accepts an outcome; when none is given, the issue is recorded as
+# completed.
+case_transition_close_defaults_the_outcome_to_done() {
+  local dir
+  dir=$(empty_dir transition_close_default)
+  transition_issue "$dir" 20260101-f 6 open "" ""
+  run_transition close 20260101-f --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "recorded as completed" '^outcome: done$' "$(cat "$dir/20260101-f.md")"
+}
+
+# AC: the outcome distinguishes completed work from work that was declined.
+case_transition_close_records_the_given_outcome() {
+  local dir
+  dir=$(empty_dir transition_close_as)
+  transition_issue "$dir" 20260101-g 7 open "" ""
+  run_transition close 20260101-g --as wontfix --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "declined" '^outcome: wontfix$' "$(cat "$dir/20260101-g.md")"
+}
+
+# AC: the outcome distinguishes completed work from work that was declined,
+# superseded, or that ceased to apply — a value outside those is refused before
+# anything is written, rather than written and reported by the index afterwards.
+case_transition_close_refuses_an_unrecognized_outcome() {
+  local dir before
+  dir=$(empty_dir transition_bad_outcome)
+  transition_issue "$dir" 20260101-l 12 open "" ""
+  before="$(cat "$dir/20260101-l.md")"
+  run_transition close 20260101-l --as donw --dir "$dir"
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "explains" "$ERR"
+  assert_eq "nothing written" "$before" "$(cat "$dir/20260101-l.md")"
+}
+
+# AC: work that was declined and work that ceased to apply are both recordable.
+case_transition_close_accepts_the_other_outcomes() {
+  local dir o n=20
+  for o in wontfix obsolete; do
+    dir=$(empty_dir "transition_outcome_$o")
+    transition_issue "$dir" 20260101-m "$n" open "" ""
+    run_transition close 20260101-m --as "$o" --dir "$dir"
+    assert_exit "rc for --as $o" 0 "$RC"
+    assert_match "recorded" "^outcome: $o\$" "$(cat "$dir/20260101-m.md")"
+    n=$((n+1))
+  done
+}
+
+# AC: an issue whose outcome is superseded identifies the issue that supersedes
+# it. The spec states that as a property of the record, so the record is not
+# permitted to contradict it and be reported afterwards.
+case_transition_close_as_duplicate_requires_a_superseding_issue() {
+  local dir before
+  dir=$(empty_dir transition_dup_missing)
+  transition_issue "$dir" 20260101-n 30 open "" ""
+  before="$(cat "$dir/20260101-n.md")"
+  run_transition close 20260101-n --as duplicate --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "explains" "$ERR"
+  assert_eq "nothing written" "$before" "$(cat "$dir/20260101-n.md")"
+}
+
+# AC: the same close is accepted once the record names its superseding issue.
+case_transition_close_as_duplicate_accepts_a_named_supersession() {
+  local dir
+  dir=$(empty_dir transition_dup_named)
+  write_issue "$dir" "20260101-o" 'num: 31
+title: "T"
+status: open
+priority: medium
+type: issue
+filed-by: "filer@example.test"
+claimed-by: ""
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: [20260101-p]
+  part-of: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  run_transition close 20260101-o --as duplicate --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "superseded" '^outcome: duplicate$' "$(cat "$dir/20260101-o.md")"
+}
+
+# AC: reopening a finished issue returns it to not-started and preserves its
+# outcome, so the reason it was previously finished survives the reopen.
+case_transition_reopen_preserves_the_outcome() {
+  local dir out
+  dir=$(empty_dir transition_reopen)
+  transition_issue "$dir" 20260101-h 8 closed "someone@example.test" "wontfix"
+  run_transition reopen 20260101-h --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-h.md")"
+  assert_match "back to not-started" '^status: open$'    "$out"
+  assert_match "the reason survives" '^outcome: wontfix$' "$out"
+}
+
+# AC: finishing an issue that was previously finished and reopened replaces the
+# earlier outcome with the current one.
+case_transition_reclosing_replaces_the_earlier_outcome() {
+  local dir
+  dir=$(empty_dir transition_reclose)
+  transition_issue "$dir" 20260101-i 9 open "" "wontfix"
+  run_transition close 20260101-i --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "replaced" '^outcome: done$' "$(cat "$dir/20260101-i.md")"
+}
+
+# AC: a developer can release an issue they are not going to get to.
+case_transition_release_empties_the_holder() {
+  local dir
+  dir=$(empty_dir transition_release)
+  transition_issue "$dir" 20260101-j 10 open "$TEST_IDENTITY" ""
+  run_transition release 20260101-j --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "unheld" '^claimed-by: ""$' "$(cat "$dir/20260101-j.md")"
+}
+
+# AC: claiming an issue another developer holds is refused unless overridden.
+# Releasing one is the same act reached another way — without the same gate,
+# release-then-claim would take an issue over with no override at all.
+case_transition_release_refuses_an_issue_another_holds() {
+  local dir
+  dir=$(empty_dir transition_release_other)
+  transition_issue "$dir" 20260101-k 11 open "someone@example.test" ""
+  run_transition release 20260101-k --dir "$dir"
+  assert_exit "rc" 5 "$RC"
+  assert_match "names the holder" 'someone@example\.test' "$ERR"
+  run_transition release 20260101-k --force --dir "$dir"
+  assert_exit "rc with --force" 0 "$RC"
+  assert_match "released" '^claimed-by: ""$' "$(cat "$dir/20260101-k.md")"
+}
+
+# AC: every transition works identically whether the collection lives on the
+# working branch or on a designated shared branch.
+#
+#   Without this the placement criterion is met by construction rather than by
+#   evidence: under the default placement the door is inert, so every other
+#   transition case above would pass whether the door worked or not. Here the
+#   edit has to reach a branch the working tree is not on, and the commit that
+#   carries it has to name the verb.
+case_transition_lands_at_a_configured_destination() {
+  local repo body dest_file subject
+  repo="$(placement_repo transition_placement jim/issues)"
+  body="$(fixture transition_placement_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-remote --num 77 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "Remote" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+
+  OUT="$(cd "$repo" && env "${identity_env[@]}" \
+    bash "$SCRIPT_TRANSITION" claim 20260101-remote 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_exit "transition rc" 0 "$RC"
+
+  assert_eq "nothing landed on the working branch" "no" \
+    "$([[ -e "$repo/docs/issues/20260101-remote.md" ]] && echo yes || echo no)"
+
+  dest_file="$(git -C "$repo" cat-file -p \
+    refs/heads/jim/issues:docs/issues/20260101-remote.md 2>/dev/null)"
+  assert_match "the holder reached the destination" \
+    "^claimed-by: \"$TEST_IDENTITY\"\$" "$dest_file"
+
+  subject="$(git -C "$repo" log -1 --format='%s' refs/heads/jim/issues)"
+  assert_match "the commit names the verb" 'claim' "$subject"
+}
+
+
+# AC: a transition whose index cannot be regenerated is surfaced, never
+# reported as success. It is the pattern the two migration applies were modelled
+# on and the only one of the three that had no case of its own — so the
+# behaviour they were checked against was itself unchecked.
+case_transition_surfaces_an_index_failure() {
+  local dir
+  dir="$(transition_dir transition_index_failure)"
+  mkdir -p "$dir/INDEX.md"
+  chmod 500 "$dir/INDEX.md"
+  run_transition close 42 --dir "$dir"
+  chmod 700 "$dir/INDEX.md"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure is named" 'index' "$ERR"
+  # The file is written before the index runs, so the transition itself landed.
+  # Reporting success over an index that no longer describes it is the outcome
+  # this refuses; discarding the write is not the alternative.
+  assert_match "the transition still landed" '^status: closed$' \
+    "$(cat "$dir/20260101-target.md" 2>/dev/null || true)"
+}
+
+# AC: a developer can claim, release, start, close and reopen an issue through
+# a single command each — a verb outside that set is a usage error.
+case_transition_refuses_an_unknown_verb() {
+  local dir
+  dir="$(transition_dir transition_bad_verb)"
+  run_transition frobnicate 42 --dir "$dir"
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "explains" "$ERR"
+}
+
+# AC: each verb acts on one named issue, so a verb with no issue named is a
+# usage error rather than a transition of something unspecified.
+case_transition_refuses_a_missing_id() {
+  local dir
+  dir="$(transition_dir transition_no_id)"
+  run_transition claim --dir "$dir"
+  assert_exit "rc" 2 "$RC"
+}
+
+# AC: ids resolve only against the collection, never composed into a path from
+# raw input.
+case_transition_refuses_an_invalid_id() {
+  local dir
+  dir="$(transition_dir transition_bad_id)"
+  run_transition claim '../escape' --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "explains" "$ERR"
+}
+
+# AC: the name a transition composes its path from clears the validator, not
+# only the id the caller supplied. Resolution by ordinal or by prefix answers
+# with a name read off the directory rather than with the caller's id, and a
+# collection materialized from a destination branch can hold names whose entry
+# gate is weaker than this one — a plain basename bounded to the collection, but
+# outside what an id may be. The verb refuses rather than reading and rewriting
+# a file the id boundary would have rejected.
+case_transition_gates_the_resolved_name_not_only_the_given_id() {
+  local dir before after
+  dir="$(transition_dir transition_resolved_name)"
+  write_issue "$dir" "a..b" 'num: 77
+title: "Arrived from a branch"
+status: open
+priority: low
+type: issue
+filed-by: "filer@example.test"
+claimed-by: ""
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  before="$(cksum < "$dir/a..b.md")"
+  run_transition close 77 --dir "$dir"
+  after="$(cksum < "$dir/a..b.md")"
+  assert_exit "rc" 1 "$RC"
+  assert_match "names the gate" 'invalid issue id' "$ERR"
+  assert_eq "the file is untouched" "$before" "$after"
+}
+
+# AC: an id naming no issue in the collection is refused rather than created.
+case_transition_refuses_an_unknown_issue() {
+  local dir
+  dir="$(transition_dir transition_absent)"
+  run_transition claim 20260101-nosuch --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+}
+
+# AC: a developer names an issue the way the rest of the surface does — by its
+# display ordinal as well as its slug.
+case_transition_resolves_an_issue_by_ordinal() {
+  local dir
+  dir="$(transition_dir transition_by_num)"
+  run_transition claim 42 --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+}
+
+# AC: every transition updates the issue's last-modified stamp and refreshes
+# the collection index.
+case_transition_stamps_and_reindexes() {
+  local dir before after
+  dir="$(transition_dir transition_stamp)"
+  before="$(grep '^updated:' "$dir/20260101-target.md")"
+  run_transition claim 20260101-target --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  after="$(grep '^updated:' "$dir/20260101-target.md")"
+  assert_eq "the stamp moved" "no" "$([[ "$before" == "$after" ]] && echo yes || echo no)"
+  assert_eq "the index was regenerated" "yes" \
+    "$([[ -f "$dir/INDEX.md" ]] && echo yes || echo no)"
+}
+
+# AC: when the developer's identity cannot be determined from the environment,
+# a transition is refused — every transition records or acts under one.
+case_transition_refuses_without_an_identity() {
+  local repo
+  repo="$(identity_repo transition_no_identity)"
+  write_issue "$repo" "20260101-target" 'num: 42
+title: "Target"
+status: open
+priority: medium'
+  OUT="$(cd "$repo" && GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    bash "$SCRIPT_TRANSITION" claim 20260101-target --dir "$repo" 2>"$TMP_BASE/.err")"
+  RC=$?
+  ERR="$(cat "$TMP_BASE/.err")"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "explains" "$ERR"
+}
+
+# ─── Section: migrate.sh schema — the collection conversion (preview) ───────
+
+# schema_repo <name> — a git repo holding a committed issue collection, every
+# file created by a known author so the filer derivation has a commit to find.
+schema_repo() {
+  local d
+  d="$(empty_dir "$1")"
+  git init -q "$d"
+  git -C "$d" config user.name "Test Filer"
+  git -C "$d" config user.email "filer@example.test"
+  mkdir -p "$d/docs/issues"
+  printf '%s' "$d"
+}
+
+# schema_commit <repo> <slug> <frontmatter> — add one issue and commit it, so
+# the file has a creating commit.
+schema_commit() {
+  local repo="$1" slug="$2" fm="$3"
+  write_issue "$repo/docs/issues" "$slug" "$fm"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "file $slug" >/dev/null 2>&1
+}
+
+# schema_legacy <repo> <slug> <status> — one pre-conversion issue shaped the way
+# the real corpus carries them: the fields the conversion adds are absent, and
+# the two anchors it writes them against are present. A record missing those
+# anchors is a case of its own below, not the ordinary shape.
+schema_legacy() {
+  schema_commit "$1" "$2" "title: \"$2\"
+status: $3
+priority: low
+labels: []
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: \"conversation\""
+}
+
+# AC: the filer of an existing issue is recovered from the collection's own
+# history rather than assigned by default.
+case_migrate_schema_recovers_the_filer_from_history() {
+  local repo
+  repo="$(schema_repo migrate_schema_filer)"
+  schema_legacy "$repo" "20260101-one" open
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "filer recovered" 'filer@example\.test' "$OUT"
+}
+
+# AC: recovering historical filers records them in the project's current form,
+# so a converted issue and a newly filed one agree about who someone is. The
+# conversion is one-shot over the whole collection, so a form applied to only
+# one of the two write paths would be baked in permanently.
+case_migrate_schema_records_the_configured_form() {
+  local repo
+  repo="$(schema_repo migrate_schema_form)"
+  git -C "$repo" config user.email '1234+Dev@users.noreply.github.com'
+  schema_legacy "$repo" "20260101-one" open
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "recorded as the account name" '(^|[^.@])dev([^a-z]|$)' "$OUT"
+  assert_eq "not the raw relay address" "no" \
+    "$(printf '%s' "$OUT" | grep -q 'users\.noreply' && echo yes || echo no)"
+}
+
+# AC: a conversion running under an explicit config reads that config's form,
+# not the ambient project's — the recovered filer is a recorded identity like
+# any other and resolves through the same configuration.
+case_migrate_schema_honors_an_explicit_config_for_the_form() {
+  local repo cfg
+  repo="$(schema_repo migrate_schema_form_cfg)"
+  git -C "$repo" config user.email '1234+dev@users.noreply.github.com'
+  schema_legacy "$repo" "20260101-one" open
+  cfg=$(fixture migrate-identity-email.toml 'identity_scheme = "email"')
+  run_in "$repo" "$SCRIPT_MIGRATE" -c "$cfg" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "the whole address is recorded" 'users\.noreply\.github\.com' "$OUT"
+}
+
+# AC: existing finished issues are recorded as completed.
+case_migrate_schema_records_closed_issues_as_done() {
+  local repo
+  repo="$(schema_repo migrate_schema_done)"
+  schema_legacy "$repo" "20260101-shut" closed
+  schema_legacy "$repo" "20260101-live" open
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "the finished issue gains an outcome" '20260101-shut.*done' "$OUT"
+  assert_eq "the unfinished one does not" "no" \
+    "$(printf '%s' "$OUT" | grep -E '20260101-live.*done' >/dev/null && echo yes || echo no)"
+}
+
+# AC: the conversion previews what it will change before changing anything.
+case_migrate_schema_preview_writes_nothing() {
+  local repo before after
+  repo="$(schema_repo migrate_schema_readonly)"
+  schema_commit "$repo" "20260101-untouched" 'title: "Untouched"
+status: open
+priority: low'
+  before="$(cat "$repo/docs/issues/20260101-untouched.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  after="$(cat "$repo/docs/issues/20260101-untouched.md")"
+  assert_eq "the issue file is byte-identical" "$before" "$after"
+  assert_match "a plan hash is offered" 'PLAN-HASH:' "$OUT"
+}
+
+# AC: every issue in the existing collection carries the new fields after a
+# one-time conversion — one already carrying them is not converted twice.
+case_migrate_schema_skips_an_already_converted_issue() {
+  local repo
+  repo="$(schema_repo migrate_schema_idempotent)"
+  schema_commit "$repo" "20260101-ready" 'title: "Ready"
+status: open
+priority: low
+type: issue
+filed-by: "someone@example.test"
+claimed-by: ""
+outcome: ""'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "reported as already converted" 'skip' "$OUT"
+}
+
+# AC: if the filer of any issue cannot be recovered, the conversion reports
+# every such issue. An uncommitted file has no creating commit to read.
+case_migrate_schema_reports_an_unrecoverable_filer() {
+  local repo
+  repo="$(schema_repo migrate_schema_unresolved)"
+  schema_commit "$repo" "20260101-committed" 'title: "Committed"
+status: open
+priority: low'
+  write_issue "$repo/docs/issues" "20260101-uncommitted" 'title: "Uncommitted"
+status: open
+priority: low'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_match "the unrecoverable one is named" '20260101-uncommitted' "$OUT"
+  assert_match "and marked as such" 'unresolved' "$OUT"
+}
+
+# AC: a recorded identity can never introduce additional fields into the issue
+# record, whatever the environment supplied. A filer read out of history is a
+# recorded identity too, so it clears the same gate the emitter's does.
+case_migrate_schema_refuses_an_unrecordable_derived_filer() {
+  local repo
+  repo="$(schema_repo migrate_schema_bad_filer)"
+  git -C "$repo" config user.email "dev${LINE_SEP}@example.test"
+  schema_commit "$repo" "20260101-tainted" 'title: "Tainted"
+status: open
+priority: low'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_match "not treated as recoverable" 'unresolved' "$OUT"
+  assert_eq "the unrecordable value is not echoed back" "no" \
+    "$(printf '%s' "$OUT" | grep -q "$LINE_SEP" && echo yes || echo no)"
+}
+
+# AC: the preview classifies a record the rewrite has nowhere to write into,
+# instead of calling it convertible and failing part-way through the apply. Both
+# anchors sit in the frontmatter the preview already parses, so a run that
+# cannot finish is knowable before the operator approves it — and both obstacle
+# classes are named in one refusal, since fixing them a run at a time takes as
+# many runs as there are problems.
+case_migrate_schema_preview_names_an_unconvertible_record() {
+  local repo before
+  repo="$(schema_repo migrate_schema_unanchored)"
+  schema_legacy "$repo" "20260101-sound" open
+  # No `labels:` line and no `relations:` block — the two the conversion writes
+  # its fields against.
+  schema_commit "$repo" "20260101-bare" 'title: "Bare"
+status: open
+priority: low'
+  # Shaped like the corpus but never committed, so no filer can be recovered:
+  # the obstacle class the preview already reported.
+  write_issue "$repo/docs/issues" "20260101-orphan" 'title: "Orphan"
+status: open
+priority: low
+labels: []
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []'
+
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "preview rc" 0 "$RC"
+  assert_match "the unanchored record is named"  '20260101-bare' "$OUT"
+  assert_match "and classified"                  'unconvertible' "$OUT"
+  assert_match "the filerless one still is too"  '20260101-orphan' "$OUT"
+
+  before="$(cat "$repo/docs/issues/20260101-sound.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "apply rc" 1 "$RC"
+  assert_match "the refusal names the unanchored record" '20260101-bare' "$ERR"
+  assert_match "and the filerless one, in the same run" '20260101-orphan' "$ERR"
+  assert_eq "the convertible issue is untouched" "$before" \
+    "$(cat "$repo/docs/issues/20260101-sound.md")"
+}
+
+# AC: every issue in the existing collection carries the new fields after a
+# one-time conversion.
+case_migrate_schema_apply_writes_the_fields() {
+  local repo out
+  repo="$(schema_repo migrate_schema_apply)"
+  schema_commit "$repo" "20260101-conv" 'title: "Conv"
+status: closed
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$repo/docs/issues/20260101-conv.md")"
+  assert_match "kind"        '^type: issue$'                  "$out"
+  assert_match "filer"       '^filed-by: "filer@example.test"$' "$out"
+  assert_match "unheld"      '^claimed-by: ""$'               "$out"
+  assert_match "finished"    '^outcome: done$'                "$out"
+  assert_match "no umbrella" '^  part-of: \[\]$'              "$out"
+  assert_eq "the index was regenerated" "yes" \
+    "$([[ -f "$repo/docs/issues/INDEX.md" ]] && echo yes || echo no)"
+}
+
+# AC: an issue that never has been finished carries no outcome.
+case_migrate_schema_apply_leaves_an_open_issue_without_an_outcome() {
+  local repo
+  repo="$(schema_repo migrate_schema_apply_open)"
+  schema_commit "$repo" "20260101-live2" 'title: "Live"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "no outcome" '^outcome: ""$' "$(cat "$repo/docs/issues/20260101-live2.md")"
+}
+
+# AC: the conversion previews what it will change before changing anything —
+# an apply whose preview has gone stale is refused rather than applied.
+case_migrate_schema_apply_refuses_a_stale_plan() {
+  local repo before
+  repo="$(schema_repo migrate_schema_drift)"
+  schema_commit "$repo" "20260101-drifted" 'title: "Drifted"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  before="$(cat "$repo/docs/issues/20260101-drifted.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply --expect WRONGHASH
+  assert_exit "rc" 3 "$RC"
+  assert_eq "nothing written" "$before" "$(cat "$repo/docs/issues/20260101-drifted.md")"
+}
+
+# AC: the conversion is one-time — running it twice converts nothing the second
+# time rather than layering a second copy of the fields.
+case_migrate_schema_apply_is_idempotent() {
+  local repo first second
+  repo="$(schema_repo migrate_schema_twice)"
+  schema_commit "$repo" "20260101-once" 'title: "Once"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  first="$(cat "$repo/docs/issues/20260101-once.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 0 "$RC"
+  second="$(cat "$repo/docs/issues/20260101-once.md")"
+  assert_eq "the second run changed nothing" "$first" "$second"
+  assert_eq "exactly one kind field" "1" \
+    "$(printf '%s\n' "$second" | grep -c '^type:')"
+}
+
+# AC: if the filer of any issue cannot be recovered, the conversion reports
+# every such issue and refuses to run rather than substituting a placeholder.
+# The refusal is whole-run: an issue whose filer WAS recoverable is left
+# untouched too, so the collection is never half-attributed.
+case_migrate_schema_apply_refuses_when_any_filer_is_unrecoverable() {
+  local repo before
+  repo="$(schema_repo migrate_schema_refuse)"
+  schema_commit "$repo" "20260101-known" 'title: "Known"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  write_issue "$repo/docs/issues" "20260101-ghostly" 'title: "Ghostly"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  before="$(cat "$repo/docs/issues/20260101-known.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 1 "$RC"
+  assert_match "names the unrecoverable issue" '20260101-ghostly' "$ERR"
+  assert_eq "the recoverable one is untouched too" "$before" \
+    "$(cat "$repo/docs/issues/20260101-known.md")"
+}
+
+# AC: the conversion reports EVERY such issue, not the first one it meets — a
+# run fixed one at a time would take as many passes as there are problems.
+case_migrate_schema_refusal_names_every_unrecoverable_issue() {
+  local repo
+  repo="$(schema_repo migrate_schema_refuse_all)"
+  schema_commit "$repo" "20260101-anchor" 'title: "Anchor"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  write_issue "$repo/docs/issues" "20260101-ghost1" 'title: "G1"
+status: open
+priority: low
+labels: [x]'
+  write_issue "$repo/docs/issues" "20260101-ghost2" 'title: "G2"
+status: open
+priority: low
+labels: [x]'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  assert_exit "rc" 1 "$RC"
+  assert_match "first named"  '20260101-ghost1' "$ERR"
+  assert_match "second named" '20260101-ghost2' "$ERR"
+}
+
+# AC: the preview reports what it would change — including what it cannot —
+# without refusing, since a preview runs no conversion to refuse.
+case_migrate_schema_preview_reports_without_refusing() {
+  local repo
+  repo="$(schema_repo migrate_schema_preview_unresolved)"
+  write_issue "$repo/docs/issues" "20260101-ghost3" 'title: "G3"
+status: open
+priority: low
+labels: [x]'
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "reported" '20260101-ghost3' "$OUT"
+}
+
+# AC: the filer is recovered from the collection's own history — where there is
+# no history to read, the conversion says so rather than reporting every issue
+# as individually unrecoverable.
+case_migrate_schema_refuses_outside_a_work_tree() {
+  local dir
+  dir=$(empty_dir migrate_schema_no_repo)
+  write_issue "$dir" "20260101-orphan" 'title: "Orphan"
+status: open
+priority: low'
+  run_migrate schema "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "explains why" "$ERR"
+}
+
+# ─── Section: render.sh — the new fields and the third lifecycle state ──────
+
+# AC: a developer can see who filed an issue, and an issue's holder is
+# distinct from its lifecycle state.
+case_render_show_displays_the_new_fields() {
+  local dir
+  dir=$(empty_dir render_show_fields)
+  write_issue "$dir" "20260101-shown" 'num: 7
+title: "Shown"
+status: active
+priority: high
+type: issue
+filed-by: "filer@example.test"
+claimed-by: "holder@example.test"
+outcome: ""'
+  run_render show 20260101-shown "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "kind"   'type: issue'                 "$OUT"
+  assert_match "filer"  'filed-by: filer@example.test' "$OUT"
+  assert_match "holder" 'claimed-by: holder@example.test' "$OUT"
+}
+
+# AC: an issue that has ever been finished carries an outcome — show surfaces
+# it, so a reopened issue reads as one rather than as untouched work.
+case_render_show_displays_the_outcome_of_a_reopened_issue() {
+  local dir
+  dir=$(empty_dir render_show_reopened)
+  write_issue "$dir" "20260101-again" 'num: 8
+title: "Again"
+status: open
+priority: low
+type: issue
+filed-by: "filer@example.test"
+claimed-by: ""
+outcome: wontfix'
+  run_render show 20260101-again "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "outcome shown" 'outcome: wontfix' "$OUT"
+}
+
+# AC: an issue can be in one of three states: not started, underway, or
+# finished. The underway state is selectable like the other two.
+case_render_list_accepts_active_as_a_filter() {
+  local dir
+  dir=$(empty_dir render_list_active)
+  write_issue "$dir" "20260101-underway" 'num: 1
+title: "Underway"
+status: active
+priority: high'
+  write_issue "$dir" "20260101-idle" 'num: 2
+title: "Idle"
+status: open
+priority: low'
+  run_render list active "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the underway issue is listed" 'Underway' "$OUT"
+  assert_eq "the not-started issue is not" "no" \
+    "$(printf '%s' "$OUT" | grep -q 'Idle' && echo yes || echo no)"
+}
+
+# AC: an underway issue is unfinished work, so the default view — which hides
+# only finished issues — shows it.
+case_render_default_list_shows_an_underway_issue() {
+  local dir
+  dir=$(empty_dir render_list_default_active)
+  write_issue "$dir" "20260101-underway2" 'num: 1
+title: "Underway"
+status: active
+priority: high'
+  run_render list "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "listed by default" 'Underway' "$OUT"
+}
+
+# ─── Section: index.sh — schema integrity warnings ──────────────────────────
+
+# AC: the collection index reports any finished issue carrying no outcome.
+case_index_warns_a_closed_issue_with_no_outcome() {
+  local dir
+  dir=$(empty_dir index_no_outcome)
+  write_issue "$dir" "20260101-done" 'title: "Done"
+status: closed
+type: issue
+outcome: ""'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "warned" 'closed.*no outcome' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: an issue that has ever been finished carries an outcome; one that never
+# has carries none. An open issue without an outcome is the ordinary case and
+# must not be warned about.
+case_index_stays_quiet_on_an_open_issue_with_no_outcome() {
+  local dir
+  dir=$(empty_dir index_open_no_outcome)
+  write_issue "$dir" "20260101-open" 'title: "Open"
+status: open
+type: issue
+outcome: ""'
+  run_index "$dir"
+  assert_eq "no outcome warning" "no" \
+    "$(grep -q 'no outcome' "$dir/INDEX.md" && echo yes || echo no)"
+}
+
+# AC: an open issue carrying an outcome has been finished and reopened — a
+# representable state, not a defect, so it draws no warning.
+case_index_stays_quiet_on_a_reopened_issue() {
+  local dir
+  dir=$(empty_dir index_reopened)
+  write_issue "$dir" "20260101-reopened" 'title: "Reopened"
+status: open
+type: issue
+outcome: wontfix'
+  run_index "$dir"
+  assert_eq "no warning" "no" \
+    "$(grep -qE 'no outcome|unrecognized outcome' "$dir/INDEX.md" && echo yes || echo no)"
+}
+
+# AC: the collection index reports any issue whose outcome is not a recognized
+# value.
+case_index_warns_an_unrecognized_outcome() {
+  local dir
+  dir=$(empty_dir index_bad_outcome)
+  write_issue "$dir" "20260101-typo" 'title: "Typo"
+status: closed
+type: issue
+outcome: donw'
+  run_index "$dir"
+  assert_match "warned" 'unrecognized outcome' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: the collection index reports any issue whose kind is not a recognized
+# value.
+case_index_warns_an_unrecognized_kind() {
+  local dir
+  dir=$(empty_dir index_bad_type)
+  write_issue "$dir" "20260101-epik" 'title: "Epik"
+status: open
+type: epik
+outcome: ""'
+  run_index "$dir"
+  assert_match "warned" 'unrecognized type' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: an umbrella is a recognized kind and draws no warning.
+case_index_accepts_an_epic_as_a_kind() {
+  local dir
+  dir=$(empty_dir index_epic_ok)
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+type: epic
+outcome: ""'
+  run_index "$dir"
+  assert_eq "no kind warning" "no" \
+    "$(grep -q 'unrecognized type' "$dir/INDEX.md" && echo yes || echo no)"
+}
+
+# AC: the collection index reports any issue whose umbrella reference is not a
+# recognized value — here, one naming an umbrella the collection does not hold.
+case_index_warns_an_umbrella_that_does_not_exist() {
+  local dir
+  dir=$(empty_dir index_dangling_umbrella)
+  write_issue "$dir" "20260101-member" 'title: "Member"
+status: open
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-ghost]'
+  run_index "$dir"
+  assert_match "warned" 'names an umbrella not in the collection' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: umbrella membership is stored on the member only — an umbrella that
+# exists needs no reciprocal entry, so a resolvable membership is silent.
+case_index_stays_quiet_on_a_single_sided_membership() {
+  local dir
+  dir=$(empty_dir index_single_sided)
+  write_issue "$dir" "20260101-umbrella2" 'title: "Umbrella"
+status: open
+type: epic
+outcome: ""'
+  write_issue "$dir" "20260101-member2" 'title: "Member"
+status: open
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella2]'
+  run_index "$dir"
+  assert_eq "no membership warning" "no" \
+    "$(grep -qE 'names an umbrella not in the collection|no inverse' "$dir/INDEX.md" \
+       && echo yes || echo no)"
+}
+
+# epic_fixture <dir> <umbrella-slug> — an umbrella plus members, one closed.
+#   Members are named so glob order is the order the section renders them in.
+epic_fixture() {
+  local dir="$1" u="$2"
+  write_issue "$dir" "$u" "title: \"Umbrella\"
+status: open
+num: 1
+type: epic
+outcome: \"\""
+  write_issue "$dir" "20260102-open-member" "title: \"Open member\"
+status: open
+num: 2
+type: issue
+outcome: \"\"
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [$u]"
+  write_issue "$dir" "20260103-closed-member" "title: \"Closed member\"
+status: closed
+num: 3
+type: issue
+outcome: done
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [$u]"
+}
+
+# AC: an umbrella's roster is derived from the records claiming membership, so
+# nothing stores it apart from them; its progress counts members finished
+# against members held.
+case_index_derives_a_roster_and_progress() {
+  local dir idx
+  dir=$(empty_dir index_roster)
+  epic_fixture "$dir" 20260101-umbrella
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "progress counts closed against total" \
+    '^- `20260101-umbrella` — Umbrella · status: open · 1/2 closed$' "$idx"
+  assert_match "the open member is listed" '^  - `20260102-open-member`$' "$idx"
+  assert_eq "the closed member is counted, not listed" "0" \
+    "$(printf '%s\n' "$idx" | grep -c '^  - `20260103-closed-member`$')"
+}
+
+# AC: a roster can never disagree with the records claiming membership. One
+# record naming the same umbrella repeatedly is one member -- the frontmatter
+# edge set is appended unguarded, unlike the deduped set the Graph renders, so
+# a pass that trusts it counts that record once per mention: the progress
+# denominator inflates and one record can fill the whole cap while hiding
+# genuinely distinct members.
+case_index_roster_counts_a_repeated_membership_once() {
+  local dir idx
+  dir=$(empty_dir index_roster_dedup)
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  write_issue "$dir" "20260102-member" 'title: "Member"
+status: open
+num: 2
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella, 20260101-umbrella, 20260101-umbrella]'
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "counted once" \
+    '^- `20260101-umbrella` — Umbrella · status: open · 0/1 closed$' "$idx"
+  assert_eq "listed once" "1" \
+    "$(printf '%s\n' "$idx" | grep -c '^  - `20260102-member`$')"
+}
+
+# AC: deriving a roster finishes for any membership the collection can hold,
+# including membership the containment rule forbids but a hand-edited record
+# can still express. Termination is a property of the pass's shape -- it
+# buckets records under the umbrellas they name and never walks out of a
+# bucket -- so a cycle is two buckets, not a loop.
+case_index_terminates_over_forbidden_membership() {
+  local dir
+  dir=$(empty_dir index_cycle)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+type: epic
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260102-b]'
+  write_issue "$dir" "20260102-b" 'title: "B"
+status: open
+num: 2
+type: epic
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-a]'
+  write_issue "$dir" "20260103-self" 'title: "Self"
+status: open
+num: 3
+type: epic
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260103-self]'
+  run_index "$dir"
+  assert_exit "the index completes" 0 "$RC"
+  assert_match "and reports the violation" 'cannot belong to an epic' \
+    "$(cat "$dir/INDEX.md")"
+}
+
+# AC: the index carries a section describing the umbrellas it holds, and an
+# umbrella with no members reports an empty roster rather than vanishing.
+case_index_emits_the_epics_section() {
+  local dir idx
+  dir=$(empty_dir index_epics_section)
+  epic_fixture "$dir" 20260101-umbrella
+  write_issue "$dir" "20260104-empty" 'title: "Empty"
+status: open
+num: 4
+type: epic
+outcome: ""'
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the section exists" '^## Epics$' "$idx"
+  assert_match "an umbrella with no members reports zero of zero" \
+    '^- `20260104-empty` — Empty · status: open · 0/0 closed$' "$idx"
+  # Placement is constrained, not cosmetic: the integrity-warnings extractor
+  # reads from its header to end of file, so a section after it would have
+  # every roster line swallowed into the warnings view.
+  assert_eq "it sits between Issues and Graph" "Issues Epics Graph Warnings" \
+    "$(printf '%s\n' "$idx" | sed -n 's/^## \(Issues\|Epics\|Graph\|Integrity Warnings\)$/\1/p' \
+       | sed 's/Integrity Warnings/Warnings/' | tr '\n' ' ' | sed 's/ $//')"
+}
+
+# AC: a bound exists on how much the section renders for any one umbrella, so
+# no entry can grow the generated file without limit.
+case_index_epics_section_caps_a_long_roster() {
+  local dir idx i n
+  dir=$(empty_dir index_epics_cap)
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  for i in $(seq -w 1 14); do
+    write_issue "$dir" "202602$i-member" "title: \"M$i\"
+status: open
+num: 1$i
+type: issue
+outcome: \"\"
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella]"
+  done
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  n="$(printf '%s\n' "$idx" | sed -n '/^## Epics$/,/^## Graph$/p' | grep -c '^  - `')"
+  assert_eq "the roster is capped" "10" "$n"
+  assert_match "and the remainder is named" '^  … 4 more open · 0 closed$' "$idx"
+}
+
+# AC: no field value a record carries can introduce a line into the section,
+# place a member under an umbrella it did not name, or change how deeply a
+# line is nested. The section's structure is a property of what writes it.
+#
+# Asserted as counts and shapes rather than as the absence of the injected
+# string: sanitized text legitimately survives, so "the string is gone" is the
+# wrong property and would pass against a broken fix.
+#
+# The values used are ones that SURVIVE the line-oriented frontmatter parse:
+# the field separator, a backtick and a control byte. A multi-line title would
+# prove nothing here — the parser drops the continuation lines before the
+# section ever sees them, so a case built on one passes with the section's own
+# sanitizer removed.
+case_index_epics_section_structure_is_the_writers() {
+  local dir idx section hostile
+  dir=$(empty_dir index_epics_injection)
+  # A title trying to forge extra `·`-delimited fields, open a code span, and
+  # smuggle a control byte.
+  hostile="Evil$(printf '\xc2\xb7')status: closed$(printf '\xc2\xb7')9/9 closed\`$(printf '\x01')x"
+  write_issue "$dir" "20260101-umbrella" "title: \"$hostile\"
+status: open
+num: 1
+type: epic
+outcome: \"\""
+  write_issue "$dir" "20260102-member" 'title: "M"
+status: open
+num: 2
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella]'
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  section="$(printf '%s\n' "$idx" | sed -n '/^## Epics$/,/^## Graph$/p')"
+  assert_eq "exactly one umbrella entry" "1" \
+    "$(printf '%s\n' "$section" | grep -c '^- `')"
+  assert_eq "exactly one member line" "1" \
+    "$(printf '%s\n' "$section" | grep -c '^  - `')"
+  # The writer emits exactly two separators on an umbrella line — before
+  # `status:` and before the progress figure. A title that kept its own would
+  # add more, which is how a value forges a field the writer never wrote.
+  assert_eq "the umbrella line carries only the writer's separators" "2" \
+    "$(printf '%s\n' "$section" | grep '^- `' | grep -o '·' | wc -l)"
+  # Two backticks, both the writer's, around the slug. A third would open a
+  # span reaching into the member lines below.
+  assert_eq "only the writer's backticks" "2" \
+    "$(printf '%s\n' "$section" | grep '^- `' | grep -o '`' | wc -l)"
+  assert_eq "no control byte reached the index" "0" \
+    "$(printf '%s\n' "$section" | grep -c "$(printf '\x01')")"
+}
+
+# AC: the index reports any membership that violates the containment rule, so
+# a record written by hand rather than through a verb is still caught.
+case_index_warns_a_non_epic_umbrella() {
+  local dir
+  dir=$(empty_dir index_warn_non_epic)
+  write_issue "$dir" "20260101-plain" 'title: "Plain"
+status: open
+num: 1
+type: issue
+outcome: ""'
+  write_issue "$dir" "20260102-member" 'title: "M"
+status: open
+num: 2
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-plain]'
+  run_index "$dir"
+  assert_match "warned" 'names an umbrella that is not an epic' \
+    "$(cat "$dir/INDEX.md")"
+}
+
+# AC: an umbrella never contains another umbrella, and the index reports one
+# that arrived by hand-edit.
+case_index_warns_an_epic_inside_an_epic() {
+  local dir
+  dir=$(empty_dir index_warn_nested_epic)
+  write_issue "$dir" "20260101-outer" 'title: "Outer"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  write_issue "$dir" "20260102-inner" 'title: "Inner"
+status: open
+num: 2
+type: epic
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-outer]'
+  run_index "$dir"
+  assert_match "warned" 'cannot belong to an epic' "$(cat "$dir/INDEX.md")"
+}
+
+# AC: integrity reports identify offending issues without reproducing their
+# body content — the value a schema warning names goes through the same row
+# sanitizer its sibling warnings use, so a control byte or an unbounded value
+# cannot ride into the committed index.
+case_index_schema_warnings_clear_the_sanitizer() {
+  local dir long idx
+  dir=$(empty_dir index_schema_warn_sanitize)
+  long="$(printf 'A%.0s' $(seq 1 600))"
+  printf -- '---\ntitle: "X"\nstatus: closed\ntype: issue\noutcome: "donw%s%sTAILMARK"\n---\n' \
+    "$(printf '\033[31m\r')" "$long" > "$dir/20260101-nasty.md"
+  run_index "$dir"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "warned" 'unrecognized outcome' "$idx"
+  if grep -q $'\033' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [an escape byte reached the committed index]"
+  fi
+  if grep -q $'\r' "$dir/INDEX.md"; then
+    CURRENT_FAILED=1
+    echo "    [a carriage return reached the committed index]"
+  fi
+  if echo "$idx" | grep -q 'TAILMARK'; then
+    CURRENT_FAILED=1
+    echo "    [an unbounded outcome value landed whole in the index]"
+  fi
+}
+
+# ─── Section: new.sh — filer identity and the new schema fields ─────────────
+
+# AC: a newly filed issue has its filer recorded automatically, without the
+# developer supplying it.
+case_new_records_the_filer_from_the_environment() {
+  local dir b
+  dir=$(empty_dir new_filer)
+  b=$(fixture new_filer_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-filer" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels x --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  assert_match "filer recorded" "filed-by: \"$TEST_IDENTITY\"" "$(cat "$dir/20260101-filer.md")"
+}
+
+# AC: an issue records what kind of record it is, who currently holds it, and —
+# once finished at least once — the outcome. A new issue is unheld, has never
+# been finished, and belongs to no umbrella.
+case_new_defaults_kind_and_leaves_holder_and_outcome_empty() {
+  local dir b out
+  dir=$(empty_dir new_defaults)
+  b=$(fixture new_defaults_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-defaults" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels x --origin conversation --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-defaults.md")"
+  assert_match "kind defaults to issue" '^type: issue$'   "$out"
+  assert_match "unheld"                  '^claimed-by: ""$' "$out"
+  assert_match "never finished"          '^outcome: ""$'    "$out"
+  assert_match "no umbrella"             '^  part-of: \[\]$' "$out"
+}
+
+# AC: an umbrella is created through the same capture flow that files an
+# ordinary issue, so the kind is the only difference between the two calls.
+case_new_files_an_epic_kind() {
+  local dir b out
+  dir=$(empty_dir new_epic_kind)
+  b=$(fixture new_epic_kind_body.md 'body')
+  run_new --dir "$dir" --slug "20260101-umbrella" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels x --origin conversation \
+    --type epic --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260101-umbrella.md")"
+  assert_match "the kind asked for is the kind written" '^type: epic$' "$out"
+}
+
+# AC: an unrecognized kind is refused rather than written, and the refusal
+# fires above the allocator so it costs no identity. This case pins the
+# refusal and that nothing reached the collection; the ordinal itself is
+# measured by case_new_refusals_leave_the_ordinal_unspent, which is what makes
+# the position rather than the wording the thing under test.
+case_new_refuses_an_unrecognized_kind_before_spending_an_ordinal() {
+  local repo b
+  repo=$(new_repo new_bad_kind)
+  b=$(fixture new_bad_kind_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Alpha" --priority medium --labels x --origin conversation \
+    --type sandwich --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  # The refusal names the rejected field, never its value: a kind arrives as
+  # the same model-produced text a title does, and the priority and status
+  # refusals beside it already answer this way.
+  assert_eq "the rejected value is not echoed back" "0" \
+    "$(printf '%s' "$ERR" | grep -c sandwich)"
+  assert_eq "nothing was written" "0" \
+    "$(find "$repo/docs/issues" -name '*.md' 2>/dev/null | wc -l)"
+}
+
+# AC: naming an umbrella at capture time groups the work in one command, and
+# the membership is recorded on the member alone — the umbrella's own file
+# says nothing about who joined it.
+case_new_files_into_an_umbrella() {
+  local dir b out
+  dir=$(empty_dir new_part_of)
+  write_issue "$dir" "20260101-umbrella" 'id: 20260101-umbrella
+num: 1
+type: epic
+status: open'
+  b=$(fixture new_part_of_body.md 'body')
+  run_new --dir "$dir" --slug "20260102-member" --num 2 \
+    --created "2026-01-02T00:00:00Z" --updated "2026-01-02T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --part-of 20260101-umbrella --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  out="$(cat "$dir/20260102-member.md")"
+  assert_match "membership recorded on the member" \
+    '^  part-of: \[20260101-umbrella\]$' "$out"
+  assert_eq "the umbrella records nothing about the member" "0" \
+    "$(grep -c 'member' "$dir/20260101-umbrella.md")"
+}
+
+# AC: an umbrella is nameable by every form an issue is nameable by, so the
+# capture path and the lifecycle verbs cannot disagree about what resolves.
+# An ordinal and a prefix are the two forms exact-string matching would miss.
+case_new_part_of_accepts_ordinal_and_prefix_forms() {
+  local dir b
+  dir=$(empty_dir new_part_of_forms)
+  write_issue "$dir" "20260101-auth-hardening" 'id: 20260101-auth-hardening
+num: 7
+type: epic
+status: open'
+  b=$(fixture new_part_of_forms_body.md 'body')
+  run_new --dir "$dir" --slug "20260102-by-ordinal" --num 2 \
+    --created "2026-01-02T00:00:00Z" --updated "2026-01-02T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --part-of 7 --body-file "$b"
+  assert_exit "ordinal rc" 0 "$RC"
+  assert_match "an ordinal resolves to the umbrella's slug" \
+    '^  part-of: \[20260101-auth-hardening\]$' "$(cat "$dir/20260102-by-ordinal.md")"
+  run_new --dir "$dir" --slug "20260103-by-prefix" --num 3 \
+    --created "2026-01-03T00:00:00Z" --updated "2026-01-03T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --part-of 20260101-auth --body-file "$b"
+  assert_exit "prefix rc" 0 "$RC"
+  assert_match "a prefix resolves to the umbrella's slug" \
+    '^  part-of: \[20260101-auth-hardening\]$' "$(cat "$dir/20260103-by-prefix.md")"
+}
+
+# AC: a reference that resolved is written as the record it resolved to. The
+# id charset the validator admits is wider than the label charset -- uppercase
+# and `.` clear one and are reduced by the other -- so putting a resolved id
+# through the label encoder would write a membership naming a record that does
+# not exist, which the index would then warn about forever.
+case_new_part_of_preserves_a_mixed_case_umbrella_id() {
+  local dir b
+  dir=$(empty_dir new_part_of_mixed_case)
+  write_issue "$dir" "JIM-0042-auth-hardening" 'id: JIM-0042-auth-hardening
+num: 42
+type: epic
+status: open'
+  b=$(fixture new_part_of_mixed_body.md 'body')
+  run_new --dir "$dir" --slug "20260102-member" --num 2 \
+    --created "2026-01-02T00:00:00Z" --updated "2026-01-02T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --part-of JIM-0042-auth-hardening --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the resolved id is written verbatim" \
+    '^  part-of: \[JIM-0042-auth-hardening\]$' "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: naming an umbrella that does not exist is refused when filing, on the
+# same terms as naming one afterwards, and the refusal costs no identity.
+# case_new_refusals_leave_the_ordinal_unspent measures the ordinal.
+case_new_refuses_an_unresolvable_umbrella_before_spending_an_ordinal() {
+  local repo b
+  repo=$(new_repo new_bad_umbrella)
+  mkdir -p "$repo/docs/issues"
+  b=$(fixture new_bad_umbrella_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Alpha" --priority medium --labels x --origin conversation \
+    --part-of no-such-umbrella --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_eq "nothing was written" "0" \
+    "$(find "$repo/docs/issues" -name '*.md' 2>/dev/null | wc -l)"
+}
+
+# AC: an umbrella contains ordinary issues, so filing into a record that is
+# not one is refused -- and the refusal says what that record actually is,
+# which is the difference between a typo and a category error.
+case_new_refuses_a_non_epic_umbrella_at_capture() {
+  local repo b
+  repo=$(new_repo new_non_epic_umbrella)
+  mkdir -p "$repo/docs/issues"
+  write_issue "$repo/docs/issues" "20260101-plain" 'id: 20260101-plain
+num: 1
+type: issue
+status: open'
+  b=$(fixture new_non_epic_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Alpha" --priority medium --labels x --origin conversation \
+    --part-of 20260101-plain --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the refusal names what the record is" 'issue' "$ERR"
+  assert_eq "only the seeded record exists" "1" \
+    "$(find "$repo/docs/issues" -name '*.md' | wc -l)"
+}
+
+# AC: an umbrella groups work, so putting one under another is refused --
+# and it is refused wherever the state is reachable. The capture path and
+# `join` write the same field, so a containment rule enforced on one of them
+# is a rule the collection does not have: the record filed here is exactly
+# the record `join` would refuse. Refused above the allocator with the other
+# capture-time checks, which is what keeps it free.
+case_new_refuses_an_epic_filed_into_an_epic() {
+  local repo b
+  repo=$(new_repo new_nested_epic)
+  mkdir -p "$repo/docs/issues"
+  write_issue "$repo/docs/issues" "20260101-outer" 'id: 20260101-outer
+num: 1
+type: epic
+status: open'
+  b=$(fixture new_nested_epic_body.md 'body')
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Inner" --priority medium --labels x --origin conversation \
+    --type epic --part-of 20260101-outer --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_eq "only the seeded umbrella exists" "1" \
+    "$(find "$repo/docs/issues" -name '*.md' | wc -l)"
+}
+
+# AC: a repeated capture flag is carried forward by its LAST occurrence. The
+# dispatch bullet tells the agent to take every occurrence out of the subject
+# on exactly this ground — a leftover one is filed as title text — so the
+# parser's tie-break is what makes that instruction correct rather than
+# arbitrary.
+case_new_repeated_flag_takes_the_last_occurrence() {
+  local dir b file
+  dir=$(empty_dir new_repeated_flag)
+  write_issue "$dir" "20260101-alpha" 'id: 20260101-alpha
+num: 7
+type: epic
+status: open'
+  write_issue "$dir" "20260101-beta" 'id: 20260101-beta
+num: 8
+type: epic
+status: open'
+  b=$(fixture new_repeated_flag_body.md 'body')
+  run_new --dir "$dir" --slug "20260102-member" --num 2 \
+    --created "2026-01-02T00:00:00Z" --updated "2026-01-02T00:00:00Z" \
+    --title "M" --priority low --labels x --origin conversation \
+    --type epic --type issue \
+    --part-of 20260101-alpha --part-of 20260101-beta \
+    --body-file "$b"
+  assert_exit "rc" 0 "$RC"
+  file="$(cat "$dir/20260102-member.md")"
+  assert_match "the last kind wins"     '^type: issue$'                  "$file"
+  assert_match "the last umbrella wins" '^  part-of: \[20260101-beta\]$' "$file"
+}
+
+# AC: a filing refused for any reason consumes no issue identity. The
+# allocator is append-only, so an ordinal spent by a run that then refuses is
+# one no later run reclaims — which makes the POSITION of a refusal, not its
+# wording, the property under test. Every capture-time refusal is driven
+# here, then a filing that succeeds is asserted to take the ordinal they would
+# have taken.
+#
+# This is what makes the directory hoist and the checks one change rather than
+# several edits: move any refusal below the allocation and the good filing
+# lands past 1.
+case_new_refusals_leave_the_ordinal_unspent() {
+  local repo b log slug
+  repo=$(new_repo new_unspent_ordinal)
+  mkdir -p "$repo/docs/issues"
+  write_issue "$repo/docs/issues" "20260101-outer" 'id: 20260101-outer
+num: 1
+type: epic
+status: open'
+  b=$(fixture new_unspent_body.md 'body')
+
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Rejected kind" --priority medium --labels x --origin conversation \
+    --type sandwich --body-file "$b"
+  assert_exit "an unrecognized kind refuses" 1 "$RC"
+
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Rejected umbrella" --priority medium --labels x --origin conversation \
+    --part-of no-such-umbrella --body-file "$b"
+  assert_exit "an unresolvable umbrella refuses" 1 "$RC"
+
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Rejected nesting" --priority medium --labels x --origin conversation \
+    --type epic --part-of 20260101-outer --body-file "$b"
+  assert_exit "an epic under an epic refuses" 1 "$RC"
+
+  # Nothing was reserved: the registry has no allocation to show for either.
+  log="$(git -C "$repo" cat-file -p refs/heads/jim/registry:issues.log 2>/dev/null)"
+  assert_eq "no ordinal was reserved by the refusals" "0" \
+    "$(printf '%s' "$log" | grep -c '^issue allocate ')"
+
+  run_new_in "$repo" --dir "$repo/docs/issues" \
+    --title "Accepted" --priority medium --labels x --origin conversation \
+    --body-file "$b"
+  assert_exit "the next filing succeeds" 0 "$RC"
+  slug="${OUT%%$'\t'*}"
+  assert_eq "it takes the ordinal the refusals would have burned" "1" \
+    "$(num_of "$repo/docs/issues" "$slug")"
+}
+
+# AC: when the developer's identity cannot be determined from the environment,
+# filing an issue is refused and nothing is written.
+case_new_refuses_a_filing_with_no_identity() {
+  local repo b
+  repo="$(identity_repo new_no_identity)"
+  b=$(fixture new_no_identity_body.md 'body')
+  run_new_unidentified "$repo" --dir "$repo/issues" --slug "20260101-none" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "T" --priority low --labels x --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_eq "nothing written" "no" \
+    "$([[ -e "$repo/issues/20260101-none.md" ]] && echo yes || echo no)"
+}
+
+# AC: the refusal is reported as a fixed reason that names the missing identity
+# and carries no issue content.
+case_new_identity_refusal_carries_no_issue_content() {
+  local repo b
+  repo="$(identity_repo new_no_identity_quiet)"
+  b=$(fixture new_no_identity_quiet_body.md 'body')
+  run_new_unidentified "$repo" --dir "$repo/issues" --slug "20260101-quiet" --num 1 \
+    --created "2026-01-01T00:00:00Z" --updated "2026-01-01T00:00:00Z" \
+    --title "Confidential customer escalation" --priority low --labels x \
+    --origin conversation --body-file "$b"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "a reason was given" "$ERR"
+  assert_eq "the title is not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'Confidential' && echo yes || echo no)"
+}
+
+# ─── Section: migrate.sh identity — argument surface ────────────────────────
+
+# AC: the two rewrite operations differ only in where the new value comes from,
+# so one verb carries both. Neither mode named is a usage error, not a default:
+# guessing which rewrite an operator meant is the one thing a destructive
+# whole-collection operation must never do.
+case_migrate_identity_usage_requires_a_mode() {
+  local repo
+  repo="$(schema_repo migrate_identity_nomode)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the modes it accepts" 'renormalize' "$ERR"
+}
+
+# AC: both modes named is a usage error too — a remap and a re-normalization
+# compute the new value differently, so a run asking for both has no answer.
+case_migrate_identity_usage_refuses_both_modes() {
+  local repo
+  repo="$(schema_repo migrate_identity_bothmodes)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 2 "$RC"
+  # `renormalize` occurs in both mode refusals — this one and the no-mode-given
+  # one — so matching it cannot say which fired. A regression collapsing the two
+  # into one generic message would keep the word and lose the distinction. The
+  # phrase unique to this branch is what pins the branch.
+  assert_match "names the conflict" 'not both' "$ERR"
+}
+
+# AC: an explicit replacement supplies the old and new values together. Half a
+# mapping cannot be applied, and applying it as though the missing half were
+# empty would rewrite every identity in the collection.
+case_migrate_identity_usage_requires_both_halves_of_a_remap() {
+  local repo
+  repo="$(schema_repo migrate_identity_halfremap)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from 'old@example.test'
+  assert_exit "from-only rc" 2 "$RC"
+  # The flag name alone does not pin this guard. Removing it leaves the
+  # recordability check downstream refusing the empty half, and its message
+  # names the same flag — so both branches match `--to` and the assertion
+  # cannot say which refused. The phrase belongs to this guard only.
+  assert_match "names the missing half" 'from given without' "$ERR"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --to 'new@example.test'
+  assert_exit "to-only rc" 2 "$RC"
+  assert_match "names the missing half" 'to given without' "$ERR"
+}
+
+# AC: a flag that requires a value refuses when the next token is one of this
+# verb's own flags. Swallowing it costs twice: the swallowed flag goes
+# unapplied, and the value it becomes is one nobody typed — and the accepted
+# identity set admits a hyphen, so a swallowed flag clears validation cleanly
+# and the run proceeds on an intent that was never expressed.
+case_migrate_identity_usage_refuses_a_flag_where_a_value_belongs() {
+  local repo
+  repo="$(schema_repo migrate_identity_swallow)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from --apply --to 'new@example.test'
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the flag that landed there" '\-\-apply' "$ERR"
+}
+
+# AC: a flag this verb does not accept, standing where a value belongs, refuses
+# on the same rule as one it does. The rule is about a flag arriving where a
+# value belongs — an unrecognized flag is still a flag, and the option it can
+# swallow here is the gate authorizing a destructive whole-collection write.
+case_migrate_identity_usage_refuses_an_unknown_flag_where_a_value_belongs() {
+  local repo
+  repo="$(schema_repo migrate_identity_swallow_unknown)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from --nosuchflag --to 'new@example.test'
+  assert_exit  "rc" 2 "$RC"
+  assert_match "names the flag left without a value" '[-]-from requires a value' "$ERR"
+  assert_match "says a flag landed there"            'a flag followed it'        "$ERR"
+}
+
+# AC: a flag standing last, or given an empty value, refuses rather than
+# recording an empty one. The mode is read from what was typed, so a half-typed
+# remap can no longer slip past the both-modes check by leaving its value empty
+# — which is how two contradictory modes were accepted as one.
+case_migrate_identity_usage_refuses_a_valueless_flag() {
+  local repo
+  repo="$(schema_repo migrate_identity_valueless)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --from
+  assert_exit "trailing flag rc" 2 "$RC"
+  assert_match "names the flag" '\-\-from' "$ERR"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from '' --to 'new@example.test'
+  assert_exit "empty value rc" 2 "$RC"
+  assert_match "names the flag" '\-\-from' "$ERR"
+}
+
+# AC: a value-less --expect refuses instead of disarming the drift guard. An
+# empty expectation is indistinguishable from asking for no check, so the flag
+# that authorizes a destructive whole-collection write would otherwise be
+# consumed and the write proceed unguarded.
+case_migrate_identity_valueless_expect_does_not_disarm_the_guard() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_expectless)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  before="$(cat "$repo/docs/issues/20260101-one.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply --expect
+  after="$(cat "$repo/docs/issues/20260101-one.md")"
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the flag" '\-\-expect' "$ERR"
+  assert_eq "nothing was rewritten" "$before" "$after"
+}
+
+# AC: a value that merely looks option-shaped is still carried. The accepted
+# identity set admits a leading hyphen deliberately, because real addresses
+# carry one, so a single-hyphen operand reaches the lookup like any other value
+# — the guard tells a mistyped flag from an unusual value rather than refusing
+# both.
+#
+# This case pins the guard's BOUNDARY, not the guard, and the boundary sits
+# between one hyphen and two. A double-hyphen token is a flag arriving where a
+# value belongs whoever owns it, and binding one consumes the option that was
+# typed and applies one that was not — here on a path where the option it can
+# swallow authorizes a destructive whole-collection write. A single hyphen is
+# the case the identity set was widened for, and refusing it would silently
+# break every address that wears one, so it stays accepted.
+case_migrate_identity_hyphen_values_accepted_but_flags_are_not() {
+  local repo
+  repo="$(identity_collection migrate_identity_optionshaped)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from '-x' --to 'dev@example.test'
+  assert_exit "hyphen value rc" 0 "$RC"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --from '--help' --to 'dev@example.test'
+  assert_exit "double-hyphen value refuses" 2 "$RC"
+  assert_match "says a flag landed there" 'a flag followed it' "$ERR"
+}
+
+# AC: a usage error writes nothing.
+case_migrate_identity_usage_error_writes_nothing() {
+  local repo before after
+  repo="$(schema_repo migrate_identity_nowrite)"
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 2 "$RC"
+  assert_eq "collection untouched" "$before" "$after"
+}
+
+# AC: the verb is discoverable from the script's own help.
+case_migrate_identity_usage_is_documented_in_help() {
+  run_migrate help
+  assert_exit "rc" 0 "$RC"
+  assert_match "identity verb documented" 'migrate\.sh identity' "$OUT"
+  assert_match "renormalize mode documented" 'renormalize' "$OUT"
+  assert_match "remap mode documented" 'from' "$OUT"
+}
+
+# ─── Section: migrate.sh identity — re-normalization ────────────────────────
+
+# identity_collection <name> — a git repo holding a converted collection, so
+# every issue already records the two identity fields the rewrites operate on.
+identity_collection() {
+  local d
+  d="$(schema_repo "$1")"
+  printf '%s' "$d"
+}
+
+# recorded_issue <repo> <slug> <filed-by> <claimed-by> — one converted issue.
+recorded_issue() {
+  local repo="$1" slug="$2" filer="$3" holder="${4:-}"
+  write_issue "$repo/docs/issues" "$slug" "title: \"$slug\"
+status: open
+priority: low
+type: issue
+filed-by: \"$filer\"
+claimed-by: \"$holder\"
+outcome: \"\"
+labels: []"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "file $slug" >/dev/null 2>&1
+}
+
+# AC: an operator can re-apply the project's current form to identities
+# recorded under a previous one, without supplying any mapping.
+case_migrate_identity_renormalize_plans_the_current_form() {
+  local repo
+  repo="$(identity_collection migrate_identity_renorm)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "the record is planned" '20260101-one' "$OUT"
+  assert_match "the field is named"    'filed-by' "$OUT"
+  assert_match "the new value is shown" '> dev' "$OUT"
+  assert_match "counted as a rewrite"  '1 to rewrite' "$OUT"
+}
+
+# AC: a record the current form already agrees with is left alone.
+case_migrate_identity_renormalize_leaves_a_conforming_record_alone() {
+  local repo
+  repo="$(identity_collection migrate_identity_renorm_noop)"
+  recorded_issue "$repo" "20260101-two" 'dev'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "reported unchanged" 'unchanged  20260101-two' "$OUT"
+  assert_match "counted as unchanged" '0 to rewrite · 1 unchanged' "$OUT"
+}
+
+# AC: the rewrite covers every field that records an identity, including the
+# holder — which no derivation can recover.
+case_migrate_identity_renormalize_covers_the_holder_field() {
+  local repo
+  repo="$(identity_collection migrate_identity_renorm_holder)"
+  recorded_issue "$repo" "20260101-held" 'dev' '5678+Alice@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "the holder field is named" 'claimed-by' "$OUT"
+  assert_match "the holder's new value" '> alice' "$OUT"
+}
+
+# AC: the operation shows what it would change and writes nothing until the
+# operator explicitly applies it.
+case_migrate_identity_renormalize_preview_writes_nothing() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_renorm_readonly)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "collection untouched" "$before" "$after"
+  assert_match "a plan hash is offered" 'PLAN-HASH: [0-9]+' "$OUT"
+}
+
+# AC: a preview that resolves identities through the alias mapping discloses
+# that it did so, whether a mapping was found at all, and how many records it
+# altered — so an operator sees the transform before approving it rather than
+# inferring it from the result afterwards.
+case_migrate_identity_renormalize_discloses_the_alias_mapping() {
+  local repo
+  repo="$(identity_collection migrate_identity_renorm_disclose)"
+  recorded_issue "$repo" "20260101-one" 'old@personal.example'
+  recorded_issue "$repo" "20260101-two" 'someone@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "no-mapping rc" 0 "$RC"
+  assert_match "says a mapping resolves identities" '[Aa]lias mapping' "$OUT"
+  assert_match "says none was found" 'none found' "$OUT"
+
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "map" >/dev/null 2>&1
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "mapping rc" 0 "$RC"
+  assert_match "names the mapping in play" 'Alias mapping \(\.mailmap\)' "$OUT"
+  assert_match "counts the records it altered" '1 record' "$OUT"
+  assert_match "the mapped record takes the mapped form" '> dev' "$OUT"
+}
+
+
+# AC: the disclosure describes the mapping that will actually apply. Presence
+# and application resolve from one root, so a collection directory the
+# repository does not contain cannot leave the preview announcing that no
+# mapping is in play while every value is being mapped through one. A
+# disclosure exists to be relied on, which is what makes a confidently wrong
+# one worse than none.
+case_migrate_identity_disclosure_and_lookup_share_a_root() {
+  local repo outside
+  repo="$(identity_collection migrate_identity_disclose_root)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "map" >/dev/null 2>&1
+
+  # A collection the operand names and the repository does not hold — the shape
+  # a routed placement materializes, which carries no `.git` of its own while
+  # the lookup goes on reading the working directory's repository.
+  outside="$TMP_BASE/migrate_identity_disclose_outside"
+  mkdir -p "$outside"
+  write_issue "$outside" "20260101-one" "title: \"one\"
+status: open
+priority: low
+type: issue
+filed-by: \"old@personal.example\"
+claimed-by: \"\"
+outcome: \"\"
+labels: []"
+
+  run_in "$repo" "$SCRIPT_MIGRATE" identity "$outside" --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_eq "does not announce a mapping that is in play as absent" "no" \
+    "$(printf '%s' "$OUT" | grep -q 'none found' && echo yes || echo no)"
+  assert_match "names the mapping that applies" 'Alias mapping \(\.mailmap\)' "$OUT"
+  assert_match "counts the record it altered" '1 record' "$OUT"
+}
+# ─── Section: migrate.sh identity — explicit remap ──────────────────────────
+
+# AC: an operator can replace one recorded identity with another across the
+# whole collection, supplying the old and new values explicitly.
+case_migrate_identity_remap_plans_the_supplied_replacement() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap)"
+  recorded_issue "$repo" "20260101-one" 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "the supplied mapping is shown" 'from  old@example\.test' "$OUT"
+  assert_match "the record is planned" '20260101-one' "$OUT"
+  assert_match "the new value is shown" '> new@example\.test' "$OUT"
+  assert_match "counted as a rewrite" '1 to rewrite' "$OUT"
+}
+
+# AC: the replacement covers every field that records an identity, including
+# the holder — which no derivation can recover, and which is therefore the
+# reason an explicit mapping is required rather than a re-derivation.
+case_migrate_identity_remap_covers_the_holder_field() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_holder)"
+  recorded_issue "$repo" "20260101-held" 'old@example.test' 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "the filer field is named"  'filed-by' "$OUT"
+  assert_match "the holder field is named" 'claimed-by' "$OUT"
+  assert_match "both fields counted" '2 to rewrite' "$OUT"
+}
+
+# AC: only the named identity is replaced — a remap is a mapping the operator
+# supplied, not a rewrite of everyone.
+case_migrate_identity_remap_leaves_other_identities_alone() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_others)"
+  recorded_issue "$repo" "20260101-one"   'old@example.test'
+  recorded_issue "$repo" "20260101-other" 'someone@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "the other record is untouched" 'unchanged  20260101-other' "$OUT"
+  assert_match "one rewrite, one unchanged" '1 to rewrite · 1 unchanged' "$OUT"
+}
+
+# AC: two addresses differing only in case are one address, so an operator is
+# not asked to guess how a value was typed when it was recorded.
+case_migrate_identity_remap_matches_without_case() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_case)"
+  recorded_issue "$repo" "20260101-one" 'Old@Example.Test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'new@example.test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "the record is planned" '1 to rewrite' "$OUT"
+  # The run above folds the record's side only; a `--from` that was never folded
+  # would still match it. The property is symmetric, so the case has to drive
+  # both directions — a mixed-case `--from` against a record already lower.
+  recorded_issue "$repo" "20260102-two" 'other@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'Other@Example.TEST' --to 'new@example.test'
+  assert_exit "rc for a mixed-case --from" 0 "$RC"
+  assert_match "that record is planned too" '1 to rewrite' "$OUT"
+}
+
+# AC: a value that cannot be recorded is refused before anything is planned,
+# and the refusal names neither the value nor any issue content.
+case_migrate_identity_remap_refuses_an_unrecordable_replacement() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_bad)"
+  recorded_issue "$repo" "20260101-one" 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to "new${LINE_SEP}@secret-corp.example"
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "a reason was given" "$ERR"
+  assert_eq "the rejected value is not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
+}
+
+# AC: every recorded identity is lower case, whichever path wrote it — an
+# explicit replacement is still a recorded identity.
+case_migrate_identity_remap_records_the_replacement_lower_cased() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_lower)"
+  recorded_issue "$repo" "20260101-one" 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to 'New@Example.Test'
+  assert_exit "rc" 0 "$RC"
+  assert_match "lower-cased" '> new@example\.test' "$OUT"
+}
+
+# ─── Section: migrate.sh identity — ambiguity ───────────────────────────────
+
+# AC: an operation that plans a change across the whole collection refuses the
+# entire run when two distinct source addresses within it would record as the
+# same identity. Discovering the merge months later in a by-person view that
+# looks perfectly plausible is the alternative.
+case_migrate_identity_ambiguous_refuses_the_whole_run() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  recorded_issue "$repo" "20260101-one" 'alice@company.example'
+  recorded_issue "$repo" "20260101-two" 'alice+ops@company.example'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the first record"  '20260101-one' "$ERR"
+  assert_match "names the second record" '20260101-two' "$ERR"
+  assert_match "names the value they would share" 'alice' "$ERR"
+}
+
+# AC: an ambiguity refusal names the colliding records and the single value
+# they would both produce, rather than the two source addresses. It stays
+# actionable, because each named record carries its own address — without
+# copying contributor addresses into a channel whose audience may be wider than
+# the collection's.
+case_migrate_identity_ambiguous_refusal_withholds_the_source_addresses() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_quiet)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  recorded_issue "$repo" "20260101-one" 'alice@company.example'
+  recorded_issue "$repo" "20260101-two" 'alice+ops@company.example'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 2 "$RC"
+  assert_eq "the source addresses are not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'company\.example' && echo yes || echo no)"
+}
+
+# AC: the refusal is of the entire run — nothing is written.
+case_migrate_identity_ambiguous_writes_nothing() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_ambig_nowrite)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  recorded_issue "$repo" "20260101-one" 'alice@company.example'
+  recorded_issue "$repo" "20260101-two" 'alice+ops@company.example'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 2 "$RC"
+  assert_eq "collection untouched" "$before" "$after"
+}
+
+# AC: one contributor's several addresses resolve to a single recorded
+# identity. Two addresses the project's alias mapping already unifies are one
+# contributor by the project's own declaration, so their landing on one
+# identity is the feature working — refusing it would disable re-normalization
+# for exactly the projects that keep a mapping.
+case_migrate_identity_ambiguous_mapping_unified_addresses_do_not_collide() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_mapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m map >/dev/null 2>&1
+  recorded_issue "$repo" "20260101-one" 'old@personal.example'
+  recorded_issue "$repo" "20260101-two" '1234+dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "both are planned"  '2 to rewrite' "$OUT"
+  assert_match "none is ambiguous" '0 ambiguous'  "$OUT"
+}
+
+# AC: the collision that matters survives. Two addresses the mapping does NOT
+# unify, which converge only because the form extracts from both, are two
+# contributors the project never declared identical — the merge this refusal
+# exists to catch.
+case_migrate_identity_ambiguous_extraction_merged_addresses_still_collide() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_extracted)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  # A mapping exists, and deliberately says nothing about either address: the
+  # exclusion is "the mapping unified them", never "a mapping is present".
+  printf 'Dev <1234+dev@users.noreply.github.com> <unrelated@personal.example>\n' \
+    > "$repo/.mailmap"
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m map >/dev/null 2>&1
+  recorded_issue "$repo" "20260101-one" 'alice@company.example'
+  recorded_issue "$repo" "20260101-two" 'alice+ops@company.example'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the first record"  '20260101-one' "$ERR"
+  assert_match "names the second record" '20260101-two' "$ERR"
+}
+
+# AC: two source addresses differing only in case are one address, not a
+# collision — a contributor is never refused for having typed their own address
+# two ways.
+case_migrate_identity_ambiguous_case_only_difference_is_not_a_collision() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_case)"
+  recorded_issue "$repo" "20260101-one" 'Dev@Example.Test'
+  recorded_issue "$repo" "20260101-two" 'DEV@EXAMPLE.TEST'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "both are planned" '2 to rewrite' "$OUT"
+  assert_match "none is ambiguous" '0 ambiguous' "$OUT"
+}
+
+# AC: a record already recorded in the current form is not a second person
+# colliding with the record that is about to reach it. A collection part-way
+# through a form change holds exactly that pair, and refusing it would make
+# re-normalization impossible in the one situation it exists for.
+case_migrate_identity_ambiguous_an_already_recorded_form_is_not_a_collision() {
+  local repo
+  repo="$(identity_collection migrate_identity_ambig_partial)"
+  recorded_issue "$repo" "20260101-one" '1234+dev@users.noreply.github.com'
+  recorded_issue "$repo" "20260101-two" 'dev'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "rc" 0 "$RC"
+  assert_match "one rewrite, one unchanged" '1 to rewrite · 1 unchanged' "$OUT"
+  assert_match "none is ambiguous" '0 ambiguous' "$OUT"
+}
+
+# ─── Section: migrate.sh identity — the apply path ──────────────────────────
+
+# AC: both operations write nothing until the operator explicitly applies them,
+# and the apply writes what the preview showed.
+case_migrate_identity_apply_writes_the_new_values() {
+  local repo
+  repo="$(identity_collection migrate_identity_apply)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "the new value is recorded" '^filed-by: "dev"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: the rewrite covers every field that records an identity, including the
+# holder.
+case_migrate_identity_apply_covers_the_holder_field() {
+  local repo file
+  repo="$(identity_collection migrate_identity_apply_holder)"
+  recorded_issue "$repo" "20260101-held" '1234+dev@users.noreply.github.com' \
+    '5678+Alice@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "rc" 0 "$RC"
+  file="$(cat "$repo/docs/issues/20260101-held.md")"
+  assert_match "the filer is rewritten"  '^filed-by: "dev"$'     "$file"
+  assert_match "the holder is rewritten" '^claimed-by: "alice"$' "$file"
+}
+
+# AC: an apply is refused when the collection has changed since the preview the
+# operator approved.
+case_migrate_identity_apply_refuses_a_stale_plan() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_apply_stale)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply \
+    --expect 0000000000
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 3 "$RC"
+  assert_eq "collection untouched" "$before" "$after"
+  assert_match "names the drift" 'PLAN-HASH' "$ERR"
+}
+
+# AC: the hash the preview printed is what authorizes the write.
+case_migrate_identity_apply_accepts_the_previewed_hash() {
+  local repo hash
+  repo="$(identity_collection migrate_identity_apply_hash)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  hash="$(printf '%s' "$OUT" | sed -n 's/^PLAN-HASH: //p')"
+  assert_nonempty "a hash was printed" "$hash"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply \
+    --expect "$hash"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the new value is recorded" '^filed-by: "dev"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: the generated index reflects the collection after a rewrite, so a
+# by-person view is not left describing identities the files no longer hold.
+case_migrate_identity_apply_regenerates_the_index() {
+  local repo
+  repo="$(identity_collection migrate_identity_apply_index)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  # The warning before and its absence after is the assertion. A file existing
+  # afterwards says nothing: an index regenerated from stale state, from the
+  # wrong directory, or before the rewrite landed leaves one there just the same.
+  run_index "$repo/docs/issues"
+  assert_exit "rc for the index before" 0 "$RC"
+  assert_match "the mismatch is reported before" 'record\(s\) hold an identity' \
+    "$(cat "$repo/docs/issues/INDEX.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the index exists" "yes" \
+    "$([[ -f "$repo/docs/issues/INDEX.md" ]] && echo yes || echo no)"
+  assert_eq "and no longer reports a mismatch" "no" \
+    "$(grep -qF 'record(s) hold an identity' "$repo/docs/issues/INDEX.md" \
+       && echo yes || echo no)"
+}
+
+# AC: a regeneration that failed is surfaced and carried, never discarded under
+# a success message. The files are already rewritten at that point, so a run
+# reporting success over a stale index is the one outcome that cannot be
+# noticed from the output.
+case_migrate_identity_apply_surfaces_an_index_failure() {
+  local repo
+  repo="$(identity_collection migrate_identity_apply_indexfail)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  # An unwritable directory where INDEX.md belongs: the rename cannot land.
+  mkdir -p "$repo/docs/issues/INDEX.md"
+  chmod 500 "$repo/docs/issues/INDEX.md"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  chmod 700 "$repo/docs/issues/INDEX.md"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure is named" 'index' "$ERR"
+  assert_match "the rewrite still landed" '^filed-by: "dev"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: re-applying is a no-op — a value already in the current form produces no
+# rewrite, so an interrupted run is finished by a retry.
+case_migrate_identity_apply_is_idempotent() {
+  local repo first
+  repo="$(identity_collection migrate_identity_apply_again)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "first rc" 0 "$RC"
+  first="$(cat "$repo/docs/issues/20260101-one.md")"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  assert_exit "second rc" 0 "$RC"
+  assert_eq "unchanged by the second run" "$first" \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: the id a rewrite composes a path from clears the validator first. The
+# slug reconstructs an entry this run globbed, so the check is not expected to
+# fire — the boundary is the validator call rather than the provenance of the
+# value, and a run holding an id it cannot vouch for writes nothing instead of
+# composing a path from it.
+case_migrate_identity_apply_gates_the_id_before_composing_a_path() {
+  local repo before after
+  repo="$(identity_collection migrate_identity_apply_idgate)"
+  recorded_issue "$repo" "20260101-one..two" '1234+Dev@users.noreply.github.com'
+  before="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  after="$(find "$repo/docs/issues" -type f | sort | xargs cksum 2>/dev/null)"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the refusal names the gate" 'invalid issue id' "$ERR"
+  assert_eq "the collection is untouched" "$before" "$after"
+}
+
+# ─── Section: migrate.sh — index regeneration failures ──────────────────────
+
+# AC: a regeneration that failed is surfaced and carried, never discarded under
+# a success message. Both apply paths write the collection first, so an index
+# still describing the state before the migration is exactly the staleness
+# nothing downstream would report.
+case_migrate_index_failure_is_surfaced_by_the_prefix_apply() {
+  local repo
+  repo="$(schema_repo migrate_index_failure_prefix)"
+  printf 'issue_id_prefix = "sequential"\n' > "$repo/jimconf.toml"
+  write_issue "$repo/docs/issues" "20260101-alpha" 'title: "Alpha"
+status: open
+priority: low
+num: 3'
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m "file alpha" >/dev/null 2>&1
+  mkdir -p "$repo/docs/issues/INDEX.md"
+  chmod 500 "$repo/docs/issues/INDEX.md"
+  run_in "$repo" "$SCRIPT_MIGRATE" prefix docs/issues --apply
+  chmod 700 "$repo/docs/issues/INDEX.md"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure is named" 'index' "$ERR"
+  assert_eq "the rename still landed" "yes" \
+    "$([[ -f "$repo/docs/issues/0003-alpha.md" ]] && echo yes || echo no)"
+}
+
+# AC: the same holds for the schema conversion, which writes every issue in the
+# collection before the index is regenerated.
+case_migrate_index_failure_is_surfaced_by_the_schema_apply() {
+  local repo
+  repo="$(schema_repo migrate_index_failure_schema)"
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  mkdir -p "$repo/docs/issues/INDEX.md"
+  chmod 500 "$repo/docs/issues/INDEX.md"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  chmod 700 "$repo/docs/issues/INDEX.md"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure is named" 'index' "$ERR"
+  assert_match "the conversion still landed" '^type: issue$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+
+# AC: the remap mode persists the operator's value as supplied. Every other
+# apply case drives `--renormalize`, so the one behaviour particular to remap —
+# a value recorded because it was typed rather than derived — reached no written
+# file. The replacement here is one the configured form would extract, so a
+# regression putting `--to` through the form changes what lands.
+case_migrate_identity_remap_apply_records_the_supplied_value() {
+  local repo
+  repo="$(identity_collection migrate_identity_remap_apply)"
+  recorded_issue "$repo" "20260101-one" 'old@example.test' 'old@example.test'
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues \
+    --from 'old@example.test' --to '9999+someone@users.noreply.github.com' --apply
+  assert_exit "rc" 0 "$RC"
+  assert_match "the filer holds the supplied value" \
+    '^filed-by: "9999\+someone@users\.noreply\.github\.com"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+  assert_match "and so does the holder" \
+    '^claimed-by: "9999\+someone@users\.noreply\.github\.com"$' \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: a staging failure mid-rewrite leaves the collection untouched and says so.
+# Driven by making the directory unwritable rather than by a fault-injection
+# seam: the branch is reachable from outside, so a seam here would be production
+# code that exists only to be tested. The prefix migration carries seams because
+# its failure points are inside git plumbing, which is not reachable that way.
+case_migrate_identity_apply_refuses_when_it_cannot_stage() {
+  local repo before
+  repo="$(identity_collection migrate_identity_apply_nostage)"
+  recorded_issue "$repo" "20260101-one" '1234+Dev@users.noreply.github.com'
+  before="$(cat "$repo/docs/issues/20260101-one.md")"
+  chmod 500 "$repo/docs/issues"
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize --apply
+  chmod 700 "$repo/docs/issues"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure names the staging" 'cannot create tmp' "$ERR"
+  assert_eq "the record is untouched" "$before" \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# AC: the same branch in the sibling conversion. Named by no issue — the gap was
+# reported against the identity rewrite alone, and the two applies are the same
+# shape with the same absence.
+case_migrate_schema_apply_refuses_when_it_cannot_stage() {
+  local repo before
+  repo="$(schema_repo migrate_schema_apply_nostage)"
+  schema_commit "$repo" "20260101-one" 'title: "One"
+status: open
+priority: low
+labels: [x]
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+created: 2026-01-01T00:00:00Z
+updated: 2026-01-01T00:00:00Z
+origin: "conversation"'
+  before="$(cat "$repo/docs/issues/20260101-one.md")"
+  chmod 500 "$repo/docs/issues"
+  run_in "$repo" "$SCRIPT_MIGRATE" schema docs/issues --apply
+  chmod 700 "$repo/docs/issues"
+  assert_exit "rc" 1 "$RC"
+  assert_match "the failure names the staging" 'cannot create tmp' "$ERR"
+  assert_eq "the record is untouched" "$before" \
+    "$(cat "$repo/docs/issues/20260101-one.md")"
+}
+
+# ─── Section: index.sh — the configured-form mismatch ───────────────────────
+
+# indexed_issue <dir> <slug> <filed-by> [<claimed-by>] — one converted issue.
+indexed_issue() {
+  local dir="$1" slug="$2" filer="$3" holder="${4:-}"
+  write_issue "$dir" "$slug" "title: \"$slug\"
+status: open
+priority: low
+type: issue
+filed-by: \"$filer\"
+claimed-by: \"$holder\"
+outcome: \"\"
+labels: []"
+}
+
+# AC: when the collection holds identities the project's current form would
+# record differently, that mismatch is surfaced without the operator having to
+# run a rewrite to discover it. A form whose effect is invisible until someone
+# reads a by-person view and mistrusts it is a setting nobody can rely on.
+case_index_identity_mismatch_names_the_affected_records() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch)
+  indexed_issue "$dir" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the record is named" '20260101-one' "$idx"
+  assert_match "the count is given"  '1 record'     "$idx"
+}
+
+# AC: a value the form cannot judge is surfaced, not passed over. Nothing that
+# fails the definition of a recordable identity can equal what the form would
+# record, so reading a failed normalization as agreement stays silent about
+# exactly the records an operator running a form migration needs to see —
+# pre-conversion and hand-edited records being the realistic source.
+case_index_identity_unjudgeable_values_are_surfaced() {
+  local dir idx
+  dir=$(empty_dir index_identity_unjudgeable)
+  indexed_issue "$dir" "20260101-bracket" 'bob]smith@example.test'
+  indexed_issue "$dir" "20260101-space"   'has space@example.test'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "both records are named" '20260101-bracket' "$idx"
+  assert_match "both records are named" '20260101-space'   "$idx"
+  assert_match "counted as its own class" '2 record\(s\) hold an identity the configured form cannot judge' "$idx"
+}
+
+# AC: the two classes are reported separately, each with a remedy that works on
+# it. The re-normalization skips a value it cannot produce, so filing one under
+# the other's remedy would leave the warning standing after the operator did
+# what it asked — and a signal with no exit condition is the nag this surface is
+# built not to be.
+case_index_identity_classes_carry_remedies_that_apply_to_them() {
+  local dir idx
+  dir=$(empty_dir index_identity_two_classes)
+  indexed_issue "$dir" "20260101-relay"  '1234+Dev@users.noreply.github.com'
+  indexed_issue "$dir" "20260101-broken" 'has space@example.test'
+  indexed_issue "$dir" "20260101-clean"  'dev'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the normalizable one keeps --renormalize" \
+    '1 record\(s\) hold an identity the configured form would record differently: `20260101-relay`. Re-apply the current form with `migrate.sh identity --renormalize`' "$idx"
+  assert_match "the unjudgeable one gets --from/--to" \
+    '1 record\(s\) hold an identity the configured form cannot judge: `20260101-broken`. The re-normalization skips these' "$idx"
+  assert_eq "the conforming record is named in neither" "no" \
+    "$(printf '%s' "$idx" | grep -E 'record\(s\) hold an identity' | grep -q '20260101-clean' && echo yes || echo no)"
+}
+
+# AC: the surface names the affected records and their count, never the
+# identity values — it is written into generated content the project publishes,
+# and each named record already carries its own value.
+case_index_identity_mismatch_never_names_the_value() {
+  local dir idx warnings
+  dir=$(empty_dir index_identity_mismatch_quiet)
+  indexed_issue "$dir" "20260101-one" '1234+secretperson@users.noreply.github.com'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  # The property is about the warning surface, not the whole file. An Issues
+  # row records every field a filter can name and `filed-by` is one of them,
+  # so the value is in the index by design — beside the record that already
+  # carries it. What the warning must not do is repeat it.
+  warnings="$(printf '%s\n' "$idx" | awk '/^## Integrity Warnings$/,EOF')"
+  assert_match "the record is named" '20260101-one' "$warnings"
+  assert_eq "no identity value in the warning" "no" \
+    "$(printf '%s' "$warnings" | grep -q 'secretperson' && echo yes || echo no)"
+}
+
+# AC: a collection already matching the configured form produces no warning —
+# the signal has an exit condition, which is what makes it a prompt to finish a
+# migration rather than a permanent nag.
+case_index_identity_mismatch_is_silent_when_the_collection_matches() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch_clean)
+  indexed_issue "$dir" "20260101-one" 'dev'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_eq "no mismatch warning" "no" \
+    "$(printf '%s' "$idx" | grep -qi 'configured form' && echo yes || echo no)"
+}
+
+# AC: the surface covers every field that records an identity, and an issue
+# whose two fields both mismatch is one affected record, not two.
+case_index_identity_mismatch_covers_the_holder_field() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch_holder)
+  indexed_issue "$dir" "20260101-held" 'dev' '5678+Alice@users.noreply.github.com'
+  indexed_issue "$dir" "20260101-both" '1234+Dev@users.noreply.github.com' \
+    '5678+Alice@users.noreply.github.com'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the holder-only record is named" '20260101-held' "$idx"
+  assert_match "counted once per record" '2 record' "$idx"
+}
+
+# AC: the list is bounded and carries a counted tail, so a collection where
+# every record mismatches does not turn the index into a list of itself.
+case_index_identity_mismatch_bounds_the_list_with_a_counted_tail() {
+  local dir idx i
+  dir=$(empty_dir index_identity_mismatch_many)
+  for i in 01 02 03 04 05 06 07 08 09 10 11 12; do
+    indexed_issue "$dir" "202601$i-x" "1234+Dev$i@users.noreply.github.com"
+  done
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the count is given" '12 record' "$idx"
+  assert_match "the list is bounded" 'more' "$idx"
+}
+
+# AC: a form that cannot be resolved omits the check and says so, rather than
+# computing it under a form nobody chose. An index claiming a check it did not
+# perform is the failure this project already refuses elsewhere.
+case_index_identity_mismatch_omits_the_check_when_the_form_is_unusable() {
+  local dir idx
+  dir=$(empty_dir index_identity_mismatch_unusable)
+  git init -q "$dir"
+  printf 'identity_scheme = "gitlab"\n' > "$dir/jimconf.toml"
+  indexed_issue "$dir" "20260101-one" '1234+Dev@users.noreply.github.com'
+  run_in "$dir" "$SCRIPT_INDEX" .
+  assert_exit "rc" 0 "$RC"
+  idx="$(cat "$dir/INDEX.md")"
+  assert_match "the omission is stated" 'not checked' "$idx"
+  assert_eq "no mismatch is claimed" "no" \
+    "$(printf '%s' "$idx" | grep -q 'record(s) hold an identity' && echo yes || echo no)"
+}
+
+# ─── Section: a collision never blocks a single-identity write ──────────────
+
+# AC: an operation that records a single identity is judged only against the
+# identity it is writing, so one colliding pair somewhere in the collection can
+# never block capture or a transition. The whole-collection refusal and this
+# one are different questions, and conflating them would let two records
+# elsewhere in the collection silence the tool entirely.
+case_identity_collision_does_not_block_a_filing() {
+  local repo body
+  repo="$(new_repo identity_collision_filing)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$repo/jimconf.toml"
+  mkdir -p "$repo/docs/issues"
+  indexed_issue "$repo/docs/issues" "20260101-one" 'alice@company.example'
+  indexed_issue "$repo/docs/issues" "20260101-two" 'alice+ops@company.example'
+  # The pair really does collide, so the failure this case guards against is
+  # reachable rather than hypothetical.
+  git -C "$repo" add -A >/dev/null 2>&1
+  git -C "$repo" commit -q -m collection >/dev/null 2>&1
+  run_in "$repo" "$SCRIPT_MIGRATE" identity docs/issues --renormalize
+  assert_exit "the collection is genuinely ambiguous" 2 "$RC"
+
+  body="$(fixture identity_collision_body.md 'body')"
+  run_new_in "$repo" --reviewed --dir "$repo/docs/issues" \
+    --slug 20260102-new --num 9 \
+    --created 2026-01-02T00:00:00Z --updated 2026-01-02T00:00:00Z \
+    --title "New capture" --priority low --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "the filing still lands" 0 "$RC"
+  assert_eq "the issue was written" "yes" \
+    "$([[ -f "$repo/docs/issues/20260102-new.md" ]] && echo yes || echo no)"
+}
+
+# AC: the same holds for a transition, which records the holder.
+case_identity_collision_does_not_block_a_transition() {
+  local dir
+  dir="$(transition_dir identity_collision_transition)"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example"\n' \
+    > "$dir/jimconf.toml"
+  indexed_issue "$dir" "20260101-one" 'alice@company.example'
+  indexed_issue "$dir" "20260101-two" 'alice+ops@company.example'
+  run_transition start 20260101-target --dir "$dir"
+  assert_exit "the transition still lands" 0 "$RC"
+  assert_match "the holder was recorded" '^claimed-by: "' \
+    "$(cat "$dir/20260101-target.md")"
+}
+
+# ─── Section: render.sh — identity is read, never re-derived ────────────────
+
+# AC: the identity shown in any view is the identity recorded in the file, so a
+# contributor reads as one identity everywhere without a view having to
+# resolve, map, or re-derive anything at display time. The values below are
+# exactly the ones the configured form would rewrite, so a read that applied
+# the form would be visible here.
+case_render_identity_verbatim_shows_the_stored_value() {
+  local dir
+  dir=$(empty_dir render_identity_verbatim)
+  write_issue "$dir" "20260101-shown" 'num: 7
+title: "Shown"
+status: active
+priority: high
+type: issue
+filed-by: "1234+Dev@users.noreply.github.com"
+claimed-by: "OLD@Personal.Example"
+outcome: ""'
+  run_render show 20260101-shown "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the filer is shown as stored" \
+    'filed-by: 1234\+Dev@users\.noreply\.github\.com' "$OUT"
+  assert_match "the holder is shown as stored" \
+    'claimed-by: OLD@Personal\.Example' "$OUT"
+}
+
+# AC: a mapping the project carries is not consulted at display time either —
+# resolution happens where an identity is recorded, not where it is read.
+case_render_identity_verbatim_ignores_the_alias_mapping() {
+  local repo
+  repo="$(schema_repo render_identity_verbatim_map)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  write_issue "$repo/docs/issues" "20260101-mapped" 'num: 8
+title: "Mapped"
+status: open
+priority: low
+type: issue
+filed-by: "old@personal.example"
+claimed-by: ""
+outcome: ""'
+  run_in "$repo" "$SCRIPT_RENDER" show 20260101-mapped docs/issues
+  assert_exit "rc" 0 "$RC"
+  assert_match "the stored value is shown" \
+    'filed-by: old@personal\.example' "$OUT"
+  assert_eq "the mapped form is not substituted" "no" \
+    "$(printf '%s' "$OUT" | grep -q 'users\.noreply' && echo yes || echo no)"
+}
+
+# ─── Section: identity.sh — ambient identity resolution ─────────────────────
+
+# identity_repo <name> [email] — a git repo with user.email set only when one
+# is supplied, so the absent case is genuinely absent.
+identity_repo() {
+  local d
+  d="$(empty_dir "$1")"
+  git init -q "$d"
+  git -C "$d" config user.name tester
+  [[ $# -ge 2 ]] && git -C "$d" config user.email "$2"
+  printf '%s' "$d"
+}
+
+# U+2028 line separator — a character that disturbs a record while carrying
+# none of the bytes an obvious list of known-bad input would name.
+LINE_SEP="$(printf '\xe2\x80\xa8')"
+
+# run_identity <repo> <args...> — invoke identity.sh from inside <repo> with
+# global and system git config neutralized, so only the repo's own setting is
+# in play and an unset user.email cannot be answered by the machine's.
+run_identity() {
+  local repo="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$repo" && GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    bash "$SCRIPT_IDENTITY" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: a newly filed issue has its filer recorded automatically, without the
+# developer supplying it.
+case_identity_resolve_reports_the_configured_address() {
+  local repo
+  repo="$(identity_repo identity_ok 'dev@example.com')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address on stdout" "dev@example.com" "$OUT"
+}
+
+# AC: only addresses actually issued by the relay service are extracted. This
+# address wears the shape of one — a numeric id, a separator, a noreply
+# host — without being issued by the service the project recognizes, so it is
+# recorded whole. Recognition is a statement about the service, not about the
+# shape of an address.
+case_identity_resolve_records_a_relay_lookalike_whole() {
+  local repo
+  repo="$(identity_repo identity_noreply '1234+dev@users.noreply.example.com')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address on stdout" "1234+dev@users.noreply.example.com" "$OUT"
+}
+
+# AC: when the developer's identity cannot be determined from the environment,
+# filing is refused and nothing is written.
+case_identity_resolve_refuses_an_absent_identity() {
+  local repo
+  repo="$(identity_repo identity_absent)"
+  run_identity "$repo" resolve
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no identity on stdout" "" "$OUT"
+}
+
+# AC: an empty configured value is absent, not malformed — there is no identity
+# to record either way.
+case_identity_resolve_treats_an_empty_value_as_absent() {
+  local repo
+  repo="$(identity_repo identity_empty '')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 1 "$RC"
+  assert_eq "no identity on stdout" "" "$OUT"
+}
+
+# AC: a recorded identity can never introduce additional fields into the issue
+# record, whatever the environment supplied. A configured address accepts
+# embedded newlines, so this is the demonstrated injection, not a hypothetical.
+case_identity_resolve_refuses_a_newline_bearing_value() {
+  local repo
+  repo="$(identity_repo identity_newline "$(printf 'dev@example.com\nstatus: closed')")"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: an identity value that cannot be recorded safely is refused exactly as a
+# missing one is. A Unicode line separator carries no byte any obvious list of
+# known-bad characters would name, so accepting only a bounded set is what
+# makes unanticipated input fail closed rather than pass through.
+case_identity_resolve_fails_closed_on_unlisted_input() {
+  local repo
+  repo="$(identity_repo identity_failclosed "dev${LINE_SEP}@example.com")"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: the refusal is reported as a fixed reason that names the missing identity
+# and carries no issue content — in particular not the rejected value.
+case_identity_resolve_refusal_withholds_the_rejected_value() {
+  local repo
+  repo="$(identity_repo identity_quiet "dev${LINE_SEP}@secret-corp.example")"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "a reason was given" "$ERR"
+  assert_eq "the rejected value is not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
+}
+
+# AC: alias resolution applies everywhere an identity is recorded. The
+# environment's identity is read through the same definition as an
+# already-obtained one, so the path that files an issue and the path that
+# recovers a historical filer cannot disagree about who someone is.
+case_identity_resolve_applies_the_configured_form() {
+  local repo
+  repo="$(identity_repo identity_resolve_form '1234+Dev@users.noreply.github.com')"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account name" "dev" "$OUT"
+}
+
+# AC: an address the mapping names resolves through it when read from the
+# environment, not only when supplied.
+case_identity_resolve_reads_through_the_mapping() {
+  local repo
+  repo="$(identity_repo identity_resolve_mapped 'old@personal.example')"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "recorded as the mapped form" "dev" "$OUT"
+}
+
+# AC: every recorded identity is lower case, whatever the environment supplied.
+case_identity_resolve_lower_cases_the_environment_value() {
+  local repo
+  repo="$(identity_repo identity_resolve_case 'Dev@Example.COM')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  assert_eq "lower-cased" "dev@example.com" "$OUT"
+}
+
+# AC: a form that cannot be applied refuses every operation that would record
+# an identity — filing included, not only a supplied value.
+case_identity_resolve_refuses_a_form_it_cannot_apply() {
+  local repo
+  repo="$(identity_repo identity_resolve_nodomain 'alice@company.example')"
+  printf 'identity_scheme = "local"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_match "names the setting to supply" 'identity_domain' "$ERR"
+}
+
+# ─── Section: identity.sh — the configured form ─────────────────────────────
+
+# AC: a project selects one of three forms, and the selection belongs to the
+# project. An absent setting takes the documented default, which is what keeps
+# every zero-config project working without configuring anything.
+case_identity_scheme_absent_takes_the_default() {
+  local repo
+  repo="$(identity_repo identity_scheme_absent '1234+Dev@users.noreply.github.com')"
+  run_identity "$repo" resolve
+  assert_exit "rc" 0 "$RC"
+  # An ordinary address is a no-op under both `email` and `github`, so asserting
+  # one comes back unchanged rules out a default of `local` and nothing else. A
+  # relay address is what separates the documented default from the form below
+  # it: only `github` and above extract the account name.
+  assert_eq "the relay account name" "dev" "$OUT"
+}
+
+# AC: each form in the closed set is selectable.
+case_identity_scheme_recognized_values_are_accepted() {
+  local repo
+  repo="$(identity_repo identity_scheme_ok 'dev@example.com')"
+  printf 'identity_scheme = "email"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "email rc" 0 "$RC"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "github rc" 0 "$RC"
+}
+
+# AC: an unrecognized form is refused rather than quietly treated as the
+# default. A mistyped setting would otherwise record every identity in the
+# collection under a form the project did not choose, on the strength of a
+# message nobody has to read.
+case_identity_scheme_unrecognized_value_refuses() {
+  local repo
+  repo="$(identity_repo identity_scheme_bad 'dev@example.com')"
+  printf 'identity_scheme = "gitlab"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_match "names the setting" 'identity_scheme' "$ERR"
+}
+
+# AC: the refusal names the setting to supply, so it is actionable without
+# reading the source. It carries no identity value.
+case_identity_scheme_refusal_names_the_accepted_forms() {
+  local repo
+  repo="$(identity_repo identity_scheme_quiet 'dev@secret-corp.example')"
+  printf 'identity_scheme = "gitlab"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the accepted forms" 'email' "$ERR"
+  assert_eq "no identity in the refusal" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
+}
+
+# AC: the form is read through the project's own resolver, so a run under an
+# explicit config reads that config's form rather than the ambient project's.
+case_identity_scheme_honors_an_explicit_config() {
+  local repo cfg
+  repo="$(identity_repo identity_scheme_cfg 'dev@example.com')"
+  cfg=$(fixture identity-scheme.toml 'identity_scheme = "gitlab"')
+  run_identity "$repo" -c "$cfg" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_match "names the setting" 'identity_scheme' "$ERR"
+}
+
+# ─── Section: identity.sh — normalize ───────────────────────────────────────
+
+# AC: every recorded identity is lower case, under every form — including the
+# form that extracts nothing. A form is defined by what it extracts, not by
+# whether it transforms, and leaving one path where case survives re-opens the
+# identity split the whole family exists to close.
+case_identity_normalize_case_folds_under_every_form() {
+  local repo
+  repo="$(identity_repo identity_norm_case 'dev@example.com')"
+  printf 'identity_scheme = "email"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'Dev@Example.COM'
+  assert_exit "email rc" 0 "$RC"
+  assert_eq "email lower-cased" "dev@example.com" "$OUT"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'Dev@Example.COM'
+  assert_exit "github rc" 0 "$RC"
+  assert_eq "github lower-cased" "dev@example.com" "$OUT"
+}
+
+# AC: an already-lower-case value is carried through unchanged.
+case_identity_normalize_case_leaves_a_lower_value_alone() {
+  local repo
+  repo="$(identity_repo identity_norm_case_noop 'dev@example.com')"
+  run_identity "$repo" normalize 'dev@example.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unchanged" "dev@example.com" "$OUT"
+  # A `normalize` that folded nothing — or transformed nothing at all — passes
+  # the assertion above, because the value was already in its final form. The
+  # pair is what carries the claim: same config, a value that does need work.
+  # Together they say the fold ran and this value needed nothing from it.
+  run_identity "$repo" normalize 'DEV@Example.COM'
+  assert_exit "rc for the mixed-case value" 0 "$RC"
+  assert_eq "folded to the same identity" "dev@example.com" "$OUT"
+}
+
+# AC: an empty value is absent, not malformed — there is no identity to record
+# either way, matching what resolve reports for the same condition.
+case_identity_normalize_case_treats_empty_as_absent() {
+  local repo
+  repo="$(identity_repo identity_norm_case_empty 'dev@example.com')"
+  run_identity "$repo" normalize ''
+  assert_exit "rc" 1 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: an identity that cannot be recorded safely is refused here exactly as it
+# is when read from the environment — normalization is a transformation on a
+# recordable value, never a way around the gate.
+case_identity_normalize_case_refuses_an_unrecordable_value() {
+  local repo
+  repo="$(identity_repo identity_norm_case_bad 'dev@example.com')"
+  run_identity "$repo" normalize "$(printf 'dev@example.com\nstatus: closed')"
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: the form governs normalization too, so a configuration that cannot select
+# one refuses rather than transforming under a form nobody chose.
+case_identity_normalize_case_refuses_an_unrecognized_form() {
+  local repo
+  repo="$(identity_repo identity_norm_case_form 'dev@example.com')"
+  printf 'identity_scheme = "gitlab"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'Dev@Example.COM'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_match "names the setting" 'identity_scheme' "$ERR"
+}
+
+# ─── Section: identity.sh — forge relay extraction ──────────────────────────
+
+# github_repo <name> — an identity fixture whose project selects the default
+# forge-relay form explicitly, so a case reads as a statement about that form
+# rather than about whichever default happens to be current.
+github_repo() {
+  local d
+  d="$(identity_repo "$1" 'dev@example.com')"
+  printf 'identity_scheme = "github"\n' > "$d/jimconf.toml"
+  printf '%s' "$d"
+}
+
+# AC: an address issued by a forge's private-relay service is recorded as the
+# account name it carries, not as the full address.
+case_identity_normalize_relay_extracts_the_account_name() {
+  local repo
+  repo="$(github_repo identity_relay_modern)"
+  run_identity "$repo" normalize '1234+dev@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account name" "dev" "$OUT"
+}
+
+# AC: every relay form the forge issues records as the same account name. The
+# older form carries the account name alone with no numeric id and no separator
+# at all, so a contributor whose account predates the id-bearing form is not
+# recorded differently from anyone else.
+case_identity_normalize_relay_extracts_both_forge_forms_alike() {
+  local repo modern legacy
+  repo="$(github_repo identity_relay_both)"
+  run_identity "$repo" normalize '1234+dev@users.noreply.github.com'
+  modern="$OUT"
+  run_identity "$repo" normalize 'dev@users.noreply.github.com'
+  legacy="$OUT"
+  assert_exit "legacy rc" 0 "$RC"
+  assert_eq "legacy account name" "dev" "$legacy"
+  assert_eq "both forms agree"    "$modern" "$legacy"
+}
+
+# AC: a relay address is recognized however it was typed — the same address in
+# mixed case is the same address, and recording it as a full address while the
+# lower-case spelling records as a handle is the split this form exists to close.
+case_identity_normalize_relay_recognizes_a_mixed_case_address() {
+  local repo
+  repo="$(github_repo identity_relay_mixedcase)"
+  run_identity "$repo" normalize '1234+Dev@Users.NoReply.GitHub.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account name" "dev" "$OUT"
+}
+
+# AC: ordinary mail that merely resembles a relay address — an address carrying
+# a tag on its mailbox — is recorded unchanged. Keying on the separator rather
+# than the service would rewrite an unrelated address into whatever followed it.
+case_identity_normalize_relay_leaves_ordinary_tagged_mail_alone() {
+  local repo
+  repo="$(github_repo identity_relay_tagged)"
+  run_identity "$repo" normalize '1234+dev@example.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unchanged" "1234+dev@example.com" "$OUT"
+}
+
+# AC: only addresses actually issued by the relay service are extracted. The
+# service suffix is matched exactly, so an address that merely contains it —
+# as a subdomain, or with the real domain appended after it — is not a relay
+# address and is recorded whole.
+case_identity_normalize_relay_matches_the_service_suffix_exactly() {
+  local repo
+  repo="$(github_repo identity_relay_suffix)"
+  run_identity "$repo" normalize 'dev@users.noreply.github.com.example.com'
+  assert_exit "trailing-domain rc" 0 "$RC"
+  assert_eq "trailing domain unchanged" \
+    "dev@users.noreply.github.com.example.com" "$OUT"
+  run_identity "$repo" normalize 'dev@sub.users.noreply.github.com'
+  assert_eq "subdomain unchanged" "dev@sub.users.noreply.github.com" "$OUT"
+}
+
+# AC: a relay address that yields no account name is recorded unchanged, never
+# as an empty identity.
+case_identity_normalize_relay_keeps_an_address_yielding_no_account() {
+  local repo
+  repo="$(github_repo identity_relay_empty)"
+  run_identity "$repo" normalize '1234+@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address kept whole" "1234+@users.noreply.github.com" "$OUT"
+}
+
+# AC: one form applies no extraction at all, recording the whole address rather
+# than a part of it — a relay address included.
+case_identity_normalize_relay_is_inert_under_the_no_extraction_form() {
+  local repo
+  repo="$(identity_repo identity_relay_email 'dev@example.com')"
+  printf 'identity_scheme = "email"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize '1234+Dev@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "whole address, lower-cased" \
+    "1234+dev@users.noreply.github.com" "$OUT"
+}
+
+# ─── Section: identity.sh — organization-local extraction ───────────────────
+
+# local_repo <name> <domain> — an identity fixture whose project selects the
+# organization-local form over <domain>.
+local_repo() {
+  local d
+  d="$(identity_repo "$1" 'dev@example.com')"
+  printf 'identity_scheme = "local"\nidentity_domain = "%s"\n' "$2" \
+    > "$d/jimconf.toml"
+  printf '%s' "$d"
+}
+
+# AC: under the organization-local form, an address inside the project's
+# configured domain is recorded as the account part preceding that domain.
+case_identity_normalize_local_extracts_the_account_part() {
+  local repo
+  repo="$(local_repo identity_local_inside company.example)"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account part" "alice" "$OUT"
+}
+
+# AC: a tag appended to a mailbox is not part of the recorded account, so one
+# mailbox is one identity. This is the opposite half of the address from the
+# one the relay rule discards — same character, two meanings.
+case_identity_normalize_local_drops_a_mailbox_tag() {
+  local repo
+  repo="$(local_repo identity_local_tag company.example)"
+  run_identity "$repo" normalize 'alice+deploys@company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "tag dropped" "alice" "$OUT"
+}
+
+# AC: domain comparison ignores case, so an address is inside the configured
+# domain regardless of how either was typed.
+case_identity_normalize_local_compares_the_domain_without_case() {
+  local repo
+  repo="$(local_repo identity_local_case COMPANY.Example)"
+  run_identity "$repo" normalize 'Alice@Company.EXAMPLE'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account part" "alice" "$OUT"
+}
+
+# AC: an address outside the configured domain is recorded as the form below
+# would record it — so an organization member who also commits through a forge's
+# web interface does not split into two identities.
+case_identity_normalize_local_falls_through_to_the_relay_rule() {
+  local repo
+  repo="$(local_repo identity_local_outside company.example)"
+  run_identity "$repo" normalize '1234+alice@users.noreply.github.com'
+  assert_exit "relay rc" 0 "$RC"
+  assert_eq "relay account name" "alice" "$OUT"
+  run_identity "$repo" normalize 'alice@other.example'
+  assert_exit "unrelated rc" 0 "$RC"
+  assert_eq "unrelated address kept whole" "alice@other.example" "$OUT"
+}
+
+# AC: the configured domain names exactly one domain, so an address in a
+# subdomain of it is outside it and records as the form below would.
+case_identity_normalize_local_treats_a_subdomain_as_outside() {
+  local repo
+  repo="$(local_repo identity_local_subdomain company.example)"
+  run_identity "$repo" normalize 'alice@eu.company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "kept whole" "alice@eu.company.example" "$OUT"
+}
+
+# AC: an address that yields no account part is recorded unchanged, never as an
+# empty identity — the same rule the relay form applies.
+case_identity_normalize_local_keeps_an_address_yielding_no_account() {
+  local repo
+  repo="$(local_repo identity_local_empty company.example)"
+  run_identity "$repo" normalize '+deploys@company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "address kept whole" "+deploys@company.example" "$OUT"
+}
+
+# AC: the form below extracts nothing from an internal address — organization-
+# local extraction is what this form adds, and the forms below it do not.
+case_identity_normalize_local_extraction_is_absent_from_lower_forms() {
+  local repo
+  repo="$(github_repo identity_local_not_in_github)"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "kept whole" "alice@company.example" "$OUT"
+}
+
+# ─── Section: identity.sh — the domain setting ──────────────────────────────
+
+# AC: selecting the organization-local form without configuring a domain
+# refuses every operation that would record an identity, and the refusal names
+# the setting to supply. A warning would be the weaker choice — a project would
+# go on recording under a form it cannot apply.
+case_identity_domain_absent_under_local_refuses() {
+  local repo
+  repo="$(identity_repo identity_domain_absent 'dev@example.com')"
+  printf 'identity_scheme = "local"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_match "names the setting to supply" 'identity_domain' "$ERR"
+}
+
+# AC: the domain setting names exactly one domain. A value naming several is
+# refused rather than partially honored — extracting across a union nobody has
+# checked for uniqueness is where one person's account silently becomes
+# another's.
+case_identity_domain_naming_several_refuses() {
+  local repo
+  repo="$(identity_repo identity_domain_several 'dev@example.com')"
+  printf 'identity_scheme = "local"\nidentity_domain = "a.example,b.example"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@a.example'
+  assert_exit "comma-separated rc" 2 "$RC"
+  # `identity_domain` appears in every refusal this function makes, including
+  # the charset one — and a comma is outside the domain set, so dropping this
+  # guard entirely leaves the charset gate refusing the same input under a
+  # different message. Matching the message unique to this guard is what pins
+  # the guard rather than the outcome.
+  assert_match "names the guard" 'exactly one domain' "$ERR"
+  printf 'identity_scheme = "local"\nidentity_domain = "a.example b.example"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@a.example'
+  assert_exit "space-separated rc" 2 "$RC"
+}
+
+# AC: the configured domain clears a positively enumerated character set before
+# it is used for anything. A setting carrying pattern characters must never
+# widen what the form extracts — the domain reaches a shell match, so a glob
+# would otherwise make every address inside it.
+case_identity_domain_outside_the_charset_refuses() {
+  local repo
+  repo="$(identity_repo identity_domain_charset 'dev@example.com')"
+  printf 'identity_scheme = "local"\nidentity_domain = "*.example"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@anything.example'
+  assert_exit "glob rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  printf 'identity_scheme = "local"\nidentity_domain = "company.example/../x"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "slash rc" 2 "$RC"
+}
+
+# AC: a domain whose label structure can never appear in an address is refused
+# rather than applied. Each shape below clears the charset and single-domain
+# gates and then makes the form a permanent no-op: no address ends in
+# `@.company.example`, so every value falls through to the form beneath it and
+# the project records identities under a form it did not choose, with no
+# refusal and no warning. A setting that cannot be applied is refused, the way
+# an absent one already is.
+case_identity_domain_that_cannot_match_refuses() {
+  local repo d
+  repo="$(identity_repo identity_domain_unmatchable 'dev@example.com')"
+  for d in '.company.example' 'company.example.' 'company..example' \
+           '-company.example' 'company.example-' 'company.-example' \
+           'company-.example' '.' '-'; do
+    printf 'identity_scheme = "local"\nidentity_domain = "%s"\n' "$d" \
+      > "$repo/jimconf.toml"
+    run_identity "$repo" normalize 'alice@company.example'
+    assert_exit "rc for $d" 2 "$RC"
+    # The message unique to this guard, not merely a refusal: the charset gate
+    # accepts every shape above, so matching any refusal would leave the guard
+    # removable with the case still green.
+    assert_match "names the guard for $d" 'cannot match an address' "$ERR"
+  done
+}
+
+# AC: the guard above refuses shapes that can never appear in an address, not
+# every domain without a dot. A single-label domain is matchable and stays
+# accepted.
+case_identity_domain_single_label_is_accepted() {
+  local repo
+  repo="$(local_repo identity_domain_single localhost)"
+  run_identity "$repo" normalize 'alice@localhost'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account part" "alice" "$OUT"
+}
+
+# AC: a refusal caused by a setting names the setting, never the value it
+# carried.
+case_identity_domain_refusal_withholds_the_value() {
+  local repo
+  repo="$(identity_repo identity_domain_quiet 'dev@example.com')"
+  printf 'identity_scheme = "local"\nidentity_domain = "secret-corp.example*"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize 'alice@company.example'
+  assert_exit "rc" 2 "$RC"
+  assert_nonempty "a reason was given" "$ERR"
+  assert_eq "the rejected value is not echoed back" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'secret-corp' && echo yes || echo no)"
+}
+
+# AC: the domain clears its gate before it is used for anything — and the forms
+# below organization-local never use it, so a project that has not selected
+# that form is not refused over a setting that has no effect on it.
+case_identity_domain_is_unused_by_the_lower_forms() {
+  local repo
+  repo="$(identity_repo identity_domain_unused 'dev@example.com')"
+  printf 'identity_scheme = "github"\nidentity_domain = "*.example"\n' \
+    > "$repo/jimconf.toml"
+  run_identity "$repo" normalize '1234+dev@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "account name" "dev" "$OUT"
+}
+
+# ─── Section: identity.sh — alias resolution ────────────────────────────────
+
+# AC: an address the project's version control maps to another is recorded as
+# the form of the address it maps to, not the form of the address that was
+# written — so a mapping reaches every form, including those that extract.
+case_identity_mailmap_records_the_form_of_the_mapped_address() {
+  local repo
+  repo="$(github_repo identity_mailmap_mapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize 'old@personal.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "recorded as the mapped form" "dev" "$OUT"
+}
+
+# AC: alias resolution runs before extraction. A mapping is keyed on addresses,
+# so extracting first leaves nothing for it to match — a mapping keyed on a
+# relay address would never fire, and the contributor it exists to merge would
+# stay split.
+case_identity_mailmap_resolves_before_extraction() {
+  local repo
+  repo="$(github_repo identity_mailmap_ordering)"
+  printf 'Alice <alice@company.example> <1234+olduser@users.noreply.github.com>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize '1234+olduser@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "mapped, not extracted" "alice@company.example" "$OUT"
+}
+
+# AC: an address the mapping does not name is carried through unchanged.
+case_identity_mailmap_carries_an_unmapped_address_through() {
+  local repo
+  repo="$(github_repo identity_mailmap_unmapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize 'someone@example.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unchanged" "someone@example.com" "$OUT"
+  # An unmapped address comes back unchanged whether the lookup ran, was
+  # stubbed, or was deleted outright, so the pass above discriminates nothing on
+  # its own. The mapped address in the same repo is what says a lookup happened
+  # at all — the pair is the assertion, not either half.
+  run_identity "$repo" normalize 'old@personal.example'
+  assert_exit "rc for the mapped address" 0 "$RC"
+  assert_eq "the mapped address moves" "dev" "$OUT"
+}
+
+# AC: a contributor is never refused, or split, for having typed their own
+# address two ways — the mapping lookup ignores case.
+case_identity_mailmap_matches_without_case() {
+  local repo
+  repo="$(github_repo identity_mailmap_case)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize 'OLD@Personal.Example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "recorded as the mapped form" "dev" "$OUT"
+}
+
+# AC: a project that carries no mapping is unaffected — resolution composes as
+# an unconditional filter rather than a present/absent branch.
+case_identity_mailmap_absent_mapping_changes_nothing() {
+  local repo
+  repo="$(github_repo identity_mailmap_none)"
+  run_identity "$repo" normalize 'Dev@Example.COM'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "lower-cased only" "dev@example.com" "$OUT"
+}
+
+# AC: a mapped address is judged as a recordable identity in its own right —
+# the mapping is a source of identities, not a way around the gate.
+case_identity_mailmap_result_clears_the_charset_gate() {
+  local repo
+  repo="$(github_repo identity_mailmap_gate)"
+  printf 'Dev <dev%s@example.com> <old@personal.example>\n' "$LINE_SEP" \
+    > "$repo/.mailmap"
+  run_identity "$repo" normalize 'old@personal.example'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# ─── Section: identity.sh — the mapping step on its own ─────────────────────
+
+# AC: alias resolution is available as its own answer, not only folded into a
+# normalized result. A normalized value cannot say which of the two steps moved
+# it, so a caller asking "are these two addresses one contributor?" has no way
+# to decompose one — and the alternative is a second copy of the lookup.
+case_identity_map_reports_the_mapped_address() {
+  local repo
+  repo="$(github_repo identity_map_mapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" map 'old@personal.example'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the address it maps to" \
+    "1234+dev@users.noreply.github.com" "$OUT"
+}
+
+# AC: the mapping step stops at the mapping — no form is applied, so the answer
+# is what version control says rather than what the project would record.
+case_identity_map_applies_no_form() {
+  local repo
+  repo="$(github_repo identity_map_noform)"
+  run_identity "$repo" map '1234+Dev@users.noreply.github.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "neither extracted nor folded" \
+    "1234+Dev@users.noreply.github.com" "$OUT"
+}
+
+# AC: an address the mapping does not name is carried through unchanged.
+case_identity_map_carries_an_unmapped_address_through() {
+  local repo
+  repo="$(github_repo identity_map_unmapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <old@personal.example>\n' \
+    > "$repo/.mailmap"
+  run_identity "$repo" map 'someone@example.com'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "unchanged" "someone@example.com" "$OUT"
+  # Paired for the same reason as the normalize case above: unchanged is what an
+  # absent lookup returns too. `map` applies no form, so the mapped address
+  # arrives whole rather than extracted, which is the second thing this pins.
+  run_identity "$repo" map 'old@personal.example'
+  assert_exit "rc for the mapped address" 0 "$RC"
+  assert_eq "the mapped address moves, unextracted" \
+    "1234+dev@users.noreply.github.com" "$OUT"
+}
+
+# AC: the result is judged as a recordable identity in its own right, exactly
+# as it is inside the full pipeline — the mapping is a source of identities and
+# not a way past the gate, whichever verb reaches it.
+case_identity_map_refuses_an_unrecordable_result() {
+  local repo
+  repo="$(github_repo identity_map_gate)"
+  printf 'Dev <dev%s@example.com> <old@personal.example>\n' "$LINE_SEP" \
+    > "$repo/.mailmap"
+  run_identity "$repo" map 'old@personal.example'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: an option-shaped identity is data here too — the verb is a second door
+# onto the same lookup, so it carries the same discipline.
+case_identity_map_reads_option_shaped_values_as_data() {
+  local repo
+  repo="$(github_repo identity_map_option)"
+  run_identity "$repo" map '--help'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "carried through" "--help" "$OUT"
+}
+
+# ─── Section: identity.sh — option-shaped identities ────────────────────────
+
+# AC: an identity that looks like a command-line option is a value. The
+# accepted character set admits a leading hyphen deliberately, because real
+# addresses carry one, so the gate is not what keeps such a value from being
+# read as an option — nothing downstream can be assumed to do it either. This
+# is a permanent property of the alias-resolution call rather than a defect
+# fixed once: the door reopens every time that call is touched.
+case_identity_option_shaped_values_are_read_as_data() {
+  local repo v
+  repo="$(github_repo identity_option_shaped)"
+  for v in '--help' '-x' '--stdin' '-'; do
+    run_identity "$repo" normalize "$v"
+    assert_exit "rc for $v" 0 "$RC"
+    assert_eq "value carried through: $v" "$v" "$OUT"
+  done
+  # An option-shaped value carrying a character the set does not admit is
+  # refused by the gate, as any other unrecordable value is. The two mechanisms
+  # are complementary: the gate refuses what it can, and carrying the value as
+  # data covers what the gate must admit.
+  #
+  # What this case does not prove: that the end-of-options separator is what
+  # carries the value as data. The value is wrapped in angle brackets before it
+  # reaches the lookup, and the wrapping alone neutralizes option shape — so
+  # removing the separator leaves every assertion here green. Both mechanisms
+  # are in place and neither is individually provable from the outside; this
+  # pins the property, not either mechanism.
+  run_identity "$repo" normalize '--exec=id'
+  assert_exit "rc for --exec=id" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# AC: an option-shaped identity resolves through the mapping like any other
+# value — carried as data means reaching the lookup, not bypassing it.
+case_identity_option_shaped_value_still_resolves_through_the_mapping() {
+  local repo
+  repo="$(github_repo identity_option_shaped_mapped)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <-x>\n' > "$repo/.mailmap"
+  run_identity "$repo" normalize '-x'
+  assert_exit "rc" 0 "$RC"
+  assert_eq "recorded as the mapped form" "dev" "$OUT"
+}
+
+# ─── Section: identity.sh — the gate ahead of the mapping lookup ────────────
+
+# AC: a value outside the accepted set is refused, and refused as itself rather
+# than reduced to a part of itself that the set does admit. The mapping lookup
+# composes its argument by wrapping the value in angle brackets, so a value
+# already carrying one builds bracket structure the answer's extraction reads
+# as an address — handing back a fragment of the value with nothing left to say
+# what it came from was unrecordable. Gating the value as supplied is what
+# makes that fragment unreachable, so every verb reporting the same refusal for
+# every position a bracket can take is the property under test, not the
+# individual strings.
+case_identity_bracket_bearing_values_are_refused_whole() {
+  local repo v
+  repo="$(github_repo identity_bracket_gate)"
+  for v in 'junk<attacker@evil.example' 'a<b' 'a>b' '<dev@example.com>'; do
+    run_identity "$repo" validate "$v"
+    assert_exit "validate rc for $v" 2 "$RC"
+    assert_eq "validate wrote nothing for $v" "" "$OUT"
+    run_identity "$repo" map "$v"
+    assert_exit "map rc for $v" 2 "$RC"
+    assert_eq "map wrote nothing for $v" "" "$OUT"
+    run_identity "$repo" normalize "$v"
+    assert_exit "normalize rc for $v" 2 "$RC"
+    assert_eq "normalize wrote nothing for $v" "" "$OUT"
+  done
+  assert_match "the fixed reason" 'identity is not recordable' "$ERR"
+  assert_eq "the refusal does not echo the value" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'dev@example.com' && echo yes || echo no)"
+}
+
+# AC: the environment is judged by the same gate as any other source, so an
+# ambient identity carrying a bracket is refused rather than recorded as the
+# fragment following it. This is the path a filing and a transition both take.
+case_identity_resolve_refuses_a_bracket_bearing_environment_identity() {
+  local repo
+  repo="$(identity_repo identity_bracket_resolve 'junk<attacker@evil.example')"
+  printf 'identity_scheme = "github"\n' > "$repo/jimconf.toml"
+  run_identity "$repo" resolve
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+  assert_eq "the refusal does not echo the value" "no" \
+    "$(printf '%s' "$ERR" | grep -q 'attacker' && echo yes || echo no)"
+}
+
+# AC: a mapping keyed on a value the set does not admit cannot fire. The gate
+# stands ahead of the lookup, so such a value is refused exactly as an absent
+# one — deliberately, because the alternative is the mapping deciding what is
+# recordable.
+case_identity_a_mapping_cannot_admit_an_unrecordable_value() {
+  local repo
+  repo="$(github_repo identity_bracket_mapping)"
+  printf 'Dev <1234+dev@users.noreply.github.com> <a<b>\n' > "$repo/.mailmap"
+  run_identity "$repo" normalize 'a<b'
+  assert_exit "rc" 2 "$RC"
+  assert_eq "nothing on stdout" "" "$OUT"
+}
+
+# ─── Section: index.sh — the widened Issues row ──────────────────────────────
+
+# AC: the index describes each record with every field a filter can name
+case_issues_index_row_carries_new_scalars() {
+  local dir row
+  dir=$(empty_dir index_row_new_scalars)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: closed
+num: 7
+priority: high
+created: 2026-01-01
+type: epic
+filed-by: filer@example.test
+claimed-by: holder@example.test
+outcome: done'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  row="$(grep -F '`20260101-alpha`' "$dir/INDEX.md" | head -n1)"
+  assert_match "type in row"       'type: epic'                    "$row"
+  assert_match "filed-by in row"   'filed-by: filer@example\.test' "$row"
+  assert_match "claimed-by in row" 'claimed-by: holder@example\.test' "$row"
+  assert_match "outcome in row"    'outcome: done'                 "$row"
+}
+
+# AC: an index entry omits a field the record does not carry, so an unheld
+# issue and one that has never been finished add nothing to the row
+case_issues_index_row_omits_absent() {
+  local dir row
+  dir=$(empty_dir index_row_omits)
+  write_issue "$dir" "20260101-bare" 'title: "Bare"
+status: open
+num: 3
+type: issue
+filed-by: filer@example.test
+claimed-by: ""
+outcome: ""'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  row="$(grep -F '`20260101-bare`' "$dir/INDEX.md" | head -n1)"
+  assert_match "carried fields present" 'type: issue'   "$row"
+  assert_eq "no holder key"  "0" "$(printf '%s' "$row" | grep -c 'claimed-by')"
+  assert_eq "no outcome key" "0" "$(printf '%s' "$row" | grep -c 'outcome')"
+}
+
+# AC: an empty frontmatter scalar produces no row pair at all — for every
+# optional field, rather than for the two a reader happened to check. The field
+# list is read out of the emitter itself, so a field added to the row cannot
+# skip this guard: the rule is that an empty value emits no key, and a test
+# enumerating its own subset of the fields agrees with that rule by coincidence.
+case_issues_index_row_omits_every_empty_field() {
+  local dir row f
+  local -a optional=()
+  while IFS= read -r f; do optional+=("$f"); done < <(
+    grep -oE 'row\+=" · [a-z-]+:' "$SCRIPT_INDEX" | sed 's/.*· //; s/:$//')
+  assert_nonempty "the emitter's optional fields were found" "${optional[*]:-}"
+  # A garbled extraction must not pass vacuously, so the four fields the
+  # widened row added are named explicitly as a floor under it.
+  for f in type filed-by claimed-by outcome; do
+    assert_match "the extraction found $f" "^$f\$" "$(printf '%s\n' "${optional[@]}")"
+  done
+
+  dir=$(empty_dir index_row_omits_all)
+  write_issue "$dir" "20260101-bare" 'title: "Bare"
+status: open
+num: ""
+priority: ""
+created: ""
+labels: ""
+origin: ""
+type: ""
+filed-by: ""
+claimed-by: ""
+outcome: ""'
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  row="$(grep -F '`20260101-bare`' "$dir/INDEX.md" | head -n1)"
+
+  # What survives is the writer's own floor — the two fields it always emits.
+  # This assertion is the one that does not depend on the extraction above:
+  # any key that leaked into the row breaks it, named in the list or not.
+  assert_eq "the row is title and status alone" \
+    '- `20260101-bare` — Bare · status: open' "$row"
+  for f in "${optional[@]}"; do
+    assert_eq "no $f key" "0" "$(printf '%s' "$row" | grep -c -- "· $f:")"
+  done
+
+  # And the record still reads back through the view that consumes the row.
+  run_render list "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "still listed" 'Bare' "$OUT"
+}
+
+# AC: a record's own field values can never corrupt the structure of the index
+# that carries them — the row separator and control characters are stripped
+case_issues_index_row_new_scalars_are_sanitized() {
+  local dir row
+  dir=$(empty_dir index_row_sanitized)
+  write_issue "$dir" "20260101-evil" "title: \"Evil\"
+status: open
+num: 4
+type: \"issue · status: closed\"
+filed-by: \"a$(printf '\033')[31mb@example.test\"
+outcome: \"done · num: 999\""
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  row="$(grep -F '`20260101-evil`' "$dir/INDEX.md" | head -n1)"
+  # Five separators — status, num, type, filed-by, outcome. A value carrying
+  # one of its own would raise the count and split into a field the record
+  # never declared. The forged text survives as inert characters inside the
+  # value it was written in, which is what the sanitizer is for: it deletes
+  # the separator rather than the words around it.
+  assert_eq "no forged separator" "5" "$(printf '%s' "$row" | grep -o ' · ' | grep -c .)"
+  assert_eq "no control byte"     "0" "$(printf '%s' "$row" | grep -c $'\033')"
+  # And the reader agrees: `status: closed` inside the type value is text,
+  # not a field, so the record is still open to every view that reads it.
+  run_render list open "$dir"
+  assert_match "reads as open" 'Evil' "$OUT"
+  run_render list closed "$dir"
+  assert_eq "does not read as closed" "0" "$(printf '%s' "$OUT" | grep -c 'Evil')"
+}
+
+# ─── Section: render.sh — the widened row reader ─────────────────────────────
+
+# run_render_rows <index-file> — call read_issue_rows in isolation, so a case
+# can assert the TSV contract rather than a rendered view built on top of it.
+run_render_rows() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(bash -c 'source "$1" 2>/dev/null; read_issue_rows "$2"' _ \
+    "$SCRIPT_RENDER" "$1" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: the row reader carries every field a filter can name, so the views act
+# on the same facts the index records
+case_issues_render_rows_carry_new_scalars() {
+  local dir fields
+  dir=$(empty_dir render_rows_new_scalars)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: closed
+num: 7
+priority: high
+created: 2026-01-01
+type: epic
+filed-by: filer@example.test
+claimed-by: holder@example.test
+outcome: done'
+  run_index "$dir"
+  assert_exit "index rc" 0 "$RC"
+  run_render_rows "$dir/INDEX.md"
+  assert_eq "twelve fields" "12" "$(printf '%s' "$OUT" | awk -F'\t' '{print NF}')"
+  IFS=$'\t' read -ra fields <<< "$OUT"
+  assert_eq "type"       "epic"                 "${fields[8]:-}"
+  assert_eq "filed-by"   "filer@example.test"   "${fields[9]:-}"
+  assert_eq "claimed-by" "holder@example.test"  "${fields[10]:-}"
+  assert_eq "outcome"    "done"                 "${fields[11]:-}"
+}
+
+# AC: an absent field renders as "-", exactly as the existing five do
+case_issues_render_rows_absent_scalars_dash() {
+  local dir fields
+  dir=$(empty_dir render_rows_absent)
+  write_issue "$dir" "20260101-bare" 'title: "Bare"
+status: open
+num: 3'
+  run_index "$dir"
+  run_render_rows "$dir/INDEX.md"
+  assert_eq "twelve fields" "12" "$(printf '%s' "$OUT" | awk -F'\t' '{print NF}')"
+  IFS=$'\t' read -ra fields <<< "$OUT"
+  assert_eq "type dash"       "-" "${fields[8]:-}"
+  assert_eq "filed-by dash"   "-" "${fields[9]:-}"
+  assert_eq "claimed-by dash" "-" "${fields[10]:-}"
+  assert_eq "outcome dash"    "-" "${fields[11]:-}"
+}
+
+# AC: a row consumer reads the whole TSV, not a prefix of it. `read` assigns
+# every field past the last variable to that variable, delimiters included, so
+# a consumer one variable short reports its final column with the rest of the
+# row glued to it.
+case_issues_render_rows_consumer_reads_every_field() {
+  local dir
+  dir=$(empty_dir render_rows_consumer)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+origin: docs/specs/x/spec.md
+type: issue
+filed-by: dev@example.test
+claimed-by: holder@example.test
+outcome: ""'
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "origin cluster is the origin alone" \
+    '^ +docs/specs/x/spec\.md +1$' "$OUT"
+}
+
+# ─── Section: render.sh — the unified Graph-edge parse ───────────────────────
+
+# AC: the graph readers match the ids the collection actually accepts. Both
+# copies matched [a-z0-9-]+ while is_valid_id allows uppercase and dots, so a
+# project on a `project` id prefix had every prefixed edge silently dropped
+# from the blocking rollup and the insights graph alike.
+case_issues_render_graph_edges_match_id_charset() {
+  local dir
+  dir=$(empty_dir render_graph_charset)
+  write_issue "$dir" "JIM-0001.a" 'title: "Mega"
+status: open
+relations:
+  blocks: [JIM-0002.b]
+  depends-on: []
+  related-to: []
+  duplicates: []'
+  write_issue "$dir" "JIM-0002.b" 'title: "Target"
+status: open
+relations:
+  blocks: []
+  depends-on: [JIM-0001.a]
+  related-to: []
+  duplicates: []'
+  run_index "$dir"
+  assert_exit "index rc" 0 "$RC"
+  run_render stats "$dir"
+  assert_exit "stats rc" 0 "$RC"
+  assert_match "blocking rollup sees the edge" 'JIM-0001\.a' "$OUT"
+  assert_match "and names its target"          'JIM-0002\.b' "$OUT"
+  run_render insights-graph "$dir"
+  assert_exit "insights rc" 0 "$RC"
+  assert_match "insights graph sees it too" '^BLOCKING 1 JIM-0001\.a$' "$OUT"
+  assert_eq "neither endpoint reads as isolated" "0" \
+    "$(printf '%s' "$OUT" | grep -c '^ISOLATED')"
+}
+
+# ─── Section: render.sh — the flag-operand guard ─────────────────────────────
+
+# run_render_fn <function> <args...> — call one render.sh function in
+# isolation, for contracts a rendered view sits on top of rather than exposes.
+run_render_fn() {
+  local fn="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(bash -c 'source "$1" 2>/dev/null; fn="$2"; shift 2; "$fn" "$@"' _ \
+    "$SCRIPT_RENDER" "$fn" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: a flag given with no value, or with a value that is another flag, is
+# refused rather than treated as absent
+case_issues_render_flag_requires_operand() {
+  # A flag standing last in the argv has nothing to take.
+  run_render_fn need_operand --label 1 ""
+  assert_exit     "missing operand refuses" 2 "$RC"
+  assert_eq       "nothing on stdout"       "" "$OUT"
+  assert_match    "names the flag"          '[-]-label requires a value' "$ERR"
+
+  # An operand that is another of this file's own flags is a typo, not a value.
+  run_render_fn need_operand --label 2 --priority
+  assert_exit  "flag-shaped operand refuses" 2 "$RC"
+  assert_eq    "nothing on stdout"           "" "$OUT"
+  assert_match "names what followed"         '[-]-priority followed it' "$ERR"
+
+  # An ordinary value passes straight through.
+  run_render_fn need_operand --label 2 auth
+  assert_exit "accepts a value" 0    "$RC"
+  assert_eq   "emits it"        "auth" "$OUT"
+
+  # A value that merely looks option-shaped is carried through: this guard
+  # refuses only the option names this file itself accepts.
+  run_render_fn need_operand --claimed-by 2 -dev@example.test
+  assert_exit "option-shaped value passes" 0 "$RC"
+  assert_eq   "emits it"  "-dev@example.test" "$OUT"
+}
+
+# ─── Section: render.sh — the filter parser ──────────────────────────────────
+
+# run_parse_filters <args...> — classify one argument list and report what the
+# parser bound, so a case can assert the grammar rather than a rendered view.
+run_parse_filters() {
+  local helper err_file="$TMP_BASE/.err"
+  helper="$(fixture parse_filters_probe.sh 'set -uo pipefail
+render="$1"; shift
+args=("$@")
+set --
+source "$render" >/dev/null 2>&1
+parse_filters "${args[@]+"${args[@]}"}" || exit $?
+for k in "${!FILTER_AXIS[@]}"; do
+  printf "axis %s = %s\n" "$k" "$(printf "%s" "${FILTER_AXIS[$k]}" | tr "\n" " ")"
+done | sort
+printf "cols = %s\n" "$FILTER_COLS"
+printf "residue = %s\n" "${FILTER_RESIDUE[*]:-}"')"
+  OUT="$(bash "$helper" "$SCRIPT_RENDER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: an unrecognized bare word is refused, the refusal names the words that
+# are recognized, and the query fails without writing anything to disk
+case_issues_render_parse_filters_refuses_unknown() {
+  # A bare word that is not reserved and is not in trailing position cannot
+  # have been the collection, so it can only have been a mistyped filter.
+  run_parse_filters bogus high
+  assert_exit  "rc"                1 "$RC"
+  assert_eq    "nothing on stdout" "" "$OUT"
+  assert_match "names the token"   'unrecognized filter token: bogus' "$ERR"
+  assert_match "names the status words"   'open active closed'   "$ERR"
+  assert_match "names the priority words" 'critical high medium' "$ERR"
+  assert_match "names the kind words"     'issue epic'           "$ERR"
+  assert_match "names the derived words"  'claimed unclaimed'    "$ERR"
+
+  # An unknown flag is refused on its own terms.
+  run_parse_filters --nosuchflag x
+  assert_exit  "rc"              1 "$RC"
+  assert_match "names the flag"  "unknown filter flag: [-]-nosuchflag" "$ERR"
+
+  # A flag with nothing after it takes the operand guard's refusal.
+  run_parse_filters open --label
+  assert_exit  "rc"             1 "$RC"
+  assert_match "operand guard"  '[-]-label requires a value' "$ERR"
+
+  # An ad-hoc column selection refuses an unrecognized token and names the set.
+  run_parse_filters --cols num,bogus
+  assert_exit  "rc"                 1 "$RC"
+  assert_match "names the token"    'unrecognized column: bogus' "$ERR"
+  assert_match "names the set"      'num'                        "$ERR"
+}
+
+# AC: a refusal quoting an operator token renders it under the same discipline
+# a value written into the index gets — stripped of control characters and
+# bounded — because stderr is a rendered surface too
+case_issues_render_parse_filters_sanitizes_the_echoed_token() {
+  run_parse_filters "$(printf 'ev\033[31mil')" high
+  assert_exit "rc" 1 "$RC"
+  assert_eq   "no control byte in the refusal" "0" \
+    "$(printf '%s' "$ERR" | grep -c $'\033')"
+  assert_match "the printable text survives" 'ev.31mil' "$ERR"
+  # A very long token is bounded rather than echoed whole.
+  run_parse_filters "$(printf 'x%.0s' $(seq 1 400))" high
+  assert_exit "rc" 1 "$RC"
+  assert_eq "bounded" "1" \
+    "$(printf '%s' "$ERR" | awk '{ if (length($0) < 200) n++ } END { print (n > 0) ? 1 : 0 }')"
+}
+
+# AC: a read view accepts several filters in one query, given in any order;
+# values naming the same axis combine as alternatives, and a bare word and a
+# flag naming one axis widen it rather than displacing each other
+case_issues_render_parse_filters_binds_axes() {
+  run_parse_filters open high --priority critical,low --label auth,api --claimed-by me unblocked
+  assert_exit  "rc" 0 "$RC"
+  assert_eq    "nothing on stderr" "" "$ERR"
+  assert_match "status axis"     '^axis status = open$'                "$OUT"
+  assert_match "priority unions" '^axis priority = high critical low$' "$OUT"
+  assert_match "label splits"    '^axis label = auth api$'             "$OUT"
+  assert_match "person axis"     '^axis claimed-by = me$'              "$OUT"
+  assert_match "derived axis"    '^axis blocked = unblocked$'          "$OUT"
+  assert_match "no residue"      '^residue = $'                         "$OUT"
+}
+
+# AC: a trailing word that is not reserved is left for the caller to judge —
+# it is the one thing it could still be, the collection
+case_issues_render_parse_filters_leaves_the_trailing_word() {
+  run_parse_filters --label auth some-collection
+  assert_exit  "rc" 0 "$RC"
+  assert_match "label bound"      '^axis label = auth$'        "$OUT"
+  assert_match "residue carried"  '^residue = some-collection$' "$OUT"
+}
+
+# AC: an alternative is never split on anything but the comma the operator
+# typed, so a value carrying a space narrows the query rather than widening it
+case_issues_render_parse_filters_does_not_split_on_space() {
+  run_parse_filters --origin "docs/a b"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "one alternative, space intact" '^axis origin = docs/a b$' "$OUT"
+}
+
+# ─── Section: render.sh — binding the collection ─────────────────────────────
+
+# AC: a flag's operand can never be read as the collection directory. The
+# collection is identified by shape — the trailing argument, when it is a
+# directory — and a flag's operand can land in that position.
+case_issues_render_list_label_operand_is_not_a_collection() {
+  local dir work err
+  dir=$(empty_dir render_list_operand)
+  write_issue "$dir" "20260101-a" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+labels: [auth]'
+  run_index "$dir"
+  # A directory named exactly like the label being filtered on, sitting where
+  # the command runs. The operand has to feed the filter, not retarget the read.
+  work=$(empty_dir render_list_operand_cwd)
+  printf 'issues_path = "%s"\n' "$dir" > "$work/jimconf.toml"
+  mkdir -p "$work/auth"
+  err="$TMP_BASE/.err"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list --label auth 2> "$err")"
+  RC=$?
+  ERR="$(cat "$err")"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "serves the configured collection" "Issues — $dir" "$OUT"
+  assert_eq    "no index written into the operand" "0" \
+    "$(ls "$work/auth" | grep -c .)"
+}
+
+# AC: a reserved word always reads as a filter and never as a collection, so
+# each of the two meanings has exactly one spelling that reaches it
+case_issues_render_list_reserved_word_never_binds_a_collection() {
+  local dir work err
+  dir=$(empty_dir render_list_reserved)
+  write_issue "$dir" "20260101-a" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01'
+  write_issue "$dir" "20260102-b" 'title: "Bravo"
+status: closed
+num: 2
+created: 2026-01-02'
+  run_index "$dir"
+  work=$(empty_dir render_list_reserved_cwd)
+  printf 'issues_path = "%s"\n' "$dir" > "$work/jimconf.toml"
+  mkdir -p "$work/open"
+  err="$TMP_BASE/.err"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list open 2> "$err")"
+  RC=$?
+  assert_exit  "rc" 0 "$RC"
+  assert_match "filtered, not retargeted" 'Alpha' "$OUT"
+  assert_eq    "closed still hidden" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq    "nothing written into the collision" "0" \
+    "$(ls "$work/open" | grep -c .)"
+}
+
+# ─── Section: render.sh — routing reads the same grammar as binding ──────────
+
+# AC: statistics accepts the same filters as the list view. The routing
+# decision is taken before any verb runs, so a grammar it alone gets wrong
+# serves a correct-looking answer over the wrong collection.
+case_issues_render_routing_survives_filters() {
+  local dir
+  dir=$(empty_dir render_routing)
+
+  # A flag whose operand names an existing directory. It is an operand, not a
+  # collection, so the invocation names none and the read must route.
+  run_render_fn dir_given list --label "$dir"
+  assert_exit "a flag operand is not a named collection" 1 "$RC"
+
+  # Any filtered stats invocation. The arm answered on argument count alone,
+  # justified by there being no filter to confuse an operand with.
+  run_render_fn dir_given stats --spec issue/011
+  assert_exit "a filtered stats names no collection" 1 "$RC"
+
+  # Two bare filters name no collection either.
+  run_render_fn dir_given list open high
+  assert_exit "two filters name no collection" 1 "$RC"
+
+  # A genuinely named collection is still honoured, in every shape — this is
+  # also what stops the placement re-exec from recursing.
+  run_render_fn dir_given list "$dir"
+  assert_exit "a lone directory is named"          0 "$RC"
+  run_render_fn dir_given stats "$dir"
+  assert_exit "stats with a directory is named"    0 "$RC"
+  run_render_fn dir_given list open "$dir"
+  assert_exit "filter then directory is named"     0 "$RC"
+  run_render_fn dir_given list --label auth "$dir"
+  assert_exit "flag, operand, then directory"      0 "$RC"
+}
+
+# AC: reads serve the collection at the configured placement rather than a
+# branch-local copy — including when a filter's operand names a directory that
+# happens to exist in the checkout
+case_issues_placement_filter_operand_still_routes() {
+  local repo body
+  repo="$(placement_repo issues_place_filter_operand jim/issues)"
+  body="$(fixture issues_place_filter_operand_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels auth \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  # A directory in the checkout named exactly like the label being filtered on.
+  mkdir -p "$repo/auth"
+  run_in "$repo" "$SCRIPT_RENDER" list --label auth
+  assert_exit  "rc" 0 "$RC"
+  assert_match "read the destination, not the checkout" 'Alpha bug' "$OUT"
+  assert_eq    "nothing written into the operand" "0" \
+    "$(ls "$repo/auth" | grep -c .)"
+}
+
+# AC: a routed read forwards the caller's own argv through the placement
+# wrapper, so text wearing a marker's shape — a filter value reading `--dir`,
+# and a bare `{}` behind it — arrives at the parser as it was typed, and the
+# refusal names what the caller wrote rather than this run's materialized
+# collection.
+#
+# This case pins the composed BOUNDARY, not the wrapper: it does not go red
+# against a wrapper that substitutes by adjacency, because the operand guard
+# refuses `--dir` where a value belongs before the substitution's effect can
+# reach a message. What it goes red against is that guard being relaxed while
+# the wrapper still infers — the two together are what keep a run-local path off
+# this surface. The wrapper's own rule is pinned in tests/place.sh, by
+# case_place_substitutes_only_at_declared_positions.
+case_issues_placement_marker_shaped_argv_reaches_the_parser() {
+  local repo body
+  repo="$(placement_repo issues_place_marker_argv jim/issues)"
+  body="$(fixture issues_place_marker_argv_body.md 'body')"
+  run_new_in "$repo" --reviewed --title "Alpha bug" --priority medium --labels auth \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_RENDER" list --label --dir '{}'
+  assert_exit  "refused"               1 "$RC"
+  assert_match "naming what was typed" '[-]-dir followed it' "$ERR"
+  assert_eq    "and no run-local path anywhere" "0" \
+    "$(printf '%s\n%s\n' "$OUT" "$ERR" | grep -c '/collection')"
+}
+
+# ─── Section: render.sh — a refused read touches nothing ─────────────────────
+
+# AC: an unrecognized filter token is refused and the query fails without
+# writing anything to disk. Two observables, and the second is the stronger:
+# ensure_index declines to *create* a directory but does regenerate an index
+# inside one that already exists, so a retarget writes even where it cannot
+# mkdir.
+case_issues_render_read_verb_writes_nothing() {
+  local coll work verb entries
+  local -a query
+  coll=$(empty_dir read_writes_nothing_coll)
+  write_issue "$coll" "20260101-a" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+labels: [auth]'
+  run_index "$coll"
+  work=$(empty_dir read_writes_nothing_work)
+  printf 'issues_path = "%s"\n' "$coll" > "$work/jimconf.toml"
+
+  for verb in list stats; do
+    for spec in "bogus17" "--nosuchflag|x" "--label" "--cols|num,bogus"; do
+      IFS='|' read -ra query <<< "$spec"
+      OUT="$(cd "$work" && bash "$SCRIPT_RENDER" "$verb" "${query[@]}" 2>/dev/null)"
+      RC=$?
+      assert_exit "$verb ${query[*]} refuses" 1 "$RC"
+      entries="$(ls -A "$work" | grep -v '^jimconf.toml$' | grep -c .)"
+      assert_eq "$verb ${query[*]} created nothing" "0" "$entries"
+    done
+  done
+
+  # A filter whose operand names an existing directory filters on that value
+  # instead of retargeting the read — and leaves no index behind in it. The
+  # distinction is the whole point: a read regenerates the index of a
+  # collection it was *told* to read, and must not write one into a directory
+  # it merely mistook for one.
+  mkdir -p "$work/auth"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list --label auth 2>/dev/null)"
+  RC=$?
+  assert_exit "the filtered read succeeds"        0 "$RC"
+  assert_eq   "no INDEX.md written into the operand" "0" \
+    "$(ls -A "$work/auth" | grep -c .)"
+}
+
+# ─── Section: render.sh — the scalar axes ────────────────────────────────────
+
+# axes_fixture <dir> — four open issues spanning kind, priority and labels.
+axes_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+priority: high
+created: 2026-01-01
+type: issue
+labels: [auth, api]'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+priority: critical
+created: 2026-01-02
+type: epic
+labels: [auth]'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: active
+num: 3
+priority: low
+created: 2026-01-03
+type: issue
+labels: [open]'
+  write_issue "$dir" "20260104-delta" 'title: "Delta"
+status: open
+num: 4
+priority: medium
+created: 2026-01-04
+type: issue
+labels: []'
+}
+
+# AC: values naming the same axis combine as alternatives; filters naming
+# different axes combine as conjunction; and a bare word and a flag feeding one
+# axis widen it rather than displacing each other
+case_issues_render_list_axes_or_within_and_across() {
+  local dir
+  dir=$(empty_dir render_axes)
+  axes_fixture "$dir"
+  run_index "$dir"
+
+  # Conjunction across axes: open AND high is Alpha alone.
+  run_render list open high "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "Alpha matches"      'Alpha'   "$OUT"
+  assert_eq    "Bravo excluded"   "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq    "Charlie excluded" "0" "$(printf '%s' "$OUT" | grep -c 'Charlie')"
+
+  # Alternatives within one axis, given as one comma-separated flag value.
+  run_render list --priority high,critical "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "Alpha matches" 'Alpha' "$OUT"
+  assert_match "Bravo matches" 'Bravo' "$OUT"
+  assert_eq    "Delta excluded" "0" "$(printf '%s' "$OUT" | grep -c 'Delta')"
+
+  # The same axis named through both spellings widens it.
+  run_render list high --priority critical "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the bare word survives" 'Alpha' "$OUT"
+  assert_match "and so does the flag"   'Bravo' "$OUT"
+  assert_eq    "nothing else"  "0" "$(printf '%s' "$OUT" | grep -c 'Delta')"
+
+  # Kind is an axis of its own.
+  run_render list --type epic "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the epic"      'Bravo' "$OUT"
+  assert_eq    "not the issues" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # A label is a membership test: the row carries a list.
+  run_render list --label api "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "carries api"    'Alpha' "$OUT"
+  assert_eq    "Bravo has only auth" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  # Conjunction again, this time across a label and a priority.
+  run_render list --label auth --priority critical "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "both hold"      'Bravo' "$OUT"
+  assert_eq    "only priority holds" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+}
+
+# AC: a value that is both a reserved word and a label remains reachable as a
+# label, so each of the two meanings has exactly one spelling that reaches it
+case_issues_render_list_reserved_word_reachable_as_a_label() {
+  local dir
+  dir=$(empty_dir render_axes_reserved_label)
+  axes_fixture "$dir"
+  run_index "$dir"
+  run_render list --label open "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the labelled one"  'Charlie' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+}
+
+# AC: a query that matches no record reports that it matched nothing and
+# succeeds — matching nothing is an answer, not a failure
+case_issues_render_list_empty_match_succeeds() {
+  local dir
+  dir=$(empty_dir render_axes_empty)
+  axes_fixture "$dir"
+  run_index "$dir"
+  run_render list --label auth --type epic --priority low "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "says so" '_No matching issues\._' "$OUT"
+  assert_eq    "nothing on stderr" "" "$ERR"
+}
+
+# ─── Section: render.sh — the person axes ────────────────────────────────────
+
+# run_render_as <identity> <args...> — a read whose environment carries one
+# fixed contributor address, so `me` resolves to a known value.
+run_render_as() {
+  local ident="$1"; shift
+  local err_file="$TMP_BASE/.err"
+  OUT="$(env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.email GIT_CONFIG_VALUE_0="$ident" \
+    bash "$SCRIPT_RENDER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# person_fixture <dir> — five open issues spanning the ways one contributor
+# can be spelled, plus a value the configured form cannot judge.
+person_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+filed-by: "dev@example.test"'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+filed-by: "1234+alice@users.noreply.github.com"
+claimed-by: "dev@example.test"'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: open
+num: 3
+created: 2026-01-03
+type: issue
+filed-by: "Dev@Example.Test"'
+  write_issue "$dir" "20260104-delta" 'title: "Delta"
+status: open
+num: 4
+created: 2026-01-04
+type: issue
+filed-by: "not a recordable value"'
+  write_issue "$dir" "20260105-echo" 'title: "Echo"
+status: open
+num: 5
+created: 2026-01-05
+type: issue
+filed-by: "someone@else.test"
+claimed-by: "tester@example.test"'
+}
+
+# AC: a record is filterable by who filed it and, separately, by who holds it;
+# the query and the record match under the project's configured form, so a
+# query need not be spelled the way the collection happens to have recorded it
+case_issues_render_list_person_axis_matches() {
+  local dir
+  dir=$(empty_dir render_person)
+  person_fixture "$dir"
+  run_index "$dir"
+
+  # Two spellings of one contributor, matched under the configured form.
+  run_render list --filed-by dev@example.test "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the plain spelling"     'Alpha'   "$OUT"
+  assert_match "and the cased one"      'Charlie' "$OUT"
+  assert_eq    "not the other filer" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  # A forge relay address is recorded as the account it names, and the account
+  # is what a query spells.
+  run_render list --filed-by alice "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the relay filer"  'Bravo' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # Who holds an issue is a separate question from who filed it.
+  run_render list --claimed-by dev@example.test "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the holder's issue"  'Bravo' "$OUT"
+  assert_eq    "not the ones they filed" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # An unheld issue satisfies no holder query.
+  run_render list --claimed-by alice "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "nothing holds" '_No matching issues\._' "$OUT"
+
+  # A value the form cannot judge stays reachable by naming it exactly.
+  run_render list --filed-by "not a recordable value" "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reachable literally" 'Delta' "$OUT"
+}
+
+# AC: a contributor value the configured form cannot judge stays reachable by
+# naming it exactly. The comma is the operator's own separator, so whitespace
+# beside one is the list's formatting and goes; whitespace at the operand's own
+# edges is part of the value that was typed and stays. An identity carrying edge
+# whitespace is unjudgeable for that reason alone, so the literal spelling is
+# the only route to it — and trimming the operand's edges closes that route
+# while leaving the record in the collection.
+case_issues_render_list_person_axis_edge_whitespace_named_exactly() {
+  local dir
+  dir=$(empty_dir render_person_ws)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+filed-by: "bob "'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+filed-by: "carol"'
+  run_index "$dir"
+
+  # The unjudgeable identity, named exactly as the record carries it.
+  run_render list --filed-by 'bob ' "$dir"
+  assert_exit  "exact spelling rc"  0       "$RC"
+  assert_match "reaches the record" 'Alpha' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  # Trimmed, the operand names a different value, which no record carries.
+  run_render list --filed-by 'bob' "$dir"
+  assert_exit  "trimmed spelling rc" 0 "$RC"
+  assert_match "matches nothing" '_No matching issues\._' "$OUT"
+
+  # A value's own edge survives a list; the whitespace beside the comma does
+  # not. Which is why the trailing-whitespace identity is namable last and the
+  # same operand one position earlier reaches only its neighbour.
+  run_render list --filed-by 'carol, bob ' "$dir"
+  assert_exit  "list rc" 0 "$RC"
+  assert_match "the judgeable alternative"   'Bravo' "$OUT"
+  assert_match "and the unjudgeable one"     'Alpha' "$OUT"
+
+  run_render list --filed-by 'bob , carol' "$dir"
+  assert_exit "reordered rc" 0 "$RC"
+  assert_eq   "the edge beside the comma is formatting" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # The edge trim is also what lets an operand yielding no alternative be
+  # refused. Loosening it must not turn a whitespace-only operand into a
+  # recordable alternative that matches nothing at status 0.
+  run_render list --filed-by '   ' "$dir"
+  assert_exit "whitespace-only still refuses" 1 "$RC"
+}
+
+# AC: a developer can name themselves rather than an address, so the query does
+# not depend on which of their addresses this machine commits under
+case_issues_render_list_person_axis_resolves_me() {
+  local dir
+  dir=$(empty_dir render_person_me)
+  person_fixture "$dir"
+  run_index "$dir"
+  run_render_as "tester@example.test" list --claimed-by me "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the issue they hold" 'Echo' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  # The same address written out reaches the same record.
+  run_render list --claimed-by tester@example.test "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "spelled out" 'Echo' "$OUT"
+  # And a relay address resolves to the account the collection records.
+  run_render_as "1234+alice@users.noreply.github.com" list --filed-by me "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "resolved through the form" 'Bravo' "$OUT"
+}
+
+# AC: there is no single word meaning "mine" — who filed an issue and who holds
+# it are separate questions, so each takes its own filter
+case_issues_render_list_no_bare_word_means_mine() {
+  local dir
+  dir=$(empty_dir render_person_mine)
+  person_fixture "$dir"
+  run_index "$dir"
+  run_render_as "tester@example.test" list me "$dir"
+  assert_exit  "refused"    1 "$RC"
+  assert_match "names what it could not be" 'unrecognized filter token: me' "$ERR"
+}
+
+# ─── Section: render.sh — the person-axis refusals ───────────────────────────
+
+# run_render_unidentified <args...> — a read with no contributor identity
+# reachable at all: the machine's own git config is neutralized and the run
+# stands outside any repository, so this is the genuine absent case rather
+# than a repository that merely overrides one.
+run_render_unidentified() {
+  local err_file="$TMP_BASE/.err"
+  OUT="$(cd "$TMP_BASE" && env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    GIT_CONFIG_COUNT=0 bash "$SCRIPT_RENDER" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# AC: when the environment's identity cannot be resolved, a query naming the
+# developer is refused, names what is missing, and fails without writing
+# anything
+case_issues_render_list_person_axis_refuses() {
+  local dir work
+  dir=$(empty_dir render_person_refuse)
+  person_fixture "$dir"
+  run_index "$dir"
+
+  run_render_unidentified list --claimed-by me "$dir"
+  assert_exit  "refused"              1 "$RC"
+  assert_eq    "no view served"       "" "$OUT"
+  assert_match "names the condition"  "cannot resolve 'me'" "$ERR"
+  assert_match "names what is missing" 'no contributor identity is configured' "$ERR"
+  assert_match "names the setting to correct" 'git config user.email' "$ERR"
+
+  # An identity the environment does supply but the configured form cannot
+  # record is a different condition, and takes a different remedy. The refusal
+  # names neither the value it rejected nor any issue content.
+  run_render_as "not a recordable value" list --filed-by me "$dir"
+  assert_exit  "refused"             1 "$RC"
+  assert_eq    "no view served"      "" "$OUT"
+  assert_match "names the condition" "cannot resolve 'me'" "$ERR"
+  assert_match "names the form"      'identity_scheme'     "$ERR"
+  assert_match "and not the other remedy" 'the address is the one git reports' "$ERR"
+  assert_eq    "never the value" "0" \
+    "$(printf '%s' "$ERR" | grep -c 'not a recordable value')"
+  assert_eq    "and no issue content" "0" \
+    "$(printf '%s' "$ERR" | grep -cE 'Alpha|Bravo|Charlie|Delta|Echo')"
+}
+
+# AC: a refusal over a value the view resolved rather than the operator
+# supplied writes nothing to disk, exactly as an unrecognized token does
+case_issues_render_list_person_refusal_writes_nothing() {
+  local coll work
+  coll=$(empty_dir render_person_refuse_write_coll)
+  person_fixture "$coll"
+  run_index "$coll"
+  work=$(empty_dir render_person_refuse_write)
+  printf 'issues_path = "%s"\n' "$coll" > "$work/jimconf.toml"
+  OUT="$(cd "$work" && env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    GIT_CONFIG_COUNT=0 HOME="$TMP_BASE/no_such_home" \
+    bash "$SCRIPT_RENDER" list --filed-by me 2>/dev/null)"
+  RC=$?
+  assert_exit "refused" 1 "$RC"
+  assert_eq   "created nothing" "0" \
+    "$(ls -A "$work" | grep -v '^jimconf.toml$' | grep -c .)"
+}
+
+# ─── Section: render.sh — an axis the index cannot answer ────────────────────
+
+# strip_new_scalars <index-file> — rewrite the Issues rows as an emitter that
+# predates the widened row would have written them, then make the result the
+# newest thing in the directory so the staleness gate reuses it.
+strip_new_scalars() {
+  local idx="$1" tmp="$1.stripped"
+  awk -F ' · ' 'BEGIN { OFS = " · " }
+    /^- `/ {
+      out = $1
+      for (i = 2; i <= NF; i++)
+        if ($i !~ /^(type|filed-by|claimed-by|outcome):/) out = out OFS $i
+      print out; next
+    }
+    { print }' "$idx" > "$tmp" && mv "$tmp" "$idx"
+  touch "$idx"
+}
+
+# AC: when a filter names an axis the collection's index does not describe, the
+# view says so and fails, rather than reporting that nothing matched. An empty
+# result means nothing matched — it never means the view could not look.
+case_issues_render_list_refuses_unanswerable_axis() {
+  local dir
+  dir=$(empty_dir render_unanswerable)
+  person_fixture "$dir"
+  run_index "$dir"
+  strip_new_scalars "$dir/INDEX.md"
+
+  run_render list --filed-by dev@example.test "$dir"
+  assert_exit  "refused"             1 "$RC"
+  assert_match "names the axis"      'filed-by'      "$ERR"
+  assert_match "names the condition" 'does not describe' "$ERR"
+  assert_match "names the remedy"    'index\.sh'     "$ERR"
+  assert_eq    "no empty view served as an answer" "0" \
+    "$(printf '%s' "$OUT" | grep -c '_No matching issues\._')"
+
+  # The kind axis reads the same field and answers the same way.
+  run_render list --type issue "$dir"
+  assert_exit  "refused"        1 "$RC"
+  assert_match "names the axis" 'type' "$ERR"
+
+  # An axis the older index does describe still answers normally.
+  run_render list open "$dir"
+  assert_exit  "still answers" 0 "$RC"
+  assert_match "and lists"     'Alpha' "$OUT"
+
+  # And once the index is rebuilt, the axis answers.
+  run_index "$dir"
+  run_render list --filed-by dev@example.test "$dir"
+  assert_exit  "answers after a regeneration" 0 "$RC"
+  assert_match "the record"  'Alpha' "$OUT"
+}
+
+# script_vocabulary <script> <constant> — the elements <script> declares for one
+# of its readonly vocabularies, one per line. A case's domain comes from the
+# code's own declaration rather than from a list retyped here, so an entry added
+# to the constant enters every case that loops over it — which a hand-picked
+# sample never does.
+script_vocabulary() {
+  awk -v pfx="readonly $2=(" '
+    substr($0, 1, length(pfx)) == pfx { inside = 1; $0 = substr($0, length(pfx) + 1) }
+    inside {
+      if (match($0, /\)/)) { print substr($0, 1, RSTART - 1); exit }
+      print
+    }
+  ' "$1" | tr -s '[:space:]' '\n' | grep -v '^$'
+}
+
+# render_vocabulary <constant> — script_vocabulary against render.sh.
+render_vocabulary() {
+  script_vocabulary "$SCRIPT_RENDER" "$1"
+}
+
+# index_vocabularies — the names of every readonly vocabulary index.sh declares
+# for a frontmatter scalar, one per line. Discovered rather than listed, so a
+# vocabulary added to the script reaches the cases that quantify over them.
+index_vocabularies() {
+  grep -oE '^readonly (ISSUE_[A-Z_]+)=\(' "$SCRIPT_INDEX" \
+    | sed -E 's/^readonly (ISSUE_[A-Z_]+)=\($/\1/'
+}
+
+# classified_field <constant> — the frontmatter field index.sh judges against
+# <constant>. Every vocabulary index_vocabularies discovers needs an entry here:
+# a case looping the discovered set fails on one without a mapping, so a new
+# vocabulary cannot enter the script without also entering these cases.
+classified_field() {
+  case "$1" in
+    ISSUE_TYPES)    printf 'type\n' ;;
+    ISSUE_OUTCOMES) printf 'outcome\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+# axis_query <axis> — a minimal query naming one axis, in that axis's own
+# syntax, one argument per line. Every axis the grammar declares needs an entry
+# here: a case looping the vocabulary fails on an axis without one, so an axis
+# cannot enter the grammar without also entering these cases.
+axis_query() {
+  case "$1" in
+    status)     printf '%s\n' open ;;
+    priority)   printf '%s\n' high ;;
+    type)       printf '%s\n' --type issue ;;
+    label)      printf '%s\n' --label auth ;;
+    epic)       printf '%s\n' --epic 20260101-alpha ;;
+    filed-by)   printf '%s\n' --filed-by dev@example.test ;;
+    claimed-by) printf '%s\n' --claimed-by dev@example.test ;;
+    spec)       printf '%s\n' --spec issue/011 ;;
+    origin)     printf '%s\n' --origin docs ;;
+    held)       printf '%s\n' unclaimed ;;
+    blocked)    printf '%s\n' blocked ;;
+  esac
+}
+
+# AC: when a filter names an axis the collection's index does not describe, the
+# view says so and fails, rather than reporting that nothing matched — on every
+# axis the grammar accepts and on both read verbs. The census shares the parser,
+# the matcher and the row reader with the list view, so it shares this too: a
+# rollup that answers confidently from an index it knows cannot answer is the
+# same wrong answer one surface out.
+case_issues_render_unanswerable_axes_refuse_on_both_verbs() {
+  local dir
+  dir=$(empty_dir render_unanswerable_axes)
+  person_fixture "$dir"
+  run_index "$dir"
+  strip_new_scalars "$dir/INDEX.md"
+
+  local gated pair axis field verb axis_count=0
+  local -a q=()
+  gated=" $(render_vocabulary SCHEMA_GATED_FIELDS | tr '\n' ' ')"
+  assert_match "the gated field set was read from the code" 'type' "$gated"
+
+  while read -r pair; do
+    axis="${pair%%:*}"; field="${pair#*:}"
+    (( axis_count++ ))
+    mapfile -t q < <(axis_query "$axis")
+    if (( ${#q[@]} == 0 )); then
+      CURRENT_FAILED=1
+      echo "    [render.sh declares axis '$axis' but axis_query has no query for it]"
+      continue
+    fi
+    for verb in list stats; do
+      run_render "$verb" "${q[@]}" "$dir"
+      if [[ "$gated" == *" $field "* ]]; then
+        assert_exit  "$verb $axis refuses"       1 "$RC"
+        assert_match "$verb $axis names its field" "does not describe:.*(^| )$field( |\$)" "$ERR"
+        assert_match "$verb $axis names the remedy" 'index\.sh' "$ERR"
+      else
+        assert_exit  "$verb $axis still answers" 0 "$RC"
+      fi
+    done
+  done < <(render_vocabulary AXIS_FIELDS)
+
+  # An empty domain would pass every assertion above without exercising
+  # anything, which is the failure this case exists to rule out.
+  assert_match "the axis vocabulary was read from the code" '^[1-9][0-9]*$' "$axis_count"
+}
+
+# AC: a column naming a field the index does not describe refuses on the same
+# rule as a filter naming it. A filter the index cannot answer makes the whole
+# result wrong and a column it cannot fill leaves one cell blank, but both are
+# the view failing to say it could not look — so both refuse, and the operator
+# gets the same one-command repair either way.
+case_issues_render_unanswerable_column_refuses() {
+  local dir cwd col gated
+  dir=$(empty_dir render_unanswerable_cols)
+  person_fixture "$dir"
+  run_index "$dir"
+  strip_new_scalars "$dir/INDEX.md"
+
+  gated=" $(render_vocabulary SCHEMA_GATED_FIELDS | tr '\n' ' ')"
+  assert_match "the gated field set was read from the code" 'type' "$gated"
+  while read -r col; do
+    run_render list --cols "$col" "$dir"
+    if [[ "$gated" == *" $col "* ]]; then
+      assert_exit  "--cols $col refuses"      1 "$RC"
+      assert_match "--cols $col names itself" "does not describe:.*(^| )$col( |\$)" "$ERR"
+    else
+      assert_exit  "--cols $col still answers" 0 "$RC"
+    fi
+  done < <(render_vocabulary COL_TOKENS)
+
+  # A standing setting degrades where this run's explicit ask refuses. The two
+  # fail differently on a column the vocabulary rejects, and they fail
+  # differently here for the same reason: a configured default that made the
+  # collection unreadable would be a setting no view could get past.
+  cwd=$(empty_dir render_unanswerable_cols_cwd)
+  printf 'issue_list_cols = "num,claimed-by"\n' > "$cwd/jimconf.toml"
+  OUT="$(cd "$cwd" && bash "$SCRIPT_RENDER" list "$dir" 2>/dev/null)"
+  RC=$?
+  assert_exit  "a configured column still serves the view" 0 "$RC"
+  assert_match "and the rows are there"  '#1'    "$OUT"
+}
+
+# operand_fixture <dir> — two records, one carrying a label, so a narrowing
+# that arrives as a widening is visible as a count rather than as an absence.
+operand_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+labels: [auth]'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue'
+}
+
+# AC: a filter operand that names no alternative is refused rather than left to
+# widen the query. An axis nobody named matches everything, so an operand of
+# separators and spaces alone turns the narrowing the operator typed into a
+# widening — silently, and at status 0, which on a read surface is
+# indistinguishable from a query that legitimately matched a lot.
+case_issues_render_operand_naming_no_alternative_refuses() {
+  local dir f v flag_count=0
+  dir=$(empty_dir render_empty_operand)
+  operand_fixture "$dir"
+  run_index "$dir"
+
+  # The narrowing the operator meant, for contrast with every refusal below.
+  run_render list --label auth "$dir"
+  assert_exit "a real value narrows" 0   "$RC"
+  assert_eq   "to the one record"    "1" "$(printf '%s' "$OUT" | grep -cE '^  #')"
+
+  while read -r f; do
+    # --cols names a vocabulary rather than an axis and refuses on its own
+    # terms; every other option carries an axis value.
+    [[ "$f" == "--cols" ]] && continue
+    (( flag_count++ ))
+    for v in ',,,' '   ' ',' ' , '; do
+      run_render list "$f" "$v" "$dir"
+      assert_exit  "list $f [$v] refuses"   1 "$RC"
+      assert_match "list $f [$v] says why"  'yields none' "$ERR"
+      assert_eq    "and matches nothing"    "0" "$(printf '%s' "$OUT" | grep -cE '^  #')"
+    done
+    run_render stats "$f" ',,,' "$dir"
+    assert_exit "stats $f refuses on the same rule" 1 "$RC"
+  done < <(render_vocabulary RENDER_OPTIONS)
+
+  assert_match "the option vocabulary was read from the code" '^[1-9][0-9]*$' "$flag_count"
+}
+
+# AC: a flag standing where a value belongs is a typo rather than a value, for
+# any flag and not only the ones this file accepts — an unrecognized flag is
+# still a flag, and binding it as a value consumes the option that was typed
+# and applies one that was not.
+case_issues_render_flag_shaped_operand_refuses() {
+  local dir f flag_count=0
+  dir=$(empty_dir render_flag_shaped_operand)
+  operand_fixture "$dir"
+  run_index "$dir"
+
+  while read -r f; do
+    (( flag_count++ ))
+    run_render list "$f" --nosuchflag "$dir"
+    assert_exit  "list $f --nosuchflag refuses" 1 "$RC"
+    assert_match "names what followed it"       'followed it' "$ERR"
+  done < <(render_vocabulary RENDER_OPTIONS)
+
+  assert_match "the option vocabulary was read from the code" '^[1-9][0-9]*$' "$flag_count"
+
+  # One hyphen is not two: the recordable-identity set admits a leading hyphen
+  # deliberately, and a real address can wear one.
+  run_render list --filed-by -dev@example.test "$dir"
+  assert_exit "an option-shaped value still passes" 0 "$RC"
+
+  # An axis stores its alternatives newline-separated, so an operand carrying a
+  # newline cannot be told from two of them. It was cut at the first line and
+  # the rest went unapplied without a word.
+  run_render list --label "$(printf 'auth\nzzz')" "$dir"
+  assert_exit  "a multi-line operand refuses" 1 "$RC"
+  assert_match "says why" 'single-line value' "$ERR"
+}
+
+# ─── Section: render.sh — the origin axes ────────────────────────────────────
+
+# origin_fixture <dir> — issues whose origins span a spec's several artifacts,
+# a second spec, a non-spec document, and a value carrying glob metacharacters.
+origin_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+origin: "docs/specs/issue/011-issue-placement/spec.md"'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+origin: "docs/specs/issue/011-issue-placement/review.md"'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: open
+num: 3
+created: 2026-01-03
+type: issue
+origin: "docs/specs/issue/012-schema-and-state-model/plan.md"'
+  write_issue "$dir" "20260104-delta" 'title: "Delta"
+status: open
+num: 4
+created: 2026-01-04
+type: issue
+origin: "docs/brainstorms/20260817-epics.md"'
+  write_issue "$dir" "20260105-echo" 'title: "Echo"
+status: open
+num: 5
+created: 2026-01-05
+type: issue
+origin: "docs/notes/a*b.md"'
+}
+
+# AC: an origin match is a path prefix, and the prefix is literal — a value
+# carrying a glob metacharacter matches itself rather than widening the query
+case_issues_render_list_origin_prefix_is_literal() {
+  local dir
+  dir=$(empty_dir render_origin)
+  origin_fixture "$dir"
+  run_index "$dir"
+
+  # A prefix reaches every artifact under it, not only the document named.
+  run_render list --spec issue/011-issue-placement "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the spec document"  'Alpha' "$OUT"
+  assert_match "and the review"     'Bravo' "$OUT"
+  assert_eq    "not the other spec" "0" "$(printf '%s' "$OUT" | grep -c 'Charlie')"
+
+  # Group and ordinal reach it without naming the rest of the directory.
+  run_render list --spec issue/011 "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "still reaches it" 'Alpha' "$OUT"
+  assert_eq    "and still excludes the other" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Charlie')"
+
+  # The general origin filter reaches origins that are not specs.
+  run_render list --origin docs/brainstorms "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the brainstorm"  'Delta' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # A metacharacter in the value is a character, not a pattern. `docs/notes/a*`
+  # as a glob would reach every note; as a literal prefix it reaches one.
+  run_render list --origin 'docs/notes/a*b' "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the literal match" 'Echo' "$OUT"
+  run_render list --origin 'docs/*' "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "a glob matches nothing" '_No matching issues\._' "$OUT"
+
+  # The two origin axes conjoin with everything else.
+  run_render list --spec issue/011 --priority high "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "no record satisfies both" '_No matching issues\._' "$OUT"
+}
+
+# AC: a `--spec` operand names path segments, so a group reaches its own group
+# and not a sibling whose name it happens to prefix. Nothing else bounds the
+# group: the allocator invariants the ordinal leans on have no analogue for a
+# group name, which is free-form. And the default columns carry no origin, so
+# a widened answer here is one the operator has no way to see.
+case_issues_render_list_spec_group_is_a_whole_segment() {
+  local dir
+  dir=$(empty_dir render_spec_segment)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+origin: "docs/specs/issue/011-issue-placement/spec.md"'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+origin: "docs/specs/issues/011-something-else/spec.md"'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: open
+num: 3
+created: 2026-01-03
+type: issue
+origin: "docs/specs/issue-archive/011-x/spec.md"'
+  run_index "$dir"
+
+  # The group is a whole segment, so a sibling it prefixes is not inside it.
+  run_render list --spec issue "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "its own group"       'Alpha' "$OUT"
+  assert_eq "not the plural sibling" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq "not the hyphenated one" "0" "$(printf '%s' "$OUT" | grep -c 'Charlie')"
+
+  # Each sibling is still reachable by its own name, so the boundary narrows
+  # the query rather than putting records out of the collection's reach.
+  run_render list --spec issues "$dir"
+  assert_match "the plural sibling" 'Bravo' "$OUT"
+  assert_eq "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+  run_render list --spec issue-archive "$dir"
+  assert_match "the hyphenated one" 'Charlie' "$OUT"
+  assert_eq "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'Alpha')"
+
+  # An ordinal still reaches the directory without naming the rest of it. That
+  # is the criterion the loose match existed for, and the boundary keeps it:
+  # the ordinal may end at the hyphen, where the group may not.
+  run_render list --spec issue/011 "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "group and ordinal" 'Alpha' "$OUT"
+  assert_eq "and no sibling group" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+
+  # The census asks the same question, so it cannot report a scope it does not
+  # have — `scope: spec=issue` above a count covering three groups would be a
+  # rollup contradicting its own disclosure.
+  run_render stats --spec issue "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the scope it claims"    'scope: spec=issue'   "$OUT"
+  assert_match "counts only that group" 'Open: 1 · Closed: 0' "$OUT"
+
+  # `--origin` is deliberately not bounded: an origin match is specified as a
+  # path prefix, so reaching partway into a segment is that axis working.
+  run_render list --origin docs/specs/issue "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reaches its own"      'Alpha'   "$OUT"
+  assert_match "and the siblings too" 'Bravo'   "$OUT"
+  assert_match "including hyphenated" 'Charlie' "$OUT"
+}
+
+# ─── Section: render.sh — the derived predicates ─────────────────────────────
+
+# derived_fixture <dir> — an umbrella with two members, a live dependency, a
+# finished one, and a record in neither relation.
+derived_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-epicone" 'title: "EpicOne"
+status: open
+num: 1
+created: 2026-01-01
+type: epic'
+  write_issue "$dir" "20260102-memberone" 'title: "MemberOne"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+claimed-by: "dev@example.test"
+relations:
+  part-of: [20260101-epicone]
+  depends-on: [20260104-livedep]'
+  write_issue "$dir" "20260103-membertwo" 'title: "MemberTwo"
+status: open
+num: 3
+created: 2026-01-03
+type: issue
+relations:
+  part-of: [20260101-epicone]'
+  write_issue "$dir" "20260104-livedep" 'title: "LiveDep"
+status: active
+num: 4
+created: 2026-01-04
+type: issue'
+  write_issue "$dir" "20260105-donedep" 'title: "DoneDep"
+status: closed
+num: 5
+created: 2026-01-05
+type: issue
+outcome: done'
+  write_issue "$dir" "20260106-settled" 'title: "Settled"
+status: open
+num: 6
+created: 2026-01-06
+type: issue
+relations:
+  depends-on: [20260105-donedep]'
+  # A finished member, so the umbrella is PARTIALLY complete. Without one every
+  # member here is open and no fixture exercises a non-zero progress
+  # numerator — a derivation that always answered 0/N would pass.
+  write_issue "$dir" "20260107-memberdone" 'title: "MemberDone"
+status: closed
+num: 7
+created: 2026-01-07
+type: issue
+outcome: done
+relations:
+  part-of: [20260101-epicone]'
+}
+
+# AC: whether an issue is held is filterable without naming a person, in both
+# directions; whether it is blocked is filterable in both directions; and
+# neither predicate is stored, so no record can disagree with either
+case_issues_render_list_derived_predicates() {
+  local dir
+  dir=$(empty_dir render_derived)
+  derived_fixture "$dir"
+  run_index "$dir"
+
+  run_render list claimed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the held one"  'MemberOne' "$OUT"
+  assert_eq    "and only it" "0" "$(printf '%s' "$OUT" | grep -c 'MemberTwo')"
+
+  run_render list unclaimed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "an unheld one"     'MemberTwo' "$OUT"
+  assert_match "and the umbrella"  'EpicOne'   "$OUT"
+  assert_eq    "not the held one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
+
+  # Progress over a partially-complete umbrella: three members, one finished.
+  # A numerator asserted only against an all-open umbrella would be satisfied
+  # by a derivation that always answered zero.
+  run_render list epic "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the umbrella carries a non-zero numerator" '1/3 closed' "$OUT"
+
+  # Blocked is one hop, and it keys on the target not being finished.
+  run_render list blocked "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "depends on live work" 'MemberOne' "$OUT"
+  assert_eq    "not the settled one" "0" "$(printf '%s' "$OUT" | grep -c 'Settled')"
+
+  run_render list unblocked "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "its dependency is finished" 'Settled'   "$OUT"
+  assert_match "and one with no dependency" 'MemberTwo' "$OUT"
+  assert_eq    "not the blocked one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
+
+  # Umbrella membership reads the same graph the index already renders.
+  run_render list --epic 20260101-epicone "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the first member"  'MemberOne' "$OUT"
+  assert_match "the second member" 'MemberTwo' "$OUT"
+  assert_eq    "not the umbrella itself" "0" "$(printf '%s' "$OUT" | grep -c 'EpicOne')"
+
+  # The derived axes conjoin with each other and with the stored ones.
+  run_render list blocked unclaimed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the one blocked record is held" '_No matching issues\._' "$OUT"
+  run_render list --epic 20260101-epicone unblocked "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the unblocked member" 'MemberTwo' "$OUT"
+  assert_eq    "not the blocked one" "0" "$(printf '%s' "$OUT" | grep -c 'MemberOne')"
+}
+
+# AC: an issue is blocked when it depends on an issue that is not finished. A
+# dependency the collection does not hold has no status to judge, so reading it
+# as finished is the one answer that cannot be defended: it hands a developer
+# picking work off `unblocked` an issue naming a blocker nobody can open. An
+# unknown target is not a finished one, so the predicate blocks on it — the
+# same direction the derivation already fails in for a target that is present
+# and open.
+case_issues_render_blocked_by_a_dependency_outside_the_collection() {
+  local dir
+  dir=$(empty_dir render_blocked_ghost)
+  write_issue "$dir" "20260101-ghosted" 'title: "Ghosted"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+relations:
+  depends-on: [20260199-ghost]'
+  write_issue "$dir" "20260102-live" 'title: "Live"
+status: open
+num: 2
+created: 2026-01-02
+type: issue
+relations:
+  depends-on: [20260104-target]'
+  write_issue "$dir" "20260103-free" 'title: "Free"
+status: open
+num: 3
+created: 2026-01-03
+type: issue'
+  write_issue "$dir" "20260104-target" 'title: "Target"
+status: open
+num: 4
+created: 2026-01-04
+type: issue'
+  write_issue "$dir" "20260105-settled" 'title: "Settled"
+status: open
+num: 5
+created: 2026-01-05
+type: issue
+relations:
+  depends-on: [20260106-finished]'
+  write_issue "$dir" "20260106-finished" 'title: "Finished"
+status: closed
+num: 6
+created: 2026-01-06
+type: issue
+outcome: done'
+  run_index "$dir"
+
+  run_render list blocked "$dir"
+  assert_exit  "blocked rc" 0 "$RC"
+  assert_match "an unresolvable dependency blocks" 'Ghosted' "$OUT"
+  assert_match "so does a live one"                'Live'    "$OUT"
+  assert_eq    "a record naming no dependency does not" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Free')"
+  assert_eq    "nor one whose dependency is finished" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Settled')"
+
+  run_render list unblocked "$dir"
+  assert_exit "unblocked rc" 0 "$RC"
+  assert_eq   "the ghosted record is not offered as pickable" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'Ghosted')"
+  assert_match "a record naming no dependency is"  'Free'    "$OUT"
+  assert_match "and one whose dependency is done"  'Settled' "$OUT"
+}
+
+# ─── Section: render.sh — choosing columns ───────────────────────────────────
+
+# AC: the list view can display a record's kind, filer, holder and outcome
+# alongside the columns it already offers, and the choice can be made for a
+# single query without changing the project's configured default
+case_issues_render_list_cols_flag() {
+  local dir work
+  dir=$(empty_dir render_cols)
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: closed
+num: 1
+priority: high
+created: 2026-01-01
+type: epic
+filed-by: "dev@example.test"
+claimed-by: "holder@example.test"
+outcome: wontfix'
+  run_index "$dir"
+
+  run_render list closed --cols num,filed-by,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the filer shows"   'dev@example\.test' "$OUT"
+  assert_match "beside the title"  'Alpha'             "$OUT"
+  assert_eq    "and the priority does not" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'high')"
+
+  run_render list closed --cols type,claimed-by,outcome,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "kind"    'epic'                 "$OUT"
+  assert_match "holder"  'holder@example\.test' "$OUT"
+  assert_match "outcome" 'wontfix'              "$OUT"
+
+  # An unrecognized ad-hoc column is refused and the refusal names the set.
+  run_render list closed --cols num,bogus "$dir"
+  assert_exit  "refused"          1 "$RC"
+  assert_match "names the token"  'unrecognized column: bogus' "$ERR"
+  assert_match "names the set"    'filed-by'                   "$ERR"
+
+  # A mistyped standing setting degrades to the default set instead, so a
+  # formatting mistake never makes the collection unreadable.
+  work=$(empty_dir render_cols_cfg)
+  printf 'issues_path = "%s"\nissue_list_cols = "bogus"\nissue_list_closed = "true"\n' \
+    "$dir" > "$work/jimconf.toml"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list 2>/dev/null)"
+  RC=$?
+  assert_exit  "still readable" 0 "$RC"
+  assert_match "on the default columns" '#1' "$OUT"
+
+  # And a flag chosen for one query leaves that setting alone.
+  printf 'issues_path = "%s"\nissue_list_cols = "num,title"\nissue_list_closed = "true"\n' \
+    "$dir" > "$work/jimconf.toml"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list --cols outcome,title 2>/dev/null)"
+  assert_match "the flag wins for this query" 'wontfix' "$OUT"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list 2>/dev/null)"
+  assert_eq "and the next query is the configured default again" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'wontfix')"
+  assert_match "which still lists it" 'Alpha' "$OUT"
+}
+
+# ─── Section: render.sh — the closed-issue default and its disclosure ────────
+
+# hide_fixture <dir> — one open and two closed issues sharing a label.
+hide_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+priority: high
+created: 2026-01-01
+type: issue
+labels: [auth]'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: closed
+num: 2
+priority: high
+created: 2026-01-02
+type: issue
+outcome: done
+labels: [auth]'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: closed
+num: 3
+priority: low
+created: 2026-01-03
+type: issue
+outcome: done
+labels: [archive]'
+}
+
+# AC: the work-queue view keeps hiding finished issues, only a lifecycle-state
+# filter overrides that, and a view that hid them while filtering says so
+case_issues_render_list_hide_closed_discloses() {
+  local dir work
+  dir=$(empty_dir render_hide)
+  hide_fixture "$dir"
+  run_index "$dir"
+
+  # A filter on any other axis leaves the default in place — and says so,
+  # because a narrowed result must not be mistaken for the whole match.
+  run_render list --label auth "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the open one"    'Alpha' "$OUT"
+  assert_eq    "the closed one hidden" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_match "and the view says so" 'closed hidden' "$OUT"
+
+  # A filter naming lifecycle state is the user being deliberate about it, so
+  # nothing is hidden and there is nothing to disclose.
+  run_render list closed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the closed ones" 'Bravo' "$OUT"
+  assert_eq    "no disclosure" "0" "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # The unfiltered default has hidden closed issues since before this, quietly.
+  run_render list "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the open one"   'Alpha' "$OUT"
+  assert_eq    "still hidden" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq    "and quietly"  "0" "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # An empty result is where the disclosure matters most: without it, "nothing
+  # matched" and "everything that matched was hidden" read the same.
+  run_render list --label archive "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "reports no matches" '_No matching issues\._' "$OUT"
+  assert_match "and why"            'closed hidden'          "$OUT"
+
+  # Nothing is hidden when the toggle opts closed issues in, so nothing is
+  # disclosed either.
+  work=$(empty_dir render_hide_cfg)
+  printf 'issues_path = "%s"\nissue_list_closed = "true"\n' "$dir" > "$work/jimconf.toml"
+  OUT="$(cd "$work" && bash "$SCRIPT_RENDER" list --label auth 2>/dev/null)"
+  RC=$?
+  assert_exit  "rc" 0 "$RC"
+  assert_match "both shown" 'Bravo' "$OUT"
+  assert_eq    "no disclosure" "0" "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # A filter that excludes the closed records on another axis hides nothing, so
+  # it discloses nothing.
+  run_render list --priority low --label auth "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "nothing was hidden by the default" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+}
+
+# AC: a column selection is a display choice, not a filter — so it neither
+# narrows the view nor makes the view claim it was narrowed. That distinction
+# is only visible where a filter would change what the reader is told: the
+# closed-hiding default stays silent under `--cols` alone, because nothing was
+# narrowed for the hidden records to be mistaken against, and a census under
+# one is still a statement about the whole collection.
+case_issues_render_cols_alone_is_not_a_filter() {
+  local dir
+  dir=$(empty_dir render_cols_not_a_filter)
+  hide_fixture "$dir"
+  run_index "$dir"
+
+  # A closed record shares the open one's label, so it is hidden by the
+  # standing default in both queries below — the same records either way, and
+  # the only difference is whether an axis was named.
+  run_render list --cols num,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the open one"           'Alpha' "$OUT"
+  assert_eq    "the closed ones hidden" "0" "$(printf '%s' "$OUT" | grep -c 'Bravo')"
+  assert_eq    "and quietly, as the unfiltered default always has" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # Name an axis over the same collection and the disclosure fires, which is
+  # what shows the silence above belongs to `--cols` and not to the fixture.
+  run_render list --label auth --cols num,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the same open record" 'Alpha'         "$OUT"
+  assert_match "and now it discloses" 'closed hidden' "$OUT"
+
+  # The census makes the same distinction one surface out.
+  run_render stats --cols num,title "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "the whole collection" 'Open: 1 · Closed: 2' "$OUT"
+  assert_eq    "and no scope claimed" "0" "$(printf '%s' "$OUT" | grep -c 'scope:')"
+}
+
+# ─── Section: render.sh — statistics under a filter ──────────────────────────
+
+# stats_fixture <dir> — records spanning two labels, both lifecycle ends, and
+# one blocking edge out of a labelled record.
+stats_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+priority: high
+created: 2026-01-01
+type: issue
+labels: [auth]
+origin: "docs/specs/issue/011-issue-placement/spec.md"
+relations:
+  blocks: [20260104-delta]'
+  write_issue "$dir" "20260102-bravo" 'title: "Bravo"
+status: closed
+num: 2
+priority: low
+created: 2026-01-02
+type: issue
+outcome: done
+labels: [auth]
+origin: "docs/specs/issue/011-issue-placement/plan.md"'
+  write_issue "$dir" "20260103-charlie" 'title: "Charlie"
+status: open
+num: 3
+priority: medium
+created: 2026-01-03
+type: issue
+labels: [archive]
+origin: "docs/brainstorms/x.md"
+relations:
+  blocks: [20260104-delta]'
+  write_issue "$dir" "20260104-delta" 'title: "Delta"
+status: open
+num: 4
+priority: low
+created: 2026-01-04
+type: issue
+labels: [archive]
+relations:
+  depends-on: [20260101-alpha, 20260103-charlie]'
+}
+
+# AC: the statistics view accepts the same filters as the list view under the
+# same rules, discloses what it was scoped to, and never hides finished issues
+# epic_stats_fixture <dir> — one umbrella, two members (one closed), and one
+#   unrelated issue. Counts: 2 open units of work + 1 closed, 1 container.
+epic_stats_fixture() {
+  local dir="$1"
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+num: 1
+type: epic
+priority: high
+outcome: ""'
+  write_issue "$dir" "20260102-member-open" 'title: "Open member"
+status: open
+num: 2
+type: issue
+priority: medium
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella]'
+  write_issue "$dir" "20260103-member-done" 'title: "Closed member"
+status: closed
+num: 3
+type: issue
+priority: low
+outcome: done
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-umbrella]'
+  write_issue "$dir" "20260104-loner" 'title: "Loner"
+status: open
+num: 4
+type: issue
+priority: low
+outcome: ""'
+}
+
+# AC: a statistics run over a collection holding no umbrellas reports what it
+# reported before this increment, so adopting umbrellas is what changes the
+# numbers rather than installing the feature.
+#
+# The collection this was built against held no epics at all, which made a
+# byte-for-byte before/after comparison available at no cost. This is the
+# standing form of that oracle: with no container present, every record counts
+# as work and no container line appears anywhere.
+case_issues_render_stats_unchanged_without_umbrellas() {
+  local dir
+  dir=$(empty_dir render_stats_no_epics)
+  write_issue "$dir" "20260101-a" 'title: "A"
+status: open
+num: 1
+type: issue
+priority: high
+outcome: ""'
+  write_issue "$dir" "20260102-b" 'title: "B"
+status: closed
+num: 2
+type: issue
+priority: low
+outcome: done'
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "every record counts as work" 'Open: 1 · Closed: 1' "$OUT"
+  # Asserted as the two structures rather than as the bare word: the census
+  # header echoes the collection path, so a fixture directory named for this
+  # case would match a word search and the probe would be reporting itself.
+  assert_eq "no container summary line" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^  Epics: ')"
+  assert_eq "no container rollup section" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^== Epics ==$')"
+}
+
+# AC: the statistics view counts units of work and reports containers
+# separately, so a rollup is never inflated by the umbrellas in it. Every
+# cluster the view already reports counts work only.
+case_issues_render_stats_counts_work_not_containers() {
+  local dir body
+  dir=$(empty_dir render_stats_work_only)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  # Four records, one of them a container: two open units of work, one closed.
+  assert_match "the headline counts work" 'Open: 2 · Closed: 1' "$OUT"
+  body="$(printf '%s\n' "$OUT" | awk '/^== Epics ==$/ { exit } { print }')"
+  # The umbrella is the only record carrying priority high, so its absence
+  # from the priority cluster is what proves the exclusion reached that
+  # cluster rather than only the headline.
+  assert_eq "the priority cluster excludes it" "0" \
+    "$(printf '%s' "$body" | grep -c 'high')"
+}
+
+# AC: the view reports containers separately — the count has somewhere to go,
+# which is also what stops a container-scoped census reporting zeroes.
+case_issues_render_stats_reports_a_container_count() {
+  local dir
+  dir=$(empty_dir render_stats_container_count)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_match "containers are counted on their own line" \
+    'Epics: 1 open · 0 closed' "$OUT"
+}
+
+# AC: `stats --type epic` is a legal query. The guard skips containers before
+# every work counter, so without a count of their own the headline would read
+# zero and every cluster _none_ however many umbrellas the collection holds.
+case_issues_render_stats_type_epic_still_rolls_up_blocking() {
+  local dir
+  dir=$(empty_dir render_stats_type_epic)
+  epic_stats_fixture "$dir"
+  # Give the umbrella an outgoing blocks edge so the rollup has something to
+  # find, and the rollup is gated on the matching set the guard must not touch.
+  write_issue "$dir" "20260105-blocked" 'title: "Blocked"
+status: open
+num: 5
+type: issue
+priority: low
+outcome: ""'
+  write_issue "$dir" "20260101-umbrella" 'title: "Umbrella"
+status: open
+num: 1
+type: epic
+priority: high
+outcome: ""
+relations:
+  blocks: [20260105-blocked]
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: []'
+  run_index "$dir"
+  run_render stats --type epic "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the container census has something true to say" \
+    'Epics: 1 open · 0 closed' "$OUT"
+  assert_match "and the blocking rollup still works" '20260101-umbrella' "$OUT"
+}
+
+# AC: the exclusion sits at one ordering boundary, and the boundary is
+# load-bearing. Three regions, three populations: the staleness signals read
+# every row before the filter, the scope set reads rows that passed it, and
+# only the work counters exclude containers. A guard placed above the scope
+# set breaks the blocking rollup for a container-scoped query; one placed
+# above the staleness signals lets a collection of nothing but epics report
+# seen_rows == 0 and pass a schema gate it should fail.
+case_issues_render_stats_exclusion_ordering_is_load_bearing() {
+  local dir
+  dir=$(empty_dir render_stats_ordering)
+  # A collection of containers only, written against a schema-blind index.
+  write_issue "$dir" "20260101-e1" 'title: "E1"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  run_index "$dir"
+  # Strip the type field from every row, the way an index written before the
+  # widened schema carries it. The gate must still refuse a query naming it.
+  sed -i 's/ · type: epic//' "$dir/INDEX.md"
+  touch "$dir/INDEX.md"
+  run_render stats --type epic "$dir"
+  assert_exit "an index that cannot describe type refuses" 1 "$RC"
+  assert_match "and names the row field" 'type' "$ERR"
+}
+
+# AC: a roster can never disagree with the records claiming membership — and
+# the surfaces that report one cannot disagree with each other either. A
+# hand-edited record naming a plain issue as its umbrella is a containment
+# violation the index reports; neither surface may present that issue AS an
+# umbrella. The index filters its section to records of kind epic, so the
+# census rollup must apply the same test rather than listing every target that
+# happens to be named.
+case_issues_render_stats_rollup_lists_only_real_umbrellas() {
+  local dir
+  dir=$(empty_dir render_rollup_non_epic)
+  write_issue "$dir" "20260101-plain" 'title: "Plain"
+status: open
+num: 1
+type: issue
+outcome: ""'
+  write_issue "$dir" "20260102-m" 'title: "M"
+status: open
+num: 2
+type: issue
+outcome: ""
+relations:
+  blocks: []
+  depends-on: []
+  related-to: []
+  duplicates: []
+  part-of: [20260101-plain]'
+  run_index "$dir"
+  assert_match "the index reports the violation" 'names an umbrella that is not an epic' \
+    "$(cat "$dir/INDEX.md")"
+  assert_match "and lists no umbrella" '_No epics._' "$(cat "$dir/INDEX.md")"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the census agrees with the index" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^== Epics ==$')"
+  assert_eq "no container count either" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^  Epics: ')"
+}
+
+# AC: the read views can list the umbrellas in the collection, each with its
+# progress -- and an umbrella with no members reports an empty roster rather
+# than reporting nothing at all. The rollup must enumerate the epic ROWS: an
+# umbrella nobody has joined has no membership edge to be found by, so a rollup
+# driven off the edges omits the record entirely while the same run's container
+# count still counts it. `show` and `list epic` are already right because they
+# enumerate rows and read the progress maps with a zero default.
+case_issues_render_stats_rollup_lists_a_memberless_umbrella() {
+  local dir section
+  dir=$(empty_dir render_rollup_memberless)
+  epic_stats_fixture "$dir"
+  write_issue "$dir" "20260105-untouched" 'title: "Untouched"
+status: open
+num: 5
+type: epic
+priority: low
+outcome: ""'
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  section="$(printf '%s\n' "$OUT" \
+    | awk '/^== Epics ==$/ { on = 1; next } on && /^== / { exit } on')"
+  assert_match "the joined umbrella carries its progress" \
+    '20260101-umbrella +1/2 closed' "$section"
+  assert_match "and the one nobody joined is listed too" \
+    '20260105-untouched +0/0 closed' "$section"
+  # The rollup and the container count describe one set: a headline counting
+  # two umbrellas cannot sit above a rollup naming one.
+  assert_match "the container count agrees" 'Epics: 2 open · 0 closed' "$OUT"
+  assert_eq "one row per umbrella, no more" "2" \
+    "$(printf '%s\n' "$section" | grep -c 'closed$')"
+}
+
+# AC: the statistics view reports a per-umbrella rollup.
+case_issues_render_stats_reports_a_per_umbrella_rollup() {
+  local dir
+  dir=$(empty_dir render_stats_rollup)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render stats "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the rollup section exists" '^== Epics ==$' "$OUT"
+  assert_match "with the umbrella and its progress" \
+    '20260101-umbrella.*1/2 closed' "$OUT"
+}
+
+# AC: the census describes one population. The container headline is
+# accumulated behind the filter gate, so a rollup read from the unfiltered
+# derivation names umbrellas the headline above it declines to count. The
+# blocking rollup one section below already settles the shape: which sources
+# appear is scoped to the query, and the count each one carries is whole.
+case_issues_render_stats_rollup_is_scoped_like_its_headline() {
+  local dir section
+  dir=$(empty_dir render_rollup_scoped)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  # The umbrella is `high`, so its own row fails a `low` query.
+  run_render stats --priority low "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the headline declines to count it" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^  Epics: ')"
+  assert_eq "so the rollup does not name it either" "0" \
+    "$(printf '%s\n' "$OUT" | grep -c '^== Epics ==$')"
+  # The control, on the same collection: a query the umbrella's row passes.
+  # Progress is a property of the umbrella rather than of the query, so it
+  # reads whole — 1/2, not the 0/0 a member-scoped count would report here,
+  # since neither member is `high`.
+  run_render stats --priority high "$dir"
+  assert_exit "rc" 0 "$RC"
+  section="$(printf '%s\n' "$OUT" \
+    | awk '/^== Epics ==$/ { on = 1; next } on && /^== / { exit } on')"
+  assert_match "the headline counts it" 'Epics: 1 open · 0 closed' "$OUT"
+  assert_match "and its progress is complete" \
+    '20260101-umbrella +1/2 closed' "$section"
+}
+
+# AC: opening an umbrella shows its roster and its progress, computed from the
+# members rather than recorded on the umbrella.
+case_issues_render_show_lists_the_roster_and_progress() {
+  local dir
+  dir=$(empty_dir render_show_roster)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render show 20260101-umbrella "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "progress is shown"        'progress: 1/2 closed'   "$OUT"
+  assert_match "the roster is shown"      '^  Members$'            "$OUT"
+  assert_match "an open member"           '20260102-member-open'   "$OUT"
+  assert_match "and a finished one"       '20260103-member-done'   "$OUT"
+  # The unrelated issue is not a member.
+  assert_eq "a non-member is absent" "0" \
+    "$(printf '%s' "$OUT" | grep -c '20260104-loner')"
+}
+
+# AC: an umbrella with no members reports an empty roster rather than failing
+# or reporting nothing at all.
+case_issues_render_show_empty_umbrella_reports_an_empty_roster() {
+  local dir
+  dir=$(empty_dir render_show_empty_roster)
+  write_issue "$dir" "20260101-empty" 'title: "Empty"
+status: open
+num: 1
+type: epic
+outcome: ""'
+  run_index "$dir"
+  run_render show 20260101-empty "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "progress is still reported" 'progress: 0/0 closed' "$OUT"
+  assert_match "and the roster says so"     '_no members_'         "$OUT"
+}
+
+# AC: the read views can list the umbrellas in the collection, each with its
+# progress.
+case_issues_render_list_epic_shows_progress() {
+  local dir
+  dir=$(empty_dir render_list_epic_progress)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render list epic "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the umbrella carries its progress" '1/2 closed' "$OUT"
+  # An ordinary issue's row is unchanged — progress belongs to containers.
+  run_render list "$dir"
+  assert_eq "no progress on a plain row" "0" \
+    "$(printf '%s\n' "$OUT" | grep '20260104-loner' | grep -c 'closed')"
+}
+
+# AC: naming a non-existent umbrella is refused when filtering, and the
+# refusal is distinguishable from a query that matched nothing. An empty
+# result means no record matched; it never means the reference could not be
+# resolved.
+case_issues_render_refuses_an_unresolvable_umbrella() {
+  local dir
+  dir=$(empty_dir render_epic_refusal)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  run_render list --epic no-such-umbrella "$dir"
+  assert_exit "refused, not answered emptily" 1 "$RC"
+  assert_match "and it names the reference" 'no-such-umbrella' "$ERR"
+  # A resolvable umbrella that genuinely holds nothing is the other side: it
+  # succeeds with an empty result, which is what makes the refusal meaningful.
+  write_issue "$dir" "20260109-barren" 'title: "Barren"
+status: open
+num: 9
+type: epic
+outcome: ""'
+  run_index "$dir"
+  run_render list --epic 20260109-barren "$dir"
+  assert_exit "an empty umbrella still answers" 0 "$RC"
+}
+
+
+# AC: the refusal is distinguishable from a query that matched nothing -- on
+# an empty collection as well. Resolution is deferred when no row carries
+# `type`, so the schema gate can name the row field rather than report a
+# missing umbrella for what is really a stale index. Zero rows satisfies that
+# condition vacuously: there is nothing to be stale about, and deferring there
+# answers emptily for a reference that resolves to nothing at all.
+case_issues_render_refuses_an_unresolvable_umbrella_on_an_empty_collection() {
+  local dir stale
+  dir=$(empty_dir render_epic_refusal_empty)
+  run_index "$dir"
+  run_render list --epic no-such-umbrella "$dir"
+  assert_exit "refused, not answered emptily" 1 "$RC"
+  assert_match "and it names the reference" 'no-such-umbrella' "$ERR"
+
+  # The control, which is what makes the distinction rather than the refusal
+  # the thing under test: rows that exist and carry no `type` are the genuine
+  # stale index, and that one still defers -- naming the row field and its
+  # repair instead of blaming the reference.
+  stale=$(empty_dir render_epic_refusal_stale)
+  write_issue "$stale" "20260101-a" 'title: "A"
+status: open
+num: 1
+type: issue
+outcome: ""'
+  run_index "$stale"
+  sed -i 's/ · type: issue//' "$stale/INDEX.md"
+  touch "$stale/INDEX.md"
+  run_render list --epic no-such-umbrella "$stale"
+  assert_exit "a stale index still refuses" 1 "$RC"
+  assert_match "but names the row field" 'type' "$ERR"
+  assert_eq "and does not blame the reference" "0" \
+    "$(printf '%s' "$ERR" | grep -c 'no epic matches')"
+}
+# AC: an umbrella is nameable by the same reference forms an issue is
+# nameable by elsewhere in the read views — an ordinal, a slug, or a prefix.
+# Exact string equality against the graph answers only for the slug.
+case_issues_render_epic_accepts_ordinal_and_prefix_forms() {
+  local dir
+  dir=$(empty_dir render_epic_forms)
+  epic_stats_fixture "$dir"
+  run_index "$dir"
+  # Asserted on the title, which the default columns render — the slug is not
+  # among them, so matching on it would fail against a correct result.
+  run_render list --epic 1 "$dir"
+  assert_exit "an ordinal resolves" 0 "$RC"
+  assert_match "and selects the members" 'Open member' "$OUT"
+  run_render list --epic 20260101-umb "$dir"
+  assert_exit "a prefix resolves" 0 "$RC"
+  assert_match "to the same umbrella" 'Open member' "$OUT"
+}
+
+case_issues_render_stats_scoped_by_filter() {
+  local dir
+  dir=$(empty_dir render_stats_scoped)
+  stats_fixture "$dir"
+  run_index "$dir"
+
+  # Unfiltered, it covers everything and says nothing about scope.
+  run_render stats "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "whole collection" 'Open: 3 · Closed: 1' "$OUT"
+  assert_eq    "no scope line" "0" "$(printf '%s' "$OUT" | grep -c 'scope:')"
+
+  # Filtered, the counts cover the matching records only — and a finished one
+  # is counted rather than hidden: a census reporting a closed count cannot
+  # also conceal one.
+  run_render stats --label auth "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "scoped counts"  'Open: 1 · Closed: 1' "$OUT"
+  assert_match "and it says so" 'scope: label=auth'   "$OUT"
+
+  # Clusters are scoped too. The comparison is against everything above the
+  # integrity warnings: those describe the collection's health rather than the
+  # queried subset, so scoping them would hide real problems.
+  local body
+  body="$(printf '%s\n' "$OUT" | awk '/^== Integrity Warnings ==$/ { exit } { print }')"
+  assert_eq "the other label is gone" "0" "$(printf '%s' "$body" | grep -c 'archive')"
+  assert_match "the matching origin stays" 'docs/specs/issue/011-issue-placement/spec\.md' "$body"
+  assert_eq "the non-matching origin is gone" "0" \
+    "$(printf '%s' "$body" | grep -c 'docs/brainstorms')"
+
+  # So is the blocking rollup: Alpha blocks Delta and matches; Charlie blocks
+  # Delta and does not.
+  assert_match "the matching blocker"  '20260101-alpha'   "$body"
+  assert_eq "the non-matching blocker is gone" "0" \
+    "$(printf '%s' "$body" | grep -c '20260103-charlie')"
+
+  # The warnings themselves stay whole — a scoped census still reports what is
+  # wrong with the collection it is reading.
+  assert_match "warnings are not scoped" '20260103-charlie' "$OUT"
+
+  # Several axes conjoin, exactly as in the list view.
+  run_render stats --spec issue/011 --priority high "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "one record"   'Open: 1 · Closed: 0' "$OUT"
+  assert_match "scope names both axes" 'priority=high' "$OUT"
+  assert_match "and the other"         'spec=issue/011' "$OUT"
+
+  # A lifecycle filter narrows the census like any other axis.
+  run_render stats closed "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "only the finished one" 'Open: 0 · Closed: 1' "$OUT"
+
+  # A refusal here is the list view's refusal, in the same order.
+  run_render stats bogus17 "$dir"
+  assert_exit  "refused" 1 "$RC"
+  assert_match "names the token" 'unrecognized filter token: bogus17' "$ERR"
+}
+
+# AC: a census that matches nothing reports zero rather than failing, and still
+# names the scope the zero belongs to — a bare `Open: 0` would read as a
+# statement about the collection. The verb's status is whatever its trailing
+# integrity-warnings block evaluates to, so both branches of that block are
+# exercised here rather than whichever one the fixture happens to take.
+case_issues_render_stats_empty_match_succeeds() {
+  local dir warn
+  dir=$(empty_dir render_stats_empty)
+  hide_fixture "$dir"
+  run_index "$dir"
+
+  # Nothing matches, and the collection is sound — no warnings block, so the
+  # status comes from the branch that did not fire.
+  run_render stats --label nosuchlabel "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "zero counts"       'Open: 0 · Closed: 0'      "$OUT"
+  assert_match "scope is named"    'scope: label=nosuchlabel' "$OUT"
+  assert_match "no blocking edges" '_No blocking edges\._'    "$OUT"
+  assert_eq    "every cluster empty" "3" "$(printf '%s' "$OUT" | grep -c '_none_')"
+  assert_eq    "nothing on stderr" "" "$ERR"
+
+  # A census never hides a finished record, so an empty one is empty for a
+  # single reason and has nothing to disclose about what it dropped.
+  assert_eq "no closed-hidden disclosure" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'closed hidden')"
+
+  # The same empty match over a collection that does carry warnings takes the
+  # other branch and reports the same status.
+  warn=$(empty_dir render_stats_empty_warn)
+  write_issue "$warn" "20260101-alpha" 'title: "Alpha"
+status: open
+num: 1
+created: 2026-01-01
+type: issue
+relations:
+  related-to: [20260102-bravo]'
+  write_issue "$warn" "20260102-bravo" 'title: "Bravo"
+status: open
+num: 2
+created: 2026-01-02
+type: issue'
+  run_index "$warn"
+  run_render stats --label nosuchlabel "$warn"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "still zero" 'Open: 0 · Closed: 0' "$OUT"
+  # The warnings describe the collection's health rather than the queried
+  # subset, so an empty query still reports them.
+  assert_match "and the collection's health is still reported" \
+    '== Integrity Warnings ==' "$OUT"
+}
+
+# AC: the census takes the person axes on the same terms the list view does,
+# and the scope it discloses is the identity it actually compared — `me` is
+# resolved before any row is read, and resolution runs through the project's
+# recorded form. Echoing the literal `me` back would name the query rather than
+# the identity, and two developers would read one line as two different facts.
+case_issues_render_stats_person_axis_reports_the_resolved_identity() {
+  local dir
+  dir=$(empty_dir render_stats_person)
+  person_fixture "$dir"
+  run_index "$dir"
+
+  # The holder axis: one record is held by this environment's own identity.
+  run_render_as "tester@example.test" stats --claimed-by me "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "scoped to the holder" 'Open: 1 · Closed: 0' "$OUT"
+  assert_match "and names who that is" \
+    'scope: claimed-by=tester@example\.test' "$OUT"
+  assert_eq    "rather than the word that was typed" "0" \
+    "$(printf '%s' "$OUT" | grep -c 'claimed-by=me')"
+
+  # The filer axis, through a relay address: the scope reports the value the
+  # collection would record, not the address the environment carries — the same
+  # form the comparison itself ran under, so the line and the count agree.
+  run_render_as "1234+alice@users.noreply.github.com" stats --filed-by me "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "one record filed"     'Open: 1 · Closed: 0'   "$OUT"
+  assert_match "in the recorded form" 'scope: filed-by=alice' "$OUT"
+
+  # Spelled out, the same query reaches the same record and reads the same.
+  run_render stats --claimed-by tester@example.test "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "same count" 'Open: 1 · Closed: 0'                   "$OUT"
+  assert_match "same scope" 'scope: claimed-by=tester@example\.test' "$OUT"
+}
+
+# AC: the help text describes the composed surface rather than a single filter
+case_issues_render_help_describes_the_filter_surface() {
+  run_render help
+  assert_exit  "rc" 0 "$RC"
+  assert_match "several filters in one query" 'list \[filter\.\.\.\]' "$OUT"
+  assert_match "the person axes"    '[-]-claimed-by' "$OUT"
+  assert_match "the origin axes"    '[-]-spec'       "$OUT"
+  assert_match "the derived words"  'blocked'        "$OUT"
+  assert_match "the kind words"     'epic'           "$OUT"
+  assert_match "the column flag"    '[-]-cols'       "$OUT"
+  assert_match "stats takes them too" 'stats \[filter\.\.\.\]' "$OUT"
+  assert_match "naming yourself"    '\bme\b'         "$OUT"
+}
+
+# AC: the Summary's lifecycle counts and the rows beside them derive from one
+# value. A row carries the sanitized scalar because a raw one could forge the
+# row's own separator, so a classification that reads the raw scalar makes the
+# index able to assert a count its own rows deny — and to disagree with every
+# reader downstream, all of which act on the row.
+case_issues_index_lifecycle_count_agrees_with_the_row_it_writes() {
+  local dir index fm
+  dir=$(empty_dir index_lifecycle_sanitized)
+  fm="title: \"Alpha\"
+status: \"closed$(printf '\001')\"
+priority: medium
+outcome: done"
+  write_issue "$dir" "20260101-alpha" "$fm"
+  run_index "$dir"
+  assert_exit "rc" 0 "$RC"
+  index="$(cat "$dir/INDEX.md")"
+
+  assert_match "the row reads closed"       'status: closed' "$index"
+  assert_match "the Summary agrees"         '^- Closed: 1$'  "$index"
+  assert_match "and counts nothing as open" '^- Open: 0$'    "$index"
+
+  # The census reads that same row, so the two cannot disagree.
+  run_render stats "$dir"
+  assert_exit  "census rc" 0 "$RC"
+  assert_match "one finished record" 'Open: 0 · Closed: 1' "$OUT"
+}
+
+# AC: a vocabulary member wearing a control character is judged as that member.
+# Judging the raw scalar while printing the sanitized one produces a warning
+# that names a value which reads as recognized — an integrity warning nobody can
+# act on, because the thing it calls unrecognized is in the vocabulary it was
+# checked against.
+case_issues_index_vocabularies_are_judged_after_sanitizing() {
+  local dir vocab field member fm index
+  for vocab in $(index_vocabularies); do
+    field="$(classified_field "$vocab" || true)"
+    assert_nonempty "$vocab maps to a classified field" "$field"
+    [[ -n "$field" ]] || continue
+    for member in $(script_vocabulary "$SCRIPT_INDEX" "$vocab"); do
+      dir=$(empty_dir "index_vocab_${field}_${member}")
+      fm="title: \"Alpha\"
+status: open
+priority: medium
+${field}: \"${member}$(printf '\001')\""
+      write_issue "$dir" "20260101-alpha" "$fm"
+      run_index "$dir"
+      assert_exit "$field $member rc" 0 "$RC"
+      index="$(cat "$dir/INDEX.md")"
+      assert_eq "$field $member is judged as itself" "0" \
+        "$(printf '%s\n' "$index" | grep -c 'unrecognized')"
+    done
+  done
+}
+
+# classified_fields — the frontmatter scalars index.sh judges before it writes
+# them, one per line: `status` against a literal pair, the rest against a
+# declared vocabulary. These are the values the row emits without re-applying
+# the display sanitizer, so they are the ones whose row safety is pinned here.
+classified_fields() {
+  local vocab field
+  printf 'status\n'
+  for vocab in $(index_vocabularies); do
+    field="$(classified_field "$vocab" || true)"
+    assert_nonempty "$vocab maps to a classified field" "$field"
+    [[ -n "$field" ]] && printf '%s\n' "$field"
+  done
+}
+
+# AC: a judged scalar cannot forge a row field. A row is ` · `-separated
+# `key: value` pairs and every reader assigns by key, so a value able to
+# reproduce the separator could append a pair the writer already emitted.
+# These three reach the row without a second pass through the sanitizer — they
+# were sanitized once, before they were judged — so the guarantee is pinned by
+# this case rather than by repeating the transform at the emission point.
+case_issues_index_classified_scalars_cannot_forge_a_row_field() {
+  local dir field fm index row
+  for field in $(classified_fields); do
+    dir=$(empty_dir "index_forge_${field}")
+    fm="title: \"Alpha\"
+priority: medium"
+    [[ "$field" == status ]] || fm="$fm
+status: open"
+    fm="$fm
+${field}: \"open · num: 999$(printf '\001')\""
+    write_issue "$dir" "20260101-alpha" "$fm"
+    run_index "$dir"
+    assert_exit "$field rc" 0 "$RC"
+    index="$(cat "$dir/INDEX.md")"
+    # Scoped to the Issues section: a warning line shares the row's leading
+    # dash and slug, and would otherwise be measured as part of it.
+    row="$(printf '%s\n' "$index" | sed -n '/^## Issues/,/^## /p' | grep '^- ')"
+
+    assert_nonempty "$field produced a row" "$row"
+    assert_eq "$field appends no field pair" "0" \
+      "$(printf '%s\n' "$row" | grep -c ' · num: 999')"
+    # Newline is left in the delete set's gap so a multi-row result is compared
+    # as written rather than collapsed into one line.
+    assert_eq "$field carries no control byte" \
+      "$row" "$(printf '%s' "$row" | tr -d '\000-\011\013-\037\177')"
+  done
+}
+
+# ─── Section: transition.sh — who regenerates the index ──────────────────────
+
+# index_shim_scripts <name>
+#   A scripts directory that behaves exactly like the real one except that
+#   index.sh is a shim: it counts its invocations into $SHIM_COUNT and refuses
+#   every call past $SHIM_OK_UNTIL, passing the rest through to the real
+#   script. Every sibling is symlinked and the two cross-skill directories are
+#   linked in beside it, so composition resolves as it does in the tree —
+#   BASH_SOURCE names the link rather than its target, which is what puts each
+#   script's own HERE in this directory.
+#
+#   Counting is what lets a case ask *who* regenerates a collection's index
+#   rather than only whether it ends up regenerated. Refusing past a given call
+#   is the only way to reach a failure that lands *after* a write: a collection
+#   that cannot be indexed at all is refused at the door, before anything is
+#   written, so a shim that always failed could never reach the path.
+index_shim_scripts() {
+  local base; base="$(empty_dir "$1")"
+  local real="$REPO_ROOT/skills" dir="$base/skills/issue/scripts" f
+  mkdir -p "$dir" "$base/skills/conf" "$base/skills/file"
+  ln -s "$real/conf/scripts" "$base/skills/conf/scripts"
+  ln -s "$real/file/scripts" "$base/skills/file/scripts"
+  for f in "$real"/issue/scripts/*.sh; do
+    [[ "${f##*/}" == index.sh ]] || ln -s "$f" "$dir/${f##*/}"
+  done
+  cat > "$dir/index.sh" <<'SHIM'
+#!/usr/bin/env bash
+n=$(( $(cat "$SHIM_COUNT" 2>/dev/null || echo 0) + 1 ))
+printf '%s\n' "$n" > "$SHIM_COUNT"
+if (( n > ${SHIM_OK_UNTIL:-99} )); then
+  echo "index shim: refusing call $n" >&2
+  exit 1
+fi
+exec bash "$SHIM_REAL_INDEX" "$@"
+SHIM
+  printf '%s' "$dir"
+}
+
+# run_transition_shimmed <repo> <scripts> <ok-until> <args...>
+#   Invoke the shimmed transition.sh from inside <repo>, letting index.sh
+#   through for the first <ok-until> calls and refusing every one after. The
+#   counter is reset per run, so a case reads the calls this transition made
+#   rather than the ones its fixture made getting there.
+run_transition_shimmed() {
+  local repo="$1" scripts="$2" ok="$3"; shift 3
+  local err_file="$TMP_BASE/.err"
+  rm -f "$scripts/.calls"
+  OUT="$(cd "$repo" && env "${identity_env[@]}" \
+    SHIM_COUNT="$scripts/.calls" SHIM_OK_UNTIL="$ok" \
+    SHIM_REAL_INDEX="$SCRIPT_INDEX" \
+    bash "$scripts/transition.sh" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# shim_calls <scripts> — how many times the shimmed index.sh was invoked.
+shim_calls() { cat "$1/.calls" 2>/dev/null || printf '0'; }
+
+# placed_issue <repo> — file one issue onto the configured destination and echo
+# its slug. Filed through the real emitter, so no shim call is spent on setup.
+placed_issue() {
+  local repo="$1" body
+  body="$(fixture "${2}_body.md" 'body')"
+  run_new_in "$repo" --reviewed --title "Target" --priority medium \
+    --labels x --origin conversation --body-file "$body"
+  printf '%s' "${OUT%%$'\t'*}"
+}
+
+# AC: a reindex failure that lands after the transition is written never
+# destroys it. Under a branch placement the collection being written is a
+# materialized handle, and the unwind every pre-write exit performs is
+# `rm -rf` of exactly that handle — so an unwind here is the whole record.
+# The shim lets the door's materialize through and refuses everything after,
+# which is the transient shape: a collection that could not be indexed at all
+# is refused before `set_fields` ever runs.
+case_transition_a_late_reindex_failure_keeps_the_written_move() {
+  local repo scripts slug survivors
+  repo="$(placement_repo transition_late_reindex jim/issues)"
+  scripts="$(index_shim_scripts transition_late_reindex_rig)"
+  slug="$(placed_issue "$repo" transition_late_reindex)"
+  assert_nonempty "the fixture filed an issue" "$slug"
+  run_transition_shimmed "$repo" "$scripts" 1 claim "$slug"
+  assert_exit "the run reports the failure" 1 "$RC"
+  # Nothing published: the door refused rather than committing a collection
+  # whose index it could not bring up to date.
+  assert_match "the destination is unchanged" 'claimed-by: ""' \
+    "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
+  # The whole point: the written move is still on disk to be recovered.
+  survivors="$(grep -rl "claimed-by: \"$TEST_IDENTITY\"" \
+    "$repo/.git/jim-place" 2>/dev/null | grep -c .)"
+  assert_eq "the written move survives in the handle" "1" "$survivors"
+}
+
+# AC: under a placement the door regenerates the index of what it publishes, so
+# transition.sh leaves it alone. Two calls are the door's own — one to
+# materialize, one to publish — and a third would be this script repeating
+# work the publish is about to redo, which is where the unwind above came from.
+case_transition_leaves_the_index_to_the_door_under_a_placement() {
+  local repo scripts slug
+  repo="$(placement_repo transition_door_indexes jim/issues)"
+  scripts="$(index_shim_scripts transition_door_indexes_rig)"
+  slug="$(placed_issue "$repo" transition_door_indexes)"
+  run_transition_shimmed "$repo" "$scripts" 99 claim "$slug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "only the door's two regenerations ran" "2" "$(shim_calls "$scripts")"
+  assert_match "the move reached the destination" \
+    "claimed-by: \"$TEST_IDENTITY\"" \
+    "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
+  # The door's regeneration is the one that matters, so it has to have produced
+  # a real index rather than merely not failed.
+  assert_match "carrying an index that describes it" 'Open: 1' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+}
+
+# AC: a placement naming the branch already checked out publishes through the
+# other door — the collection is the working tree, so there is nothing to
+# materialize and the publish reindexes it in place. One call, and it is still
+# not this script's: the arm differs, the ownership does not.
+case_transition_lets_the_door_index_a_checked_out_destination() {
+  local repo scripts slug branch
+  repo="$(new_repo transition_direct_dest)"
+  branch="$(git -C "$repo" symbolic-ref --quiet --short HEAD)"
+  assert_nonempty "the fixture is on a branch" "$branch"
+  printf 'issue_placement = "%s"\n' "$branch" > "$repo/jimconf.toml"
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md jimconf.toml
+  git -C "$repo" commit -q -m base
+  scripts="$(index_shim_scripts transition_direct_dest_rig)"
+  slug="$(placed_issue "$repo" transition_direct_dest)"
+  run_transition_shimmed "$repo" "$scripts" 99 claim "$slug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the door's regeneration, and only it" "1" "$(shim_calls "$scripts")"
+  assert_match "the move landed in the working tree" \
+    "claimed-by: \"$TEST_IDENTITY\"" "$(cat "$repo/docs/issues/$slug.md")"
+  assert_match "beside an index that describes it" 'Open: 1' \
+    "$(cat "$repo/docs/issues/INDEX.md" 2>/dev/null)"
+}
+
+# AC: with no placement nothing publishes, so this script's regeneration is the
+# only one there is and still runs. The count is what separates "the door does
+# it" from "nobody does it" — the second would leave every unplaced collection
+# with an index that never moves.
+case_transition_regenerates_the_index_no_door_will() {
+  local repo scripts slug
+  repo="$(new_repo transition_self_indexes)"
+  scripts="$(index_shim_scripts transition_self_indexes_rig)"
+  slug="$(placed_issue "$repo" transition_self_indexes)"
+  run_transition_shimmed "$repo" "$scripts" 99 claim "$slug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "this script regenerated it, once" "1" "$(shim_calls "$scripts")"
+  assert_match "the index describes the collection" 'Open: 1' \
+    "$(cat "$repo/docs/issues/INDEX.md" 2>/dev/null)"
+}
+
+# AC: and when that one regeneration fails, the move it was for is already
+# written — so the run reports the pair rather than unwinding, and says which
+# half landed. Every exit above the write still unwinds; this one cannot.
+case_transition_reports_a_failed_regeneration_it_owns() {
+  local repo scripts slug
+  repo="$(new_repo transition_self_index_fails)"
+  scripts="$(index_shim_scripts transition_self_index_fails_rig)"
+  slug="$(placed_issue "$repo" transition_self_index_fails)"
+  run_transition_shimmed "$repo" "$scripts" 0 claim "$slug"
+  assert_exit "the run reports the failure" 1 "$RC"
+  assert_match "and says the move landed anyway" \
+    'transition is written but the index could not be' "$ERR"
+  assert_match "the move is on disk" "claimed-by: \"$TEST_IDENTITY\"" \
+    "$(cat "$repo/docs/issues/$slug.md")"
+  assert_eq "no success line" "" "$OUT"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

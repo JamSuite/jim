@@ -4,12 +4,17 @@ num: 202
 title: "Fix the rename replay in the integrity classifier"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [allocator, registry, rename]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-02T00:47:12Z
 updated: 2026-08-03T05:46:40Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/review.md

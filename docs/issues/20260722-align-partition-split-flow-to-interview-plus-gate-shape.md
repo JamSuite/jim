@@ -4,12 +4,17 @@ num: 85
 title: "Align partition split flow to interview-plus-gate shape"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [partition, ux]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-22T21:20:25Z
 updated: 2026-07-22T21:20:25Z
 origin: docs/brainstorms/20260722-partition-merge.md

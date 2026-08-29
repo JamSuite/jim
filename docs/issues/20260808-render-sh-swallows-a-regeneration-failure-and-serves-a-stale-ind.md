@@ -4,12 +4,17 @@ num: 294
 title: "render.sh swallows a regeneration failure and serves a stale index"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, invariant]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-08T18:49:43Z
 updated: 2026-08-11T11:05:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

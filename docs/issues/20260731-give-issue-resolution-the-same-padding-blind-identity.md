@@ -4,12 +4,17 @@ num: 182
 title: "Give issue resolution the same padding blind identity"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [file, scripts]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T12:39:31Z
 updated: 2026-07-31T21:16:19Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md

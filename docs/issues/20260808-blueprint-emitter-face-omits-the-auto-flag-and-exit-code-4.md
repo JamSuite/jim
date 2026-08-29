@@ -4,12 +4,17 @@ num: 279
 title: "Blueprint emitter face omits the auto flag and exit code 4"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, contract]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-08T18:49:44Z
 updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md

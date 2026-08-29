@@ -4,12 +4,17 @@ num: 116
 title: "Add an only-door verification sweep for the id registry"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T19:02:01Z
 updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md

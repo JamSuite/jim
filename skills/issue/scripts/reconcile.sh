@@ -100,9 +100,9 @@ field_value() {
 # <durable-id>\t<file>. A file's num: field marks it pending when it starts
 # with "P-"; the durable id is then read from that SAME file's own id:
 # frontmatter field and revalidated through jimfile.sh's id boundary before
-# it is ever fed to jimalloc.sh or used as a path component (security
-# Finding 5) — a file whose frontmatter id fails that check is skipped with
-# a warning, never included in the pending set.
+# it is ever fed to jimalloc.sh or used as a path component — a file whose
+# frontmatter id fails that check is skipped with a warning, never included
+# in the pending set.
 scan_pending() {
   local dir="$1" f base num id
   for f in "$dir"/*.md; do
@@ -173,7 +173,12 @@ apply_pending() {
   local id file newnum tmp realized=0 failed=0
   while IFS=$'\t' read -r id file; do
     [[ -n "$id" ]] || continue
-    newnum="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' <<<"$mapping")"
+    # The key came out of an issue file's frontmatter. It cleared the validator
+    # in scan_pending, which admits no backslash — but that is a gate in another
+    # function, and `-v` expands escape sequences in its operand, so a key that
+    # ever reached here carrying one would miss its row and be passed over in
+    # silence. Through the environment, the comparison is against the id itself.
+    newnum="$(k="$id" awk -F'\t' '$1==ENVIRON["k"]{print $2; exit}' <<<"$mapping")"
     [[ -n "$newnum" ]] || continue
     # A blocked identity maps to '-', never an ordinal: the registry claims its
     # durable id twice and the allocator refused to pick a winner. Loud,
@@ -300,7 +305,9 @@ route_placement() {
   [[ "$mode" == "route" ]] || return 0
   local -a run=(run)
   if (( apply )); then run+=(--verb realize); else run+=(--read); fi
-  exec bash "$place" "${run[@]}" -- \
+  # {token} is the fourth word of the command below and {} the last; the
+  # wrapper substitutes at those offsets and nowhere else.
+  exec bash "$place" "${run[@]}" --token-at 3 --dir-at -1 -- \
     bash "${BASH_SOURCE[0]}" --place-token '{token}' "$@" '{}'
 }
 

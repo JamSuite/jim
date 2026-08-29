@@ -4,12 +4,17 @@ num: 74
 title: "Compute reconcile face-size counters deterministically"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition, blueprint, reconcile, hardening]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-12T09:55:16Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/016-partition-health/plan.md

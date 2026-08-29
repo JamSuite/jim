@@ -4,12 +4,17 @@ num: 189
 title: "Two test files are claimed by no group's territory"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [blueprint, 000-blueprint, partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T00:28:40Z
 updated: 2026-08-02T07:23:52Z
 origin: docs/specs/platform/000-blueprint/spec.md

@@ -4,12 +4,17 @@ num: 303
 title: "cmd_begin refuses where cmd_run degrades on a failed reindex"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:41:49Z
 updated: 2026-08-12T06:06:19Z
 origin: docs/specs/issue/011-issue-placement/review.md

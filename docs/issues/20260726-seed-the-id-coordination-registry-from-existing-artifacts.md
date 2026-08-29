@@ -4,12 +4,17 @@ num: 114
 title: "Seed the id-coordination registry from existing artifacts"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, migration]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-26T19:01:58Z
 updated: 2026-07-29T19:38:53Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md

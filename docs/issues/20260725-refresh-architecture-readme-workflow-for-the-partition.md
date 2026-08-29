@@ -4,12 +4,17 @@ num: 105
 title: "refresh ARCHITECTURE, README, WORKFLOW for the partition"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:48Z
 updated: 2026-07-25T09:23:56Z
 origin: BLUEPRINT.md

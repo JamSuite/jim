@@ -4,12 +4,17 @@ num: 128
 title: "Fix vacuous inline-backtick wikilink test in tests/issues.sh"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [test, hygiene]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T21:39:09Z
 updated: 2026-07-28T21:39:09Z
 origin: docs/specs/platform/010-allocator-issue-prefix/plan.md

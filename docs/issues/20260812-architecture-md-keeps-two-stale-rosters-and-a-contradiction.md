@@ -4,12 +4,17 @@ num: 325
 title: "ARCHITECTURE.md keeps two stale rosters and a contradiction"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [docs, architecture]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:35Z
 updated: 2026-08-13T09:48:16Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

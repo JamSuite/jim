@@ -4,12 +4,17 @@ id: 20260620-architecture-md-hand-edits-bypass-jim-arch-and-stale-the-header
 title: "ARCHITECTURE.md hand-edits bypass /jim:arch and stale the header"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [arch, workflow]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-20T11:43:15Z
 updated: 2026-06-20T11:43:15Z
 origin: conversation

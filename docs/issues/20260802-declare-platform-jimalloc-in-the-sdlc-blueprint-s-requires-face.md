@@ -4,14 +4,19 @@ num: 204
 title: "Declare platform.jimalloc in the sdlc blueprint's Requires face"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [blueprint, sdlc, contract-graph]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-08-02T08:27:17Z
-updated: 2026-08-02T08:27:17Z
+updated: 2026-08-29T07:49:10Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/spec.md
 ---
 

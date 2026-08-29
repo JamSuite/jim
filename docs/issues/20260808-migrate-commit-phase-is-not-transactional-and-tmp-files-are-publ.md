@@ -4,12 +4,17 @@ num: 288
 title: "migrate commit phase is not transactional and tmp files are publishable"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, invariant]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-08T18:49:42Z
 updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md

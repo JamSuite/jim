@@ -4,12 +4,17 @@ num: 331
 title: "Emitter writes created and updated to YAML unencoded"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, security, emitter]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:22Z
 updated: 2026-08-12T21:53:22Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

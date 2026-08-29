@@ -4,12 +4,17 @@ num: 336
 title: "Migration destroys an issue on the success path at rc 0"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, data-loss, migration]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:19Z
 updated: 2026-08-13T08:48:12Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

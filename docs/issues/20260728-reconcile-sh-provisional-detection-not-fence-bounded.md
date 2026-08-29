@@ -4,12 +4,17 @@ num: 133
 title: "reconcile.sh provisional detection not fence-bounded"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, security]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T21:39:43Z
 updated: 2026-07-31T12:40:00Z
 origin: docs/specs/issue/010-ordinal-coordination/review.md

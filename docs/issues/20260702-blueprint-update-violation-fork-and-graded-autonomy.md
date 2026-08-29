@@ -4,12 +4,17 @@ num: 28
 title: "Add violation-vs-fold fork and criticality-graded autonomy to blueprint update"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, fold-back]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-02T07:16:19Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260630-000-current-spec.md

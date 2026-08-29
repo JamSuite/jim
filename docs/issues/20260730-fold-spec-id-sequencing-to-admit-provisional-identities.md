@@ -4,12 +4,17 @@ num: 149
 title: "Fold spec-id-sequencing to admit provisional identities"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T19:35:00Z
 updated: 2026-08-02T06:52:07Z
 origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md

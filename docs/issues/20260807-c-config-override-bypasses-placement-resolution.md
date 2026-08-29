@@ -4,12 +4,17 @@ num: 258
 title: "-c config override bypasses placement resolution"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, config, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T10:59:36Z
 updated: 2026-08-07T10:59:36Z
 origin: docs/specs/issue/011-issue-placement/plan.md

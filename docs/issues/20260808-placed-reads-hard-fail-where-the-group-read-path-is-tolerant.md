@@ -4,12 +4,17 @@ num: 291
 title: "Placed reads hard-fail where the group read path is tolerant"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-08T18:39:50Z
 updated: 2026-08-11T11:05:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

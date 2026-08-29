@@ -433,7 +433,7 @@ case_list_outputs_all_keys() {
   assert_exit "rc" 0 "$RC"
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq    "list line count"                  "55" "$line_count"
+  assert_eq    "list line count"                  "57" "$line_count"
   assert_match "blueprint_regen_threshold line"    '^blueprint_regen_threshold=0$'          "$OUT"
   assert_match "blueprint line"                    '^blueprint=BLUEPRINT\.md$'              "$OUT"
   assert_match "group_axis line"                   '^group_axis=vertical$'                  "$OUT"
@@ -485,6 +485,8 @@ case_list_outputs_all_keys() {
   assert_match "id_coordination_mechanism line"    '^id_coordination_mechanism=git$'         "$OUT"
   assert_match "id_coordination_branch line"       '^id_coordination_branch=jim/registry$'   "$OUT"
   assert_match "id_coordination_unreachable line"  '^id_coordination_unreachable=fail$'      "$OUT"
+  assert_match "identity_scheme line"              '^identity_scheme=github$'                "$OUT"
+  assert_match "identity_domain line"              '^identity_domain=$'                      "$OUT"
 }
 
 # AC: keys emits the valid CLI key list, no I/O
@@ -492,7 +494,7 @@ case_keys_outputs_valid_keys() {
   run keys
   assert_exit "rc" 0 "$RC"
   local expected
-  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nissue_placement\nissue_placement_ack\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs\nspec_migration\nid_coordination_mechanism\nid_coordination_branch\nid_coordination_unreachable')
+  expected=$(printf 'specs\narchitecture\nvision\nroadmap\nbrainstorms\ndebug\nblueprint\npre_commit\npre_completion\nrequire_pre_commit\nrequire_pre_completion\nauto_arch_feedback\nauto_blueprint\nrequire_blueprint\nblueprint_regen_threshold\ngroup_axis\ngroup_territory\nrequire_security\nauto_security\nrequire_review\nauto_review\nreview_depth\nreview_model\nreview_fanout_cap\nrequire_security_loop\nrequire_security_loop_sev\nauto_security_loop_limit\nsecurity_adhoc\nissues\nissue_capture\nauto_issue_file\nissue_list_group\nissue_list_sort\nissue_list_cols\nissue_list_order\nissue_list_closed\nissue_id_prefix\nissue_id_project\nissue_placement\nissue_placement_ack\nverify_appetite\nverify_fanout_cap\nverify_model\nverify_registry_timeout\nrequire_health\nauto_health\nhealth_threshold_cycles\nhealth_threshold_fanin\nhealth_threshold_uncovered\nhealth_threshold_faces_max\nhealth_threshold_breaking_runs\nspec_migration\nid_coordination_mechanism\nid_coordination_branch\nid_coordination_unreachable\nidentity_scheme\nidentity_domain')
   assert_eq "keys output" "$expected" "$OUT"
 }
 
@@ -530,7 +532,7 @@ trailing garbage at end')
   run -c "$cfg" list
   local line_count
   line_count=$(printf '%s\n' "$OUT" | wc -l | tr -d ' ')
-  assert_eq "list still emits all keys" "55" "$line_count"
+  assert_eq "list still emits all keys" "57" "$line_count"
 }
 
 # AC: values with internal whitespace are preserved verbatim
@@ -1285,6 +1287,52 @@ case_jimconf_issue_placement_in_list() {
   OUT=$(cd "$dir" && bash "$SCRIPT" list)
   assert_match "issue_placement line"     '^issue_placement=branch$'     "$OUT"
   assert_match "issue_placement_ack line" '^issue_placement_ack=false$'  "$OUT"
+}
+
+# ─── issue/013: recorded-identity config family ──────────────────────────────
+
+# AC: identity_scheme defaults to "github" and identity_domain to empty; both
+# resolve from config. Bare-name knobs — a scheme names one of a closed set of
+# forms and a domain is a mail domain, so neither is a path.
+case_jimconf_identity_default_and_resolve() {
+  local dir cfg
+  dir=$(empty_dir jc_identity_default)
+  run -c "$dir/absent.toml" get identity_scheme
+  assert_exit "scheme default rc"  0        "$RC"
+  assert_eq   "scheme default"     "github" "$OUT"
+  run -c "$dir/absent.toml" get identity_domain
+  assert_exit "domain default rc"  0        "$RC"
+  assert_eq   "domain default"     ""       "$OUT"
+  cfg=$(fixture jc-identity.toml 'identity_scheme = "local"
+identity_domain = "company.example"')
+  run -c "$cfg" get identity_scheme
+  assert_eq   "scheme configured"  "local"           "$OUT"
+  run -c "$cfg" get identity_domain
+  assert_eq   "domain configured"  "company.example" "$OUT"
+}
+
+# AC: both keys read their bare TOML name, never an _path spelling. Without the
+# bare-name arm the resolver reaches for identity_scheme_path, so a project that
+# configured the documented name would see no effect at all — the form every
+# recorded identity takes would silently stay at the default.
+case_jimconf_identity_ignores_path_suffix_key() {
+  local cfg
+  cfg=$(fixture jc-identity-suffix.toml 'identity_scheme_path = "email"
+identity_domain_path = "decoy.example"')
+  run -c "$cfg" get identity_scheme
+  assert_exit "suffix-key rc"           0        "$RC"
+  assert_eq   "scheme suffix not read"  "github" "$OUT"
+  run -c "$cfg" get identity_domain
+  assert_eq   "domain suffix not read"  ""       "$OUT"
+}
+
+# AC: both keys appear in `list` output at their defaults
+case_jimconf_identity_in_list() {
+  local dir
+  dir=$(empty_dir jc_identity_list)
+  OUT=$(cd "$dir" && bash "$SCRIPT" list)
+  assert_match "identity_scheme line" '^identity_scheme=github$' "$OUT"
+  assert_match "identity_domain line" '^identity_domain=$'       "$OUT"
 }
 
 # ─── Section: Standalone-runnable tail ───────────────────────────────────────

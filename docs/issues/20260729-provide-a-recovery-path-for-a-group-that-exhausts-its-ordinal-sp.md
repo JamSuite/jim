@@ -4,12 +4,17 @@ num: 137
 title: "Provide a recovery path for a group that exhausts its ordinal space"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-29T22:21:54Z
 updated: 2026-07-29T22:21:54Z
 origin: docs/specs/platform/011-rename-path-correctness/plan.md

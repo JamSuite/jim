@@ -4,12 +4,17 @@ num: 341
 title: "plan.md design decisions and interface contract are stale"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [docs, plan]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:59Z
 updated: 2026-08-12T21:53:59Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

@@ -4,12 +4,17 @@ num: 187
 title: "Refuse the reserved slot in the generic spec path composer"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [platform, file, scripts, 000-blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T00:22:47Z
 updated: 2026-08-01T00:22:47Z
 origin: docs/specs/platform/000-blueprint/spec.md

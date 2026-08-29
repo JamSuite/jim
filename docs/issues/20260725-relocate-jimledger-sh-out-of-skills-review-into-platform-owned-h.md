@@ -4,12 +4,17 @@ num: 102
 title: "relocate jimledger.sh out of skills/review into platform-owned home"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [partition]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-25T08:04:45Z
 updated: 2026-07-25T21:04:12Z
 origin: BLUEPRINT.md

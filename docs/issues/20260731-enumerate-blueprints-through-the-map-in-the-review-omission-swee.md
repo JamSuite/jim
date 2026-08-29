@@ -4,12 +4,17 @@ num: 169
 title: "Enumerate blueprints through the map in the review omission sweep"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [sdlc, review, 000-blueprint]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T12:08:15Z
 updated: 2026-07-31T21:28:44Z
 origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md

@@ -4,12 +4,17 @@ num: 167
 title: "Make the plan approved gate an allowlist"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [000-blueprint, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T11:49:24Z
 updated: 2026-07-31T11:49:24Z
 origin: docs/specs/sdlc/000-blueprint/spec.md

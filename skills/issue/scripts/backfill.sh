@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
 # skills/issue/scripts/backfill.sh — one-shot, opt-in migrations that fill in
-# missing issue data: `num` display ordinals (spec 019) and `created`/`updated`
-# second-resolution timestamps (spec 022). Subcommands: `num`, `timestamp`.
+# missing issue data: `num` display ordinals and `created`/`updated`
+# second-resolution timestamps. Subcommands: `num`, `timestamp`.
 #
 # PURPOSE
 #   Assign a `num:` display ordinal to every issue file that lacks one,
 #   in `created:`-ascending order, continuing from the collection's current
-#   max ordinal. This is a ONE-TIME migration for the spec 019 `num:` field
+#   max ordinal. This is a ONE-TIME migration for the `num:` field
 #   change — it is NOT wired into the /jim:issue verb flow. New issues get
 #   their ordinal at creation (jimfile.sh next-num issue); this script only
 #   numbers the legacy collection, once, up-front (before normal use), so
@@ -25,12 +25,12 @@
 #   bash backfill.sh num [<issues_dir>]
 #     Assign a `num:` display ordinal to every issue lacking one, in
 #     created-ascending order. Prints "Assigned display numbers to N issue(s)."
-#     iff N>0; otherwise silent (idempotent no-op). (spec 019)
+#     iff N>0; otherwise silent (idempotent no-op).
 #   bash backfill.sh timestamp [<issues_dir>]
 #     Rewrite date-only created/updated to YYYY-MM-DDT00:00:00Z (a day-start
 #     placeholder, not a recovered time), atomically per file. Idempotent —
 #     already-timestamped values untouched; malformed values skipped with a
-#     warning. Prints "Normalized N issue(s) ..." iff N>0; else silent. (spec 022)
+#     warning. Prints "Normalized N issue(s) ..." iff N>0; else silent.
 #   issues_dir default: jimconf.sh get issues
 #
 # EXIT CODES
@@ -58,16 +58,25 @@ resolve_dir() {
   printf '%s\n' "$dir"
 }
 
-# field_value <file> <field> — top-level scalar value, quotes stripped, or empty.
-field_value() {
-  grep -E "^$2:" "$1" 2>/dev/null \
-    | head -n 1 \
+# frontmatter <file> — the lines between the first two fences.
+#   Scoped deliberately: a whole-file match for a field also hits a body that
+#   quotes one. A record that lacks the field is this script's own operating
+#   condition, so a body line is exactly where a stray match comes from — and
+#   answering from one makes the record look already-done and skips it.
+frontmatter() {
+  awk '/^---$/{c++; if(c==2) exit; if(c==1) next} c==1{print}' "$1"
+}
+
+# fm_field <frontmatter> <field> — top-level scalar, quotes stripped, or empty.
+fm_field() {
+  printf '%s\n' "$1" | grep -E "^$2:" | head -n 1 \
     | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
 }
 
-# num_of <file> — the file's num: value, or empty.
+# num_of <frontmatter> — the num: display ordinal, or empty when the field is
+# absent or does not lead with digits.
 num_of() {
-  grep -E '^num:[[:space:]]*[0-9]+' "$1" 2>/dev/null \
+  printf '%s\n' "$1" | grep -E '^num:[[:space:]]*[0-9]+' \
     | head -n 1 | sed -E 's/^num:[[:space:]]*([0-9]+).*/\1/'
 }
 
@@ -97,11 +106,11 @@ cmd_assign_numbers() {
   [[ -d "$dir" ]] || return 0
 
   # Current max ordinal across the collection.
-  local max=0 f n base
+  local max=0 f n base fm
   for f in "$dir"/*.md; do
     [[ -f "$f" ]] || continue
     [[ "$(basename "$f")" == "$INDEX_FILENAME" ]] && continue
-    n="$(num_of "$f")"
+    n="$(num_of "$(frontmatter "$f")")"
     [[ "$n" =~ ^[0-9]+$ ]] || continue
     (( n > max )) && max=$n
   done
@@ -113,8 +122,9 @@ cmd_assign_numbers() {
     base="$(basename "$f")"
     [[ "$base" == "$INDEX_FILENAME" ]] && continue
     [[ "$base" == .* ]] && continue
-    [[ -n "$(num_of "$f")" ]] && continue
-    created="$(field_value "$f" created)"
+    fm="$(frontmatter "$f")"
+    [[ -n "$(num_of "$fm")" ]] && continue
+    created="$(fm_field "$fm" created)"
     list+="$created"$'\t'"$f"$'\n'
   done
 
@@ -158,15 +168,16 @@ cmd_timestamp() {
   dir="$(resolve_dir "${1:-}")" || return $?
   [[ -d "$dir" ]] || return 0
 
-  local normalized=0 f base tmp cval uval new_c new_u wr_c wr_u
+  local normalized=0 f base tmp fm cval uval new_c new_u wr_c wr_u
   for f in "$dir"/*.md; do
     [[ -f "$f" ]] || continue
     base="$(basename "$f")"
     [[ "$base" == "$INDEX_FILENAME" ]] && continue
     [[ "$base" == .* ]] && continue
 
-    cval="$(field_value "$f" created)"
-    uval="$(field_value "$f" updated)"
+    fm="$(frontmatter "$f")"
+    cval="$(fm_field "$fm" created)"
+    uval="$(fm_field "$fm" updated)"
     new_c="$(normalize_ts "$cval" "$f" created)"
     new_u="$(normalize_ts "$uval" "$f" updated)"
     [[ "$new_c" == "$cval" && "$new_u" == "$uval" ]] && continue
@@ -252,7 +263,10 @@ route_placement() {
   [[ -z "$dir" ]] || return 0
   mode="$(bash "$place" mode --place-token "$token")" || exit $?
   [[ "$mode" == "route" ]] || return 0
-  exec bash "$place" run --verb backfill -- \
+  # The markers this line builds, by offset into the command below: {token} is
+  # the fourth word and {} the last. The wrapper substitutes where it is told
+  # and nowhere else, so forwarded text carrying either shape stays text.
+  exec bash "$place" run --verb backfill --token-at 3 --dir-at -1 -- \
     bash "${BASH_SOURCE[0]}" --place-token '{token}' "$@" '{}'
 }
 

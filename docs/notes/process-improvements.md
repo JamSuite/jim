@@ -58,6 +58,22 @@ have bitten:
    proof that the hole is closed is not a proof that the guard you wrote is what
    closes it.**
 
+   The harder variant is two mechanisms that produce the *same* outcome, where
+   there is no distinguishing outcome to assert. A plan called an end-of-options
+   separator "the whole fix" for option-shaped values reaching `git
+   check-mailmap`. It is not: the value is also wrapped in angle brackets,
+   because that is the input form the command accepts, and the wrapping alone
+   neutralizes option shape — `git check-mailmap "<--help>"` with no separator
+   returns `<--help>` as data. Removing either mechanism leaves the case green.
+
+   Neither is redundant enough to delete, and no case can isolate one. Say so at
+   the case: record which property is pinned and that the individual mechanism is
+   not. Otherwise the comment claims a proof the case cannot deliver, which is
+   the same false confidence as an overstated rationale. Two independent routes
+   reached this correction in one increment — hand-verification during the build,
+   and a test-discrimination audit afterwards — which is what makes it worth
+   writing down rather than fixing quietly.
+
 ### A case that cannot go red is a finding
 
 If removing the shipped guard leaves the case green, the case is pinning
@@ -90,6 +106,94 @@ fixture**. Where a case depends on the system reaching one input before another,
 the ordering is part of the fixture's contract: state it in the case's comment, or
 a later reader tidying a filename will silently disarm the case.
 
+**One kind of case may legitimately stand without going red against the unfixed
+code: the one pinning a guard's boundary rather than the guard.** A parser fix
+refused an operand equal to one of the verb's own flag names, deliberately *not*
+refusing every operand with a leading hyphen — the recordable-identity set admits
+one because real addresses carry it. The case asserting that `--from -x` still
+works cannot fail against the old parser, which accepted everything.
+
+From the outside that is indistinguishable from the failure this section
+describes, so it has to be told apart on purpose: **find what the case does
+discriminate against, and write that in its comment.** This one goes red against
+the *stricter* reading — the obvious tightening a later reader reaches for, which
+would silently break every address wearing a hyphen. A case whose discriminating
+mutation is a plausible **wrong fix** rather than the **absent fix** is worth
+keeping; a case with no discriminating mutation at all is the finding.
+
+The difference is one experiment. Skip it and you either delete a real guard or
+keep a case reporting coverage it does not have — and this section, read
+literally, tells you to delete it.
+
+### Audit the surface, not the case
+
+*Neuter the guard* proves one fix at the moment it lands. It cannot find the
+cases that were already standing when you arrived, because nothing prompts you
+to question a case you are not touching. For that, invert it: mutate the
+**surface** — one behaviour removed per mutant — run the subset against each,
+and record which cases go red. A case no mutant kills is the finding.
+
+This is **mutation testing**, applied by hand rather than by a tool, and knowing
+the name is worth more than the method here — the field has the vocabulary and
+the known costs already. A seeded variant is a *mutant*; a test that fails
+against it *kills* it; one nothing kills is a *surviving* mutant; killed over
+total is the *mutation score*. Its expensive problem is the *equivalent mutant*
+— a change no test can possibly detect, which is undecidable in general.
+Generated implementations exist for most languages (`pitest`, Stryker,
+`mutmut`, `cargo-mutants`) and for none of the shells, which is why this was
+hand-rolled.
+
+One pass over an identity surface cost twenty-three mutants at about twenty
+seconds each. It confirmed six reported non-discriminating cases and found three
+nobody had reported, in cases nobody was editing.
+
+**All three were one shape: an assertion matching a substring that two branches
+share.** Remove the several-domains guard on a config value and the charset gate
+refuses the same input; both messages name the setting, which is all the case
+matched. Remove the both-halves-of-a-remap guard and the recordability check
+refuses the empty half; its message names the same flag. The shape is
+searchable — **where a guard's refusal shares vocabulary with the guard behind
+it, matching the shared words pins the outcome and not the guard.** Match the
+phrase only this branch can produce.
+
+A fourth cause of a case that cannot go red belongs beside the three above:
+**a symmetric property asserted from one side.** Case-insensitive matching
+between an operand and a stored value was driven with a lower-case operand
+against a mixed-case record, so the fold on the operand's side was pinned by
+nothing. Where a property is symmetric, one direction is half a case.
+
+**Pairing is a third remedy, and the only one that recovers coverage rather than
+documenting its absence.** Some cases cannot discriminate alone: an address the
+alias mapping does not mention comes back unchanged whether the lookup ran or
+was deleted outright, and no assertion separates those. Adding a *mapped*
+address to the same fixture does — the pair says a lookup happened and left this
+one alone. Reach for it before *fold it into the case that does go red* or
+*record what it cannot prove*.
+
+**Two ways the census lies, both silent, both false negatives.** They cost three
+re-runs here, and both read exactly like a verdict.
+
+- **The mutant did not apply.** A replacement requiring a unique match no-ops
+  when the pattern occurs three times — and a subcommand's index-regeneration
+  call usually does. Make the harness die loudly on any match count but one, and
+  do not discard its stderr, which is where it says so.
+
+  This is narrower than the rule deserves. **Any mechanical edit that does not
+  check how many times it matched is a change that can silently not happen** —
+  a `sed` in a fix pass, an `awk` sweeping citations, a scripted rename. One
+  mutation in a later session silently failed to apply on an escaping mistake
+  and the case passed, which read as a surviving mutant. Every replacement
+  after it asserted its own match count and refused at zero. The check costs a
+  clause; not having it costs a wrong conclusion that looks like a result.
+- **The case did not run.** Running each mutant against a *filtered* subset is
+  what makes the census cheap, and a filter named after the surface excludes
+  every case named after something else. Three cases read as non-discriminating
+  for a whole round because the filter never selected them.
+
+Assert the case was *selected* before believing it survived. This is trap 1 of
+*Neuter the guard* at a larger scale: an experiment that did not run is
+indistinguishable from one that found nothing.
+
 ### The reach of a proof
 
 **Neuter-and-verify proves a fix. It says nothing about what the edit is now
@@ -117,6 +221,31 @@ reached a refusal message that concatenated it unsanitized, which was a fresh
 row-forgery route created *by* the fix. Both edits shipped together. The rule's
 cost is one careful read; its absence has cost three rounds.
 
+### A claim's quantifier is the part to check
+
+A `high` invariant read: *every guard carrying a sync marker stays
+byte-identical to the other copies of that marker.* A build then added a script
+declaring itself the single definition of a resolution rule and left the old
+implementation in a sibling, unmarked. The invariant could not fire. It is
+quantified over **marked** copies, and an unmarked duplicate is outside its
+domain by construction — so the rule governs the maintenance of duplicates and
+is silent on their creation, which is when this one appeared.
+
+**A rule quantified over the opt-in cannot catch the case that did not opt in.**
+Read an invariant's quantifier before trusting it to cover a class: the breach
+it misses is the one that never entered its domain, and no amount of judge
+effort recovers it, because the judge is asked the rule as written.
+
+The same increment supplies the paired trap. That script's header asserts it is
+*the single definition* of the rule on every write path — **a proposition about
+the whole repository, made in a file that cannot see the rest of it.** A
+uniqueness claim in a comment is an untested assertion, and it reads as
+established because headers usually describe their own file, where they are
+self-verifying. When a header claims singularity, something has to assert
+exactly one implementation exists; otherwise the claim decays into documentation
+of an intention. That is *Write the guarantee and the mechanism separately*
+applied to a claim whose scope is wider than its file.
+
 ### Test the mechanism, don't assume it
 
 A fix that rests on a tool's behaviour is only as good as your belief about that
@@ -138,6 +267,40 @@ Deleting a redundant re-sort rested on "bash glob order equals `sort` order unde
 the single exception, an embedded newline, which turned out to be the attack the
 fix existed to stop. The check cost one command and upgraded the fix's rationale
 from plausible to demonstrated.
+
+### Count the structures, not the bytes
+
+A mechanical transform over a structured document needs a check the transform
+cannot pass by accident, and text equality is not it.
+
+Rewrapping a 214 KB `ARCHITECTURE.md` at 80 columns was verified two ways before
+it was installed: both versions collapse to identical text under whitespace
+normalization, and every block-structure count matches across them — fences,
+headings, bullets, quotes, table rows, blank lines. The first check is the
+obvious one, and it passed on an output that was **wrong**. A wrapped line had
+come out beginning with three backticks, because the document discusses fenced
+code and the wrap put that word first; markdown read it as a fence, parity
+flipped, and several hundred lines after it were silently reclassified as code.
+Whitespace normalization cannot see that — every word is still present and in
+order — and neither can a person reading a 2,700-line diff.
+
+**Where a transform preserves content but can alter structure, count the
+structures on both sides.** It is one `awk` pass, it is the only check that
+fails on the failure mode that matters, and it generalizes past markdown: the
+same shape catches a YAML reindent that changes nesting or a table rewrite that
+changes column count.
+
+The reflow gained a rule from what the check found. A break that puts a word at
+the start of a line turns that word into markup if it is `#`, a lone `-`/`*`/`+`,
+a `1.`, a `>`, a `|`, or a fence — and prose *about* markup is exactly where that
+fires. Carry such a word onto the previous line and let it run over budget; eight
+lines of that file sit 82–85 characters wide, which is the right price.
+
+The same session lost three lines of a notes file to a `head -N` / `tail -n +N`
+splice with an off-by-three boundary, and did not notice for two commits: the
+paragraph simply began mid-sentence, and a splice looks like an insertion in a
+diff. When you assemble a file from slices, diff the result against its input for
+lines you did not intend to touch.
 
 ### An ordering can be load-bearing and held by nothing
 
@@ -164,12 +327,92 @@ Treat "tests pass" as a precondition and **say nothing further about it in a
 gate**. A gate that cites the suite as evidence of correctness is citing the one
 artifact structurally incapable of reporting its own gaps.
 
+### Fixtures inherit the author's blind spot — run it against real data
+
+The two worst defects of one increment were found the same way, and neither by
+the 78 cases written alongside the code.
+
+A new verb shipped with 30 passing cases and was broken for its primary use.
+The collision check compared raw source addresses, so two spellings of **one**
+contributor — unified by the project's own alias mapping — were refused as a
+merge of two people, disabling the whole feature for exactly the projects a
+mapping exists to serve. It surfaced on the verb's first run against the real
+collection, which held precisely that pair. Every fixture had used addresses the
+mapping said nothing about.
+
+The second was a charset gate that had stopped refusing: an alias step inserted
+ahead of it reduced malformed values to a clean substring instead of rejecting
+them. Found by adversarial reading. No fixture carried a bracket-bearing value.
+
+The suite was not too small. **The fixtures were drawn from the same model of
+the problem as the code, so they systematically avoided the shapes the code
+mishandles.** More cases from the same author reproduce the same blind spot; a
+different kind of input does not.
+
+The practice: before believing a suite about a new verb, **run the verb against
+production data once**. It is the one input nobody designed, and it costs a
+single invocation. Where the data is a collection you can preview against, the
+preview is free — the first real preview of this verb was what caught the design
+bug.
+
+The rule landed a second time on the same increment, from the other direction. A
+migration preview gained a check for the two structural anchors its apply step
+writes against, and four standing cases went red — each describing a legacy
+record as title, status and priority alone, a shape the conversion could never
+have completed, standing in for the ordinary case. The fixtures had been wrong
+since before the check existed and nothing could see it, because every case using
+them asserted something else. **A fixture that cannot survive the operation under
+test is a defect the suite is structurally unable to report.** They now share a
+named helper carrying the shape the real corpus has, and the impossible shape
+appears only in the case that is about it.
+
+### Enumerate the declared surface, don't sample it
+
+*Run it against real data* says to exercise a new verb once against the corpus
+nobody designed. This says which invocations, and it is the half that was
+missed.
+
+After one build the author smoke-tested the feature against the real
+collection: several filters, a column selection, two derived predicates, the
+refusals. The index happened to be in exactly the degraded state that triggered
+the shipped defect, and the guard fired correctly on everything tried. The two
+bare words that would have exposed the gap were not among them — because the
+author tested the axes he had built the guard for. **The same blind spot as the
+code, one level up.** Twenty-three invocations, every declared word and flag
+once, would have cost nothing and caught it before review.
+
+So the rule is not "smoke-test the feature". It is: **enumerate the declared
+surface and run each element once, checking exit status and the shape of the
+answer.** Selection is where the shared prior re-enters; enumeration is what
+removes it. The enumeration is also free once the vocabularies are declared
+constants — read the constant, loop it — which is the same move as deriving a
+test's domain from the code's own declaration rather than from the author's
+imagination.
+
+A sampled smoke test and an enumerated one look identical in a report. Only one
+of them covers what it appears to.
+
 ### Reproduce a finding before believing it
 
 A fan-out reported three criticals; one was refuted by a thirty-second shell
 experiment, after **two** investigators had independently reasoned it into
 existence from bash subscript semantics. That was the second consecutive build
 where a reasoned-from-source finding died on contact with a shell.
+
+The third build made the pattern impossible to dismiss: **three** of fourteen
+findings were refuted, each by one command. One was an attribution hijack that
+depended on git returning the *last* parseable contact from a malformed
+argument — it returns the first. One was a false-negative in a collision
+fallback that a second investigator, reading more carefully, showed was
+fail-safe. And one was the arithmetic-subscript claim **again** — a different
+investigator, a different build, the same inference from the same bash
+semantics, refuted the same way.
+
+That recurrence is the useful part. These are not random errors; a particular
+kind of plausible-but-wrong reasoning about shell semantics regenerates itself
+across independent readers. When a finding turns on what bash or git does with
+an unusual input, the cost of checking is one command and the prior is that it
+is wrong.
 
 Reading generates findings; running confirms them. A review reporting an
 unreproduced critical is reporting a **hypothesis** and should label it one. The
@@ -182,6 +425,90 @@ refusal bug if implemented literally, and one cited a precedent the registry
 itself disproved. **Before implementing a proposed action, run it: confirm it
 fails without the fix and passes with it.** A proposal that cannot be told apart
 from the status quo has not been specified.
+
+**A correction is a claim of the same kind and gets less scrutiny than the
+original.** One security finding asserted a specific control-flow path that did
+not exist; the correction to it was also wrong, in the opposite direction,
+calling the residue "merely a silent wrong answer" when the real behaviour was
+a write into whatever directory the run landed on. The finding now carries a
+two-step correction note for that reason. A correction feels like a resolution
+— the question is closed, the work is done — which is exactly why it deserves
+the reproduction the original claim needed and usually does not get one.
+
+The asymmetry has a cause worth naming, because it decides where to spend
+effort on a filed record: **a defect is observed, while a reproduce is
+reconstructed** from a mental model of the mechanism — and the mechanism is
+precisely what the finder had wrong. So a reproduce inherits the model's error
+while wearing the authority of a command line, which is worse than no reproduce
+at all, because someone will run it, watch it behave, and conclude the defect
+is understood. Two records in one round carried confident reproductions that
+named the right defect and the wrong input; fixing what they described would
+have changed nothing and closed them.
+
+### Verify a claim about a document by opening it
+
+The longest escape ever measured in this project was not a code defect. It was
+a research pass asserting that `ARCHITECTURE.md` "describes a six-field row"
+that would need correcting. No such passage existed. The claim survived
+research, the security pass, the plan — entering its Out of Scope as work
+"handled by a later gate" — and the entire build, dying only when the
+architecture refresh went looking for the passage to update. **Three stages.**
+Every code defect in the same run was caught within about one.
+
+Claims about artifacts travel furthest because nothing on their path is
+constituted to check them. A reviewer reads the claim, not the document; the
+document is somewhere else and opening it is a deliberate act nobody is
+prompted to take. The same mechanism produced a security finding asserting a
+control-flow path through a function that does not have one, and *that* one
+shaped a task.
+
+**Any claim of the form "document D says S" carries a line reference**, and
+writing one is what forces the file open. Its absence is also the tell:
+reviewing three confidently wrong causal claims from one run, none read as
+uncertain and none cited a line that had been opened. Fluency is not
+calibration, and prose gives you nothing to check — a citation does.
+
+This sits in deliberate tension with *A line number is the first thing in a
+record to rot*, and the two resolve the same way: cite the coordinate to prove
+you opened the file, and name the symbol so the citation survives the file
+moving.
+
+### A false success is the failure mode that survives every gate
+
+The single most generalizable thing two rounds of remediation produced, and the
+class that several rules in this file are each one instance of.
+
+A remediation pass found the same shape in almost everything it touched — not
+in code, but in the **records, tests, runs and probes** used to fix the code:
+
+| what | presented as | actually |
+| :--- | :--- | :--- |
+| a filed issue | a complete account of a defect | one instance of a class |
+| a filed reproduce | a runnable recipe | a hypothesis about a mechanism |
+| a test green on first run | a behaviour pinned | possibly a test that cannot fail |
+| a killed suite process | a finished run | 124 of 401 cases, no summary line |
+| a `sed` mutation | applied | silently no-op'd on an escaping mistake |
+| a `grep` probe proving a mutant is in place | the mutation applied | a `$` in the pattern read as a metacharacter, matching nothing |
+| `grep -c` on a log | a count of zero | a refusal to read a file it judged binary |
+| a narrowed query | a filter | three groups matched, at status 0 |
+| a column selection | applied | accepted and discarded |
+
+**Every gate is built to notice a reported failure.** None of these reported
+one. That is why a false success outlives the whole pipeline while an honest
+error dies at the first gate it reaches.
+
+The remedy is not diligence, and it is not a checklist. It is: **arrange for
+the thing that failed to say so.** Mutation testing does that for a test.
+Running a reproduce does it for a record. `grep -a` does it for a log. An
+`awk` replacement that asserts its own match count does it for an edit. A
+negative control does it for a probe. Each converts a silent wrong answer into
+a loud one, once, structurally — and none of them asks anybody to be more
+careful.
+
+Read *A clean result does not disclose its own coverage*, *A grep over a
+wrapped document*, *A case that cannot go red*, and *Two ways the census lies*
+as four instances of this. Meeting a new one, the question to ask is not
+"was I careful?" but "what would this have looked like if it had failed?"
 
 ### A clean result does not disclose its own coverage
 
@@ -213,6 +540,71 @@ code hardcodes a value a configured resolver would also return, the two coincide
 configuration differs — which is most installations. A green check against this
 repo is evidence about this repo.
 
+### A grep over a wrapped document measures the rendering, not the content
+
+Four probes in one session returned wrong answers about a document that was
+correct, by three different mechanisms. None of them errored, and every one
+read like a finding.
+
+- **A phrase split by the wrap.** A count of `External Constraint` citations in
+  an 80-column spec came back one short, because in that one citation
+  `External` ended a line and `Constraint` began the next. The document was
+  right; the count was not.
+- **An absence that could not have been proven.** A check that a corrected
+  phrase was gone returned nothing. It genuinely was gone — but the same
+  pattern returns nothing for a phrase that merely wrapped, so the method
+  could not distinguish removal from invisibility. A clean result from a
+  pattern that could straddle a break is not evidence.
+- **A marker that means two things in two sections.** Counting `- [ ]` to get
+  acceptance criteria over-counted by two, because open questions use the same
+  checkbox marker further down the file. The count was of a syntax, not of a
+  population.
+- **A diff filter eating the lines it was meant to keep.** Reading a diff as
+  `grep '^[+-]' | grep -v '^[+-][+-]'` — added and removed lines, minus the
+  `+++`/`---` headers — silently dropped every **added markdown list item**,
+  because `+` followed by a list `-` matches the exclusion exactly. The
+  conclusion drawn was that a hunk touched nothing it in fact touched.
+
+The shape is one: **a pattern matched against rendered text measures the
+rendering.** Wrapping, sibling syntax elsewhere in the file, and the diff's own
+markers are all part of that rendering, and none of them is part of what you
+were asking about.
+
+Three remedies, each one command:
+
+- **Unwrap before searching prose.** `tr '\n' ' ' | tr -s ' '` then grep. Any
+  phrase question about a hard-wrapped document should go through it.
+- **Scope before counting structure.** `sed -n '/^## Section/,/^## Next/p'`
+  first, because the same marker legitimately means different things in
+  different sections and a whole-file count silently unions them.
+- **Read diffs by hunk, not by line prefix.** `git diff -U0` and read the
+  hunks, or match `^\+` and `^-` separately rather than composing a class that
+  a list marker can satisfy.
+
+This is *The measurement apparatus is a source of error* in its cheapest form.
+What makes it worth its own entry is that all four failures were **silent and
+plausible**: three under-reported and one over-reported, and every result was a
+number or an emptiness that fitted the story being told, so none of them looked
+like an anomaly.
+
+**Not one was caught by the result looking wrong.** Each was caught by a second
+measurement taken a different way — and the first only because a hand tally
+made minutes earlier disagreed with it by exactly one. That is the argument for
+the remedies above being defaults rather than things reached for when
+suspicious: suspicion is the input none of these four produced.
+
+Two habits generalize past greps, from a round where probing dominated the
+work and the probe became a live source of error with no test suite of its own:
+
+- **Give every probe that claims something is refused a negative control.**
+  Run the case that should be *accepted* through the same probe. A probe that
+  reports refusal for everything, including the input that works, is reporting
+  its own breakage in the vocabulary of a finding.
+- **Rebuild a fixture rather than reusing one that has been edited.** A scratch
+  directory accumulated a stray `.md` while an issue body was drafted in it,
+  the indexer read it as an issue, and a count went from three to four. Nothing
+  was wrong with the code.
+
 ### Name the set before you write the enumeration
 
 Every corpus-shaped guard in one pass was too narrow in the same way: a sanitizer
@@ -233,6 +625,23 @@ narrow to matter, because the case that goes red is scoped to the same narrow
 corpus. Mutation testing proves a guard **discriminates**. It cannot tell you the
 set was too small.
 
+The counter-example is worth as much as the pattern, and it arrived in a file
+that already held two derived sweeps. A third sweep beside them carries its verbs
+in an array written into the test, under a comment claiming "a fourth verb, or a
+fourth surface, has to be added everywhere or fail here". The surfaces are
+looped, so a fourth surface would. A fourth verb would not — and one had already
+shipped without reaching even the script's own header roster, unnoticed by the
+check whose entire purpose was that class. **A sweep that carries its own list
+has the defect it exists to catch, one level up.**
+
+That one resisted derivation, and the reason is the useful part: the script's
+verbs are not one population. Some are called by other scripts and belong in no
+operator table; some are hand-run and belong in all of them; nothing in the
+script separates the two, so a sweep reading its dispatch would demand rows for
+verbs that should have none. **When a population cannot be derived, that is a
+finding about the code, not a licence to hand-write the list.** It was filed
+rather than bodged.
+
 ### Fixture the caller, not just the function
 
 Two of the worst defects in one build lived in code whose tests call the function
@@ -245,6 +654,38 @@ is the signal to **fixture the caller** and to **state the guard's premise
 explicitly as a claim to check**. One of those two rested on "`mv` preserves the
 inode", which is false across a filesystem boundary and was never written down
 anywhere.
+
+### Budget for second priors, not for diligence
+
+The strongest claim to come out of running this pipeline with agents, and it
+generalizes past agents.
+
+Sorting one increment's mitigations by whether they worked produces a clean
+split. **Everything that worked introduced a second prior** — an investigator
+with no memory of authoring the code, a judge handed only an invariant and the
+file, a test whose domain comes from a declared constant instead of the
+author's imagination, a census that reads the mechanism rather than the record.
+**Everything that failed asked the same context to be more careful.** Test,
+code and smoke test all came from one context, drawn from one model of the
+problem, so they agreed with each other and were wrong together.
+
+That is the test-oracle problem, and writing the test first does not solve it:
+writing first forces interface thinking, but it does not supply a second
+*prior*. A human writing tests after the code at least switches from
+constructive to adversarial mode. An agent continuing in the same context does
+not.
+
+**A second prior does not have to be an agent — it has to be someone who did
+not write the thing.** The sharpest instance in two rounds came from the
+developer asking whether an issue was worth fixing at all. Nothing in the
+pipeline was going to ask that; the record read plausibly and had been reported
+back at its own framing. The question forced a probe, the probe found a second
+defect the record had missed, and the work was re-scoped.
+
+The corollary is the uncomfortable half and the reason this is a budgeting rule
+rather than an aspiration: **the parts that no second prior touched are the
+parts to trust least.** That is a triage instruction. When effort is short,
+spend it on introducing a reader rather than on re-reading as the same reader.
 
 ## Organizing a fix pass
 
@@ -302,6 +743,77 @@ look identical in a diff, and a reader checking the issue's item list against th
 change will otherwise find an item with no matching edit and no explanation. The
 same note is what stops a later round re-fixing a symptom whose cause is gone.
 
+### An inconsistency is evidence, not a verdict
+
+An issue reported two quiet failure paths in one script as a single defect: a
+timestamp resolver that emptied its value and let the run report success, and a
+publish call that returned without unwinding the door every other exit in the
+function unwinds. The first was real. The second was correct, and "fixing" it
+would have destroyed work — the placement door frees a handle only after a
+successful publish, so a refused commit deliberately keeps the developer's edits
+for a retry, and adding the missing abort would have discarded them to make the
+code look symmetrical.
+
+Every other rule in this file widens a fix. This one narrows one: **an asymmetry
+is evidence that something differs, not evidence that something is wrong.**
+Establish which before changing it, particularly when the symmetry argument is
+the whole case for the change.
+
+The issue itself asked for exactly that — "worth determining rather than leaving
+to inference from an inconsistency" — and that is the shape to copy when filing.
+A reporter who cannot tell an oversight from a deliberate difference should say
+so; it is the line that stopped this one being fixed into a bug.
+
+The answer then belongs at the asymmetry. It read as an oversight because nothing
+at the site said otherwise, and it would have read that way again to the next
+person. The fix for this class is usually a sentence rather than a change.
+
+### Check the remedy against the goal, not the symptom
+
+An issue titled "single lines exceed what its consumers can read" asked for one
+thing: wrap the document. Its strongest evidence was something else — the skill
+that maintains the file cannot read it, because its own differential-update step
+instructs reading the document fully and the whole-file read is refused for size.
+
+Wrapping alone would have satisfied the title and left the evidence untouched.
+Reflowing a file does not shrink it: the bytes are identical and the read is
+refused exactly as before. The fix that shipped had to change the reading step
+too — by section rather than whole — which is worth doing only because wrapping
+makes a bounded read cost what it asks for rather than whatever the surrounding
+paragraph weighs.
+
+**Where an issue states a symptom and a goal, check the proposed remedy against
+the goal.** The two agree often enough that the habit is easy to skip, and the
+gap is invisible at review: every criterion the title names is met.
+
+What remained afterwards was a different problem wearing the same symptom — one
+section is more than half that document, which no formatting rule addresses. It
+was filed rather than folded in, which is the other half of the discipline: a
+remedy that does not reach the goal is either extended or its remainder is
+tracked, never quietly declared sufficient.
+
+### A census that outgrows the task is a filing
+
+Censusing the mechanism sometimes finds a root much larger than the task in
+flight. Asked to fix three issues so a set of blueprints would be correct, a
+census found that no `Requires` token on any group face resolved to any
+`Provides` entry: the two halves are named in disjoint vocabularies — the
+artifact on one side, the capability on the other — so three of the reconcile
+pass's six finding classes are decided by reading prose rather than by a join.
+Repairing that is a naming pass across four blueprints plus a mechanical check.
+
+The instinct is to re-plan around the root. Don't: **file it, widen the issues
+that understate their own rule, and finish the track already in flight.** The
+committed batch has a known end and the root does not, so trading one for the
+other turns a finishable pass into an open one — and the census survives in the
+record either way. Three issues were widened and three filed in a single commit;
+the remediation then closed its remaining six.
+
+File the root as its own issue and have the instances point at it. Without that,
+the next person fixes an instance under the naming that caused it, which for this
+one means adding a face entry only judgment can match — the exact state the
+instance was filed about.
+
 ### A contract names a site; a site is not a class
 
 Nine of sixteen contracts in one pass were satisfied exactly where the issue
@@ -318,9 +830,108 @@ defect class, because the defects lived in *verb × rule*: which verbs read the
 structure without going through the classifier at all. The matrix was right; its
 axes were not. Ask what the rule is, then what touches the rule.
 
+The third instance adds the trap that makes this rule hard to follow: **an issue
+that names a sibling site looks like it has already done the enumeration.** One
+issue reported an ungated path composition and carried a `## Scope` section
+naming one sibling of the same shape — "both are the same one-line fix and belong
+together". Both were fixed, the suite was green at 1,551 across both commits, and
+the issue closed with a resolution naming the pair. There were three. The third
+was the same rule's fallback arm in a function neither the issue nor the fix pass
+had looked at.
+
+A partial enumeration suppresses the independent one. An issue naming no sibling
+prompts the question; an issue naming one *answers* it — and the answer is the
+more trustworthy for having been written by whoever found the defect. Read a
+`## Scope` section as the reporter's hypothesis about reach, which is the status
+*A stated scope is a claim, not a measurement* already gives every other stated
+scope.
+
+What caught it was the axis. The invariant engine's judge was asked whether the
+rule held, not whether the issue was fixed, so it enumerated every site composing
+a path and counted guards: **0 / 1 / 1** across three sibling functions. Where a
+rule names a call, that census is the mechanical form of this whole section —
+count the guard per site and expect a uniform number. **A census that disagrees
+with itself is the finding**, and it costs one `awk` pass over the function
+ranges. Prefer it to re-reading the issue.
+
+A fourth instance, on the very next task, showed the census works prospectively
+— and showed a second way a `## Scope` section defeats it. This one named no
+sibling. It named the *question*: "the swallow pattern is shared with `--expect`
+elsewhere in the same file, so a fix should consider whether to harden the idiom
+generally." A deferred enumeration reads as diligence, and it is one, but the
+deferral is only honoured if the fixer actually runs it — and it is the easiest
+line in an issue to read as background rather than as work.
+
+Run here, the census was a grep for the *idiom* rather than a count of guards:
+five sites across three parsers, where the issue demonstrated two. The three it
+had not demonstrated included the worst — a value-less `--expect` consumed the
+flag authorizing a destructive whole-collection write and left the drift guard
+unarmed, because an empty expectation is indistinguishable from asking for no
+check. The reported cases were the mild ones.
+
+So the census has two forms and both cost one command: **count a named guard per
+site** where the rule names a call, and **grep the idiom** where the rule is a
+shape. Either way the number should come out uniform. A Scope section that
+raises the question without answering it is the strongest signal there is to run
+one.
+
+The fifth instance is worth the most, because it happened *after* everything
+above was written down. A documentation pass — four issues, no code among them —
+reproduced the pattern three times running, one pass after this section gained
+the census. **A rule stated in prose does not fire on its own.** Whoever is
+fixing an issue is reading the issue, and the issue is where the partial
+enumeration lives; a notes file is not in that path.
+
+It also moved the rule off code. Every instance above is a guard, a composition
+or a parser idiom. These were documents. One issue named two surfaces carrying
+an instruction that had gone wrong, and the instruction was wrong in four. One
+asked for four frontmatter fields to reach an example block when no document
+named a verb that moved any of them, so the fields could not be documented
+without the verbs. One asked for a tool grant to be scoped, which turned out to
+require the written convention the grant was scoped against to move with it.
+Prose drifts from code exactly the way a sibling function drifts from its
+guarded twin, and it is enumerable the same way.
+
+That gives the census a third form, and it is the best of the three because it
+survives the pass that ran it: **derive the expectation from the authority and
+diff the copy against it.** Where a document enumerates what an array
+enumerates, do not compare the two lists by eye, and do not write the expected
+list into the test either — read the array and assert the document mentions each
+element. Two such checks landed in that pass: one deriving a script's documented
+verb enum from the array it dispatches on, one deriving a skill's granted
+scripts from the call sites in its own body. Counting a guard and grepping an
+idiom are things you run; this one is a thing that stays run.
+
+The sixth instance looked more like diligence than any of the others, and it is
+the sharpest form of the whole section: **an enumeration of what has been
+recorded is not a census of the rule.** Asked whether any other group face
+carried the gap one issue described, the obvious census was the project's
+declared cross-group contract edges — a real enumeration, mechanically derived,
+over the authoritative artifact. It answered "exactly one", and it could not have
+answered anything else: it searched only the couplings somebody had already
+declared, and an undeclared coupling was the entire subject of the issue.
+
+Censusing the *mechanism* instead — every byte-identity marker in the code —
+found four coupling families across three group boundaries, three of them
+undeclared on at least one side. The registry knew about one.
+
+So before running a census, ask what the population is made of. **If the set you
+are about to enumerate is itself a record of the thing you are looking for, the
+census is circular** and will confirm whatever the record already says, with all
+the authority of a mechanical count. Census the mechanism — the markers, the call
+sites, the code that would exist whether or not anyone wrote it down.
+
 This is the sibling of *By file, not by issue* below, at a different moment: that
 one governs reading a whole function while editing it, this one governs
 enumerating a rule's reach before declaring it held.
+
+**Automation is not exempt, and hides the miss better.** A doc generator ran at
+one build's completion gate, updated the script-count *tree* in its output to
+ten, and left the *prose* count in the same document at nine. The generator
+reported success, which is what makes this instance worse than a hand pass: the
+first site was refreshed by a tool, so nobody re-read the second. A surface
+maintained by a generator still has siblings, and the generator's own output is
+where to look for them.
 
 ### Assert the verb's assumed property at plan time
 
@@ -333,6 +944,54 @@ A plan task names verbs it does not implement. **For each named verb, assert the
 property the task assumes it has**, at plan time, before any code exists. This
 acts earlier than everything else in this file; every other rule here fires at or
 after the change.
+
+**A universally-quantified task references the named domain; it never
+paraphrases the quantifier.** One task said "an axis the index does not
+describe" — general, correct, and satisfied by an implementation covering three
+of four axes and one of two verbs. The complete domain was two pages above it
+in the same plan, in that document's own interface contract. Had the task said
+"for each axis in the Interface Contract's axis list that reads a row scalar",
+the implementer would have had to go and look, and looking is the whole
+mechanism. A paraphrase lets the implementer supply the set from memory, which
+is where a locally-correct, globally-incomplete enumeration comes from. This is
+*Name the set before you write the enumeration* moved one stage earlier, to the
+document that commissions the enumeration rather than the code that contains
+it.
+
+### A task list cannot be run
+
+A plan's Requirements Coverage maps each acceptance criterion to the tasks that
+satisfy it. That mapping records **presence, not sufficiency**, and the
+distinction is the whole of one increment's drift: two rows read
+
+    | Create an umbrella kind without a separate capture flow | 5 |
+    | Name an umbrella at capture time                        | 6 |
+
+where tasks 5 and 6 change the emitter script and both criteria describe the
+*skill surface* that invokes it. Every criterion had a task, so the table read
+complete. All 29 tasks were executed correctly. Those two rows are exactly the
+two criteria the review recorded as not satisfied.
+
+Nothing downstream could have caught it, because **a task list is not
+falsifiable**. You cannot run "tasks 5, 6" and watch it fail. Name instead the
+**observable that demonstrates the criterion** — a case, a command, a
+doc-surface assertion — and the coverage column becomes a set of runnable
+things a completion gate can check. The case that eventually closed this
+criterion already had a home in the doc-surface suite; had the plan been
+required to name an observable, it would have been a task instead of a
+remediation.
+
+**The reason to spend more here than a human workflow would.** A builder
+holding "the `add` subcommand accepts `--type`" while implementing "add
+`--type` to `new.sh`" tends to notice the gap between them. A compliant
+executor does not: the task is the unit of work and it was completed. Fidelity
+removes the informal error-correction that ordinarily absorbs a defective
+instruction, so **an agentic pipeline converts plan defects into shipped
+defects at close to 1:1**, and verification effort should be redistributed
+toward the artifacts that instruct in proportion to how faithfully they will be
+obeyed. This is the economic argument under *Assert the verb's assumed property
+at plan time*, and it applies to every rule in this file that fires at or after
+the change.
 
 ### A second reader is a disagreement risk, not a correctness risk
 
@@ -364,6 +1023,14 @@ canonical snippet consumers copy that encoded the unsafe case.
 Prefer: implement, then verify the claim against the implementation as a separate
 act — ideally by a different reader.
 
+The same effect reaches the plan, where it is cheaper to catch and more
+expensive to miss. One plan's Requirements Coverage mapped two capture-flow
+criteria to script tasks, and its File Manifest scoped the matching prose edit
+to a different part of the file. Two artifacts, one author, one pass — and they
+agreed, because agreement between artifacts derived from a single model of the
+work is not corroboration. **Defence in depth adds assurance only when the
+layers are independently derived; these were independently formatted.**
+
 ## Records
 
 ### A resolution note is the durable record
@@ -384,6 +1051,21 @@ naming precisely what did not land. It is better than editing the original
 resolution, because the overclaim itself is information: it tells the next author
 which claims in this collection are load-bearing and which were written from
 memory.
+
+**A rule written here is not written where the verb is.** This section states
+the convention; the `close` dispatch, the feature doc and the workflow doc do
+not. An executor following the skill sets `status`, `outcome` and the stamp,
+and stops — producing a record that is complete in every field a reader would
+check and missing the only half that cannot be re-derived. Four issues were
+closed that way in one pass, and the omission was invisible until someone
+asked.
+
+The general form: **a convention documented only in the retrospective record is
+enforced only on whoever reads retrospectives.** Where a rule governs a verb,
+it belongs at the verb — the point of use is the surface an executor actually
+reads, and a validation checklist is the enforceable version of it. That this
+file had the rule for two rounds and the gap persisted is the evidence, not a
+counter-example.
 
 ### Name the guard that ships pinned by nothing
 
@@ -455,12 +1137,89 @@ handing that ordinal back — with nothing on either side pointing at the other.
 When you find one, connect them, so the issue names its restoration target and
 the blueprint is not read as current.
 
+**Judge an invariant by its recorded text, passed verbatim, and mark anything
+you add as supplementary.** One violation in a closing verification run came
+back against a property the session had put in the judge's prompt rather than
+one the blueprint states. Folding the invariant to match would have written a
+session's assumption into the group's permanent intent, under the appearance of
+a judge having found something. When a violation returns against a supplied
+property, **the finding is that the invariant is silent on it** — and silence
+is what needs fixing, by writing the property down deliberately, not by
+retrofitting the document to a question nobody had recorded.
+
 ### Close each issue as its fix lands
 
 One spec fixed fourteen issues and closed none, because no plan task covered it —
 and the collection misrepresented the project's state until a later review
 reconciled it. A batch close at the end is a window in which the tracked set is
 knowably wrong, and it is exactly the window in which someone else reads it.
+
+### A line number is the first thing in a record to rot
+
+An issue's `## Where` section named two call sites by file and line. Both were
+right when filed. Both were wrong inside the same increment — not because the
+defect moved, but because the file grew by roughly 450 lines around them while
+the fix landed. Checking the record against current code by those numbers now
+arrives at an unrelated assignment and an unrelated conditional.
+
+That produces two different wrong readings, and the record cannot distinguish
+them: that the defect was fixed somewhere else, or that the reporter was
+careless. Neither was true. The record was accurate, the fix was complete, and
+only the coordinates had moved.
+
+**The codebase already knows this about itself.** Script comments are forbidden
+from carrying cross-file line ranges, because the rename and split verbs
+renumber the very things a reference points at. Records have the same exposure
+and no such rule, and they are worse off in one respect: a stale comment sits
+beside the code that invalidated it, where the next reader of that function
+trips over it. A stale record sits in another directory and is read months
+later by someone who was not there when it moved.
+
+The remedy is not to drop line numbers. They are how a finder communicates
+precisely at the moment of discovery, they cost nothing, and a record without
+them is harder to act on. It is to **pair every coordinate with something that
+survives it** — the function name, the symbol, the rule — so that when the
+numbers go stale the record still says what to look for. `render.sh:324` alone
+rots; `render.sh:324, the stats blocking rollup's slug pattern` degrades into
+a search.
+
+The verification half follows from *A contract names a site; a site is not a
+class*, and sharpens it: **a site named only by line number is not a site at
+all once the file moves.** So confirm a record against the rule it describes,
+never against the coordinates it quotes. Closing the issue above meant
+censusing every slug character class in the tree and finding two deliberate
+families whose boundary held — one command, and it answered a question the
+line numbers could no longer even pose.
+
+Two forces make this bite hardest exactly where it did. A record filed by
+research and fixed during the same increment is the shortest-lived set of
+coordinates in the project, because the build reshapes the file underneath it.
+And a record left open past its fix — the failure above — keeps accruing rot
+for as long as it stands.
+
+### A handoff records what was learned and points at what is configured
+
+Handoff documents are disposable and spec-scoped — that is the distinction this
+file opens with — but one property of them is durable enough to belong here.
+
+Across a session that compacted twice, the handoff survived and was
+load-bearing: findings, corrections and the reasoning behind decisions all came
+through intact and were still true. What went stale inside hours was
+**configuration** — the document asserted two gates were off after they had
+been turned on, and a reader trusting it would have skipped a phase the project
+required.
+
+The two halves of a handoff have opposite lifetimes. **A finding is durable**:
+what the code did on Tuesday it still did on Thursday, and a correction to a
+finding is more durable still. **Configuration is volatile** and, worse, it
+changes without touching anything the handoff would notice — a one-line edit to
+a settings file invalidates a paragraph.
+
+So a handoff should carry findings and corrections in full, and **name the
+resolver for anything configured rather than quoting its value**: which key
+decides it and which command answers it, not what the answer was when the
+document was written. The same rule protects a spec, a review, or any artifact
+that outlives the session that wrote it.
 
 ### Never hand-edit a derived artifact
 
@@ -478,6 +1237,27 @@ working, one round later than it should have.
 **Blueprints and `ARCHITECTURE.md` are edited only through `/jim:blueprint` and
 `/jim:arch`.** A surgical hand-edit bypasses the skill's grading, its
 present-tense and provenance scans, and its `Last updated` stamp.
+
+### A measurement can be accurate exactly where it does not matter
+
+`<stage>_duration_seconds` reports the span from a stage's **first** `started`
+to its **last** `finished`. For a stage run once that is the duration. For a
+stage run twice it is the wall-clock gap between the two, including every other
+stage that ran in between.
+
+One increment reported 31,024 seconds of security review over two runs that took
+1,340 — a factor of 23 — alongside a 5× overstatement on review and 2× on build,
+with the three single-run stages exact.
+
+The general shape is worth more than the defect: **the error is correlated with
+the condition being measured.** A stage is re-run because something went wrong,
+so the metric is trustworthy for untroubled increments and wrong for exactly the
+ones a retrospective wants to examine. A defect distributed that way survives
+every casual check, because the runs where anyone would scrutinise the number
+are the runs where it is right.
+
+Reconstruct from the event pairs when a stage records more than one run, and say
+in the artifact that you did.
 
 ## Reviews
 
@@ -531,6 +1311,33 @@ blueprints, and nothing forced the fold until the sensor ran — after the gate.
 The fold-back loop's value is not the report it writes. It is the contradiction
 it refuses to let pass silently, and it can only refuse before the gate closes.
 
+### A verdict is a measurement — amend it when the evidence lands late
+
+The review records `review finished alignment=…` **before** composing
+`review.md`, so the artifact can report its own metrics; and the living-intent
+sensor runs after that, by design, so its outcomes can never set the verdict.
+Those two orderings interact badly on one path: evidence that genuinely bears on
+alignment can arrive after the verdict is already on the ledger.
+
+One review recorded `minor-drift` over 31-of-33 criteria and a clean task
+breakdown. The sensor then reported a `critical` invariant violated; verifying
+that claim by hand showed the build had introduced a regression falsifying both
+the script's own security-model header and the `ARCHITECTURE.md` paragraph
+refreshed during the same build. That is drift against an alignment ground
+truth, found late. The verdict was amended to `major-drift` and both lines stand
+on the append-only ledger.
+
+Hold the distinction precisely, because it is the thing that could be abused:
+**the sensor's outcome must not move the verdict; evidence surfaced while
+verifying that outcome is ordinary evidence and must.** The test is whether the
+new fact bears on a ground truth the verdict already answers — spec criteria,
+plan tasks, architecture conventions. "An invariant is violated" does not
+qualify. "The code contradicts a document this build wrote" does.
+
+Amending is cheap and the trajectory is what the append-only ledger is for.
+Rationalizing the first verdict to avoid a second line is the failure — it
+produces an artifact that is wrong in the one direction nobody re-reads.
+
 ### Convergence is a confidence signal worth recording
 
 When two or three investigators on *different* assignments reach the same defect
@@ -553,6 +1360,56 @@ reports clean coverage.
 
 Judge the working tree, and say in `review.md` that you did.
 
+### Coverage chosen by judgment is not reproducible
+
+Two sensor passes over the *same* change and the *same* blueprint judged 11
+invariants, then 14. Nothing degraded and nothing was capped; the second pass
+re-derived its change selection instead of copying the first's, and three
+invariants recorded as `skipped (scope)` turned out to be in scope. All three
+held — so the first report said *unexamined* where the second said *checked*,
+and both reports read clean.
+
+The second pass also found a data-loss path the first had recorded as holding.
+
+Two rules follow. **Where the selection input is mechanically computable —
+territory ∩ changed files — compute it**, and the variance disappears for free.
+**Where it is not, the mitigation is repetition, and agreement between passes
+is the signal** rather than the first pass's verdict.
+
+The objection is cost, and the arithmetic does not support it. In one increment
+build ran 2h04m and each review ran 13 and 11 minutes — verification at roughly
+a tenth of construction, its cost close to flat in the size of the change while
+its yield scales with the defects actually present. Reviewing once is calibrated
+to scarce human attention, and that constraint is absent here. Recalibrate to
+the measured cost rather than inheriting the human one.
+
+A standing consequence: **an invariant whose territory no change touches is
+never checked, and its scope-skip reads identically to a clean result on every
+report it ever appears in.** One has now been scope-skipped in every pass so
+far. Periodically running the sensor unscoped is what distinguishes "checked and
+sound" from "never looked at" — see *A clean result does not disclose its own
+coverage*.
+
+### A judge-only invariant set has no floor
+
+One group's blueprint carries fifteen invariants, **all fifteen `judge`-method,
+with no `verify-checks` block and no pattern or structure rung at all** — in the
+group holding the project's widest fan-in provides face.
+
+Three consequences, none of them visible in a report: every invariant costs an
+LLM dispatch, so coverage is bounded by appetite and fan-out cap rather than by
+free mechanical scanning; coverage inherits the non-determinism above; and
+nothing fails fast, because a mechanical breach is loud and free where a judge
+verdict is neither.
+
+The remedy is not to replace judges with patterns — the prose captures more than
+a pattern can, which is why it is prose. It is to **give each invariant a
+mechanical necessary condition wherever one exists**, so the floor catches the
+common breach for free and the judge is spent on the residue. A tool grant is a
+frontmatter set; "never sourced" is a `must-not` pattern; "atomic write" is the
+absence of a direct redirect; the marked half of a lockstep rule is a byte
+compare. None of these is the whole invariant. Each is a condition whose breach
+is certainly a violation, which is all a floor has to be to be worth having.
 ## Mechanics
 
 **The suite** takes ~9 minutes on a quiet VM and exceeds a foreground timeout.
@@ -591,6 +1448,16 @@ did); an interactive batch is always the reviewed case. Regenerate `INDEX.md`
 **Slugs cap at 64 characters and truncate mid-word.** Keep issue titles short
 enough to survive it.
 
+**A filing batch inherits the collection's integrity state.** Filing regenerates
+`INDEX.md`, which re-derives every warning from the collection as it currently
+stands. With a schema migration pending, that wrote 233 "closed but records no
+outcome" lines into a tracked artifact — noise that had nothing to do with the
+issues being filed, and that vanished the moment the conversion ran. Sequence a
+pending data migration **before** a filing batch, or the batch's own commit
+carries the migration's backlog. The same reasoning applies to any operator
+action that regenerates a derived artifact: it publishes whatever is true at
+that moment, not whatever the action was about.
+
 **Config path keys are `<key>_path` in TOML.** `brainstorms_path`, `specs_path`,
 `issues_path` — the bare names are for the behavior knobs (`issue_placement`,
 `auto_review`). The CLI takes the short name and the resolver appends the suffix,
@@ -598,6 +1465,16 @@ so a fixture writing the bare name for a path key gets **the default, silently**
 That is a case passing for the wrong reason with no error anywhere: the run does
 exactly what it would have without the config line. Assert the resolver's answer
 (`jimconf.sh get <key>`) when a fixture's whole point is a non-default root.
+
+The same suffix defeats a *sweep* the other way round. A check comparing
+`jimconf.sh keys` against a documentation table reports every path key as
+undocumented — ten false alarms indistinguishable from real ones, and they read
+as "README is missing ten keys" until you go and look at the resolver. A
+roster sweep has to accept both spellings. It also has to accept a family row: a
+table may legitimately document five keys in one line (`health_threshold_<signal>`
+naming each signal in its text), which is the better document and invisible to a
+check demanding a row each. Read family prefixes out of the document rather than
+splitting the key — two of those five carry an underscore in their own suffix.
 
 **Commit subjects** are ≤50 characters, lowercase, imperative, with IDs in
 trailers only. This one is honoured in the breach — 74 of 140 subjects in one

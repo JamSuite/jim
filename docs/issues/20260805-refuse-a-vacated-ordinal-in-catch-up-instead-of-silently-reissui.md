@@ -4,12 +4,17 @@ num: 229
 title: "Refuse a vacated ordinal in catch-up instead of silently reissuing it"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, registry, alloc]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T01:53:40Z
 updated: 2026-08-05T10:21:33Z
 origin: "20260805-b-prime-review.md (retired; see 5e712bf)"

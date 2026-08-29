@@ -4,12 +4,17 @@ num: 96
 title: "jim:issue files and indexes issues on main via git worktree"
 status: open
 priority: medium
+type: issue
+filed-by: "dorsma"
+claimed-by: ""
+outcome: ""
 labels: [issue, worktree, workflow]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-24T10:58:09Z
 updated: 2026-07-24T11:30:52Z
 origin: docs/issues/20260724-add-plugin-json-agents-key-guard-to-meta-validation-checklists.md

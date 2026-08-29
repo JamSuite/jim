@@ -4,12 +4,17 @@ num: 20
 title: "Wire the 000-blueprint fold-back loop into review"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, fold-back, review]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-30T20:35:18Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/001-blueprint-spec/spec.md

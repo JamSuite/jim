@@ -4,12 +4,17 @@ num: 319
 title: "Two placement cases cannot fail and four guards have no coverage"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T03:42:07Z
 updated: 2026-08-12T06:06:19Z
 origin: docs/specs/issue/011-issue-placement/review.md

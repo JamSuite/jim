@@ -4,12 +4,17 @@ num: 129
 title: "Coordinated issue-filing hard-fails in the mvm agent sandbox"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, workflow, sandbox]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-28T21:39:15Z
 updated: 2026-07-31T06:38:04Z
 origin: docs/specs/platform/007-id-coordination-allocator/spec.md

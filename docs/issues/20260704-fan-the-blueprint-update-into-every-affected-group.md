@@ -4,14 +4,19 @@ num: 41
 title: "Fan the blueprint update into every affected group"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [000-blueprint, cross-group]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-07-04T08:08:23Z
-updated: 2026-07-25T07:49:14Z
+updated: 2026-08-29T07:51:32Z
 origin: docs/specs/blueprint/006-contract-graph/spec.md
 ---
 

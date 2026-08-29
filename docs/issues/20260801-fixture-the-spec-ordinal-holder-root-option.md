@@ -4,12 +4,17 @@ num: 184
 title: "Fixture the spec-ordinal-holder --root option"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [platform, file, scripts, test]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-01T00:22:46Z
 updated: 2026-08-01T00:22:46Z
 origin: docs/specs/platform/000-blueprint/spec.md

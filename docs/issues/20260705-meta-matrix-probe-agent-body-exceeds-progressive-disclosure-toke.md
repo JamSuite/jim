@@ -4,12 +4,17 @@ num: 54
 title: "meta-matrix-probe agent body exceeds progressive-disclosure token budget"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [000-blueprint, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-05T00:37:36Z
 updated: 2026-07-05T00:37:36Z
 origin: docs/specs/jim/000-blueprint/spec.md

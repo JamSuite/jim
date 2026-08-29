@@ -4,12 +4,17 @@ num: 269
 title: "place.sh conformance and hygiene pass"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, refactor]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T11:43:58Z
 updated: 2026-08-12T11:40:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

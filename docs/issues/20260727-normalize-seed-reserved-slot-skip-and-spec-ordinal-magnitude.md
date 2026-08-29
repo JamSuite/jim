@@ -4,12 +4,17 @@ num: 121
 title: "Normalize seed reserved-slot skip and spec-ordinal magnitude"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, alloc, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-27T05:34:21Z
 updated: 2026-08-02T01:07:02Z
 origin: docs/specs/platform/008-registry-seed/review.md

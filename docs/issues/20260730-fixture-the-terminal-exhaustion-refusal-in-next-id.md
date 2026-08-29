@@ -4,12 +4,17 @@ num: 141
 title: "Fixture the terminal exhaustion refusal in next-id"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, test-coverage]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T00:49:54Z
 updated: 2026-07-30T00:49:54Z
 origin: docs/specs/platform/011-rename-path-correctness/plan.md

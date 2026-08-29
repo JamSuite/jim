@@ -2,32 +2,32 @@
 #
 # skills/issue/scripts/new.sh — Write one issue file from fields. The single
 #   issue-file emitter: every skill that files through the candidate-batch
-#   contract and /jim:issue add file through here, so the spec-017 template is
-#   materialized in exactly one place (spec 025 AC1–AC3). The consumer set is
-#   defined by the grant, never by a count kept here — it accrues.
+#   contract and /jim:issue add file through here, so the issue template is
+#   materialized in exactly one place. The consumer set is defined by the
+#   grant, never by a count kept here — it accrues.
 #
-# SECURITY MODEL (spec 025 security.md)
+# SECURITY MODEL
 #   - Untrusted body never reaches a shell command line. The caller writes the
 #     body to a temp file with the Write tool and passes --body-file; this
 #     script appends those bytes verbatim with `cat` (file→file copy). Body is
-#     never interpolated, `source`d, or `eval`d (AC4, Finding 5).
+#     never interpolated, `source`d, or `eval`d.
 #   - Scalar fields are YAML-encoded so an untrusted --title/--labels/--origin
-#     cannot inject or alter frontmatter or cross the frontmatter/body boundary
-#     (AC4, Findings 1, 6): --title and --origin are each escaped into a
-#     double-quoted scalar, each --labels token is reduced to the slug charset,
-#     newlines are stripped.
+#     cannot inject or alter frontmatter or cross the frontmatter/body
+#     boundary: --title and --origin are each escaped into a double-quoted
+#     scalar, each --labels token is reduced to the slug charset, newlines
+#     are stripped.
 #   - The target path is derived only through the validated id resolver: the id
 #     is checked with `jimfile.sh valid-id` before any path is composed from it —
 #     a stat included — so untrusted input cannot direct the write outside the
-#     issues directory, nor use a composed path to answer a question about one
-#     (AC5, Finding 2).
+#     issues directory, nor use a composed path to answer a question about one.
 #   - stdout is exactly "<slug>\t<path>"; failures go to stderr as fixed reason
-#     codes — never raw --title/--body content (Finding 4).
+#     codes — never raw --title/--body content.
 #
 # USAGE
 #   bash new.sh --title <s> --priority <low|medium|high|critical> \
 #               --labels <csv> --origin <s> --body-file <path> \
-#               [--status open] [--slug <id>] [--num <int>] \
+#               [--status open] [--type <issue|epic>] [--part-of <csv>] \
+#               [--slug <id>] [--num <int>] \
 #               [--created <ts>] [--updated <ts>] [--dir <issues_dir>] \
 #               (--auto | --reviewed)
 #
@@ -72,11 +72,19 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 JIMALLOC="$(dirname "$JIMFILE")/jimalloc.sh"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
+IDENTITY="$HERE/identity.sh"
+RESOLVE="$HERE/resolve.sh"
+
+# What kind of record a capture may create. Iterated rather than restated at
+# the check below, so a kind added here reaches the validation without a second
+# edit. index.sh declares the same vocabulary for the reading side.
+readonly ISSUE_TYPES=(issue epic)
 
 # ─── Parse flags ─────────────────────────────────────────────────────────────
 
 title="" priority="" labels="" origin="" body_file=""
 status="open" slug="" num="" created="" updated="" dir="" place_token=""
+type="issue" part_of=""
 auto=0 reviewed=0
 
 # Kept whole for the placement re-exec below, which has to hand this script its
@@ -91,6 +99,8 @@ while [[ $# -gt 0 ]]; do
     --origin)    origin="${2-}";    shift 2 || break ;;
     --body-file) body_file="${2-}"; shift 2 || break ;;
     --status)    status="${2-}";    shift 2 || break ;;
+    --type)      type="${2-}";      shift 2 || break ;;
+    --part-of)   part_of="${2-}";   shift 2 || break ;;
     --slug)      slug="${2-}";      shift 2 || break ;;
     --num)       num="${2-}";       shift 2 || break ;;
     --created)   created="${2-}";   shift 2 || break ;;
@@ -169,7 +179,10 @@ if [[ -z "$dir" && -r "$PLACE" ]]; then
            "issue_placement_ack = \"true\" to accept auto-filing to that branch." >&2
       exit 4
     fi
-    exec bash "$PLACE" run --verb file -- \
+    # This line appends --dir {} --place-token {token}, so {} is third from the
+    # end and {token} last. The forwarded argv ahead of them is user text and is
+    # never examined — a --title of exactly {} is a title.
+    exec bash "$PLACE" run --verb file --dir-at -3 --token-at -1 -- \
       bash "${BASH_SOURCE[0]}" "${original_argv[@]}" --dir '{}' --place-token '{token}'
   fi
 fi
@@ -191,6 +204,107 @@ case "$status" in
   open|closed) ;;
   *) echo "error: invalid status (expected open|closed)" >&2; exit 1 ;;
 esac
+
+# Iterated rather than pattern-matched, so the declaration above is the single
+# statement of what a kind may be and a kind added there needs no edit here.
+# The refusal names the field and the accepted set, never the rejected value —
+# a kind arrives as the same model-produced text a title does. Above the
+# allocator with the other enum checks, so refusing costs no ordinal.
+type_ok=0
+for _t in "${ISSUE_TYPES[@]}"; do
+  [[ "$type" == "$_t" ]] && { type_ok=1; break; }
+done
+if (( ! type_ok )); then
+  _types_expected="$(printf '%s|' "${ISSUE_TYPES[@]}")"
+  echo "error: invalid type (expected ${_types_expected%|})" >&2
+  exit 1
+fi
+
+# ─── Resolve the filer ───────────────────────────────────────────────────────
+
+# Ahead of the allocator on purpose: the allocator is append-only, so a filing
+# refused after it runs spends an ordinal no file will ever carry. Refusing here
+# costs nothing and leaves the collection exactly as it was.
+#
+# identity.sh has already reported which way it failed; this line says what that
+# cost. Both are fixed strings — neither carries a field of this filing.
+filed_by="$(bash "$IDENTITY" resolve)" || {
+  echo "error: refusing to file without a recordable identity" >&2
+  exit 1
+}
+
+# ─── Resolve the issues directory ────────────────────────────────────────────
+
+# Above the allocator, not beside its first use. The validations that refuse a
+# filing need a collection to resolve a reference against, and the allocator is
+# append-only — so a check that runs below it burns an ordinal no later run
+# reclaims, whether or not the filing then succeeds. This resolution depends on
+# nothing the allocation produces, which is what makes the ordering free.
+#
+# Used by the pre-spend reference checks, the local-collision handling further
+# down, and the final write path.
+if [[ -n "$dir" ]]; then
+  issues_dir="$dir"
+else
+  issues_dir="$(bash "$JIMFILE" path issue)" || {
+    echo "error: could not resolve issues directory" >&2; exit 1; }
+fi
+issues_dir="${issues_dir%/}"
+
+# ─── Resolve the umbrellas this filing joins ─────────────────────────────────
+
+# Each reference is resolved through resolve.sh, the same definition the
+# lifecycle verbs resolve through, so a reference that works on `join` works
+# here and the two paths cannot disagree about what exists. Resolution runs
+# above the allocator: an umbrella that does not resolve refuses a filing that
+# has not yet spent an ordinal.
+#
+# The RESOLVED id is what gets written, verbatim. It has already cleared
+# valid-id twice and named a real record, so it is not put through the label
+# encoder below — that encoder is a lossy normalizer for free text and reduces
+# anything outside [a-z0-9-], while an id may legitimately carry uppercase and
+# a dot. Encoding one would write a membership naming a record that does not
+# exist.
+part_of_enc=""
+if [[ -n "$part_of" ]]; then
+  IFS=',' read -ra _pref_parts <<< "$(printf '%s' "$part_of" | tr '\n\r' '  ')"
+  for _raw in "${_pref_parts[@]}"; do
+    _ref="$(printf '%s' "$_raw" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    [[ -n "$_ref" ]] || continue
+    if ! _res="$(bash "$RESOLVE" "$issues_dir" "$_ref" 2>/dev/null)"; then
+      echo "error: --part-of names no issue in the collection" >&2
+      exit 1
+    fi
+    _rslug="${_res%%$'\t'*}"
+    _rkind="${_res##*$'\t'}"
+    if [[ "$_rkind" != "epic" ]]; then
+      # Name the kind only when it is one the schema declares. A hand-edited
+      # record can carry anything in that field, and a refusal is not the place
+      # to render arbitrary file content.
+      _named=""
+      for _t in "${ISSUE_TYPES[@]}"; do
+        [[ "$_rkind" == "$_t" ]] && { _named="$_rkind"; break; }
+      done
+      if [[ -n "$_named" ]]; then
+        echo "error: --part-of names a record of type '$_named', not an epic" >&2
+      else
+        echo "error: --part-of names a record that is not an epic" >&2
+      fi
+      exit 1
+    fi
+    # An umbrella groups work, so it may not itself be grouped. Checked after
+    # the target's kind, in the order the lifecycle verb checks the same pair,
+    # so the two write paths refuse the same state for the same stated reason.
+    # Without it the capture path writes exactly what `join` refuses, which
+    # makes the containment a property of the route rather than of the record.
+    if [[ "$type" == "epic" ]]; then
+      echo "error: an epic cannot belong to an epic" >&2
+      exit 1
+    fi
+    if [[ -z "$part_of_enc" ]]; then part_of_enc="$_rslug"
+    else part_of_enc="$part_of_enc, $_rslug"; fi
+  done
+fi
 
 # ─── Resolve identity (overrides win; else compose via jimalloc.sh) ──────────
 
@@ -225,16 +339,6 @@ elif [[ "$num" == P-* ]] && bash "$JIMFILE" valid-id "${num#P-}" >/dev/null 2>&1
 fi
 (( num_valid )) || { echo "error: --num must be a positive integer or a P-<id> provisional ordinal" >&2; exit 1; }
 
-# Resolve the issues directory once — used for the local-collision handling
-# below and the final write path.
-if [[ -n "$dir" ]]; then
-  issues_dir="$dir"
-else
-  issues_dir="$(bash "$JIMFILE" path issue)" || {
-    echo "error: could not resolve issues directory" >&2; exit 1; }
-fi
-issues_dir="${issues_dir%/}"
-
 # Provisional local disambiguation / real-mode drift guard: only the id this
 # call resolved itself is eligible — a caller-pinned --slug is never altered.
 # A provisional durable id is computed over an empty log (no registry to
@@ -243,7 +347,7 @@ issues_dir="${issues_dir%/}"
 # ordinal. A real ordinal is already registry-disambiguated, so a local
 # filename collision here is tree/registry drift — refused, never overwritten.
 # Always validate the id through the single security boundary before composing a
-# path — even a caller-supplied --slug, and even an allocator-derived one (AC5).
+# path — even a caller-supplied --slug, and even an allocator-derived one.
 #
 # Before, not after: a stat composes a path too. It answers a question about the
 # filesystem, which is exactly the read the boundary governs, and an
@@ -312,8 +416,20 @@ trap 'rm -f "$tmpfile"' EXIT INT TERM
   printf 'title: "%s"\n' "$title_enc"
   printf 'status: %s\n' "$status"
   printf 'priority: %s\n' "$priority"
+  # Cleared the kind enum above, so it is one of the declared vocabulary's
+  # members and can neither close this scalar nor open a field of its own.
+  printf 'type: %s\n' "$type"
+  # The filer cleared a positive character gate, so it cannot close this scalar
+  # or open a field of its own. A new issue is unheld and has never been
+  # finished, so the holder and outcome start empty.
+  printf 'filed-by: "%s"\n' "$filed_by"
+  printf 'claimed-by: ""\n'
+  printf 'outcome: ""\n'
   printf 'labels: [%s]\n' "$labels_enc"
+  # Every part-of entry resolved to a record of kind epic above, so each is a
+  # validated id and none can close the array or open a field of its own.
   printf 'relations:\n  blocks: []\n  depends-on: []\n  related-to: []\n  duplicates: []\n'
+  printf '  part-of: [%s]\n' "$part_of_enc"
   printf 'created: %s\n' "$created"
   printf 'updated: %s\n' "$updated"
   printf 'origin: "%s"\n' "$origin_enc"

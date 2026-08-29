@@ -4,12 +4,17 @@ num: 265
 title: "Deferred placement mutation is discarded on reconnect"
 status: closed
 priority: critical
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, data-loss]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T11:43:21Z
 updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

@@ -4,12 +4,17 @@ num: 163
 title: "Unwrap the injection slot in the arch skill argument table"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [000-blueprint, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-31T11:48:54Z
 updated: 2026-08-13T11:36:20Z
 origin: docs/specs/sdlc/000-blueprint/spec.md

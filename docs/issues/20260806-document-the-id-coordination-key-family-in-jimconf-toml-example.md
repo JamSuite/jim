@@ -4,12 +4,17 @@ num: 255
 title: "Document the id_coordination_* key family in jimconf.toml.example"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [config, docs]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-06T20:20:05Z
 updated: 2026-08-15T07:38:35Z
 origin: docs/specs/issue/011-issue-placement/research.md

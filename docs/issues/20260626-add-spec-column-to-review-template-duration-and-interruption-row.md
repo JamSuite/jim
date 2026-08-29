@@ -4,12 +4,17 @@ num: 16
 title: "Add spec column to review-template duration and interruption rows"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [review, template]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-26T06:43:40Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/sdlc/015-review-depth/spec.md

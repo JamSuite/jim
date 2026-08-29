@@ -4,12 +4,17 @@ num: 290
 title: "origin is not YAML-encoded and a bare brace argument is substituted"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, security, invariant]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-08T18:49:41Z
 updated: 2026-08-12T08:31:52Z
 origin: docs/specs/issue/011-issue-placement/review.md

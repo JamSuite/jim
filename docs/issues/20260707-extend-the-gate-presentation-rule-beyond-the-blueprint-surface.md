@@ -4,12 +4,17 @@ num: 67
 title: "Extend the gate-presentation rule beyond the blueprint surface"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [gate-presentation, follow-up]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-07T20:55:43Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/012-blueprint-gate-presentation/spec.md

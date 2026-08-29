@@ -4,12 +4,17 @@ num: 329
 title: "Direct-arm commit is hook-exposed and leaves the index staged"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, git]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:47Z
 updated: 2026-08-13T07:57:24Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

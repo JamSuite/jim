@@ -4,12 +4,17 @@ num: 124
 title: "Align reconcile high-water with alloc_next_num_issue"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [id-coordination, robustness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-27T11:03:17Z
 updated: 2026-07-30T02:14:41Z
 origin: docs/specs/platform/009-provisional-reconcile/review.md

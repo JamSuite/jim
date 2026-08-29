@@ -4,12 +4,17 @@ num: 242
 title: "Pin verify's finished-event key set by rule so a dropped counter cannot pass"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [verify, ledger, test-coverage]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-05T22:20:24Z
 updated: 2026-08-05T22:20:24Z
 origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"

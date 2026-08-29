@@ -4,12 +4,17 @@ num: 142
 title: "Memoize the id-validation boundary in the allocator read path"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [id-coordination, performance, availability]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-30T00:50:00Z
 updated: 2026-08-02T01:07:27Z
 origin: docs/specs/platform/011-rename-path-correctness/plan.md

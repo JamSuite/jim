@@ -4,12 +4,17 @@ num: 64
 title: "Strengthen 039 graph-health test coverage"
 status: closed
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [test, verify]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-07T06:33:25Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/011-graph-health/review.md

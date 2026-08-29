@@ -3,9 +3,14 @@
 # skills/issue/scripts/migrate.sh — one-shot, opt-in migrations that TRANSFORM
 # existing issue data (vs backfill.sh, which fills in MISSING data). Subcommand:
 #
-#   prefix — re-derive every issue id to the active issue_id_prefix scheme
-#            (spec 023), renaming files and rewriting inbound references behind
-#            a read-only preview + explicit --apply gate.
+#   prefix   — re-derive every issue id to the active issue_id_prefix scheme,
+#              renaming files and rewriting inbound references behind a
+#              read-only preview + explicit --apply gate.
+#   schema   — give every issue the identity, type and outcome fields,
+#              recovering each filer from the commit that created its file.
+#   identity — rewrite recorded identities: re-apply the project's current form
+#              to a collection recorded under a previous one, or replace one
+#              identity with another explicitly.
 #
 # CLI SUMMARY
 #   bash migrate.sh
@@ -33,12 +38,62 @@ export LC_ALL=C
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 JIMCONF="$(cd "$HERE/../../conf/scripts" && pwd)/jimconf.sh"
+IDENTITY="$HERE/identity.sh"
 readonly INDEX_FILENAME="INDEX.md"
 CFG=""   # optional jimconf override path, forwarded to jimfile/jimconf
 
 # jf / jc <args...> — invoke jimfile.sh / jimconf.sh, forwarding -c when set.
 jf() { if [[ -n "$CFG" ]]; then bash "$JIMFILE" -c "$CFG" "$@"; else bash "$JIMFILE" "$@"; fi; }
 jc() { if [[ -n "$CFG" ]]; then bash "$JIMCONF" -c "$CFG" "$@"; else bash "$JIMCONF" "$@"; fi; }
+
+# jid <args...> — invoke identity.sh, forwarding -c when set. The recorded form
+# is configuration, so a conversion handed a config must read the form from it
+# rather than from whichever project the run happens to stand in.
+jid() { if [[ -n "$CFG" ]]; then bash "$IDENTITY" -c "$CFG" "$@"; else bash "$IDENTITY" "$@"; fi; }
+
+# The option names this file's parsers accept. An operand equal to one of these
+# is a flag that landed where a value belongs, which is a typo rather than a
+# value — see need_operand.
+MIGRATE_OPTIONS=(--apply --expect --renormalize --from --to)
+
+# need_operand <flag> <argc> <operand> — the value <flag> requires, or refuse.
+#   <argc> is the argument count remaining at the flag, so a flag standing last
+#   in the argv is one with nothing to take.
+#
+#   Absent, empty, and flag-shaped operands all refuse. Swallowing one costs
+#   twice over: the flag that was consumed goes unapplied, and the value it
+#   became is one nobody typed. Both halves are silent, and one of the flags
+#   this can swallow is the gate authorizing a destructive whole-collection
+#   write — an --expect with nothing after it disarms the drift guard, because
+#   an empty expectation is indistinguishable from asking for no check.
+#
+#   Flag-shaped means any double-hyphen token, not only this verb's own option
+#   names: the rule is about a flag arriving where a value belongs, and one this
+#   verb does not accept is still a flag. Naming it back is reserved for the
+#   options this file declares, which are safe to echo; an arbitrary argv token
+#   is not, and stderr is a rendered surface too. One hyphen is not two — a
+#   value that merely looks option-shaped is carried through, because the
+#   recordable-identity set admits a leading hyphen deliberately and a real
+#   address can wear one.
+need_operand() {
+  local flag="$1" argc="$2" operand="$3" known
+  if (( argc < 2 )) || [[ -z "$operand" ]]; then
+    echo "error: $flag requires a value" >&2
+    return 2
+  fi
+  for known in "${MIGRATE_OPTIONS[@]}"; do
+    if [[ "$operand" == "$known" ]]; then
+      echo "error: $flag requires a value, but $known followed it" >&2
+      return 2
+    fi
+  done
+  if [[ "$operand" == --* ]]; then
+    echo "error: $flag requires a value, but a flag followed it" >&2
+    echo "       options are one of: ${MIGRATE_OPTIONS[*]}" >&2
+    return 2
+  fi
+  printf '%s' "$operand"
+}
 
 # resolve_dir <arg> — arg if non-empty, else jimconf default; strip trailing /.
 resolve_dir() {
@@ -52,10 +107,18 @@ resolve_dir() {
   printf '%s\n' "$dir"
 }
 
-# field_value <file> <field> — top-level scalar value, quotes stripped, or empty.
-field_value() {
-  grep -E "^$2:" "$1" 2>/dev/null \
-    | head -n 1 \
+# frontmatter <file> — the lines between the first two fences.
+#   Scoped deliberately: a whole-file read for a field also matches a body that
+#   quotes one, and at least one issue in a real collection does. The plan this
+#   file builds becomes a file rename, so a value answered from prose renames a
+#   record onto a name its own frontmatter never carried.
+frontmatter() {
+  awk '/^---$/{c++; if(c==2) exit; if(c==1) next} c==1{print}' "$1"
+}
+
+# fm_field <frontmatter> <field> — top-level scalar, quotes stripped, or empty.
+fm_field() {
+  printf '%s\n' "$1" | grep -E "^$2:" | head -n 1 \
     | sed -E "s/^$2:[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\1/"
 }
 
@@ -82,10 +145,10 @@ split_row() {
 # order): <action>\t<old_id>\t<new_id>\t<reason>
 #   action ∈ rename | collision-resolved | skip-conforming | skip-unmigratable
 # Pure read: classifies and resolves collisions; mutates nothing. The slug is
-# the id after its first '-' (every preset prefix is dash-free, DD 3); the new
+# the id after its first '-' (every preset prefix is dash-free); the new
 # id and any -2/-3 discriminator pass jimfile's valid-id (the security boundary).
 build_plan() {
-  local dir="$1" f base id created num newpfx rc slug newid
+  local dir="$1" f base id fm created num newpfx rc slug newid
   local -a rows=()
   for f in "$dir"/*.md; do
     [[ -f "$f" ]] || continue
@@ -97,8 +160,9 @@ build_plan() {
       rows+=("skip-unmigratable"$'\t'"$id"$'\t'""$'\t'"id has no prefix delimiter")
       continue
     fi
-    created="$(field_value "$f" created)"
-    num="$(field_value "$f" num)"
+    fm="$(frontmatter "$f")"
+    created="$(fm_field "$fm" created)"
+    num="$(fm_field "$fm" num)"
     newpfx="$(jf prefix-from "$created" "$num" 2>&1)"; rc=$?
     if (( rc != 0 )); then
       rows+=("skip-unmigratable"$'\t'"$id"$'\t'""$'\t'"${newpfx#un-migratable: }")
@@ -120,7 +184,7 @@ build_plan() {
 
   # Collision resolution. Reserve every unchanged id (skipped + conforming keep
   # their current id), then assign rename targets in order — a target already
-  # taken gets the -2/-3 discriminator (spec 021 AC #6, reused not reinvented).
+  # taken gets the -2/-3 discriminator, reused rather than reinvented.
   local -A taken=()
   local row action old new reason
   for row in "${rows[@]}"; do
@@ -177,6 +241,26 @@ render_plan() {
   printf '\n  %d to rename · %d to skip · %d collisions\n' "$renames" "$skips" "$collisions"
 }
 
+# gate_apply <expect> <plan-rows> — refuse an apply whose preview has gone
+# stale. When the caller passed the preview's PLAN-HASH and the freshly
+# recomputed plan no longer matches, the collection changed in between, so the
+# plan the developer read is not the plan about to run.
+#
+#   Every migration here calls this one copy. A second implementation of the
+#   same refusal is the one duplication worth avoiding outright: two copies can
+#   disagree about when it is safe to write, and only one of them would be
+#   covered by the case that proves the refusal works.
+gate_apply() {
+  local expect="$1" plan="$2" cur
+  [[ -n "$expect" ]] || return 0
+  cur="$(plan_hash "$plan")"
+  if [[ "$cur" != "$expect" ]]; then
+    echo "error: collection changed since preview (expected PLAN-HASH $expect, got $cur) — re-run the preview" >&2
+    return 1
+  fi
+  return 0
+}
+
 # plan_hash <plan-rows> — a stable fingerprint of the plan for drift detection.
 # cksum is POSIX/portable; we only need to catch accidental drift between the
 # preview and a later --apply, not adversarial tampering.
@@ -186,7 +270,7 @@ plan_hash() {
 
 # git_note <dir> — read-only VCS recoverability note for the preview. The
 # migration is destructive and recovery is via the developer's version control
-# (git ops stay out of scope, spec 023). Flags an uncommitted collection when
+# (git ops stay out of scope). Flags an uncommitted collection when
 # detectable, via a read-only `git status` — never a write.
 git_note() {
   local dir="$1" st
@@ -203,16 +287,7 @@ git_note() {
 # completed by a retry (Tasks 7/8). Mutates the collection.
 apply_plan() {
   local dir="$1" plan="$2" expect="${3:-}"
-  # Drift guard (F5): if the caller passed the preview's PLAN-HASH and the
-  # freshly-recomputed plan no longer matches, the collection changed between
-  # preview and apply — abort rather than apply a stale plan.
-  if [[ -n "$expect" ]]; then
-    local cur; cur="$(plan_hash "$plan")"
-    if [[ "$cur" != "$expect" ]]; then
-      echo "error: collection changed since preview (expected PLAN-HASH $expect, got $cur) — re-run the preview" >&2
-      return 3
-    fi
-  fi
+  gate_apply "$expect" "$plan" || return 3
 
   local mapfile
   mapfile="$(mktemp "$dir/.migrate.map.XXXXXX")" || {
@@ -228,7 +303,7 @@ apply_plan() {
   done <<<"$plan"
 
   # Idempotent no-op: nothing to rename means the collection already matches
-  # the active scheme, so touch nothing (AC #5).
+  # the active scheme, so touch nothing.
   if [[ ! -s "$mapfile" ]]; then
     rm -f "$mapfile"
     printf 'Nothing to migrate — every issue already matches the active scheme.\n'
@@ -243,8 +318,21 @@ apply_plan() {
     [[ "$base" == "$INDEX_FILENAME" ]] && continue
     [[ "$base" == .* ]] && continue
     id="${base%.md}"
-    finalid="$(awk -F'\t' -v k="$id" '$1==k{print $2; exit}' "$mapfile")"
+    # The lookup key is a directory entry, so it is the one value here that has
+    # cleared nothing at all. Through the environment rather than `-v`, which
+    # expands escape sequences in its operand: a name carrying a backslash-n
+    # would be compared as a two-line string, miss a row it should have matched,
+    # and take the fallback below — a wrong answer arrived at quietly. The
+    # comparison is against the name on disk, whatever bytes that name holds.
+    finalid="$(k="$id" awk -F'\t' '$1==ENVIRON["k"]{print $2; exit}' "$mapfile")"
     [[ -n "$finalid" ]] || finalid="$id"
+    # The map's own targets cleared the validator when the plan was built, but
+    # the fallback here is the raw directory entry, which cleared nothing. The
+    # boundary is the validator call rather than where the value came from, so
+    # both arms are checked at the site that composes the path.
+    jf valid-id "$finalid" >/dev/null 2>&1 || {
+      rm -f ${s_tmp[@]+"${s_tmp[@]}"} "$mapfile"
+      echo "error: invalid issue id — no changes made; safe to re-run" >&2; return 1; }
     tmp="$(mktemp "$dir/.migrate.tmp.XXXXXX")" || {
       rm -f ${s_tmp[@]+"${s_tmp[@]}"} "$mapfile"
       echo "error: cannot create tmp in $dir — no changes made; safe to re-run" >&2; return 1; }
@@ -254,7 +342,7 @@ apply_plan() {
     fi
     s_tmp+=("$tmp"); s_old+=("$f"); s_new+=("$dir/$finalid.md")
     # Test seam: simulate a mid-staging crash. Staging is non-destructive, so
-    # this leaves the collection untouched and a retry converges (AC #10).
+    # this leaves the collection untouched and a retry converges.
     # Never set in production.
     if [[ -n "${MIGRATE_FAIL_STAGING:-}" ]]; then
       rm -f "${s_tmp[@]}" "$mapfile"
@@ -316,7 +404,15 @@ apply_plan() {
   done
   rm -f "$mapfile"
 
-  bash "$HERE/index.sh" "$dir" >/dev/null 2>&1
+  # The renames have landed by this point, so a regeneration that failed cannot
+  # be reported as success: the index would go on naming files under names that
+  # no longer exist, and nothing downstream would say so.
+  local rc=0
+  if ! bash "$HERE/index.sh" "$dir" >/dev/null 2>&1; then
+    echo "error: the renames landed but the index could not be regenerated;" \
+         "re-run index.sh before reading the collection" >&2
+    rc=1
+  fi
 
   local renamed=0 skipped=0 collisions=0 __row
   while IFS= read -r __row; do
@@ -331,6 +427,681 @@ apply_plan() {
   done <<<"$plan"
   printf 'Re-derived to the active scheme: %d renamed (%d collision-resolved), %d skipped.\n' \
     "$renamed" "$collisions" "$skipped"
+  return $rc
+}
+
+# ─── Section: schema conversion ──────────────────────────────────────────────
+
+# Set together by split_schema_row; the four fields of the conversion row last
+# read. Separate from the rename row's fields because they mean different
+# things — a conversion has no old-to-new, it has a slug and the values that
+# slug gains.
+SCHEMA_ACTION="" SCHEMA_SLUG="" SCHEMA_FILER="" SCHEMA_OUTCOME=""
+
+split_schema_row() {
+  local row="$1"
+  SCHEMA_ACTION="${row%%$'\t'*}"; row="${row#*$'\t'}"
+  SCHEMA_SLUG="${row%%$'\t'*}";   row="${row#*$'\t'}"
+  SCHEMA_FILER="${row%%$'\t'*}";  SCHEMA_OUTCOME="${row#*$'\t'}"
+}
+
+
+# schema_anchored <frontmatter> — 0 when the conversion has somewhere to write.
+#   The rewrite needs two anchors: a top-level `labels:` line, ahead of which
+#   the four scalars go, and the `duplicates:` relations child the membership
+#   entry follows. Read from the same region the rewrite writes, so the preview
+#   cannot promise a conversion the apply refuses — the discipline the
+#   provisional realizer already keeps between its detection and its rewrite.
+schema_anchored() {
+  printf '%s\n' "$1" | grep -q '^labels:'      || return 1
+  printf '%s\n' "$1" | grep -q '^  duplicates:' || return 1
+  return 0
+}
+
+# derive_filer <file> — the address of the commit that ADDED <file>, resolved
+# through the project's alias mapping where it has one, empty where the file
+# has no creating commit in reach.
+#
+#   --follow so a file renamed since its creation still reports the commit that
+#   created it rather than the one that moved it. The mapping-aware spelling of
+#   the author field costs one character over the raw one and keeps a
+#   contributor's several addresses from splitting every by-person view.
+derive_filer() {
+  git log --diff-filter=A --follow -1 --format='%aE' -- "$1" 2>/dev/null
+}
+
+# build_schema_plan <dir> — emit one TAB row per issue, in sorted-glob order:
+#   <action>\t<slug>\t<filer>\t<outcome>
+#     action ∈ convert | skip-converted | unresolved
+# Pure read: derives and classifies, mutates nothing.
+build_schema_plan() {
+  local dir="$1" f base slug fm type status filer outcome
+  for f in "$dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ "$base" == "$INDEX_FILENAME" ]] && continue
+    [[ "$base" == .* ]] && continue
+    slug="${base%.md}"
+    fm="$(frontmatter "$f")"
+
+    # An issue already carrying the type field has been through this once.
+    if [[ -n "$(fm_field "$fm" type)" ]]; then
+      printf 'skip-converted\t%s\t\t\n' "$slug"
+      continue
+    fi
+
+    status="$(fm_field "$fm" status)"
+    outcome=""
+    [[ "$status" == "closed" ]] && outcome="done"
+
+    # A filer recovered from history is a recorded identity like any other, so
+    # it goes through the same definition the emitter's does — the same gate and
+    # the same form. Recording the raw address here while a newly filed issue
+    # records a form of it would split one contributor across the collection
+    # permanently, since this conversion runs once. One that cannot be recorded
+    # is not recoverable — reported, never replaced with a placeholder.
+    filer="$(jid normalize "$(derive_filer "$f")" 2>/dev/null)" || filer=""
+    if [[ -z "$filer" ]]; then
+      printf 'unresolved\t%s\t\t\n' "$slug"
+      continue
+    fi
+
+    # The anchors are read here rather than discovered mid-apply. An issue the
+    # rewrite has no place to write into is reported before the operator
+    # approves anything, in the same pass that already parsed its frontmatter.
+    if ! schema_anchored "$fm"; then
+      printf 'unconvertible\t%s\t\t\n' "$slug"
+      continue
+    fi
+
+    printf 'convert\t%s\t%s\t%s\n' "$slug" "$filer" "$outcome"
+  done
+}
+
+# render_schema_plan <plan-rows> — human preview + summary counts.
+render_schema_plan() {
+  local plan="$1" converts=0 skips=0 unresolved=0 unconvertible=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_schema_row "$__row"
+    case "$SCHEMA_ACTION" in
+      convert)
+        printf '  convert     %s  filed-by %s%s\n' "$SCHEMA_SLUG" "$SCHEMA_FILER" \
+          "${SCHEMA_OUTCOME:+  outcome $SCHEMA_OUTCOME}"
+        converts=$((converts+1)) ;;
+      skip-converted)
+        printf '  skip        %s  (already carries the fields)\n' "$SCHEMA_SLUG"
+        skips=$((skips+1)) ;;
+      unresolved)
+        printf '  unresolved  %s  (no recordable filer in history)\n' "$SCHEMA_SLUG"
+        unresolved=$((unresolved+1)) ;;
+      unconvertible)
+        printf '  unconvertible  %s  (no labels: line or relations: duplicates: entry to write into)\n' \
+          "$SCHEMA_SLUG"
+        unconvertible=$((unconvertible+1)) ;;
+    esac
+  done <<<"$plan"
+  printf '\n  %d to convert · %d to skip · %d unresolved · %d unconvertible\n' \
+    "$converts" "$skips" "$unresolved" "$unconvertible"
+}
+
+# apply_schema_plan <dir> <plan> [<expect>] — write the new fields into every
+# issue the plan converts. Per-file atomic tmp+mv, so an interrupted run leaves
+# each file either untouched or wholly converted; a retry finishes the rest,
+# because a converted issue is skipped rather than converted again.
+apply_schema_plan() {
+  local dir="$1" plan="$2" expect="${3:-}" converted=0 skipped=0 __row f tmp outcome
+  gate_apply "$expect" "$plan" || return 3
+
+  # An issue the conversion cannot complete refuses the WHOLE run, before any
+  # file is touched — whether the obstacle is a filer that cannot be recovered
+  # or a record with no place to put the fields. Converting the sound ones and
+  # leaving the rest would attribute half a collection and make the remainder
+  # look like work already done; a placeholder filer would be worse still,
+  # since it reads as a real attribution. Both classes are named together and
+  # in full: fixing them one run at a time would take as many runs as there are
+  # problems.
+  local unresolved="" unconvertible=""
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_schema_row "$__row"
+    case "$SCHEMA_ACTION" in
+      unresolved)    unresolved+="  $SCHEMA_SLUG"$'\n' ;;
+      unconvertible) unconvertible+="  $SCHEMA_SLUG"$'\n' ;;
+    esac
+  done <<<"$plan"
+  if [[ -n "$unresolved" || -n "$unconvertible" ]]; then
+    [[ -n "$unresolved" ]] && \
+      printf 'error: no recordable filer in history for:\n%s' "$unresolved" >&2
+    [[ -n "$unconvertible" ]] && \
+      printf 'error: no place to put the new fields in:\n%s' "$unconvertible" >&2
+    echo "error: nothing was written; the conversion needs a filer for every" \
+         "issue and somewhere to write its fields" >&2
+    return 1
+  fi
+
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_schema_row "$__row"
+    if [[ "$SCHEMA_ACTION" != convert ]]; then
+      skipped=$((skipped+1))
+      continue
+    fi
+    # Checked for the same reason the identity rewrite checks its own: the
+    # validator call is the boundary, not where the value came from.
+    jf valid-id "$SCHEMA_SLUG" >/dev/null 2>&1 || {
+      echo "error: invalid issue id; nothing written for it" >&2
+      return 1; }
+    f="$dir/$SCHEMA_SLUG.md"
+    # An outcome is written bare when set and as an empty scalar when not,
+    # matching how the emitter and the transition verbs write the same field.
+    outcome='""'
+    [[ -n "$SCHEMA_OUTCOME" ]] && outcome="$SCHEMA_OUTCOME"
+
+    tmp="$(mktemp "$dir/.schema.tmp.XXXXXX")" || {
+      echo "error: cannot create tmp in $dir" >&2; return 1; }
+    # The values reach awk through the environment rather than `-v`, which
+    # processes its operand as a string literal and expands escape sequences:
+    # a literal backslash-n would become a real newline and open a second
+    # frontmatter pair, which a reader resolves ahead of the file's own. The
+    # filer clears the identity gate before it gets here and that set admits no
+    # backslash, so this is the channel holding a guarantee the caller already
+    # holds — which is where the project puts it.
+    filer="$SCHEMA_FILER" outcome="$outcome" awk '
+      /^---$/ { fence++ }
+      # The four scalars sit where the template puts them, ahead of labels.
+      fence == 1 && !scalars && /^labels:/ {
+        print "type: issue"
+        print "filed-by: \"" ENVIRON["filer"] "\""
+        print "claimed-by: \"\""
+        print "outcome: " ENVIRON["outcome"]
+        scalars = 1
+      }
+      # Membership is a relations child, and the member is the only side that
+      # records it.
+      fence == 1 && !member && /^  duplicates:/ {
+        print
+        print "  part-of: []"
+        member = 1
+        next
+      }
+      { print }
+      END { exit (scalars && member) ? 0 : 1 }
+    ' "$f" > "$tmp" || {
+      rm -f "$tmp"
+      echo "error: $SCHEMA_SLUG has no place to put the new fields; nothing written for it" >&2
+      return 1
+    }
+    mv "$tmp" "$f" || {
+      rm -f "$tmp"; echo "error: atomic rename failed for $SCHEMA_SLUG" >&2; return 1; }
+    converted=$((converted+1))
+  done <<<"$plan"
+
+  # Every converted issue is already written, so a regeneration that failed is
+  # carried into the exit status rather than discarded: the index would go on
+  # describing a collection that has since gained the identity fields.
+  local rc=0
+  if ! bash "$HERE/index.sh" "$dir" >/dev/null 2>&1; then
+    echo "error: the conversion landed but the index could not be regenerated;" \
+         "re-run index.sh before reading the collection" >&2
+    rc=1
+  fi
+
+  printf 'Converted %d issue(s); %d already carried the fields.\n' "$converted" "$skipped"
+  return $rc
+}
+
+cmd_schema() {
+  local dir="" apply=0 expect=""
+  while (( $# )); do
+    case "$1" in
+      --apply)  apply=1; shift ;;
+      --expect) expect="$(need_operand --expect $# "${2:-}")" || return 2; shift 2 ;;
+      *)        dir="$1"; shift ;;
+    esac
+  done
+  dir="$(resolve_dir "$dir")" || return $?
+  [[ -d "$dir" ]] || { echo "error: not a directory: $dir" >&2; return 1; }
+
+  # The filer is recovered from the collection's own history, so a collection
+  # with no history to read is refused here — once, naming the cause — rather
+  # than reported as every issue being individually unrecoverable.
+  if ! git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "error: $dir is not inside a work tree; the filer is recovered from its history" >&2
+    return 1
+  fi
+
+  local plan; plan="$(build_schema_plan "$dir")"
+  if (( apply )); then
+    apply_schema_plan "$dir" "$plan" "$expect"
+  else
+    printf 'Schema conversion plan — %s\n\n' "$dir"
+    render_schema_plan "$plan"
+    printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
+    git_note "$dir"
+  fi
+}
+
+# ─── Section: identity rewrites ──────────────────────────────────────────────
+
+# build_identity_plan <dir> <mode> <from> <to> — emit one TAB row per issue
+# field that records an identity:
+#   <action>\t<slug>\t<field>\t<old>\t<new>
+#     action ∈ rewrite | unchanged | ambiguous
+# Pure read: derives and classifies, mutates nothing.
+# The frontmatter fields that record an identity. The holder is here for the
+# reason the remap mode exists at all: no derivation can recover it, because a
+# claim leaves no trace in the file's creation history.
+IDENTITY_FIELDS=(filed-by claimed-by)
+
+build_identity_plan() {
+  local dir="$1" mode="$2" from="$3" to="$4"
+  local f base slug fm field old new changed
+  # One issue records at most two identities and a collection holds a handful of
+  # distinct ones, so the form is computed once per distinct value rather than
+  # once per field. Same reasoning as the mismatch surface: the transformation
+  # is a subprocess, and the collection is not.
+  local -A form=()
+  for f in "$dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ "$base" == "$INDEX_FILENAME" ]] && continue
+    [[ "$base" == .* ]] && continue
+    slug="${base%.md}"
+    fm="$(frontmatter "$f")"
+    changed=0
+    for field in "${IDENTITY_FIELDS[@]}"; do
+      old="$(fm_field "$fm" "$field")"
+      [[ -n "$old" ]] || continue
+      if [[ "$mode" == "renormalize" ]]; then
+        if [[ -z "${form[$old]+set}" ]]; then
+          form["$old"]="$(jid normalize "$old" 2>/dev/null)" || form["$old"]=""
+        fi
+        new="${form[$old]}"
+      else
+        # Case is normalized before anything is compared, here as everywhere
+        # else, so an operator is never asked to guess how a value was typed
+        # when it was recorded.
+        new=""
+        [[ "${old,,}" == "$from" ]] && new="$to"
+      fi
+      # A value the form cannot produce is left where it is. The rewrite is not
+      # the place to discover an unrecordable identity, and dropping the field
+      # would lose an attribution nothing else can recover.
+      [[ -n "$new" ]] || continue
+      if [[ "$new" != "$old" ]]; then
+        printf 'rewrite\t%s\t%s\t%s\t%s\n' "$slug" "$field" "$old" "$new"
+        changed=1
+      fi
+    done
+    (( changed )) || printf 'unchanged\t%s\t\t\t\n' "$slug"
+  done
+}
+
+# mark_ambiguous <plan-rows> — re-emit the plan with every colliding rewrite
+# turned into an ambiguous row.
+#
+#   A collision is two rewrites landing on one value from source addresses that
+#   are genuinely different — compared **after alias resolution** and
+#   case-folded. Two addresses the project's mapping already unifies are one
+#   contributor by the project's own declaration, so their landing on one
+#   identity is the feature working rather than a merge to refuse; comparing raw
+#   sources instead would disable re-normalization for exactly the projects that
+#   keep a mapping. What survives is the merge that matters: two addresses the
+#   mapping says nothing about, converging only because the form extracts from
+#   both.
+#
+#   Only rewrites are compared. A record already carrying the value another one
+#   is about to reach produces no rewrite at all, and it is not a second person
+#   colliding: it is the same value one step further along. A collection part-way
+#   through a form change holds exactly that pair, and treating it as a collision
+#   would make re-normalization impossible in the situation it exists for.
+#
+#   Whether two addresses that really do collapse belong to two people is not
+#   something jim can know. It refuses and names the records; the operator, who
+#   can open them, decides.
+mark_ambiguous() {
+  local plan="$1" __row key folded
+  local -A distinct=() sources=() mapped=()
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    [[ "$ID_ACTION" == rewrite ]] || continue
+    # Resolved once per distinct source, like the form is.
+    if [[ -z "${mapped[$ID_OLD]+set}" ]]; then
+      mapped["$ID_OLD"]="$(jid map "$ID_OLD" 2>/dev/null)" || mapped["$ID_OLD"]="$ID_OLD"
+      [[ -n "${mapped[$ID_OLD]}" ]] || mapped["$ID_OLD"]="$ID_OLD"
+    fi
+    key="$ID_NEW"; folded="${mapped[$ID_OLD],,}"
+    if [[ "${sources[$key]:-}" != *"|$folded|"* ]]; then
+      sources["$key"]="${sources[$key]:-}|$folded|"
+      distinct["$key"]=$(( ${distinct[$key]:-0} + 1 ))
+    fi
+  done <<<"$plan"
+
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    if [[ "$ID_ACTION" == rewrite ]] && (( ${distinct[$ID_NEW]:-0} > 1 )); then
+      printf 'ambiguous\t%s\t%s\t%s\t%s\n' "$ID_SLUG" "$ID_FIELD" "$ID_OLD" "$ID_NEW"
+    else
+      printf '%s\n' "$__row"
+    fi
+  done <<<"$plan"
+}
+
+# refuse_ambiguous <plan-rows> — report every collision and refuse, or return 0
+# when there is none. Names the records and the single value they would share;
+# never the addresses they hold. The refusal stays actionable because each named
+# record carries its own address, and an issue collection's audience is not
+# necessarily the audience of a terminal log.
+refuse_ambiguous() {
+  local plan="$1" __row value found=0
+  local -A groups=()
+  local -a order=()
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    [[ "$ID_ACTION" == ambiguous ]] || continue
+    if [[ -z "${groups[$ID_NEW]:-}" ]]; then order+=("$ID_NEW"); fi
+    case "${groups[$ID_NEW]:-}" in
+      *"  $ID_SLUG"$'\n'*) ;;
+      *) groups["$ID_NEW"]="${groups[$ID_NEW]:-}  $ID_SLUG"$'\n' ;;
+    esac
+    found=1
+  done <<<"$plan"
+  (( found )) || return 0
+
+  for value in "${order[@]}"; do
+    {
+      printf 'error: these records hold addresses that become the same identity\n'
+      printf '       under the current form:\n'
+      printf '%s' "${groups[$value]}"
+      printf '       all record as: %s\n' "$value"
+    } >&2
+  done
+  echo "error: nothing was written; open any named record to see the address it holds" >&2
+  return 2
+}
+
+# alias_source — name the mapping the project's version control resolves, or
+# nothing. Located, never read: the disclosure states whether one is in play,
+# and version control is what reads it.
+#
+#   Resolved from this process's own working directory, because that is the
+#   root the lookup applies from — `map_alias` invokes version control with no
+#   directory of its own. Anchoring presence on the collection directory
+#   instead lets the two disagree: a routed placement hands over a materialized
+#   copy carrying no repository at all, and the preview then reports no mapping
+#   while every value is being resolved through the developer's own. A
+#   disclosure exists to be relied on, so one that can be confidently wrong is
+#   worse than none.
+alias_source() {
+  local top
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || return 1
+  if [[ -n "$(git config --get mailmap.file 2>/dev/null)" ]]; then
+    printf 'mailmap.file'; return 0
+  fi
+  if [[ -n "$(git config --get mailmap.blob 2>/dev/null)" ]]; then
+    printf 'mailmap.blob'; return 0
+  fi
+  [[ -f "$top/.mailmap" ]] && { printf '.mailmap'; return 0; }
+  return 1
+}
+
+# alias_altered <plan> — how many plan rows hold a value the mapping renames.
+# Measured once per distinct value, like the form is.
+#
+#   Asked through the same verb the collision check uses, so the disclosure
+#   describes the mapping that actually applied rather than one this script
+#   resolved for itself. That also keeps the lookup — and the end-of-options
+#   discipline guarding it — in one place.
+alias_altered() {
+  local plan="$1" __row address n=0
+  local -A seen=()
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    [[ -n "$ID_OLD" ]] || continue
+    if [[ -z "${seen[$ID_OLD]+set}" ]]; then
+      address="$(jid map "$ID_OLD" 2>/dev/null)" || address=""
+      if [[ -n "$address" && "$address" != "$ID_OLD" ]]; then
+        seen["$ID_OLD"]=1
+      else
+        seen["$ID_OLD"]=0
+      fi
+    fi
+    (( seen[$ID_OLD] )) && n=$((n+1))
+  done <<<"$plan"
+  printf '%d' "$n"
+}
+
+# render_alias_disclosure <plan> — state what the alias mapping did before the
+# operator approves the plan, rather than leaving them to infer it from the
+# result. Which mapping version control resolved is its own fact: repository
+# configuration can redirect it, so "the project's mapping" is not necessarily a
+# file at a known path.
+render_alias_disclosure() {
+  local plan="$1" src
+  if src="$(alias_source)"; then
+    printf '\n  Alias mapping (%s): identities resolve through it before the form\n' "$src"
+    printf '  is applied — %s record(s) altered by the mapping.\n' \
+      "$(alias_altered "$plan")"
+  else
+    printf '\n  Alias mapping: none found — identities resolve through the form alone.\n'
+  fi
+}
+
+# Set together by split_identity_row; the five fields of the identity row last
+# read. A rewrite names one field of one issue, because an issue can record two
+# identities and they move independently.
+ID_ACTION="" ID_SLUG="" ID_FIELD="" ID_OLD="" ID_NEW=""
+
+split_identity_row() {
+  local row="$1"
+  ID_ACTION="${row%%$'\t'*}"; row="${row#*$'\t'}"
+  ID_SLUG="${row%%$'\t'*}";   row="${row#*$'\t'}"
+  ID_FIELD="${row%%$'\t'*}";  row="${row#*$'\t'}"
+  ID_OLD="${row%%$'\t'*}";    ID_NEW="${row#*$'\t'}"
+}
+
+# render_identity_plan <plan-rows> — human preview + summary counts.
+render_identity_plan() {
+  local plan="$1" rewrites=0 unchanged=0 ambiguous=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    case "$ID_ACTION" in
+      rewrite)
+        printf '  rewrite    %s\n               %-11s %s -> %s\n' \
+          "$ID_SLUG" "$ID_FIELD" "$ID_OLD" "$ID_NEW"
+        rewrites=$((rewrites+1)) ;;
+      unchanged)
+        printf '  unchanged  %s\n' "$ID_SLUG"
+        unchanged=$((unchanged+1)) ;;
+      ambiguous)
+        ambiguous=$((ambiguous+1)) ;;
+    esac
+  done <<<"$plan"
+  printf '\n  %d to rewrite · %d unchanged · %d ambiguous\n' \
+    "$rewrites" "$unchanged" "$ambiguous"
+}
+
+# apply_identity_plan <dir> <plan> [<expect>] — write every rewrite the plan
+# names. Per-file atomic tmp+mv, behind the same drift refusal every migration
+# here shares.
+apply_identity_plan() {
+  local dir="$1" plan="$2" expect="${3:-}"
+  gate_apply "$expect" "$plan" || return 3
+
+  local __row slug field
+  local -A changes=()
+  local -a slugs=()
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    split_identity_row "$__row"
+    [[ "$ID_ACTION" == rewrite ]] || continue
+    [[ -z "${changes[$ID_SLUG]+set}" ]] && slugs+=("$ID_SLUG")
+    changes["$ID_SLUG"]=1
+    changes["$ID_SLUG|$ID_FIELD"]="$ID_NEW"
+  done <<<"$plan"
+
+  if (( ${#slugs[@]} == 0 )); then
+    printf 'Nothing to rewrite — every recorded identity already matches.\n'
+    return 0
+  fi
+
+  # One file at a time, each written whole into a tmp and moved into place, so
+  # an interrupted run leaves every issue either untouched or wholly rewritten.
+  # A retry finishes the rest, because a value already in its target form
+  # produces no rewrite the second time.
+  local f tmp filed claimed rewritten=0
+  for slug in "${slugs[@]}"; do
+    # The slug reconstructs a directory entry this run globbed, so nothing here
+    # is expected to fail. It is checked anyway, because the boundary is the
+    # validator call and not the provenance of the value: every other site that
+    # composes a path from an id checks one, and an id whose origin argues it is
+    # safe is exactly the one that stops being checked when the origin changes.
+    jf valid-id "$slug" >/dev/null 2>&1 || {
+      echo "error: invalid issue id; nothing written for it" >&2
+      return 1; }
+    f="$dir/$slug.md"
+    [[ -f "$f" ]] || {
+      echo "error: $slug is no longer in the collection; nothing written for it" >&2
+      return 1; }
+    filed="${changes[$slug|filed-by]:-}"
+    claimed="${changes[$slug|claimed-by]:-}"
+    tmp="$(mktemp "$dir/.identity.tmp.XXXXXX")" || {
+      echo "error: cannot create tmp in $dir" >&2; return 1; }
+    # Through the environment rather than `-v`, for the reason apply_schema_plan
+    # states: `-v` expands escape sequences in its operand, so
+    # a backslash-n in a recorded identity would open a second frontmatter pair.
+    # Both values clear the identity gate before they reach here, whichever mode
+    # produced them — the channel keeps the guarantee rather than borrowing it.
+    filed="$filed" claimed="$claimed" awk '
+      /^---$/ { fence++ }
+      fence == 1 && ENVIRON["filed"]   != "" && /^filed-by:/ {
+        print "filed-by: \"" ENVIRON["filed"] "\""; next }
+      fence == 1 && ENVIRON["claimed"] != "" && /^claimed-by:/ {
+        print "claimed-by: \"" ENVIRON["claimed"] "\""; next }
+      { print }
+    ' "$f" > "$tmp" || {
+      rm -f "$tmp"
+      echo "error: rewrite failed for $slug; nothing written for it" >&2
+      return 1
+    }
+    mv "$tmp" "$f" || {
+      rm -f "$tmp"; echo "error: atomic rename failed for $slug" >&2; return 1; }
+    rewritten=$((rewritten+1))
+  done
+
+  # The files are already rewritten by this point, so a regeneration that failed
+  # cannot be reported as success: an index describing identities the files no
+  # longer hold is exactly the kind of staleness nothing else would surface.
+  local rc=0
+  if ! bash "$HERE/index.sh" "$dir" >/dev/null 2>&1; then
+    echo "error: identities were rewritten but the index could not be regenerated;" \
+         "re-run index.sh before reading a by-person view" >&2
+    rc=1
+  fi
+
+  printf 'Rewrote recorded identities in %d issue(s).\n' "$rewritten"
+  return $rc
+}
+
+# cmd_identity — rewrite recorded identities across the collection, in one of
+# two modes. They differ only in where the new value comes from: supplied for a
+# remap, computed for a re-normalization. Everything else — the row shape, the
+# plan hash, the drift refusal, the atomic write, the index regeneration — is
+# the same, which is why this is one verb with two argument shapes rather than
+# two verbs each growing its own copy of that machinery.
+cmd_identity() {
+  local dir="" apply=0 expect="" renormalize=0 from="" to=""
+  local from_given=0 to_given=0
+  while (( $# )); do
+    case "$1" in
+      --apply)       apply=1; shift ;;
+      --expect)      expect="$(need_operand --expect $# "${2:-}")" || return 2; shift 2 ;;
+      --renormalize) renormalize=1; shift ;;
+      --from)        from="$(need_operand --from $# "${2:-}")" || return 2; from_given=1; shift 2 ;;
+      --to)          to="$(need_operand --to $# "${2:-}")" || return 2; to_given=1; shift 2 ;;
+      *)             dir="$1"; shift ;;
+    esac
+  done
+
+  # The mode is settled before anything is read, so a run that cannot say which
+  # rewrite it means stops without having looked at the collection. Guessing is
+  # the one thing a destructive whole-collection operation must not do.
+  #
+  # It is settled from what was typed rather than from what the values came out
+  # as. Reading the mode off a non-empty value couples this check to the parser
+  # succeeding: a flag whose operand went missing left its value empty, the mode
+  # went unset, and the exclusivity test below had nothing to compare — so two
+  # contradictory modes passed as one.
+  local remap=0
+  (( from_given || to_given )) && remap=1
+  if (( renormalize && remap )); then
+    echo "error: choose one of --renormalize or --from/--to, not both" >&2
+    return 2
+  fi
+  if (( ! renormalize && ! remap )); then
+    echo "error: identity requires --renormalize, or --from <old> --to <new>" >&2
+    return 2
+  fi
+  if (( remap )); then
+    (( from_given )) || { echo "error: --to given without --from" >&2; return 2; }
+    (( to_given ))   || { echo "error: --from given without --to" >&2; return 2; }
+    # Both halves are recorded identities: the one being replaced has to be
+    # comparable against what the collection holds, and the replacement is
+    # written into frontmatter, so it clears the same gate every other recorded
+    # identity does. The refusal names neither value.
+    if ! jid validate "$from" >/dev/null 2>&1; then
+      echo "error: the identity given to --from is not recordable" >&2
+      return 2
+    fi
+    if ! jid validate "$to" >/dev/null 2>&1; then
+      echo "error: the identity given to --to is not recordable" >&2
+      return 2
+    fi
+    # Lower-cased on both sides. A replacement is supplied rather than derived,
+    # so no form is applied to it — but every recorded identity is lower case
+    # whichever path wrote it, and the value being matched has to be folded the
+    # same way to compare against one.
+    from="${from,,}"
+    to="${to,,}"
+  fi
+
+  local mode="remap"
+  (( renormalize )) && mode="renormalize"
+
+  dir="$(resolve_dir "$dir")" || return $?
+  [[ -d "$dir" ]] || { echo "error: not a directory: $dir" >&2; return 1; }
+
+  local plan; plan="$(build_identity_plan "$dir" "$mode" "$from" "$to")"
+  plan="$(mark_ambiguous "$plan")"
+
+  # The refusal comes before the preview as well as before the apply. A plan an
+  # operator cannot approve is not one to render a hash for — the hash is the
+  # token that authorizes the write.
+  refuse_ambiguous "$plan" || return $?
+
+  if (( apply )); then
+    apply_identity_plan "$dir" "$plan" "$expect"
+  else
+    if [[ "$mode" == "renormalize" ]]; then
+      printf 'Identity re-normalization plan — %s\n\n' "$dir"
+    else
+      printf 'Identity remap plan — %s\n\n' "$dir"
+      printf '  from  %s\n  to    %s\n\n' "$from" "$to"
+    fi
+    render_identity_plan "$plan"
+    # Only the re-normalization resolves identities through the mapping; a remap
+    # replaces the value the operator named with the one they supplied, so there
+    # is no transform to disclose.
+    [[ "$mode" == "renormalize" ]] && render_alias_disclosure "$plan"
+    printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
+    git_note "$dir"
+  fi
 }
 
 cmd_prefix() {
@@ -338,7 +1109,7 @@ cmd_prefix() {
   while (( $# )); do
     case "$1" in
       --apply)  apply=1; shift ;;
-      --expect) expect="${2:-}"; shift 2 2>/dev/null || shift $# ;;
+      --expect) expect="$(need_operand --expect $# "${2:-}")" || return 2; shift 2 ;;
       *)        dir="$1"; shift ;;
     esac
   done
@@ -361,7 +1132,7 @@ cmd_prefix() {
 # buckets and body [[wikilinks]] outside fenced code / inline backticks — by
 # EXACT id match. Never a substring/global replace: origin: paths, prose
 # mentions, code-fenced links, and prefix-overlapping ids are left untouched
-# (security F2; mirrors index.sh parse_relations + parse_wikilinks_from_body).
+# (mirrors index.sh parse_relations + parse_wikilinks_from_body).
 rewrite_refs() {
   local mapfile="$1" file="$2"
   awk -v MAP="$mapfile" '
@@ -452,6 +1223,24 @@ usage() {
     '  bash migrate.sh prefix [<issues_dir>] --apply [--expect <hash>]' \
     '      Apply the plan: rename files + rewrite inbound refs + regenerate INDEX.' \
     '' \
+    '  bash migrate.sh schema [<issues_dir>]' \
+    '      Preview (read-only): give every issue the identity, type and outcome' \
+    '      fields, recovering each filer from the commit that created its file.' \
+    '' \
+    '  bash migrate.sh schema [<issues_dir>] --apply [--expect <hash>]' \
+    '      Apply the conversion: write the fields + regenerate INDEX.' \
+    '' \
+    '  bash migrate.sh identity [<issues_dir>] --renormalize' \
+    '      Preview (read-only): re-apply the project'"'"'s current identity form to' \
+    '      every recorded identity, supplying no mapping.' \
+    '' \
+    '  bash migrate.sh identity [<issues_dir>] --from <old> --to <new>' \
+    '      Preview (read-only): replace one recorded identity with another,' \
+    '      covering every field that records one.' \
+    '' \
+    '  bash migrate.sh identity [<issues_dir>] <mode> --apply [--expect <hash>]' \
+    '      Apply the rewrite: write the fields + regenerate INDEX.' \
+    '' \
     '  issues_dir default: jimconf.sh get issues'
 }
 
@@ -468,8 +1257,8 @@ route_placement() {
     if (( skip_next )); then skip_next=0; continue; fi
     case "$arg" in
       --apply)          apply=1 ;;
-      --expect|-c)      skip_next=1 ;;
-      prefix|rewrite|-*) ;;
+      --expect|-c|--from|--to) skip_next=1 ;;
+      prefix|schema|identity|rewrite|-*) ;;
       *)                dir="$arg" ;;
     esac
   done
@@ -478,7 +1267,9 @@ route_placement() {
   [[ "$mode" == "route" ]] || return 0
   local -a run=(run)
   if (( apply )); then run+=(--verb migrate); else run+=(--read); fi
-  exec bash "$place" "${run[@]}" -- \
+  # {token} is the fourth word of the command below and {} the last; the
+  # wrapper substitutes at those offsets and nowhere else.
+  exec bash "$place" "${run[@]}" --token-at 3 --dir-at -1 -- \
     bash "${BASH_SOURCE[0]}" --place-token '{token}' "$@" '{}'
 }
 
@@ -498,10 +1289,12 @@ main() {
   fi
   case "${1:-}" in
     prefix)            shift; cmd_prefix "$@" ;;
+    schema)            shift; cmd_schema "$@" ;;
+    identity)          shift; cmd_identity "$@" ;;
     rewrite)           shift; cmd_rewrite "$@" ;;
     ""|-h|--help|help) usage ;;
     *)
-      echo "error: unknown subcommand '$1' (expected: prefix)" >&2
+      echo "error: unknown subcommand '$1' (expected: prefix, schema, identity)" >&2
       usage >&2
       return 2
       ;;

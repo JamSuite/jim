@@ -4,14 +4,19 @@ num: 40
 title: "Derive the map Relations column from the contract graph"
 status: open
 priority: low
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [000-blueprint, cross-group, architecture]
 relations:
   blocks: []
   depends-on: [20260630-add-the-cross-group-contract-graph-and-blast-radius]
   related-to: []
   duplicates: []
+  part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-07-04T07:02:15Z
-updated: 2026-07-25T07:49:14Z
+updated: 2026-08-29T07:50:43Z
 origin: docs/specs/blueprint/006-contract-graph/research.md
 ---
 

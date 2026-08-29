@@ -4,12 +4,17 @@ num: 272
 title: "Placement tests: one vacuous case and untested direct mode"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [testing, placement]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T11:43:58Z
 updated: 2026-08-12T09:15:00Z
 origin: docs/specs/issue/011-issue-placement/review.md

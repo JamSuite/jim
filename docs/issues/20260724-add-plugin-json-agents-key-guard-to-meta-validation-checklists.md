@@ -4,12 +4,17 @@ num: 95
 title: "Add plugin.json agents-key guard to meta validation checklists"
 status: open
 priority: medium
+type: issue
+filed-by: "dorsma"
+claimed-by: ""
+outcome: ""
 labels: [meta, validation]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-24T10:33:25Z
 updated: 2026-07-24T10:33:25Z
 origin: docs/research/20260724-jim-meta-external-research.md

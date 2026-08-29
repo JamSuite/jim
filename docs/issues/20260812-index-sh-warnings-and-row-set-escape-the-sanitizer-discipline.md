@@ -4,12 +4,17 @@ num: 333
 title: "index.sh warnings and row set escape the sanitizer discipline"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, data-integrity, index]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:31Z
 updated: 2026-08-13T06:36:17Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

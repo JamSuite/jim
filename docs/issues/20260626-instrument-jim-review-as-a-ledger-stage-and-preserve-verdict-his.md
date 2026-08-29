@@ -4,12 +4,17 @@ num: 15
 title: "Instrument /jim:review as a ledger stage and preserve verdict history"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [review, ledger]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-06-26T06:43:40Z
 updated: 2026-07-25T07:49:14Z
 origin: docs/specs/sdlc/015-review-depth/spec.md

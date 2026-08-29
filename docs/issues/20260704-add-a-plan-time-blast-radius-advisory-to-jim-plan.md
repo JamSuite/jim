@@ -4,12 +4,17 @@ num: 39
 title: "Add a plan-time blast-radius advisory to /jim:plan"
 status: closed
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [000-blueprint, cross-group, plan]
 relations:
   blocks: []
   depends-on: [20260630-add-the-cross-group-contract-graph-and-blast-radius]
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-07-04T06:09:52Z
 updated: 2026-07-09T05:29:41Z
 origin: docs/brainstorms/20260630-000-current-spec.md

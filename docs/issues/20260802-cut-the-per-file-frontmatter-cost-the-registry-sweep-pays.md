@@ -4,12 +4,17 @@ num: 201
 title: "Cut the per-file frontmatter cost the registry sweep pays"
 status: open
 priority: medium
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [allocator, performance, registry]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-02T00:47:13Z
 updated: 2026-08-02T00:47:13Z
 origin: docs/specs/platform/012-registry-integrity-and-drift/review.md

@@ -4,12 +4,17 @@ num: 323
 title: "A diverged clone wedges into permanent rc 3 refusal"
 status: open
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: ""
 labels: [issue, placement, liveness]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-12T21:53:34Z
 updated: 2026-08-12T21:53:34Z
 origin: "docs/specs/issue/011-issue-placement/review.md"

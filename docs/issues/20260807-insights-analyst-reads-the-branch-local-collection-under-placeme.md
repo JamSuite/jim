@@ -4,12 +4,17 @@ num: 266
 title: "Insights analyst reads the branch-local collection under placement"
 status: closed
 priority: high
+type: issue
+filed-by: "jrko"
+claimed-by: ""
+outcome: done
 labels: [issue, placement, insights]
 relations:
   blocks: []
   depends-on: []
   related-to: []
   duplicates: []
+  part-of: []
 created: 2026-08-07T11:43:25Z
 updated: 2026-08-11T08:55:48Z
 origin: docs/specs/issue/011-issue-placement/review.md
