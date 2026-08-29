@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 146
-- Closed: 272
+- Open: 145
+- Closed: 273
 
 ## Issues
 
@@ -418,7 +418,7 @@
 - `20260828-blueprint-divergence-cross-copy-lockstep` — Blueprint divergence: cross-copy-lockstep · status: closed · num: 411 · priority: high · created: 2026-08-28T11:55:11Z · labels: [000-blueprint, drift] · origin: docs/specs/issue/015-epic-authoring-and-views · type: issue · filed-by: jrko · outcome: done
 - `20260828-define-capture-flag-extraction-for-malformed-input` — Define capture flag extraction for malformed input · status: closed · num: 412 · priority: high · created: 2026-08-28T11:37:32Z · labels: [skill-surface, epic] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · claimed-by: jrko · outcome: done
 - `20260828-document-the-close-side-resolution-note-convention` — Document the close-side resolution note convention · status: open · num: 418 · priority: medium · created: 2026-08-28T20:44:41Z · labels: [skill-surface, docs, lifecycle] · origin: docs/specs/issue/015-epic-authoring-and-views/remediation.md · type: issue · filed-by: jrko
-- `20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella` — leave cannot remove a membership naming a deleted umbrella · status: open · num: 413 · priority: medium · created: 2026-08-28T08:46:45Z · labels: [issue, lifecycle] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
+- `20260828-leave-cannot-remove-a-membership-naming-a-deleted-umbrella` — leave cannot remove a membership naming a deleted umbrella · status: closed · num: 413 · priority: medium · created: 2026-08-28T08:46:45Z · labels: [issue, lifecycle] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko · claimed-by: jrko · outcome: done
 - `20260828-membership-doubles-the-index-graph-section` — Membership doubles the index graph section · status: open · num: 408 · priority: medium · created: 2026-08-28T05:17:23Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 - `20260828-reconcile-the-census-container-headline-with-its-rollup` — Reconcile the census container headline with its rollup · status: closed · num: 414 · priority: medium · created: 2026-08-28T11:37:34Z · labels: [render, epic] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260828-scope-backfill-and-migrate-frontmatter-reads-to-the-fence` — Scope backfill and migrate frontmatter reads to the fence · status: closed · num: 415 · priority: critical · created: 2026-08-28T11:37:33Z · labels: [blueprint-divergence, verify] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · claimed-by: jrko · outcome: done
