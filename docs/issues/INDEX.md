@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 144
+- Open: 146
 - Closed: 274
 
 ## Issues
@@ -425,6 +425,8 @@
 - `20260828-state-the-capture-kind-rule-correctly-in-the-issue-skill-checkli` — State the capture kind rule correctly in the issue skill checklist · status: closed · num: 416 · priority: high · created: 2026-08-28T11:37:31Z · labels: [skill-surface, epic] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260828-the-updated-field-is-written-but-never-read` — The updated field is written but never read · status: open · num: 409 · priority: low · created: 2026-08-28T05:17:24Z · labels: [issues-system, schema] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
 - `20260828-update-the-issues-feature-doc-for-the-epic-increment` — Update the issues feature doc for the epic increment · status: closed · num: 417 · priority: medium · created: 2026-08-28T11:37:35Z · labels: [docs] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · outcome: done
+- `20260829-bind-the-twice-declared-kind-and-outcome-vocabularies` — Bind the twice-declared kind and outcome vocabularies · status: open · num: P-20260829-bind-the-twice-declared-kind-and-outcome-vocabularies · priority: medium · created: 2026-08-29T05:45:27Z · labels: [000-blueprint, drift, issues-system] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
+- `20260829-declare-the-mirrored-branch-name-gate-on-platform-s-provides-fac` — Declare the mirrored branch-name gate on platform's provides face · status: open · num: P-20260829-declare-the-mirrored-branch-name-gate-on-platform-s-provides-fac · priority: medium · created: 2026-08-29T05:45:32Z · labels: [000-blueprint, contract-graph, drift] · origin: BLUEPRINT.md · type: issue · filed-by: jrko
 
 ## Epics
 
