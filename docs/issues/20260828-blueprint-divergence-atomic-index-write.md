@@ -2,12 +2,12 @@
 id: 20260828-blueprint-divergence-atomic-index-write
 num: 410
 title: "Blueprint divergence: atomic-index-write"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [000-blueprint, drift]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-28T11:55:12Z
-updated: 2026-08-28T11:55:12Z
+updated: 2026-08-29T04:57:46Z
 origin: "docs/specs/issue/015-epic-authoring-and-views"
 ---
 
@@ -82,3 +82,51 @@ On the post-write reindex failure, preserve the handle and report it — the
 developer can then publish or recover. Aborting is correct only for the
 failures that happen *before* the record is written, which is what every other
 `abort` call on this path is.
+
+## Resolution
+
+Fixed in `bc9631eb`.
+
+**Not the fix as filed.** The record asks the post-write handler to preserve
+the handle instead of aborting. Reading `place.sh` first showed why that handler
+existed at all: `place.sh commit` regenerates the index of whatever it publishes
+— `cmd_commit`'s plumbing arm and `place_direct_publish`'s checked-out arm both
+do it, and only the no-placement arm returns early without one. So
+`transition.sh`'s own pre-publish regeneration was **redundant on exactly the
+path where it was destructive**. The call is now made only where nothing
+downstream will make it: a collection named with `--dir`, or the working tree
+under no placement. The destructive branch stops existing rather than being made
+safe.
+
+Measured through a counting shim: a branch-placement transition drops from
+**three** full index regenerations to two, a checked-out-destination one from two
+to one, and the unplaced path is unchanged at one.
+
+**Every remaining `abort` on the mutation path is correct**, and now provably so
+by position: each one either precedes the write or sits inside `set_fields`'s own
+failure handler, where the tmp+mv left the previous file untouched. That is the
+property `atomic-index-write` asks for, expressed structurally rather than
+argued.
+
+**Five cases pin it, and two mutations bracket it.** Restoring the destructive
+handler fails four of them — including the one that asserts the written move
+survives on disk, which is the data loss itself. Never regenerating fails the
+other two, which is the over-correction that would leave every unplaced
+collection with an index that never moves. A third mutation, dropping only the
+`--dir` arm, was already caught by two pre-existing cases.
+
+The reproduction rig is in the test file as `index_shim_scripts`: a scripts
+directory of symlinks whose `index.sh` counts its invocations and refuses past a
+given call. Counting is what lets a case ask *who* regenerates an index rather
+than only whether it ends up regenerated; refusing past a call is the only way to
+reach a failure that lands *after* a write, since a collection that cannot be
+indexed at all is refused at the door before anything is written.
+
+**What this does not fix.** On a refused publish the handle and its edits
+survive, but `transition.sh` still drops the token silently, so recovering by
+hand means finding `.git/jim-place/handle.*` without being told it is there. A
+single message naming the token would be wrong on one of the two exits — a
+conflict at rc 3 needs `begin`, reapply and commit again, not a plain re-commit —
+so the reporting half of the filed fix is deliberately left for a record of its
+own. In practice a transition's payload is a mechanical field change and cheap to
+redo; what was unacceptable was destroying it while reporting failure.
