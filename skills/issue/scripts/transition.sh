@@ -332,16 +332,33 @@ main() {
   # and its stderr reaches the developer on the same terms. The line below
   # only names which of a two-reference verb's operands failed, which is the
   # one thing resolve.sh cannot know.
+  #
+  # `leave` consults the record's own memberships first. An umbrella is a
+  # record like any other and can stop existing, while membership lives on the
+  # member alone — so a record can hold an entry nothing resolves, and the
+  # index reports it on every regeneration until a verb clears it. Leaving a
+  # set does not require the set to exist, and an entry the record literally
+  # holds has one unambiguous meaning, so it never reaches the resolver:
+  # asking first also stops a dead entry that happens to prefix some live
+  # record from resolving away to that record and reporting success while the
+  # entry survives. The operand is only ever compared — the new list is
+  # composed from the record's own entries — so nothing unresolved reaches the
+  # file. `join` is deliberately not given this: entering a set does require
+  # the set to exist.
   local umbrella_slug="" umbrella_kind=""
   if [[ -n "$umbrella" ]]; then
     local ures
-    if ! ures="$(bash "$RESOLVE" "$work" "$umbrella")"; then
+    if [[ "$verb" == leave ]] \
+       && csv_has "$(relation_targets "$(frontmatter "$file")" part-of)" "$umbrella"; then
+      umbrella_slug="$umbrella"
+    elif ! ures="$(bash "$RESOLVE" "$work" "$umbrella")"; then
       echo "error: cannot resolve the umbrella reference" >&2
       [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
       return 1
+    else
+      umbrella_slug="${ures%%$'\t'*}"
+      umbrella_kind="${ures##*$'\t'}"
     fi
-    umbrella_slug="${ures%%$'\t'*}"
-    umbrella_kind="${ures##*$'\t'}"
   fi
 
   # Containment is enforced on the way in only. A record that reached a

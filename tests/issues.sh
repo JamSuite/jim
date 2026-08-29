@@ -4450,7 +4450,7 @@ origin: "conversation"'
 #   not, which is how the emitter and the close verb actually write it — a
 #   fixture that quoted a set value would be testing a shape nothing produces.
 transition_issue() {
-  local outcome_field='""' kind="${7:-issue}"
+  local outcome_field='""' kind="${7:-issue}" parts="${8:-}"
   [[ -n "$6" ]] && outcome_field="$6"
   write_issue "$1" "$2" "num: $3
 title: \"T\"
@@ -4465,7 +4465,7 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-  part-of: []
+  part-of: [$parts]
 created: 2026-01-01T00:00:00Z
 updated: 2026-01-01T00:00:00Z
 origin: \"conversation\""
@@ -4603,6 +4603,71 @@ case_transition_join_accepts_ordinal_and_prefix_forms() {
   run_transition leave 20260102-member 20260101-auth --dir "$dir"
   assert_exit "a prefix resolves" 0 "$RC"
   assert_match "to the same record" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: `leave` removes a membership the record literally holds, even when the
+# umbrella it names no longer resolves. That state is ordinary — an umbrella is
+# a record like any other and can be deleted, renamed by the prefix migration,
+# or realized from a provisional ordinal into a different id — and because
+# membership is one-sided, nothing updates the member when it happens. The
+# index then reports the dangle on every regeneration until something clears
+# it, and refusing here leaves a hand edit as the only repair, through the very
+# verb built to remove that friction.
+case_transition_leave_clears_a_membership_whose_umbrella_is_gone() {
+  local dir
+  dir=$(empty_dir transition_leave_dangling)
+  transition_issue "$dir" 20260102-member 2 open "" "" issue 20260101-gone
+  run_transition leave 20260102-member 20260101-gone --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "the membership is gone" '^  part-of: \[\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: the fallback matches the record's own entries literally — it is not a
+# licence to name anything once resolution fails. A reference that neither
+# resolves nor appears in the record is still refused, and nothing is written.
+case_transition_leave_refuses_a_reference_the_record_does_not_hold() {
+  local dir
+  dir=$(empty_dir transition_leave_unheld)
+  transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+  transition_issue "$dir" 20260102-member   2 open "" "" issue 20260101-umbrella
+  run_transition leave 20260102-member 20260101-nothing --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_nonempty "stderr explains" "$ERR"
+  assert_match "the membership stands" '^  part-of: \[20260101-umbrella\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: the asymmetry is the point, not an inconsistency to smooth over —
+# entering a set requires the target to exist, leaving one does not. `join`
+# keeps refusing an umbrella that does not resolve even when the record already
+# holds that exact entry, which is the input a fallback placed ahead of the
+# verb would wave through.
+case_transition_join_still_refuses_an_umbrella_that_is_gone() {
+  local dir
+  dir=$(empty_dir transition_join_dangling)
+  transition_issue "$dir" 20260102-member 2 open "" "" issue 20260101-gone
+  run_transition join 20260102-member 20260101-gone --dir "$dir"
+  assert_exit "rc" 1 "$RC"
+  assert_match "and refuses on the reference, not the kind" \
+    'resolve the umbrella reference' "$ERR"
+  assert_match "the record is untouched" '^  part-of: \[20260101-gone\]$' \
+    "$(cat "$dir/20260102-member.md")"
+}
+
+# AC: clearing a dangling entry leaves every other membership in place. The
+# repair path composes the new list from the record's own entries, so a fault
+# here would drop live memberships while removing a dead one.
+case_transition_leave_keeps_the_memberships_it_was_not_asked_about() {
+  local dir
+  dir=$(empty_dir transition_leave_siblings)
+  transition_issue "$dir" 20260101-umbrella 1 open "" "" epic
+  transition_issue "$dir" 20260102-member   2 open "" "" issue \
+    "20260101-umbrella, 20260101-gone"
+  run_transition leave 20260102-member 20260101-gone --dir "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_match "only the dead entry went" '^  part-of: \[20260101-umbrella\]$' \
     "$(cat "$dir/20260102-member.md")"
 }
 

@@ -112,7 +112,7 @@ Seven verbs move it, and they are the supported path. Each writes every field th
 | `close <id> [--as <outcome>]` | Finish it. `--as` takes `done`, `wontfix`, `duplicate` or `obsolete`; a bare close records `done` |
 | `reopen <id>` | Return it to not-started and **keep** the outcome |
 | `join <id> <umbrella>` | Put it under an umbrella. The umbrella must be an `epic`, and an epic is refused a membership of its own |
-| `leave <id> <umbrella>` | Take it back out. Available even where `join` would now refuse, so a membership reached by hand-edit stays repairable |
+| `leave <id> <umbrella>` | Take it back out. Available even where `join` would now refuse, so a membership reached by hand-edit stays repairable — including one whose umbrella no longer exists, matched against the record's own entries |
 
 Any developer may close any issue, and `claimed-by` survives the close — the field says who *held* the issue, not who finished it. Closing `--as duplicate` requires the superseding issue to be named in the record's `duplicates` relation.
 
