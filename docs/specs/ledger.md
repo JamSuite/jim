@@ -137,3 +137,5 @@
 1787861878	2026-08-27T20:17:58Z	spec	realized	moved=issue/P-20260827-epic-authoring-and-views:issue/015
 1787918172	2026-08-28T11:56:12Z	blueprint	started	tier=project;op=reconcile
 1787918222	2026-08-28T11:57:02Z	blueprint	finished	tier=project;op=reconcile;leaks=1;breaking=0;dead=0;orphans=0;cycles_found=0;stale_requires=0;uncovered_findings=0;groups=4;cycles=1;fanin=3;uncovered=870;faces=23;faces_max=10;faces_max_group=issue;fanin_group=issue,platform
+1787981907	2026-08-29T05:38:27Z	blueprint	started	tier=project;op=reconcile
+1787982115	2026-08-29T05:41:55Z	blueprint	finished	tier=project;op=reconcile;edges=25;leaks=1;breaking=0;dead=0;unresolved=0;undeclared=0;stale=0;groups=4;cycles=1;fanin=3;uncovered=872;faces=23;faces_max=10;faces_max_group=issue;fanin_group=issue,platform
