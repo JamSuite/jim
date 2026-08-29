@@ -2,8 +2,8 @@
 title: "issue — blueprint"
 group: "issue"
 kind: blueprint
-updated: "2026-08-28"
-last_full_generate: "2026-08-25T05:10:57Z"
+updated: "2026-08-29"
+last_full_generate: "2026-08-29T05:38:09Z"
 ---
 
 # issue — blueprint
@@ -105,10 +105,18 @@ CLIs.
   alone, so joining writes exactly one record and the umbrella's own file is
   untouched; an umbrella may not be placed under another, and containment is
   enforced on the way in only, so `leave` stays available to repair a violation
-  a hand edit introduced. A verb that would change nothing writes nothing — no
+  a hand edit introduced. `leave` matches its operand against the record's own
+  memberships before it reaches the resolver, so an entry whose umbrella no
+  longer resolves is cleared by the verb rather than by hand; `join` resolves
+  first and always, because entering a set requires the set to exist and
+  leaving one does not. A verb that would change nothing writes nothing — no
   record touched, no stamp refreshed, no index regenerated — and says so on
   stdout, so grouping several issues at once does not fail on the one already
-  grouped.
+  grouped. Regenerating the index belongs to whichever party publishes the
+  collection: the door rebuilds the index of what it publishes, so this script
+  rebuilds only the collection nothing will publish, and a failure there leaves
+  the written transition in place and reports the stale index rather than
+  unwinding the move.
 - `identity.sh` **recordable identity** — `resolve` (the environment's),
   `validate` (one already obtained), `normalize` (one carried into the
   project's configured form) and `map` (one resolved through the project's
@@ -182,8 +190,11 @@ CLIs.
   re-derivation (`prefix-from`), from the skill flow and script-to-script. The
   shape `now` emits is a second coupling: the group's three timestamp guards
   carry marked copies of the pattern that must match the one in `jimfile.sh`, so
-  a change to the emitted format is a change to every guard that reads it.
-  Ordinal minting is not here — that is the allocator's, below.
+  a change to the emitted format is a change to every guard that reads it. The
+  id-prefix scheme is a third: `path issue` and `prefix-from` consult it inside
+  the platform CLI, so this group depends on that derivation without reading the
+  keys that configure it. Ordinal minting is not here — that is the allocator's,
+  below.
 - `platform.jimalloc` — coordinated issue identity: the emitter reserves the
   display ordinal + durable id via `allocate issue` (durable-before-write),
   `peek issue` supplies the capture flow's advisory preview, and `reconcile.sh`
@@ -194,14 +205,17 @@ CLIs.
   must not be one the placement door accepts. A sibling containment rule is
   deliberately *not* mirrored: the door's is the tighter of the two, and its
   marker says so rather than leaving the difference to look like drift.
-- `platform.jimconf-cli` — the `issues` path, the `issue_list_*` and
-  `issue_id_*` families, `issue_placement` / `issue_placement_ack`,
-  `auto_issue_file`, and the recorded-identity pair `identity_scheme` /
-  `identity_domain`, from the skill flow and script-to-script (`index.sh`,
-  `render.sh`, `backfill.sh`, `migrate.sh`, `place.sh`, `identity.sh`,
-  `new.sh`). `place.sh` additionally reads `id_coordination_branch`, the one key
-  this group consumes that another group owns the meaning of — it is the branch
-  placement refuses to write the collection to. The resolver distinguishes an
+- `platform.jimconf-cli` — the `issues` path and the `specs` root, the
+  `issue_list_*` family, `issue_placement` / `issue_placement_ack`, and the
+  recorded-identity pair `identity_scheme` / `identity_domain`, script-to-script
+  (`index.sh`, `render.sh`, `backfill.sh`, `migrate.sh`, `place.sh`,
+  `identity.sh`, `new.sh`); `auto_issue_file` is the skill flow's read alone,
+  and the emitter states why reading it script-side would be neither necessary
+  nor sufficient. The `specs` root is what lets a query name a spec by group and
+  ordinal rather than by path. `place.sh` additionally reads
+  `id_coordination_branch`, the one key this group consumes that another group
+  owns the meaning of — it is the branch placement refuses to write the
+  collection to. The resolver distinguishes an
   unset key from a failed resolution, which is what lets the placement gate's
   refusal hold: a configuration it cannot read, a value form it cannot parse,
   and a run started below the project root each refuse rather than yielding the
@@ -225,9 +239,13 @@ CLIs.
   invoke it directly, script to script, for mutations that have no single
   command to wrap.
 - `agents/issue-analyst.md` — the read-only insights subagent.
-- `tests/issues.sh` and `tests/place.sh` — the group's test files. The validator
-  triplicate is asserted from `tests/jimfile.sh` instead, the platform group's
-  file, because one of the three copies is platform's own.
+- `tests/issues.sh` and `tests/place.sh` — the group's test files. Two of the
+  platform group's files assert against this group as well, each for a reason
+  that puts the assertion on their side of the boundary: `tests/jimfile.sh`
+  holds the validator triplicate, because one of the three copies is platform's
+  own, and `tests/docsurfaces.sh` holds this group's documentation to its
+  scripts, deriving the verb and kind vocabularies from the scripts that declare
+  them so prose cannot drift from the code it describes.
 - **Data store** (owned, not territory): `docs/issues/` + `INDEX.md` — one
   markdown file per issue, index regenerated on every write. The directory is
   the collection's path within a branch; which branch holds it is
@@ -251,4 +269,11 @@ CLIs.
 | declared-vocabularies | Every vocabulary a rule quantifies over is a declared constant, and every site that quantifies iterates that constant rather than restating its members. A guard, a parser dispatch and a test that each enumerate the same set independently agree only by coincidence, and the one that is short is silent about it | high | judge |
 | issue-file-never-sourced | No script sources or evaluates an issue file; frontmatter and body are read line-oriented with grep, sed and awk only — on every read path, including the ones recovering values from version-control history | critical | judge |
 | collection-rewrite-preview-gated | Every collection-wide rewrite previews by default and mutates only under an explicit apply flag, and a plan hash supplied with that flag refuses a run whose collection drifted since the preview it names | critical | judge |
+| refusal-discloses-no-input | A refusal names the field and the accepted set, never the value it rejected, and carries no issue content. The rule binds every refusing surface — the recordable-identity gate, the capture emitter's enumerated fields, the lifecycle verbs and the shared reference resolver — so a caller learns what would have been acceptable without the collection echoing back what it was handed | high | judge |
+| collection-scan-excludes-its-own-files | Every scan of the collection directory skips the index and every dotfile before a name is read as a record. The index is the scan's own output and a dotfile is an atomic writer's staging file, so a scan that admitted either would migrate, renumber or resolve against a file no record ever wrote | high | judge |
+| no-in-place-rewrite | No script rewrites a file in place. Every write stages a temporary beside its target and renames over it, which is what makes a failed run leave the previous file untouched; an in-place editor is the one construct that cannot offer that, whatever the surrounding handler does | medium | pattern |
 | row-shape-is-the-writers | An `INDEX.md` row's shape is a property of the writer, never of its inputs: a frontmatter scalar reaches a row only after the display sanitizer has removed the row separator and control characters, so no value can append a `key: value` pair the writer never emitted. A scalar judged against a vocabulary is sanitized once, before it is judged, so the value classified and the value displayed are one — an index can never assert a count its own rows deny. The reader is the writer's inverse and is bound by the same rule from the other side: a pair is `key:` plus the one separator space the writer emits, so exactly that one space is consumed reading it back. A reader consuming a run of whitespace would decide for itself where a value with leading spaces begins, and the index would then record a scalar as unrecognized while a view, having trimmed the same scalar into a member, served the record as one of the recognized ones | high | judge |
+
+```verify-checks
+no-in-place-rewrite polarity=must-not regex=sed[[:space:]]+-i scope=skills/issue
+```
