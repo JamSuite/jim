@@ -14,9 +14,9 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-  part-of: []
+  part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-08-25T06:40:40Z
-updated: 2026-08-25T06:40:40Z
+updated: 2026-08-29T07:49:55Z
 origin: "docs/specs/platform/000-blueprint/spec.md"
 ---
 

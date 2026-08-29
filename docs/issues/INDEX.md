@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Open: 145
+- Open: 146
 - Closed: 275
 
 ## Issues
@@ -427,10 +427,22 @@
 - `20260828-update-the-issues-feature-doc-for-the-epic-increment` — Update the issues feature doc for the epic increment · status: closed · num: 417 · priority: medium · created: 2026-08-28T11:37:35Z · labels: [docs] · origin: docs/specs/issue/015-epic-authoring-and-views/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260829-bind-the-twice-declared-kind-and-outcome-vocabularies` — Bind the twice-declared kind and outcome vocabularies · status: open · num: 419 · priority: medium · created: 2026-08-29T05:45:27Z · labels: [000-blueprint, drift, issues-system] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
 - `20260829-declare-the-mirrored-branch-name-gate-on-platform-s-provides-fac` — Declare the mirrored branch-name gate on platform's provides face · status: open · num: 420 · priority: medium · created: 2026-08-29T05:45:32Z · labels: [000-blueprint, contract-graph, drift] · origin: BLUEPRINT.md · type: issue · filed-by: jrko
+- `20260829-machine-resolvable-contract-graph` — Machine-resolvable contract graph · status: open · num: 421 · priority: high · created: 2026-08-29T07:44:25Z · labels: [blueprint, contract-graph, faces, reconcile] · origin: conversation · type: epic · filed-by: jrko
 
 ## Epics
 
-_No epics._
+- `20260829-machine-resolvable-contract-graph` — Machine-resolvable contract graph · status: open · 0/10 closed
+  - `20260704-derive-the-map-relations-column-from-the-contract-graph`
+  - `20260704-fan-the-blueprint-update-into-every-affected-group`
+  - `20260704-surface-face-freshness-in-the-reconcile-report`
+  - `20260725-cross-group-enforcement-of-plugin-wide-convention-invariants`
+  - `20260802-declare-platform-jimalloc-in-the-sdlc-blueprint-s-requires-face`
+  - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
+  - `20260825-faces-verb-skips-bold-first-provides-entries`
+  - `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared`
+  - `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
+  - `20260829-declare-the-mirrored-branch-name-gate-on-platform-s-provides-fac`
+
 
 ## Graph
 
@@ -461,7 +473,10 @@ _No epics._
 - `20260704-add-partition-health-sensors-split-merge-signals` --depends-on--> `20260707-compute-graph-health-metrics-in-the-reconcile-pass`
 - `20260704-add-partition-health-sensors-split-merge-signals` --related-to--> `20260703-build-the-partition-migration-skill`
 - `20260704-derive-the-map-relations-column-from-the-contract-graph` --depends-on--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
+- `20260704-derive-the-map-relations-column-from-the-contract-graph` --part-of--> `20260829-machine-resolvable-contract-graph`
+- `20260704-fan-the-blueprint-update-into-every-affected-group` --part-of--> `20260829-machine-resolvable-contract-graph`
 - `20260704-fan-the-blueprint-update-into-every-affected-group` --related-to--> `20260630-add-the-cross-group-contract-graph-and-blast-radius`
+- `20260704-surface-face-freshness-in-the-reconcile-report` --part-of--> `20260829-machine-resolvable-contract-graph`
 - `20260704-sweep-post-033-doc-drift` --related-to--> `20260703-build-intelligence-for-context-aware-spec-group-definition`
 - `20260705-assert-edge-outcome-evidence-is-location-only-in-contracts-check` --related-to--> `20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin`
 - `20260705-guard-the-contracts-check-edge-loop-against-self-edges` --related-to--> `20260705-resolve-contracts-check-blueprint-path-via-jimfile-path-blueprin`
@@ -472,6 +487,7 @@ _No epics._
 - `20260708-partition-spec-migration-mode` --related-to--> `20260703-build-the-partition-migration-skill`
 - `20260711-add-a-territory-name-mismatch-partition-health-sensor` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
 - `20260712-record-and-sense-chronic-domain-domain-straddle-flags` --related-to--> `20260704-add-partition-health-sensors-split-merge-signals`
+- `20260725-cross-group-enforcement-of-plugin-wide-convention-invariants` --part-of--> `20260829-machine-resolvable-contract-graph`
 - `20260725-give-retired-group-directories-a-sanctioned-end-of-life` --related-to--> `20260725-script-preamble-rule-vs-source-inherited-preambles-fix-or-fold`
 - `20260726-add-an-only-door-verification-sweep-for-the-id-registry` --related-to--> `20260726-emit-rename-split-redirect-records-and-wire-jim-partition-batche`
 - `20260726-add-an-only-door-verification-sweep-for-the-id-registry` --related-to--> `20260728-registry-drift-catch-up-has-no-incremental-seed-verb`
@@ -540,6 +556,7 @@ _No epics._
 - `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure` --related-to--> `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped`
 - `20260731-skip-symlinked-entries-in-the-realized-directory-sweep` --related-to--> `20260731-make-spec-reconcile-apply-work-from-a-subdirectory`
 - `20260731-write-the-fixtures-the-plan-named-but-the-build-skipped` --related-to--> `20260731-regenerate-the-issue-index-before-aborting-on-a-rewrite-failure`
+- `20260802-declare-platform-jimalloc-in-the-sdlc-blueprint-s-requires-face` --part-of--> `20260829-machine-resolvable-contract-graph`
 - `20260802-fix-the-rename-replay-in-the-integrity-classifier` --related-to--> `20260802-replace-the-vacuously-green-vacated-max-test-and-close-the-fixtu`
 - `20260802-refuse-the-three-contradictions-partition-batch-still-writes` --related-to--> `20260801-refuse-the-reserved-slot-in-the-generic-spec-path-composer`
 - `20260802-refuse-the-three-contradictions-partition-batch-still-writes` --related-to--> `20260802-single-source-the-ordinal-width-bound-across-jimalloc-and-jimfil`
@@ -564,12 +581,16 @@ _No epics._
 - `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read` --related-to--> `20260825-plugin-conventions-is-half-the-architecture-document`
 - `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc` --related-to--> `20260825-allocator-verb-sweep-is-hand-listed-not-derived`
 - `20260825-allocator-verb-sweep-is-hand-listed-not-derived` --related-to--> `20260823-sweep-config-keys-and-migrate-subcommands-against-their-referenc`
+- `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --part-of--> `20260829-machine-resolvable-contract-graph`
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --related-to--> `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared`
 - `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
+- `20260825-faces-verb-skips-bold-first-provides-entries` --part-of--> `20260829-machine-resolvable-contract-graph`
 - `20260825-faces-verb-skips-bold-first-provides-entries` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
 - `20260825-plugin-conventions-is-half-the-architecture-document` --related-to--> `20260823-architecture-md-single-lines-exceed-what-its-consumers-can-read`
+- `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` --part-of--> `20260829-machine-resolvable-contract-graph`
 - `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
 - `20260825-provisional-token-grammar-crosses-into-sdlc-undeclared` --related-to--> `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face`
+- `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` --part-of--> `20260829-machine-resolvable-contract-graph`
 - `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` --related-to--> `20260825-faces-verb-skips-bold-first-provides-entries`
 - `20260825-requires-tokens-resolve-to-no-provides-entry-on-any-face` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
 - `20260825-timestamp-shape-sync-marker-in-jimfile-sh-is-compared-by-no-test` --related-to--> `20260825-declare-platform-s-mirrored-branch-name-gate-or-sever-the-mirror`
@@ -579,6 +600,7 @@ _No epics._
 - `20260826-empty-shaped-filter-operand-silently-matches-everything` --related-to--> `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value`
 - `20260826-render-sh-comments-still-cite-spec-and-finding-ids` --related-to--> `20260826-spec-and-finding-ids-in-comments-outside-the-issue-group`
 - `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value` --related-to--> `20260826-empty-shaped-filter-operand-silently-matches-everything`
+- `20260829-declare-the-mirrored-branch-name-gate-on-platform-s-provides-fac` --part-of--> `20260829-machine-resolvable-contract-graph`
 
 ## Integrity Warnings
 

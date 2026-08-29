@@ -14,9 +14,9 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-  part-of: []
+  part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-08-02T08:27:17Z
-updated: 2026-08-02T08:27:17Z
+updated: 2026-08-29T07:49:10Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission/spec.md
 ---
 

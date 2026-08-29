@@ -14,9 +14,9 @@ relations:
   depends-on: [20260630-add-the-cross-group-contract-graph-and-blast-radius]
   related-to: []
   duplicates: []
-  part-of: []
+  part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-07-04T07:02:15Z
-updated: 2026-07-25T07:49:14Z
+updated: 2026-08-29T07:50:43Z
 origin: docs/specs/blueprint/006-contract-graph/research.md
 ---
 

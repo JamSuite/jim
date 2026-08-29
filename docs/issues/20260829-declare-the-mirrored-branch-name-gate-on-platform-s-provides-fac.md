@@ -14,9 +14,9 @@ relations:
   depends-on: []
   related-to: []
   duplicates: []
-  part-of: []
+  part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-08-29T05:45:32Z
-updated: 2026-08-29T05:45:32Z
+updated: 2026-08-29T07:48:26Z
 origin: "BLUEPRINT.md"
 ---
 
