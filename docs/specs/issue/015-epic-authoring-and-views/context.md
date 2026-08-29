@@ -228,15 +228,17 @@ Five issues remain on this spec. Two more were filed against other groups.
   describes the reading that headline invites, not a number it emits.
 - `#407`, `#409`, `#405` are `low` and correctly deferred.
 
-**Filed against other groups, both provisional:**
+**Filed from the blueprint regenerate, against other groups' territory:**
 
-- *Bind the twice-declared kind and outcome vocabularies* — `ISSUE_TYPES`
-  (`new.sh:81`, `index.sh:79`) and `ISSUE_OUTCOMES` (`transition.sh:69`,
-  `index.sh:80`) are each declared twice with no `SYNC(` marker and no
-  comparison test, where every other shared definition in this group has both.
-  This is a live violation of the `declared-vocabularies` invariant.
-- *Declare the mirrored branch-name gate on platform's provides face* — the
-  leak the reconcile reports (§ 6).
+- **`#419`** — bind the twice-declared kind and outcome vocabularies.
+  `ISSUE_TYPES` (`new.sh:81`, `index.sh:79`) and `ISSUE_OUTCOMES`
+  (`transition.sh:69`, `index.sh:80`) are each declared twice with no `SYNC(`
+  marker and no comparison test, where every other shared definition in this
+  group has both. **A live violation of the `declared-vocabularies`
+  invariant** — the blueprint keeps the rule, because the rule is right and the
+  code is what diverged.
+- **`#420`** — declare the mirrored branch-name gate on platform's provides
+  face; the leak the reconcile reports (§ 6).
 
 **And one metric that cannot be read literally.** The ledger's
 `<stage>_duration_seconds` spans first-`started` to last-`finished`, so any
