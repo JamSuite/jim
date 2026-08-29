@@ -45,6 +45,8 @@ Read the **first whitespace-delimited token** of `$ARGUMENTS` as the subcommand.
   - `release` gives it up. Releasing an issue someone else holds is gated exactly as claiming it is, and for the same reason — otherwise release-then-claim would be a takeover with no override in it.
   - `start` marks the issue underway, claiming it first when it is unheld.
   - `close` finishes it. `--as <done|wontfix|duplicate|obsolete>` says how; without one the issue is recorded as `done`. Any developer may close any issue, and the holder record is preserved — it says who *held* the issue, not who finished it. Closing `--as duplicate` requires the superseding issue to be named in the record's `duplicates` relation.
+
+    **A close also records why.** The verb moves `status` and `outcome`; what it cannot move is the half that cannot be re-derived — which commit carried the fix, what pins it, what was deliberately left alone, and where the work went wider or narrower than the record asked. Append a dated `## Resolution` section to the record's body saying so, and commit it with the transition. This is not conditional on the outcome: a `wontfix` or an `obsolete` needs the reasoning more than a `done` does, and a `done` whose commit already sits in the closing trailer still needs the part a trailer cannot carry. Length is proportional to what happened; absence is not one of the lengths. A close that sets every field and records nothing reads as finished from every angle a reader would check, which is exactly what makes the omission invisible.
   - `reopen` returns it to not-started and **keeps** the outcome, which is what makes a reopen legible: an open issue carrying an outcome was finished before, and the outcome names how.
   - `join <id> <umbrella>` puts the issue under an umbrella; `leave <id> <umbrella>` takes it out. Membership is recorded on the member alone, so exactly one record is written and the umbrella's own file is untouched. An issue may belong to several umbrellas. An umbrella that is not `type: epic` is refused naming what the record is, and an epic may not be put under an epic. `leave` additionally accepts an umbrella that no longer resolves, matched literally against the record's own memberships, so a dangling entry the index reports is cleared with the verb rather than by hand; `join` still requires its umbrella to resolve, because entering a set requires the set to exist and leaving one does not.
 
@@ -396,6 +398,7 @@ For the transition verbs (`claim` / `release` / `start` / `close` / `reopen` / `
 - [ ] A refusal was reported as it came back: exit 5 names the current holder and is overridable with `--force`; a `close --as duplicate` with no superseding issue named is a refusal to fix, not to retry.
 - [ ] No outcome was invented — only `done`, `wontfix`, `duplicate` or `obsolete`.
 - [ ] An `unchanged` result was reported as the success it is, not retried — the desired state already held.
+- [ ] A `close` wrote the record's resolution: a dated `## Resolution` appended to the body naming what shipped, the commit that carried it, and what pins it — or, on a non-`done` outcome, why the work stops here. Setting `status` and `outcome` alone is a half-finished close that reads as a complete one, which is why this is checked rather than assumed.
 
 For the read verbs (`list` / `stats` / `show` / help):
 

@@ -116,6 +116,8 @@ Seven verbs move it, and they are the supported path. Each writes every field th
 
 Any developer may close any issue, and `claimed-by` survives the close — the field says who *held* the issue, not who finished it. Closing `--as duplicate` requires the superseding issue to be named in the record's `duplicates` relation.
 
+**A close carries a resolution.** The verb sets the fields; a dated `## Resolution` appended to the record's body carries what the fields cannot — the commit that shipped the fix, what pins it, what was left alone, and where the work diverged from what was filed. It is written whatever the outcome: a `wontfix` or `obsolete` needs the reasoning most, and a `done` needs the part its commit trailer cannot hold. Where a resolution later turns out to overclaim, a dated `## Correction` is appended rather than the original edited — the overclaim is itself information about how the record was made.
+
 Three readings are **derived** and never stored, so no field can contradict them:
 
 | Reading | Derived from |

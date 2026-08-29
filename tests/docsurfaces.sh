@@ -395,6 +395,25 @@ case_docsurfaces_placement_edit_flow_is_stated() {
   assert_match "names abort"  'place\.sh abort'  "$body"
 }
 
+# A close sets every field a reader would check and can still omit the only half
+# that cannot be re-derived. The convention was documented in the retrospective
+# notes for two rounds while four issues closed without one, which is the case
+# for pinning it at the point of use instead: the dispatch bullet an executor
+# reads, and the checklist it applies literally. Both, because a rule stated
+# once in prose is a rule the checklist does not enforce.
+case_docsurfaces_close_records_its_resolution() {
+  local skill="$REPO_ROOT/skills/issue/SKILL.md" bullet checklist
+  bullet="$(sed -n '/^  - `close` finishes it\./,/^  - `reopen`/p' "$skill")"
+  assert_eq "the close dispatch bullet was located" "yes" \
+    "$([[ -n "$bullet" ]] && echo yes || echo no)"
+  assert_match "the bullet names the section"   'Resolution' "$bullet"
+  assert_match "and says it is unconditional"   'not conditional on the outcome' "$bullet"
+  checklist="$(sed -n '/^For the transition verbs/,/^For the read verbs/p' "$skill")"
+  assert_eq "the transition checklist was located" "yes" \
+    "$([[ -n "$checklist" ]] && echo yes || echo no)"
+  assert_match "the checklist checks it" 'Resolution' "$checklist"
+}
+
 # The insights analyst is handed a directory and is the collection's terminal
 # reader, so a literal collection path in its method is not a stale mention —
 # it is a second collection. Under a placement the roster and graph come from
