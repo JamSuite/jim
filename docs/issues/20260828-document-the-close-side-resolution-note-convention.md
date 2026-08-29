@@ -2,12 +2,12 @@
 id: 20260828-document-the-close-side-resolution-note-convention
 num: 418
 title: "Document the close-side resolution note convention"
-status: open
+status: closed
 priority: medium
 type: issue
 filed-by: "jrko"
 claimed-by: ""
-outcome: ""
+outcome: done
 labels: [skill-surface, docs, lifecycle]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-28T20:44:41Z
-updated: 2026-08-28T20:44:41Z
+updated: 2026-08-29T06:23:18Z
 origin: "docs/specs/issue/015-epic-authoring-and-views/remediation.md"
 ---
 
@@ -119,3 +119,45 @@ and the open question about `--as wontfix` versus a bare `done` are unchanged.
 
 This correction is appended rather than replacing the description above, because
 the overclaim is itself information about how the record was made.
+
+## Resolution — 2026-08-29
+
+Fixed in `70a110e1`.
+
+The Correction's narrowed fix is what landed: not "write it down" but state it
+where the verb is. Four surfaces carry it now, two of them the ones the
+Correction named as the real gap.
+
+- **`skills/issue/SKILL.md`, the `close` dispatch bullet** — the point of use.
+  Names what the fields cannot carry, requires a dated `## Resolution`
+  committed with the transition, and closes the open question below.
+- **`skills/issue/SKILL.md`, the Validation Checklist's transition half** — the
+  enforceable form, the surface an executor applies literally.
+- **`docs/features/issues.md`** and **`WORKFLOW.md`** — the two human-facing
+  surfaces the original description named. The feature doc also records the
+  `## Correction` instrument, which had the same problem: documented only in
+  the notes file.
+
+**The open question is answered: unconditional.** A `wontfix` or `obsolete`
+explains itself nowhere else, and a `done` whose commit already rides the
+closing trailer still owes the part a trailer cannot hold — what pins it, what
+was left alone, where the work diverged. Length is proportional to what
+happened; absence is not one of the lengths.
+
+**Pinned by `case_docsurfaces_close_records_its_resolution`**, which asserts the
+bullet and the checklist *separately* — deleting the checklist item fails one
+assertion and deleting the bullet's unconditional clause fails the other, each
+proved by mutation. A single "the word appears somewhere in SKILL.md" check
+would have passed both mutations, which is the failure mode this collection has
+a rule against. Suite 1,693 green.
+
+**What this does not do.** There is still no mechanical source for whether a
+given close actually wrote its resolution — that is a property of a body, not of
+a declared constant, exactly as the description says. The new case pins that the
+*rule is stated*, never that a particular close obeyed it. The checklist is the
+only enforcement, and it is an executor-applied one.
+
+**The Correction stands as the record of how this was filed.** Its claim that
+the convention was undocumented was wrong; its diagnosis — that a rule
+documented only in the retrospective record is enforced only on whoever reads
+retrospectives — is what this change acts on.
