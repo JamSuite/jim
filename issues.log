@@ -416,3 +416,5 @@ issue allocate 415 20260828-scope-backfill-and-migrate-frontmatter-reads-to-the-
 issue allocate 416 20260828-state-the-capture-kind-rule-correctly-in-the-issue-skill-checkli 20260828 jrko
 issue allocate 417 20260828-update-the-issues-feature-doc-for-the-epic-increment 20260828 jrko
 issue allocate 418 20260828-document-the-close-side-resolution-note-convention 20260828 jrko
+issue allocate 419 20260829-bind-the-twice-declared-kind-and-outcome-vocabularies 20260828 jrko
+issue allocate 420 20260829-declare-the-mirrored-branch-name-gate-on-platform-s-provides-fac 20260828 jrko
