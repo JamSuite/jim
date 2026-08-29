@@ -10700,6 +10700,177 @@ ${field}: \"open · num: 999$(printf '\001')\""
   done
 }
 
+# ─── Section: transition.sh — who regenerates the index ──────────────────────
+
+# index_shim_scripts <name>
+#   A scripts directory that behaves exactly like the real one except that
+#   index.sh is a shim: it counts its invocations into $SHIM_COUNT and refuses
+#   every call past $SHIM_OK_UNTIL, passing the rest through to the real
+#   script. Every sibling is symlinked and the two cross-skill directories are
+#   linked in beside it, so composition resolves as it does in the tree —
+#   BASH_SOURCE names the link rather than its target, which is what puts each
+#   script's own HERE in this directory.
+#
+#   Counting is what lets a case ask *who* regenerates a collection's index
+#   rather than only whether it ends up regenerated. Refusing past a given call
+#   is the only way to reach a failure that lands *after* a write: a collection
+#   that cannot be indexed at all is refused at the door, before anything is
+#   written, so a shim that always failed could never reach the path.
+index_shim_scripts() {
+  local base; base="$(empty_dir "$1")"
+  local real="$REPO_ROOT/skills" dir="$base/skills/issue/scripts" f
+  mkdir -p "$dir" "$base/skills/conf" "$base/skills/file"
+  ln -s "$real/conf/scripts" "$base/skills/conf/scripts"
+  ln -s "$real/file/scripts" "$base/skills/file/scripts"
+  for f in "$real"/issue/scripts/*.sh; do
+    [[ "${f##*/}" == index.sh ]] || ln -s "$f" "$dir/${f##*/}"
+  done
+  cat > "$dir/index.sh" <<'SHIM'
+#!/usr/bin/env bash
+n=$(( $(cat "$SHIM_COUNT" 2>/dev/null || echo 0) + 1 ))
+printf '%s\n' "$n" > "$SHIM_COUNT"
+if (( n > ${SHIM_OK_UNTIL:-99} )); then
+  echo "index shim: refusing call $n" >&2
+  exit 1
+fi
+exec bash "$SHIM_REAL_INDEX" "$@"
+SHIM
+  printf '%s' "$dir"
+}
+
+# run_transition_shimmed <repo> <scripts> <ok-until> <args...>
+#   Invoke the shimmed transition.sh from inside <repo>, letting index.sh
+#   through for the first <ok-until> calls and refusing every one after. The
+#   counter is reset per run, so a case reads the calls this transition made
+#   rather than the ones its fixture made getting there.
+run_transition_shimmed() {
+  local repo="$1" scripts="$2" ok="$3"; shift 3
+  local err_file="$TMP_BASE/.err"
+  rm -f "$scripts/.calls"
+  OUT="$(cd "$repo" && env "${identity_env[@]}" \
+    SHIM_COUNT="$scripts/.calls" SHIM_OK_UNTIL="$ok" \
+    SHIM_REAL_INDEX="$SCRIPT_INDEX" \
+    bash "$scripts/transition.sh" "$@" 2> "$err_file")"
+  RC=$?
+  ERR="$(cat "$err_file")"
+}
+
+# shim_calls <scripts> — how many times the shimmed index.sh was invoked.
+shim_calls() { cat "$1/.calls" 2>/dev/null || printf '0'; }
+
+# placed_issue <repo> — file one issue onto the configured destination and echo
+# its slug. Filed through the real emitter, so no shim call is spent on setup.
+placed_issue() {
+  local repo="$1" body
+  body="$(fixture "${2}_body.md" 'body')"
+  run_new_in "$repo" --reviewed --title "Target" --priority medium \
+    --labels x --origin conversation --body-file "$body"
+  printf '%s' "${OUT%%$'\t'*}"
+}
+
+# AC: a reindex failure that lands after the transition is written never
+# destroys it. Under a branch placement the collection being written is a
+# materialized handle, and the unwind every pre-write exit performs is
+# `rm -rf` of exactly that handle — so an unwind here is the whole record.
+# The shim lets the door's materialize through and refuses everything after,
+# which is the transient shape: a collection that could not be indexed at all
+# is refused before `set_fields` ever runs.
+case_transition_a_late_reindex_failure_keeps_the_written_move() {
+  local repo scripts slug survivors
+  repo="$(placement_repo transition_late_reindex jim/issues)"
+  scripts="$(index_shim_scripts transition_late_reindex_rig)"
+  slug="$(placed_issue "$repo" transition_late_reindex)"
+  assert_nonempty "the fixture filed an issue" "$slug"
+  run_transition_shimmed "$repo" "$scripts" 1 claim "$slug"
+  assert_exit "the run reports the failure" 1 "$RC"
+  # Nothing published: the door refused rather than committing a collection
+  # whose index it could not bring up to date.
+  assert_match "the destination is unchanged" 'claimed-by: ""' \
+    "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
+  # The whole point: the written move is still on disk to be recovered.
+  survivors="$(grep -rl "claimed-by: \"$TEST_IDENTITY\"" \
+    "$repo/.git/jim-place" 2>/dev/null | grep -c .)"
+  assert_eq "the written move survives in the handle" "1" "$survivors"
+}
+
+# AC: under a placement the door regenerates the index of what it publishes, so
+# transition.sh leaves it alone. Two calls are the door's own — one to
+# materialize, one to publish — and a third would be this script repeating
+# work the publish is about to redo, which is where the unwind above came from.
+case_transition_leaves_the_index_to_the_door_under_a_placement() {
+  local repo scripts slug
+  repo="$(placement_repo transition_door_indexes jim/issues)"
+  scripts="$(index_shim_scripts transition_door_indexes_rig)"
+  slug="$(placed_issue "$repo" transition_door_indexes)"
+  run_transition_shimmed "$repo" "$scripts" 99 claim "$slug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "only the door's two regenerations ran" "2" "$(shim_calls "$scripts")"
+  assert_match "the move reached the destination" \
+    "claimed-by: \"$TEST_IDENTITY\"" \
+    "$(git -C "$repo" cat-file -p "refs/heads/jim/issues:docs/issues/${slug}.md")"
+  # The door's regeneration is the one that matters, so it has to have produced
+  # a real index rather than merely not failed.
+  assert_match "carrying an index that describes it" 'Open: 1' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/INDEX.md)"
+}
+
+# AC: a placement naming the branch already checked out publishes through the
+# other door — the collection is the working tree, so there is nothing to
+# materialize and the publish reindexes it in place. One call, and it is still
+# not this script's: the arm differs, the ownership does not.
+case_transition_lets_the_door_index_a_checked_out_destination() {
+  local repo scripts slug branch
+  repo="$(new_repo transition_direct_dest)"
+  branch="$(git -C "$repo" symbolic-ref --quiet --short HEAD)"
+  assert_nonempty "the fixture is on a branch" "$branch"
+  printf 'issue_placement = "%s"\n' "$branch" > "$repo/jimconf.toml"
+  printf 'base\n' > "$repo/README.md"
+  git -C "$repo" add README.md jimconf.toml
+  git -C "$repo" commit -q -m base
+  scripts="$(index_shim_scripts transition_direct_dest_rig)"
+  slug="$(placed_issue "$repo" transition_direct_dest)"
+  run_transition_shimmed "$repo" "$scripts" 99 claim "$slug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "the door's regeneration, and only it" "1" "$(shim_calls "$scripts")"
+  assert_match "the move landed in the working tree" \
+    "claimed-by: \"$TEST_IDENTITY\"" "$(cat "$repo/docs/issues/$slug.md")"
+  assert_match "beside an index that describes it" 'Open: 1' \
+    "$(cat "$repo/docs/issues/INDEX.md" 2>/dev/null)"
+}
+
+# AC: with no placement nothing publishes, so this script's regeneration is the
+# only one there is and still runs. The count is what separates "the door does
+# it" from "nobody does it" — the second would leave every unplaced collection
+# with an index that never moves.
+case_transition_regenerates_the_index_no_door_will() {
+  local repo scripts slug
+  repo="$(new_repo transition_self_indexes)"
+  scripts="$(index_shim_scripts transition_self_indexes_rig)"
+  slug="$(placed_issue "$repo" transition_self_indexes)"
+  run_transition_shimmed "$repo" "$scripts" 99 claim "$slug"
+  assert_exit "rc" 0 "$RC"
+  assert_eq "this script regenerated it, once" "1" "$(shim_calls "$scripts")"
+  assert_match "the index describes the collection" 'Open: 1' \
+    "$(cat "$repo/docs/issues/INDEX.md" 2>/dev/null)"
+}
+
+# AC: and when that one regeneration fails, the move it was for is already
+# written — so the run reports the pair rather than unwinding, and says which
+# half landed. Every exit above the write still unwinds; this one cannot.
+case_transition_reports_a_failed_regeneration_it_owns() {
+  local repo scripts slug
+  repo="$(new_repo transition_self_index_fails)"
+  scripts="$(index_shim_scripts transition_self_index_fails_rig)"
+  slug="$(placed_issue "$repo" transition_self_index_fails)"
+  run_transition_shimmed "$repo" "$scripts" 0 claim "$slug"
+  assert_exit "the run reports the failure" 1 "$RC"
+  assert_match "and says the move landed anyway" \
+    'transition is written but the index could not be' "$ERR"
+  assert_match "the move is on disk" "claimed-by: \"$TEST_IDENTITY\"" \
+    "$(cat "$repo/docs/issues/$slug.md")"
+  assert_eq "no success line" "" "$OUT"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ ! -e "$SCRIPT_INDEX" ]]; then
     echo "NOTE: $SCRIPT_INDEX not found — index cases will fail."

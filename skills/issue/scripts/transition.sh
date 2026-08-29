@@ -50,6 +50,12 @@ INDEX_SCRIPT="$HERE/index.sh"
 JIMFILE="$(cd "$HERE/../../file/scripts" && pwd)/jimfile.sh"
 RESOLVE="$HERE/resolve.sh"
 
+# The token `place.sh begin` hands back when no placement is configured: the
+# collection is the working tree, and the publish that follows is a no-op. It
+# is the one handle that owns nothing, which is what makes it the test for
+# whether anything downstream will regenerate this collection's index.
+readonly PLACE_TOKEN_NONE="none"
+
 readonly TRANSITION_VERBS=(claim release start close reopen join leave)
 
 # The verbs that bind a second positional. Every other verb keeps the arity it
@@ -435,11 +441,21 @@ main() {
     }
   fi
 
-  bash "$INDEX_SCRIPT" "$work" >/dev/null 2>&1 || {
-    echo "error: could not regenerate the index" >&2
-    [[ -n "$token" ]] && bash "$PLACE" abort "$token" >/dev/null 2>&1
-    return 1
-  }
+  # The door regenerates the index of whatever it publishes, so this call is
+  # the one that matters only where nothing will publish: a collection named
+  # directly, or the working tree under no placement. Running it against a
+  # handle as well would repeat work the publish is about to do anyway — and
+  # a failure here arrives after the transition is already written, so the
+  # unwind every earlier exit performs would discard the move this run just
+  # made. Every unwind above this point either precedes the write or follows
+  # one that did not land, which is what keeps them all correct.
+  if [[ -z "$token" || "$token" == "$PLACE_TOKEN_NONE" ]]; then
+    bash "$INDEX_SCRIPT" "$work" >/dev/null 2>&1 || {
+      echo "error: the transition is written but the index could not be" \
+           "regenerated; re-run index.sh before reading the collection" >&2
+      return 1
+    }
+  fi
 
   if [[ -n "$token" ]]; then
     # The one exit that does not unwind the door, and deliberately: a refused
