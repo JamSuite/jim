@@ -214,7 +214,7 @@ Do not prompt per field. Trust the user's edit-or-approve judgment on the whole 
 
 On `file`:
 
-1. Write the drafted **body** to a temp file with the Write tool — never inline untrusted body into a shell command (security 025 Finding 5).
+1. Write the drafted **body** to a temp file with the Write tool — never inline untrusted body into a shell command (security 025 Finding 5). Write **prose only**: the emitter opens the body with its own `## Description` heading, so repeating that heading files it twice and opening with a heading of your own leaves the Description section empty.
 2. File the issue through the single emitter, passing the timestamp resolved in step 4. Do **not** pass `--slug` or `--num` — omitting them lets the emitter resolve and reserve both, atomically, through the coordination allocator, as late in the flow as possible (spec 010 DD1/DD2):
    ```
    bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh --reviewed \
@@ -299,7 +299,7 @@ Empty batches are normal — an honest 0-candidate run is the right output when 
 
 **Writing a candidate — the emitter.** File each surviving candidate through the single issue-file emitter, `skills/issue/scripts/new.sh`, so the spec-017 template is materialized in exactly one place. For each candidate:
 
-1. Write the candidate **body** to a temp file with the **Write tool** — never inline untrusted body into a shell command (security 025 Finding 5).
+1. Write the candidate **body** to a temp file with the **Write tool** — never inline untrusted body into a shell command (security 025 Finding 5). Write **prose only**: the emitter opens the body with its own `## Description` heading, so repeating that heading files it twice and opening with a heading of your own leaves the Description section empty.
 2. Call the emitter (it resolves slug/num/timestamps, validates the id, encodes the fields, writes atomically, and prints `<slug>\t<path>`). A printed line means the file is at that path: under a branch placement the emitter writes into a staging copy and the line is held until the publish lands, so a publish that fails prints nothing on stdout and reports the line on stderr marked `not published`. Check the exit status — **3** is a placement conflict, and on it the ordinal is spent but nothing was filed. Declare the batch with **exactly one** of `--auto` (no human reviewed it) or `--reviewed` (one did) — see the auto-file rule below:
    ```
    bash ${CLAUDE_PLUGIN_ROOT}/skills/issue/scripts/new.sh (--auto | --reviewed) \

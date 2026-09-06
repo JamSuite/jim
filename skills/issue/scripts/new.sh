@@ -9,8 +9,9 @@
 # SECURITY MODEL
 #   - Untrusted body never reaches a shell command line. The caller writes the
 #     body to a temp file with the Write tool and passes --body-file; this
-#     script appends those bytes verbatim with `cat` (file→file copy). Body is
-#     never interpolated, `source`d, or `eval`d.
+#     script appends those bytes verbatim with `cat` (file→file copy) under a
+#     `## Description` heading it writes itself. Body is never interpolated,
+#     `source`d, or `eval`d.
 #   - Scalar fields are YAML-encoded so an untrusted --title/--labels/--origin
 #     cannot inject or alter frontmatter or cross the frontmatter/body
 #     boundary: --title and --origin are each escaped into a double-quoted
@@ -30,6 +31,11 @@
 #               [--slug <id>] [--num <int>] \
 #               [--created <ts>] [--updated <ts>] [--dir <issues_dir>] \
 #               (--auto | --reviewed)
+#
+#   --body-file holds prose only. This script opens the body with its own
+#   `## Description` heading, so a body file that repeats the heading produces
+#   two, and one that opens with a heading of its own leaves the Description
+#   section empty.
 #
 #   --auto and --reviewed are the caller's declaration about THIS batch:
 #   --auto says no human has looked at it (the quiet auto-file path),

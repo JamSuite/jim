@@ -33,6 +33,8 @@ updated: {YYYY-MM-DDThh:mm:ssZ}
 origin: "{origin}"
 ---
 
-## Description
-
-{body — may reference other issues via [[other-issue-slug]] wikilinks. Body content is parsed line-orientedly by skills/issue/scripts/index.sh; only structured wikilinks become graph edges, malformed link content is treated as prose (AC-I4).}
+{body — prose only. The emitter opens the body with `## Description`, so a
+caller that repeats the heading here files it twice. May reference other issues
+via [[other-issue-slug]] wikilinks. Body content is parsed line-orientedly by
+skills/issue/scripts/index.sh; only structured wikilinks become graph edges,
+malformed link content is treated as prose (AC-I4).}
