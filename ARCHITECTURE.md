@@ -1,6 +1,6 @@
 # Architecture — Jim
 
-*Last updated: 2026-08-28*
+*Last updated: 2026-09-06*
 
 > This document is generated and maintained by `/jim:arch`. Edit via the skill
 to preserve consistency.
@@ -86,8 +86,8 @@ jim/
 │   │       ├── render.sh               # stats/list/show/help dispatcher → stdout
 │   │       ├── place.sh                # Placement primitive: mode/run/begin/commit/abort (issue/011)
 │   │       ├── reconcile.sh            # realize pending provisional issue ordinals (platform/009)
-│   │       ├── backfill.sh             # fill-missing migrations: num | timestamp
-│   │       └── migrate.sh              # previewed transform migrations: prefix | schema
+│   │       ├── backfill.sh             # previewed fill-missing migrations: num | timestamp
+│   │       └── migrate.sh              # previewed transform migrations: prefix | schema | identity
 │   ├── conf/                # /jim:conf — config inspector + shared resolver script
 │   │   ├── SKILL.md
 │   │   └── scripts/
@@ -2066,7 +2066,21 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   ranking) — so the LLM owns semantic convergence while bash owns exact graph
   structure. `backfill.sh` hosts one-shot, opt-in "fill in missing data"
   migrations as named subcommands — calling it with no subcommand prints usage.
-  `backfill.sh num` assigns `num:` ordinals to legacy issues in
+  Both subcommands preview by default and mutate only under `--apply`: the run
+  builds its plan read-only, renders it, and prints a `PLAN-HASH` that
+  `--expect` compares against a freshly recomputed plan, refusing a stale
+  preview at exit 3. The gate sits at the `cmd_backfill` dispatch rather than
+  inside each subcommand — both take the same flags, and a second parse is a
+  second place for the preview default to be got wrong — while the refusal
+  itself is a single `gate_apply`, mirroring `migrate.sh`'s reasoning about its
+  own. The plan is keyed by issue id, not by path, which is what lets a hash
+  taken under one checkout match the same collection materialized under
+  another: a placement-routed run lands in a fresh directory each time, and a
+  path-keyed plan would read every such apply as drift. Routing follows the same
+  split — a preview routes `--read`, so previewing under a placement publishes
+  nothing, and the directory scan that decides whether the caller named a
+  collection skips the `--expect` operand rather than reading the hash as a
+  path. `backfill.sh num` assigns `num:` ordinals to legacy issues in
   `created:`-ascending order via per-file atomic `tmp + mv`, idempotent and
   announced; it is NOT wired into the verb flow (new issues get their ordinal at
   `add` time via `jimfile.sh next-num issue`). All scripts use `set -uo
@@ -2100,11 +2114,17 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   columns or land raw in an `INDEX.md` row — `index.sh` emits an Integrity
   Warning when it does. `backfill.sh timestamp` rewrites legacy date-only
   `created`/`updated` to a `T00:00:00Z` day-start placeholder atomically
-  (idempotent; malformed values skipped with a warning) — the second
-  `fill-missing` subcommand alongside `num`. It writes back **only a value the
-  normalizer minted**: a malformed field is left unchanged, and the skip fires
-  only when neither field changed, so reprinting the malformed one would have
-  put issue-file text back through the writer for nothing. The values reach
+  (idempotent) — the second `fill-missing` subcommand alongside `num`. Its
+  classifier is pure — it judges a value and mints the canonical form, warning
+  about nothing — so a malformed field is named by the preview rather than only
+  while rewriting. It writes back **only a value the classifier minted**: a
+  malformed field is never planned, and so is never reprinted through the
+  writer. That bounds what a plan row can carry, which is why the row shapes
+  differ: a normalize row's values are minted from a date-only match and so are
+  digits and dashes, while a malformed row carries no value at all, because a
+  tab in `created` would otherwise re-split the row. Rows for one issue are
+  consecutive, so a file with both fields planned takes one atomic rewrite
+  rather than two. The values reach
   `awk` through the environment rather than `-v`, which processes its operand as
   a string literal and expands escape sequences — a literal `\n` in an untrusted
   timestamp would otherwise become a real newline and open a second frontmatter
@@ -2124,8 +2144,9 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   / `index.sh` / `backfill.sh` under a `# SYNC(ts-shape)` comment, with a
   `tests/issues.sh` triplicate-identical case guarding against drift. As of spec
   023, a fourth script `migrate.sh` hosts transform-class migrations (vs
-  `backfill.sh`'s fill-missing) — `prefix`, `schema` and `identity`, each behind
-  the same preview / `PLAN-HASH` / `--apply` shape, and each carrying a failed
+  `backfill.sh`'s fill-missing) — `prefix`, `schema` and `identity`, behind the
+  same preview / `PLAN-HASH` / `--apply` shape both scripts share, and each
+  carrying a failed
   `INDEX.md` regeneration into its exit status rather than reporting success
   over a stale index: `migrate.sh prefix` re-derives every issue id to the
   active scheme behind a read-only preview + an explicit `prefix --apply` gate.
