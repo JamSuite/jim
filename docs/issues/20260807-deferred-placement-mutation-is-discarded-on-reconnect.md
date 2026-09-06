@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 The message says publication is deferred until the next reachable run. Nothing
 implements that, and the next reachable run destroys the deferred commit.
 

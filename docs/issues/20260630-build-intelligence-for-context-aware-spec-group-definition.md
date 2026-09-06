@@ -20,8 +20,6 @@ updated: 2026-07-04T00:34:02Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
-## Description
-
 ## Context
 
 Surfaced while brainstorming the `000-current` group-level master spec (see

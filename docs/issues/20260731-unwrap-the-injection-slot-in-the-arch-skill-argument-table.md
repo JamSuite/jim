@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/000-blueprint/spec.md
 
 ## Description
 
-## Description
-
 `/jim:verify sdlc` scored the `injection-set-rhs` invariant (critical) a partial.
 Every gate site across the thirteen production skills in scope uses the canonical
 paren-free form — `SET <name> = !`bash …`` bound, then compared in a paren-free

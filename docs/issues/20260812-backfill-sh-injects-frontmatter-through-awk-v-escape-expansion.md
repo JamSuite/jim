@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `backfill.sh` passes untrusted timestamp values through `awk -v`, whose
 escape-sequence processing turns a literal `\n` in an issue file into a real
 newline inside the frontmatter block.

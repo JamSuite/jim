@@ -20,8 +20,6 @@ updated: 2026-07-23T20:19:05Z
 origin: docs/brainstorms/20260720-claude-speak.md
 ---
 
-## Description
-
 ## Problem
 
 Cross-references in jim artifacts are often terse and unresolvable (`#13`, "spec 004", "Task 2"), costing the reader a lookup. `brainstorms/20260720-claude-speak.md` §4.0a adds a reference-convention table to the writing rule — the primary mechanism, since references are emitted inline while writing. This issue tracks the *tooling* that assists, filed separately because it touches `scripts/` and the claude-speak initiative is prose-only.

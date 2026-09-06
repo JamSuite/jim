@@ -20,8 +20,6 @@ updated: 2026-08-01T10:01:09Z
 origin: "20260801-c-prime-fix-handoff.md (retired; see 5e712bf)"
 ---
 
-## Description
-
 ## Context
 
 `sweep_citations` in `skills/spec/scripts/reconcile.sh` resolves four configured

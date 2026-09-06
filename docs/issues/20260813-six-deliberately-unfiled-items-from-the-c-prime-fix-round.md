@@ -22,8 +22,6 @@ origin: "20260801-c-prime-fix-handoff.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 The C′-fix round listed six items as "still unfiled — six, deliberately". They
 were never filed, and all six are still present. Verified against the tree on
 2026-08-13; line numbers below are current, and several drifted substantially

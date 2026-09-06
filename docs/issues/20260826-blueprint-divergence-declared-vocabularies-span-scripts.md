@@ -20,8 +20,6 @@ updated: 2026-08-27T11:21:07Z
 origin: "docs/specs/issue/000-blueprint/spec.md"
 ---
 
-## Description
-
 ## The invariant
 
 `declared-vocabularies` (high) in the `issue` group's blueprint: every vocabulary

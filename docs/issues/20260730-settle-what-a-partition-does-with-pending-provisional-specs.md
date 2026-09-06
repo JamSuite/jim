@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 
 ## Description
 
-## Description
-
 `skills/partition/scripts/jimpartition.sh` treats a reserved provisional
 identity two different ways, and neither was chosen deliberately.
 

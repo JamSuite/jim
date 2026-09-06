@@ -20,8 +20,6 @@ updated: 2026-08-27T09:00:28Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
-## Description
-
 ## What
 
 Six behaviors of the new read-view surfaces are correct by code trace but pinned

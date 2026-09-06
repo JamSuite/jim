@@ -22,8 +22,6 @@ origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 
 ## Description
 
-## Description
-
 The integrity classifier replays rename records to track which identity each
 claim currently names. Four defects live in that replay. None is reachable
 today — nothing in the tree emits a rename record, and the grammar is frozen

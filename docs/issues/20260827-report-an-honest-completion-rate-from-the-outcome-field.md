@@ -20,8 +20,6 @@ updated: 2026-08-27T20:10:31Z
 origin: "docs/specs/issue/015-epic-authoring-and-views/spec.md"
 ---
 
-## Description
-
 ## What
 
 `stats` reports completion as closed over total. That counts abandoned and

@@ -20,8 +20,6 @@ updated: 2026-09-06T07:46:04Z
 origin: "docs/specs/issue/000-blueprint/spec.md"
 ---
 
-## Description
-
 ## What
 
 `backfill.sh`'s `num` and `timestamp` subcommands rewrite every matching issue

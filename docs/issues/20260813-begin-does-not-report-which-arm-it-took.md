@@ -22,8 +22,6 @@ origin: "docs/specs/issue/011-issue-placement/review.md"
 
 ## Description
 
-## Description
-
 `place.sh` has two verbs a caller uses to decide how to reach the collection, and
 they answer different questions:
 

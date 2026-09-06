@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/000-blueprint/spec.md
 
 ## Description
 
-## Description
-
 `/jim:verify sdlc` scored the `agent-boundaries` invariant (high) a partial.
 Clauses 1 and 2 hold at every persona: each of the nine agents names the
 neighbouring role it must not usurp, tool grants match those declarations (pm,

@@ -20,8 +20,6 @@ updated: 2026-07-30T02:14:41Z
 origin: docs/specs/platform/009-provisional-reconcile/review.md
 ---
 
-## Description
-
 ## Problem
 
 `alloc_reconcile_realize` and `alloc_next_num_issue` compute the issue

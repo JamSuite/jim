@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `cmd_commit`'s `direct` arm re-resolves the collection path instead of reading
 what `begin` recorded, so a configuration change between the two steps publishes
 an empty collection to the shared branch at rc 0 while the agent's actual edits

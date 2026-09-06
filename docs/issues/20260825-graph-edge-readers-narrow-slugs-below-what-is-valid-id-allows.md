@@ -20,8 +20,6 @@ updated: 2026-08-27T21:17:27Z
 origin: "docs/specs/issue/014-read-view-filter-composition/research.md"
 ---
 
-## Description
-
 ## What
 
 Two readers of the index's Graph section match issue slugs with `[a-z0-9-]+`,

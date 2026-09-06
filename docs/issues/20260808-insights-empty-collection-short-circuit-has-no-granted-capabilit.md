@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `skills/issue/SKILL.md` § 8 step 2 directs the main agent to perform an action the
 skill grants no capability for, and the nearest granted substitute is the exact
 read step 3 forbids three lines later.

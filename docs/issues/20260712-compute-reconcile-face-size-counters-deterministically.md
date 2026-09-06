@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/016-partition-health/plan.md
 ---
 
-## Description
-
 ## Context
 
 Surfaced while building spec 044 (partition-health sensors). The reconcile

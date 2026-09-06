@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/005-context-map/spec.md
 ---
 
-## Description
-
 ## Context
 
 Surfaced during spec 033 (context map) scoping. The 033 creation flow reads

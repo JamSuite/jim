@@ -22,8 +22,6 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 The sanitizer fix is correct at the six sites it names — ANSI SGR, OSC title-set,
 CR/BS overwrite and newline injection all reproduced pre-fix and neutralized
 post-fix. The corpus behind it was one file of sixteen. Twelve live sites in six

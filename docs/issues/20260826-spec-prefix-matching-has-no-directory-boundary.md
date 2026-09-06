@@ -20,8 +20,6 @@ updated: 2026-08-27T10:35:11Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
-## Description
-
 ## What
 
 `prefix_axis` composes `<root>/<value>` and tests the origin against it with a

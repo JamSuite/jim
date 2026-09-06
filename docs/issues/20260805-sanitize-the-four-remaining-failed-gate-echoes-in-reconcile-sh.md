@@ -22,8 +22,6 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `display_field` (`skills/spec/scripts/reconcile.sh:117`) carries the docstring
 "used on values whose whole reason for being printed is that they just failed a
 gate." It is called at exactly one of the five sites in its own file that match

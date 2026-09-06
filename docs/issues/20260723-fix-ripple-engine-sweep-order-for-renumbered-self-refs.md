@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/020-partition-merge/review.md
 ---
 
-## Description
-
 ## Problem
 
 The partition ripple-engine's `rewrite` materialize order runs `rewrite-identity`

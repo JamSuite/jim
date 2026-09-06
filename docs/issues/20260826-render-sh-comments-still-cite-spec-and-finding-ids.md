@@ -20,8 +20,6 @@ updated: 2026-08-26T10:26:25Z
 origin: "docs/specs/issue/014-read-view-filter-composition/plan.md"
 ---
 
-## Description
-
 ## What
 
 `skills/issue/scripts/render.sh` carries eight code comments citing spec, AC and

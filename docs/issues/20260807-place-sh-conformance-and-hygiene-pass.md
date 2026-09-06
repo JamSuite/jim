@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 A bundle of small conformance and hygiene gaps in `place.sh`, each individually
 minor. Grouped because they are one pass over one file.
 

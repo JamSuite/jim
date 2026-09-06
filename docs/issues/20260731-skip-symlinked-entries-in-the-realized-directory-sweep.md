@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
-## Description
-
 The realized-directory sweep applies two of the three guards from the
 `rewrite-identity` precedent it cites — worktree containment and relpath shape —
 but not tracked-ness, which it must drop to do its job at all (the directory is

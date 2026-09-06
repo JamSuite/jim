@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/017-coordinated-spec-identity/spec.md
 
 ## Description
 
-## Description
-
 `sdlc/017` (coordinated spec identity) realizes provisional specs into real
 ordinals and records each provisional→real mapping as a durable ledger
 redirect — deliberately mirroring the partition operations' `moved=`

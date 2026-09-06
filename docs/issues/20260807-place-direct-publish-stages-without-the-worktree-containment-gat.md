@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `place_direct_publish` stages a config-derived path with `git add -- "$prefix"`
 without first resolving it against `git rev-parse --show-toplevel`.
 

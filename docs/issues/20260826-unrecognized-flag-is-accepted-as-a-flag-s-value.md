@@ -20,8 +20,6 @@ updated: 2026-08-26T08:55:15Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
-## Description
-
 ## What
 
 `need_operand` refuses an operand that is one of *this file's own* option names,

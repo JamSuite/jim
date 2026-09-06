@@ -20,8 +20,6 @@ updated: 2026-08-25T10:51:05Z
 origin: "docs/specs/issue/014-read-view-filter-composition/spec.md"
 ---
 
-## Description
-
 ## What
 
 The read-view filter composition spec widens the collection's index to carry

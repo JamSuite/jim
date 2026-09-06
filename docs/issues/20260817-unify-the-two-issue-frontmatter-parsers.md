@@ -20,8 +20,6 @@ updated: 2026-08-18T05:15:56Z
 origin: "docs/specs/issue/012-schema-and-state-model/research.md"
 ---
 
-## Description
-
 ## Context
 
 The `issue` group parses issue frontmatter in **four independent places**, with

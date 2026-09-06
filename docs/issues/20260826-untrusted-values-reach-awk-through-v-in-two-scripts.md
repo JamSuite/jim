@@ -20,8 +20,6 @@ updated: 2026-08-27T09:48:37Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
-## Description
-
 ## What
 
 `migrate.sh` and `transition.sh` pass untrusted values into awk with `-v`.

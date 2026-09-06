@@ -22,8 +22,6 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 The provisional-grammar fixture pins the three `prov_id_boundary` shims verbatim
 and correctly. Its `PROV_PREFIX` half does not pin anything per-site.
 

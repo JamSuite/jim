@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 
 ## Description
 
-## Description
-
 The agent context blocks still describe a single spec-identity shape, predating
 coordinated identity:
 

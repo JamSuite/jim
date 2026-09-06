@@ -24,8 +24,6 @@ origin: docs/brainstorms/20260711-partition-migrate-capabilities.md
 > 044 as the `jimpartition.sh identity-check` name-mismatch sensor (foreign +
 > retired classes); shipped in `docs/specs/blueprint/016-partition-health/`.
 
-## Description
-
 ## Context
 
 The partition-migrate brainstorm resolved the code-move coupling fork for

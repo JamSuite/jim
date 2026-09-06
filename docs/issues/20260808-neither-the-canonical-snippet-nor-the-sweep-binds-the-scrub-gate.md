@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 The auto-file scrub gate's entire coupling is one caller-supplied flag. The two
 artifacts meant to carry that coupling — the canonical call-shape snippet and
 the mechanical sweep — both fail to bind it.

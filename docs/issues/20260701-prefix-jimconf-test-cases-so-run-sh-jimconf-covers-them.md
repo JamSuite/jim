@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/001-blueprint-spec/plan.md
 ---
 
-## Description
-
 ## What
 
 `run.sh <filter>` matches case *names* by substring; the convention is that each

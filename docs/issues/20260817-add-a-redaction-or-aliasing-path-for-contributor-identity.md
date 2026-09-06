@@ -20,8 +20,6 @@ updated: 2026-08-18T06:39:28Z
 origin: "docs/specs/issue/012-schema-and-state-model/spec.md"
 ---
 
-## Description
-
 ## Context
 
 Spec `issue/012` records a contributor identity on every issue — `filed-by` at

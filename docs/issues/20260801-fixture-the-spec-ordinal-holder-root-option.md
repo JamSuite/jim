@@ -22,8 +22,6 @@ origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Description
 
-## Description
-
 `cmd_spec_ordinal_holder` gained a `--root <dir>` option
 (`skills/file/scripts/jimfile.sh:528-568`) so a caller carrying its own specs dir
 can gate against the tree it is actually guarding rather than the configured one.

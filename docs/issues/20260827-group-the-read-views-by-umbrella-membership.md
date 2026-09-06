@@ -20,8 +20,6 @@ updated: 2026-08-27T20:10:36Z
 origin: "docs/specs/issue/015-epic-authoring-and-views/spec.md"
 ---
 
-## Description
-
 ## What
 
 The read views can filter by umbrella membership but cannot group by it. A

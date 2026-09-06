@@ -20,8 +20,6 @@ updated: 2026-08-18T22:03:32Z
 origin: "docs/specs/issue/012-schema-and-state-model/plan.md"
 ---
 
-## Description
-
 ## Context
 
 The collection conversion recovers each issue's filer from the commit that

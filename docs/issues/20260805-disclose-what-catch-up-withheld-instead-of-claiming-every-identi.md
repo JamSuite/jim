@@ -22,8 +22,6 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `catch-up` prints "nothing to append — every tree identity already has a record"
 while silently withholding identities the sweep just reported as missing.
 

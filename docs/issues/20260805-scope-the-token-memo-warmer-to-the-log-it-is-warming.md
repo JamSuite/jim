@@ -22,8 +22,6 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `alloc_warm_token_memo` applies the full cross-kind grammar case-list to both
 logs, so records whose kind cannot belong to the log they sit in — inert to every
 consumer — still cost one `bash jimfile.sh valid-id` fork per distinct token.

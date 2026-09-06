@@ -22,8 +22,6 @@ origin: conversation
 
 ## Description
 
-## Description
-
 Claude Code v2.1.219 began injecting a system-prompt section — registered
 internally as `heron_brook` — whose payload is:
 

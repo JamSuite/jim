@@ -20,8 +20,6 @@ updated: 2026-08-26T08:54:30Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
-## Description
-
 ## What
 
 A filter flag whose operand is present but yields no alternative — `,,,`,

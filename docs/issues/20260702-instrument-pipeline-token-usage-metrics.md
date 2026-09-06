@@ -20,8 +20,6 @@ updated: 2026-07-02T10:26:11Z
 origin: conversation
 ---
 
-## Description
-
 ## Context
 
 The ledger already records per-stage `started`/`finished` epochs (from which

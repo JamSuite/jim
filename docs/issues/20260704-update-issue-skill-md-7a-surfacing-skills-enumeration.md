@@ -20,8 +20,6 @@ updated: 2026-08-12T19:49:07Z
 origin: docs/specs/blueprint/006-contract-graph/review.md
 ---
 
-## Description
-
 ## Context
 
 `skills/issue/SKILL.md` § 7a (Candidate-batch contract) enumerates "the

@@ -20,8 +20,6 @@ updated: 2026-08-26T20:47:54Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
-## Description
-
 ## What
 
 `filter_axis_add` trims leading and trailing whitespace from every filter value,

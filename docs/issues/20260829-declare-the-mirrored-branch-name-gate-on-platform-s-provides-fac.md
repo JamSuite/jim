@@ -22,8 +22,6 @@ origin: "BLUEPRINT.md"
 
 ## Description
 
-## Description
-
 The contract-graph reconcile classifies `issue` → `platform`
 "valid-branch-shape" as a **leak**: the `issue` group requires a surface that
 `platform`'s provides face never declares.

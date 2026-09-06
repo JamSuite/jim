@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
-## Description
-
 ## Context
 
 Spec 030's update mode folds unconditionally: it treats the change diff as

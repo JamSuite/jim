@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `place.sh`'s header and `usage()` still misdescribe the script in four places, and
 two git calls still lack the option-injection guard — all of them items a closed
 conformance issue's resolution note claims were fixed.

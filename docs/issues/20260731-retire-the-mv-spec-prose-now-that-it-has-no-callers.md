@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
-## Description
-
 `mv-spec` has **zero** production callers. `/jim:spec` migrated to `mv-spec-id`
 (`skills/spec/SKILL.md:216`), and the partition operations rename spec directories
 through `jimledger.sh rename-tracked` / `move-spec-dir`. The only remaining

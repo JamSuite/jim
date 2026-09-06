@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 
 ## Description
 
-## Description
-
 `skills/issue/scripts/index.sh` installs `trap 'rm -f "$tmpfile"' EXIT INT TERM`
 inside the function that declares `tmpfile` as a `local`. On the atomic-rename
 failure path the function returns before clearing the trap, so the trap body runs

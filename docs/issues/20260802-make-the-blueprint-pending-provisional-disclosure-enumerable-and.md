@@ -22,8 +22,6 @@ origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Description
 
-## Description
-
 blueprint/025 added an instruction at `skills/blueprint/SKILL.md:63`: a pending
 provisional spec directory is excluded from synthesis, and the run's summary
 must name each excluded identity rather than omitting it silently. The intent is

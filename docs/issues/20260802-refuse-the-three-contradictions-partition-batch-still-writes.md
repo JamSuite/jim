@@ -22,8 +22,6 @@ origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Description
 
-## Description
-
 `jimalloc.sh partition-batch` accepts three pair shapes that are contradictions.
 All three reproduced.
 

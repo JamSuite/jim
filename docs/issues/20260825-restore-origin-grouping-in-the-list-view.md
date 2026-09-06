@@ -20,8 +20,6 @@ updated: 2026-08-25T10:50:58Z
 origin: "docs/specs/issue/014-read-view-filter-composition/spec.md"
 ---
 
-## Description
-
 ## What
 
 `issue_list_group=origin` silently degrades to a flat, ungrouped list.

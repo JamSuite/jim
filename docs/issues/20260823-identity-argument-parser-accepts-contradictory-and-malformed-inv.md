@@ -22,8 +22,6 @@ origin: "docs/specs/issue/013-recorded-identity-schemes/review.md"
 
 ## Description
 
-## Description
-
 `migrate.sh identity`'s argument parser accepts two invocations that mean
 something other than what was typed, and reports neither.
 

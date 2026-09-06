@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: conversation
 ---
 
-## Description
-
 ## Resolution
 
 Shipped as **spec 039** (`docs/specs/blueprint/011-graph-health/`, 2026-07-07), which

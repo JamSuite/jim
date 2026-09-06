@@ -22,8 +22,6 @@ origin: "docs/specs/jim/000-blueprint/spec.md"
 
 ## Description
 
-## Description
-
 `/jim:verify` grades an offered issue by the **rule's** criticality, never by the
 **breach's** severity. `skills/verify/SKILL.md:267`:
 

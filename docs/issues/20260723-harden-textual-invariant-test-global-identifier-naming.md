@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/022-blueprint-present-tense/plan.md
 ---
 
-## Description
-
 ## Context
 
 During spec 050's build, `tests/presenttense.sh` was authored by mirroring

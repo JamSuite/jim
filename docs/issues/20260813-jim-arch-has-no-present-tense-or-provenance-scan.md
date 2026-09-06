@@ -22,8 +22,6 @@ origin: "20260805-b-double-prime-exit-handoff.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `/jim:blueprint` runs a present-tense scan and a provenance scan before every
 write, with a dedicated reference for each:
 

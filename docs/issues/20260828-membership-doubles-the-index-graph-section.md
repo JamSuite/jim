@@ -20,10 +20,6 @@ updated: 2026-08-28T05:17:23Z
 origin: "docs/specs/issue/015-epic-authoring-and-views/plan.md"
 ---
 
-## Description
-
-## Description
-
 ## What
 
 Every umbrella membership renders twice in `INDEX.md`: once as a `part-of` edge

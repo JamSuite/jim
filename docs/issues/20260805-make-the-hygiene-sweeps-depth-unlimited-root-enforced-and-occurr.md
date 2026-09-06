@@ -22,8 +22,6 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `tests/scripthygiene.sh` contains one sweep that gets the corpus question right
 sitting beside three that do not, and the locale sweep added this build cannot
 count.

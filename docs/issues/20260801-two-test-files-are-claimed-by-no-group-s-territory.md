@@ -22,8 +22,6 @@ origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Description
 
-## Description
-
 Two test files are claimed by **no group's** declared territory in `BLUEPRINT.md`:
 
 | File | Tests | Claimed by |

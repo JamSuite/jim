@@ -22,8 +22,6 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `tests/docsurfaces.sh`, added this build as the durable half of the doc-drift
 work, has a corpus hole and a derivation hole.
 

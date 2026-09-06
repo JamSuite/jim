@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/023-partition-ref-sweep/plan.md
 ---
 
-## Description
-
 ## Discovery
 
 ARCHITECTURE.md's "Partition extraction core" description asserts a mechanical

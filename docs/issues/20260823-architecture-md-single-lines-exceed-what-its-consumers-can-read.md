@@ -20,8 +20,6 @@ updated: 2026-08-25T07:53:58Z
 origin: "ARCHITECTURE.md"
 ---
 
-## Description
-
 ## Context
 `ARCHITECTURE.md` is a locked constraint: `/jim:plan`, `/jim:sec`,
 `/jim:research`, `/jim:blueprint` and `/jim:build` all read it before reasoning,

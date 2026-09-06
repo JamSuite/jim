@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/002-blueprint-update/review.md
 ---
 
-## Description
-
 ## Context
 
 Surfaced by the spec 030 post-build review (Finding 5). Low risk — the allowlist

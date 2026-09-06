@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 Three defects in how the entry scripts classify their own arguments before
 routing, plus one contract-timing problem. Grouped because the fixes are all in
 the same few lines of routing code.

@@ -20,8 +20,6 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/003-blueprint-update-guard/review.md
 ---
 
-## Description
-
 ## Context
 
 Spec 031's fix-only edge has `commit-blueprint` run when every proposed

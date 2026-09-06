@@ -22,8 +22,6 @@ origin: conversation
 
 ## Description
 
-## Description
-
 The spec template composes its first heading as `# {id} {title}`, so a spec
 scoped offline opens with the bare provisional token:
 

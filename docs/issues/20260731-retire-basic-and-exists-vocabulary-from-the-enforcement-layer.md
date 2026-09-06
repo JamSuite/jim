@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/000-blueprint/spec.md
 
 ## Description
 
-## Description
-
 `/jim:verify sdlc` scored the `sentinel-vocab` invariant (high) a partial. Every
 production gate is clean: all eleven workflow skills use the canonical
 `SET` / `IF…THEN` / `ELSE IF` / `ENDIF` vocabulary, no `!`-injection slot appears

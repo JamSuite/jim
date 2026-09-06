@@ -20,8 +20,6 @@ updated: 2026-07-02T07:25:25Z
 origin: conversation
 ---
 
-## Description
-
 ## Context
 
 Filing an issue with its full long title as the slug subject produced

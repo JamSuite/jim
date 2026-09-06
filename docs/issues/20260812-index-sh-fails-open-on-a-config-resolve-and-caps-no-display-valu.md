@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `index.sh` reads the placement key with the fail-open posture `place.sh`
 explicitly rejects, and sanitizes the resulting branch name without the corpus's
 length cap.

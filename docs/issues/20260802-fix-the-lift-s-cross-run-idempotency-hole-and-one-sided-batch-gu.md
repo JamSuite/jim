@@ -22,8 +22,6 @@ origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Description
 
-## Description
-
 Two defects in `jimalloc.sh`'s `lift`, both in the batch guard. Reproduced.
 
 **1. The guard leaves no trace, so a second run writes what the first refused.**

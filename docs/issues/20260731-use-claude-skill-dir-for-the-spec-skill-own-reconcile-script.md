@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/000-blueprint/spec.md
 
 ## Description
 
-## Description
-
 `/jim:verify sdlc` scored the `allowed-tools-exact` invariant (critical) a
 partial. The first half holds across the whole territory — no in-scope skill
 declares a bare `Bash(bash *)`, and every declared clause mirrors its body's

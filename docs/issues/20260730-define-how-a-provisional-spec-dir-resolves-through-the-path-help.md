@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 
 ## Description
 
-## Description
-
 `jimfile.sh cmd_path` composes a spec-family path as
 `<specs>/<group>/<id>-<name>/<kind>.md`. A provisional spec's directory
 basename is the *whole* reserved token (`P-<date>-<slug>`) — there is no
