@@ -2,12 +2,12 @@
 id: 20260708-emitter-and-template-both-emit-the-issue-description-header
 num: 69
 title: "Emitter and template both emit the issue Description header"
-status: active
+status: closed
 priority: low
 type: issue
 filed-by: "jrko"
 claimed-by: "jrko"
-outcome: ""
+outcome: done
 labels: [issues-system, emitter, template]
 relations:
   blocks: []
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-07-08T20:37:32Z
-updated: 2026-09-06T06:22:36Z
+updated: 2026-09-06T09:10:13Z
 origin: conversation
 ---
 
@@ -119,3 +119,50 @@ on effort: the four root-cause fixes are small and one-time, but the backfill is
 a 267-file sweep gated behind another open issue, not the single hand edit
 originally implied. The malformed share also grows with every capture until the
 root cause is fixed, so the cheap half is worth doing ahead of the sweep.
+
+## Resolution — 2026-09-06 (done)
+
+All four bullets shipped, across three commits.
+
+**Root cause** (`0345a301`). The emitter keeps the heading and every other site
+yields: `issue-template.md` no longer carries `## Description`, both `SKILL.md`
+body-file steps and the emitter's own usage block state that `--body-file` is
+prose only. Emitting nothing new left the full-file parity fixture at
+`tests/issues.sh` green, which is what kept the fix small.
+
+**The sweep** (`c4b48df7`, `2d40ec2a`). Hosted as `backfill.sh heading` rather
+than a throwaway script — see the correction below. One rule covers both
+shapes: remove a `## Description` whose next non-blank line is another `##`
+heading. It iterates to a fixed point, since collapsing a pair can expose the
+survivor to the same condition, and it walks the frontmatter and code fences so
+a heading inside either stays content. A `###` beneath the heading is ordinary
+nesting and is spared.
+
+Applied to the collection: 267 of 421 records repaired — 177 keeping one
+heading, 90 left with none. The remaining 154 were already well-formed, nesting
+a `###`, or carrying no heading at all. The diff is the evidence: across all
+267 files it removes exactly two kinds of line, a blank and `## Description`,
+and adds none; `INDEX.md` did not change, because the index carries no body
+content.
+
+**What pins it:** ten cases in `tests/issues.sh`, each mutation-checked.
+Matching any heading level instead of `##` fails the subsection case; removing
+the fixed-point iteration fails six; dropping the fence walk fails the fenced
+case.
+
+**A correction to this record's own reasoning.** The scope section above called
+the sweep a one-time repair, and it is not. `0345a301` made the emitter the sole
+owner *by documentation only* — it still prepends unconditionally, so a caller
+that repeats the heading produces the doubled shape again. That is why the
+repair is a committed, tested verb rather than a script run once and discarded,
+and it is the argument that overturned the vehicle originally proposed here.
+
+**Left undone, deliberately.** The emitter could refuse to prepend when the body
+already opens with a `##` heading, which would close the class at the mechanism
+instead of at the instruction and make this verb genuinely historical. That is a
+change to the emitter's contract rather than a repair of the collection, so it
+is not folded in here.
+
+Also unchanged: the 2 records carrying no `## Description` at all. Both were
+hand-edited after filing, so restoring a heading would invent structure their
+authors removed.
