@@ -1492,6 +1492,23 @@ case_issues_backfill_plan_hash_is_checkout_independent() {
   assert_eq "same collection, same hash" "$(bf_hash num "$a")" "$(bf_hash num "$b")"
 }
 
+# AC: a TAB inside `created` cannot re-split the sort record and put issue text
+# where the slug belongs. The plan keys rows by slug and the applier composes a
+# path from that slug, so a re-split row addresses whatever the text names —
+# `../outside/victim` reaches out of the collection entirely.
+case_issues_backfill_num_tab_in_created_cannot_redirect_the_write() {
+  local dir outside before
+  dir=$(empty_dir backfill_tab_created)
+  outside="$(empty_dir backfill_tab_outside)"
+  printf -- '---\nkind: not-an-issue\n---\n\nimportant\n' > "$outside/victim.md"
+  before="$(cat "$outside/victim.md")"
+  write_issue "$dir" "20260101-evil" "$(printf 'title: "Evil"\nstatus: open\ncreated: 2026-01-01\t../%s/victim' "$(basename "$outside")")"
+  run_backfill num --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "nothing written outside the collection" "$before" "$(cat "$outside/victim.md")"
+  assert_eq   "the record is numbered in place" "1" "$(num_of "$dir" 20260101-evil)"
+}
+
 # ─── Section: backfill heading repair ────────────────────────────────────────
 
 # hd_dir <name> <slug> <body> — one issue with the given body, ready to sweep.

@@ -244,6 +244,31 @@ collapse_duplicate_headings() {
   ' "$1"
 }
 
+# plan_file <dir> <slug> — the collection path a plan row names, or empty when
+# the row cannot name one.
+#
+# Every applier composes its target from a slug the plan carries, so this is the
+# one place that decides whether a row may address a file at all. A slug holding
+# a path separator or a leading dot is refused: `..` would reach outside the
+# collection entirely, and a leading dot addresses the temp files this script
+# writes. The check belongs here rather than at each builder because containment
+# has to hold for whatever a row happens to contain, not only for the corruption
+# a builder was known to admit.
+#
+# No test reaches this refusal, and that is the honest state rather than a gap
+# to fill: every builder now derives its slug from a filename, and the one that
+# joined an untrusted value ahead of it strips the delimiters first, so no CLI
+# input composes a row this rejects. It is kept as the structural half of that
+# fix — the builders' guarantee is a property of each builder, and this is a
+# property of the write.
+plan_file() {
+  local dir="$1" slug="$2"
+  case "$slug" in
+    ""|.*|*/*) return 0 ;;
+  esac
+  printf '%s/%s.md' "$dir" "$slug"
+}
+
 # heading_count <file> — how many `## Description` headings the body carries.
 # `grep -c` prints its zero and exits 1 in the same breath, so the count is
 # already correct on the branch that looks like failure; a fallback here would
@@ -295,8 +320,8 @@ apply_heading_plan() {
   while IFS= read -r __row; do
     [[ -n "$__row" ]] || continue
     IFS=$'\t' read -r slug before after <<<"$__row"
-    file="$dir/$slug.md"
-    [[ -f "$file" ]] || continue
+    file="$(plan_file "$dir" "$slug")"
+    [[ -n "$file" && -f "$file" ]] || continue
     tmp="$(mktemp "$dir/.heading.tmp.XXXXXX")" || {
       echo "error: cannot create tmp file in '$dir'" >&2
       return 1
@@ -349,7 +374,15 @@ build_num_plan() {
     [[ "$base" == .* ]] && continue
     fm="$(frontmatter "$f")"
     [[ -n "$(num_of "$fm")" ]] && continue
+    # `created` is untrusted issue text and is used here as a sort key only —
+    # never written anywhere — so the delimiters are stripped rather than the
+    # value rejected: a record whose stamp is malformed still deserves an
+    # ordinal, and it still sorts by whatever it does carry. Leaving them in
+    # re-splits the record and puts issue text where the slug belongs, which
+    # the applier then composes into a path.
     created="$(fm_field "$fm" created)"
+    created="${created//$'\t'/ }"
+    created="${created//$'\n'/ }"
     list+="$created"$'\t'"${base%.md}"$'\n'
   done
   [[ -z "$list" ]] && return 0
@@ -385,8 +418,8 @@ apply_num_plan() {
   while IFS= read -r __row; do
     [[ -n "$__row" ]] || continue
     IFS=$'\t' read -r slug num <<<"$__row"
-    file="$dir/$slug.md"
-    [[ -f "$file" ]] || continue
+    file="$(plan_file "$dir" "$slug")"
+    [[ -n "$file" && -f "$file" ]] || continue
     tmp="$(mktemp "$dir/.backfill.tmp.XXXXXX")" || {
       echo "error: cannot create tmp file in '$dir'" >&2
       return 1
@@ -476,8 +509,9 @@ render_ts_plan() {
 # states and this function cannot see.
 rewrite_ts_file() {
   local dir="$1" slug="$2" new_c="$3" new_u="$4"
-  local f="$dir/$slug.md" tmp
-  [[ -f "$f" ]] || return 0
+  local f tmp
+  f="$(plan_file "$dir" "$slug")"
+  [[ -n "$f" && -f "$f" ]] || return 0
   tmp="$(mktemp "$dir/.normalize.tmp.XXXXXX")" || {
     echo "error: cannot create tmp file in '$dir'" >&2
     return 1
