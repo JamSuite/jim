@@ -1492,6 +1492,187 @@ case_issues_backfill_plan_hash_is_checkout_independent() {
   assert_eq "same collection, same hash" "$(bf_hash num "$a")" "$(bf_hash num "$b")"
 }
 
+# ─── Section: backfill heading repair ────────────────────────────────────────
+
+# hd_dir <name> <slug> <body> — one issue with the given body, ready to sweep.
+hd_dir() {
+  local dir
+  dir=$(empty_dir "$1")
+  write_issue "$dir" "$2" 'title: "T"
+status: open
+num: 1
+created: 2026-01-01T00:00:00Z' "$3"
+  printf '%s' "$dir"
+}
+
+# hd_count <dir> <slug> — surviving `## Description` headings.
+hd_count() {
+  grep -c '^## Description[[:space:]]*$' "$1/$2.md" 2>/dev/null
+  return 0
+}
+
+# AC: a body that repeated the emitter's heading keeps exactly one, and the
+# prose beneath it is untouched.
+case_issues_backfill_heading_collapses_a_doubled_lead() {
+  local dir
+  dir=$(hd_dir backfill_hd_double 20260101-double '## Description
+
+## Description
+
+Real prose here.')
+  run_backfill heading --apply "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_eq    "one heading survives" "1" "$(hd_count "$dir" 20260101-double)"
+  assert_match "prose preserved" 'Real prose here\.' "$(cat "$dir/20260101-double.md")"
+}
+
+# AC: a heading leading a body that opens with its own section is removed, and
+# that section becomes the lead.
+case_issues_backfill_heading_drops_a_lead_with_no_prose() {
+  local dir out
+  dir=$(hd_dir backfill_hd_empty 20260101-empty '## Description
+
+## Context
+
+Why this matters.')
+  run_backfill heading --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "no heading left" "0" "$(hd_count "$dir" 20260101-empty)"
+  out="$(awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2 && NF {print; exit}' "$dir/20260101-empty.md")"
+  assert_eq   "the body's own section leads" "## Context" "$out"
+}
+
+# AC: a `###` beneath the heading is ordinary nesting — a subsection OF
+# Description, not a sibling leaving it empty — and is left alone.
+case_issues_backfill_heading_spares_a_subsection() {
+  local dir before
+  dir=$(hd_dir backfill_hd_sub 20260101-sub '## Description
+
+### The gap
+
+Detail.')
+  before="$(cat "$dir/20260101-sub.md")"
+  run_backfill heading --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "file untouched" "$before" "$(cat "$dir/20260101-sub.md")"
+}
+
+# AC: a well-formed body is not a repair candidate.
+case_issues_backfill_heading_spares_a_well_formed_body() {
+  local dir before
+  dir=$(hd_dir backfill_hd_ok 20260101-ok '## Description
+
+Ordinary prose.')
+  before="$(cat "$dir/20260101-ok.md")"
+  run_backfill heading --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "file untouched" "$before" "$(cat "$dir/20260101-ok.md")"
+}
+
+# AC: the rule is applied to a fixed point. A body carrying both shapes at once
+# — two headings above its own section — ends with neither, where a single pass
+# would collapse the pair and leave the survivor leading nothing.
+case_issues_backfill_heading_cascades_to_a_fixed_point() {
+  local dir out
+  dir=$(hd_dir backfill_hd_cascade 20260101-cascade '## Description
+
+## Description
+
+## Context
+
+Body.')
+  run_backfill heading --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "both removed" "0" "$(hd_count "$dir" 20260101-cascade)"
+  out="$(awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2 && NF {print; exit}' "$dir/20260101-cascade.md")"
+  assert_eq   "the body's own section leads" "## Context" "$out"
+}
+
+# AC: a `## Description` inside a fenced block is content, not structure, and
+# survives even in the shape the rule would otherwise match.
+case_issues_backfill_heading_ignores_a_fenced_heading() {
+  local dir body
+  body='## Description
+
+Prose.
+
+```
+## Description
+
+## Context
+```'
+  dir=$(hd_dir backfill_hd_fence 20260101-fence "$body")
+  run_backfill heading --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "fenced copy survives alongside the real one" "2" \
+    "$(hd_count "$dir" 20260101-fence)"
+}
+
+# AC: the heading is located wherever it sits, not assumed to lead the body —
+# a record hand-edited to carry a resolution banner above it still repairs.
+case_issues_backfill_heading_finds_a_heading_below_a_banner() {
+  local dir
+  dir=$(hd_dir backfill_hd_banner 20260101-banner '> **Resolved 2026-01-01.**
+
+## Description
+
+## Context
+
+Body.')
+  run_backfill heading --apply "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_eq    "heading removed" "0" "$(hd_count "$dir" 20260101-banner)"
+  assert_match "banner preserved" 'Resolved 2026-01-01' "$(cat "$dir/20260101-banner.md")"
+}
+
+# AC: heading repair previews by default like every other subcommand.
+case_issues_backfill_heading_previews_by_default() {
+  local dir
+  dir=$(hd_dir backfill_hd_preview 20260101-double '## Description
+
+## Description
+
+Prose.')
+  run_backfill heading "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "renders the collapse" 'collapse.*20260101-double' "$OUT"
+  assert_match "prints a plan hash"   '^PLAN-HASH: [0-9]+$'       "$OUT"
+  assert_eq    "wrote nothing" "2" "$(hd_count "$dir" 20260101-double)"
+}
+
+# AC: a repaired body is no longer a candidate, so a second run plans nothing.
+case_issues_backfill_heading_is_idempotent() {
+  local dir
+  dir=$(hd_dir backfill_hd_idem 20260101-double '## Description
+
+## Description
+
+Prose.')
+  run_backfill heading --apply "$dir"
+  assert_exit "first apply rc" 0 "$RC"
+  run_backfill heading --apply "$dir"
+  assert_exit "second apply rc" 0 "$RC"
+  assert_eq   "still one heading" "1" "$(hd_count "$dir" 20260101-double)"
+  assert_eq   "second run announced nothing" "" "$OUT"
+}
+
+# AC: frontmatter is not body — a `## Description` could not appear there, but
+# the fence walk that establishes where the body starts is what guarantees it,
+# so a repair leaves every frontmatter field exactly as it found it.
+case_issues_backfill_heading_leaves_frontmatter_alone() {
+  local dir before
+  dir=$(hd_dir backfill_hd_fm 20260101-fm '## Description
+
+## Context
+
+Body.')
+  before="$(sed -n '/^---$/,/^---$/p' "$dir/20260101-fm.md")"
+  run_backfill heading --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "frontmatter identical" "$before" \
+    "$(sed -n '/^---$/,/^---$/p' "$dir/20260101-fm.md")"
+}
+
 # AC: index surfaces num: and created: in the Issues row (spec 019)
 case_issues_index_num_and_created_surface() {
   local dir

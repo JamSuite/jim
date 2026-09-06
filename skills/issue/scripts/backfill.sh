@@ -1,27 +1,36 @@
 #!/usr/bin/env bash
 #
-# skills/issue/scripts/backfill.sh — one-shot, opt-in migrations that fill in
-# missing issue data: `num` display ordinals and `created`/`updated`
-# second-resolution timestamps. Subcommands: `num`, `timestamp`.
+# skills/issue/scripts/backfill.sh — one-shot, opt-in migrations that repair
+# issue data the collection carries wrong: `num` display ordinals and
+# `created`/`updated` second-resolution timestamps a record lacks, and a body
+# lead the emitter's heading duplicated or left empty. Subcommands: `num`,
+# `timestamp`, `heading`.
 #
 # PURPOSE
-#   Assign a `num:` display ordinal to every issue file that lacks one,
-#   in `created:`-ascending order, continuing from the collection's current
-#   max ordinal. This is a ONE-TIME migration for the `num:` field
-#   change — it is NOT wired into the /jim:issue verb flow. New issues get
-#   their ordinal at creation (jimfile.sh next-num issue); this script only
-#   numbers the legacy collection, once, up-front (before normal use), so
-#   ordinals stay ascending with creation.
+#   Opt-in repairs for data a collection carries wrong. None is wired into the
+#   /jim:issue verb flow — an operator runs one deliberately.
+#
+#   `num` assigns a display ordinal to every issue lacking one, in
+#   `created:`-ascending order, continuing from the collection's current max.
+#   New issues get theirs at creation (jimfile.sh next-num issue), so this only
+#   numbers a legacy collection, up-front, keeping ordinals ascending with
+#   creation. `timestamp` canonicalizes legacy date-only stamps. `heading`
+#   removes a `## Description` the emitter's prepend duplicated, or left
+#   leading a body that opens with a section of its own.
+#
+#   The first two repair a one-time state; `heading` repairs a recurring one.
+#   The emitter prepends its heading unconditionally, so a caller that repeats
+#   it produces the doubled shape again — callers are told to pass prose only,
+#   not prevented from doing otherwise.
 #
 #   Each file is rewritten via a per-file atomic tmp + mv so a partial run
-#   never corrupts an issue file; the migration is idempotent, so a retry
-#   completes any unfinished work. All other file content is preserved —
-#   `num:` is inserted as the first frontmatter field, nothing else changes.
-#   Line-oriented only; never `source`/`eval`s an issue file.
+#   never corrupts an issue file; every subcommand is idempotent, so a retry
+#   completes any unfinished work. Whatever the plan did not name is preserved
+#   byte for byte. Line-oriented only; never `source`/`eval`s an issue file.
 #
 # PREVIEW GATE
-#   Both subcommands rewrite the whole collection, so both preview by default
-#   and mutate only under --apply. The preview builds its plan read-only,
+#   Every subcommand rewrites the whole collection, so each previews by default
+#   and mutates only under --apply. The preview builds its plan read-only,
 #   renders it, and prints a PLAN-HASH; passing that hash back as --expect
 #   refuses the apply if the collection moved in between, so the plan that runs
 #   is the plan that was read.
@@ -44,6 +53,13 @@
 #     previews and writes nothing. Idempotent — already-timestamped values
 #     untouched; malformed values named in the preview and left alone. With
 #     --apply, prints "Normalized N issue(s) ..." iff N>0; else silent.
+#   bash backfill.sh heading [--apply] [--expect <hash>] [<issues_dir>]
+#     Remove a `## Description` heading the emitter's prepend duplicated, or
+#     left leading a body that opens with a section of its own. A `###`
+#     beneath the heading is ordinary nesting and is left alone. Without
+#     --apply, previews and writes nothing. Idempotent — a repaired body no
+#     longer matches. With --apply, prints "Repaired the body lead of N
+#     issue(s)." iff N>0; else silent.
 #   issues_dir default: jimconf.sh get issues
 #
 # EXIT CODES
@@ -168,6 +184,141 @@ classify_ts() {
   else
     printf 'malformed\t%s' "$v"
   fi
+}
+
+# strip_empty_headings <file> — print <file> with every vestigial `## Description`
+# heading removed, and nothing else changed.
+#
+# One rule covers both malformed shapes the emitter's unconditional prepend
+# produces: remove a `## Description` whose next non-blank line is another
+# `##` heading, along with the blanks between them. A caller that repeated the
+# heading leaves two in a row, so the first is dropped and one survives; a
+# caller that opened its body with a section of its own leaves the heading
+# leading nothing, so it is dropped and the body's own section leads. A `###`
+# beneath the heading is ordinary nesting and is deliberately not matched.
+#
+# The rule is applied to a fixed point rather than once, because collapsing a
+# doubled heading can expose the survivor to the same condition — a body of
+# `## Description` / `## Description` / `## Context` is both shapes at once.
+#
+# Reads the frontmatter fence and code fences so a `## Description` written
+# inside either is left alone: the frontmatter is not body, and a fenced line
+# is content rather than structure.
+strip_empty_headings() {
+  awk '
+    { L[NR] = $0 }
+    END {
+      fm = 0
+      for (i = 1; i <= NR; i++) {
+        if (fm < 2 && L[i] == "---") { fm++; body[i] = 0; continue }
+        body[i] = (fm >= 2)
+      }
+      changed = 1
+      while (changed) {
+        changed = 0
+        fence = 0
+        for (i = 1; i <= NR; i++) {
+          if (del[i] || !body[i]) continue
+          if (L[i] ~ /^```/) { fence = !fence; continue }
+          if (fence) continue
+          if (L[i] !~ /^## Description[ \t]*$/) continue
+          j = i + 1
+          while (j <= NR && (del[j] || L[j] ~ /^[ \t]*$/)) j++
+          if (j <= NR && L[j] ~ /^## /) {
+            del[i] = 1
+            for (k = i + 1; k < j; k++) del[k] = 1
+            changed = 1
+          }
+        }
+      }
+      for (i = 1; i <= NR; i++) if (!del[i]) print L[i]
+    }
+  ' "$1"
+}
+
+# heading_count <file> — how many `## Description` headings the body carries.
+# `grep -c` prints its zero and exits 1 in the same breath, so the count is
+# already correct on the branch that looks like failure; a fallback here would
+# print a second zero rather than a substitute for a missing one.
+heading_count() {
+  grep -c '^## Description[[:space:]]*$' "$1" 2>/dev/null
+  return 0
+}
+
+# build_heading_plan <dir> — emit one TAB row per issue whose lead changes:
+#   <slug>\t<before>\t<after>
+# Both counts are integers this script computed, so no issue text reaches the
+# row. Pure read: transforms into memory, writes nothing.
+build_heading_plan() {
+  local dir="$1" f base slug before after
+  for f in "$dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ "$base" == "$INDEX_FILENAME" ]] && continue
+    [[ "$base" == .* ]] && continue
+    before="$(heading_count "$f")"
+    (( before > 0 )) || continue
+    after="$(strip_empty_headings "$f" | grep -c '^## Description[[:space:]]*$')"
+    (( before == after )) && continue
+    printf '%s\t%s\t%s\n' "${base%.md}" "$before" "$after"
+  done
+}
+
+# render_heading_plan <plan-rows> — human preview + summary counts.
+render_heading_plan() {
+  local plan="$1" slug before after collapses=0 drops=0 __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    IFS=$'\t' read -r slug before after <<<"$__row"
+    # Labelled by outcome, and the counts are shown, so a body that carried two
+    # headings above its own section — collapsed and then dropped — reads as the
+    # `2 -> 0` it is rather than as either half alone.
+    if (( after > 0 )); then
+      printf '  collapse   %s  (%s -> %s)\n' "$slug" "$before" "$after"
+      collapses=$((collapses+1))
+    else
+      printf '  drop       %s  (%s -> %s)\n' "$slug" "$before" "$after"
+      drops=$((drops+1))
+    fi
+  done <<<"$plan"
+  printf '\n  %d keep a heading · %d left with none\n' "$collapses" "$drops"
+}
+
+# apply_heading_plan <dir> <plan> [<expect>] — rewrite each planned file through
+# the same transform the plan was built from. Per-file atomic tmp + mv;
+# idempotent, since a repaired body no longer matches the rule.
+apply_heading_plan() {
+  local dir="$1" plan="$2" expect="${3:-}"
+  gate_apply "$expect" "$plan" || return 3
+
+  local repaired=0 slug before after file tmp __row
+  while IFS= read -r __row; do
+    [[ -n "$__row" ]] || continue
+    IFS=$'\t' read -r slug before after <<<"$__row"
+    file="$dir/$slug.md"
+    [[ -f "$file" ]] || continue
+    tmp="$(mktemp "$dir/.heading.tmp.XXXXXX")" || {
+      echo "error: cannot create tmp file in '$dir'" >&2
+      return 1
+    }
+    if strip_empty_headings "$file" > "$tmp"; then
+      mv "$tmp" "$file" || {
+        rm -f "$tmp"
+        echo "error: atomic rename failed for '$file'" >&2
+        return 1
+      }
+    else
+      rm -f "$tmp"
+      echo "error: rewrite failed for '$file'" >&2
+      return 1
+    fi
+    repaired=$(( repaired + 1 ))
+  done <<<"$plan"
+
+  if (( repaired > 0 )); then
+    printf 'Repaired the body lead of %d issue(s).\n' "$repaired"
+  fi
+  return 0
 }
 
 # build_num_plan <dir> — emit one TAB row per issue that will be numbered:
@@ -402,7 +553,11 @@ usage() {
     '      Rewrite legacy date-only created/updated to a day-start UTC timestamp' \
     '      (YYYY-MM-DDT00:00:00Z placeholder). Idempotent; announces a count iff any.' \
     '' \
-    '  Both subcommands preview by default and write only under --apply. The' \
+    '  bash backfill.sh heading [--apply] [--expect <hash>] [<issues_dir>]' \
+    '      Remove a `## Description` heading that was duplicated, or that leads a' \
+    '      body opening with its own section. A `###` beneath it is left alone.' \
+    '' \
+    '  Every subcommand previews by default and writes only under --apply. The' \
     '  preview prints a PLAN-HASH; passing it back as --expect refuses the apply' \
     '  if the collection changed in between (exit 3).' \
     '' \
@@ -427,22 +582,25 @@ cmd_backfill() {
 
   local plan title
   case "$verb" in
-    num)       plan="$(build_num_plan "$dir")"; title="Display-ordinal plan" ;;
-    timestamp) plan="$(build_ts_plan "$dir")";  title="Timestamp normalization plan" ;;
+    num)       plan="$(build_num_plan "$dir")";     title="Display-ordinal plan" ;;
+    timestamp) plan="$(build_ts_plan "$dir")";      title="Timestamp normalization plan" ;;
+    heading)   plan="$(build_heading_plan "$dir")"; title="Body-lead repair plan" ;;
   esac
 
   if (( apply )); then
     case "$verb" in
-      num)       apply_num_plan "$dir" "$plan" "$expect" ;;
-      timestamp) apply_ts_plan  "$dir" "$plan" "$expect" ;;
+      num)       apply_num_plan     "$dir" "$plan" "$expect" ;;
+      timestamp) apply_ts_plan      "$dir" "$plan" "$expect" ;;
+      heading)   apply_heading_plan "$dir" "$plan" "$expect" ;;
     esac
     return $?
   fi
 
   printf '%s — %s\n\n' "$title" "$dir"
   case "$verb" in
-    num)       render_num_plan "$plan" ;;
-    timestamp) render_ts_plan  "$plan" ;;
+    num)       render_num_plan     "$plan" ;;
+    timestamp) render_ts_plan      "$plan" ;;
+    heading)   render_heading_plan "$plan" ;;
   esac
   printf '\nPLAN-HASH: %s\n' "$(plan_hash "$plan")"
   git_note "$dir"
@@ -469,7 +627,7 @@ route_placement() {
     case "$arg" in
       --apply)          apply=1 ;;
       --expect)         skip_next=1 ;;
-      num|timestamp|-*) ;;
+      num|timestamp|heading|-*) ;;
       *)                dir="$arg" ;;
     esac
   done
@@ -492,13 +650,13 @@ main() {
     shift 2
   fi
   case "${1:-}" in
-    num|timestamp) route_placement "$place_token" "$@" ;;
+    num|timestamp|heading) route_placement "$place_token" "$@" ;;
   esac
   case "${1:-}" in
-    num|timestamp)     cmd_backfill "$@" ;;
+    num|timestamp|heading) cmd_backfill "$@" ;;
     ""|-h|--help|help) usage ;;
     *)
-      echo "error: unknown subcommand '$1' (expected: num | timestamp)" >&2
+      echo "error: unknown subcommand '$1' (expected: num | timestamp | heading)" >&2
       usage >&2
       return 2
       ;;
