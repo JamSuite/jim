@@ -22,6 +22,8 @@ origin: docs/specs/blueprint/025-rename-redirect-record-emission/spec.md
 
 ## Description
 
+## Description
+
 The `sdlc` blueprint's Requires face declares no `platform.jimalloc` entry,
 though `/jim:spec` consumes the allocator directly — identity binding via
 `allocate spec` / `peek spec`, and realization via the reconcile path. The

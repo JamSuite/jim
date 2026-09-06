@@ -20,6 +20,8 @@ updated: 2026-08-26T21:23:44Z
 origin: "docs/specs/issue/014-read-view-filter-composition/plan.md"
 ---
 
+## Description
+
 ## What
 
 An issue whose `depends-on` names a slug the collection does not hold reads as

@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `tests/place.sh` — 1400 lines, the `issue` group's largest test file — is not
 inside any group's declared territory in `BLUEPRINT.md`.
 

@@ -22,6 +22,8 @@ origin: "docs/specs/issue/000-blueprint/spec.md"
 
 ## Description
 
+## Description
+
 The blueprint invariant `identity-validated-before-record` states that a
 recorded identity "clears one positively enumerated character set before it is
 written, and a value outside it is refused exactly as an absent one." It no

@@ -20,6 +20,8 @@ updated: 2026-08-05T02:25:13Z
 origin: docs/specs/blueprint/025-rename-redirect-record-emission
 ---
 
+## Description
+
 ## Divergence
 
 **Invariant:** `partition-registry-boundary` (critical) — "The extractor registry

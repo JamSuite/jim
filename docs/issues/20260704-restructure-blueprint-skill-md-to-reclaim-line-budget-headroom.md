@@ -82,6 +82,8 @@ detail (U3a presentation, U3b issue offer) was extracted to
 497 to 440 lines; the subsequent 036 behavioral wiring left it at 455,
 with ~45 lines of headroom under the 500-line ceiling.
 
+## Description
+
 ## Context
 
 Spec 034's reconcile arm brought `skills/blueprint/SKILL.md` to 497/500

@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 A read verb given two arguments opts out of placement on argument *count* alone,
 so `/jim:issue list open high` reads a directory named `high` instead of the
 destination — and creates it.

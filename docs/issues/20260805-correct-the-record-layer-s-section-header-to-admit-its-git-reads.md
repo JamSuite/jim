@@ -22,6 +22,8 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 Issue #216's proposed action was two clauses joined by "then": move the sanitizer
 into the record layer, **"then make the section header state what is true. A
 header that describes a purity the code does not have is worse than no header,

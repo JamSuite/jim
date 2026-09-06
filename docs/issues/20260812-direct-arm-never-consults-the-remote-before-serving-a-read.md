@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 When the destination branch is the checked-out one, reads never consult the
 remote and never say so — so the freshness guarantee does not hold on that arm.
 

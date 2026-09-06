@@ -22,6 +22,8 @@ origin: docs/specs/issue/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 `new.sh` composes an issue path and stats it **before** the id clears the
 validator, breaking the ordering its own comment two lines below asserts.
 

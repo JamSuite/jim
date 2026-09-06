@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/007-verify-engine/review.md
 ---
 
+## Description
+
 ## Context
 
 From the spec 035 post-build review (`review.md` Findings 3–6). A bundle of

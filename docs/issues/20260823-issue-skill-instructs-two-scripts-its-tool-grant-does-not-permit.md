@@ -22,6 +22,8 @@ origin: "docs/specs/issue/012-schema-and-state-model/spec.md"
 
 ## Description
 
+## Description
+
 The `issue` skill's body instructs running two scripts its `allowed-tools`
 grant does not permit. Every lifecycle verb and every collection migration is
 documented but unauthorized.

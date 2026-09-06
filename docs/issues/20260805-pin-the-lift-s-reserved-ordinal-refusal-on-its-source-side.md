@@ -22,6 +22,8 @@ origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 `alloc_lift_state`'s reserved-ordinal gate refuses a zero ordinal on **three**
 branches — spec source, spec destination, and realize destination
 (`jimalloc.sh:3749-3752`). Its comment says so explicitly:

@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 The `atomic-index-write` invariant (medium) is judged **violated** on two counts.
 Clause 1 (tmp+mv atomicity) holds at all seven writer sites; clause 2 ("a failed
 run leaves the previous file untouched") does not.

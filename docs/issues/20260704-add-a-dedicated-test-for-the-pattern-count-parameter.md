@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/007-verify-engine/plan.md
 ---
 
+## Description
+
 ## Context
 
 Surfaced during the spec 035 build (`/jim:verify`). `jimverify.sh`'s

@@ -20,6 +20,8 @@ updated: 2026-08-01T10:01:09Z
 origin: "20260801-c-prime-fix-handoff.md (retired; see 5e712bf)"
 ---
 
+## Description
+
 ## Context
 
 The citation sweep's awk rewrite is guarded — `skills/spec/scripts/reconcile.sh`

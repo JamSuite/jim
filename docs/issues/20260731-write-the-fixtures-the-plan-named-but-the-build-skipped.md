@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 Two fixtures named in the plan's task breakdown were never written.
 
 **"Forced no-op rewrite fails loudly."** No test asserts either realizer's

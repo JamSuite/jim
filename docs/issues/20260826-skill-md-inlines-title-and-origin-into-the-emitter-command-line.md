@@ -22,6 +22,8 @@ origin: "docs/specs/issue/000-blueprint/spec.md"
 
 ## Description
 
+## Description
+
 `skills/issue/SKILL.md` documents an asymmetry its own scripts contradict. An
 issue body is routed through a temp file specifically so that it never reaches
 a shell command line:

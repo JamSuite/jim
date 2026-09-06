@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `cmd_begin` swallows the containment gate's refusal:
 
 ```bash

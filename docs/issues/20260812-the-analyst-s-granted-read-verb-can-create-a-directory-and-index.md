@@ -22,6 +22,8 @@ origin: docs/specs/issue/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 The issue-analyst's one granted read verb can create a directory and write an
 `INDEX.md` into it, so the agent definition's claim that its write capability is
 absent is false.

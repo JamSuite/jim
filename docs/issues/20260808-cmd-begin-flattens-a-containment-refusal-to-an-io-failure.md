@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `cmd_begin` reclassifies a containment refusal (rc 2) as an IO/engine failure
 (rc 1), where its sibling call site preserves the code.
 

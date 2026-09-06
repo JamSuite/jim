@@ -20,6 +20,8 @@ updated: 2026-08-26T11:22:53Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
+## Description
+
 ## What
 
 `index.sh` and `render.sh` now classify a record's lifecycle state at different

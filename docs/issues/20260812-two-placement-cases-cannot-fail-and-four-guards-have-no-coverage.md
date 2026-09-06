@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 Two placement cases pass regardless of the guard they name, and four guards have
 no coverage at all — one of them silently load-bearing for rewrite detection.
 

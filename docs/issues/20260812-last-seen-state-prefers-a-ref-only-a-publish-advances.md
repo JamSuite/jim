@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 An offline read can serve a commit *older* than the one the clone last saw, while
 printing "serving the last-seen state".
 

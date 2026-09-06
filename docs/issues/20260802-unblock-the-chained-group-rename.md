@@ -22,6 +22,8 @@ origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Description
 
+## Description
+
 A group renamed once cannot be renamed again. Reproduced:
 
 ```

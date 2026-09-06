@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `place_dirty_guard` treats any git failure as "the collection is clean", so the
 guard passes vacuously on exactly the paths it should refuse.
 

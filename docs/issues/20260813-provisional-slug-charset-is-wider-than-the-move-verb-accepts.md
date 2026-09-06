@@ -22,6 +22,8 @@ origin: "20260804-b-prime-completion-handoff.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 `is_prov_token` accepts provisional tokens whose slug the ledger's move verb will
 not accept, so a spec wearing one could be realized nowhere.
 

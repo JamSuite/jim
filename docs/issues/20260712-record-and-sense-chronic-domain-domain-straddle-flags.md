@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/016-partition-health/spec.md
 ---
 
+## Description
+
 ## Context
 
 `/jim:spec`'s assignment advisor (spec 033) flags a domain↔domain straddle

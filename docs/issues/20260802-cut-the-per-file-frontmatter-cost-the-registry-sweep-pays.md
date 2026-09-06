@@ -22,6 +22,8 @@ origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 
 ## Description
 
+## Description
+
 The registry integrity sweep takes **~14 s** against jim's own collection (64
 spec records, 200 issue files), against **~0.5 s** for a `peek`. That is inside
 the `verify_registry_timeout` default of 120 s, so the check works — but it is

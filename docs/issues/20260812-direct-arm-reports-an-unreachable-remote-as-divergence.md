@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 On the checked-out arm every push failure is reported as divergence, including an
 unreachable remote — the exact case the spec's network criterion names.
 

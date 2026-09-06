@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/remediation.md
 
 ## Description
 
+## Description
+
 `index.sh` writes origin-resolution warnings into `INDEX.md`, the artifact every
 reader parses. Whether a path-shaped `origin:` resolves is a fact about **the
 checkout the run was standing in**, not about the collection — so a

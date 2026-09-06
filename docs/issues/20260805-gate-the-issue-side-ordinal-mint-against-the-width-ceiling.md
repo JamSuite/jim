@@ -22,6 +22,8 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 The spec side gates a freshly minted ordinal against `alloc_valid_ord`; the issue
 side does not. Past the ceiling the issue registry stops coordinating, silently
 and permanently.

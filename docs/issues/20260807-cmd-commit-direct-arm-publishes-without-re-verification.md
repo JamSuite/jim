@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `cmd_commit`'s `direct` arm re-resolves configuration and verifies nothing about
 the state `begin` established. `direct` is a fixed literal token, not an
 unguessable handle, so it is callable at any time with no proof a `begin`

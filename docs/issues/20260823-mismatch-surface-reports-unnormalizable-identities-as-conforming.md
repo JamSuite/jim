@@ -22,6 +22,8 @@ origin: "docs/specs/issue/013-recorded-identity-schemes/review.md"
 
 ## Description
 
+## Description
+
 `index.sh`'s configured-form mismatch warning treats a value it cannot
 normalize as a value that already matches, so the records most in need of
 attention are the ones it stays silent about.

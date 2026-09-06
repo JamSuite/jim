@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/plan.md
 
 ## Description
 
+## Description
+
 Under a branch placement, `place.sh` materializes the destination collection
 before every read and every write. The extraction is deliberately per-entry —
 branch content is untrusted, so each tree entry clears a containment gate before

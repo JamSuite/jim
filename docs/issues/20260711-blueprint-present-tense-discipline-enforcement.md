@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: conversation
 ---
 
+## Description
+
 ## Context
 
 `/jim:blueprint`'s current-state doctrine — "reflects reality, not aspiration"

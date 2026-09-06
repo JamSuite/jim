@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 In the `diverged` deferral case, a teammate's already-published edit to the same
 file is **silently reverted at rc 0**, with no path named.
 

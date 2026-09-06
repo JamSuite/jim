@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 `sweep_citations` does not check awk's exit status (`skills/spec/scripts/reconcile.sh:463`)
 before installing its output:
 

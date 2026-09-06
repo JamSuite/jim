@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `INDEX.md` rows can be forged by two independent routes, so `list`, `show`,
 `stats` and the analyst's graph can be made to serve fabricated issue metadata.
 

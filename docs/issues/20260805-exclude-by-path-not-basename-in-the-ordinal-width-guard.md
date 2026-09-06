@@ -22,6 +22,8 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 The tree-wide guard added to catch "a NEW script gaining its own width literal"
 excludes by **basename**, and two files under `skills/` share an excluded
 basename.

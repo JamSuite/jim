@@ -20,6 +20,8 @@ updated: 2026-08-25T10:51:06Z
 origin: "docs/specs/issue/014-read-view-filter-composition/spec.md"
 ---
 
+## Description
+
 ## What
 
 `ROADMAP.md` carries *Last updated: 2026-03-16* and describes a project that no

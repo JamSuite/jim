@@ -22,6 +22,8 @@ origin: "docs/specs/issue/012-schema-and-state-model/spec.md"
 
 ## Description
 
+## Description
+
 The schema spec's integrity mockup shows a report shape the index does not
 produce. The capability exists; the mockup describes it differently enough to
 mislead.

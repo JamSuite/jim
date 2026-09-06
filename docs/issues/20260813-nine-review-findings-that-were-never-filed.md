@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 The B″ post-build review produced 25 findings. Sixteen were filed as tracked
 issues. The rest were left in the review note, which is disposable — so they
 were about to be lost when it is deleted. Recorded here rather than as eight

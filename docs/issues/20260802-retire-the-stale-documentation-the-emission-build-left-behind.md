@@ -22,6 +22,8 @@ origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Description
 
+## Description
+
 The blueprint/025 build changed behavior in places whose documentation was not
 updated with it. Fifteen sites, all now asserting something the code no longer
 does. Grouped by consequence.

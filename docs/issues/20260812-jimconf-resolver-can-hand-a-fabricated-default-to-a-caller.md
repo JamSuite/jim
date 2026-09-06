@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `jimconf`'s resolver collapses several read *failures* into a key's default at
 rc 0, so a caller that correctly refuses on a failed resolve can still be handed
 a fabricated value it cannot distinguish from a real one.

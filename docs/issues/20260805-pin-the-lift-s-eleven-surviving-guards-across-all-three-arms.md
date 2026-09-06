@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 The lift's guard corpus is one arm wide.
 
 Issue 225 counted nine guards and named five; all five discriminate, each failing

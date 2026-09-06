@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 In the `diverged` deferral case, the published commit carries the teammate's
 issue file **and an index that omits it**.
 

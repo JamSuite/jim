@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/008-verify-loop/plan.md
 ---
 
+## Description
+
 ## Context
 
 Spec 025 consolidated issue-file creation into a single emitter

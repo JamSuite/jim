@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/017-reconcile-face-counters/review.md
 ---
 
+## Description
+
 ## Observation
 
 The reconcile pass's "nothing-to-reconcile" short-circuit (fewer than two

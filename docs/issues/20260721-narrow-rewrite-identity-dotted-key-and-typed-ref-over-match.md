@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/018-spec-migration/review.md
 ---
 
+## Description
+
 ## Finding (from review of spec blueprint/018)
 
 The `rewrite-identity` verb's mechanical rules can over-match a few non-identity

@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 The `issue` group's `new.sh` Provides face does not record the `--auto` flag or
 exit code 4 — a contract extension that nine skills in the `sdlc` group now
 depend on. This is the group's widest fan-in provides face.

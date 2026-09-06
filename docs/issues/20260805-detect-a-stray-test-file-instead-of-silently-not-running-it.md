@@ -22,6 +22,8 @@ origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 The `tests-under-tests` invariant claims "the runner **and** scaffold enforce the
 boundary". The scaffold does; the runner does not.
 

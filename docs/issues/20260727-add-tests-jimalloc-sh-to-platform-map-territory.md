@@ -20,6 +20,8 @@ updated: 2026-08-02T06:52:07Z
 origin: docs/specs/platform/009-provisional-reconcile/review.md
 ---
 
+## Description
+
 ## Problem
 
 `BLUEPRINT.md`'s `platform` group territory lists the sibling test files but

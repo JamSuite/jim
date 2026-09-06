@@ -20,6 +20,8 @@ updated: 2026-07-17T22:21:05Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 ---
 
+## Description
+
 ## Why / the real problem
 
 This is a **reframe of the earlier "post-ship spec-lifecycle" candidate**, narrowed to the actual pain the developer hits.

@@ -20,6 +20,8 @@ updated: 2026-08-27T20:43:47Z
 origin: "docs/specs/issue/014-read-view-filter-composition/spec.md"
 ---
 
+## Description
+
 ## What
 
 `VISION.md` § Non-Goals still states that issue capture is in scope "only as a

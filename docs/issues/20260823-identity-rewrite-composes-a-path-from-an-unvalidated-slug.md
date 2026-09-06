@@ -22,6 +22,8 @@ origin: "docs/specs/issue/000-blueprint/spec.md"
 
 ## Description
 
+## Description
+
 The blueprint invariant `id-gate-before-path` states that "every id passes the
 validator before any path composition or file read." The identity rewrite's
 apply path composes `"$dir/$slug.md"` with no validator call on the slug.

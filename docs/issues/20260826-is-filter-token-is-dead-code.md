@@ -20,6 +20,8 @@ updated: 2026-08-26T10:25:41Z
 origin: "docs/specs/issue/014-read-view-filter-composition/review.md"
 ---
 
+## Description
+
 ## What
 
 `is_filter_token` in `skills/issue/scripts/render.sh` has no callers. It had

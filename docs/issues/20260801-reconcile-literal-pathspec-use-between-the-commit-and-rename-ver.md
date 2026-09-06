@@ -22,6 +22,8 @@ origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 The two git-mv primitives hand every path to git under `--literal-pathspecs`
 (`skills/ledger/scripts/jimledger.sh:307`, `:313` for `rename-tracked`; `:608`,
 `:637` for `move-spec-dir`), so a `valid-relpath`'d path's pathspec magic is

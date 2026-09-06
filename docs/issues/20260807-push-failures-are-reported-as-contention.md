@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `place_land` maps *every* origin-tier push failure to rc 3, which the retry loop
 reads as contention.
 

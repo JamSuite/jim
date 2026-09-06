@@ -22,6 +22,8 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 `catch-up --apply` reissues an ordinal a rename vacated, silently changing what
 every frozen citation to that id dereferences to — and the registry reports clean
 afterwards.

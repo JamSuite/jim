@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 Three documentation sites are wrong or unachievable under a branch placement.
 Grouped because they are one editing pass.
 

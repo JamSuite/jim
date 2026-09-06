@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
 
 ## Description
 
+## Description
+
 `skills/meta-test/scripts/run.sh` reads its filter as `FILTER="${1:-}"` and
 ignores every later argument, so a multi-filter invocation narrows silently to
 the first one.

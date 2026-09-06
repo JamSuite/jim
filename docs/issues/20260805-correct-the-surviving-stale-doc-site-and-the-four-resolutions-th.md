@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 One stale doc site survived the pass, and four Resolutions assert fixes or
 mechanisms that did not exist when they were written.
 

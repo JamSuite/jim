@@ -22,6 +22,8 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 `alloc_lift_state`'s behavior is correct — the cross-run idempotency hole is
 closed, a reorder attack is repelled, and preview/payload/published are one
 computation. But five of the nine guards that make it correct survive deletion

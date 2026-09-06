@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 `/jim:verify sdlc` scored the `sigil-discipline` invariant (high) a partial. Both
 hard mechanical rules hold plugin-wide: no `<lower>` placeholder appears inside an
 `!`-injection slot, every `$UPPER` token is one of the three recognized names, and

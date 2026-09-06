@@ -22,6 +22,8 @@ origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 The reserved `000-blueprint` slot has a dedicated resolver arm —
 `path blueprint <group>` (`skills/file/scripts/jimfile.sh:961`) — and the
 `blueprint-slot-reserved` invariant states the slot is resolved *only* through

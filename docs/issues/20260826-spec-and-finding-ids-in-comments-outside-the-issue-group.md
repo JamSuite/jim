@@ -22,6 +22,8 @@ origin: "docs/specs/issue/014-read-view-filter-composition/remediation.md"
 
 ## Description
 
+## Description
+
 The convention forbidding spec / AC / Finding / DD citations in bash comments is
 project-wide — it governs every script under `skills/*/scripts/`, and it gives
 the reason: `rename` and `split` renumber the very specs an id points at, so the

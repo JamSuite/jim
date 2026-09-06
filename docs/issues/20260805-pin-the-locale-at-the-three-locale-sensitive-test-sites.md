@@ -22,6 +22,8 @@ origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 The `script-preamble` invariant says every script sets `set -uo pipefail`
 directly and that **locale-sensitive scripts also `export LC_ALL=C`**. Clause one
 holds without exception across the territory. Clause two breaches in three test

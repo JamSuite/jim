@@ -22,6 +22,8 @@ origin: "docs/specs/issue/012-schema-and-state-model/spec.md"
 
 ## Description
 
+## Description
+
 `render.sh`'s help text tells the reader to close an issue by hand, in a way
 that now produces an integrity warning.
 

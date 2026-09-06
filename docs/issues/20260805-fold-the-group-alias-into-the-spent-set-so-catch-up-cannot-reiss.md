@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 The never-reissue rule fails once a group rename intervenes. The high-water fold
 applies the group alias (`skills/file/scripts/jimalloc.sh:958`,
 `g="${alias[$g]:-$g}"`). The spent set does not: the group-rename arm at

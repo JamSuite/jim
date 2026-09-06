@@ -22,6 +22,8 @@ origin: docs/specs/platform/005-ledger-literal-pathspecs/research.md
 
 ## Description
 
+## Description
+
 Two sites in `skills/partition/scripts/jimpartition.sh` (blueprint group) share
 the same untrusted-path→git-pathspec exposure that platform spec
 `005-ledger-literal-pathspecs` fixes in the ledger primitives: a valid-relpath'd

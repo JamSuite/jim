@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `ARCHITECTURE.md`'s Permission Conventions state:
 
 > a skill that consumes only one verb of a multi-verb script may scope its

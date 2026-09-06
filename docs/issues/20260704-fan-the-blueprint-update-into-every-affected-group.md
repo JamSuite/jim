@@ -20,6 +20,8 @@ updated: 2026-08-29T07:51:32Z
 origin: docs/specs/blueprint/006-contract-graph/spec.md
 ---
 
+## Description
+
 ## Context
 
 Restores a deferral that went dangling. Spec 030's Out of Scope deferred

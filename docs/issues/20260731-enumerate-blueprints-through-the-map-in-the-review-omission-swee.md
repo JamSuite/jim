@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/plan.md
 
 ## Description
 
+## Description
+
 `/jim:review`'s omission sweep locates a declared invariant by matching its id
 across blueprint **files** rather than enumerating groups through the project
 context map. A retired group's blueprint is still a file, so it is still a match.

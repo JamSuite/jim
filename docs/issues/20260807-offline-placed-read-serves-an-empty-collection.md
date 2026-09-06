@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 Under a branch placement, a clone that has only ever *read* the collection
 serves an **empty** collection when the remote is unreachable, while announcing
 that it is serving the last-seen state.

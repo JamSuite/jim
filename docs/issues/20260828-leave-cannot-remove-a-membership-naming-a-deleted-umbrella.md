@@ -20,6 +20,8 @@ updated: 2026-08-29T00:55:55Z
 origin: "docs/specs/issue/015-epic-authoring-and-views/plan.md"
 ---
 
+## Description
+
 ## What
 
 `leave <id> <umbrella>` resolves its operand against the collection before it

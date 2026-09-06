@@ -20,6 +20,8 @@ updated: 2026-07-24T11:27:11Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 ---
 
+## Description
+
 ## Why
 
 This session manually executed a full competitive-landscape + prior-art **refresh** and produced `docs/research/20260717-competitive-landscape-sdd-skills.md`. It was high-value but labor-intensive — ~30 agent invocations across several waves, a file-by-file anchor-verification pass, and a currency audit of every external URL cited across the spec `research.md` corpus. We want a jim skill that **automates this whole process** so the next refresh is fast, repeatable, and consistent. This issue captures enough detail to scope/spec it later; it is a discovery artifact, not a spec.

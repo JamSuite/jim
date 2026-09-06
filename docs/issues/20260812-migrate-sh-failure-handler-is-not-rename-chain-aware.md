@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `migrate.sh`'s commit-phase failure handler is not rename-chain aware, though the
 retire loop is — so a failed `mv` part-way through a chain can leave an issue's
 content nowhere on disk, under an error message asserting nothing was lost.

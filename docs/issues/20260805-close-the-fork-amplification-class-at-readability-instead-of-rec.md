@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 The memo scoping fix narrows the fork-amplification surface but does not close the
 class.
 

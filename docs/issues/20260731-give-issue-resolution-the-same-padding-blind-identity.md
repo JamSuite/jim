@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 The spec side now treats two spellings of one ordinal as one identity. The issue
 side does not, and one ingestion path can create the split.
 

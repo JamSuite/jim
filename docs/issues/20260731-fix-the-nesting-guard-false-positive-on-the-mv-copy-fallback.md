@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 `undo_nested_rename` (`skills/file/scripts/jimfile.sh:544-574`) decides whether a
 rename landed by comparing the target's inode to the source's pre-move inode. Its
 premise — "the rename landed only if `<target>` IS the directory that was at

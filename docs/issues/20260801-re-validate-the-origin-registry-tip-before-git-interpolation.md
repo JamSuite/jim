@@ -22,6 +22,8 @@ origin: docs/specs/platform/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 `alloc_resolve_remote_tip` reads the origin-tier registry tip out of
 `git ls-remote` field 1 (`skills/file/scripts/jimalloc.sh:1018`) and interpolates
 it later at `:1198` and `:1645` without passing it back through the id boundary.

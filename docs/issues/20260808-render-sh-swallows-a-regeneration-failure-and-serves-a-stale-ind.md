@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `render.sh` establishes that the index is stale, attempts to regenerate, and then
 **serves the known-stale view anyway at rc 0** when the regeneration fails. It is
 the one read surface in the group that treats this failure quietly.

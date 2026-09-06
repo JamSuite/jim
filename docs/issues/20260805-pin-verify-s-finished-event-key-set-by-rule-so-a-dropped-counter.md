@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 The `verify finished` event recorded by `caf741d` carries no `edges_checked=` or
 `edge_violations=`:
 

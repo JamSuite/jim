@@ -90,6 +90,8 @@ Split/merge mechanism design is **tabled** on this issue.
 Full blocking context and the tabled split brainstorm:
 [docs/brainstorms/20260716-partition-split.md](../brainstorms/20260716-partition-split.md).
 
+## Description
+
 ## Context
 
 `/jim:partition` (shipped as spec 038) deliberately does **not** move numbered

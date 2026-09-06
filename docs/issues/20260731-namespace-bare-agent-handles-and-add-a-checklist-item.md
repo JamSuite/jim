@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 `/jim:verify sdlc` scored the `plugin-name` invariant (critical) a partial. The
 structural half is sound — `.claude-plugin/plugin.json` declares `"jim"`, and all
 29 skills and 12 agents derive their namespace from it correctly, with every

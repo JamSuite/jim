@@ -22,6 +22,8 @@ origin: docs/specs/platform/005-ledger-literal-pathspecs/review.md
 
 ## Description
 
+## Description
+
 The `relpath-validation` invariant's clause 2 (literal-pathspec neutralization)
 is scoped to the two git-mv primitives (`rename-tracked`, `move-spec-dir`). Four
 sibling commit verbs in `skills/ledger/scripts/jimledger.sh` hand

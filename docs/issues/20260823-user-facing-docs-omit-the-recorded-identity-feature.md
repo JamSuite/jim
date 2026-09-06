@@ -22,6 +22,8 @@ origin: "docs/specs/issue/013-recorded-identity-schemes/review.md"
 
 ## Description
 
+## Description
+
 A project can now choose the form every recorded contributor identity takes,
 and no user-facing document says so.
 

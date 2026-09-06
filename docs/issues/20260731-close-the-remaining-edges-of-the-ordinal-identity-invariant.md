@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 Two places where the "two spellings of one ordinal are one ordinal" invariant
 stops short.
 

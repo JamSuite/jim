@@ -20,6 +20,8 @@ updated: 2026-07-17T22:22:04Z
 origin: docs/research/20260717-competitive-landscape-sdd-skills.md
 ---
 
+## Description
+
 ## Why
 
 jim's acceptance criteria are **free-prose** today. `/jim:spec-check` judges their testability by (good, but) subjective reading. The developer prefers **more deterministic-looking grammar when possible**. Evaluate offering an *optional*, constrained AC grammar that spec-check can audit mechanically — tightening testability at *authoring* time instead of catching vagueness later.

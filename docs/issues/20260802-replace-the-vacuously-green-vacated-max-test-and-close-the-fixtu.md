@@ -22,6 +22,8 @@ origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Description
 
+## Description
+
 **A test survived a verb's retirement as a vacuous green.**
 `tests/specreconcile.sh:1401-1413`
 (`case_specreconcile_realized_event_inert_to_vacated_max`) still invokes

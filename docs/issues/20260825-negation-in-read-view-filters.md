@@ -20,6 +20,8 @@ updated: 2026-08-25T10:51:05Z
 origin: "docs/specs/issue/014-read-view-filter-composition/spec.md"
 ---
 
+## Description
+
 ## What
 
 The read views' filters are all inclusions. There is no way to express "every

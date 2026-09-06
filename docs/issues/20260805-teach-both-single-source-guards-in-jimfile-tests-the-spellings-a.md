@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 Two single-source guards sit twenty lines apart in `tests/jimfile.sh`. One closes
 the omission class with a repo-wide sweep; the other does not — and the one that
 does still misses the spellings that caused the drift it exists to catch.

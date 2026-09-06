@@ -20,6 +20,8 @@ updated: 2026-08-26T08:53:47Z
 origin: "docs/specs/issue/014-read-view-filter-composition/plan.md"
 ---
 
+## Description
+
 ## What
 
 A read view refuses when a *filter* names an axis the index cannot answer, and

@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 `partition-batch spec` writes a state its own classifier calls unrepairable
 drift, so every renumber permanently fails the registry-tree-consistency
 invariant.

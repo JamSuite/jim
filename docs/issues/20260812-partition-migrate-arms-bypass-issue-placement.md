@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `/jim:partition`'s rename, split and merge materialization edits issue files and
 regenerates `INDEX.md` on the checked-out branch, without routing through
 `place.sh`.

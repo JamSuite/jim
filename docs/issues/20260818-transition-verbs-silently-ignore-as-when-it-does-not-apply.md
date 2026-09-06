@@ -20,6 +20,8 @@ updated: 2026-08-18T22:03:41Z
 origin: "docs/specs/issue/012-schema-and-state-model/plan.md"
 ---
 
+## Description
+
 ## Context
 
 `transition.sh` accepts `--as <outcome>` for every verb, but only `close`

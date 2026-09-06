@@ -22,6 +22,8 @@ origin: "20260728-id-coordination-issue-grouping.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 A review finding states a scope — "nine references under `agents/`" — and the
 next reader inherits it. That scope is a claim about where the reviewer looked,
 not a measurement of where the rule applies, and nothing in the artifact

@@ -22,6 +22,8 @@ origin: "docs/specs/issue/000-blueprint/spec.md"
 
 ## Description
 
+## Description
+
 The schema gate in `render.sh` decides an index cannot answer a query from a
 single witness: `saw_type` flips to 1 the moment any one row carries a non-`-`
 `type`, and the gate fires only when `seen_rows > 0 && saw_type == 0`. That

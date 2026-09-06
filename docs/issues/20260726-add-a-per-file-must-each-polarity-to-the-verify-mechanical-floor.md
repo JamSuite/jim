@@ -22,6 +22,8 @@ origin: docs/specs/platform/006-script-preamble-conformance/spec.md
 
 ## Description
 
+## Description
+
 The verify mechanical floor cannot assert a per-file universal property. In `skills/verify/scripts/jimverify.sh`, `check_pattern` with `polarity=must` is *existential* — it holds as soon as the regex matches anywhere in scope (`n > 0`) — and `must-not` is the only universal polarity (holds iff zero matches). Because grep is line-oriented, neither can express "every `*.sh` file in scope has property Y" — e.g. "the first executable line is `set -uo pipefail`". `count=N` exists but is brittle (breaks on any file add/remove or a comment mentioning the string).
 
 Consequence: a class of for-all-files invariants that are mechanically decidable can only verify through the `judge` ceiling. Confirmed instance: `script-preamble` — platform/006 restored it as `judge` backed by a deterministic bash test in platform's own suite, precisely because no floor `pattern` could express it. Other plausible members: `name-matches-path` and the agent-body-budget rule (both currently `judge`).

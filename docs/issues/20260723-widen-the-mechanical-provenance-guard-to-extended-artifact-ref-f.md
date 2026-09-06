@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/024-blueprint-provenance-guard/spec.md
 ---
 
+## Description
+
 ## Problem
 
 Spec 052's mechanical provenance guard covers spec-IDs, ranges, mutable spec

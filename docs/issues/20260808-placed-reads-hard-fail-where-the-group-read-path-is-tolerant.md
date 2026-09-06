@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 A placed read now hard-fails when index regeneration fails, where the issue
 group's own read path deliberately tolerates the same failure. The divergence
 was introduced as a side effect rather than decided.

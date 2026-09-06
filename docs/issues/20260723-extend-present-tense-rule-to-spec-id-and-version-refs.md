@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/jim/000-blueprint/spec.md
 ---
 
+## Description
+
 ## Problem
 
 The present-tense doctrine (`skills/blueprint/references/present-tense.md`) and

@@ -20,6 +20,8 @@ updated: 2026-08-01T10:01:09Z
 origin: "20260801-c-prime-fix-handoff.md (retired; see 5e712bf)"
 ---
 
+## Description
+
 ## Context
 
 `skills/issue/scripts/index.sh` composes `INDEX.md` into a temp file inside a

@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
 
 ## Description
 
+## Description
+
 When a spec's group is renamed between the moment an offline session bound a
 provisional identity and the moment realization runs, `/jim:spec reconcile`
 halts that identity instead of realizing it.

@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/000-blueprint/spec.md
 
 ## Description
 
+## Description
+
 `/jim:verify sdlc` scored the `spec-id-sequencing` invariant (high) a partial.
 Its two identity clauses hold with strong, converging evidence — the spec flow
 mints exclusively through the coordination allocator, explicitly disclaims tree

@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/plan.md
 
 ## Description
 
+## Description
+
 A bash nameref whose own variable name matches the array it is pointed at
 resolves to itself. Bash does not error — it yields an **empty array**, so the
 loop over it simply does nothing and the function returns success.

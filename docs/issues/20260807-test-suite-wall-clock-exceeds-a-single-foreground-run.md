@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/plan.md
 
 ## Description
 
+## Description
+
 `bash skills/meta-test/scripts/run.sh` now runs 1262 cases in about 7m40s
 (measured: `real 7m36s`, `user 1m38s`, `sys 2m44s`).
 

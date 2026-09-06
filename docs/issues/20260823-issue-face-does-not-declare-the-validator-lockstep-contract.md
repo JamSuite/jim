@@ -22,6 +22,8 @@ origin: "docs/specs/issue/012-schema-and-state-model/spec.md"
 
 ## Description
 
+## Description
+
 The contract graph carries one leak: `platform` declares a requirement on
 `issue.validator-lockstep`, and the `issue` group's Provides face declares no
 such entry. The guarantee is real and holding — only the declaration is absent.

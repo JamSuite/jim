@@ -22,6 +22,8 @@ origin: "docs/specs/issue/015-epic-authoring-and-views/remediation.md"
 
 ## Description
 
+## Description
+
 Closing an issue in this project appends a `## Resolution` section to the
 record's body. The convention is visible in the history — `docs(issues): close
 380 with its resolution`, `close 381 with its resolution` — and the sections

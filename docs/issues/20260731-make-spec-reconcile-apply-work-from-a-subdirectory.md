@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 The `--apply` guard in `skills/spec/scripts/reconcile.sh:550-570` derives `$dir`
 relative to the git worktree top, but every downstream consumer resolves paths
 relative to the process CWD, and nothing establishes that the two are the same.

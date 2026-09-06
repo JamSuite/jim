@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 An empty commit can reach the destination on the plain-build arm of the publish
 retry loop, because the "nothing changed" guard is not re-evaluated after a
 retry recomputes the base.

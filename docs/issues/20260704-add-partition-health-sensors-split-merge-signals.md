@@ -25,6 +25,8 @@ origin: docs/specs/blueprint/006-contract-graph/spec.md
 > shipped in `docs/specs/blueprint/016-partition-health/`; this issue's scope is
 > fully covered.
 
+## Description
+
 ## Context
 
 Spec 033's Out of Scope deferred "split/merge health sensors (detecting a

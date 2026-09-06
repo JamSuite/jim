@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 The auto-file scrub rule is stated in `skills/issue/SKILL.md` §7a and pinned by
 a `tests/docsurfaces.sh` invariant. No skill executes it.
 

@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/specs/blueprint/001-blueprint-spec/spec.md
 ---
 
+## Description
+
 ## Context
 
 Deferred slice of the `000-blueprint` initiative (spec 029 — group blueprint

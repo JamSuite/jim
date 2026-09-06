@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 `rewrite_num` now exits non-zero when it replaces nothing. The issue realizer
 handles that with `return 1` (`skills/issue/scripts/reconcile.sh:182-186`), which
 aborts `apply_pending` and returns before the `index.sh` call at `:229` — even

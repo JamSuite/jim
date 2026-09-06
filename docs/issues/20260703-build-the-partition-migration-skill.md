@@ -20,6 +20,8 @@ updated: 2026-07-25T07:49:14Z
 origin: docs/brainstorms/20260703-context-aware-spec-group-definition.md
 ---
 
+## Description
+
 ## Resolution
 
 Shipped as **spec 038** (`docs/specs/blueprint/010-partition-migration/`, 2026-07-07),

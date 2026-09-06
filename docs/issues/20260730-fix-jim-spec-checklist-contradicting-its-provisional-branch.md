@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 `skills/spec/SKILL.md` now has two sections that contradict each other.
 
 Step 8 binds spec identity through the allocator and, when the coordination

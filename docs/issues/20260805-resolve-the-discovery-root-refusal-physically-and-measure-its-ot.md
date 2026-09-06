@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 Three defects in one boundary, found independently by three reviewers.
 
 **1. A symlinked cwd defeats the refusal.** `skills/meta-test/scripts/metatest.sh:76-82`

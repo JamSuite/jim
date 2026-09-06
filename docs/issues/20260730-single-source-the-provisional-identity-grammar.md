@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/017-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 The reserved provisional-identity grammar — the prefix, then an 8-digit issuance
 date, then a slug — is now expressed in three places across a trust boundary:
 

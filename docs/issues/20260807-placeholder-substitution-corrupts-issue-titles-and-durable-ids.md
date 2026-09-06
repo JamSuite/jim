@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `place_substitute` (`skills/issue/scripts/place.sh`) does an unconditional
 `${a//\{\}/$dir}` and `${a//\{token\}/$token}` over **every** forwarded
 argument. `new.sh` is the only entry script that forwards free-form user text,

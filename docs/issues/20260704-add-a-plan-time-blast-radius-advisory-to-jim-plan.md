@@ -20,6 +20,8 @@ updated: 2026-07-09T05:29:41Z
 origin: docs/brainstorms/20260630-000-current-spec.md
 ---
 
+## Description
+
 ## Context
 
 Split out of [[20260630-add-the-cross-group-contract-graph-and-blast-radius]]

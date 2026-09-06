@@ -22,6 +22,8 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
+## Description
+
 `merge-map` fabricates map rows for specs that do not exist.
 
 Commit `2690614` replaced a per-directory `basename` with a numeric-sort

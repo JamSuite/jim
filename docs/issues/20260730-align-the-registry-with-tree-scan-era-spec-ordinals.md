@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/017-coordinated-spec-identity/plan.md
 
 ## Description
 
+## Description
+
 The coordination registry does not hold allocate records for the specs created
 while `/jim:spec` still derived ordinals from the tree. `platform/011` and
 `sdlc/017` both exist on disk with no record, so the allocator's high-water sits

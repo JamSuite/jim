@@ -22,6 +22,8 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
+## Description
+
 `cmd_path`'s `spec|plan|research` arm gained a two-argument provisional arity, but
 three documentation sites inside the same script still show only the
 three-argument form:

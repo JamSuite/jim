@@ -22,6 +22,8 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
+## Description
+
 `cmd_begin`'s checked-out arm hands a collection directory to the agent with no
 worktree-containment check, so a symlinked collection path lets the agent write
 outside the repository before anything refuses.

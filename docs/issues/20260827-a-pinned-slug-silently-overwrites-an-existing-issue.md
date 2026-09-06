@@ -20,6 +20,8 @@ updated: 2026-08-27T11:30:51Z
 origin: "docs/specs/issue/000-blueprint/spec.md"
 ---
 
+## Description
+
 ## What
 
 `new.sh` refuses to overwrite an existing issue file when the id came from the
