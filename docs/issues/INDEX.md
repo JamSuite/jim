@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Open: 146
-- Closed: 275
+- Open: 145
+- Closed: 276
 
 ## Issues
 
@@ -410,7 +410,7 @@
 - `20260826-unrecognized-flag-is-accepted-as-a-flag-s-value` — Unrecognized flag is accepted as a flag's value · status: closed · num: 397 · priority: medium · created: 2026-08-26T02:34:18Z · labels: [issue, read-views, filters] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260826-untrusted-values-reach-awk-through-v-in-two-scripts` — Untrusted values reach awk through -v in two scripts · status: closed · num: 398 · priority: low · created: 2026-08-26T02:35:24Z · labels: [issue, security, awk] · origin: docs/specs/issue/014-read-view-filter-composition/review.md · type: issue · filed-by: jrko · outcome: done
 - `20260827-a-pinned-slug-silently-overwrites-an-existing-issue` — A pinned slug silently overwrites an existing issue · status: open · num: 403 · priority: medium · created: 2026-08-27T11:30:51Z · labels: [emitter, data-loss] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
-- `20260827-backfill-sh-rewrites-the-collection-with-no-preview-gate` — backfill.sh rewrites the collection with no preview gate · status: open · num: 404 · priority: high · created: 2026-08-27T11:20:44Z · labels: [000-blueprint, verify] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko
+- `20260827-backfill-sh-rewrites-the-collection-with-no-preview-gate` — backfill.sh rewrites the collection with no preview gate · status: closed · num: 404 · priority: high · created: 2026-08-27T11:20:44Z · labels: [000-blueprint, verify] · origin: docs/specs/issue/000-blueprint/spec.md · type: issue · filed-by: jrko · claimed-by: jrko · outcome: done
 - `20260827-group-the-read-views-by-umbrella-membership` — Group the read views by umbrella membership · status: open · num: 405 · priority: low · created: 2026-08-27T20:10:36Z · labels: [issues-system, read-views] · origin: docs/specs/issue/015-epic-authoring-and-views/spec.md · type: issue · filed-by: jrko
 - `20260827-report-an-honest-completion-rate-from-the-outcome-field` — Report an honest completion rate from the outcome field · status: open · num: 406 · priority: medium · created: 2026-08-27T20:10:31Z · labels: [issues-system, read-views, metrics] · origin: docs/specs/issue/015-epic-authoring-and-views/spec.md · type: issue · filed-by: jrko
 - `20260828-a-relation-type-reaches-the-graph-unbounded-in-length` — A relation type reaches the graph unbounded in length · status: open · num: 407 · priority: low · created: 2026-08-28T05:17:25Z · labels: [issues-system, index-graph] · origin: docs/specs/issue/015-epic-authoring-and-views/plan.md · type: issue · filed-by: jrko
