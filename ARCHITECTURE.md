@@ -86,7 +86,7 @@ jim/
 │   │       ├── render.sh               # stats/list/show/help dispatcher → stdout
 │   │       ├── place.sh                # Placement primitive: mode/run/begin/commit/abort (issue/011)
 │   │       ├── reconcile.sh            # realize pending provisional issue ordinals (platform/009)
-│   │       ├── backfill.sh             # previewed fill-missing migrations: num | timestamp
+│   │       ├── backfill.sh             # previewed repairs: num | timestamp | heading
 │   │       └── migrate.sh              # previewed transform migrations: prefix | schema | identity
 │   ├── conf/                # /jim:conf — config inspector + shared resolver script
 │   │   ├── SKILL.md
@@ -2066,7 +2066,7 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   ranking) — so the LLM owns semantic convergence while bash owns exact graph
   structure. `backfill.sh` hosts one-shot, opt-in "fill in missing data"
   migrations as named subcommands — calling it with no subcommand prints usage.
-  Both subcommands preview by default and mutate only under `--apply`: the run
+  Every subcommand previews by default and mutates only under `--apply`: the run
   builds its plan read-only, renders it, and prints a `PLAN-HASH` that
   `--expect` compares against a freshly recomputed plan, refusing a stale
   preview at exit 3. The gate sits at the `cmd_backfill` dispatch rather than
@@ -2080,7 +2080,18 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   split — a preview routes `--read`, so previewing under a placement publishes
   nothing, and the directory scan that decides whether the caller named a
   collection skips the `--expect` operand rather than reading the hash as a
-  path. `backfill.sh num` assigns `num:` ordinals to legacy issues in
+  path. `backfill.sh heading` repairs the body lead the emitter's
+  unconditional `## Description` prepend produces when a caller supplies its
+  own structure: one rule removes a `## Description` whose next non-blank line
+  is another `##` heading, so a repeated heading collapses to one and a heading
+  leading no prose is dropped, while a `###` beneath it stays the ordinary
+  nesting it is. The rule iterates to a fixed point, because collapsing a pair
+  can expose the survivor to the same condition, and it walks the frontmatter
+  and code fences so a heading written inside either stays content rather than
+  structure. Unlike its two siblings it repairs a *recurring* state rather than
+  a one-time one: the emitter still prepends unconditionally, and callers are
+  told to pass prose only rather than prevented from doing otherwise.
+  `backfill.sh num` assigns `num:` ordinals to legacy issues in
   `created:`-ascending order via per-file atomic `tmp + mv`, idempotent and
   announced; it is NOT wired into the verb flow (new issues get their ordinal at
   `add` time via `jimfile.sh next-num issue`). All scripts use `set -uo

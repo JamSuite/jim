@@ -287,8 +287,11 @@ Six one-shot, opt-in commands, none of them wired into normal use. Each writes a
 | `migrate.sh schema [--apply]` | Give every issue the identity, type and outcome fields, recovering each filer from the commit that created its file |
 | `migrate.sh identity [--apply]` | Re-record contributor identities — re-apply the configured form, or replace one identity with another (see [Recorded identity](#recorded-identity)) |
 | `reconcile.sh [--apply]` | Realize provisional ordinals — the script behind `/jim:issue reconcile` |
-| `backfill.sh num` | Assign display ordinals to legacy issues filed before ordinals existed |
-| `backfill.sh timestamp` | Normalize date-only `created`/`updated` to second-resolution day-start values |
+| `backfill.sh num [--apply]` | Assign display ordinals to legacy issues filed before ordinals existed |
+| `backfill.sh timestamp [--apply]` | Normalize date-only `created`/`updated` to second-resolution day-start values |
+| `backfill.sh heading [--apply]` | Remove a `## Description` heading the emitter duplicated, or that leads a body opening with its own section |
+
+Every command in this table previews by default and writes only under `--apply`, printing a `PLAN-HASH` you can pass back as `--expect <hash>` to refuse an apply whose collection moved since the preview.
 
 Changing `issue_id_prefix` is **forward-only**: it renames nothing. To converge an existing collection on the active scheme:
 
