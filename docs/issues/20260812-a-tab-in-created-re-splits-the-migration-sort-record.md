@@ -16,57 +16,66 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-08-12T21:53:33Z
-updated: 2026-08-28T22:31:15Z
+updated: 2026-09-06T21:19:04Z
 origin: "docs/specs/issue/011-issue-placement/review.md"
 ---
 
 ## Description
 
-`cmd_assign_numbers` joins an untrusted frontmatter value into a tab-delimited
-sort record, then splits it back out.
+`build_num_plan` joins an untrusted frontmatter value into a tab-delimited sort
+record, then splits it back out.
 
-`skills/issue/scripts/backfill.sh:128` builds the record:
+`skills/issue/scripts/backfill.sh:353` builds the record:
 
-    "$created"$'\t'"$f"
+    "$created"$'\t'"${base%.md}"
 
-and `:135` reads it back with `IFS=$'\t' read -r createdkey file`.
+and `:365` reads it back with `IFS=$'\t' read -r createdkey slug`.
 
-`fm_field` (`:71-74`) preserves tabs — its capture is `([^\"]*)`, which matches
-them. So a `created:` value containing a tab puts attacker-controlled text at the
-head of `$file`.
+`fm_field` preserves tabs — its capture is `([^\"]*)`, which matches them. So a
+`created:` value containing a tab puts attacker-controlled text at the head of
+`$slug`, which the plan then carries as the row's first field and the applier
+composes into a path.
 
-At `:141` that corrupted value becomes an `awk` operand:
+Under a branch placement the `created:` value comes from a shared branch, so
+this is reachable by any teammate.
 
-    awk -v n="$next" 'PROG' "$file"
+## Status — the sort-record half is fixed
 
-with `$file` now shaped like `1<TAB>/dir/x.md`. `awk` recognises a `NAME=VALUE`
-argument as an **assignment**, not a filename — with escape expansion on the
-value — so it falls through to stdin and drains the `while` loop's process
-substitution at `:158`, silently skipping every remaining issue. The subsequent
-`mv "$tmp" "$file"` at `:146` then targets an attacker-influenced path.
+Fixed in `723cb682`. `build_num_plan` strips tab and newline from `created`
+before joining it. The value is a sort key only — never written — so stripping
+rather than rejecting keeps a malformed stamp orderable and still ordinal-worthy.
 
-I traced no write outside the collection: the real path is appended *after* the
-tab, so the target's parent directory cannot exist. The impact is aborting the
-migration with a misleading error and consuming the work list — not arbitrary file
-write.
+A second, structural guard was added with it: every applier composes its target
+through `plan_file`, which refuses a slug holding a path separator or a leading
+dot. Nothing reaches that refusal now, and the code comment says so rather than
+implying coverage.
 
-This is the one remaining site in `backfill.sh` where untrusted issue text reaches
-a command operand. The `timestamp` subcommand was hardened in the
-review-remediation round (values travel via `ENVIRON`, and only a normalizer-minted
-value is written); `cmd_assign_numbers` was not in that issue's scope.
+`case_issues_backfill_num_tab_in_created_cannot_redirect_the_write` pins it, and
+was mutation-checked: removing the strip fails that case and only that case.
 
-Under a branch placement the `created:` value comes from a shared branch, so this
-is reachable by any teammate.
+### What the severity was, and briefly became
 
-No test covers it.
+This record originally traced *no* write outside the collection, reasoning that
+the real path is appended after the tab so the target's parent cannot exist. That
+was correct against the code as filed, where the record carried `<created>\t<full
+path>`.
 
-## Action
+The preview-gate work re-keyed the plan by slug (`<created>\t<slug>`) so a hash
+taken under one checkout would match the same collection materialized under
+another. That removed the bound: the applier composed `$dir/$slug.md` from a slug
+that a re-split had filled with issue text, so `created: 2026-01-01<TAB>../outside/victim`
+wrote into `../outside/victim.md`. Demonstrated, then closed by the fix above.
 
-Validate `created` against the `SYNC(ts-shape)` pattern (or `tr -d '\t'` it)
-before it is joined into the sort record at `:128`, and make the record
-NUL-delimited so no field value can re-split it.
+The lesson worth keeping: the containment here was incidental to a data shape,
+not enforced by a check. A refactor with no security intent removed it silently.
+That is why the fix pairs stripping the value with a guard at the write.
 
-Related and worth doing in the same pass: `backfill.sh` installs no
-`trap … EXIT INT TERM` for its `.backfill.tmp.*` / `.normalize.tmp.*` namespaces,
-unlike `index.sh:581` and `new.sh:306`, so a signal mid-run leaves a hidden temp in
-the collection. `reconcile.sh` and `migrate.sh` have the same gap.
+## Still open — the temp-file trap
+
+`backfill.sh` installs no `trap … EXIT INT TERM` for its temp namespaces, unlike
+`index.sh` and `new.sh`, so a signal mid-run leaves a hidden temp in the
+collection. There are now **three** namespaces, not two: `.backfill.tmp.*`,
+`.normalize.tmp.*` and `.heading.tmp.*`, the last added with the `heading`
+subcommand. `reconcile.sh` and `migrate.sh` have the same gap.
+
+This is the remaining work on this record.
