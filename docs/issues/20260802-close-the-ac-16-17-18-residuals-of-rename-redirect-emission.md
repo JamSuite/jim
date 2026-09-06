@@ -22,8 +22,6 @@ origin: docs/specs/blueprint/025-rename-redirect-record-emission/review.md
 
 ## Description
 
-## Description
-
 Three acceptance criteria of blueprint/025 shipped partially satisfied. Each is
 small on its own; together they are one cleanup pass.
 

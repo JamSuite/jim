@@ -22,8 +22,6 @@ origin: docs/specs/platform/012-registry-integrity-and-drift/spec.md
 
 ## Description
 
-## Description
-
 The registry-integrity sweep (platform/012) reports mismatch-class drift
 (tree and registry disagreeing about an identity) and registry-internal
 contradictions (duplicate ordinals, duplicate durable ids) — and correctly

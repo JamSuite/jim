@@ -22,8 +22,6 @@ origin: conversation
 
 ## Description
 
-## Description
-
 ### The gap
 
 The analytical read verbs (`insights` today, a `trends` deep-mode or the #5

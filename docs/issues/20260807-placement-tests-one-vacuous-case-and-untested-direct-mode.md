@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 An audit of the placement test suite found one case that cannot fail, three that
 pass for reasons other than the property they name, and coverage holes in the
 riskiest code.

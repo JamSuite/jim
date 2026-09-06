@@ -22,8 +22,6 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `jimledger.sh metrics` reports `<stage>_duration_seconds` as the span from the
 first `started` to the last `finished`, not the sum of the runs.
 

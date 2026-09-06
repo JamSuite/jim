@@ -22,8 +22,6 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 Issue #211's stated disposition — every site retired except
 `docs/features/blueprints.md`, held for `feat/blueprints` — is false. Three more
 sites survive, and two of them are missed siblings of sites that were fixed.

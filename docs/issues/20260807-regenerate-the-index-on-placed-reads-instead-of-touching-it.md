@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `place_materialize` ends by `touch`ing `INDEX.md` so it is the newest entry in
 the materialized directory, which makes `render.sh`'s mtime staleness gate
 always report fresh.

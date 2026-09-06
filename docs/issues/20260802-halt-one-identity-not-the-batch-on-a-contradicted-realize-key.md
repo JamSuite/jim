@@ -22,8 +22,6 @@ origin: docs/specs/platform/012-registry-integrity-and-drift/review.md
 
 ## Description
 
-## Description
-
 The spec-side realize path halts the **whole batch** when two registry records
 claim the (group, slug, date) triple a pending identity resolves against. The
 prior behavior halted only the offending identity and let the rest of the batch

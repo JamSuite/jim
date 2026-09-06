@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 The group chose one read-failure posture — serve, disclose, carry a non-zero
 status — and applied it to one of the two placement read doors. `cmd_begin`
 still refuses, and it is the door the `insights` verb opens.

@@ -22,8 +22,6 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `reconcile spec` and `reconcile issue` hand back vacated ordinals as `have`,
 because their claim-key folds never replay renames.
 

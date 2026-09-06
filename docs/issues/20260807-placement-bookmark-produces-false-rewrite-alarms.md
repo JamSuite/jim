@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 Two paths corrupt the last-seen bookmark, and the same defect both manufactures
 a tamper alarm where none exists and creates a false negative for the attack the
 detector exists to catch.

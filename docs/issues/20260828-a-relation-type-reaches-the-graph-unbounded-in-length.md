@@ -22,8 +22,6 @@ origin: "docs/specs/issue/015-epic-authoring-and-views/plan.md"
 
 ## Description
 
-## Description
-
 ## What
 
 `index.sh` `parse_relations` accepts any key under `relations:` as a relation

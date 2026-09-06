@@ -22,8 +22,6 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 Two defects in one 30-line function, both introduced by the commit that widened
 it, and both of the class the same cluster filed other issues about.
 

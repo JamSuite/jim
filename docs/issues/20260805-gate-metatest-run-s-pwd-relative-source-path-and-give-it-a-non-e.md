@@ -22,8 +22,6 @@ origin: "20260805-b-double-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `metatest.sh run` sources PWD-relative test files under the skill's own tool
 grant, and unlike the two write verbs it calls no guard at all.
 

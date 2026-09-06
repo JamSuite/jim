@@ -22,8 +22,6 @@ origin: docs/specs/platform/006-script-preamble-conformance/plan.md
 
 ## Description
 
-## Description
-
 `tests/scripthygiene.sh` was added by the platform script-preamble conformance work (the corpus-wide preamble hygiene sweep) but is not listed in any group's declared territory in `BLUEPRINT.md`. Platform's territory enumerates specific test files (`tests/jimconf.sh`, `tests/jimfile.sh`, `tests/jimledger.sh`, `tests/metatest.sh`); the new sweep belongs to platform (it owns the meta-test framework and holds the check for project-wide script rules) but is not declared there.
 
 Group-tier `/jim:blueprint platform` — the generate that restored the invariant — updates the group's `000-blueprint`, not the project-tier map's territory list, so the file stays unattributed until a project-tier map update runs.

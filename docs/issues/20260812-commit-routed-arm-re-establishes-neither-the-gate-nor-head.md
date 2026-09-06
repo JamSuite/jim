@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 The routed arm of `place.sh commit` publishes to a destination read back from
 handle state without re-establishing the placement gate — while the direct arm
 re-proves exactly those facts and documents why.

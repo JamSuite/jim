@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
-## Description
-
 `sweep_citations` (`skills/spec/scripts/reconcile.sh:352`) consumes all four
 content roots in their raw configured spelling, stripping only a trailing `/` and
 a leading `./`:

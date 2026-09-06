@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 Under a branch placement, a read whose index could not be rebuilt sends its
 rendered view to **stderr** labelled "not published", leaving stdout empty —
 contradicting `render.sh`'s own documented contract.

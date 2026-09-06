@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 An audit of the placement suite after the test-repair pass found two cases that
 still cannot catch their named mutation, one that still tests nothing, and the
 highest-value assertion in the set still missing.

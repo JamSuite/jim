@@ -22,8 +22,6 @@ origin: docs/specs/platform/008-registry-seed/review.md
 
 ## Description
 
-## Description
-
 Surfaced by the `platform/008` post-build review (review.md Finding 1; a
 judge-confirmed `blueprint-slot-reserved` living-intent violation, in-change).
 

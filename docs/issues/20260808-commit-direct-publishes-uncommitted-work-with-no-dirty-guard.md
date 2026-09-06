@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `place.sh commit direct` is callable with no preceding `begin`, and nothing on
 that path runs the dirty guard — so it commits and pushes whatever uncommitted
 work happens to be sitting in the collection. This is security Finding 9's harm

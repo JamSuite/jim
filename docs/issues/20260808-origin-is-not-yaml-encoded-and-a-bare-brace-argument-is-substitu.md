@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 The `untrusted-body-never-shell` invariant (critical) is judged **violated** on
 two counts. Neither is an injection — both are integrity gaps.
 

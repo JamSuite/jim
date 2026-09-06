@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 On the checked-out arm, a routine stale checkout produces a false "destination
 branch was rewritten" alarm on every read until the developer pulls.
 

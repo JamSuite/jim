@@ -22,8 +22,6 @@ origin: conversation
 
 ## Description
 
-## Description
-
 The spec realizer's citation sweep enumerates its four content roots via
 `git --literal-pathspecs ls-files` (`skills/spec/scripts/reconcile.sh:425`),
 plus the realized directories' own markdown. Tracked files only: an untracked

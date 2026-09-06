@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `skills/issue/SKILL.md` step 8 was updated to resolve the insights directory via
 `place.sh begin --read` and hand `<dir>` to the analyst.
 `agents/issue-analyst.md` was not. Its method still reads:

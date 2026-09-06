@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 A read on a clone whose destination has diverged serves the local head and
 silently omits the commits the same run just fetched.
 

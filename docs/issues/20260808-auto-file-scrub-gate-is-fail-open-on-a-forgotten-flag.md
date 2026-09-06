@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 The auto-file scrub gate (spec AC #13, security Finding 2's mitigation) is
 **fail-open on a forgotten flag**, and three artifacts state the opposite.
 

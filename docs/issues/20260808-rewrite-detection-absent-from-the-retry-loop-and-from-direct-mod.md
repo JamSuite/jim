@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 Spec AC #12 says a non-fast-forward destination tip "is detected and disclosed by
 the read verbs". Two paths never check at all.
 

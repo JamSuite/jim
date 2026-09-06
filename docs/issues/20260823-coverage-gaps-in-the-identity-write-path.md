@@ -22,8 +22,6 @@ origin: "docs/specs/issue/013-recorded-identity-schemes/review.md"
 
 ## Description
 
-## Description
-
 The identity rewrite's write path has four coverage gaps. None is a known
 defect; each is a place where a defect would not be caught.
 

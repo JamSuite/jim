@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `/jim:spec reconcile --apply`'s citation sweep edits issue files without routing
 through `place.sh`, so under a branch placement it writes to the wrong branch or
 silently does nothing.

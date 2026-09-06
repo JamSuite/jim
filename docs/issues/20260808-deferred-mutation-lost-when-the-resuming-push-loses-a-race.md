@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 A mutation deferred while the remote was unreachable is silently dropped, at
 rc 0, if the next reachable run's **first push loses a race**. This is the same
 silent-drop class as the defect the deferral fix was written to close, one state

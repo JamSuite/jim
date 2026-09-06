@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/plan.md
 
 ## Description
 
-## Description
-
 `reconcile.sh` and `migrate.sh` accept `-c <config>` and forward it to
 `jimfile.sh` / `jimconf.sh` / `jimalloc.sh`. `place.sh` has no `-c`: it resolves
 `issue_placement` from `$PWD` through `jimconf.sh`, per the project-root-as-CWD

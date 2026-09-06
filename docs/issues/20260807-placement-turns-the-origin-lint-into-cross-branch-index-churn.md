@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 `index.sh`'s origin lint resolves `origin:` paths against the *invoking* CWD,
 and `place.sh` deliberately never `cd`s (so the wrapped command keeps the
 primary checkout as its working directory). Under placement those two facts

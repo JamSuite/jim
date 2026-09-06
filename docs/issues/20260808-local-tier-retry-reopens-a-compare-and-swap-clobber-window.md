@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 The local-tier retry loop reads the tip and the compare-and-swap old value as two
 separate `git rev-parse` invocations, **tip first**, reopening a clobber window
 that the file's own initial capture sites and the `jimalloc.sh` precedent both

@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
-## Description
-
 `alloc_canon_specid` (`skills/file/scripts/jimalloc.sh:164-181`) rejects an
 ordinal wider than `ALLOC_MAX_ORD_DIGITS`. It replaced `alloc_valid_specid` as the
 guard at three comparison sites in `alloc_resolve_spec`, and that guard accepted

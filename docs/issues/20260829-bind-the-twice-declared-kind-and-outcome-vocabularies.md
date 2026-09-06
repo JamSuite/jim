@@ -22,8 +22,6 @@ origin: "docs/specs/issue/000-blueprint/spec.md"
 
 ## Description
 
-## Description
-
 The blueprint invariant `declared-vocabularies` requires that "every vocabulary
 a rule quantifies over is a declared constant, and every site that quantifies
 iterates that constant rather than restating its members" — and names the

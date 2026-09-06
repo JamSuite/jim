@@ -22,8 +22,6 @@ origin: "docs/specs/issue/015-epic-authoring-and-views/plan.md"
 
 ## Description
 
-## Description
-
 ## What
 
 Every issue record carries an `updated` timestamp, refreshed on every mutation

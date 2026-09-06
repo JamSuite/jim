@@ -22,8 +22,6 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 Two things shipped in the same range contradict each other above ordinal 999, and
 following the partition skill's own instruction verbatim is refused.
 

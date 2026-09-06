@@ -22,8 +22,6 @@ origin: "20260805-b-prime-review.md (retired; see 5e712bf)"
 
 ## Description
 
-## Description
-
 `alloc_warm_token_memo` has exactly two call sites, both in `cmd_sweep`
 (`:2890`, `:2891`). The sibling hot paths re-derive the same tokens over the same
 logs and pay the entire pre-fix cost.

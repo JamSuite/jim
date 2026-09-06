@@ -22,8 +22,6 @@ origin: docs/specs/sdlc/018-finish-coordinated-spec-identity/review.md
 
 ## Description
 
-## Description
-
 `skills/spec/assets/spec-template.md:5` now ships as:
 
     id: "{id}"                        # the bound identity: a 3-digit ordinal, or a P-{date}-{slug} token

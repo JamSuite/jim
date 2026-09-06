@@ -22,8 +22,6 @@ origin: docs/specs/issue/011-issue-placement/review.md
 
 ## Description
 
-## Description
-
 Three rosters of the surfacing skills disagree with each other and with the
 canonical one, including two inside files the canonical roster was corrected in.
 

@@ -22,8 +22,6 @@ origin: "docs/specs/issue/013-recorded-identity-schemes/review.md"
 
 ## Description
 
-## Description
-
 Six of the identity test cases pass regardless of whether the code under test
 is correct. They make coverage read as real where it is not.
 
