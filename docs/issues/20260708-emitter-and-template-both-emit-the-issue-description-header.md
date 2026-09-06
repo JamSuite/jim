@@ -2,7 +2,7 @@
 id: 20260708-emitter-and-template-both-emit-the-issue-description-header
 num: 69
 title: "Emitter and template both emit the issue Description header"
-status: open
+status: closed
 priority: low
 type: issue
 filed-by: "jrko"
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-07-08T20:37:32Z
-updated: 2026-09-06T20:12:59Z
+updated: 2026-09-06T20:26:01Z
 origin: conversation
 ---
 
@@ -122,47 +122,48 @@ root cause is fixed, so the cheap half is worth doing ahead of the sweep.
 
 ## Resolution — 2026-09-06 (done)
 
-All four bullets shipped, across three commits.
+All four bullets shipped.
 
 **Root cause** (`0345a301`). The emitter keeps the heading and every other site
-yields: `issue-template.md` no longer carries `## Description`, both `SKILL.md`
-body-file steps and the emitter's own usage block state that `--body-file` is
-prose only. Emitting nothing new left the full-file parity fixture at
-`tests/issues.sh` green, which is what kept the fix small.
+yields: `issue-template.md` no longer carries `## Description`, and both
+`SKILL.md` body-file steps and the emitter's own usage block state that
+`--body-file` is prose only. Emitting nothing new left the full-file parity
+fixture green, which is what kept the fix small.
 
-**The sweep** (`c4b48df7`, `2d40ec2a`). Hosted as `backfill.sh heading` rather
-than a throwaway script — see the correction below. One rule covers both
-shapes: remove a `## Description` whose next non-blank line is another `##`
-heading. It iterates to a fixed point, since collapsing a pair can expose the
-survivor to the same condition, and it walks the frontmatter and code fences so
-a heading inside either stays content. A `###` beneath the heading is ordinary
-nesting and is spared.
+**The sweep** (`c4b48df7`, `27c2fc06`, `44cf4f90`). Hosted as
+`backfill.sh heading`, inheriting the preview / `PLAN-HASH` / `--apply` gate
+built for #404. The rule removes a `## Description` whose next non-blank line
+is another `## Description`, iterating to a fixed point, and walks the
+frontmatter and code fences so a heading inside either stays content.
 
-Applied to the collection: 267 of 421 records repaired — 177 keeping one
-heading, 90 left with none. The remaining 154 were already well-formed, nesting
-a `###`, or carrying no heading at all. The diff is the evidence: across all
-267 files it removes exactly two kinds of line, a blank and `## Description`,
-and adds none; `INDEX.md` did not change, because the index carries no body
-content.
+Applied: 180 records lost a duplicate. With two records hand-given the heading
+they never had (`b99f2d0f`), all 421 now carry exactly one — 323 leading prose,
+6 leading a `###` subsection, 92 leading a section of the body's own. The diff
+is the evidence: across all 180 files it removes exactly two kinds of line, a
+blank and `## Description`, and adds none; `INDEX.md` did not change, because
+the index carries no body content.
 
-**What pins it:** ten cases in `tests/issues.sh`, each mutation-checked.
-Matching any heading level instead of `##` fails the subsection case; removing
-the fixed-point iteration fails six; dropping the fence walk fails the fenced
-case.
+**What pins it:** eleven cases in `tests/issues.sh`, mutation-checked — matching
+any heading level instead of `## Description` fails the subsection case,
+removing the fixed-point iteration fails six, dropping the fence walk fails the
+fenced case.
 
-**A correction to this record's own reasoning.** The scope section above called
-the sweep a one-time repair, and it is not. `0345a301` made the emitter the sole
-owner *by documentation only* — it still prepends unconditionally, so a caller
-that repeats the heading produces the doubled shape again. That is why the
-repair is a committed, tested verb rather than a script run once and discarded,
-and it is the argument that overturned the vehicle originally proposed here.
+**A wrong turn, recorded because the reasoning is the useful part.** The first
+implementation treated both malformed shapes as one problem and removed the
+heading outright from the 90 records whose body opens with its own section. It
+was applied and then reverted (`d1d59f0f`). The error was in the goal, not the
+code: those 90 are cosmetically inert, but a new capture always carries a
+heading, so deleting theirs traded an invisible difference for a permanent
+structural one. Collapsing duplicates and never removing the last heading is
+what converges the collection instead.
+
+**A correction to this record's own framing.** The scope section above called
+the sweep one-time. It is not: `0345a301` made the emitter sole owner by
+documentation only — it still prepends unconditionally, so a caller that repeats
+the heading recreates the duplicate. That is why the repair is a committed,
+tested verb rather than a script run once and discarded.
 
 **Left undone, deliberately.** The emitter could refuse to prepend when the body
-already opens with a `##` heading, which would close the class at the mechanism
-instead of at the instruction and make this verb genuinely historical. That is a
-change to the emitter's contract rather than a repair of the collection, so it
-is not folded in here.
-
-Also unchanged: the 2 records carrying no `## Description` at all. Both were
-hand-edited after filing, so restoring a heading would invent structure their
-authors removed.
+already opens with a `##` heading, closing the class at the mechanism instead of
+the instruction and making this verb historical. That changes the emitter's
+contract rather than repairing the collection, so it is not folded in here.
