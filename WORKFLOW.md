@@ -136,6 +136,8 @@ Issues are also surfaced automatically at the end of each SDLC phase as a candid
 
 **One-time migration (`backfill.sh`).** A collection that predates the `num:` display ordinal is numbered once by running `bash skills/issue/scripts/backfill.sh num` against the issues directory — it assigns ordinals in `created:`-date order, is idempotent, and writes each file atomically. Run it once, up-front, before creating new issues. New issues never need it.
 
+Like every collection-wide rewrite, it previews by default: the bare command renders the plan and prints a `PLAN-HASH` without touching a file, and `--apply` performs it. Passing that hash back as `--expect <hash>` refuses the apply if the collection moved in between, so what runs is what you read. The `timestamp` subcommand, which normalizes legacy date-only `created`/`updated` to a day-start `T00:00:00Z` placeholder, takes the same two flags.
+
 ### Plugin Artifacts (Jim developing Jim)
 
 | Artifact | Location | What It Is | Managed By |

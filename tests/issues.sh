@@ -1261,7 +1261,7 @@ created: 2026-01-02'
   write_issue "$dir" "20260101-early" 'title: "Early"
 status: open
 created: 2026-01-01'
-  run_backfill num "$dir"
+  run_backfill num --apply "$dir"
   assert_exit "rc" 0 "$RC"
   assert_eq "early gets 1" "1" "$(num_of "$dir" 20260101-early)"
   assert_eq "late gets 2"  "2" "$(num_of "$dir" 20260102-late)"
@@ -1278,7 +1278,7 @@ created: 2026-01-03'
   write_issue "$dir" "20260104-needs" 'title: "Needs"
 status: open
 created: 2026-01-04'
-  run_backfill num "$dir"
+  run_backfill num --apply "$dir"
   assert_exit "rc" 0 "$RC"
   assert_eq "existing num untouched" "5" "$(num_of "$dir" 20260103-has)"
   assert_eq "new continues from max" "6" "$(num_of "$dir" 20260104-needs)"
@@ -1300,7 +1300,7 @@ num: 900 retries were attempted before the fix landed.'
   write_issue "$dir" "20260102-plain" 'title: "Plain"
 status: open
 created: 2026-01-02'
-  run_backfill num "$dir"
+  run_backfill num --apply "$dir"
   assert_exit "rc" 0 "$RC"
   assert_eq "the body line is not an ordinal" "1" \
     "$(num_of "$dir" 20260101-quotes-the-field)"
@@ -1317,7 +1317,7 @@ case_issues_backfill_idempotent() {
 status: open
 num: 1
 created: 2026-01-01'
-  run_backfill num "$dir"
+  run_backfill num --apply "$dir"
   assert_exit "rc"           0  "$RC"
   assert_eq   "no-op output" "" "$OUT"
   assert_eq   "num unchanged" "1" "$(num_of "$dir" 20260101-a)"
@@ -1333,7 +1333,7 @@ labels: [bug, auth]
 created: 2026-01-01' '## Description
 
 Body line with a [[20260101-b]] wikilink.'
-  run_backfill num "$dir"
+  run_backfill num --apply "$dir"
   local content
   content="$(cat "$dir/20260101-a.md")"
   assert_match "num added"      '^num:[[:space:]]*1'         "$content"
@@ -1353,7 +1353,7 @@ created: 2026-01-01'
   write_issue "$dir" "20260102-b" 'title: "B"
 status: open
 created: 2026-01-02'
-  run_backfill num "$dir"
+  run_backfill num --apply "$dir"
   assert_match "announces 2" 'Assigned display numbers to 2' "$OUT"
 }
 
@@ -1370,6 +1370,126 @@ case_issues_backfill_unknown_subcommand() {
   run_backfill bogus
   assert_exit  "rc" 2 "$RC"
   assert_match "names the bad subcommand" 'bogus' "$ERR"
+}
+
+# ─── Section: backfill preview gate ──────────────────────────────────────────
+
+# bf_gate_dir <name> — two un-numbered, date-only issues to plan against.
+bf_gate_dir() {
+  local dir
+  dir=$(empty_dir "$1")
+  write_issue "$dir" "20260101-early" 'title: "Early"
+status: open
+created: 2026-01-01
+updated: 2026-01-01'
+  write_issue "$dir" "20260102-late" 'title: "Late"
+status: open
+created: 2026-01-02
+updated: 2026-01-02'
+  printf '%s' "$dir"
+}
+
+# bf_hash <verb> <dir> — the PLAN-HASH the preview prints.
+bf_hash() {
+  bash "$SCRIPT_BACKFILL" "$1" "$2" 2>/dev/null | sed -n 's/^PLAN-HASH: //p'
+}
+
+# AC: `num` previews by default — it renders the plan and a PLAN-HASH, and
+# writes nothing. Absent --apply, no ordinal reaches a file.
+case_issues_backfill_num_previews_by_default() {
+  local dir
+  dir=$(bf_gate_dir backfill_gate_num_preview)
+  run_backfill num "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "renders the assignment" 'assign.*20260101-early' "$OUT"
+  assert_match "prints a plan hash"     '^PLAN-HASH: [0-9]+$'    "$OUT"
+  assert_eq    "wrote no ordinal" "" "$(num_of "$dir" 20260101-early)"
+}
+
+# AC: `timestamp` previews by default — same gate, and no value is rewritten.
+case_issues_backfill_timestamp_previews_by_default() {
+  local dir
+  dir=$(bf_gate_dir backfill_gate_ts_preview)
+  run_backfill timestamp "$dir"
+  assert_exit  "rc" 0 "$RC"
+  assert_match "renders the normalization" 'normalize.*20260101-early' "$OUT"
+  assert_match "prints a plan hash"        '^PLAN-HASH: [0-9]+$'       "$OUT"
+  assert_eq    "value untouched" "2026-01-01" \
+    "$(read_fm_field "$dir/20260101-early.md" created)"
+}
+
+# AC: the preview is read-only in the sense that matters — running it twice
+# leaves the second run with the same plan to report.
+case_issues_backfill_preview_is_repeatable() {
+  local dir first second
+  dir=$(bf_gate_dir backfill_gate_repeat)
+  first="$(bf_hash num "$dir")"
+  second="$(bf_hash num "$dir")"
+  assert_nonempty "a hash was printed" "$first"
+  assert_eq "preview did not disturb its own plan" "$first" "$second"
+}
+
+# AC: --expect refuses an apply whose collection moved since the preview, at
+# exit 3, and writes nothing on the way out.
+case_issues_backfill_expect_refuses_drift() {
+  local dir stale
+  dir=$(bf_gate_dir backfill_gate_drift)
+  stale="$(bf_hash num "$dir")"
+  # A third issue changes the plan the hash named.
+  write_issue "$dir" "20260103-added" 'title: "Added"
+status: open
+created: 2026-01-03
+updated: 2026-01-03'
+  run_backfill num --apply --expect "$stale" "$dir"
+  assert_exit  "drift rc" 3 "$RC"
+  assert_match "names the mismatch" 'collection changed since preview' "$ERR"
+  assert_eq    "wrote nothing" "" "$(num_of "$dir" 20260101-early)"
+}
+
+# AC: --expect carrying the current hash applies, so the gate refuses drift
+# rather than refusing every apply that names a hash.
+case_issues_backfill_expect_matching_applies() {
+  local dir hash
+  dir=$(bf_gate_dir backfill_gate_match)
+  hash="$(bf_hash num "$dir")"
+  run_backfill num --apply --expect "$hash" "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "early numbered" "1" "$(num_of "$dir" 20260101-early)"
+  assert_eq   "late numbered"  "2" "$(num_of "$dir" 20260102-late)"
+}
+
+# AC: the same gate guards `timestamp`, not `num` alone.
+case_issues_backfill_timestamp_expect_refuses_drift() {
+  local dir stale
+  dir=$(bf_gate_dir backfill_gate_ts_drift)
+  stale="$(bf_hash timestamp "$dir")"
+  write_issue "$dir" "20260103-added" 'title: "Added"
+status: open
+created: 2026-01-03
+updated: 2026-01-03'
+  run_backfill timestamp --apply --expect "$stale" "$dir"
+  assert_exit "drift rc" 3 "$RC"
+  assert_eq   "wrote nothing" "2026-01-01" \
+    "$(read_fm_field "$dir/20260101-early.md" created)"
+}
+
+# AC: --expect with no operand is refused (rc 2) rather than read as "no hash
+# given" — a gate that silently declines to gate is the defect it guards.
+case_issues_backfill_expect_requires_operand() {
+  run_backfill num --apply --expect
+  assert_exit  "rc" 2 "$RC"
+  assert_match "names the flag" 'expect requires a value' "$ERR"
+}
+
+# AC: the plan is keyed by issue id, not by path, so a hash taken under one
+# checkout still matches the same collection materialized somewhere else. A
+# placement-routed apply reaches a fresh directory every time; a path-keyed
+# plan would refuse every such apply as drift.
+case_issues_backfill_plan_hash_is_checkout_independent() {
+  local a b
+  a=$(bf_gate_dir backfill_gate_path_a)
+  b=$(bf_gate_dir backfill_gate_path_b)
+  assert_eq "same collection, same hash" "$(bf_hash num "$a")" "$(bf_hash num "$b")"
 }
 
 # AC: index surfaces num: and created: in the Issues row (spec 019)
@@ -1826,7 +1946,7 @@ status: open
 num: 1
 created: 2026-06-13
 updated: 2026-06-13' "Body stays."
-  run_backfill timestamp "$dir"
+  run_backfill timestamp --apply "$dir"
   assert_exit  "rc" 0 "$RC"
   assert_eq    "created -> day-start" "2026-06-13T00:00:00Z" "$(read_fm_field "$dir/20260613-x.md" created)"
   assert_eq    "updated -> day-start" "2026-06-13T00:00:00Z" "$(read_fm_field "$dir/20260613-x.md" updated)"
@@ -1843,8 +1963,8 @@ status: open
 num: 1
 created: 2026-06-13
 updated: 2026-06-13'
-  run_backfill timestamp "$dir"
-  run_backfill timestamp "$dir"
+  run_backfill timestamp --apply "$dir"
+  run_backfill timestamp --apply "$dir"
   assert_exit "rc" 0 "$RC"
   assert_eq   "second run silent"  ""                      "$OUT"
   assert_eq   "created stable"     "2026-06-13T00:00:00Z"  "$(read_fm_field "$dir/20260613-x.md" created)"
@@ -1862,7 +1982,7 @@ created: 2026-06-13
 updated: 2026-06-13
 labels: [a, b]' "Body line one.
 Body line two."
-  run_backfill timestamp "$dir"
+  run_backfill timestamp --apply "$dir"
   assert_exit  "rc" 0 "$RC"
   f="$dir/20260613-x.md"
   assert_eq    "title kept"    '"Keep Me"'      "$(read_fm_field "$f" title)"
@@ -1881,7 +2001,7 @@ status: open
 num: 1
 created: not-a-date
 updated: 2026-06-13'
-  run_backfill timestamp "$dir"
+  run_backfill timestamp --apply "$dir"
   assert_exit  "rc" 0 "$RC"
   assert_eq    "malformed created untouched" "not-a-date"            "$(read_fm_field "$dir/20260613-x.md" created)"
   assert_eq    "updated normalized"          "2026-06-13T00:00:00Z"  "$(read_fm_field "$dir/20260613-x.md" updated)"
@@ -1904,7 +2024,7 @@ num: 1
 created: not-a-date\nstatus: closed
 updated: 2026-06-13
 status: open'
-  run_backfill timestamp "$dir"
+  run_backfill timestamp --apply "$dir"
   f="$dir/20260613-x.md"
   assert_exit "rc" 0 "$RC"
   assert_eq   "updated still normalized"  "2026-06-13T00:00:00Z" "$(read_fm_field "$f" updated)"
@@ -1929,7 +2049,7 @@ The record this supersedes carried:
 
 updated: 2026-05-05'
   before="$(cat "$dir/20260613-x.md")"
-  run_backfill timestamp "$dir"
+  run_backfill timestamp --apply "$dir"
   assert_exit "rc"                       0  "$RC"
   assert_eq   "nothing announced"        "" "$OUT"
   assert_eq   "no warning about the body" "" "$ERR"
@@ -4285,9 +4405,55 @@ case_issues_placement_backfill_lands_at_the_destination() {
   assert_exit "filing landed" 0 "$RC"
   assert_match "date-only to begin with" '^created: 2026-01-01$' \
     "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
-  run_in "$repo" "$SCRIPT_BACKFILL" timestamp
+  run_in "$repo" "$SCRIPT_BACKFILL" timestamp --apply
   assert_exit "backfill rc" 0 "$RC"
   assert_match "normalized at the destination" '^created: 2026-01-01T00:00:00Z$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+  assert_eq "working tree untouched" "no" \
+    "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
+}
+
+# AC: under a placement the preview reads the destination and publishes nothing
+# — it reports the destination's own plan while leaving the branch tip where it
+# was. A preview routed down the write arm would commit, which is the half of
+# "previews by default" a placement can silently lose.
+case_issues_placement_backfill_preview_publishes_nothing() {
+  local repo body before after
+  repo="$(placement_repo issues_place_backfill_preview jim/issues)"
+  body="$(fixture issues_place_backfill_preview_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-a --num 7 --created 2026-01-01 \
+    --updated 2026-01-01 --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  before="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  run_in "$repo" "$SCRIPT_BACKFILL" timestamp
+  assert_exit  "preview rc" 0 "$RC"
+  assert_match "saw the destination's issue" 'normalize.*20260101-a' "$OUT"
+  assert_match "printed a plan hash"         '^PLAN-HASH: [0-9]+$'   "$OUT"
+  after="$(git -C "$repo" rev-parse --verify refs/heads/jim/issues)"
+  assert_eq "destination tip unmoved" "$before" "$after"
+  assert_match "value still date-only" '^created: 2026-01-01$' \
+    "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
+}
+
+# AC: an --expect operand is not mistaken for a directory argument. The routing
+# scan treats a bare token as "the caller named a collection" and declines to
+# route; reading the hash as one would send the apply at the working tree with
+# the gate pointed somewhere else entirely.
+case_issues_placement_backfill_expect_operand_is_not_a_dir() {
+  local repo body hash
+  repo="$(placement_repo issues_place_backfill_expect jim/issues)"
+  body="$(fixture issues_place_backfill_expect_body.md 'body')"
+  run_new_in "$repo" --reviewed --slug 20260101-a --num 7 --created 2026-01-01 \
+    --updated 2026-01-01 --title "Alpha bug" --priority medium --labels x \
+    --origin conversation --body-file "$body"
+  assert_exit "filing landed" 0 "$RC"
+  run_in "$repo" "$SCRIPT_BACKFILL" timestamp
+  hash="$(printf '%s' "$OUT" | sed -n 's/^PLAN-HASH: //p')"
+  assert_nonempty "preview printed a hash" "$hash"
+  run_in "$repo" "$SCRIPT_BACKFILL" timestamp --apply --expect "$hash"
+  assert_exit  "apply rc" 0 "$RC"
+  assert_match "landed at the destination" '^created: 2026-01-01T00:00:00Z$' \
     "$(git -C "$repo" cat-file -p refs/heads/jim/issues:docs/issues/20260101-a.md)"
   assert_eq "working tree untouched" "no" \
     "$([[ -e "$repo/docs/issues" ]] && echo yes || echo no)"
