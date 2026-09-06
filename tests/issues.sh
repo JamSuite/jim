@@ -1526,20 +1526,22 @@ Real prose here.')
   assert_match "prose preserved" 'Real prose here\.' "$(cat "$dir/20260101-double.md")"
 }
 
-# AC: a heading leading a body that opens with its own section is removed, and
-# that section becomes the lead.
-case_issues_backfill_heading_drops_a_lead_with_no_prose() {
-  local dir out
+# AC: a heading leading a body that opens with its own section is KEPT. The
+# repair collapses duplicates and never removes the last heading, so every
+# record ends carrying exactly one — removing it here would leave these records
+# shaped unlike every record filed since, because a new capture always has one.
+case_issues_backfill_heading_keeps_a_lead_above_a_sibling_section() {
+  local dir before
   dir=$(hd_dir backfill_hd_empty 20260101-empty '## Description
 
 ## Context
 
 Why this matters.')
+  before="$(cat "$dir/20260101-empty.md")"
   run_backfill heading --apply "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_eq   "no heading left" "0" "$(hd_count "$dir" 20260101-empty)"
-  out="$(awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2 && NF {print; exit}' "$dir/20260101-empty.md")"
-  assert_eq   "the body's own section leads" "## Context" "$out"
+  assert_eq   "heading kept" "1" "$(hd_count "$dir" 20260101-empty)"
+  assert_eq   "file untouched" "$before" "$(cat "$dir/20260101-empty.md")"
 }
 
 # AC: a `###` beneath the heading is ordinary nesting — a subsection OF
@@ -1569,10 +1571,11 @@ Ordinary prose.')
   assert_eq   "file untouched" "$before" "$(cat "$dir/20260101-ok.md")"
 }
 
-# AC: the rule is applied to a fixed point. A body carrying both shapes at once
-# — two headings above its own section — ends with neither, where a single pass
-# would collapse the pair and leave the survivor leading nothing.
-case_issues_backfill_heading_cascades_to_a_fixed_point() {
+# AC: a duplicated pair above the body's own section collapses to one and stops
+# there. The survivor now leads a sibling section, which is the shape the repair
+# deliberately leaves alone — so the two rules meet on this record without the
+# collapse running on into a removal.
+case_issues_backfill_heading_collapses_above_a_sibling_and_stops() {
   local dir out
   dir=$(hd_dir backfill_hd_cascade 20260101-cascade '## Description
 
@@ -1583,15 +1586,34 @@ case_issues_backfill_heading_cascades_to_a_fixed_point() {
 Body.')
   run_backfill heading --apply "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_eq   "both removed" "0" "$(hd_count "$dir" 20260101-cascade)"
+  assert_eq   "exactly one survives" "1" "$(hd_count "$dir" 20260101-cascade)"
   out="$(awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2 && NF {print; exit}' "$dir/20260101-cascade.md")"
-  assert_eq   "the body's own section leads" "## Context" "$out"
+  assert_eq   "and it still leads" "## Description" "$out"
+}
+
+# AC: three headings collapse to one, not to two — the rule runs to a fixed
+# point rather than once.
+case_issues_backfill_heading_collapses_to_a_fixed_point() {
+  local dir
+  dir=$(hd_dir backfill_hd_triple 20260101-triple '## Description
+
+## Description
+
+## Description
+
+Body.')
+  run_backfill heading --apply "$dir"
+  assert_exit "rc" 0 "$RC"
+  assert_eq   "one survives" "1" "$(hd_count "$dir" 20260101-triple)"
 }
 
 # AC: a `## Description` inside a fenced block is content, not structure, and
 # survives even in the shape the rule would otherwise match.
 case_issues_backfill_heading_ignores_a_fenced_heading() {
   local dir body
+  # The fenced pair is itself a duplicate, so without the fence walk it would
+  # collapse to one and the count would come back 2. Anything less than a real
+  # duplicate inside the fence proves nothing under this rule.
   body='## Description
 
 Prose.
@@ -1599,12 +1621,12 @@ Prose.
 ```
 ## Description
 
-## Context
+## Description
 ```'
   dir=$(hd_dir backfill_hd_fence 20260101-fence "$body")
   run_backfill heading --apply "$dir"
   assert_exit "rc" 0 "$RC"
-  assert_eq   "fenced copy survives alongside the real one" "2" \
+  assert_eq   "all three survive — the fenced pair is content" "3" \
     "$(hd_count "$dir" 20260101-fence)"
 }
 
@@ -1616,12 +1638,12 @@ case_issues_backfill_heading_finds_a_heading_below_a_banner() {
 
 ## Description
 
-## Context
+## Description
 
 Body.')
   run_backfill heading --apply "$dir"
   assert_exit  "rc" 0 "$RC"
-  assert_eq    "heading removed" "0" "$(hd_count "$dir" 20260101-banner)"
+  assert_eq    "collapsed to one" "1" "$(hd_count "$dir" 20260101-banner)"
   assert_match "banner preserved" 'Resolved 2026-01-01' "$(cat "$dir/20260101-banner.md")"
 }
 
@@ -1663,7 +1685,7 @@ case_issues_backfill_heading_leaves_frontmatter_alone() {
   local dir before
   dir=$(hd_dir backfill_hd_fm 20260101-fm '## Description
 
-## Context
+## Description
 
 Body.')
   before="$(sed -n '/^---$/,/^---$/p' "$dir/20260101-fm.md")"

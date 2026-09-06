@@ -2,9 +2,9 @@
 #
 # skills/issue/scripts/backfill.sh — one-shot, opt-in migrations that repair
 # issue data the collection carries wrong: `num` display ordinals and
-# `created`/`updated` second-resolution timestamps a record lacks, and a body
-# lead the emitter's heading duplicated or left empty. Subcommands: `num`,
-# `timestamp`, `heading`.
+# `created`/`updated` second-resolution timestamps a record lacks, and a
+# `## Description` heading the emitter's prepend duplicated. Subcommands:
+# `num`, `timestamp`, `heading`.
 #
 # PURPOSE
 #   Opt-in repairs for data a collection carries wrong. None is wired into the
@@ -15,8 +15,14 @@
 #   New issues get theirs at creation (jimfile.sh next-num issue), so this only
 #   numbers a legacy collection, up-front, keeping ordinals ascending with
 #   creation. `timestamp` canonicalizes legacy date-only stamps. `heading`
-#   removes a `## Description` the emitter's prepend duplicated, or left
-#   leading a body that opens with a section of its own.
+#   collapses a `## Description` the emitter's prepend duplicated, so every
+#   record carries exactly one.
+#
+#   `heading` only ever collapses a duplicate; it never removes the last
+#   heading. A record whose body opens with a section of its own keeps the
+#   heading above it — that shape is inert, and removing it would leave those
+#   records shaped unlike every record filed since, because a new capture
+#   always carries one.
 #
 #   The first two repair a one-time state; `heading` repairs a recurring one.
 #   The emitter prepends its heading unconditionally, so a caller that repeats
@@ -54,11 +60,11 @@
 #     untouched; malformed values named in the preview and left alone. With
 #     --apply, prints "Normalized N issue(s) ..." iff N>0; else silent.
 #   bash backfill.sh heading [--apply] [--expect <hash>] [<issues_dir>]
-#     Remove a `## Description` heading the emitter's prepend duplicated, or
-#     left leading a body that opens with a section of its own. A `###`
-#     beneath the heading is ordinary nesting and is left alone. Without
-#     --apply, previews and writes nothing. Idempotent — a repaired body no
-#     longer matches. With --apply, prints "Repaired the body lead of N
+#     Collapse a `## Description` heading the emitter's prepend duplicated, so
+#     the record carries exactly one. Never removes the last heading: a body
+#     opening with its own section keeps the heading above it. Without
+#     --apply, previews and writes nothing. Idempotent — a collapsed body no
+#     longer matches. With --apply, prints "Collapsed a duplicated heading in N
 #     issue(s)." iff N>0; else silent.
 #   issues_dir default: jimconf.sh get issues
 #
@@ -186,25 +192,27 @@ classify_ts() {
   fi
 }
 
-# strip_empty_headings <file> — print <file> with every vestigial `## Description`
-# heading removed, and nothing else changed.
+# collapse_duplicate_headings <file> — print <file> with a repeated
+# `## Description` heading collapsed to one, and nothing else changed.
 #
-# One rule covers both malformed shapes the emitter's unconditional prepend
-# produces: remove a `## Description` whose next non-blank line is another
-# `##` heading, along with the blanks between them. A caller that repeated the
-# heading leaves two in a row, so the first is dropped and one survives; a
-# caller that opened its body with a section of its own leaves the heading
-# leading nothing, so it is dropped and the body's own section leads. A `###`
-# beneath the heading is ordinary nesting and is deliberately not matched.
+# The rule is deliberately narrow: remove a `## Description` whose next
+# non-blank line is another `## Description`, along with the blanks between
+# them. Only the emitter's own duplicate goes.
 #
-# The rule is applied to a fixed point rather than once, because collapsing a
-# doubled heading can expose the survivor to the same condition — a body of
-# `## Description` / `## Description` / `## Context` is both shapes at once.
+# It does NOT remove a heading that leads a body opening with a section of its
+# own — `## Description` above `## Context` keeps both. That shape is inert,
+# and the alternative was worse: dropping the heading leaves those records
+# permanently shaped unlike anything filed since, because a new capture always
+# carries one. Every record keeping exactly one heading is the uniform end
+# state; deleting headings moves away from it.
+#
+# The rule is applied to a fixed point rather than once, so a body that somehow
+# carried three headings collapses to one rather than to two.
 #
 # Reads the frontmatter fence and code fences so a `## Description` written
 # inside either is left alone: the frontmatter is not body, and a fenced line
 # is content rather than structure.
-strip_empty_headings() {
+collapse_duplicate_headings() {
   awk '
     { L[NR] = $0 }
     END {
@@ -224,7 +232,7 @@ strip_empty_headings() {
           if (L[i] !~ /^## Description[ \t]*$/) continue
           j = i + 1
           while (j <= NR && (del[j] || L[j] ~ /^[ \t]*$/)) j++
-          if (j <= NR && L[j] ~ /^## /) {
+          if (j <= NR && L[j] ~ /^## Description[ \t]*$/) {
             del[i] = 1
             for (k = i + 1; k < j; k++) del[k] = 1
             changed = 1
@@ -258,7 +266,7 @@ build_heading_plan() {
     [[ "$base" == .* ]] && continue
     before="$(heading_count "$f")"
     (( before > 0 )) || continue
-    after="$(strip_empty_headings "$f" | grep -c '^## Description[[:space:]]*$')"
+    after="$(collapse_duplicate_headings "$f" | grep -c '^## Description[[:space:]]*$')"
     (( before == after )) && continue
     printf '%s\t%s\t%s\n' "${base%.md}" "$before" "$after"
   done
@@ -266,22 +274,14 @@ build_heading_plan() {
 
 # render_heading_plan <plan-rows> — human preview + summary counts.
 render_heading_plan() {
-  local plan="$1" slug before after collapses=0 drops=0 __row
+  local plan="$1" slug before after collapses=0 __row
   while IFS= read -r __row; do
     [[ -n "$__row" ]] || continue
     IFS=$'\t' read -r slug before after <<<"$__row"
-    # Labelled by outcome, and the counts are shown, so a body that carried two
-    # headings above its own section — collapsed and then dropped — reads as the
-    # `2 -> 0` it is rather than as either half alone.
-    if (( after > 0 )); then
-      printf '  collapse   %s  (%s -> %s)\n' "$slug" "$before" "$after"
-      collapses=$((collapses+1))
-    else
-      printf '  drop       %s  (%s -> %s)\n' "$slug" "$before" "$after"
-      drops=$((drops+1))
-    fi
+    printf '  collapse   %s  (%s -> %s)\n' "$slug" "$before" "$after"
+    collapses=$((collapses+1))
   done <<<"$plan"
-  printf '\n  %d keep a heading · %d left with none\n' "$collapses" "$drops"
+  printf '\n  %d to collapse\n' "$collapses"
 }
 
 # apply_heading_plan <dir> <plan> [<expect>] — rewrite each planned file through
@@ -301,7 +301,7 @@ apply_heading_plan() {
       echo "error: cannot create tmp file in '$dir'" >&2
       return 1
     }
-    if strip_empty_headings "$file" > "$tmp"; then
+    if collapse_duplicate_headings "$file" > "$tmp"; then
       mv "$tmp" "$file" || {
         rm -f "$tmp"
         echo "error: atomic rename failed for '$file'" >&2
@@ -316,7 +316,7 @@ apply_heading_plan() {
   done <<<"$plan"
 
   if (( repaired > 0 )); then
-    printf 'Repaired the body lead of %d issue(s).\n' "$repaired"
+    printf 'Collapsed a duplicated heading in %d issue(s).\n' "$repaired"
   fi
   return 0
 }
@@ -554,8 +554,8 @@ usage() {
     '      (YYYY-MM-DDT00:00:00Z placeholder). Idempotent; announces a count iff any.' \
     '' \
     '  bash backfill.sh heading [--apply] [--expect <hash>] [<issues_dir>]' \
-    '      Remove a `## Description` heading that was duplicated, or that leads a' \
-    '      body opening with its own section. A `###` beneath it is left alone.' \
+    '      Collapse a duplicated `## Description` heading so the record carries' \
+    '      exactly one. Never removes the last heading.' \
     '' \
     '  Every subcommand previews by default and writes only under --apply. The' \
     '  preview prints a PLAN-HASH; passing it back as --expect refuses the apply' \
