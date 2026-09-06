@@ -2,7 +2,7 @@
 id: 20260708-emitter-and-template-both-emit-the-issue-description-header
 num: 69
 title: "Emitter and template both emit the issue Description header"
-status: closed
+status: open
 priority: low
 type: issue
 filed-by: "jrko"
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-07-08T20:37:32Z
-updated: 2026-09-06T09:10:13Z
+updated: 2026-09-06T20:12:59Z
 origin: conversation
 ---
 

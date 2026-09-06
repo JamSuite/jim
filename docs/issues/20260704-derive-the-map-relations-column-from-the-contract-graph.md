@@ -16,9 +16,11 @@ relations:
   duplicates: []
   part-of: [20260829-machine-resolvable-contract-graph]
 created: 2026-07-04T07:02:15Z
-updated: 2026-08-29T07:50:43Z
+updated: 2026-09-06T20:22:57Z
 origin: docs/specs/blueprint/006-contract-graph/research.md
 ---
+
+## Description
 
 ## Context
 
