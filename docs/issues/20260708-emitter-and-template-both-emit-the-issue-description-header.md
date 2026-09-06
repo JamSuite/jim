@@ -2,11 +2,11 @@
 id: 20260708-emitter-and-template-both-emit-the-issue-description-header
 num: 69
 title: "Emitter and template both emit the issue Description header"
-status: open
+status: active
 priority: low
 type: issue
 filed-by: "jrko"
-claimed-by: ""
+claimed-by: "jrko"
 outcome: ""
 labels: [issues-system, emitter, template]
 relations:
@@ -16,7 +16,7 @@ relations:
   duplicates: []
   part-of: []
 created: 2026-07-08T20:37:32Z
-updated: 2026-07-29T20:09:12Z
+updated: 2026-09-06T06:22:36Z
 origin: conversation
 ---
 
@@ -30,10 +30,17 @@ carry a malformed lead. #33 has a doubled `## Description` header; others (the
 
 The issue-file emitter and the template both own the `## Description` header:
 
-- `skills/issue/scripts/new.sh:204` unconditionally prepends
+- `skills/issue/scripts/new.sh:437` unconditionally prepends
   `\n## Description\n\n` before `cat`-ing the `--body-file` bytes.
-- `skills/issue/assets/issue-template.md:18` also shows `## Description` as
+- `skills/issue/assets/issue-template.md:36` also shows `## Description` as
   part of the authored body shape.
+
+Nothing else in `skills/` emits the header — those two are the whole conflict.
+The caller-facing contract is silent about it in three places: `SKILL.md` step 6
+and §7a both document `--body-file` with no note on what the emitter supplies,
+and the emitter's own header comment (`new.sh:9-13`) describes `--body-file` as
+appending "those bytes verbatim" — the place a caller would look for the
+contract, and the place the omission actually bites.
 
 A drafting caller that mirrors the template into its body file writes a second
 `## Description` (→ #33's doubling); one that starts its body with `## Context`
@@ -50,37 +57,65 @@ Make the emitter the sole owner of the header:
 - Add a one-line note to `skills/issue/SKILL.md` step 6 (and the 7a
   candidate-batch emitter call) that `--body-file` is prose only — the emitter
   supplies the `## Description` heading.
+- Say the same thing in the emitter's own `--body-file` header comment, so the
+  contract is stated where the script states the rest of its contract.
 - Backfill the malformed bodies already in the collection, then regenerate
   `INDEX.md`.
 
-## Real backfill scope (verified 2026-07-29)
+The first three are small, one-time, and cheaper than they look: the emitter
+keeps the header and only the template loses it, so the full-file parity
+fixture at `tests/issues.sh:3177-3205` — which pins the emitted body lead
+exactly — stays green. The backfill is the expensive half; see the scope and
+sequencing below.
 
-The original "backfill the one existing instance" was written off a spot-check
-and understates this by roughly 57×. Across 134 issue files, both variants named
-above are present:
+## Real backfill scope (re-verified 2026-09-06)
 
-- **6 doubled `## Description` headers** — #33, #107, #108, #109, #110, #121.
-  These render visibly wrong (two identical headings in a row) and are the half
-  worth fixing.
-- **51 empty `## Description` immediately followed by another `##` heading** —
-  the caller opened its body with `## Context` (or similar), so the emitter's
-  heading leads an empty section. Cosmetically inert.
+Every earlier estimate here was taken against a smaller collection and is now
+wrong by roughly 4×. Across **421** issue files:
 
-A backfill can defensibly cover only the 6; the 51 are a judgment call about
-whether an empty section is worth a mass edit.
+- **180 doubled `## Description` headers.** The caller mirrored the template
+  into its body file, so the emitter's prepend lands on top of the caller's own
+  heading. These render visibly wrong — two identical headings in a row — and
+  are the half worth fixing.
+- **87 empty `## Description` followed by an H2 sibling** (`## Context`,
+  `## What`, `## Problem`, and in two cases `## Resolution`). The caller opened
+  its body with its own section, so the emitter's heading leads an empty one.
+  Cosmetically inert.
+- **5 empty `## Description` followed by an H3.** Not malformed — `### …` is a
+  subsection *of* Description, which is ordinary nesting. Earlier counts here
+  folded these into the empty class; a sweep must leave them alone.
+- **2 files carrying no `## Description` at all** — a third shape not named
+  before. Both were hand-edited after filing, so this is an editing artifact
+  rather than an emitter path, and a sweep should not try to restore the header.
+- 147 well-formed.
+
+A backfill can defensibly cover only the 180; the 87 are a judgment call about
+whether an empty section is worth a mass edit. Where the empty heading precedes
+`## Resolution`, the sweep must not disturb the close-side note.
+
+**Sequencing.** The backfill is a scripted rewrite over the whole collection,
+and the tool for it is the subject of two open issues — #404 (`backfill.sh`
+rewrites the collection with no preview gate) and #403. Running a 267-file sweep
+through an ungated rewriter is the wrong order; #404 lands first.
+
+**The defect is live, not historical.** Of the 20 most recent captures, 5 are
+doubled and 6 empty, including files filed on 2026-08-28 and 2026-08-29. Both
+malformed shapes are still being produced by current capture paths.
 
 Note that `180ce8b` (2026-07-28) already hand-swept 7 host-handoff bodies for
 the doubled variant. It was a manual fix of the symptom in one batch — it left
 the dual-emit root cause and every other malformed body untouched, which is why
 new captures can still produce both shapes.
 
-All three root-cause fixes above remain unimplemented as of this verification:
-the emitter still prepends unconditionally, the template still carries the
-heading, and `SKILL.md` still documents `--body-file` with no prose-only note.
+All root-cause fixes above remain unimplemented: the emitter still prepends
+unconditionally, the template still carries the heading, and neither `SKILL.md`
+nor the emitter's own header comment states that `--body-file` is prose only.
 
 ## Why low
 
 No behavioral impact — malformed presentation only; indexing and the wikilink
-graph are unaffected. Note the shape of the work, though: the three root-cause
-fixes are small and one-time, while the backfill is a scripted sweep over the
-collection rather than the single hand edit originally implied.
+graph are unaffected, so the grade still stands on impact. It no longer stands
+on effort: the four root-cause fixes are small and one-time, but the backfill is
+a 267-file sweep gated behind another open issue, not the single hand edit
+originally implied. The malformed share also grows with every capture until the
+root cause is fixed, so the cheap half is worth doing ahead of the sweep.
