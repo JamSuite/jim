@@ -289,7 +289,7 @@ Six one-shot, opt-in commands, none of them wired into normal use. Each writes a
 | `reconcile.sh [--apply]` | Realize provisional ordinals — the script behind `/jim:issue reconcile` |
 | `backfill.sh num [--apply]` | Assign display ordinals to legacy issues filed before ordinals existed |
 | `backfill.sh timestamp [--apply]` | Normalize date-only `created`/`updated` to second-resolution day-start values |
-| `backfill.sh heading [--apply]` | Remove a `## Description` heading the emitter duplicated, or that leads a body opening with its own section |
+| `backfill.sh heading [--apply]` | Collapse a `## Description` heading the emitter duplicated, so the record carries exactly one |
 
 Every command in this table previews by default and writes only under `--apply`, printing a `PLAN-HASH` you can pass back as `--expect <hash>` to refuse an apply whose collection moved since the preview.
 

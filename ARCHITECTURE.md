@@ -2080,17 +2080,20 @@ strategic and SDLC documents. A second script — `skills/file/scripts/jimfile.s
   split — a preview routes `--read`, so previewing under a placement publishes
   nothing, and the directory scan that decides whether the caller named a
   collection skips the `--expect` operand rather than reading the hash as a
-  path. `backfill.sh heading` repairs the body lead the emitter's
-  unconditional `## Description` prepend produces when a caller supplies its
-  own structure: one rule removes a `## Description` whose next non-blank line
-  is another `##` heading, so a repeated heading collapses to one and a heading
-  leading no prose is dropped, while a `###` beneath it stays the ordinary
-  nesting it is. The rule iterates to a fixed point, because collapsing a pair
-  can expose the survivor to the same condition, and it walks the frontmatter
-  and code fences so a heading written inside either stays content rather than
-  structure. Unlike its two siblings it repairs a *recurring* state rather than
-  a one-time one: the emitter still prepends unconditionally, and callers are
-  told to pass prose only rather than prevented from doing otherwise.
+  path. `backfill.sh heading` repairs the duplicate the emitter's unconditional
+  `## Description` prepend produces when a caller supplies the heading too:
+  it removes a `## Description` whose next non-blank line is another
+  `## Description`, iterating to a fixed point so three collapse to one rather
+  than to two, and walking the frontmatter and code fences so a heading written
+  inside either stays content rather than structure. It never removes the last
+  heading — a record whose body opens with a section of its own keeps the
+  heading above it. That bound is the point rather than a limitation: a new
+  capture always carries a heading, so dropping it from the older records would
+  fix an inert cosmetic difference by creating a permanent structural one, where
+  every record carrying exactly one is the uniform end state. Unlike its two
+  siblings this repairs a *recurring* state rather than a one-time one: the
+  emitter still prepends unconditionally, and callers are told to pass prose
+  only rather than prevented from doing otherwise.
   `backfill.sh num` assigns `num:` ordinals to legacy issues in
   `created:`-ascending order via per-file atomic `tmp + mv`, idempotent and
   announced; it is NOT wired into the verb flow (new issues get their ordinal at
